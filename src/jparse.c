@@ -185,7 +185,6 @@ __section__(".rare") int parse_json_string(const char *text, json_value *out)
     };
 
     int ok = playdate->json->decode(&decoder, reader, out);
-    playdate->file->close(file);
 
     if (!ok)
     {
