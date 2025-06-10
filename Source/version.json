@@ -1,4 +1,5 @@
 {
     "name": "v0.1",
-    "url": "http://raw.githubusercontent.com/CrankBoyHQ/crankboy-app/refs/heads/master/Source/scripts.json"
+    "url": "http://raw.githubusercontent.com/CrankBoyHQ/crankboy-app/refs/heads/master/Source/scripts.json",
+    "domain": "raw.githubusercontent.com"
 }

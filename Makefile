@@ -17,6 +17,8 @@ VPATH += peanut_gb
 VPATH += minigb_apu
 
 # List C source files here
+SRC += src/version.c
+SRC += src/game_scene.c
 SRC += src/userstack.c
 SRC += src/jparse.c
 SRC += src/script.c
@@ -26,7 +28,6 @@ SRC += src/app.c
 SRC += src/utility.c
 SRC += src/scene.c
 SRC += src/library_scene.c
-SRC += src/game_scene.c
 SRC += src/array.c
 SRC += src/listview.c
 SRC += src/preferences.c

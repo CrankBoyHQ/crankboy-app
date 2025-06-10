@@ -24,3 +24,4 @@ typedef struct JsonArray
 
 void free_json_data(json_value);
 int parse_json(const char *file, json_value *out);
+int parse_json_string(const char *text, json_value *out);

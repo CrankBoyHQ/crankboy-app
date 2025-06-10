@@ -150,3 +150,48 @@ __section__(".rare") int parse_json(const char *path, json_value *out)
     }
     return 1;
 }
+
+int read_string(const char** text, uint8_t* out, int bufsize)
+{
+    int maxlen = strnlen(*text, bufsize);
+    if (maxlen == 0) return 0;
+    memcpy(out, *text, maxlen);
+    *text += maxlen;
+    return maxlen;
+}
+
+__section__(".rare") int parse_json_string(const char *text, json_value *out)
+{
+    if (!out)
+        return 0;
+    out->type = kJSONNull;
+
+    struct json_decoder decoder = {
+        .decodeError = decodeError,
+        .willDecodeSublist = SI_willDecodeSublist,
+        .shouldDecodeTableValueForKey = NULL,
+        .didDecodeTableValue = SI_didDecodeTableValue,
+        .shouldDecodeArrayValueAtIndex = NULL,
+        .didDecodeArrayValue = SI_didDecodeArrayValue,
+        .didDecodeSublist = SI_didDecodeSublist,
+        .userdata = NULL,
+        .returnString = 0,
+        .path = NULL};
+
+    // (gets binary data for json file)
+    json_reader reader = {
+        .read = (int (*)(void *, uint8_t *, int))read_string,
+        .userdata = &text
+    };
+
+    int ok = playdate->json->decode(&decoder, reader, out);
+    playdate->file->close(file);
+
+    if (!ok)
+    {
+        free_json_data(*out);
+        out->type = kJSONNull;
+        return 0;
+    }
+    return 1;
+}
