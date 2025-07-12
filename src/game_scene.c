@@ -159,7 +159,8 @@ __section__(".rare") static void generate_dither_luts(void)
     }
 }
 
-static int didLoadState = false;
+// forces screen refresh
+static int didOpenMenu = false;
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
@@ -1585,10 +1586,10 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         prev_game_picture_y_bottom = game_picture_y_bottom;
     }
     
-    if (didLoadState)
+    if (didOpenMenu)
     {
         gbScreenRequiresFullRefresh = 1;
-        didLoadState = 0;
+        didOpenMenu = 0;
     }
 
     if (gameScene->state == PGB_GameSceneStateLoaded)
@@ -2264,6 +2265,7 @@ __section__(".rare") void PGB_GameScene_buttonMenuCallback(void* userdata)
 
 static void PGB_GameScene_menu(void* object)
 {
+    didOpenMenu = true;
     PGB_GameScene* gameScene = object;
 
     if (gameScene->menuImage != NULL)
@@ -2844,7 +2846,6 @@ __section__(".rare") bool load_state_thumbnail(
 __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
 {
     gameScene->playtime = 0;
-    didLoadState = true;
     PGB_GameSceneContext* context = gameScene->context;
     char* state_name;
     playdate->system->formatString(

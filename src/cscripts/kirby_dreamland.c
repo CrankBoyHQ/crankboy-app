@@ -237,8 +237,8 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
         
         // 100% vertical scaling
         game_picture_scaling = 0;
-        game_picture_y_top = 4;
-        game_picture_y_bottom = 124;
+        game_picture_y_top = 2; // bias to show more of top of screen than bottom
+        game_picture_y_bottom = 122;
     }
     else
     {
