@@ -8,6 +8,7 @@
 #include "preferences.h"
 #include "script.h"
 #include "utility.h"
+#include "game_scene.h"
 
 typedef unsigned romaddr_t;
 typedef u16 addr16_t;
@@ -270,3 +271,5 @@ void code_replacement_apply(CodeReplacement* r, bool apply);
 void code_replacement_free(CodeReplacement* r);
 
 #define $JOYPAD (script_gb->direct.joypad ^ 0xFF)
+
+#define SCRIPT_ASSETS_DIR "images/script-assets/"

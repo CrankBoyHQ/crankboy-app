@@ -162,4 +162,15 @@ bool load_state_thumbnail(PGB_GameScene *gameScene, unsigned slot, uint8_t* out)
 struct PGB_Game;
 void show_game_script_info(const char* rompath);
 
+// horizontal position of game boy screen on playdate screen; must be a multiple of 8
+extern unsigned game_picture_x_offset;
+
+// 1 in n rows are squished. Higher value means less vertical compression.
+// 0 means 100% vertical scaling
+extern unsigned game_picture_scaling;
+
+// [first, last) gameboy rows to render.
+extern unsigned game_picture_y_top;
+extern unsigned game_picture_y_bottom;
+
 #endif /* game_scene_h */

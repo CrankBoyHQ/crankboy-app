@@ -13,6 +13,8 @@
 #define MIN_HYST_CRANK_BEGIN_SUCK 9.0f
 #define CRANK_MAX_HYST 10.0f
 
+#define KIRBY_ASSETS_DIR SCRIPT_ASSETS_DIR "kirby-dreamland/"
+
 // -- ram addr --
 // y speed - d078
 // input - ff8b
@@ -31,6 +33,8 @@ typedef struct ScriptData
     CodeReplacement* patch_continue_flying;
     CodeReplacement* patch_fly_accel_down;
     CodeReplacement* patch_fly_accel_up;
+    
+    LCDBitmap* sidebar;
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -105,8 +109,15 @@ static void force_prefs(void)
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
+    
+    force_prefs();
 
     ScriptData* data = allocz(ScriptData);
+    
+    const char* err = NULL;
+    data->sidebar = playdate->graphics->loadBitmap(KIRBY_ASSETS_DIR "sidebar");
+    
+    if (err || !data->sidebar) script_error("Script error loading bitmap: %s", err);
 
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
@@ -169,9 +180,13 @@ static void on_end(struct gb_s* gb, ScriptData* data)
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
-    // FIXME: why do we have to do this every frame?
-    // It's supposed to only need to be done once.
-    force_prefs();
+    // flush left
+    game_picture_x_offset = 0;
+    
+    // 100% vertical scaling
+    game_picture_scaling = 0;
+    game_picture_y_top = 4;
+    game_picture_y_bottom = 124;
 
     bool start_flying_via_crank = false;
     bool continue_flying = false;

@@ -734,7 +734,7 @@ __section__(".rare") int c_script_add_hw_breakpoint(
     struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
 )
 {
-    // get script from gameboy (rather indirect :/)
+    // get script from gb (rather indirect :/)
     PGB_GameSceneContext* context = gb->direct.priv;
     PGB_GameScene* scene = context->scene;
     ScriptState* state = scene->script;

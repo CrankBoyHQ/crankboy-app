@@ -83,6 +83,11 @@ static void gb_save_to_disk(struct gb_s* gb);
 static const char* startButtonText = "start";
 static const char* selectButtonText = "select";
 
+unsigned game_picture_x_offset;
+unsigned game_picture_y_top;
+unsigned game_picture_y_bottom;
+unsigned game_picture_scaling;
+
 static uint8_t PGB_dither_lut_row0[256];
 static uint8_t PGB_dither_lut_row1[256];
 
@@ -240,6 +245,11 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
 
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
+        
+    game_picture_x_offset = PGB_LCD_X;
+    game_picture_scaling = 3;
+    game_picture_y_top = 0;
+    game_picture_y_bottom = LCD_HEIGHT;
 
     PGB_Scene* scene = PGB_Scene_new();
 
@@ -1008,20 +1018,21 @@ __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict dither_lut1
 )
 {
-    framebuffer += (PGB_LCD_X / 8);
+    framebuffer += game_picture_x_offset/8;
     unsigned fb_y_playdate_current_bottom = PGB_LCD_Y + PGB_LCD_HEIGHT;
+    const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
     if (stable_scaling_enabled)
     {
         // --- STABILIZED PATH ---
 
-        for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
+        for (int y_gb = game_picture_y_bottom; y_gb --> game_picture_y_top;)
         {
             int world_y = y_gb + scy;
 
             // Row height is correctly determined by world_y to prevent rows from changing size.
             int row_height_on_playdate = 2;
-            if ((world_y + dither_preference) % 3 == 2)
+            if ((world_y + dither_preference) % scaling == scaling - 1)
             {
                 row_height_on_playdate = 1;
             }
@@ -1076,10 +1087,10 @@ __core_section("fb") void update_fb_dirty_lines(
         uint8_t* restrict dither_lut0_ptr = dither_lut0;
         uint8_t* restrict dither_lut1_ptr = dither_lut1;
 
-        for (int y_gb = LCD_HEIGHT; y_gb-- > 0;)
+        for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
         {
             int row_height_on_playdate = 2;
-            if (scale_index++ == 2)
+            if (++scale_index == scaling)
             {
                 scale_index = 0;
                 row_height_on_playdate = 1;
@@ -1602,12 +1613,10 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
         context->gb->direct.sram_updated = 0;
 
-#ifndef NOLUA
         if (preferences_script_support && context->scene->script)
         {
             script_tick(context->scene->script, gameScene);
         }
-#endif
 
         PGB_ASSERT(context == context->gb->direct.priv);
 
