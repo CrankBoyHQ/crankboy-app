@@ -26,7 +26,7 @@ romaddr_t rom_size(void);
     do                                                                                             \
     {                                                                                              \
         preferences_##pref = val;                                                                  \
-        ((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script |= PREFBIT_##pref; \
+        prefs_locked_by_script |= PREFBIT_##pref; \
     } while (0)
 
 void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val);

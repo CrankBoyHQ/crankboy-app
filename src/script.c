@@ -230,7 +230,6 @@ static int pgb_setCrankSoundsDisabled(lua_State* L)
 
 __section__(".rare") static int pgb_force_pref(lua_State* L)
 {
-    struct PGB_GameScene* gameScene = get_game_scene(L);
     if (!lua_check_args(L, 2, 2))
     {
         return luaL_error(L, "pgb.force_pref(preference, value) takes two arguments");
@@ -244,7 +243,7 @@ __section__(".rare") static int pgb_force_pref(lua_State* L)
     if (strcmp(preference, #x) == 0)                                                    \
     {                                                                                   \
         preferences_##x = value;                                                        \
-        gameScene->prefs_locked_by_script |= (1 << (preferences_bitfield_t)i);          \
+        prefs_locked_by_script |= (1 << (preferences_bitfield_t)i);          \
         playdate->system->logToConsole("forced preference %s=%d\n", preference, value); \
         return 0;                                                                       \
     }                                                                                   \

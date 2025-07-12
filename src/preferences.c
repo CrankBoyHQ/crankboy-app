@@ -24,6 +24,7 @@ const int pref_count =
 
 void* preferences_bundle_default = NULL;
 preferences_bitfield_t preferences_bundle_hidden = 0;
+preferences_bitfield_t prefs_locked_by_script = 0;
 
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len

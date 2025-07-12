@@ -148,7 +148,6 @@ typedef struct PGB_GameScene
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
     int previous_scale_line_index;
-    preferences_bitfield_t prefs_locked_by_script;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
 } PGB_GameScene;

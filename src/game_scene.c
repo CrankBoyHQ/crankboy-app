@@ -289,6 +289,8 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->staticSelectorUIDrawn = false;
 
     gameScene->save_data_loaded_successfully = false;
+    
+    prefs_locked_by_script = 0;
 
     // Global settings are loaded by default. Check for a game-specific file.
     gameScene->settings_filename = pgb_game_config_path(rom_filename);
@@ -2961,6 +2963,8 @@ static void PGB_GameScene_free(void* object)
     DTCM_VERIFY();
     PGB_GameScene* gameScene = object;
     PGB_GameSceneContext* context = gameScene->context;
+    
+    prefs_locked_by_script = 0;
 
     preferences_read_from_disk(PGB_globalPrefsPath);
     preferences_per_game = 0;

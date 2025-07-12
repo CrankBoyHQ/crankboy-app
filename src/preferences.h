@@ -70,6 +70,9 @@ void preferences_restore_subset(void* stored);
 extern void* preferences_bundle_default;
 extern preferences_bitfield_t preferences_bundle_hidden;
 
+// preferences that script has forced to a particular value
+extern preferences_bitfield_t prefs_locked_by_script;
+
 // all the preferences that need the game to restart to apply
 #define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support)
 #define PREFBITS_LIBRARY_ONLY (PREFBIT_ui_sounds | PREFBIT_display_name_mode | PREFBIT_display_article | PREFBIT_display_sort | PREFBIT_library_remember_selection)

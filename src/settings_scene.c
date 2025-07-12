@@ -165,7 +165,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
     {
         // some settings cannot be changed
         settingsScene->immutable_settings =
-            preferences_store_subset(gameScene->prefs_locked_by_script);
+            preferences_store_subset(prefs_locked_by_script);
     }
     else
     {
@@ -255,7 +255,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
         {
             result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, settingsScene->gameScene->settings_filename,
-                settingsScene->gameScene->prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
+                prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
             );
         }
         else
@@ -268,7 +268,7 @@ static void PGB_SettingsScene_attemptDismiss(PGB_SettingsScene* settingsScene)
                     PREFBITS_LIBRARY_ONLY
 
                     // these prefs are locked, so we shouldn't be able to change them
-                    | settingsScene->gameScene->prefs_locked_by_script
+                    | prefs_locked_by_script
             );
 
             if (result)
@@ -973,7 +973,7 @@ OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene)
 #define PREF(x, ...)                                                                             \
     if (entry->pref_var == &preferences_##x)                                                     \
     {                                                                                            \
-        if (gameScene && (gameScene->prefs_locked_by_script & (1 << (preferences_bitfield_t)j))) \
+        if (prefs_locked_by_script & (1 << (preferences_bitfield_t)j)) \
         {                                                                                        \
             entry->locked = 1;                                                                   \
             entry->description = "Disabled by game script.";                                     \
@@ -1261,10 +1261,6 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 {
                     int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
-
-                    preferences_bitfield_t prefs_locked_by_script = 0;
-                    if (gameScene)
-                        prefs_locked_by_script = gameScene->prefs_locked_by_script;
 
                     const char* game_settings_path = settingsScene->gameScene->settings_filename;
                     if (!preferences_per_game && old_preferences_per_game)

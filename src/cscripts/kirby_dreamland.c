@@ -110,7 +110,7 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 
     printf(
         "locked: %llx\n",
-        (unsigned long long)((struct PGB_GameScene*)script_gb->direct.priv)->prefs_locked_by_script
+        prefs_locked_by_script
     );
 
     // no pausing
