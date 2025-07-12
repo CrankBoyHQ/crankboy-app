@@ -108,11 +108,6 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 
     ScriptData* data = allocz(ScriptData);
 
-    printf(
-        "locked: %llx\n",
-        prefs_locked_by_script
-    );
-
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
     poke_verify(0, 0x22D, 0x5F, 0xAF);

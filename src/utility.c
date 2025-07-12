@@ -783,7 +783,7 @@ fail:
     return NULL;
 }
 
-bool pgb_write_entire_file(const char* path, void* data, size_t size)
+bool pgb_write_entire_file(const char* path, const void* data, size_t size)
 {
     SDFile* file = playdate->file->open(path, kFileWrite);
     if (!file)

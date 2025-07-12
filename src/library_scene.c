@@ -42,27 +42,38 @@ typedef struct
     PGB_Game* game;
 } CoverDownloadUserdata;
 
-static void* save_last_selected_index(void* userdata)
+static void save_last_selected_index(const char* rompath)
 {
-    int index = (int)(intptr_t)userdata;
-    const char* path = LAST_SELECTED_PATH;
-    char buffer[12];
-    snprintf(buffer, sizeof(buffer), "%d", index);
-    pgb_write_entire_file(path, buffer, strlen(buffer));
-    return NULL;
+    pgb_write_entire_file(LAST_SELECTED_PATH, rompath, strlen(rompath));
+    return;
 }
 
-static void* load_last_selected_index(void* userdata)
+static intptr_t load_last_selected_index(PGB_Array* games)
 {
     const char* path = LAST_SELECTED_PATH;
-    char* content = pgb_read_entire_file(path, NULL, kFileReadData);
+    char* content = pgb_read_entire_file(LAST_SELECTED_PATH, NULL, kFileReadData);
     if (content)
     {
+        // first, try searching for a rom whose path matches the given name
+        for (int i = 0; i < games->length; ++i)
+        {
+            PGB_Game* game = games->items[i];
+            if (!strcmp(game->fullpath, content))
+            {
+                return i;
+            }
+        }
+        
+        // failing that, convert the value to an integer.
         int index = atoi(content);
-        pgb_free(content);
-        return (void*)(intptr_t)index;
+        if (index < games->length)
+        {
+            return index;
+        }
     }
-    return NULL;
+    
+    // default -- top of list
+    return 0;
 }
 
 static unsigned combined_display_mode(void)
@@ -436,7 +447,7 @@ PGB_LibraryScene* PGB_LibraryScene_new(void)
     if (!has_loaded_initial_index)
     {
         last_selected_game_index =
-            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, NULL);
+            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, PGB_App->gameListCache);
         has_loaded_initial_index = true;
     }
 
@@ -675,13 +686,13 @@ static void PGB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
             pgb_play_ui_sound(PGB_UISound_Confirm);
             last_selected_game_index = selectedItem;
+            PGB_Game* game = libraryScene->games->items[selectedItem];
 
             if (preferences_library_remember_selection)
             {
-                call_with_user_stack_1(save_last_selected_index, (void*)(intptr_t)selectedItem);
+                call_with_user_stack_1(save_last_selected_index, game->fullpath);
             }
 
-            PGB_Game* game = libraryScene->games->items[selectedItem];
             bool launch = true;
 
 #ifndef NOLUA

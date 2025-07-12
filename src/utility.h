@@ -106,7 +106,7 @@ void pgb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 char* pgb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
 
 // returns false on error
-bool pgb_write_entire_file(const char* path, void* data, size_t size);
+bool pgb_write_entire_file(const char* path, const void* data, size_t size);
 
 void* pgb_malloc(size_t size);
 void* pgb_realloc(void* ptr, size_t size);

@@ -29,14 +29,6 @@ PGB_Application* PGB_App;
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-static void checkForPngCallback(const char* filename, void* userdata)
-{
-    if (filename_has_stbi_extension(filename))
-    {
-        *(bool*)userdata = true;
-    }
-}
-
 struct copy_file_callback_ud
 {
     json_value* manifest;
@@ -88,7 +80,6 @@ static void copy_file_callback(const char* filename, void* userdata)
 
     if (already_copied.type != kJSONTrue)
     {
-
         size_t size;
         void* dat = pgb_read_entire_file(full_path, &size, kFileRead);
 

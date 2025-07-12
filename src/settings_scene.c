@@ -68,7 +68,10 @@ typedef struct OptionsMenuEntry
     void* ud;
 } OptionsMenuEntry;
 
+// how long to remember last-selected preference in menu
+#define TIME_FORGET_LAST_PREFERENCE 15
 static void* last_selected_preference;
+static unsigned last_selected_preference_time;
 
 OptionsMenuEntry* getOptionsEntries(PGB_GameScene* gameScene);
 
@@ -179,7 +182,7 @@ PGB_SettingsScene* PGB_SettingsScene_new(PGB_GameScene* gameScene)
 
     PGB_Scene_refreshMenu(scene);
 
-    if (last_selected_preference)
+    if (last_selected_preference && playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <= TIME_FORGET_LAST_PREFERENCE)
     {
         int i = 0;
         for (OptionsMenuEntry* entry = settingsScene->entries; entry->name; ++entry, ++i)
@@ -1177,6 +1180,7 @@ static void PGB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // This is actually a good thing! We don't want to mess with players' muscle
     // memories and cause them to accidentally load state when they mean to save state
     last_selected_preference = settingsScene->entries[settingsScene->cursorIndex].pref_var;
+    last_selected_preference_time = playdate->system->getSecondsSinceEpoch(NULL);
 
     if (oldCursorIndex != settingsScene->cursorIndex)
     {
