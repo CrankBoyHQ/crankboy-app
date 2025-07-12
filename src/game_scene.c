@@ -161,6 +161,7 @@ __section__(".rare") static void generate_dither_luts(void)
 
 // forces screen refresh
 static int didOpenMenu = false;
+bool game_menu_button_input_enabled;
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
@@ -256,6 +257,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_background_color = kColorBlack;
+    game_menu_button_input_enabled = 1;
 
     PGB_Scene* scene = PGB_Scene_new();
 
@@ -2550,10 +2552,13 @@ static void PGB_GameScene_menu(void* object)
         playdate->system->addMenuItem("About", PGB_showCredits, gameScene);
     }
 
-    buttonMenuItem = playdate->system->addOptionsMenuItem(
-        "Button", buttonMenuOptions, 4, PGB_GameScene_buttonMenuCallback, gameScene
-    );
-    playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
+    if (game_menu_button_input_enabled)
+    {
+        buttonMenuItem = playdate->system->addOptionsMenuItem(
+            "Button", buttonMenuOptions, 4, PGB_GameScene_buttonMenuCallback, gameScene
+        );
+        playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
+    }
 }
 
 static void PGB_GameScene_generateBitmask(void)

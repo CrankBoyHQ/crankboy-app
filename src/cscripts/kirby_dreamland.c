@@ -1,8 +1,10 @@
 #include "scriptutil.h"
 
 #define DESCRIPTION                                \
-    "(Experimental)\n\n- Use the crank to flap!\n" \
-    "- Start/Select buttons are no longer required anywhere."
+    "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
+    "- Full aspect ratio; no vertical squishing.\n" \
+    "- Use the crank to flap!\n" \
+    "- Start/Select buttons are no longer required anywhere." \
 
 #define CRANK_DELTA_SMOOTH_FACTOR 0.8f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
@@ -141,6 +143,7 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     printf("Hello from C!\n");
     
     game_picture_background_color = kColorWhite;
+    game_menu_button_input_enabled = 0;
     
     force_prefs();
 
@@ -548,6 +551,7 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 C_SCRIPT{
     .rom_name = "KIRBY DREAM LAND",
     .description = DESCRIPTION,
+    .experimental = false,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,

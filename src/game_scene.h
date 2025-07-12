@@ -173,6 +173,7 @@ extern unsigned game_picture_scaling;
 extern unsigned game_picture_y_top;
 extern unsigned game_picture_y_bottom;
 extern LCDColor game_picture_background_color;
+extern bool game_menu_button_input_enabled;
 
 extern bool gbScreenRequiresFullRefresh;
 

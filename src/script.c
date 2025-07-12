@@ -584,7 +584,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
             info->info = cinfo->description ? string_copy(strltrim(cinfo->description)) : NULL;
-            info->experimental = cinfo->description;
+            info->experimental = cinfo->experimental;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;  // paranoia
             return info;
