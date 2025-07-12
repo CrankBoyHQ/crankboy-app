@@ -18,6 +18,7 @@
 // -- ram addr --
 // y speed - d078
 // input - ff8b
+// flags -- ff8f
 
 // custom data for script.
 typedef struct ScriptData
@@ -35,6 +36,15 @@ typedef struct ScriptData
     CodeReplacement* patch_fly_accel_up;
     
     LCDBitmap* sidebar;
+    
+    // 12x12 tiles
+    uint16_t tiles12[20][12];
+    uint8_t lives;
+    uint8_t health;
+    uint8_t boss;
+    
+    uint32_t score;
+    
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -106,18 +116,56 @@ static void force_prefs(void)
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
 }
 
+static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
+{
+    uint16_t* tiles12 = &data->tiles12[idx][0];
+    
+    for (int i = 0; i < 12; ++i)
+    {
+        for (int j = 0; j < 12; ++j)
+        {
+            int _y = (i + y);
+            int _x = (x + j);
+            int x8 = 7 - (_x%8);
+            lcd[rowbytes * _y + _x/8] &= ~(1 << x8);
+            if (tiles12[i] & (1 << (15 - j)))
+            {
+                lcd[rowbytes * _y + _x/8] |= (1 << x8);
+            }
+        }
+    }
+}
+
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
+    
+    game_picture_background_color = kColorWhite;
     
     force_prefs();
 
     ScriptData* data = allocz(ScriptData);
     
     const char* err = NULL;
-    data->sidebar = playdate->graphics->loadBitmap(KIRBY_ASSETS_DIR "sidebar");
+    data->sidebar = playdate->graphics->loadBitmap(KIRBY_ASSETS_DIR "sidebar", &err);
     
     if (err || !data->sidebar) script_error("Script error loading bitmap: %s", err);
+    if (data->sidebar)
+    {
+        for (int i = 0; i < 20; ++i)
+        {
+            for (int j = 0; j < 12; ++j)
+            {
+                data->tiles12[i][j] = 0;
+                for (int k = 0; k < 12; ++k)
+                {
+                    int x = (i % 5)*12 + k;
+                    int y = 240 + (i/5)*12 + j;
+                    data->tiles12[i][j] |= playdate->graphics->getBitmapPixel(data->sidebar, x, y) << (15 - k);
+                }
+            }
+        }
+    }
 
     // no pausing
     poke_verify(0, 0x22C, 0xCB, 0xAF);
@@ -180,13 +228,26 @@ static void on_end(struct gb_s* gb, ScriptData* data)
 
 static void on_tick(struct gb_s* gb, ScriptData* data)
 {
-    // flush left
-    game_picture_x_offset = 0;
+    bool in_game = gb->gb_reg.WY >= 100 && gb->gb_reg.WX < 100;
     
-    // 100% vertical scaling
-    game_picture_scaling = 0;
-    game_picture_y_top = 4;
-    game_picture_y_bottom = 124;
+    if (in_game)
+    {
+        // flush left
+        game_picture_x_offset = 0;
+        
+        // 100% vertical scaling
+        game_picture_scaling = 0;
+        game_picture_y_top = 4;
+        game_picture_y_bottom = 124;
+    }
+    else
+    {
+        // standard display
+        game_picture_x_offset = PGB_LCD_X;
+        game_picture_scaling = 3;
+        game_picture_y_top = 0;
+        game_picture_y_bottom = LCD_HEIGHT;
+    }
 
     bool start_flying_via_crank = false;
     bool continue_flying = false;
@@ -357,11 +418,139 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     data->crank_angle = new_crank_angle;
 }
 
+static void on_draw(struct gb_s* gb, ScriptData* data)
+{
+    if (game_picture_x_offset != 0)
+    {
+        return;
+    }
+    
+    uint8_t* lcd = playdate->graphics->getFrame();
+    int rowbytes = PLAYDATE_ROW_STRIDE;
+    
+    if (gbScreenRequiresFullRefresh)
+    {
+        playdate->graphics->drawBitmap(
+            data->sidebar, 320, 0, kBitmapUnflipped
+        );
+    }
+    
+    // lives
+    uint8_t newlives = ram_peek(0xD089);
+    if (newlives != data->lives || gbScreenRequiresFullRefresh)
+    {
+        data->lives = newlives;
+        
+        int y = 0;
+        int x = 376;
+        drawTile12(data, lcd, rowbytes, newlives / 10, x, y);
+        drawTile12(data, lcd, rowbytes, newlives % 10, x + 12, y);
+        
+        playdate->graphics->markUpdatedRows(y, y + 11);
+    }
+    
+    // health
+    uint8_t newhealth = ram_peek(0xD086);
+    if (newhealth != data->health || gbScreenRequiresFullRefresh)
+    {
+        data->health = newhealth;
+        
+        for (int i = 0; i < 6; ++i)
+        {
+            int x = 350 - 4;
+            int y = 58 + 14 * i;
+            
+            int idx = (i < newhealth)
+                ? 10
+                : 15;
+                
+            drawTile12(data, lcd, rowbytes, idx, x, y);
+            playdate->graphics->markUpdatedRows(y, y + 11);
+        }
+    }
+    
+    // boss
+    uint8_t boss = ram_peek(0xD093);
+    
+    // visible, but empty
+    if ((ram_peek(0xFF8F) & 0x80) == 0)
+    {
+        boss = 0xFF;
+    }
+    
+    if (boss != data->boss || gbScreenRequiresFullRefresh)
+    {
+        data->boss = boss;
+        
+        const bool show = boss != 0xFF;
+        
+        // boss display
+        int x = 370;
+        int y = 66;
+        
+        drawTile12(data, lcd, rowbytes, show ? 12 : 19, x, y);
+        drawTile12(data, lcd, rowbytes, show ? 13 : 19, x + 12, y);
+        drawTile12(data, lcd, rowbytes, show ? 17 : 19, x, y + 12);
+        drawTile12(data, lcd, rowbytes, show ? 18 : 19, x + 12, y + 12);
+        
+        y += 24;
+        x += 6;
+        
+        for (int i = 0; i < 6; ++i)
+        {
+            const bool disp = (i < boss && show);
+            
+            drawTile12(data, lcd, rowbytes, disp ? 11 : 19, x, y);
+            drawTile12(data, lcd, rowbytes, disp ? 16 : 19, x, y+12);
+            playdate->graphics->markUpdatedRows(y, y + 13);
+            
+            y += 14;
+        }
+    }
+    
+    // score
+    uint32_t newscore = ram_peek(0xD070)
+        | (ram_peek(0xD071) << 8)
+        | (ram_peek(0xD072) << 16)
+        | (ram_peek(0xD073) << 24);
+        
+    if (newscore != data->score || gbScreenRequiresFullRefresh)
+    {
+        int y = 240 - 13;
+        bool isDrawing = 0;
+        for (int i = 0; i < 5; ++i)
+        {
+            int digit = (newscore >> (8*i)) & 0xFF;
+            if (i == 4) digit = 0;
+            int x = 320 + 12 + 12*i;
+            if (digit > 0 || isDrawing || i == 4)
+            {
+                isDrawing = 1;
+                drawTile12(
+                    data, lcd, rowbytes, digit, x, y
+                );
+            }
+            else
+            {
+                // clear
+                drawTile12(
+                    data, lcd, rowbytes, 19, x, y
+                );
+            }
+        }
+        
+        playdate->graphics->markUpdatedRows(y, y + 11);
+        
+        data->score = newscore;
+    }
+}
+
 C_SCRIPT{
     .rom_name = "KIRBY DREAM LAND",
     .description = DESCRIPTION,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
+    .on_draw = (CS_OnDraw)on_draw,
     .on_end = (CS_OnEnd)on_end,
 };
 
@@ -371,5 +560,6 @@ C_SCRIPT{
     .experimental = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
+    .on_draw = (CS_OnDraw)on_draw,
     .on_end = (CS_OnEnd)on_end,
 };

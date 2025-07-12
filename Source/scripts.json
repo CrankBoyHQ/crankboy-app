@@ -7,8 +7,7 @@
     {
         "name": "POKEMON BLUE",
         "script": "scripts/pokemon_gen1.l",
-        "info": "- Menu opens/closes by docking/undocking crank.\n- Most menus are crank-navigable.",
-        "experimental": true
+        "info": "- Menu opens/closes by docking/undocking crank.\n- Most menus are crank-navigable."
     },
     {
         "name": "POKEMON YELLOW",

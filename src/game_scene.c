@@ -87,6 +87,8 @@ unsigned game_picture_x_offset;
 unsigned game_picture_y_top;
 unsigned game_picture_y_bottom;
 unsigned game_picture_scaling;
+LCDColor game_picture_background_color;
+bool gbScreenRequiresFullRefresh;
 
 static uint8_t PGB_dither_lut_row0[256];
 static uint8_t PGB_dither_lut_row1[256];
@@ -156,6 +158,8 @@ __section__(".rare") static void generate_dither_luts(void)
         PGB_dither_lut_row1[orgpixels_int] = p1;
     }
 }
+
+static int didLoadState = false;
 
 static uint8_t PGB_bitmask[4][4][4];
 static bool PGB_GameScene_bitmask_done = false;
@@ -250,6 +254,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     game_picture_scaling = 3;
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
+    game_picture_background_color = kColorBlack;
 
     PGB_Scene* scene = PGB_Scene_new();
 
@@ -1546,7 +1551,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
     gameScene->selector.index = selectorIndex;
 
-    bool gbScreenRequiresFullRefresh = false;
+    gbScreenRequiresFullRefresh = false;
     if (gameScene->model.empty || gameScene->model.state != gameScene->state ||
         gameScene->model.error != gameScene->error || gameScene->scene->forceFullRefresh)
     {
@@ -1557,6 +1562,33 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
     if (gameScene->model.crank_mode != preferences_crank_mode)
     {
         gameScene->staticSelectorUIDrawn = false;
+    }
+    
+    // check if game picture bounds have changed
+    {
+        static unsigned prev_game_picture_x_offset,
+            prev_game_picture_scaling,
+            prev_game_picture_y_top,
+            prev_game_picture_y_bottom;
+        
+        if (prev_game_picture_x_offset != game_picture_x_offset
+            || prev_game_picture_scaling != game_picture_scaling
+            || prev_game_picture_y_top != game_picture_y_top
+            || prev_game_picture_y_bottom != game_picture_y_bottom
+        ) {
+            gbScreenRequiresFullRefresh = 1;
+        }
+
+        prev_game_picture_x_offset = game_picture_x_offset;
+        prev_game_picture_scaling = game_picture_scaling;
+        prev_game_picture_y_top = game_picture_y_top;
+        prev_game_picture_y_bottom = game_picture_y_bottom;
+    }
+    
+    if (didLoadState)
+    {
+        gbScreenRequiresFullRefresh = 1;
+        didLoadState = 0;
     }
 
     if (gameScene->state == PGB_GameSceneStateLoaded)
@@ -1604,7 +1636,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
 
         if (gbScreenRequiresFullRefresh)
         {
-            playdate->graphics->clear(kColorBlack);
+            playdate->graphics->clear(game_picture_background_color);
         }
 
 #if PGB_DEBUG && PGB_DEBUG_UPDATED_ROWS
@@ -1836,7 +1868,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             return;
         }
 #endif
-
+        
         if (actual_gb_draw_needed)
         {
             if (gbScreenRequiresFullRefresh)
@@ -1892,9 +1924,17 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             const int rightBarX = 40 + 320;
             const int rightBarWidth = 40;
             playdate->graphics->fillRect(
-                rightBarX, 0, rightBarWidth, playdate->display->getHeight(), kColorBlack
+                rightBarX, 0, rightBarWidth, playdate->display->getHeight(), game_picture_background_color
             );
-
+        }
+        
+        if (preferences_script_support && context->scene->script)
+        {
+            script_draw(context->scene->script, gameScene);
+        }
+        
+        if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
+        {
             // Draw the text labels ("Start/Select") if needed.
             if (shouldDisplayStartSelectUI)
             {
@@ -1974,7 +2014,7 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         {
             playdate->graphics->fillRect(
                 gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
-                gameScene->selector.height, kColorBlack
+                gameScene->selector.height, game_picture_background_color
             );
 
             LCDBitmap* bitmap;
@@ -2804,6 +2844,7 @@ __section__(".rare") bool load_state_thumbnail(
 __section__(".rare") bool load_state(PGB_GameScene* gameScene, unsigned slot)
 {
     gameScene->playtime = 0;
+    didLoadState = true;
     PGB_GameSceneContext* context = gameScene->context;
     char* state_name;
     playdate->system->formatString(

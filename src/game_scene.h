@@ -172,5 +172,8 @@ extern unsigned game_picture_scaling;
 // [first, last) gameboy rows to render.
 extern unsigned game_picture_y_top;
 extern unsigned game_picture_y_bottom;
+extern LCDColor game_picture_background_color;
+
+extern bool gbScreenRequiresFullRefresh;
 
 #endif /* game_scene_h */

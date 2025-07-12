@@ -729,6 +729,23 @@ void script_tick(ScriptState* state, struct PGB_GameScene* game_scene)
     }
 }
 
+void script_draw(ScriptState* state, struct PGB_GameScene* game_scene)
+{
+    script_gb = game_scene->context->gb;
+
+#ifndef NOLUA
+    if (state->L)
+    {
+        // TODO: lua on-draw
+    }
+#endif
+
+    if (state->c && state->c->on_draw)
+    {
+        state->c->on_draw(game_scene->context->gb, state->ud);
+    }
+}
+
 // for C scripts
 __section__(".rare") int c_script_add_hw_breakpoint(
     struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
