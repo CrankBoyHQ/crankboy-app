@@ -289,7 +289,7 @@ PGB_GameScene* PGB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->staticSelectorUIDrawn = false;
 
     gameScene->save_data_loaded_successfully = false;
-    
+
     prefs_locked_by_script = 0;
 
     // Global settings are loaded by default. Check for a game-specific file.
@@ -1880,14 +1880,13 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
         if (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh)
         {
             // Clear the right sidebar area before redrawing any static UI.
-            // This ensures that when we disable Turbo mode, the old text
-            // disappears.
             const int rightBarX = 40 + 320;
             const int rightBarWidth = 40;
             playdate->graphics->fillRect(
                 rightBarX, 0, rightBarWidth, playdate->display->getHeight(), kColorBlack
             );
 
+            // Draw the text labels ("Start/Select") if needed.
             if (shouldDisplayStartSelectUI)
             {
                 playdate->graphics->setFont(PGB_App->labelFont);
@@ -1902,10 +1901,10 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 );
             }
 
+            // Draw the "Turbo" indicator if needed.
             if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
                 preferences_crank_mode == CRANK_MODE_TURBO_CCW)
             {
-                // Draw the Turbo indicator on the right panel
                 playdate->graphics->setFont(PGB_App->labelFont);
                 playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
@@ -1933,7 +1932,6 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
                 int x1 = rightBarX + (rightBarWidth - line1Width) / 2;
                 int x2 = rightBarX + (rightBarWidth - line2Width) / 2;
 
-                // 4. Draw the text.
                 playdate->graphics->drawText(line1, strlen(line1), kUTF8Encoding, x1, y1);
                 playdate->graphics->drawText(line2, strlen(line2), kUTF8Encoding, x2, y2);
 
@@ -1941,12 +1939,35 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
 
             playdate->graphics->setDrawMode(kDrawModeCopy);
+
+            if (shouldDisplayStartSelectUI)
+            {
+                LCDBitmap* bitmap;
+                if (gameScene->selector.index < 0)
+                {
+                    bitmap = PGB_App->startSelectBitmap;
+                }
+                else
+                {
+                    bitmap = playdate->graphics->getTableBitmap(
+                        PGB_App->selectorBitmapTable, gameScene->selector.index
+                    );
+                }
+                playdate->graphics->drawBitmap(
+                    bitmap, gameScene->selector.x, gameScene->selector.y, kBitmapUnflipped
+                );
+            }
+
+            playdate->graphics->setDrawMode(kDrawModeCopy);
+            gameScene->staticSelectorUIDrawn = true;
         }
-
-        gameScene->staticSelectorUIDrawn = true;
-
-        if (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
+        else if (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
         {
+            playdate->graphics->fillRect(
+                gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
+                gameScene->selector.height, kColorBlack
+            );
+
             LCDBitmap* bitmap;
             // Use gameScene->selector.index, which is the most current
             // calculated frame
@@ -1962,6 +1983,10 @@ __section__(".text.tick") __space static void PGB_GameScene_update(void* object,
             }
             playdate->graphics->drawBitmap(
                 bitmap, gameScene->selector.x, gameScene->selector.y, kBitmapUnflipped
+            );
+
+            playdate->graphics->markUpdatedRows(
+                gameScene->selector.y, gameScene->selector.y + gameScene->selector.height - 1
             );
         }
 
@@ -2963,7 +2988,7 @@ static void PGB_GameScene_free(void* object)
     DTCM_VERIFY();
     PGB_GameScene* gameScene = object;
     PGB_GameSceneContext* context = gameScene->context;
-    
+
     prefs_locked_by_script = 0;
 
     preferences_read_from_disk(PGB_globalPrefsPath);
