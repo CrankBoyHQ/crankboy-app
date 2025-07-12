@@ -116,6 +116,8 @@ static void force_prefs(void)
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
+    force_pref(dither_stable, false);
+    force_pref(dither_line, 0);
 }
 
 static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
