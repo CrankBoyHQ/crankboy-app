@@ -74,6 +74,10 @@ static void copy_file_callback(const char* filename, void* userdata)
     {
         dst_path = aprintf("%s/%s", CB_statesPath, filename);
     }
+    else if (!strcmp(filename, "dmg_boot.bin"))
+    {
+        dst_path = aprintf("./%s", filename);
+    }
 
     if (!dst_path)
     {

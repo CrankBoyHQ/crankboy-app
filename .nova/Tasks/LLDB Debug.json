@@ -3,18 +3,16 @@
     "build" : {
       "postActions" : [
         {
-          "action" : "build",
-          "taskName" : "Playdate Simulator",
-          "type" : "runTask"
+          "script" : "make -j$(sysctl -n hw.ncpu)",
+          "type" : "runScript"
         }
       ]
     },
     "clean" : {
       "postActions" : [
         {
-          "action" : "clean",
-          "taskName" : "Playdate Simulator",
-          "type" : "runTask"
+          "script" : "make clean",
+          "type" : "runScript"
         }
       ]
     }

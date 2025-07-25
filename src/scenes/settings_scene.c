@@ -783,20 +783,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    // joypad_interrupts
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Joypad interrupts",
-        .values = off_on_labels,
-        .description =
-            "Enable joypad interrupts.\n \n"
-            "Improves compatibility\n"
-            "with certain games at a\n"
-            "minor performance cost.\n \n",
-        .pref_var = &preferences_joypad_interrupts,
-        .max_value = 2,
-        .on_press = NULL
-    };
-
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA

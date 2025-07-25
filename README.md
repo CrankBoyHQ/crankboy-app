@@ -21,7 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple Save State slots per game (note: not currently available if game has its own save data. TBA.)
 - You can download cover art for your library from within CrankBoy.
 - Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
-- Support for softpatching `.ips` patch files. Instead of making a bunch of copies of a ROM for all the different ROMhacks you'd like to apply to it, you can use a single clean ROM and several .ips files, each of which you can toggle from the settings. [Instructions below](#softpatching).
+- Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROMhacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
 

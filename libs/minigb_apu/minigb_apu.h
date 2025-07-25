@@ -84,7 +84,7 @@ struct chan
         } noise;
         struct
         {
-            uint8_t sample;
+            int8_t sample;
         } wave;
     };
 };

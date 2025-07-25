@@ -9,9 +9,49 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
+
+def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
+    """
+    Looks for a local JSON file, parses it, and integrates its contents
+    into the all_games_dict.
+
+    Args:
+        all_games_dict (dict): The main dictionary of games to update.
+        filename (str): The name of the JSON file to process.
+        script_dir (str): The directory where the script is located.
+        data_type_name (str): A descriptive name for the data being processed (e.g., "homebrew").
+    """
+    json_file_path = os.path.join(script_dir, filename)
+    file_basename = os.path.basename(json_file_path)
+    print(f"\nLooking for '{file_basename}'...")
+
+    if os.path.exists(json_file_path):
+        try:
+            with open(json_file_path, 'r', encoding='utf-8') as f:
+                data_to_integrate = json.load(f)
+
+            print(f"  -> Found '{file_basename}'. Integrating entries...")
+            added_count = 0
+            for crc, data in data_to_integrate.items():
+                if crc.upper() != 'XXXXXXXX':
+                    all_games_dict[crc] = data
+                    added_count += 1
+                else:
+                    print(f"  -> Skipped invalid entry: {data.get('long', 'N/A')}")
+
+            print(f"  -> Integrated {added_count} {data_type_name}.")
+
+        except json.JSONDecodeError as e:
+            print(f"Error: Could not parse '{file_basename}'. It might not be valid JSON. Details: {e}")
+        except Exception as e:
+            print(f"Error: An unexpected error occurred while processing '{file_basename}'. Details: {e}")
+    else:
+        print(f"  -> '{file_basename}' not found. Skipping integration.")
+
+
 def create_split_game_json_256():
     """
-    Downloads and processes game DAT files, integrates a local homebrew JSON,
+    Downloads and processes game DAT files, integrates local homebrew and romhack JSON files,
     and then splits the final data into 256 separate JSON files (00-FF)
     based on the first two characters of the ROM CRC. Files are saved in
     the 'Source/db/' directory.
@@ -71,6 +111,10 @@ def create_split_game_json_256():
                         long_title = long_title.replace("Butt-head", "Butt-Head")
                         short_title = short_title.replace("Butt-head", "Butt-Head")
 
+                    if "Pokemon" in long_title:
+                        long_title = long_title.replace("Pokemon", "Pokémon")
+                        short_title = short_title.replace("Pokemon", "Pokémon")
+
                     all_games_dict[crc] = {
                         "long": long_title,
                         "short": short_title
@@ -79,33 +123,9 @@ def create_split_game_json_256():
 
         print(f"  -> Found and processed {processed_count} games from this file.")
 
-    # --- HOMEBREW JSON INTEGRATION ---
-
-    homebrew_file = os.path.join(SCRIPT_DIR, "homebrew.json")
-    print(f"\nLooking for '{homebrew_file}'...")
-
-    if os.path.exists(homebrew_file):
-        try:
-            with open(homebrew_file, 'r', encoding='utf-8') as f:
-                homebrew_data = json.load(f)
-
-            print(f"  -> Found '{os.path.basename(homebrew_file)}'. Integrating entries...")
-            homebrew_added_count = 0
-            for crc, data in homebrew_data.items():
-                if crc.upper() != 'XXXXXXXX':
-                    all_games_dict[crc] = data
-                    homebrew_added_count += 1
-                else:
-                    print(f"  -> Skipped invalid entry: {data.get('long', 'N/A')}")
-
-            print(f"  -> Integrated {homebrew_added_count} homebrew games.")
-
-        except json.JSONDecodeError as e:
-            print(f"Error: Could not parse '{os.path.basename(homebrew_file)}'. It might not be valid JSON. Details: {e}")
-        except Exception as e:
-            print(f"Error: An unexpected error occurred while processing '{os.path.basename(homebrew_file)}'. Details: {e}")
-    else:
-        print(f"  -> '{os.path.basename(homebrew_file)}' not found. Skipping integration.")
+    # --- LOCAL JSON INTEGRATION ---
+    integrate_json_file(all_games_dict, "homebrew.json", SCRIPT_DIR, "homebrew games")
+    integrate_json_file(all_games_dict, "romhacks.json", SCRIPT_DIR, "romhacks")
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 

@@ -248,13 +248,32 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
         return;
     }
 
-    for (char* p = encoded_name; *p; ++p)
+    char* p = encoded_name;
+    char* q = encoded_name;
+
+    while (*p)
     {
         if (*p == '&' || *p == ':')
         {
-            *p = '_';
+            *q++ = '_';
+            p++;
+        }
+        else if ((unsigned char)*p == 0xC3 && (unsigned char)*(p + 1) == 0xA9)
+        {
+            *q++ = 'e';
+            p += 2;
+        }
+        else
+        {
+            if (p != q)
+            {
+                *q = *p;
+            }
+            q++;
+            p++;
         }
     }
+    *q = '\0';
 
     char* url_path;
     playdate->system->formatString(

@@ -190,6 +190,17 @@ static uint32_t update_crc32(uint32_t crc, const unsigned char* buf, size_t len)
     return crc;
 }
 
+uint32_t crc32_for_buffer(const unsigned char* buf, size_t len)
+{
+    if (!crc32_table_generated)
+    {
+        generate_crc32_table();
+    }
+    uint32_t crc = 0xffffffffL;
+    crc = update_crc32(crc, buf, len);
+    return crc ^ 0xffffffffL;
+}
+
 bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc)
 {
     if (!crc32_table_generated)

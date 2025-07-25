@@ -577,6 +577,8 @@ struct gb_s
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
 
+        int joypad_interrupt_delay;
+
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
 
@@ -1136,24 +1138,30 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
         /* IO Registers */
         case 0x00:  // P1 / JOYP
         {
-            // Start with high bits, which are always 1
-            uint8_t result = 0xC0;
-            // Add the selection bits from the register
-            result |= (gb->gb_reg.P1 & 0x30);
+            uint8_t p1_val = gb->gb_reg.P1;
+            uint8_t joypad_val = gb->direct.joypad;
+            uint8_t result = 0xFF;  // Default to all high (no buttons pressed, all lines high)
 
-            // Read the actual joypad state based on selection
-            if ((gb->gb_reg.P1 & 0x10) == 0)  // Direction keys selected
+            // If D-Pad selection line is low, AND the D-pad state.
+            if ((p1_val & 0x10) == 0)
             {
-                result |= (gb->direct.joypad >> 4);
+                // (joypad_val >> 4) gets the upper nibble (D-pad)
+                // | 0xF0 ensures we only affect the lower nibble.
+                result &= (joypad_val >> 4) | 0xF0;
             }
-            else if ((gb->gb_reg.P1 & 0x20) == 0)  // Button keys selected
+
+            // If Action button selection line is low, AND the button state.
+            if ((p1_val & 0x20) == 0)
             {
-                result |= (gb->direct.joypad & 0x0F);
+                // (joypad_val & 0x0F) gets the lower nibble (buttons)
+                // | 0xF0 ensures we only affect the lower nibble.
+                result &= (joypad_val & 0x0F) | 0xF0;
             }
-            else  // No group selected, return all high (unpressed)
-            {
-                result |= 0x0F;
-            }
+
+            // Finally, combine the input result with the selection bits.
+            // Bits 7 and 6 are always high.
+            result = (result & 0x0F) | (p1_val & 0x30) | 0xC0;
+
             return result;
         }
 
@@ -1776,43 +1784,8 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         /* Joypad */
         case 0x00:  // P1 / JOYP
         {
-            /*
-             * Per hardware specs, writes to P1/JOYP only set the selection bits (4-5).
-             * The actual input state is determined at the time of a read, not stored here.
-             * A '0' in the input lines indicates a pressed state.
-             */
-
-            // Preserve the old selection for interrupt check
-            uint8_t old_p1_select = gb->gb_reg.P1 & 0x30;
-
-            // A write to P1 only affects the selection bits (4 and 5).
+            /* A write to P1 only affects the selection bits (4 and 5). */
             gb->gb_reg.P1 = (val & 0x30);
-
-            // If the selection has changed, check for a joypad interrupt.
-            // An interrupt is requested on a high-to-low transition of any button line.
-            if (gb->direct.joypad_interrupts && old_p1_select != (gb->gb_reg.P1 & 0x30))
-            {
-                uint8_t old_state = 0x0F;
-                uint8_t new_state = 0x0F;
-
-                // Re-calculate what the old state *would have been*
-                if ((old_p1_select & 0x10) == 0)
-                    old_state &= (gb->direct.joypad >> 4);
-                if ((old_p1_select & 0x20) == 0)
-                    old_state &= (gb->direct.joypad & 0x0F);
-
-                // Calculate the new state
-                if ((gb->gb_reg.P1 & 0x10) == 0)
-                    new_state &= (gb->direct.joypad >> 4);
-                if ((gb->gb_reg.P1 & 0x20) == 0)
-                    new_state &= (gb->direct.joypad & 0x0F);
-
-                // If any bit went from 1 to 0
-                if ((old_state & ~new_state) != 0)
-                {
-                    gb->gb_reg.IF |= CONTROL_INTR;
-                }
-            }
             return;
         }
 
@@ -5796,6 +5769,18 @@ done_instr:
             break;
         }
     }
+
+    if (gb->direct.joypad_interrupts && gb->direct.joypad_interrupt_delay >= 0)
+    {
+        gb->direct.joypad_interrupt_delay -= inst_cycles;
+        if (gb->direct.joypad_interrupt_delay < 0)
+        {
+            // Timer expired, fire the interrupt now.
+            gb->gb_reg.IF |= CONTROL_INTR;
+            // Reset the timer to its inactive state.
+            gb->direct.joypad_interrupt_delay = -1;
+        }
+    }
 }
     return inst_cycles;
 }
@@ -6158,6 +6143,18 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
         gb->cpu_reg.sp = 0x0000;
         gb->cpu_reg.pc = 0x0000;
         gb->gb_reg.DIV = 0x00;
+    }
+    else if (preferences_experimental_gbc_mode)
+    {
+        playdate->system->logToConsole("Starting ROM with GBC registers");
+        gb->gb_bios_enable = 1;
+        gb->cpu_reg.af == 0x1180;
+        gb->cpu_reg.bc = 0x0000;
+        gb->cpu_reg.de = 0xFF56;
+        gb->cpu_reg.hl = 0x000D;
+        gb->cpu_reg.sp = 0xFFFE;
+        gb->cpu_reg.pc = 0x0100;
+        gb->gb_reg.DIV = 0xAC; // FIXME -- set this to the correct value
     }
     else
     {

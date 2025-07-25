@@ -150,6 +150,7 @@ typedef struct CB_GameScene
     int previous_scale_line_index;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
+    uint8_t previous_joypad_state;
 } CB_GameScene;
 
 CB_GameScene *CB_GameScene_new(const char *rom_filename, char* name_short);

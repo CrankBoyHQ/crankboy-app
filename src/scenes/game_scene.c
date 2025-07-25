@@ -27,6 +27,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208
@@ -241,6 +242,9 @@ static uint8_t fps_draw_timer;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 {
+    // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
+    srand(time(NULL));
+
     playdate->system->logToConsole("ROM: %s", rom_filename);
 
     if (!numbers_bmp)
@@ -290,6 +294,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
+
+    gameScene->previous_joypad_state = 0xFF;
 
     gameScene->crank_turbo_accumulator = 0.0f;
     gameScene->crank_turbo_a_active = false;
@@ -440,6 +446,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
         gb_reset(context->gb);
 
+        context->gb->direct.joypad_interrupt_delay = -1;
+
         playdate->system->logToConsole(
             "Interrupts detected: Joypad=%d\n", context->gb->joypad_interrupt
         );
@@ -566,7 +574,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
             if (gameScene->audioEnabled)
             {
-                playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.2f);
+                playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
                 context->gb->direct.sound = 1;
                 audioGameScene = gameScene;
             }
@@ -604,20 +612,18 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         gameScene->script_available = true;
         gameScene->script_info_available = !!scriptInfo->info;
     }
-    script_info_free(scriptInfo);
 
-    if (preferences_script_support && gameScene->script_available)
+    if (preferences_script_support && gameScene->script_available && scriptInfo)
     {
-        char name[17];
-        gb_get_rom_name(context->gb->gb_rom, name);
-        playdate->system->logToConsole("ROM name: \"%s\"", name);
-        gameScene->script = script_begin(name, gameScene);
+        playdate->system->logToConsole("ROM name: \"%s\"", scriptInfo->rom_name);
+        gameScene->script = script_begin(scriptInfo->rom_name, gameScene);
         gameScene->prev_dt = 0;
         if (!gameScene->script)
         {
             playdate->system->logToConsole("Associated script failed to load or not found.");
         }
     }
+    script_info_free(scriptInfo);
 #endif
     DTCM_VERIFY();
 
@@ -648,7 +654,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (desiredAudioEnabled)
     {
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.2f);
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
         context->gb->direct.sound = 1;
         audioGameScene = gameScene;
     }
@@ -1007,11 +1013,13 @@ static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16
     }
     else if (gb_err == GB_INVALID_READ)
     {
-        playdate->system->logToConsole("Invalid read: addr %04x", val);
+        if (!preferences_experimental_gbc_mode)
+            playdate->system->logToConsole("Invalid read: addr %04x", val);
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
-        playdate->system->logToConsole("Invalid write: addr %04x", val);
+        if (!preferences_experimental_gbc_mode)
+            playdate->system->logToConsole("Invalid write: addr %04x", val);
     }
     else
     {
@@ -1562,8 +1570,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
 #endif
 
-    context->gb->direct.joypad_interrupts =
-        preferences_joypad_interrupts && context->gb->joypad_interrupt;
+    context->gb->direct.joypad_interrupts = context->gb->joypad_interrupt;
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -1738,6 +1745,35 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->direct.joypad_bits.up = !(current_pd_buttons & kButtonUp);
         context->gb->direct.joypad_bits.right = !(current_pd_buttons & kButtonRight);
         context->gb->direct.joypad_bits.down = !(current_pd_buttons & kButtonDown);
+
+        if (context->gb->direct.joypad_interrupts)
+        {
+            uint8_t new_joypad_state = context->gb->direct.joypad;
+            uint8_t old_joypad_state = gameScene->previous_joypad_state;
+            uint8_t newly_pressed_mask = (old_joypad_state & ~new_joypad_state);
+
+            // Check if a new button was pressed AND no interrupt is already pending.
+            if (newly_pressed_mask != 0 && context->gb->direct.joypad_interrupt_delay < 0)
+            {
+                uint8_t p1_select = context->gb->gb_reg.P1;
+                bool is_dpad_selected = ((p1_select & 0x10) == 0);
+                bool is_action_selected = ((p1_select & 0x20) == 0);
+
+                bool dpad_pressed = (newly_pressed_mask & 0xF0);
+                bool action_pressed = (newly_pressed_mask & 0x0F);
+
+                // If a relevant button was pressed, schedule an interrupt.
+                if ((is_dpad_selected && dpad_pressed) || (is_action_selected && action_pressed))
+                {
+                    // Schedule the interrupt to fire after a random number of CPU cycles.
+                    // This range (up to ~4560 cycles) simulates the press happening
+                    // at various points within the next few scanlines.
+                    context->gb->direct.joypad_interrupt_delay = rand() % (LCD_LINE_CYCLES * 10);
+                }
+            }
+
+            gameScene->previous_joypad_state = new_joypad_state;
+        }
 
         context->gb->overclock = (unsigned)(preferences_overclock);
         if (context->gb->gb_bios_enable)

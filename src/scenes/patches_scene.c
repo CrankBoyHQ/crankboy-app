@@ -210,7 +210,7 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
         char* msg = aprintf(
             "No patches found, add them by:\n\n"
             "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
-            "2. Via your computer, add .ips patches to: Data/*crankboy/patches/%s\n"
+            "2. Via your computer, add patch files to: Data/*crankboy/patches/%s\n"
             "3. Finally, enable them from this screen (settings > Patches).\n\n"
             "You may find patches on romhacking.net or romhack.ing",
             rom_basename

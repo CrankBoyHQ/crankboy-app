@@ -17,6 +17,7 @@ typedef struct SoftPatch
     // format (mutually exclusive)
     unsigned ips : 1;
     unsigned bps : 1;
+    unsigned ups : 1;
 
     // private
     int _order : 12;

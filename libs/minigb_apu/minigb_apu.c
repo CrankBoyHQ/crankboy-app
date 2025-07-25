@@ -263,7 +263,7 @@ __audio static void update_square(
     }
 }
 
-__audio static uint8_t wave_sample(
+__audio static int8_t wave_sample(
     audio_data* audio, const unsigned int pos, const unsigned int volume
 )
 {
@@ -278,7 +278,10 @@ __audio static uint8_t wave_sample(
     {
         sample >>= 4;
     }
-    return volume ? (sample >> (volume - 1)) : 0;
+
+    int8_t signed_sample = (int8_t)sample - 8;
+
+    return volume ? (signed_sample >> (volume - 1)) : 0;
 }
 
 __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int len)
@@ -317,12 +320,12 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             {
                 c->val = (c->val + 1) & 31;
                 sample +=
-                    ((pos - prev_pos) / c->freq_inc) * ((int)c->wave.sample - 8) * (INT16_MAX / 64);
+                    ((pos - prev_pos) / c->freq_inc) * (int32_t)c->wave.sample * (INT16_MAX / 32);
                 c->wave.sample = wave_sample(audio, c->val, c->volume);
                 prev_pos = pos;
             }
 
-            sample += ((int)c->wave.sample - 8) * (int)(INT16_MAX / 64);
+            sample += (int32_t)c->wave.sample * (int)(INT16_MAX / 32);
 
             if (c->volume == 0 || c->muted)
                 continue;
@@ -343,12 +346,11 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
                 c->val = (c->val + 1) & 31;
             }
 
-            if (c->volume == 0 || c->muted)
+            if (c->muted)
                 continue;
 
-            uint8_t wave_val = wave_sample(audio, c->val, c->volume);
-            int32_t sample = ((int)wave_val - 8) * (INT16_MAX / 64);
-
+            int8_t wave_val = wave_sample(audio, c->val, c->volume);
+            int32_t sample = (int32_t)wave_val * (INT16_MAX / 32);
             sample >>= 2;
 
             int32_t left_contrib = sample * c->on_left * audio->vol_l;
