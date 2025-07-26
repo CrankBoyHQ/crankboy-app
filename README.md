@@ -29,8 +29,6 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 
 <a href="https://github.com/CrankBoyHQ/crankboy-app/releases/latest"><img src="assets/playdate-badge-download.png?raw=true" width="200"></a>
 
-**Currently, we do not provide stable releases, since CrankBoy is still under heavy development.**
-
 First, download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest), or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml) (you must be logged into GitHub to access the nightly).
 
 There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
