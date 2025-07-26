@@ -110,6 +110,8 @@ As an alternative to marking preferences as hidden, you can instead whitelist pr
 
 Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`. It's also strongly recommended that you add a [Lua script](./lua-docs.md) and/or [C script](src/cscripts/kirby_dreamland.c) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy. (Or just write the script in C instead.)
 
+For developers new to Playdate, please be aware that you will need to [compile CrankBoy](https://sdk.play.date/2.7.6/Inside%20Playdate%20with%20C.html#_prerequisites) (§2, §4.2) yourself if you want to run it with the Simulator.
+
 ## Contributions
 
 Come chat with us on the [Playdate Developer Forum](https://devforum.play.date/t/60-fps-gameboy-emulation/22865) or on [Discord](https://discord.com/channels/675983554655551509/1378119815641694278). Even if you're not an expert at emulation coding, we could still use some visual assets, look-and-feel, UI, UX, and so on to make the app feel more cute and at-home on a cozy device like Playdate.
