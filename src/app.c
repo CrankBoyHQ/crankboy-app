@@ -13,10 +13,8 @@
 #include "dtcm.h"
 #include "jparse.h"
 #include "preferences.h"
-#include "scenes/credits_scene.h"
-#include "scenes/game_scanning_scene.h"
+#include "scenes/file_copying_scene.h"
 #include "scenes/game_scene.h"
-#include "scenes/image_conversion_scene.h"
 #include "scenes/info_scene.h"
 #include "scenes/library_scene.h"
 #include "script.h"
@@ -30,96 +28,6 @@ CB_Application* CB_App;
 #if defined(TARGET_SIMULATOR)
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
-
-struct copy_file_callback_ud
-{
-    json_value* manifest;
-    const char* directory;
-    bool* modified;
-};
-
-static void copy_file_callback(const char* filename, void* userdata)
-{
-    struct copy_file_callback_ud* ud = userdata;
-    json_value* manifest = ud->manifest;
-    const char* directory = ud->directory;
-
-    const char* extension = strrchr((char*)filename, '.');
-    if (!extension)
-        return;
-
-    char* full_path = aprintf("%s/%s", directory, filename);
-    if (!full_path)
-        return;
-
-    json_value already_copied = json_get_table_value(*manifest, full_path);
-
-    char* dst_path = NULL;
-    if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
-        !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
-        !strcasecmp(extension, ".pdi"))
-    {
-        dst_path = aprintf("%s/%s", CB_coversPath, filename);
-    }
-    // TODO: .ips/.bps
-    else if (!strcasecmp(extension, ".gb") || !strcasecmp(extension, ".gbc"))
-    {
-        dst_path = aprintf("%s/%s", CB_gamesPath, filename);
-    }
-    else if (!strcasecmp(extension, ".sav"))
-    {
-        dst_path = aprintf("%s/%s", CB_savesPath, filename);
-    }
-    else if (!strcasecmp(extension, ".state"))
-    {
-        dst_path = aprintf("%s/%s", CB_statesPath, filename);
-    }
-    else if (!strcmp(filename, "dmg_boot.bin"))
-    {
-        dst_path = aprintf("./%s", filename);
-    }
-
-    if (!dst_path)
-    {
-        cb_free(full_path);
-        return;
-    }
-
-    if (already_copied.type != kJSONTrue)
-    {
-        size_t size;
-        void* dat = cb_read_entire_file(full_path, &size, kFileRead);
-
-        if (dat && size > 0)
-        {
-            char* msg = aprintf("Copying \"%s\" from PDX", full_path);
-            if (msg)
-            {
-                playdate->system->logToConsole("%s\n", msg);
-                cb_draw_logo_screen_and_display(CB_App->subheadFont, msg);
-                cb_free(msg);
-            }
-
-            bool success = cb_write_entire_file(dst_path, dat, size);
-            cb_free(dat);
-
-            // mark file as transferred
-            if (success)
-            {
-                json_value _true;
-                _true.type = kJSONTrue;
-                json_set_table_value(manifest, full_path, _true);
-                *ud->modified = true;
-            }
-        }
-        else
-        {
-            // file was not in PDX directory; silently skip it.
-        }
-    }
-
-    cb_free(full_path);
-}
 
 static int check_is_bundle(void)
 {
@@ -354,38 +262,11 @@ void CB_init(void)
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
 
-    // copy in files if not already copied in
+    // if not a bundled rom, check for files to copy from the PDX
     if (!CB_App->bundled_rom)
     {
-        json_value manifest;
-        parse_json(COPIED_FILES, &manifest, kFileReadData | kFileRead);
-
-        if (manifest.type != kJSONTable)
-        {
-            manifest.type = kJSONTable;
-            JsonObject* obj = cb_malloc(sizeof(JsonObject));
-            obj->n = 0;
-            manifest.data.tableval = obj;
-        }
-
-        const char* sources[] = {".", CB_coversPath, CB_gamesPath, CB_savesPath, CB_statesPath};
-        bool modified = false;
-
-        for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)
-        {
-            struct copy_file_callback_ud ud;
-            ud.manifest = &manifest;
-            ud.directory = sources[i];
-            ud.modified = &modified;
-
-            playdate->file->listfiles(sources[i], copy_file_callback, &ud, true);
-        }
-
-        write_json_to_disk(COPIED_FILES, manifest);
-        free_json_data(manifest);
-
-        CB_GameScanningScene* scanningScene = CB_GameScanningScene_new();
-        CB_present(scanningScene->scene);
+        CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
+        CB_present(copyingScene->scene);
     }
     else
     {

@@ -1,172 +1,177 @@
 [
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/cscripts/kirby_dreamland.c -o build/src/cscripts/kirby_dreamland.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/cscripts/kirby_dreamland.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/cscripts/links_awakening.c -o build/src/cscripts/links_awakening.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/cscripts/links_awakening.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scriptutil.c -o build/src/scriptutil.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scriptutil.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/pgmusic.c -o build/src/pgmusic.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/pgmusic.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/info_scene.c -o build/src/scenes/info_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/info_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/cover_cache_scene.c -o build/src/scenes/cover_cache_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/cover_cache_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/image_conversion_scene.c -o build/src/scenes/image_conversion_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/image_conversion_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/http.c -o build/src/http.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/http.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/version.c -o build/src/version.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/version.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/credits_scene.c -o build/src/scenes/credits_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/credits_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/modal.c -o build/src/scenes/modal.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/modal.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/game_scanning_scene.c -o build/src/scenes/game_scanning_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/game_scanning_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/game_scene.c -o build/src/scenes/game_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/game_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/userstack.c -o build/src/userstack.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/userstack.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/jparse.c -o build/src/jparse.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/jparse.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/script.c -o build/src/script.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/script.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/dtcm.c -o build/src/dtcm.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/dtcm.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/revcheck.c -o build/src/revcheck.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/revcheck.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/app.c -o build/src/app.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/app.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/utility.c -o build/src/utility.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/utility.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scene.c -o build/src/scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/library_scene.c -o build/src/scenes/library_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/library_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/array.c -o build/src/array.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/array.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/listview.c -o build/src/listview.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/listview.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/preferences.c -o build/src/preferences.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/preferences.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/settings_scene.c -o build/src/scenes/settings_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/settings_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c libs/minigb_apu/minigb_apu.c -o build/libs/minigb_apu/minigb_apu.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "libs/minigb_apu/minigb_apu.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c main.c -o build/main.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "main.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c libs/pdnewlib/pdnewlib.c -o build/libs/pdnewlib/pdnewlib.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "libs/pdnewlib/pdnewlib.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c libs/lua-5.4.7/onelua.c -o build/libs/lua-5.4.7/onelua.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "libs/lua-5.4.7/onelua.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c libs/lz4/lz4.c -o build/libs/lz4/lz4.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "libs/lz4/lz4.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c ${env:PLAYDATE_SDK_PATH}/C_API/buildsupport/setup.c -o build/setup.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "${env:PLAYDATE_SDK_PATH}/C_API/buildsupport/setup.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/patches_scene.c -o build/src/scenes/patches_scene.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/scenes/patches_scene.c"
     },
     {
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/softpatch.c -o build/src/softpatch.o",
-        "directory": "${workspaceFolder}",
+        "directory": "${workspace.path}",
         "file": "src/softpatch.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/file_copying_scene.c -o build/src/scenes/file_copying_scene.o",
+        "directory": "${workspace.path}",
+        "file": "src/scenes/file_copying_scene.c"
     }
 ]
