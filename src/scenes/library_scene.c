@@ -195,6 +195,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
 
             set_download_status(libraryScene, COVER_DOWNLOAD_IDLE, NULL);
+            CB_ListView_reload(libraryScene->listView);
         }
     }
     else
