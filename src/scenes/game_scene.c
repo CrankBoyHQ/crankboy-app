@@ -90,6 +90,7 @@ LCDColor game_picture_background_color;
 bool game_hide_indicator;
 bool gbScreenRequiresFullRefresh;
 
+static int last_scy = -1;
 static uint8_t CB_dither_lut_row0[256];
 static uint8_t CB_dither_lut_row1[256];
 
@@ -160,7 +161,7 @@ __section__(".rare") static void generate_dither_luts(void)
 }
 
 // forces screen refresh
-static int didOpenMenu = false;
+static int didOpenMenu = 0;
 bool game_menu_button_input_enabled;
 
 static uint8_t CB_bitmask[4][4][4];
@@ -244,6 +245,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
+    
+    last_scy = -1;
 
     playdate->system->logToConsole("ROM: %s", rom_filename);
 
@@ -304,7 +307,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     gameScene->interlace_tendency_counter = 0;
     gameScene->interlace_lock_frames_remaining = 0;
-    gameScene->previous_scale_line_index = -1;
 
     gameScene->isCurrentlySaving = false;
 
@@ -1053,7 +1055,7 @@ typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
     const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
-    unsigned dither_preference, int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
+    int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
     uint8_t* restrict dither_lut1
 )
 {
@@ -1061,207 +1063,88 @@ __core_section("fb") void update_fb_dirty_lines(
     unsigned fb_y_playdate_current_bottom = CB_LCD_Y + CB_LCD_HEIGHT;
     const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
-    if (stable_scaling_enabled)
+    int scale_index = preferences_dither_line;
+    if (preferences_dither_stable) scale_index += 256 - scy;
+    scale_index %= scaling;
+    uint8_t* restrict dither_lut0_ptr = dither_lut0;
+    uint8_t* restrict dither_lut1_ptr = dither_lut1;
+
+    for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
     {
-        // --- STABILIZED PATH ---
-
-        // Track the last vertical scroll offset to detect camera movement.
-        // Initialize to an unlikely value to ensure the first frame logic is correct.
-        static int last_scy = -1000;
-        const bool is_scrolling = (scy != last_scy);
-        last_scy = scy;
-
-        bool dither_phase_flipped = false;
-
-        for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
+        int row_height_on_playdate = 2;
+        if (++scale_index == scaling)
         {
-            int world_y = y_gb + scy;
+            scale_index = 0;
+            row_height_on_playdate = 1;
 
-            int row_height_on_playdate = 2;
-            if ((world_y + dither_preference) % scaling == scaling - 1)
-            {
-                row_height_on_playdate = 1;
-            }
-
-            unsigned int current_line_pd_top_y =
-                fb_y_playdate_current_bottom - row_height_on_playdate;
-
-            // When skipping lines, we must still update the dither phase for the
-            // screen-stable (non-scrolling) mode to work correctly.
-            if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
-            {
-                fb_y_playdate_current_bottom = current_line_pd_top_y;
-                if (row_height_on_playdate == 1)
-                {
-                    dither_phase_flipped = !dither_phase_flipped;
-                }
-                continue;
-            }
-
-            fb_y_playdate_current_bottom = current_line_pd_top_y;
-            uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
-            uint8_t* restrict pd_fb_line_top_ptr =
-                &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
-
-            uint8_t* restrict dither_lut_top;
-            uint8_t* restrict dither_lut_bottom;
-
-            if (is_scrolling)
-            {
-                // --- SCROLLING LOGIC ---
-                // Dither is locked to the content's world_y coordinate.
-                // This prevents textures (like water) from jittering during movement.
-                bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
-                dither_lut_top = is_world_y_even ? dither_lut0 : dither_lut1;
-                dither_lut_bottom = is_world_y_even ? dither_lut1 : dither_lut0;
-            }
-            else
-            {
-                // --- STATIC LOGIC ---
-                // Dither is locked to the screen, correcting for short rows.
-                // This prevents any idle shimmer when the camera is still.
-                bool is_world_y_even = ((world_y + dither_preference) % 2 == 0);
-                bool use_lut0_first = is_world_y_even ^ dither_phase_flipped;
-                dither_lut_top = use_lut0_first ? dither_lut0 : dither_lut1;
-                dither_lut_bottom = use_lut0_first ? dither_lut1 : dither_lut0;
-            }
-
-            uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
-            uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
-
-            if (row_height_on_playdate == 2)
-            {
-                // Dedicated loop for 2-pixel-high rows
-                uint32_t* restrict pd_fb_line_bottom_ptr32 =
-                    (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
-
-                for (int i = 0; i < LCD_WIDTH_PACKED / 4; i++)
-                {
-                    uint32_t org_pixels32 = gb_line_data32[i];
-
-                    uint8_t p0 = org_pixels32 & 0xFF;
-                    uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                    uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                    uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
-
-                    pd_fb_line_top_ptr32[i] = dither_lut_top[p0] | (dither_lut_top[p1] << 8) |
-                                              (dither_lut_top[p2] << 16) |
-                                              (dither_lut_top[p3] << 24);
-
-                    pd_fb_line_bottom_ptr32[i] =
-                        dither_lut_bottom[p0] | (dither_lut_bottom[p1] << 8) |
-                        (dither_lut_bottom[p2] << 16) | (dither_lut_bottom[p3] << 24);
-                }
-            }
-            else  // row_height_on_playdate == 1
-            {
-                // Dedicated loop for 1-pixel-high rows
-                for (int i = 0; i < LCD_WIDTH_PACKED / 4; i++)
-                {
-                    uint32_t org_pixels32 = gb_line_data32[i];
-
-                    uint8_t p0 = org_pixels32 & 0xFF;
-                    uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                    uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                    uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
-
-                    pd_fb_line_top_ptr32[i] = dither_lut_top[p0] | (dither_lut_top[p1] << 8) |
-                                              (dither_lut_top[p2] << 16) |
-                                              (dither_lut_top[p3] << 24);
-                }
-                dither_phase_flipped = !dither_phase_flipped;
-            }
-
-            markUpdatedRows(
-                current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
-            );
+            uint8_t* restrict temp_ptr = dither_lut0_ptr;
+            dither_lut0_ptr = dither_lut1_ptr;
+            dither_lut1_ptr = temp_ptr;
         }
-    }
-    else
-    {
-        // --- NORMAL PATH ---
 
-        int scale_index = dither_preference;
-        uint8_t* restrict dither_lut0_ptr = dither_lut0;
-        uint8_t* restrict dither_lut1_ptr = dither_lut1;
+        unsigned int current_line_pd_top_y =
+            fb_y_playdate_current_bottom - row_height_on_playdate;
 
-        for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
+        if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
         {
-            int row_height_on_playdate = 2;
-            if (++scale_index == scaling)
-            {
-                scale_index = 0;
-                row_height_on_playdate = 1;
-
-                uint8_t* restrict temp_ptr = dither_lut0_ptr;
-                dither_lut0_ptr = dither_lut1_ptr;
-                dither_lut1_ptr = temp_ptr;
-            }
-
-            unsigned int current_line_pd_top_y =
-                fb_y_playdate_current_bottom - row_height_on_playdate;
-
-            if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
-            {
-                fb_y_playdate_current_bottom = current_line_pd_top_y;
-                continue;
-            }
-
             fb_y_playdate_current_bottom = current_line_pd_top_y;
-
-            uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
-            uint8_t* restrict pd_fb_line_top_ptr =
-                &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
-
-            uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
-            uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
-
-            if (row_height_on_playdate == 2)
-            {
-                // Dedicated loop for 2-pixel-high rows
-                uint32_t* restrict pd_fb_line_bottom_ptr32 =
-                    (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
-
-                for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
-                {
-                    uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
-
-                    uint8_t p0 = org_pixels32 & 0xFF;
-                    uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                    uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                    uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
-
-                    pd_fb_line_top_ptr32[x_packed_gb] =
-                        dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                        (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
-
-                    pd_fb_line_bottom_ptr32[x_packed_gb] =
-                        dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
-                        (dither_lut1_ptr[p2] << 16) | (dither_lut1_ptr[p3] << 24);
-                }
-            }
-            else  // row_height_on_playdate == 1
-            {
-                // Dedicated loop for 1-pixel-high rows
-                for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
-                {
-                    uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
-
-                    uint8_t p0 = org_pixels32 & 0xFF;
-                    uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                    uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                    uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
-
-                    pd_fb_line_top_ptr32[x_packed_gb] =
-                        dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                        (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
-                }
-            }
-
-            markUpdatedRows(
-                current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
-            );
+            continue;
         }
+
+        fb_y_playdate_current_bottom = current_line_pd_top_y;
+
+        uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
+        uint8_t* restrict pd_fb_line_top_ptr =
+            &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
+
+        uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
+        uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
+
+        if (row_height_on_playdate == 2)
+        {
+            // Dedicated loop for 2-pixel-high rows
+            uint32_t* restrict pd_fb_line_bottom_ptr32 =
+                (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
+
+            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
+            {
+                uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
+
+                uint8_t p0 = org_pixels32 & 0xFF;
+                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
+                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
+                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+
+                pd_fb_line_top_ptr32[x_packed_gb] =
+                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
+                    (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
+
+                pd_fb_line_bottom_ptr32[x_packed_gb] =
+                    dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
+                    (dither_lut1_ptr[p2] << 16) | (dither_lut1_ptr[p3] << 24);
+            }
+        }
+        else  // row_height_on_playdate == 1
+        {
+            // Dedicated loop for 1-pixel-high rows
+            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
+            {
+                uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
+
+                uint8_t p0 = org_pixels32 & 0xFF;
+                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
+                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
+                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+
+                pd_fb_line_top_ptr32[x_packed_gb] =
+                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
+                    (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
+            }
+        }
+
+        markUpdatedRows(
+            current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
+        );
     }
 }
 
@@ -1704,8 +1587,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     if (didOpenMenu)
     {
         gbScreenRequiresFullRefresh = 1;
-        didOpenMenu = 0;
-    }
+        didOpenMenu--;
+    }    
 
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
@@ -1859,13 +1742,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         unsigned dither_preference = preferences_dither_line;
         bool stable_scaling_enabled = preferences_dither_stable;
         int scy = context->gb->gb_reg.SCY;
-
-        int check_val = stable_scaling_enabled ? scy : dither_preference;
-
-        if (gameScene->previous_scale_line_index != check_val)
+  
         {
-            gbScreenRequiresFullRefresh = true;
-            gameScene->previous_scale_line_index = check_val;
+            const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
+            if (preferences_dither_stable && scy % scaling != last_scy % scaling)
+            {
+                // dither-stable currently requires a total refresh when the screen scrolls.
+                // TODO: we don't need a full refresh if we can identify adjacent rows that are the same.
+                gbScreenRequiresFullRefresh = true;
+                last_scy = scy;
+            }
         }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
@@ -1991,7 +1877,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
+                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
                 CB_dither_lut_row0, CB_dither_lut_row1
             );
 
@@ -2026,7 +1912,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             ITCM_CORE_FN(update_fb_dirty_lines)(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, dither_preference, scy, stable_scaling_enabled,
+                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
                 CB_dither_lut_row0, CB_dither_lut_row1
             );
 
@@ -2384,6 +2270,9 @@ __section__(".rare") void CB_GameScene_didSelectLibrary(void* userdata)
 
 __section__(".rare") static void CB_GameScene_showSettings(void* userdata)
 {
+    // force screen refresh for two frames (ugh, why doesn't it work for just 1 frame?)
+    didOpenMenu = 2;
+    
     CB_GameScene* gameScene = userdata;
     CB_SettingsScene* settingsScene = CB_SettingsScene_new(gameScene, NULL);
     CB_presentModal(settingsScene->scene);
@@ -2413,7 +2302,7 @@ __section__(".rare") void CB_GameScene_buttonMenuCallback(void* userdata)
 
 static void CB_GameScene_menu(void* object)
 {
-    didOpenMenu = true;
+    didOpenMenu = 1;
     CB_GameScene* gameScene = object;
 
     if (gameScene->menuImage != NULL)
@@ -2782,8 +2671,6 @@ __section__(".rare") unsigned get_save_state_timestamp(CB_GameScene* gameScene, 
 // returns true if successful
 __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned slot)
 {
-    playdate->system->logToConsole("save state %p", __builtin_frame_address(0));
-
     if (gameScene->isCurrentlySaving)
     {
         playdate->system->logToConsole("Save state failed: another save is in progress.");

@@ -147,7 +147,6 @@ typedef struct CB_GameScene
 
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
-    int previous_scale_line_index;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
     uint8_t previous_joypad_state;
