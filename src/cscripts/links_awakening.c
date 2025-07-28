@@ -2,16 +2,22 @@
 
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
-    "- Full aspect ratio; no vertical squishing."
+    "- Full aspect ratio; no vertical squishing.\n"
+    "- Can open save menu with just start+select.\n"
+    "- Intro cutscene can be skipped with Ⓐ.\n"
 
 typedef struct ScriptData
 {
     int sidebar_x_prev;
+    uint8_t bgp_prev; 
     unsigned inventoryB;
     unsigned inventoryA;
     unsigned rupees;
     unsigned hearts;
     unsigned heartsMax;
+    
+    // Link's Awakening: DX
+    bool is_ladx;
 } ScriptData;
 
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
@@ -20,6 +26,31 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
 
     force_pref(dither_stable, false);
     force_pref(dither_line, 0);
+    
+    data->is_ladx = (rom_peek(0xE64) == 0xF0);
+    
+    // can pause using just start+select --
+    if (rom_peek(0xE64) == 0xF0)
+    {
+        // LADX
+        rom_poke(0xE64, 0xC0);
+    }
+    else if (rom_peek(0xAB9) == 0xF0)
+    {
+        // non-LADX
+        rom_poke(0xAB9, 0xC0);
+    }
+    
+    // press A to finish intro cut-scene
+    if (data->is_ladx && rom_peek(0x6E2B) == 0x80)
+    {
+        // LADX
+        rom_poke(0x6E2B, 0x90);
+    }
+    else if (rom_peek(0x6E4B) == 0x80)
+    {
+        rom_poke(0x6E4B, 0x90);
+    }
 
     return data;
 }
@@ -28,15 +59,19 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
 {
     int game_state = ram_peek(0xDB95);
     bool gameOver = ram_peek(0xFF9C) >= 3;  // not positive about this
+    
+    game_hide_indicator = false;
 
     switch (game_state)
     {
     case 0:  // intro
     case 2:  // file select
+    case 6:  // save
         game_picture_background_color = kColorBlack;
         break;
     case 7:  // map
         game_picture_background_color = get_palette_color(1);
+        game_hide_indicator = true;
         break;
     case 0xB:
         game_picture_background_color = get_palette_color(3);
@@ -52,7 +87,6 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_scaling = 3;
-    game_hide_indicator = false;
 
     unsigned menu_y = ram_peek(0xDB9A);
 
@@ -109,8 +143,9 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
     int sidebar_w = 80;
     uint8_t game_state = ram_peek(0xDB95);
 
-    bool refresh = gbScreenRequiresFullRefresh || (data->sidebar_x_prev != sidebar_x);
+    bool refresh = gbScreenRequiresFullRefresh || (data->sidebar_x_prev != sidebar_x) || (data->bgp_prev != gb->gb_reg.BGP);
     data->sidebar_x_prev = sidebar_x;
+    data->bgp_prev = gb->gb_reg.BGP;
 
     if (game_state == 0xB && game_picture_x_offset < CB_LCD_X)
     {
@@ -131,6 +166,8 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 
         const bool inventory_changed =
             (invB != data->inventoryB || invA != data->inventoryA || rupees != data->rupees);
+        
+        const bool fade = data->bgp_prev == 0x0 || data->bgp_prev == 0xFF;
 
         if (refresh || inventory_changed)
         {
@@ -163,11 +200,23 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 
                         uint8_t tile_idx = gb->vram[0x1C00 + 0x20 * src_y + src_x];
 
-                        draw_vram_tile(tile_idx, true, 2, dst_x, dst_y);
+                        if (fade)
+                        {
+                            playdate->graphics->fillRect(dst_x, dst_y, 16, 16, kColorWhite);
+                        }
+                        else
+                        {
+                            draw_vram_tile(tile_idx, true, 2, dst_x, dst_y);
+                        }
                         playdate->graphics->markUpdatedRows(dst_y, dst_y + 15);
                     }
                 }
             }
+        }
+        
+        if (refresh)
+        {
+            playdate->graphics->fillRect(sidebar_x, 0, 2, LCD_ROWS, fade ? kColorWhite : kColorBlack);
         }
 
         // hearts
@@ -195,7 +244,7 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
                     idx = 0xA9;
                 }
 
-                if (idx == 0x7F)
+                if (idx == 0x7F || fade)
                 {
                     playdate->graphics->fillRect(x, y, 16, 16, kColorWhite);
                 }
