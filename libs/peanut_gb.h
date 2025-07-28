@@ -6023,7 +6023,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     // update boot rom overlay state
     if (gb->gb_bios_enable)
     {
-        if (gb->gb_boot_rom)
+        if (gb->gb_boot_rom && preferences_bios)
         {
             memcpy(gb->gb_rom, gb->gb_boot_rom, 0x100);
         }
@@ -6147,7 +6147,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     else if (preferences_experimental_gbc_mode)
     {
         playdate->system->logToConsole("Starting ROM with GBC registers");
-        gb->gb_bios_enable = 1;
+        gb->gb_bios_enable = 0;
         gb->cpu_reg.af = 0x1180;
         gb->cpu_reg.bc = 0x0000;
         gb->cpu_reg.de = 0xFF56;

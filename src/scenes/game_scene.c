@@ -2680,6 +2680,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     gameScene->isCurrentlySaving = true;
 
     CB_GameSceneContext* context = gameScene->context;
+    
     bool success = false;
 
     char* path_prefix = NULL;
