@@ -27,6 +27,7 @@
 
 #define LAST_SELECTED_PATH "library_last_selected.txt"
 #define HOLD_TIME 1.09f
+#define DELETE_COVER_HOLD_TIME 5.09f
 
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void CB_LibraryScene_free(void* object);
@@ -308,6 +309,44 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     cb_free(url_path);
 }
 
+static void CB_LibraryScene_deleteCoverConfirmed(void* ud, int option)
+{
+    if (option == 1)
+    {
+        CB_Game* game = ud;
+        CB_LibraryScene* libraryScene = (CB_LibraryScene*)CB_App->scene->managedObject;
+
+        if (game && game->coverPath)
+        {
+            playdate->file->unlink(game->coverPath, 0);
+
+            cb_free(game->coverPath);
+            game->coverPath = NULL;
+
+            if (CB_App->coverCache)
+            {
+                for (int i = CB_App->coverCache->length - 1; i >= 0; i--)
+                {
+                    CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
+                    if (strcmp(entry->rom_path, game->fullpath) == 0)
+                    {
+                        cb_free(entry->rom_path);
+                        cb_free(entry->compressed_data);
+                        cb_free(entry);
+
+                        array_remove_at(CB_App->coverCache, i);
+                        break;
+                    }
+                }
+            }
+
+            cb_clear_global_cover_cache();
+            libraryScene->showCrc = false;
+            libraryScene->scene->forceFullRefresh = true;
+        }
+    }
+}
+
 static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
 {
     void* stored = preferences_store_subset(-1);
@@ -525,6 +564,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->showCrc = false;
     libraryScene->isReloading = library_was_initialized_once;
     library_was_initialized_once = true;
+    libraryScene->bButtonHoldTimer = 0.0f;
+    libraryScene->deleteCoverModalShown = false;
 
     cb_clear_global_cover_cache();
 
@@ -688,25 +729,57 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
-    // B-button long press detection for showing CRC
+    // B-button long press detection for showing CRC and delete modal
     PDButtons current_buttons;
     playdate->system->getButtonState(&current_buttons, NULL, NULL);
     if (current_buttons & kButtonB)
     {
         libraryScene->bButtonHoldTimer += dt;
-        if (libraryScene->bButtonHoldTimer >= HOLD_TIME && !libraryScene->showCrc)
+        bool hasCover = (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS);
+
+        if (hasCover)
         {
-            if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS)
+            // After 1 second, show CRC
+            if (libraryScene->bButtonHoldTimer >= HOLD_TIME && !libraryScene->showCrc)
             {
                 libraryScene->showCrc = true;
                 libraryScene->scene->forceFullRefresh = true;
                 cb_play_ui_sound(CB_UISound_Confirm);
             }
+
+            // After 5 seconds, show delete confirmation modal
+            if (libraryScene->bButtonHoldTimer >= DELETE_COVER_HOLD_TIME &&
+                !libraryScene->deleteCoverModalShown)
+            {
+                libraryScene->deleteCoverModalShown = true;
+
+                int selectedItem = libraryScene->listView->selectedItem;
+                if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
+                {
+                    CB_Game* game = libraryScene->games->items[selectedItem];
+
+                    // Make sure there is a cover to delete
+                    if (game->coverPath)
+                    {
+                        const char* options[] = {"No", "Yes", NULL};
+                        CB_Modal* modal = CB_Modal_new(
+                            "Delete this cover art?", options, CB_LibraryScene_deleteCoverConfirmed,
+                            game
+                        );
+                        modal->width = 240;
+                        CB_presentModal(modal->scene);
+                    }
+                }
+            }
         }
     }
     else
     {
-        libraryScene->bButtonHoldTimer = 0.0f;
+        if (libraryScene->bButtonHoldTimer > 0.0f)
+        {
+            libraryScene->bButtonHoldTimer = 0.0f;
+            libraryScene->deleteCoverModalShown = false;
+        }
     }
 
     if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)

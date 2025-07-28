@@ -26,5 +26,6 @@ void array_reserve(CB_Array* array, unsigned int capacity);
 void array_push(CB_Array* array, void* item);
 void array_clear(CB_Array* array);
 void array_free(CB_Array* array);
+void array_remove_at(CB_Array* array, unsigned int index);
 
 #endif /* array_h */

@@ -81,6 +81,7 @@ typedef struct CB_LibraryScene
     bool isReloading;
     int progress_max_width;
     float bButtonHoldTimer;
+    bool deleteCoverModalShown;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);

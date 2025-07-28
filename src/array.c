@@ -53,6 +53,21 @@ void array_clear(CB_Array* array)
     array->capacity = 0;
 }
 
+void array_remove_at(CB_Array* array, unsigned int index)
+{
+    if (index >= array->length)
+    {
+        return;
+    }
+
+    for (unsigned int i = index; i < array->length - 1; i++)
+    {
+        array->items[i] = array->items[i + 1];
+    }
+
+    array->length--;
+}
+
 void array_free(CB_Array* array)
 {
     if (array)
