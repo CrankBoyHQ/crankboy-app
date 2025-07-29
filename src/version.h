@@ -16,6 +16,8 @@ void check_for_updates(update_result_cb cb, void* ud);
 // check for updates if it's been more than a certain amount of time since we last checked
 void possibly_check_for_updates(update_result_cb cb, void* ud);
 
+void version_update_notification_shown(const char* version_name);
+
 void version_quit(void);
 
 const char* get_current_version(void);

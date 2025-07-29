@@ -40,6 +40,7 @@ static bool library_was_initialized_once = false;
 
 // Stores the update message if we are not in the library scene.
 static char* pending_update_message = NULL;
+static char* pending_update_version = NULL;
 
 // Animation state for the "Downloading cover..." text
 static float coverDownloadAnimationTimer = 0.0f;
@@ -476,6 +477,7 @@ static void CB_updatecheck(int code, const char* text, void* ud)
             modal->height = 180;
 
             CB_presentModal(modal->scene);
+            version_update_notification_shown(text);
         }
         else
         {
@@ -486,6 +488,11 @@ static void CB_updatecheck(int code, const char* text, void* ud)
                 cb_free(pending_update_message);
             }
             pending_update_message = modal_result;
+            if (pending_update_version)
+            {
+                cb_free(pending_update_version);
+            }
+            pending_update_version = cb_strdup(text);
         }
     }
 }
@@ -722,6 +729,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         CB_Modal* modal = CB_Modal_new(pending_update_message, NULL, NULL, NULL);
         cb_free(pending_update_message);
         pending_update_message = NULL;
+
+        version_update_notification_shown(pending_update_version);
+        cb_free(pending_update_version);
+        pending_update_version = NULL;
 
         modal->width = 300;
         modal->height = 180;

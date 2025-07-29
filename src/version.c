@@ -183,14 +183,6 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             }
             else
             {
-                // update last-seen version
-                cb_write_entire_file(
-                    UPDATE_LAST_KNOWN_VERSION, newVersionInfo->name, strlen(newVersionInfo->name)
-                );
-                if (ignore_version)
-                    cb_free(ignore_version);
-                ignore_version = cb_strdup(newVersionInfo->name);
-
                 if (strcmp(newVersionInfo->name, localVersionInfo->name))
                 {
                     // new version available
@@ -291,6 +283,17 @@ void possibly_check_for_updates(update_result_cb cb, void* ud)
         {
             cb(-5305, "it's not yet time to check for an update", ud);
         }
+    }
+}
+
+void version_update_notification_shown(const char* version_name)
+{
+    if (version_name)
+    {
+        cb_write_entire_file(UPDATE_LAST_KNOWN_VERSION, version_name, strlen(version_name));
+        if (ignore_version)
+            cb_free(ignore_version);
+        ignore_version = cb_strdup(version_name);
     }
 }
 
