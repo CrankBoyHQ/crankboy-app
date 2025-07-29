@@ -155,7 +155,11 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 
             if (is_list)
             {
-                total_text_height += BULLET_POINT_SPACING;
+                bool is_last_line = (next_newline == NULL) || (*(next_newline + 1) == '\0');
+                if (!is_last_line)
+                {
+                    total_text_height += BULLET_POINT_SPACING;
+                }
             }
         }
 
@@ -261,7 +265,11 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 
             if (is_list)
             {
-                current_y += BULLET_POINT_SPACING;
+                bool is_last_line = (next_newline == NULL) || (*(next_newline + 1) == '\0');
+                if (!is_last_line)
+                {
+                    current_y += BULLET_POINT_SPACING;
+                }
             }
         }
 
@@ -340,6 +348,17 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
     infoScene->scene = scene;
     infoScene->title = title ? cb_strdup(title) : NULL;
     infoScene->text = text ? cb_strdup(text) : NULL;
+
+    // Trim any trailing whitespace from the text to prevent calculation errors.
+    if (infoScene->text)
+    {
+        int len = strlen(infoScene->text);
+        while (len > 0 && isspace((unsigned char)infoScene->text[len - 1]))
+        {
+            infoScene->text[--len] = '\0';
+        }
+    }
+
     infoScene->canClose = true;
     infoScene->textIsStatic = false;
     scene->managedObject = infoScene;
