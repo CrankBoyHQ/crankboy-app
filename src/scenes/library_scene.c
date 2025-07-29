@@ -802,7 +802,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-    if (!has_checked_for_update)
+    if (!has_checked_for_update && !CB_App->bundled_rom)
     {
         has_checked_for_update = true;
         possibly_check_for_updates(CB_updatecheck, NULL);
