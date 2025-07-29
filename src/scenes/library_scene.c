@@ -724,7 +724,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Check for a pending update message when the library is active.
-    if (pending_update_message)
+    if (pending_update_message && libraryScene->initialLoadComplete)
     {
         CB_Modal* modal = CB_Modal_new(pending_update_message, NULL, NULL, NULL);
         cb_free(pending_update_message);
