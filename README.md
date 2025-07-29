@@ -68,6 +68,10 @@ automatically created for you.)
 
 Then, you can enable, disable, and reorder your patches by going to `⊙ > settings > Patch` while the appropriate game is selected on main game library screen. Please note that the patches are applied in the order given; this matters if different patches conflict. In the case of a conflict, no warning message will be displayed.
 
+## Tips
+
+- You can delete cover art by holding Ⓑ for more than 5 seconds.
+
 ## Bundle Mode
 
 Bundling a ROM allows you to have a Game Boy ROM appear directly on the Playdate OS main menu along
