@@ -5,7 +5,6 @@
 
 static enable_cb_t _cb;
 static void* _ud;
-static bool permission = false;
 char* _domain = NULL;
 char* _reason = NULL;
 
@@ -347,14 +346,48 @@ struct CB_UserData_EnableHTTP
     void* ud;
 };
 
+static void CB_SetEnabled(PDNetErr err);
+
+static void CB_CheckWifiStatus(PDNetErr err)
+{
+    WifiStatus status = playdate->network->getStatus();
+
+    if (status == kWifiNotAvailable)
+    {
+        enable_cb_t cb = _cb;
+        void* ud = _ud;
+        _cb = NULL;
+
+        playdate->system->logToConsole("WIFI not available, aborting HTTP request.");
+
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+
+        if (cb)
+        {
+            cb(HTTP_WIFI_NOT_AVAILABLE, ud);
+        }
+    }
+    else
+    {
+        CB_SetEnabled(err);
+    }
+}
+
 static void CB_AccessReply(bool result, void* cbud)
 {
     enable_cb_t cb = ((struct CB_UserData_EnableHTTP*)cbud)->cb;
     void* ud = ((struct CB_UserData_EnableHTTP*)cbud)->ud;
     cb_free(cbud);
 
-    permission = result;
     cb(HTTP_ENABLE_ASKED | (result ? 0 : HTTP_ENABLE_DENIED), ud);
+
+    cb_free(_domain);
+    _domain = NULL;
+    cb_free(_reason);
+    _reason = NULL;
 }
 
 static void CB_SetEnabled(PDNetErr err)
@@ -366,56 +399,66 @@ static void CB_SetEnabled(PDNetErr err)
     if (err != NET_OK)
     {
         cb(HTTP_ERROR, ud);
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+        return;
     }
-    else
+
+    struct CB_UserData_EnableHTTP* cbudhttp = cb_malloc(sizeof(struct CB_UserData_EnableHTTP));
+    if (!cbudhttp)
     {
-        if (permission)
-        {
-            cb(0, ud);
-        }
-        else
-        {
-            struct CB_UserData_EnableHTTP* cbudhttp =
-                cb_malloc(sizeof(struct CB_UserData_EnableHTTP));
-            cbudhttp->cb = cb;
-            cbudhttp->ud = ud;
-
-            if (!cbudhttp)
-            {
-                cb(HTTP_MEM_ERROR, ud);
-                return;
-            }
-
-            enum accessReply result = playdate->network->http->requestAccess(
-                _domain, 0, USE_SSL, _reason, CB_AccessReply, cbudhttp
-            );
-
-            switch (result)
-            {
-            case kAccessAsk:
-                playdate->system->logToConsole("Asked for permission\n");
-                // callback will be invoked.
-                return;
-            case kAccessDeny:
-                cb_free(cbudhttp);
-                cb(HTTP_ENABLE_DENIED, ud);
-                return;
-            case kAccessAllow:
-                permission = true;
-                cb_free(cbudhttp);
-                cb(0, ud);
-                return;
-            default:
-                cb_free(cbudhttp);
-                playdate->system->logToConsole("Unrecognized permission result: %d\n", result);
-                cb(HTTP_ERROR, ud);
-                break;
-            }
-        }
+        cb(HTTP_MEM_ERROR, ud);
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+        return;
     }
 
-    cb_free(_domain);
-    cb_free(_reason);
+    cbudhttp->cb = cb;
+    cbudhttp->ud = ud;
+
+    enum accessReply result = playdate->network->http->requestAccess(
+        _domain, 0, USE_SSL, _reason, CB_AccessReply, cbudhttp
+    );
+
+    switch (result)
+    {
+    case kAccessAsk:
+        playdate->system->logToConsole("Asked for permission\n");
+        // callback will be invoked.
+        break;
+
+    case kAccessDeny:
+        cb_free(cbudhttp);
+        cb(HTTP_ENABLE_DENIED, ud);
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+        break;
+
+    case kAccessAllow:
+        cb_free(cbudhttp);
+        cb(0, ud);
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+        break;
+
+    default:
+        cb_free(cbudhttp);
+        playdate->system->logToConsole("Unrecognized permission result: %d\n", result);
+        cb(HTTP_ERROR, ud);
+        cb_free(_domain);
+        _domain = NULL;
+        cb_free(_reason);
+        _reason = NULL;
+        break;
+    }
 }
 
 void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* ud)
@@ -431,7 +474,7 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
     _domain = cb_strdup(domain);
     _reason = cb_strdup(reason);
 
-    playdate->network->setEnabled(true, CB_SetEnabled);
+    playdate->network->setEnabled(true, CB_CheckWifiStatus);
 }
 
 void http_cancel_and_cleanup(HTTPConnection* connection)

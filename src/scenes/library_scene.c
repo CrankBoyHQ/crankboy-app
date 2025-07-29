@@ -128,6 +128,15 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     char* rom_basename_no_ext = NULL;
     char* cover_dest_path = NULL;
 
+    if (flags & HTTP_WIFI_NOT_AVAILABLE)
+    {
+        if (stillOnSameGame)
+        {
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Wi-Fi not available.");
+        }
+        goto cleanup;
+    }
+
     if (flags & HTTP_NOT_FOUND)
     {
         if (stillOnSameGame)

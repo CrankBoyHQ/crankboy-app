@@ -139,6 +139,11 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             "Permission denied", cbud->ud
         );
     }
+    else if (flags & HTTP_WIFI_NOT_AVAILABLE)
+    {
+        cbud->cb(-5306, "Wi-Fi not available", cbud->ud);
+    }
+
     else if (flags & ~HTTP_ENABLE_ASKED)
     {
         cbud->cb(-9000 - flags, "Update failed", cbud->ud);

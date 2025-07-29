@@ -15,6 +15,7 @@
 #define HTTP_NON_SUCCESS_STATUS 64
 #define HTTP_UNEXPECTED_CONTENT_TYPE 128
 #define HTTP_NOT_FOUND 256
+#define HTTP_WIFI_NOT_AVAILABLE 512
 
 typedef void (*enable_cb_t)(unsigned flags, void* ud);
 
