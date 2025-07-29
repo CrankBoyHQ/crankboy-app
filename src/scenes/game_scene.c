@@ -245,7 +245,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
-    
+
     last_scy = -1;
 
     playdate->system->logToConsole("ROM: %s", rom_filename);
@@ -1054,9 +1054,8 @@ typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
 __core_section("fb") void update_fb_dirty_lines(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
-    int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
-    uint8_t* restrict dither_lut1
+    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
+    bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
 )
 {
     framebuffer += game_picture_x_offset / 8;
@@ -1064,7 +1063,8 @@ __core_section("fb") void update_fb_dirty_lines(
     const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
     int scale_index = preferences_dither_line;
-    if (preferences_dither_stable) scale_index += 256 - scy;
+    if (preferences_dither_stable)
+        scale_index += 256 - scy;
     scale_index %= scaling;
     uint8_t* restrict dither_lut0_ptr = dither_lut0;
     uint8_t* restrict dither_lut1_ptr = dither_lut1;
@@ -1082,8 +1082,7 @@ __core_section("fb") void update_fb_dirty_lines(
             dither_lut1_ptr = temp_ptr;
         }
 
-        unsigned int current_line_pd_top_y =
-            fb_y_playdate_current_bottom - row_height_on_playdate;
+        unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
 
         if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
         {
@@ -1116,12 +1115,12 @@ __core_section("fb") void update_fb_dirty_lines(
                 uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
 
                 pd_fb_line_top_ptr32[x_packed_gb] =
-                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                    (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
+                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) | (dither_lut0_ptr[p2] << 16) |
+                    (dither_lut0_ptr[p3] << 24);
 
                 pd_fb_line_bottom_ptr32[x_packed_gb] =
-                    dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
-                    (dither_lut1_ptr[p2] << 16) | (dither_lut1_ptr[p3] << 24);
+                    dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) | (dither_lut1_ptr[p2] << 16) |
+                    (dither_lut1_ptr[p3] << 24);
             }
         }
         else  // row_height_on_playdate == 1
@@ -1137,14 +1136,12 @@ __core_section("fb") void update_fb_dirty_lines(
                 uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
 
                 pd_fb_line_top_ptr32[x_packed_gb] =
-                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                    (dither_lut0_ptr[p2] << 16) | (dither_lut0_ptr[p3] << 24);
+                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) | (dither_lut0_ptr[p2] << 16) |
+                    (dither_lut0_ptr[p3] << 24);
             }
         }
 
-        markUpdatedRows(
-            current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1
-        );
+        markUpdatedRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
     }
 }
 
@@ -1588,7 +1585,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     {
         gbScreenRequiresFullRefresh = 1;
         didOpenMenu--;
-    }    
+    }
 
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
@@ -1742,13 +1739,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         unsigned dither_preference = preferences_dither_line;
         bool stable_scaling_enabled = preferences_dither_stable;
         int scy = context->gb->gb_reg.SCY;
-  
+
         {
             const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
             if (preferences_dither_stable && scy % scaling != last_scy % scaling)
             {
                 // dither-stable currently requires a total refresh when the screen scrolls.
-                // TODO: we don't need a full refresh if we can identify adjacent rows that are the same.
+                // TODO: we don't need a full refresh if we can identify adjacent rows that are the
+                // same.
                 gbScreenRequiresFullRefresh = true;
                 last_scy = scy;
             }
@@ -2272,7 +2270,7 @@ __section__(".rare") static void CB_GameScene_showSettings(void* userdata)
 {
     // force screen refresh for two frames (ugh, why doesn't it work for just 1 frame?)
     didOpenMenu = 2;
-    
+
     CB_GameScene* gameScene = userdata;
     CB_SettingsScene* settingsScene = CB_SettingsScene_new(gameScene, NULL);
     CB_presentModal(settingsScene->scene);
@@ -2680,7 +2678,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     gameScene->isCurrentlySaving = true;
 
     CB_GameSceneContext* context = gameScene->context;
-    
+
     bool success = false;
 
     char* path_prefix = NULL;
