@@ -14,31 +14,29 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            # Step 1: Check out the repository's code.
+            # Step 1: Check out the repository's code and its submodules.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
                   submodules: "recursive"
+                  lfs: true
 
-            # Step 2: Install Specific ARM GCC Toolchain (9-2019q4)
-            - name: Install ARM GCC Toolchain
+            # Step 2: Setup ARM GCC Toolchain from Submodule
+            - name: Setup ARM GCC Toolchain from Submodule
               run: |
-                  echo "Downloading ARM GCC Toolchain..."
-                  curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
-                  echo "Extracting toolchain..."
-                  tar -xjf gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  echo "Extracting toolchain from toolchain/linux/..."
+                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
                   TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
-                  echo "Adding $TOOLCHAIN_PATH to the system PATH for subsequent steps..."
+                  echo "Adding $TOOLCHAIN_PATH to the system PATH..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
-            # Step 3: Verify Toolchain and Download Playdate SDK
-            - name: Verify Toolchain and Download SDK
+            # Step 3: Setup Playdate SDK from Submodule and Verify Toolchain
+            - name: Setup Playdate SDK from Submodule and Verify Toolchain
               run: |
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
-                  echo "Downloading and extracting Playdate SDK..."
-                  curl -LO https://download.panic.com/playdate_sdk/Linux/PlaydateSDK-latest.tar.gz
-                  tar -xzf PlaydateSDK-latest.tar.gz
+                  echo "Extracting Playdate SDK from toolchain/linux/..."
+                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -83,31 +81,29 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            # Step 1: Check out the repository's code.
+            # Step 1: Check out the repository's code and its submodules.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
                   submodules: "recursive"
+                  lfs: true
 
-            # Step 2: Install Specific ARM GCC Toolchain (9-2019q4)
-            - name: Install ARM GCC Toolchain
+            # Step 2: Setup ARM GCC Toolchain from Submodule
+            - name: Setup ARM GCC Toolchain from Submodule
               run: |
-                  echo "Downloading ARM GCC Toolchain..."
-                  curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
-                  echo "Extracting toolchain..."
-                  tar -xjf gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  echo "Extracting toolchain from toolchain/linux/..."
+                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
                   TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
                   echo "Adding $TOOLCHAIN_PATH to the system PATH..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
-            # Step 3: Verify Toolchain and Download Playdate SDK
-            - name: Verify Toolchain and Download SDK
+            # Step 3: Setup Playdate SDK from Submodule and Verify Toolchain
+            - name: Setup Playdate SDK from Submodule and Verify Toolchain
               run: |
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
-                  echo "Downloading and extracting Playdate SDK..."
-                  curl -LO https://download.panic.com/playdate_sdk/Linux/PlaydateSDK-latest.tar.gz
-                  tar -xzf PlaydateSDK-latest.tar.gz
+                  echo "Extracting Playdate SDK from toolchain/linux/..."
+                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -152,31 +148,31 @@ jobs:
         runs-on: macos-latest
 
         steps:
+            # Step 1: Check out the repository's code and its submodules.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
                   submodules: "recursive"
+                  lfs: true
 
-            - name: Download and Install Playdate SDK
+            # Step 2: Unzip and Install Playdate SDK from Submodule
+            - name: Unzip and Install Playdate SDK from Submodule
               run: |
-                  echo "Downloading Playdate SDK for macOS..."
-                  curl -LO https://download.panic.com/playdate_sdk/PlaydateSDK-latest.zip
-                  echo "Unzipping SDK archive..."
-                  unzip PlaydateSDK-latest.zip
+                  echo "Unzipping SDK archive from toolchain/mac/..."
+                  unzip toolchain/mac/PlaydateSDK-2.7.6.zip
 
-                  # Find the .pkg file within the unzipped directory
                   PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
                   if [[ -z "$PKG_PATH" ]]; then
-                      echo "PlaydateSDK.pkg not found!"
+                      echo "PlaydateSDK.pkg not found after unzipping!"
                       exit 1
                   fi
 
                   echo "Installing $PKG_PATH..."
                   sudo installer -pkg "$PKG_PATH" -target /
 
-                  # Set the environment variable to the standard install location
                   echo "PLAYDATE_SDK_PATH=$HOME/Developer/PlaydateSDK" >> $GITHUB_ENV
 
+            # Step 3: Update Version and Build Number
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
@@ -184,9 +180,11 @@ jobs:
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
                   sed -i '' -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
 
+            # Step 4: Build Universal Project (Device & Simulator)
             - name: Build Universal Project (Device & Simulator)
               run: make -j$(sysctl -n hw.ncpu)
 
+            # Step 5: Get Simulator Artifact Name
             - name: Get Simulator Artifact Name
               id: artifact_details
               run: |
@@ -194,11 +192,13 @@ jobs:
                   ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-macos"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
+            # Step 6: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
                   mkdir artifact_root
                   mv CrankBoy.pdx artifact_root/
 
+            # Step 7: Upload Simulator Artifact
             - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v4
               with:
