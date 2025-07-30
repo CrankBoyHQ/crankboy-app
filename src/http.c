@@ -487,6 +487,12 @@ void http_cancel_and_cleanup(HTTPConnection* connection)
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud)
     {
+        if (httpud->ud)
+        {
+            cb_free(httpud->ud);
+            httpud->ud = NULL;
+        }
+
         httpud->cb = NULL;
     }
 
