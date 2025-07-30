@@ -55,7 +55,7 @@ jobs:
 
             # Step 5: Build the Project for Device
             - name: Build Project for Device
-              run: make device
+              run: make -j$(nproc) device
 
             # Step 6: Get Device Artifact Name
             - name: Get Device Artifact Name
@@ -78,7 +78,7 @@ jobs:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/
 
-    build_simulator:
+    build_simulator_linux:
         name: Create Nightly Simulator Build (Linux)
         runs-on: ubuntu-latest
 
@@ -97,7 +97,7 @@ jobs:
                   echo "Extracting toolchain..."
                   tar -xjf gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
                   TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
-                  echo "Adding $TOOLCHAIN_PATH to the system PATH for subsequent steps..."
+                  echo "Adding $TOOLCHAIN_PATH to the system PATH..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
             # Step 3: Verify Toolchain and Download Playdate SDK
@@ -123,8 +123,8 @@ jobs:
                   cat Source/pdxinfo
 
             # Step 5: Build a universal .pdx for both Device and Simulator
-            - name: Build Project for Simulator
-              run: make
+            - name: Build Universal Project (Device & Simulator)
+              run: make -j$(nproc)
 
             # Step 6: Get Simulator Artifact Name
             - name: Get Simulator Artifact Name
@@ -141,6 +141,64 @@ jobs:
                   mv CrankBoy.pdx artifact_root/
 
             # Step 8: Upload Simulator Artifact
+            - name: Upload Simulator Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.artifact_details.outputs.artifact_name }}
+                  path: artifact_root/
+
+    build_simulator_macos:
+        name: Create Nightly Simulator Build (macOS)
+        runs-on: macos-latest
+
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+
+            - name: Download and Install Playdate SDK
+              run: |
+                  echo "Downloading Playdate SDK for macOS..."
+                  curl -LO https://download.panic.com/playdate_sdk/PlaydateSDK-latest.zip
+                  echo "Unzipping SDK archive..."
+                  unzip PlaydateSDK-latest.zip
+
+                  # Find the .pkg file within the unzipped directory
+                  PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
+                  if [[ -z "$PKG_PATH" ]]; then
+                      echo "PlaydateSDK.pkg not found!"
+                      exit 1
+                  fi
+
+                  echo "Installing $PKG_PATH..."
+                  sudo installer -pkg "$PKG_PATH" -target /
+
+                  # Set the environment variable to the standard install location
+                  echo "PLAYDATE_SDK_PATH=$HOME/Developer/PlaydateSDK" >> $GITHUB_ENV
+
+            - name: Update Version and Build Number
+              run: |
+                  DATE_STAMP=$(date +'%Y%m%d')
+                  CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
+                  sed -i '' -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+
+            - name: Build Universal Project (Device & Simulator)
+              run: make -j$(sysctl -n hw.ncpu)
+
+            - name: Get Simulator Artifact Name
+              id: artifact_details
+              run: |
+                  APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-macos"
+                  echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+
+            - name: Prepare Artifact for Upload
+              run: |
+                  mkdir artifact_root
+                  mv CrankBoy.pdx artifact_root/
+
             - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v4
               with:
