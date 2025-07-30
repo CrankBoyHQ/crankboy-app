@@ -9,8 +9,8 @@ on:
     workflow_dispatch:
 
 jobs:
-    build:
-        name: Create Nightly Build
+    build_device:
+        name: Create Nightly Device Build
         runs-on: ubuntu-latest
 
         steps:
@@ -53,28 +53,95 @@ jobs:
                   echo "Contents of pdxinfo after update:"
                   cat Source/pdxinfo
 
-            # Step 5: Build the Project
-            - name: Build Project
+            # Step 5: Build the Project for Device
+            - name: Build Project for Device
               run: make device
 
-            # Step 6: Get Artifact Name
-            - name: Get Artifact Name
+            # Step 6: Get Device Artifact Name
+            - name: Get Device Artifact Name
               id: artifact_details
               run: |
                   APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
-                  ARTIFACT_NAME="CrankBoy-${APP_VERSION}-nightly"
+                  ARTIFACT_NAME="CrankBoy-Device-${APP_VERSION}-nightly"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
             # Step 7: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
-                  # Create a temporary directory to act as the root of the zip archive.
                   mkdir artifact_root
-                  # Move the .pdx directory (which is the actual build product) into the temporary root.
                   mv CrankBoy.pdx artifact_root/
 
             # Step 8: Upload the .pdx Directory
             - name: Upload Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.artifact_details.outputs.artifact_name }}
+                  path: artifact_root/
+
+    build_simulator:
+        name: Create Nightly Simulator Build (Linux)
+        runs-on: ubuntu-latest
+
+        steps:
+            # Step 1: Check out the repository's code.
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+
+            # Step 2: Install Specific ARM GCC Toolchain (9-2019q4)
+            - name: Install ARM GCC Toolchain
+              run: |
+                  echo "Downloading ARM GCC Toolchain..."
+                  curl -LO https://developer.arm.com/-/media/Files/downloads/gnu-rm/9-2019q4/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  echo "Extracting toolchain..."
+                  tar -xjf gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
+                  echo "Adding $TOOLCHAIN_PATH to the system PATH for subsequent steps..."
+                  echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+
+            # Step 3: Verify Toolchain and Download Playdate SDK
+            - name: Verify Toolchain and Download SDK
+              run: |
+                  echo "Verifying compiler version:"
+                  arm-none-eabi-gcc --version
+                  echo "Downloading and extracting Playdate SDK..."
+                  curl -LO https://download.panic.com/playdate_sdk/Linux/PlaydateSDK-latest.tar.gz
+                  tar -xzf PlaydateSDK-latest.tar.gz
+                  SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
+                  echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
+
+            # Step 4: Update Version and Build Number in pdxinfo
+            - name: Update Version and Build Number
+              run: |
+                  DATE_STAMP=$(date +'%Y%m%d')
+                  CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
+                  echo "Updating version in Source/pdxinfo to $NEW_VERSION"
+                  sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+                  echo "Contents of pdxinfo after update:"
+                  cat Source/pdxinfo
+
+            # Step 5: Build a universal .pdx for both Device and Simulator
+            - name: Build Project for Simulator
+              run: make
+
+            # Step 6: Get Simulator Artifact Name
+            - name: Get Simulator Artifact Name
+              id: artifact_details
+              run: |
+                  APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-linux"
+                  echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+
+            # Step 7: Prepare Artifact for Upload
+            - name: Prepare Artifact for Upload
+              run: |
+                  mkdir artifact_root
+                  mv CrankBoy.pdx artifact_root/
+
+            # Step 8: Upload Simulator Artifact
+            - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v4
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
