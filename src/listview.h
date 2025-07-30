@@ -59,7 +59,7 @@ typedef struct
 
 typedef struct
 {
-    CB_ListItem* item;
+    CB_ListItem item;
     char* title;
     LCDBitmap* coverImage;
     float textScrollOffset;
@@ -101,5 +101,6 @@ void CB_ListView_free(CB_ListView* listView);
 CB_ListItemButton* CB_ListItemButton_new(char* title);
 
 void CB_ListItem_free(CB_ListItem* item);
+void CB_ListItemButton_free(CB_ListItemButton* itemButton);
 
 #endif /* listview_h */

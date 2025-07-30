@@ -75,9 +75,9 @@ void CB_ListView_invalidateLayout(CB_ListView* listView)
 
     for (int i = 0; i < listView->items->length; i++)
     {
-        CB_ListItem* item = listView->items->items[i];
-        item->offsetY = y;
-        y += item->height;
+        CB_ListItemButton* button = listView->items->items[i];
+        button->item.offsetY = y;
+        y += button->item.height;
     }
 
     listView->contentSize = y;
@@ -319,11 +319,10 @@ void CB_ListView_update(CB_ListView* listView)
 
     if (listView->selectedItem >= 0 && listView->selectedItem < listView->items->length)
     {
-        CB_ListItem* item = listView->items->items[listView->selectedItem];
-        if (item->type == CB_ListViewItemTypeButton)
-        {
-            CB_ListItemButton* button = item->object;
+        CB_ListItemButton* button = listView->items->items[listView->selectedItem];
 
+        if (button->item.type == CB_ListViewItemTypeButton)
+        {
             playdate->graphics->setFont(CB_App->subheadFont);
             int textWidth = playdate->graphics->getTextWidth(
                 CB_App->subheadFont, button->title, strlen(button->title), kUTF8Encoding, 0
@@ -466,7 +465,8 @@ void CB_ListView_draw(CB_ListView* listView)
 
         for (int i = 0; i < listView->items->length; i++)
         {
-            CB_ListItem* item = listView->items->items[i];
+            CB_ListItemButton* button = listView->items->items[i];
+            CB_ListItem* item = &button->item;
 
             int rowY = listY + item->offsetY - listView->contentOffset;
 
@@ -490,8 +490,6 @@ void CB_ListView_draw(CB_ListView* listView)
 
             if (item->type == CB_ListViewItemTypeButton)
             {
-                CB_ListItemButton* itemButton = item->object;
-
                 if (selected)
                 {
                     playdate->graphics->setDrawMode(kDrawModeFillWhite);
@@ -532,18 +530,17 @@ void CB_ListView_draw(CB_ListView* listView)
 
                 playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
 
-                if (selected && itemButton->needsTextScroll)
+                if (selected && button->needsTextScroll)
                 {
-                    int scrolledX = textX - (int)itemButton->textScrollOffset;
+                    int scrolledX = textX - (int)button->textScrollOffset;
                     playdate->graphics->drawText(
-                        itemButton->title, strlen(itemButton->title), kUTF8Encoding, scrolledX,
-                        textY
+                        button->title, strlen(button->title), kUTF8Encoding, scrolledX, textY
                     );
                 }
                 else
                 {
                     playdate->graphics->drawText(
-                        itemButton->title, strlen(itemButton->title), kUTF8Encoding, textX, textY
+                        button->title, strlen(button->title), kUTF8Encoding, textX, textY
                     );
                 }
 
@@ -577,7 +574,8 @@ void CB_ListView_draw(CB_ListView* listView)
 static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bool animated)
 {
 
-    CB_ListItem* item = listView->items->items[index];
+    CB_ListItemButton* button = listView->items->items[index];
+    CB_ListItem* item = &button->item;
 
     int listHeight = listView->frame.height;
 
@@ -608,11 +606,10 @@ static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bo
 
     if (listView->selectedItem >= 0 && listView->selectedItem < listView->items->length)
     {
-        CB_ListItem* oldItem = listView->items->items[listView->selectedItem];
-        if (oldItem->type == CB_ListViewItemTypeButton)
+        CB_ListItemButton* oldButton = listView->items->items[listView->selectedItem];
+        if (oldButton->item.type == CB_ListViewItemTypeButton)
         {
-            CB_ListItemButton* button = oldItem->object;
-            button->textScrollOffset = 0;
+            oldButton->textScrollOffset = 0;
         }
     }
 
@@ -628,7 +625,7 @@ void CB_ListView_free(CB_ListView* listView)
     {
         for (int i = 0; i < listView->items->length; i++)
         {
-            CB_ListItem_free(listView->items->items[i]);
+            CB_ListItemButton_free(listView->items->items[i]);
         }
         array_free(listView->items);
     }
@@ -644,34 +641,27 @@ static CB_ListItem* CB_ListItem_new(void)
 
 CB_ListItemButton* CB_ListItemButton_new(char* title)
 {
+    CB_ListItemButton* button = cb_malloc(sizeof(CB_ListItemButton));
+    memset(button, 0, sizeof(CB_ListItemButton));
 
-    CB_ListItem* item = CB_ListItem_new();
+    button->item.type = CB_ListViewItemTypeButton;
+    button->item.height = CB_ListView_rowHeight;
+    button->item.object = NULL;
 
-    CB_ListItemButton* buttonItem = cb_malloc(sizeof(CB_ListItemButton));
-    buttonItem->item = item;
+    button->title = cb_strdup(title ? title : "There be dragons...");
+    button->coverImage = NULL;
+    button->textScrollOffset = 0.0f;
+    button->needsTextScroll = false;
 
-    item->type = CB_ListViewItemTypeButton;
-    item->object = buttonItem;
-
-    item->height = CB_ListView_rowHeight;
-
-    // If the title is NULL, slay dragons.
-    buttonItem->title = cb_strdup(title ? title : "There be dragons...");
-    buttonItem->coverImage = NULL;
-    buttonItem->textScrollOffset = 0.0f;
-    buttonItem->needsTextScroll = false;
-
-    return buttonItem;
-}
-
-static void CB_ListItem_super_free(CB_ListItem* item)
-{
-    cb_free(item);
+    return button;
 }
 
 void CB_ListItemButton_free(CB_ListItemButton* itemButton)
 {
-    CB_ListItem_super_free(itemButton->item);
+    if (!itemButton)
+    {
+        return;
+    }
 
     cb_free(itemButton->title);
 
@@ -685,8 +675,13 @@ void CB_ListItemButton_free(CB_ListItemButton* itemButton)
 
 void CB_ListItem_free(CB_ListItem* item)
 {
+    if (!item)
+    {
+        return;
+    }
+
     if (item->type == CB_ListViewItemTypeButton)
     {
-        CB_ListItemButton_free(item->object);
+        CB_ListItemButton_free((CB_ListItemButton*)item);
     }
 }

@@ -629,8 +629,8 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
     CB_Array* items = libraryScene->listView->items;
     for (int i = 0; i < items->length; i++)
     {
-        CB_ListItem* item = items->items[i];
-        CB_ListItem_free(item);
+        CB_ListItemButton* button = items->items[i];
+        CB_ListItemButton_free(button);
     }
     array_clear(items);
     array_reserve(items, libraryScene->games->length);
@@ -639,7 +639,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
     {
         CB_Game* game = libraryScene->games->items[i];
         CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
-        array_push(items, itemButton->item);
+        array_push(items, itemButton);
     }
 
     CB_ListView_reload(libraryScene->listView);
@@ -677,7 +677,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 {
                     CB_Game* game = libraryScene->games->items[libraryScene->build_index];
                     CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
-                    array_push(libraryScene->listView->items, itemButton->item);
+                    array_push(libraryScene->listView->items, itemButton);
                     libraryScene->build_index++;
                 }
 
