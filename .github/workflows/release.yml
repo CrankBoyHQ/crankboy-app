@@ -1,0 +1,174 @@
+name: Release Build
+
+on:
+    push:
+        tags:
+            - "v*.*.*"
+
+jobs:
+    build_device:
+        name: Create Release Device Build
+        runs-on: ubuntu-latest
+        steps:
+            # Step 1: Check out the repository's code and its submodules.
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+                  lfs: true
+
+            # Step 2: Setup ARM GCC Toolchain from Submodule
+            - name: Setup ARM GCC Toolchain
+              run: |
+                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
+                  echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+
+            # Step 3: Setup Playdate SDK from Submodule
+            - name: Setup Playdate SDK
+              run: |
+                  arm-none-eabi-gcc --version
+                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
+                  SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
+                  echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
+
+            # Step 4: Build the Project for Device
+            - name: Build Project for Device
+              run: make -j$(nproc) device
+
+            # Step 5: Package the device build as a zip file
+            - name: Package Device Build
+              run: zip -r CrankBoy-Device.zip CrankBoy.pdx
+
+            # Step 6: Upload the zipped artifact to be used in the release job
+            - name: Upload Device Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: device-build
+                  path: CrankBoy-Device.zip
+
+    build_simulator_linux:
+        name: Create Release Simulator Build (Linux)
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+                  lfs: true
+
+            - name: Setup ARM GCC Toolchain
+              run: |
+                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
+                  echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+
+            - name: Setup Playdate SDK
+              run: |
+                  arm-none-eabi-gcc --version
+                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
+                  SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
+                  echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
+
+            # Step 4: Build a universal .pdx for both Device and Simulator
+            - name: Build Universal Project (Device & Simulator)
+              run: make -j$(nproc)
+
+            # Step 5: Package the simulator build as a zip file
+            - name: Package Linux Simulator Build
+              run: zip -r CrankBoy-Simulator-Linux.zip CrankBoy.pdx
+
+            # Step 6: Upload the zipped artifact
+            - name: Upload Linux Simulator Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: simulator-linux-build
+                  path: CrankBoy-Simulator-Linux.zip
+
+    build_simulator_macos:
+        name: Create Release Simulator Build (macOS)
+        runs-on: macos-latest
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+                  lfs: true
+
+            - name: Unzip and Install Playdate SDK
+              run: |
+                  unzip toolchain/mac/PlaydateSDK-2.7.6.zip
+                  PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
+                  if [[ -z "$PKG_PATH" ]]; then
+                      echo "PlaydateSDK.pkg not found after unzipping!"
+                      exit 1
+                  fi
+                  sudo installer -pkg "$PKG_PATH" -target /
+                  echo "PLAYDATE_SDK_PATH=$HOME/Developer/PlaydateSDK" >> $GITHUB_ENV
+
+            - name: Build Universal Project (Device & Simulator)
+              run: make -j$(sysctl -n hw.ncpu)
+
+            - name: Package macOS Simulator Build
+              run: zip -r CrankBoy-Simulator-macOS.zip CrankBoy.pdx
+
+            - name: Upload macOS Simulator Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: simulator-macos-build
+                  path: CrankBoy-Simulator-macOS.zip
+
+    release:
+        name: Create Draft Release and Upload Assets
+        runs-on: ubuntu-latest
+        needs: [build_device, build_simulator_linux, build_simulator_macos]
+        permissions:
+            contents: write
+
+        steps:
+            # Step 1: Check out the repository's code with full history
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            # Step 2: Download all artifacts from the build jobs
+            - name: Download all build artifacts
+              uses: actions/download-artifact@v4
+              with:
+                  path: artifacts
+
+            # Step 3: Generate release notes with a changelog link
+            - name: Generate Release Notes
+              id: generate_notes
+              run: |
+                  # Get the previous tag by sorting all tags by version number in descending order and picking the second one
+                  PREVIOUS_TAG=$(git tag --sort=-v:refname | sed -n '2p')
+
+                  # Check if a previous tag was found
+                  if [ -n "$PREVIOUS_TAG" ]; then
+                    echo "Found previous tag: $PREVIOUS_TAG"
+                    COMPARE_URL="https://github.com/${{ github.repository }}/compare/${PREVIOUS_TAG}...${{ github.ref_name }}"
+                  else
+                    # If no previous tag, compare against the first commit of the repo
+                    echo "No previous tag found. Comparing against the initial commit."
+                    FIRST_COMMIT=$(git rev-list --max-parents=0 HEAD)
+                    COMPARE_URL="https://github.com/${{ github.repository }}/compare/${FIRST_COMMIT}...${{ github.ref_name }}"
+                  fi
+
+                  # Using a heredoc to save the multiline release notes to a GitHub Actions environment variable
+                  # This makes it available to subsequent steps as `env.RELEASE_NOTES`
+                  echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
+                  echo "**Full Changelog**: ${COMPARE_URL}" >> $GITHUB_ENV
+                  echo 'EOF' >> $GITHUB_ENV
+
+            # Step 4: Create a new draft release and upload the assets
+            - name: Create Draft Release and Upload Assets
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh release create ${{ github.ref_name }} \
+                    --draft \
+                    --title "Release ${{ github.ref_name }}" \
+                    --notes "${{ env.RELEASE_NOTES }}" \
+                    artifacts/**/*.zip
