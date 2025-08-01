@@ -31,16 +31,33 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 
 First, download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest), or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml) (you must be logged into GitHub to access the nightly).
 
-There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
+### Installing CrankBoy
+
+- **Web sideload**
+    1. Open the [Web sideload page](https://play.date/account/sideload/) and login to your account.
+    2. Upload the `pdx` or `zip` file.
+    3. Wait for your Playdate to download and install CrankBoy.
+- **USB sideload**
+    1. Connect your Playdate to a computer and unlock it.
+    2. Put the Playdate into Data Disk mode.
+    3. Copy the `pdx`to the `Games` folder.
+- **Simlutator sideload**
+    1. Download the Simulator build for your OS (Linux or macOS)
+    2. Connect your Playdate to a computer and unlock it.
+    3. Open the `pdx` in the Simulator.
+    4. Press `Alt+U` on Linux or `⌘+U` on macOS.
+
+> Note: Simulator sideloading is not supported on Windows.
+
+#### There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
 
 ### Installing ROMs (USB)
 
-- Copy the pdx through the [Web sideload](https://play.date/account/sideload/) or USB.
 - Launch the app at least once.
-- Connect Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
+- Connect your Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder; the folder name depends on the sideload method.
     - For Web sideload: `/Data/user.*.app.crankboyhq.crankboy/games/`
-    - For USB: `/Data/app.crankboyhq.crankboy/games/`
+    - For USB/Simulator: `/Data/app.crankboyhq.crankboy/games/`
 - ROM filenames must end with `.gb` or `.gbc`
 - Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, or `.bmp`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
