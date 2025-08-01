@@ -22,6 +22,13 @@ extern PlaydateAPI* playdate;
 #define CB_DEBUG_UPDATED_ROWS false
 #define ENABLE_RENDER_PROFILER false
 
+/* Enables (1) or disables (0) CPU validation in the Simulator.
+ * Use this if you make changes to the optimized CPU instructions
+ * and want to test them agains the unoptimized path.
+ * Note: use this for debugging only.
+ */
+#define ENABLE_CPU_VALIDATION 0
+
 #define CB_LCD_WIDTH 320
 #define CB_LCD_HEIGHT 240
 #define CB_LCD_ROWSIZE 40
@@ -208,13 +215,19 @@ static inline float toward(float x, float dst, float step)
 #endif
 
 #ifdef TARGET_SIMULATOR
-#define CPU_VALIDATE 1
+#define CPU_VALIDATE ENABLE_CPU_VALIDATION
+
+#if CPU_VALIDATE == 1
 #define CB_ASSERT(x) \
     if (!(x))        \
         playdate->system->error("ASSERTION FAILED: %s", #x);
 #else
+#define CB_ASSERT(x) ((void)0)
+#endif
+
+#else
 #define CPU_VALIDATE 0
-#define CB_ASSERT(x)
+#define CB_ASSERT(x) ((void)0)
 #endif
 
 // compute the next highest power of 2 of 32-bit v,
