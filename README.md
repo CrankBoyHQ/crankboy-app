@@ -41,7 +41,7 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     1. Connect your Playdate to a computer and unlock it.
     2. Put the Playdate into Data Disk mode.
     3. Copy the `pdx`to the `Games` folder.
-- **Simlutator sideload**
+- **Simulator sideload**
     1. Download the Simulator build for your OS (Linux or macOS)
     2. Connect your Playdate to a computer and unlock it.
     3. Open the `pdx` in the Simulator.
@@ -49,10 +49,11 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
 
 > Note: Simulator sideloading is not supported on Windows.
 
-#### There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
+### Installing ROMs
 
-### Installing ROMs (USB)
+There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
 
+#### USB
 - Launch the app at least once.
 - Connect your Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder; the folder name depends on the sideload method.
@@ -61,7 +62,7 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
 - ROM filenames must end with `.gb` or `.gbc`
 - Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, or `.bmp`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
-### Installing ROMs (PDX)
+#### PDX
 
 - Add your ROMs (`.gb` or `.gbc`) to the PDX zip file.
     - On **macOS**, _control-/right-click_ on the `CrankBoy.pdx` and select `Show Package Contents`; macOS will
@@ -88,6 +89,7 @@ Then, you can enable, disable, and reorder your patches by going to `⊙ > setti
 ## Tips
 
 - You can delete cover art by holding Ⓑ for more than 5 seconds.
+- Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or setting the crank to 6 o'clock (down).
 
 ## Bundle Mode
 
