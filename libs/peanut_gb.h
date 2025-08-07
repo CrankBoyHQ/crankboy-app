@@ -2070,16 +2070,22 @@ __core_section("short") static uint16_t __gb_pop16(struct gb_s* restrict gb)
 
 __core_section("short") static void __gb_push16(struct gb_s* restrict gb, u16 v)
 {
-    gb->cpu_reg.sp -= 2;
-
-    if likely (gb->cpu_reg.sp >= HRAM_ADDR && gb->cpu_reg.sp < HRAM_ADDR + 0x7E)
+    if likely (gb->cpu_reg.sp >= HRAM_ADDR + 2)
     {
-        gb->hram[gb->cpu_reg.sp - IO_ADDR] = v & 0xFF;
-        gb->hram[gb->cpu_reg.sp - IO_ADDR + 1] = v >> 8;
-        return;
-    };
+        gb->cpu_reg.sp--;
+        gb->hram[gb->cpu_reg.sp - IO_ADDR] = v >> 8;
 
-    __gb_write16(gb, gb->cpu_reg.sp, v);
+        gb->cpu_reg.sp--;
+        gb->hram[gb->cpu_reg.sp - IO_ADDR] = v & 0xFF;
+    }
+    else
+    {
+        gb->cpu_reg.sp--;
+        __gb_write(gb, gb->cpu_reg.sp, v >> 8);
+
+        gb->cpu_reg.sp--;
+        __gb_write(gb, gb->cpu_reg.sp, v & 0xFF);
+    }
 }
 
 __core static uint8_t __gb_execute_cb(struct gb_s* gb)
