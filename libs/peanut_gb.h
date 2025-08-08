@@ -448,6 +448,8 @@ struct gb_s
     /* Whether the MBC has internal RAM. */
     uint8_t cart_ram : 1;
     uint8_t cart_battery : 1;
+    uint8_t is_mbc1m : 1;
+    uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
 
     // state flags for cart ram
     uint8_t enable_cart_ram : 1;
@@ -864,6 +866,28 @@ static uint8_t gb_original_rom[0x100];
 // extended ram feature offered by crankboy
 static uint8_t xram[0x100 - 0xA0];
 
+/* Detect MBC1M (multi-cart) by scanning for a Nintendo logo
+ * at 0x0104 in banks 0x10/0x20/0x30 when ROM size >= 512 KiB. */
+__section__(".rare") static uint8_t __gb_detect_mbc1m(const struct gb_s* gb)
+{
+    if (gb->mbc != 1 || gb->gb_rom_size < 0x80000)
+        return false;
+
+    static const uint8_t logo[] = {0xCE, 0xED, 0x66, 0x66};
+    static const int banks_to_check[] = {0x10, 0x20, 0x30};
+
+    for (int i = 0; i < 3; i++)
+    {
+        size_t off = (size_t)banks_to_check[i] * ROM_BANK_SIZE + 0x0104;
+        if (off + sizeof(logo) <= gb->gb_rom_size &&
+            memcmp(&gb->gb_rom[off], logo, sizeof(logo)) == 0)
+        {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 __section__(".rare.cb") static void __gb_rare_write(
     struct gb_s* gb, const uint16_t addr, const uint8_t val
 )
@@ -1000,23 +1024,7 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
     case 0x1:
     case 0x2:
     case 0x3:
-        // Check for MBC1 in Mode 1
-        if (gb->mbc == 1 && gb->cart_mode_select)
-        {
-            // In this mode, the 0000-3FFF area is banked using the upper
-            // two bits from the 4000-5FFF register.
-            // The lower 5 bits of the bank number are treated as 0.
-            uint32_t bank_number = (gb->selected_rom_bank & 0x60);
-            uint32_t bank_offset = bank_number * ROM_BANK_SIZE;
-            uint32_t rom_addr = bank_offset + addr;
-
-            return gb->gb_rom[rom_addr & (gb->num_rom_banks_mask * ROM_BANK_SIZE + 0x3FFF)];
-        }
-        else
-        {
-            // Default behavior (Mode 0 or not MBC1)
-            return gb->gb_rom[addr];
-        }
+        return gb->gb_rom[gb->zero_bank_base + addr];
 
     case 0x4:
     case 0x5:
@@ -1550,11 +1558,8 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         // Handle other MBCs (MBC1, 3, 5,) which have distinct register ranges.
         else if (addr < 0x2000)  // Address is 0000-1FFF (RAM Enable)
         {
-
             if (gb->mbc == 7)
-            {
                 gb->mbc7.ram_enable_1 = ((val & 0x0F) == 0x0A);
-            }
             else if (gb->mbc > 0 && gb->cart_ram)
                 gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
         }
@@ -1562,9 +1567,20 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         {
             if (gb->mbc == 1)
             {
-                gb->selected_rom_bank = (val & 0x1F) | (gb->selected_rom_bank & 0x60);
-                if ((gb->selected_rom_bank & 0x1F) == 0x00)
-                    gb->selected_rom_bank++;
+                if (gb->is_mbc1m)
+                {
+                    uint8_t lo = (val & 0x0F);
+                    if (lo == 0x00)
+                        lo = 0x01;  // 00->01 quirk for low nibble
+                    gb->selected_rom_bank = (gb->selected_rom_bank & 0x30) | lo;
+                }
+                else
+                {
+                    uint8_t lo = (val & 0x1F);
+                    if (lo == 0x00)
+                        lo = 0x01;  // 00->01 quirk for low 5 bits
+                    gb->selected_rom_bank = (gb->selected_rom_bank & 0x60) | lo;
+                }
             }
             else if (gb->mbc == 3)
             {
@@ -1603,8 +1619,20 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         if (gb->mbc == 1)
         {
             gb->cart_ram_bank = (val & 3);
-            gb->selected_rom_bank = ((val & 3) << 5) | (gb->selected_rom_bank & 0x1F);
-            gb->selected_rom_bank = gb->selected_rom_bank & gb->num_rom_banks_mask;
+
+            if likely (!gb->is_mbc1m)
+            {
+                // Standard MBC1: sets bits 5–6 of the ROM bank
+                gb->selected_rom_bank = ((val & 3) << 5) | (gb->selected_rom_bank & 0x1F);
+            }
+            else
+            {
+                // MBC1M: sets bits 4–5 of the ROM bank (selects the 0x10/0x20/0x30 group)
+                gb->selected_rom_bank = ((val & 3) << 4) | (gb->selected_rom_bank & 0x0F);
+                gb->zero_bank_base = ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE;
+            }
+
+            gb->selected_rom_bank &= gb->num_rom_banks_mask;
             __gb_update_selected_bank_addr(gb);
         }
         else if (gb->mbc == 3)
@@ -1628,7 +1656,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
             gb->rtc_latch_s1 = (val == 0x00);
         }
-        else if (gb->mbc == 1)
+        else if (gb->mbc == 1 && !gb->is_mbc1m)
         {
             gb->cart_mode_select = (val & 1);
             __gb_update_selected_cart_bank_addr(gb);
@@ -1948,7 +1976,7 @@ __core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t
 {
     if likely (addr < 0x4000)
     {
-        return gb->gb_rom[addr];
+        return gb->gb_rom[gb->zero_bank_base + addr];
     }
     if likely (addr < 0x8000)
     {
@@ -2034,15 +2062,18 @@ __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
     u16 v;
     u16 addr = gb->cpu_reg.pc;
 
-    if likely (addr < 0x3FFF)
+    if likely (addr < 0x4000)
     {
-        v = gb->gb_rom[addr];
-        v |= gb->gb_rom[addr + 1] << 8;
+        const uint32_t base = gb->zero_bank_base;
+        uint8_t lo = gb->gb_rom[base + addr];
+        uint8_t hi = gb->gb_rom[base + addr + 1];
+        v = lo | ((u16)hi << 8);
     }
-    else if likely (addr >= 0x4000 && addr < 0x7FFF)
+    else if likely (addr < 0x8000)
     {
-        v = gb->selected_bank_addr[addr];
-        v |= gb->selected_bank_addr[addr + 1] << 8;
+        uint8_t lo = gb->selected_bank_addr[addr];
+        uint8_t hi = gb->selected_bank_addr[addr + 1];
+        v = lo | ((u16)hi << 8);
     }
     else
     {
@@ -5988,6 +6019,12 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
         memcpy(preserved_fields[i], preserved_data + i, sizeof(void*));
     }
 
+    // Re-detect and sanitize for old states; recompute cached base (cold path)
+    gb->is_mbc1m = __gb_detect_mbc1m(gb);
+    if (gb->is_mbc1m)
+        gb->cart_mode_select = 0;
+    gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
+
     // wram
     memcpy(gb->wram, in, WRAM_SIZE);
     in += WRAM_SIZE;
@@ -6318,6 +6355,12 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
 
+    gb->is_mbc1m = __gb_detect_mbc1m(gb);
+    if (gb->is_mbc1m)
+        gb->cart_mode_select = 0;
+    // Initialize cached base (0 for non-MBC1M)
+    gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
+
     gb->lcd_blank = 0;
 
     gb->direct.sound = ENABLE_SOUND;
@@ -6396,10 +6439,13 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
     size_t pc = gb->cpu_reg.pc - 1;
     if (pc >= 0x8000)
         return 0;
-    size_t rom_addr =
-        (pc < 0x4000)
-            ? pc
-            : (pc % 0x4000) | ((gb->selected_rom_bank & gb->num_rom_banks_mask) * ROM_BANK_SIZE);
+
+    // Use cached zero-bank base (0 for non-MBC1M)
+    uint32_t base_or_bank =
+        (pc < 0x4000) ? gb->zero_bank_base
+                      : ((gb->selected_rom_bank & gb->num_rom_banks_mask) * ROM_BANK_SIZE);
+
+    size_t rom_addr = base_or_bank + (pc % 0x4000);
 
     for (int i = 0; i < MAX_BREAKPOINTS; ++i)
     {
@@ -6429,17 +6475,13 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
 
             // if bank,PC did not change, perform replaced instruction
             if (prev_pc == gb->cpu_reg.pc && prev_bank == gb->selected_rom_bank)
-            {
                 cycles = __gb_run_instruction_micro(gb);
-            }
 
             // restore breakpoint
             gb->breakpoints[i].opcode = gb->gb_rom[rom_addr];
             gb->gb_rom[rom_addr] = CB_HW_BREAKPOINT_OPCODE;
             return cycles <= 0 ? 4 : cycles;
         }
-
-        return 1;
     }
 
     return 0;
