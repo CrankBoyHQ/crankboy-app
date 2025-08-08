@@ -2037,9 +2037,33 @@ __core_section("util") clalign
     } while (len > 0);
 }
 
+__core_section("short") static bool is_aligned(const void* pointer)
+{
+    return ((uintptr_t)pointer & (sizeof(uint16_t) - 1)) == 0;
+}
+
 __core_section("short") static uint16_t __gb_read16(struct gb_s* restrict gb, u16 addr)
 {
-    // TODO: optimize
+    // Fast path for WRAM
+    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
+    {
+        void* ptr = &gb->wram[addr - WRAM_0_ADDR];
+        if (is_aligned(ptr))
+        {
+            return *(uint16_t*)ptr;
+        }
+    }
+    // Fast path for HRAM
+    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+    {
+        void* ptr = &gb->hram[addr - HRAM_ADDR];
+        if (is_aligned(ptr))
+        {
+            return *(uint16_t*)ptr;
+        }
+    }
+
+    // Fallback for all other cases (unaligned, ROM, I/O, etc.)
     u16 v = __gb_read(gb, addr);
     v |= (u16)__gb_read(gb, addr + 1) << 8;
     return v;
@@ -2047,7 +2071,28 @@ __core_section("short") static uint16_t __gb_read16(struct gb_s* restrict gb, u1
 
 __core_section("short") static void __gb_write16(struct gb_s* restrict gb, u16 addr, u16 v)
 {
-    // TODO: optimize
+    // Fast path for WRAM
+    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
+    {
+        void* ptr = &gb->wram[addr - WRAM_0_ADDR];
+        if (is_aligned(ptr))
+        {
+            *(uint16_t*)ptr = v;
+            return;
+        }
+    }
+    // Fast path for HRAM
+    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+    {
+        void* ptr = &gb->hram[addr - HRAM_ADDR];
+        if (is_aligned(ptr))
+        {
+            *(uint16_t*)ptr = v;
+            return;
+        }
+    }
+
+    // Fallback for unaligned or other memory regions
     __gb_write(gb, addr, v & 0xFF);
     __gb_write(gb, addr + 1, v >> 8);
 }
@@ -2059,28 +2104,31 @@ __core_section("short") static uint8_t __gb_fetch8(struct gb_s* restrict gb)
 
 __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
 {
-    u16 v;
     u16 addr = gb->cpu_reg.pc;
 
+    if (addr == 0x3FFF || addr == 0x7FFF)
+    {
+        gb->cpu_reg.pc += 2;
+        return __gb_read16(gb, addr);
+    }
+
+    uint8_t* rom_ptr;
     if likely (addr < 0x4000)
     {
-        const uint32_t base = gb->zero_bank_base;
-        uint8_t lo = gb->gb_rom[base + addr];
-        uint8_t hi = gb->gb_rom[base + addr + 1];
-        v = lo | ((u16)hi << 8);
+        rom_ptr = &gb->gb_rom[gb->zero_bank_base + addr];
     }
     else if likely (addr < 0x8000)
     {
-        uint8_t lo = gb->selected_bank_addr[addr];
-        uint8_t hi = gb->selected_bank_addr[addr + 1];
-        v = lo | ((u16)hi << 8);
+        rom_ptr = &gb->selected_bank_addr[addr];
     }
     else
     {
-        v = __gb_read16(gb, addr);
+        gb->cpu_reg.pc += 2;
+        return __gb_read16(gb, addr);
     }
+
     gb->cpu_reg.pc += 2;
-    return v;
+    return *(uint16_t*)rom_ptr;
 }
 
 __core_section("short") static uint16_t __gb_pop16(struct gb_s* restrict gb)
