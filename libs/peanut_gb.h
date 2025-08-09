@@ -201,7 +201,7 @@ typedef int16_t s16;
 #define PEANUT_GB_ARRAYSIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define CB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
-#define CB_SAVE_STATE_VERSION 0
+#define CB_SAVE_STATE_VERSION 1
 
 #define IO_PLAYDATE_EXTENSION_CTL 0x57
 #define IO_PLAYDATE_EXTENSION_CRANK_LO 0x58
@@ -5984,7 +5984,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     // at least enough to read save header, rom header, and gb struct fields
     if (size < sizeof(struct StateHeader) + sizeof(struct gb_s) + ROM_HEADER_SIZE)
     {
-        return "State size too small";
+        return "State size too small.";
     }
 
     struct StateHeader* header = (struct StateHeader*)in;
@@ -5992,23 +5992,22 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
 
     if (strncmp(header->magic, CB_SAVE_STATE_MAGIC, sizeof(header->magic)))
     {
-        return "Not a CrankBoy savestate";
+        return "Not a CrankBoy savestate.";
     }
 
     if (header->version < CB_SAVE_STATE_VERSION)
     {
-        return "State comes from an incompatible older version of CrankBoy";
+        return "State comes from an incompatible older version of CrankBoy.";
     }
 
     if (header->version > CB_SAVE_STATE_VERSION)
     {
-        return "State comes from an incompatible future version of CrankBoy";
+        return "State comes from an incompatible future version of CrankBoy.";
     }
 
     if (header->bits != sizeof(void*))
     {
-        return "State 64-bit/32-bit mismatch (note: Playdate/Simulator states "
-               "cannot be shared)";
+        return "State is for a different device (Playdate vs Simulator).";
     }
 
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -6066,12 +6065,6 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     {
         memcpy(preserved_fields[i], preserved_data + i, sizeof(void*));
     }
-
-    // Re-detect and sanitize for old states; recompute cached base (cold path)
-    gb->is_mbc1m = __gb_detect_mbc1m(gb);
-    if (gb->is_mbc1m)
-        gb->cart_mode_select = 0;
-    gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
 
     // wram
     memcpy(gb->wram, in, WRAM_SIZE);

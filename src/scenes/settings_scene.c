@@ -219,8 +219,6 @@ static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* setti
 {
     if (!load_state(gameScene, preferences_save_state_slot))
     {
-        const char* options[] = {"OK", NULL};
-        CB_presentModal(CB_Modal_new("Failed to load state.", options, NULL, NULL)->scene);
         playdate->system->logToConsole("Error loading state %d", 0);
     }
     else

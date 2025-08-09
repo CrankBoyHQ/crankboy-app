@@ -2222,6 +2222,19 @@ __section__(".text.tick") __space static void save_check(struct gb_s* gb)
     }
 }
 
+static const char* loadStateErrorOptions[] = {"OK", "Details", NULL};
+
+__section__(".rare") static void CB_LoadStateErrorModalCallback(void* userdata, int option)
+{
+    char* details = (char*)userdata;
+    if (option == 1 && details)
+    {
+        CB_presentModal(CB_Modal_new(details, NULL, NULL, NULL)->scene);
+    }
+    if (details)
+        cb_free(details);
+}
+
 void CB_LibraryConfirmModal(void* userdata, int option)
 {
     CB_GameScene* gameScene = userdata;
@@ -2969,6 +2982,26 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                         {
                             success = false;
                             playdate->system->logToConsole("Error loading state! %s", res);
+
+                            char* details = NULL;
+                            playdate->system->formatString(&details, "%s", res);
+
+                            if (details)
+                            {
+                                // First modal: generic message + OK/Details
+                                CB_presentModal(CB_Modal_new(
+                                                    "Failed to load state.", loadStateErrorOptions,
+                                                    CB_LoadStateErrorModalCallback, details
+                                )
+                                                    ->scene);
+                            }
+                            else
+                            {
+                                // Fallback: 1-button modal
+                                CB_presentModal(
+                                    CB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene
+                                );
+                            }
                         }
                     }
 
