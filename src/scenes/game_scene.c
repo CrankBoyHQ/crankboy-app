@@ -120,47 +120,6 @@ const uint16_t CB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1010 << 4) | (0b0000 << 8) | (0b0000 << 12),
 };
 
-// LUTs for 30fps frame blending with dithering.
-static uint8_t blend_dither_lut_even_row[256][256];
-static uint8_t blend_dither_lut_odd_row[256][256];
-
-__section__(".rare") static void generate_blend_dither_luts(void)
-{
-    static const uint8_t dither_patterns[7][2] = {{0, 0}, {0, 1}, {1, 1}, {1, 2},
-                                                  {2, 2}, {2, 3}, {3, 3}};
-
-    for (int y_is_odd = 0; y_is_odd < 2; y_is_odd++)
-    {
-        for (int byte_A_val = 0; byte_A_val < 256; byte_A_val++)
-        {
-            for (int byte_B_val = 0; byte_B_val < 256; byte_B_val++)
-            {
-
-                uint8_t blended_byte = 0;
-                for (int p = 0; p < 4; p++)
-                {
-                    uint8_t pixel_A = (byte_A_val >> (p * 2)) & 3;
-                    uint8_t pixel_B = (byte_B_val >> (p * 2)) & 3;
-
-                    const uint8_t* pattern = dither_patterns[pixel_A + pixel_B];
-
-                    uint8_t final_pixel = pattern[(y_is_odd + p) & 1];
-                    blended_byte |= (final_pixel << (p * 2));
-                }
-
-                if (y_is_odd)
-                {
-                    blend_dither_lut_odd_row[byte_A_val][byte_B_val] = blended_byte;
-                }
-                else
-                {
-                    blend_dither_lut_even_row[byte_A_val][byte_B_val] = blended_byte;
-                }
-            }
-        }
-    }
-}
-
 __section__(".rare") static void generate_dither_luts(void)
 {
     uint32_t dither_lut = CB_dither_lut_c0[preferences_dither_pattern] |
@@ -405,7 +364,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     CB_GameScene_generateBitmask();
 
-    generate_blend_dither_luts();
     generate_dither_luts();
 
     CB_GameScene_selector_init(gameScene);
@@ -1790,28 +1748,90 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // and must blend it with Frame A.
             if (!screen_is_static)
             {
+                static const uint8_t dither_patterns[7][2] = {{0, 0}, {0, 1}, {1, 1}, {1, 2},
+                                                              {2, 2}, {2, 3}, {3, 3}};
+
                 uint8_t* frameA_row = frame_A_buffer;
                 uint8_t* frameB_row = context->gb->lcd;
 
                 for (int y = 0; y < LCD_HEIGHT; y++)
                 {
-                    uint8_t (*lut)[256] =
-                        (y & 1) ? blend_dither_lut_odd_row : blend_dither_lut_even_row;
+                    int y_is_odd = y & 1;
 
-                    uint32_t* frameA_word = (uint32_t*)frameA_row;
-                    uint32_t* frameB_word = (uint32_t*)frameB_row;
+                    uint32_t* a_word_ptr = (uint32_t*)frameA_row;
+                    uint32_t* b_word_ptr = (uint32_t*)frameB_row;
 
                     for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
                     {
-                        uint32_t a = *frameA_word++;
-                        uint32_t b = *frameB_word;
+                        uint32_t a_word = *a_word_ptr++;
+                        uint32_t b_word = *b_word_ptr;
 
-                        uint8_t p0 = lut[(a >> 0) & 0xFF][(b >> 0) & 0xFF];
-                        uint8_t p1 = lut[(a >> 8) & 0xFF][(b >> 8) & 0xFF];
-                        uint8_t p2 = lut[(a >> 16) & 0xFF][(b >> 16) & 0xFF];
-                        uint8_t p3 = lut[(a >> 24) & 0xFF][(b >> 24) & 0xFF];
+                        uint8_t a0 = (a_word >> 0) & 0xFF;
+                        uint8_t b0 = (b_word >> 0) & 0xFF;
+                        uint8_t blended_byte0 = 0;
+                        blended_byte0 |=
+                            dither_patterns[((a0 >> 0) & 3) + ((b0 >> 0) & 3)][(y_is_odd + 0) & 1]
+                            << 0;
+                        blended_byte0 |=
+                            dither_patterns[((a0 >> 2) & 3) + ((b0 >> 2) & 3)][(y_is_odd + 1) & 1]
+                            << 2;
+                        blended_byte0 |=
+                            dither_patterns[((a0 >> 4) & 3) + ((b0 >> 4) & 3)][(y_is_odd + 2) & 1]
+                            << 4;
+                        blended_byte0 |=
+                            dither_patterns[((a0 >> 6) & 3) + ((b0 >> 6) & 3)][(y_is_odd + 3) & 1]
+                            << 6;
 
-                        *frameB_word++ = (p3 << 24) | (p2 << 16) | (p1 << 8) | p0;
+                        uint8_t a1 = (a_word >> 8) & 0xFF;
+                        uint8_t b1 = (b_word >> 8) & 0xFF;
+                        uint8_t blended_byte1 = 0;
+                        blended_byte1 |=
+                            dither_patterns[((a1 >> 0) & 3) + ((b1 >> 0) & 3)][(y_is_odd + 0) & 1]
+                            << 0;
+                        blended_byte1 |=
+                            dither_patterns[((a1 >> 2) & 3) + ((b1 >> 2) & 3)][(y_is_odd + 1) & 1]
+                            << 2;
+                        blended_byte1 |=
+                            dither_patterns[((a1 >> 4) & 3) + ((b1 >> 4) & 3)][(y_is_odd + 2) & 1]
+                            << 4;
+                        blended_byte1 |=
+                            dither_patterns[((a1 >> 6) & 3) + ((b1 >> 6) & 3)][(y_is_odd + 3) & 1]
+                            << 6;
+
+                        uint8_t a2 = (a_word >> 16) & 0xFF;
+                        uint8_t b2 = (b_word >> 16) & 0xFF;
+                        uint8_t blended_byte2 = 0;
+                        blended_byte2 |=
+                            dither_patterns[((a2 >> 0) & 3) + ((b2 >> 0) & 3)][(y_is_odd + 0) & 1]
+                            << 0;
+                        blended_byte2 |=
+                            dither_patterns[((a2 >> 2) & 3) + ((b2 >> 2) & 3)][(y_is_odd + 1) & 1]
+                            << 2;
+                        blended_byte2 |=
+                            dither_patterns[((a2 >> 4) & 3) + ((b2 >> 4) & 3)][(y_is_odd + 2) & 1]
+                            << 4;
+                        blended_byte2 |=
+                            dither_patterns[((a2 >> 6) & 3) + ((b2 >> 6) & 3)][(y_is_odd + 3) & 1]
+                            << 6;
+
+                        uint8_t a3 = (a_word >> 24) & 0xFF;
+                        uint8_t b3 = (b_word >> 24) & 0xFF;
+                        uint8_t blended_byte3 = 0;
+                        blended_byte3 |=
+                            dither_patterns[((a3 >> 0) & 3) + ((b3 >> 0) & 3)][(y_is_odd + 0) & 1]
+                            << 0;
+                        blended_byte3 |=
+                            dither_patterns[((a3 >> 2) & 3) + ((b3 >> 2) & 3)][(y_is_odd + 1) & 1]
+                            << 2;
+                        blended_byte3 |=
+                            dither_patterns[((a3 >> 4) & 3) + ((b3 >> 4) & 3)][(y_is_odd + 2) & 1]
+                            << 4;
+                        blended_byte3 |=
+                            dither_patterns[((a3 >> 6) & 3) + ((b3 >> 6) & 3)][(y_is_odd + 3) & 1]
+                            << 6;
+
+                        *b_word_ptr++ = (blended_byte3 << 24) | (blended_byte2 << 16) |
+                                        (blended_byte1 << 8) | blended_byte0;
                     }
 
                     frameA_row += LCD_WIDTH_PACKED;
