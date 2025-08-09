@@ -434,12 +434,15 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
         context->rom = rom;
 
-        static uint8_t lcd[LCD_SIZE];
+        static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
 
         enum gb_init_error_e gb_ret = gb_init(
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
         );
+
+        CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
+        CB_ASSERT((((uintptr_t)context->previous_lcd) & 7) == 0);
 
         if (CB_App->bootRomData && preferences_bios)
         {
@@ -1757,16 +1760,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         int scale_index_for_calc = dither_preference;
 #endif
 
-        if (memcmp(current_lcd, previous_lcd, LCD_SIZE) != 0)
+        if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
         {
             for (int y = 0; y < LCD_HEIGHT; y++)
             {
-                if (memcmp(
-                        &current_lcd[y * LCD_WIDTH_PACKED], &previous_lcd[y * LCD_WIDTH_PACKED],
-                        LCD_WIDTH_PACKED
-                    ) != 0)
+                uint8_t* cur = &current_lcd[y * LCD_WIDTH_PACKED];
+                uint8_t* prv = &previous_lcd[y * LCD_WIDTH_PACKED];
+
+                if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
                 {
                     line_has_changed[y / 16] |= (1 << (y % 16));
+
+                    ITCM_CORE_FN(gb_fast_memcpy_64)(prv, cur, LCD_WIDTH_PACKED);
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
                     if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
@@ -1914,9 +1919,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 CB_dither_lut_row0, CB_dither_lut_row1
             );
 
-            ITCM_CORE_FN(gb_fast_memcpy_64)(
-                context->previous_lcd, current_lcd, LCD_WIDTH_PACKED * LCD_HEIGHT
-            );
+            if (gbScreenRequiresFullRefresh)
+            {
+                ITCM_CORE_FN(gb_fast_memcpy_64)(
+                    context->previous_lcd, current_lcd, LCD_BUFFER_BYTES
+                );
+            }
         }
 
         // Always request the update loop to run at 30 FPS.

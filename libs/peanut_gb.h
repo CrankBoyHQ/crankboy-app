@@ -152,15 +152,12 @@ typedef int16_t s16;
 #define LCD_BITS_PER_PIXEL (8 / LCD_PACKING)
 #define LCD_WIDTH_PACKED (LCD_WIDTH / LCD_PACKING)
 #define LCD_HEIGHT 144
-#define LCD_FRAME_CYCLES (LCD_LINE_CYCLES * LCD_VERT_LINES)
+#define LCD_BUFFER_BYTES (LCD_HEIGHT * LCD_WIDTH_PACKED)
 
 /* Simplified PPU timing model for performance */
 #define PPU_MODE_2_OAM_CYCLES 80
 #define PPU_MODE_3_VRAM_CYCLES 168
 #define PPU_MODE_0_HBLANK_CYCLES 208 /* 456 - 80 - 168 */
-
-// FIXME -- do we need *2? Was intended for front buffer / back buffer
-#define LCD_SIZE (LCD_HEIGHT * LCD_WIDTH_PACKED * 2)
 
 // 2 tile indexing modes
 // 2 screens
@@ -2024,17 +2021,21 @@ __core_section("short") static void __gb_write(
 __core_section("util") clalign
     void gb_fast_memcpy_64(void* restrict _dst, const void* restrict _src, size_t len)
 {
-    CB_ASSERT(len % 8 == 0);
-    CB_ASSERT(len > 0);
-    uint64_t* dst = _dst;
-    const uint64_t* src = _src;
-    do
+    CB_ASSERT((len & 7) == 0);
+
+    if ((((uintptr_t)_dst | (uintptr_t)_src) & 7) != 0)
     {
-        dst[0] = src[0];
-        len -= 8;
-        dst++;
-        src++;
-    } while (len > 0);
+        memcpy(_dst, _src, len);
+        return;
+    }
+
+    const uint64_t* src = (const uint64_t*)_src;
+    uint64_t* dst = (uint64_t*)_dst;
+
+    for (size_t n = len >> 3; n; --n)
+    {
+        *dst++ = *src++;
+    }
 }
 
 __core_section("short") static bool is_aligned(const void* pointer)
@@ -6092,7 +6093,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     in += MAX_BREAKPOINTS * sizeof(gb_breakpoint);
 
     // clear caches and other presentation-layer data
-    memset(gb->lcd, 0, LCD_SIZE);
+    memset(gb->lcd, 0, LCD_BUFFER_BYTES);
 #if ENABLE_BGCACHE
     for (size_t i = 0; i < 0x800; ++i)
     {

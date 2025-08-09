@@ -76,7 +76,7 @@ typedef struct CB_GameSceneContext
     uint8_t vram[VRAM_SIZE];
     uint8_t* rom;
     uint8_t* cart_ram;
-    uint8_t previous_lcd[LCD_HEIGHT * LCD_WIDTH_PACKED];  // Buffer for the previous frame's LCD
+    clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
 } CB_GameSceneContext;
 
 struct ScriptState;
