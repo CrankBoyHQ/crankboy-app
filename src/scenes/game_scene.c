@@ -1385,6 +1385,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         return;
     }
 
+    static bool was_scrolling_dither_stable = false;
+    bool force_all_lines_dirty = false;
+
     setCrankSoundsEnabled(
         !preferences_crank_dock_button && !preferences_crank_undock_button &&
         preferences_crank_mode != CRANK_MODE_START_SELECT
@@ -1838,16 +1841,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         bool stable_scaling_enabled = preferences_dither_stable;
         int scy = context->gb->gb_reg.SCY;
 
+        const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
+        if (preferences_dither_stable && scy % scaling != last_scy % scaling)
         {
-            const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
-            if (preferences_dither_stable && scy % scaling != last_scy % scaling)
-            {
-                // dither-stable currently requires a total refresh when the screen scrolls.
-                // TODO: we don't need a full refresh if we can identify adjacent rows that are the
-                // same.
-                gbScreenRequiresFullRefresh = true;
-                last_scy = scy;
-            }
+            force_all_lines_dirty = true;
+            last_scy = scy;
         }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
@@ -2000,7 +1998,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if (actual_gb_draw_needed)
         {
-            if (gbScreenRequiresFullRefresh)
+            if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
                 for (int i = 0; i < LCD_HEIGHT / 16; i++)
                 {
@@ -2014,7 +2012,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 CB_dither_lut_row0, CB_dither_lut_row1
             );
 
-            if (gbScreenRequiresFullRefresh)
+            if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
                 ITCM_CORE_FN(gb_fast_memcpy_64)(
                     context->previous_lcd, current_lcd, LCD_BUFFER_BYTES
