@@ -1761,7 +1761,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             static clalign uint8_t frame_A_buffer[LCD_BUFFER_BYTES];
 
-            // 1. Render & Store Frame A
+            // 1. Render Frame A (Full Render, frame_skip = 0)
             context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
             DTCM_VERIFY_DEBUG();
@@ -1772,7 +1772,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
             memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
 
-            // 2. Render Frame B
+            // 2. Determine if the screen is static.
+            bool screen_is_static =
+                (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+
+            // 3. Run the emulator for the second frame period.
+            context->gb->direct.frame_skip = screen_is_static;
 #ifdef DTCM_ALLOC
             DTCM_VERIFY_DEBUG();
             run_frame_function_pointer(context->gb);
@@ -1781,20 +1786,28 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             run_frame_function_pointer(context->gb);
 #endif
 
-            // 4. Blend Frames
-            uint8_t* frameA_bytes = frame_A_buffer;
-            uint8_t* frameB_bytes = context->gb->lcd;
-
-            for (int y = 0; y < LCD_HEIGHT; y++)
+            // 4. If the screen was dynamic, we now have a new Frame B
+            // and must blend it with Frame A.
+            if (!screen_is_static)
             {
-                uint8_t (*lut)[256] =
-                    (y & 1) ? blend_dither_lut_odd_row : blend_dither_lut_even_row;
+                uint8_t* frameA_bytes = frame_A_buffer;
+                uint8_t* frameB_bytes = context->gb->lcd;
 
-                for (int x_byte = 0; x_byte < LCD_WIDTH_PACKED; x_byte++)
+                for (int y = 0; y < LCD_HEIGHT; y++)
                 {
-                    int i = y * LCD_WIDTH_PACKED + x_byte;
-                    frameB_bytes[i] = lut[frameA_bytes[i]][frameB_bytes[i]];
+                    uint8_t (*lut)[256] =
+                        (y & 1) ? blend_dither_lut_odd_row : blend_dither_lut_even_row;
+
+                    for (int x_byte = 0; x_byte < LCD_WIDTH_PACKED; x_byte++)
+                    {
+                        int i = y * LCD_WIDTH_PACKED + x_byte;
+                        frameB_bytes[i] = lut[frameA_bytes[i]][frameB_bytes[i]];
+                    }
                 }
+            }
+            else
+            {
+                memcpy(context->gb->lcd, frame_A_buffer, LCD_BUFFER_BYTES);
             }
         }
         else
