@@ -713,18 +713,33 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // stabilization
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Stabilization",
-        .values = off_on_labels,
-        .description =
-            "Stabilizes scaling artifacts\nby making them scroll with\nthe camera.\n \n"
-            "This prevents textures\nfrom shimmering, but may\n"
-            "reduce performance\nslightly in scroll-heavy\ngames.\n \n"
-            "Works best with Dither\nset to \"Staggered\".",
-        .pref_var = &preferences_dither_stable,
-        .max_value = 2,
-        .on_press = NULL
-    };
+    if (preferences_blend_frames && preferences_frame_skip)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Stabilization",
+            .values = off_on_labels,
+            .description = "Unavailable when 30 FPS\nmode and Frame blending\nare both enabled.",
+            .pref_var = &preferences_dither_stable,
+            .max_value = 0,
+            .on_press = NULL
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Stabilization",
+            .values = off_on_labels,
+            .description =
+                "Stabilizes scaling artifacts\nby making them scroll with\nthe camera.\n  \n"
+                "This prevents textures\nfrom shimmering, but may\n"
+                "reduce performance\nslightly in scroll-heavy \ngames.\n  \n"
+                "Works best with Dither\nset to \"Staggered\".",
+            .pref_var = &preferences_dither_stable,
+            .max_value = 2,
+            .on_press = NULL
+        };
+    }
+
     #if ENABLE_BGCACHE
     // transparency
     entries[++i] = (OptionsMenuEntry){
@@ -1348,7 +1363,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 }
 
                 if (strcmp(cursor_entry->name, "30 FPS mode") == 0 ||
-                    strcmp(cursor_entry->name, "Interlacing") == 0)
+                    strcmp(cursor_entry->name, "Interlacing") == 0 ||
+                    strcmp(cursor_entry->name, "Frame blending") == 0)
+
                 {
                     CB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
