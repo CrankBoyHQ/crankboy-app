@@ -1790,19 +1790,32 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // and must blend it with Frame A.
             if (!screen_is_static)
             {
-                uint8_t* frameA_bytes = frame_A_buffer;
-                uint8_t* frameB_bytes = context->gb->lcd;
+                uint8_t* frameA_row = frame_A_buffer;
+                uint8_t* frameB_row = context->gb->lcd;
 
                 for (int y = 0; y < LCD_HEIGHT; y++)
                 {
                     uint8_t (*lut)[256] =
                         (y & 1) ? blend_dither_lut_odd_row : blend_dither_lut_even_row;
 
-                    for (int x_byte = 0; x_byte < LCD_WIDTH_PACKED; x_byte++)
+                    uint32_t* frameA_word = (uint32_t*)frameA_row;
+                    uint32_t* frameB_word = (uint32_t*)frameB_row;
+
+                    for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
                     {
-                        int i = y * LCD_WIDTH_PACKED + x_byte;
-                        frameB_bytes[i] = lut[frameA_bytes[i]][frameB_bytes[i]];
+                        uint32_t a = *frameA_word++;
+                        uint32_t b = *frameB_word;
+
+                        uint8_t p0 = lut[(a >> 0) & 0xFF][(b >> 0) & 0xFF];
+                        uint8_t p1 = lut[(a >> 8) & 0xFF][(b >> 8) & 0xFF];
+                        uint8_t p2 = lut[(a >> 16) & 0xFF][(b >> 16) & 0xFF];
+                        uint8_t p3 = lut[(a >> 24) & 0xFF][(b >> 24) & 0xFF];
+
+                        *frameB_word++ = (p3 << 24) | (p2 << 16) | (p1 << 8) | p0;
                     }
+
+                    frameA_row += LCD_WIDTH_PACKED;
+                    frameB_row += LCD_WIDTH_PACKED;
                 }
             }
             else
