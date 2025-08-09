@@ -1385,7 +1385,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         return;
     }
 
-    static bool was_scrolling_dither_stable = false;
     bool force_all_lines_dirty = false;
 
     setCrankSoundsEnabled(
