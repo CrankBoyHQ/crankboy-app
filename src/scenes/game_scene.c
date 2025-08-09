@@ -120,6 +120,47 @@ const uint16_t CB_dither_lut_c1[] = {
     (0b1111 << 0) | (0b1010 << 4) | (0b0000 << 8) | (0b0000 << 12),
 };
 
+// LUTs for 30fps frame blending with dithering.
+static uint8_t blend_dither_lut_even_row[256][256];
+static uint8_t blend_dither_lut_odd_row[256][256];
+
+__section__(".rare") static void generate_blend_dither_luts(void)
+{
+    static const uint8_t dither_patterns[7][2] = {{0, 0}, {0, 1}, {1, 1}, {1, 2},
+                                                  {2, 2}, {2, 3}, {3, 3}};
+
+    for (int y_is_odd = 0; y_is_odd < 2; y_is_odd++)
+    {
+        for (int byte_A_val = 0; byte_A_val < 256; byte_A_val++)
+        {
+            for (int byte_B_val = 0; byte_B_val < 256; byte_B_val++)
+            {
+
+                uint8_t blended_byte = 0;
+                for (int p = 0; p < 4; p++)
+                {
+                    uint8_t pixel_A = (byte_A_val >> (p * 2)) & 3;
+                    uint8_t pixel_B = (byte_B_val >> (p * 2)) & 3;
+
+                    const uint8_t* pattern = dither_patterns[pixel_A + pixel_B];
+
+                    uint8_t final_pixel = pattern[(y_is_odd + p) & 1];
+                    blended_byte |= (final_pixel << (p * 2));
+                }
+
+                if (y_is_odd)
+                {
+                    blend_dither_lut_odd_row[byte_A_val][byte_B_val] = blended_byte;
+                }
+                else
+                {
+                    blend_dither_lut_even_row[byte_A_val][byte_B_val] = blended_byte;
+                }
+            }
+        }
+    }
+}
+
 __section__(".rare") static void generate_dither_luts(void)
 {
     uint32_t dither_lut = CB_dither_lut_c0[preferences_dither_pattern] |
@@ -364,6 +405,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     CB_GameScene_generateBitmask();
 
+    generate_blend_dither_luts();
     generate_dither_luts();
 
     CB_GameScene_selector_init(gameScene);
@@ -1704,16 +1746,69 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->playtime += 1 + preferences_frame_skip;
         CB_App->avg_dt_mult =
             (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
-        for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+
+#ifdef DTCM_ALLOC
+        void (*run_frame_function_pointer)(struct gb_s*) = ITCM_CORE_FN(gb_run_frame);
+#else
+        void (*run_frame_function_pointer)(struct gb_s*) = gb_run_frame;
+#endif
+
+        if (preferences_frame_skip && preferences_blend_frames)
         {
-            context->gb->direct.frame_skip = preferences_frame_skip != frame;
+            // --- 30fps Frame Blending with Dithering ---
+
+            static clalign uint8_t frame_A_buffer[LCD_BUFFER_BYTES];
+
+            // 1. Render & Store Frame A
+            context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
             DTCM_VERIFY_DEBUG();
-            ITCM_CORE_FN(gb_run_frame)(context->gb);
+            run_frame_function_pointer(context->gb);
             DTCM_VERIFY_DEBUG();
 #else
-            gb_run_frame(context->gb);
+            run_frame_function_pointer(context->gb);
 #endif
+            memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
+
+            // 2. Render Frame B
+#ifdef DTCM_ALLOC
+            DTCM_VERIFY_DEBUG();
+            run_frame_function_pointer(context->gb);
+            DTCM_VERIFY_DEBUG();
+#else
+            run_frame_function_pointer(context->gb);
+#endif
+
+            // 4. Blend Frames
+            uint8_t* frameA_bytes = frame_A_buffer;
+            uint8_t* frameB_bytes = context->gb->lcd;
+
+            for (int y = 0; y < LCD_HEIGHT; y++)
+            {
+                uint8_t (*lut)[256] =
+                    (y & 1) ? blend_dither_lut_odd_row : blend_dither_lut_even_row;
+
+                for (int x_byte = 0; x_byte < LCD_WIDTH_PACKED; x_byte++)
+                {
+                    int i = y * LCD_WIDTH_PACKED + x_byte;
+                    frameB_bytes[i] = lut[frameA_bytes[i]][frameB_bytes[i]];
+                }
+            }
+        }
+        else
+        {
+            // --- 60fps and non-blended 30fps logic ---
+            for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+            {
+                context->gb->direct.frame_skip = (preferences_frame_skip != frame);
+#ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+#else
+                run_frame_function_pointer(context->gb);
+#endif
+            }
         }
 
         if (!dtcm_enabled())

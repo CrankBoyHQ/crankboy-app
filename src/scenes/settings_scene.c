@@ -595,12 +595,37 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \nDespite appearing to be\n30 FPS, the game "
-            "itself\nstill runs at full speed.\n \nEnabling this mode\ndisables "
-            "the Interlacing\nsettings.",
+            "itself\nstill runs at full speed.",
         .pref_var = &preferences_frame_skip,
         .max_value = 2,
         .on_press = NULL,
     };
+
+    // frame blending
+    if (preferences_frame_skip)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Frame blending",
+            .values = off_on_labels,
+            .description =
+                "Blends frames together\nto create a transparency\neffect for flickering\n"
+                "objects.\n \nThis improves visuals\nat a cost to performance.",
+            .pref_var = &preferences_blend_frames,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Frame blending",
+            .values = off_on_labels,
+            .description = "Only available when\n30 FPS mode is enabled.",
+            .pref_var = &preferences_blend_frames,
+            .max_value = 0,
+            .on_press = NULL,
+        };
+    }
 
     // dynamic rate adjustment
     if (preferences_frame_skip)
@@ -608,7 +633,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
             .values = dynamic_rate_labels,
-            .description = "Unavailable in\n30 FPS mode.",
+            .description = "Only available when\n30 FPS mode is disabled.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 0,
             .on_press = NULL,

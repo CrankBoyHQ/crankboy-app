@@ -9,6 +9,7 @@ PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 
 // display
 PREF(frame_skip, true)
+PREF(blend_frames, false)
 PREF(dither_pattern, rand() % 2)
 PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))
