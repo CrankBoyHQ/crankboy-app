@@ -5039,23 +5039,16 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
         case 12:
         case 13:
         {
-            // FIXME -- optimize?
-            // inc r8
-            // dec r8
-            s8 offset = (opcode % 8 == 4) ? 1 : -1;
+            const u8 is_dec = opcode & 1;
+            const s8 offset = is_dec ? -1 : 1;
+
             u8 src = (reg8 == 7) ? __gb_read(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
             u8 tmp = src + offset;
-            gb->cpu_reg.f_bits.z = tmp == 0;
-            if (offset == 1)
-            {
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = (tmp & 0xF) == 0;
-            }
-            else
-            {
-                gb->cpu_reg.f_bits.n = 1;
-                gb->cpu_reg.f_bits.h = (tmp & 0xF) == 0xF;
-            }
+
+            gb->cpu_reg.f_bits.z = (tmp == 0);
+            gb->cpu_reg.f_bits.n = is_dec;
+            gb->cpu_reg.f_bits.h = ((tmp & 0xF) == (0xF & -(s8)is_dec));
+
             if (reg8 == 7)
             {
                 cycles = 3;
