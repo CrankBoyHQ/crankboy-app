@@ -202,6 +202,16 @@ __audio static void update_square(
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
+#if TARGET_PLAYDATE
+    int16_t final_vol_l = c->on_left * audio->vol_l;
+    int16_t final_vol_r = c->on_right * audio->vol_r;
+    uint32_t packed_vols;
+
+    asm volatile("pkhbt %0, %1, %2, lsl #16"
+                 : "=r"(packed_vols)
+                 : "r"(final_vol_l), "r"(final_vol_r));
+#endif
+
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
         update_env(c, sample_rate);
@@ -210,6 +220,7 @@ __audio static void update_square(
 
         if (preferences_sound_mode == 2)
         {
+            // --- ACCURATE MODE ---
             uint32_t pos = 0;
             uint32_t prev_pos = 0;
             int32_t sample = 0;
@@ -229,15 +240,56 @@ __audio static void update_square(
 
             sample += c->val;
             sample *= c->volume;
-            sample /= 4;
 
+#if TARGET_PLAYDATE
+            // --- Hardware ---
+            int16_t sample16 = sample / 4;
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+#else
+            // --- Simulator Path ---
+            sample /= 4;
             int32_t left_contrib = sample * c->on_left * audio->vol_l;
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
         else
         {
+            // --- FAST MODE ---
+#if TARGET_PLAYDATE
+            // --- Hardware Path ---
+            c->freq_counter += c->freq_inc;
+            while (c->freq_counter >= sample_rate)
+            {
+                c->freq_counter -= sample_rate;
+                c->square.duty_counter = (c->square.duty_counter + 1) & 7;
+                c->val = (c->square.duty & (1 << c->square.duty_counter))
+                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+            }
+
+            if (c->muted)
+                continue;
+
+            int32_t mono_sample = c->val * c->volume;
+            int16_t sample16 = mono_sample >> 2;
+
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+
+#else
+            // --- Simulator Path ---
             c->freq_counter += c->freq_inc;
             while (c->freq_counter >= sample_rate)
             {
@@ -259,6 +311,7 @@ __audio static void update_square(
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
 
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
     }
 }
@@ -306,10 +359,20 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
+#if TARGET_PLAYDATE
+    int16_t final_vol_l = c->on_left * audio->vol_l;
+    int16_t final_vol_r = c->on_right * audio->vol_r;
+    uint32_t packed_vols;
+    asm volatile("pkhbt %0, %1, %2, lsl #16"
+                 : "=r"(packed_vols)
+                 : "r"(final_vol_l), "r"(final_vol_r));
+#endif
+
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
         if (preferences_sound_mode == 2)
         {
+            // --- ACCURATE MODE ---
             uint32_t pos = 0;
             uint32_t prev_pos = 0;
             int32_t sample = 0;
@@ -330,15 +393,52 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             if (c->volume == 0 || c->muted)
                 continue;
 
+#if TARGET_PLAYDATE
+            // --- Hardware Path ---
+            int16_t sample16 = sample / 4;
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+#else
+            // --- Simulator Path ---
             sample /= 4;
-
             int32_t left_contrib = sample * c->on_left * audio->vol_l;
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
         else
         {
+            // --- FAST MODE ---
+#if TARGET_PLAYDATE
+            // --- Hardware Path ---
+            c->freq_counter += c->freq_inc;
+            while (c->freq_counter >= sample_rate)
+            {
+                c->freq_counter -= sample_rate;
+                c->val = (c->val + 1) & 31;
+            }
+
+            if (c->muted)
+                continue;
+
+            int8_t wave_val = wave_sample(audio, c->val, c->volume);
+            int32_t mono_sample = (int32_t)wave_val * (INT16_MAX / 32);
+            int16_t sample16 = mono_sample >> 2;
+
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+#else
+            // --- Simulator Path ---
             c->freq_counter += c->freq_inc;
             while (c->freq_counter >= sample_rate)
             {
@@ -357,6 +457,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
 
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
     }
 }
@@ -387,12 +488,23 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
 
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
+
+#if TARGET_PLAYDATE
+    int16_t final_vol_l = c->on_left * audio->vol_l;
+    int16_t final_vol_r = c->on_right * audio->vol_r;
+    uint32_t packed_vols;
+    asm volatile("pkhbt %0, %1, %2, lsl #16"
+                 : "=r"(packed_vols)
+                 : "r"(final_vol_l), "r"(final_vol_r));
+#endif
+
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
         update_env(c, sample_rate);
 
         if (preferences_sound_mode == 2)
         {
+            // --- ACCURATE MODE ---
             uint32_t pos = 0;
             uint32_t prev_pos = 0;
             int32_t sample = 0;
@@ -423,15 +535,60 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
 
             sample += c->val;
             sample *= c->volume;
-            sample /= 4;
 
+#if TARGET_PLAYDATE
+            // --- Hardware Path ---
+            int16_t sample16 = sample / 4;
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+#else
+            // --- Simulator Path ---
+            sample /= 4;
             int32_t left_contrib = sample * c->on_left * audio->vol_l;
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
         else
         {
+            // --- FAST MODE ---
+#if TARGET_PLAYDATE
+            // --- Hardware Path ---
+            c->freq_counter += c->freq_inc;
+            while (c->freq_counter >= sample_rate)
+            {
+                c->freq_counter -= sample_rate;
+
+                uint16_t old_lfsr = c->noise.lfsr_reg;
+                c->noise.lfsr_reg <<= 1;
+
+                uint8_t xor_res = (c->lfsr_wide) ? (((old_lfsr >> 14) & 1) ^ ((old_lfsr >> 13) & 1))
+                                                 : (((old_lfsr >> 6) & 1) ^ ((old_lfsr >> 5) & 1));
+
+                c->noise.lfsr_reg |= xor_res;
+                c->val = !xor_res ? VOL_INIT_MAX / MAX_CHAN_VOLUME : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+            }
+
+            if (c->muted)
+                continue;
+
+            int32_t mono_sample = c->val * c->volume;
+            int16_t sample16 = mono_sample >> 2;
+
+            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+            int32_t stereo_sum;
+
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+
+            buffer[i] += (int16_t)(stereo_sum >> 1);
+#else
+            // --- Simulator Path ---
             c->freq_counter += c->freq_inc;
             while (c->freq_counter >= sample_rate)
             {
@@ -458,6 +615,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
             int32_t right_contrib = sample * c->on_right * audio->vol_r;
 
             buffer[i] += (left_contrib + right_contrib) / 2;
+#endif
         }
     }
 }
