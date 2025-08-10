@@ -1876,6 +1876,15 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
         case 0x02:
             gb->gb_reg.SC = val;
+            /* Simulate a disconnected printer by immediately completing
+             * any serial transfer that uses the internal clock.
+             */
+            if ((val & SERIAL_SC_TX_START) && (val & SERIAL_SC_CLOCK_SRC))
+            {
+                gb->gb_reg.SB = 0xFF;
+                gb->gb_reg.IF |= SERIAL_INTR;
+                gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
+            }
             return;
 
         /* Timer Registers */
