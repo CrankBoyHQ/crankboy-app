@@ -22,6 +22,7 @@ typedef struct CB_SettingsScene
     CB_Scene* scene;
     CB_GameScene* gameScene;
     struct CB_LibraryScene* libraryScene;
+    char* selected_game_settings_path;
 
     int cursorIndex;
     int topVisibleIndex;

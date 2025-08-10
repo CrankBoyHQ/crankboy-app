@@ -20,6 +20,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+/*
+ * Defines the maximum number of entries that the settings menu can hold.
+ * This value is used to allocate a fixed-size buffer for all menu items.
+ *
+ * IMPORTANT: If you add new OptionsMenuEntry items in the getOptionsEntries()
+ * function, you may need to increase this value to prevent buffer overflows,
+ * which can lead to unpredictable crashes.
+ *
+ * As of August 2025, the theoretical maximum count is 32 entries.
+ * This value provides a safe buffer for future additions.
+ */
+#define TOTAL_MENU_ITEMS 40
+
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
 
@@ -40,7 +53,6 @@ static void update_thumbnail(CB_SettingsScene* settingsScene);
 
 static char* itcm_base_desc = NULL;
 static char* itcm_restart_desc = NULL;
-static char* patches_desc = NULL;
 
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
 #define HOLD_TIME_MARGIN 0.15f
@@ -106,6 +118,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     memset(settingsScene, 0, sizeof(*settingsScene));
     settingsScene->gameScene = gameScene;
     settingsScene->libraryScene = libraryScene;
+    settingsScene->selected_game_settings_path = NULL;
     settingsScene->cursorIndex = 0;
     settingsScene->topVisibleIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
@@ -120,6 +133,42 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
     // Store the true global value for UI sounds before any potential changes.
     int global_ui_sounds = preferences_ui_sounds;
+
+    if (libraryScene)
+    {
+        CB_Game* selectedGame =
+            (libraryScene->listView->selectedItem < libraryScene->games->length)
+                ? libraryScene->games->items[libraryScene->listView->selectedItem]
+                : NULL;
+        if (selectedGame)
+        {
+            settingsScene->selected_game_settings_path =
+                cb_game_config_path(selectedGame->fullpath);
+
+            void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
+            void* stored_library_globals =
+                preferences_store_subset(PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds);
+
+            if (settingsScene->selected_game_settings_path)
+            {
+                preferences_merge_from_disk(settingsScene->selected_game_settings_path);
+            }
+
+            if (!preferences_per_game)
+                preferences_restore_subset(stored_globals);
+            else
+                preferences_restore_subset(stored_library_globals);
+
+            if (stored_globals)
+            {
+                cb_free(stored_globals);
+            }
+            if (stored_library_globals)
+            {
+                cb_free(stored_library_globals);
+            }
+        }
+    }
 
     if (gameScene)
     {
@@ -255,22 +304,46 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
 {
     int result = 0;
 
+    const char* game_settings_path = NULL;
     if (settingsScene->gameScene)
+        game_settings_path = settingsScene->gameScene->settings_filename;
+    else if (settingsScene->libraryScene)
+        game_settings_path = settingsScene->selected_game_settings_path;
+
+    if (settingsScene->libraryScene)
+    {
+        result = (int)(intptr_t)call_with_main_stack_2(
+            preferences_save_to_disk, CB_globalPrefsPath,
+            preferences_per_game ? ~(PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds) : 0
+        );
+
+        if (result && game_settings_path)
+        {
+            if (preferences_per_game)
+                result = (int)(intptr_t)call_with_main_stack_2(
+                    preferences_save_to_disk, game_settings_path,
+                    PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+                );
+            else
+                result = (int)(intptr_t)call_with_main_stack_2(
+                    preferences_save_to_disk, game_settings_path, ~PREFBIT_per_game
+                );
+        }
+    }
+    else if (game_settings_path)
     {
         if (preferences_per_game)
-        {
             result = (int)(intptr_t)call_with_main_stack_2(
-                preferences_save_to_disk, settingsScene->gameScene->settings_filename,
+                preferences_save_to_disk, game_settings_path,
                 prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
             );
-        }
         else
         {
             result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, CB_globalPrefsPath,
-                0
-                    // never save these to global prefs
-                    | PREFBIT_per_game | PREFBIT_save_state_slot |
+
+                // never save these to global prefs
+                PREFBIT_per_game | PREFBIT_save_state_slot |
                     PREFBITS_LIBRARY_ONLY
 
                     // these prefs are locked, so we shouldn't be able to change them
@@ -278,19 +351,16 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             );
 
             if (result)
-            {
                 // also save that preferences are global in the per-game script,
                 // and also the save slot
                 result = (int)(intptr_t)call_with_main_stack_2(
-                    preferences_save_to_disk, settingsScene->gameScene->settings_filename,
+                    preferences_save_to_disk, game_settings_path,
                     ~(PREFBIT_per_game | PREFBIT_save_state_slot)
                 );
-            }
         }
     }
     else
     {
-        // Not in a game, just save the global file
         result =
             (int)(intptr_t)call_with_main_stack_2(preferences_save_to_disk, CB_globalPrefsPath, 0);
     }
@@ -462,7 +532,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             ? libraryScene->games->items[libraryScene->listView->selectedItem]
             : NULL;
 
-    int max_entries = 30;  // we can overshoot, it's ok
+    int max_entries = TOTAL_MENU_ITEMS;
     OptionsMenuEntry* entries = cb_malloc(sizeof(OptionsMenuEntry) * max_entries);
     if (!entries)
         return NULL;
@@ -518,7 +588,22 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .ud = gameScene,
             };
         }
+    }
 
+    if (libraryScene && selectedGame)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Patches",
+            .description = "Manage game patches\nand ROMhacks.",
+            .values = next_scene,
+            .max_value = 0,
+            .on_press = open_patches,
+            .ud = selectedGame
+        };
+    }
+
+    if (gameScene || (libraryScene && selectedGame))
+    {
         entries[++i] = (OptionsMenuEntry){
             .name = "Settings scope",
             .values = settings_scope_labels,
@@ -529,24 +614,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
-        };
-    }
-
-    if (libraryScene && selectedGame)
-    {
-        if (patches_desc != NULL) {
-            cb_free(patches_desc);
-        }
-
-        patches_desc = aprintf("Press Ⓐ to view and toggle\npatches and ROMhacks for\n%s", selectedGame->names->name_short_leading_article);
-
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Patches",
-            .description = patches_desc,
-            .values = next_scene,
-            .max_value = 0,
-            .on_press = open_patches,
-            .ud = selectedGame
         };
     }
 
@@ -855,7 +922,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
     #endif
 
-    if (!gameScene)
+    if (!gameScene && !preferences_per_game)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Library",
@@ -942,7 +1009,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    if (!gameScene)
+    if (!gameScene && !preferences_per_game)
     {
         // ui sounds
         entries[++i] = (OptionsMenuEntry){
@@ -1325,7 +1392,15 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     int global_ui_sounds = preferences_ui_sounds;
                     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
 
-                    const char* game_settings_path = settingsScene->gameScene->settings_filename;
+                    const char* game_settings_path;
+                    if (settingsScene->gameScene)
+                    {
+                        game_settings_path = settingsScene->gameScene->settings_filename;
+                    }
+                    else
+                    {
+                        game_settings_path = settingsScene->selected_game_settings_path;
+                    }
                     if (!preferences_per_game && old_preferences_per_game)
                     {
                         // write per-game prefs to disk
@@ -1385,13 +1460,32 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
     int initialY = (kScreenHeight - totalMenuHeight) / 2 + header_y / 2;
 
+    const char* game_name_for_header = NULL;
+    if (gameScene && gameScene->name_short)
+    {
+        game_name_for_header = gameScene->name_short;
+    }
+    else if (settingsScene->libraryScene)
+    {
+        CB_Game* selectedGame =
+            (settingsScene->libraryScene->listView->selectedItem <
+             settingsScene->libraryScene->games->length)
+                ? settingsScene->libraryScene->games
+                      ->items[settingsScene->libraryScene->listView->selectedItem]
+                : NULL;
+        if (selectedGame)
+        {
+            game_name_for_header = selectedGame->names->name_short_leading_article;
+        }
+    }
+
     // header y
-    if (header_y > 0 && gameScene && gameScene->name_short)
+    if (header_y > 0 && game_name_for_header)
     {
         LCDFont* font = CB_App->labelFont;
         playdate->graphics->setFont(font);
         int nameWidth = playdate->graphics->getTextWidth(
-            font, gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, 0
+            font, game_name_for_header, strlen(game_name_for_header), kUTF8Encoding, 0
         );
         int textX = LCD_COLUMNS / 2 - nameWidth / 2;
 
@@ -1400,14 +1494,14 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         // Check if the title has descenders and apply a different offset.
         // This provides a better visual center for all titles.
-        int vertical_offset = string_has_descenders(gameScene->name_short) ? 1 : 2;
+        int vertical_offset = string_has_descenders(game_name_for_header) ? 1 : 2;
         int textY = ((header_y - fontHeight) / 2) + vertical_offset;
 
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
         playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
         playdate->graphics->drawText(
-            gameScene->name_short, strlen(gameScene->name_short), kUTF8Encoding, textX, textY
+            game_name_for_header, strlen(game_name_for_header), kUTF8Encoding, textX, textY
         );
     }
 
@@ -1726,6 +1820,12 @@ static void CB_SettingsScene_free(void* object)
         cb_free(settingsScene->immutable_settings);
     }
 
+    if (settingsScene->selected_game_settings_path)
+    {
+        cb_free(settingsScene->selected_game_settings_path);
+        settingsScene->selected_game_settings_path = NULL;
+    }
+
     if (settingsScene->entries)
         cb_free(settingsScene->entries);
 
@@ -1739,12 +1839,6 @@ static void CB_SettingsScene_free(void* object)
     {
         cb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
-    }
-
-    if (patches_desc)
-    {
-        cb_free(patches_desc);
-        patches_desc = NULL;
     }
 
     CB_Scene_free(settingsScene->scene);
