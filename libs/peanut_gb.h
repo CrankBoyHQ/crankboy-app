@@ -5891,6 +5891,9 @@ struct StateHeader
     char magic[8];
     u32 version;
 
+    // Size of the gb_s struct for versioning.
+    uint32_t gb_s_size;
+
     // emulator architecture
     uint8_t big_endian : 1;
     uint8_t bits : 4;
@@ -5901,7 +5904,7 @@ struct StateHeader
     // Custom field for CrankBoy timestamp.
     uint32_t timestamp;
 
-    char reserved[20];
+    char reserved[16];
 };
 
 // Note: this version can be used on unswizzled structs,
@@ -5923,6 +5926,7 @@ __section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
     CB_ASSERT(strlen(CB_SAVE_STATE_MAGIC) == sizeof(header.magic));
     memcpy(header.magic, CB_SAVE_STATE_MAGIC, sizeof(header.magic));
     header.version = CB_SAVE_STATE_VERSION;
+    header.gb_s_size = sizeof(struct gb_s);
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     header.big_endian = 1;
 #else
@@ -5997,6 +6001,11 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     if (header->version > CB_SAVE_STATE_VERSION)
     {
         return "State comes from an incompatible future version of CrankBoy.";
+    }
+
+    if (header->gb_s_size != sizeof(struct gb_s))
+    {
+        return "State is from an incompatible build (struct size mismatch).";
     }
 
     if (header->bits != sizeof(void*))
