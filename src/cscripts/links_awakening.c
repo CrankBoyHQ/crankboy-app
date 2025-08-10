@@ -18,6 +18,9 @@ typedef struct ScriptData
 
     // Link's Awakening: DX
     bool is_ladx;
+
+    uint32_t tilemap_checksum;
+    uint32_t tiledata_checksum;
 } ScriptData;
 
 static ScriptData* on_begin(struct gb_s* gb, char* header_name)
@@ -143,8 +146,62 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
     int sidebar_w = 80;
     uint8_t game_state = ram_peek(0xDB95);
 
+    bool hud_data_changed = false;
+    if (game_state == 0xB)
+    {
+        // Checksum for tile map (the 2 rows of 13 tiles for the inventory)
+        uint32_t tilemap_checksum = 0;
+        for (int i = 0; i < 13; i++)
+            tilemap_checksum += gb->vram[0x1C00 + i];
+        for (int i = 0; i < 13; i++)
+            tilemap_checksum += gb->vram[0x1C20 + i];
+
+        if (tilemap_checksum != data->tilemap_checksum)
+        {
+            data->tilemap_checksum = tilemap_checksum;
+            hud_data_changed = true;
+        }
+
+        // Checksum for tile data (hearts and inventory items)
+        uint32_t tiledata_checksum = 0;
+        uint8_t indices[30];
+        int num_indices = 0;
+
+        // Heart tile indices
+        indices[num_indices++] = 0x7F;  // Empty heart slot
+        indices[num_indices++] = 0xCD;  // Heart container
+        indices[num_indices++] = 0xCE;  // Half heart
+        indices[num_indices++] = 0xA9;  // Full heart
+
+        // Inventory tile indices from the tile map
+        for (int i = 0; i < 13; i++)
+            indices[num_indices++] = gb->vram[0x1C00 + i];
+        for (int i = 0; i < 13; i++)
+            indices[num_indices++] = gb->vram[0x1C20 + i];
+
+        for (int i = 0; i < num_indices; i++)
+        {
+            uint8_t tile_idx = indices[i];
+            uint16_t tile_addr = 0x8000 | (16 * (uint16_t)tile_idx);
+            if (tile_idx < 0x80)
+                tile_addr += 0x1000;
+
+            uint8_t* tile_data = &gb->vram[tile_addr & 0x1FFF];
+            for (int byte = 0; byte < 16; byte++)
+            {
+                tiledata_checksum += tile_data[byte];
+            }
+        }
+
+        if (tiledata_checksum != data->tiledata_checksum)
+        {
+            data->tiledata_checksum = tiledata_checksum;
+            hud_data_changed = true;
+        }
+    }
+
     bool refresh = gbScreenRequiresFullRefresh || (data->sidebar_x_prev != sidebar_x) ||
-                   (data->bgp_prev != gb->gb_reg.BGP);
+                   (data->bgp_prev != gb->gb_reg.BGP) || hud_data_changed;
     data->sidebar_x_prev = sidebar_x;
     data->bgp_prev = gb->gb_reg.BGP;
 
@@ -162,8 +219,6 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
         unsigned invA = ram_peek(0xDB01) ^ gb->vram[16 * gb->vram[0x9C21]];
         unsigned rupees =
             (gb->vram[0x1C2A] << 16) | (gb->vram[0x1C2B] << 8) | (gb->vram[0x1C2C] << 0);
-
-        // TODO: refresh if tile data or tile map have changed
 
         const bool inventory_changed =
             (invB != data->inventoryB || invA != data->inventoryA || rupees != data->rupees);
@@ -274,7 +329,7 @@ static void on_draw(struct gb_s* gb, ScriptData* data)
 C_SCRIPT{
     .rom_name = "ZELDA",
     .description = DESCRIPTION,
-    .experimental = true,
+    .experimental = false,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
