@@ -924,6 +924,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         {
         // On a DMG, these writes are ignored. This list is expanded to include
         // all CGB-only registers that the game is attempting to write to.
+        case 0x4C:  // KEY0 (CGB Undocumented)
         case 0x4D:  // KEY1 (CGB Speed Switch)
         case 0x4F:  // VBK (CGB VRAM Bank)
         case 0x51:  // HDMA1
@@ -938,6 +939,8 @@ __section__(".rare.cb") static void __gb_rare_write(
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
         case 0x70:  // SVBK (CGB WRAM Bank)
         case 0x6C:  // OPRI (CGB Object priority mode)
+        case 0x76:  // PCM12 (CGB Audio)
+        case 0x77:  // PCM34 (CGB Audio)
 
         // Undocumented CGB registers
         case 0x72:
@@ -1006,12 +1009,30 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(struct gb_s* gb, const uin
     {
         switch (addr & 0xFF)
         {
-        case 0x4D:  // KEY1
-        case 0x4F:  // VBK
-        case 0x56:  // RP
-        case 0x68:  // BCPS
-        case 0x69:  // BCPD
-        case 0x70:  // WRAM bank
+        // CGB-only registers. On a DMG, reading these returns 0xFF.
+        case 0x4C:  // KEY0 (CGB Undocumented)
+        case 0x4D:  // KEY1 (CGB Speed Switch)
+        case 0x4F:  // VBK (CGB VRAM Bank)
+        case 0x51:  // HDMA1
+        case 0x52:  // HDMA2
+        case 0x53:  // HDMA3
+        case 0x54:  // HDMA4
+        case 0x55:  // HDMA5 (VRAM DMA)
+        case 0x56:  // RP (CGB Infrared Port)
+        case 0x68:  // BCPS (CGB BG Palette Spec)
+        case 0x69:  // BCPD (CGB BG Palette Data)
+        case 0x6A:  // OCPS (CGB OBJ Palette Spec)
+        case 0x6B:  // OCPD (CGB OBJ Palette Data)
+        case 0x70:  // SVBK (CGB WRAM Bank)
+        case 0x6C:  // OPRI (CGB Object priority mode)
+        case 0x76:  // PCM12 (CGB Audio)
+        case 0x77:  // PCM34 (CGB Audio)
+
+        // Undocumented CGB registers
+        case 0x72:
+        case 0x73:
+        case 0x74:
+        case 0x75:
             return 0xFF;
 
         case IO_PLAYDATE_EXTENSION_CTL:
@@ -6347,7 +6368,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 
     __gb_write(gb, 0xFF47, 0xFC);  // BGP
     __gb_write(gb, 0xFF48, 0xFF);  // OBJP0
-    __gb_write(gb, 0xFF49, 0x0F);  // OBJP1
+    __gb_write(gb, 0xFF49, 0xFF);  // OBJP1
     gb->gb_reg.WY = 0x00;
     gb->gb_reg.WX = 0x00;
     gb->gb_reg.IE = 0x00;
