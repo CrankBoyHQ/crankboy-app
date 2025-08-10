@@ -590,6 +590,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
             playdate->system->logToConsole("gb context initialized.");
         }
+        else if (gb_ret == GB_INIT_CARTRIDGE_UNSUPPORTED)
+        {
+            // This is our new, specific error case
+            gameScene->state = CB_GameSceneStateError;
+            gameScene->error = CB_GameSceneErrorCGBRequired;
+            playdate->system->logToConsole("Cartridge is CGB-only, which is not supported.");
+        }
         else
         {
             gameScene->state = CB_GameSceneStateError;
@@ -2277,6 +2284,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 errorMessagesCount = 2;
                 errorMessages[0] = "Please move the ROM to";
                 errorMessages[1] = "/Data/*.crankboy/games/";
+            }
+            else if (gameScene->error == CB_GameSceneErrorCGBRequired)  // <-- Add this block
+            {
+                errorTitle = "Game Boy Color Only";
+                errorMessagesCount = 1;
+                errorMessages[0] = "This game will not work in CrankBoy.";
             }
             else if (gameScene->error == CB_GameSceneErrorFatal)
             {

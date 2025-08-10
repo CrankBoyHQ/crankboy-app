@@ -32,7 +32,8 @@ typedef enum
     CB_GameSceneErrorUndefined,
     CB_GameSceneErrorLoadingRom,
     CB_GameSceneErrorWrongLocation,
-    CB_GameSceneErrorFatal
+    CB_GameSceneErrorFatal,
+    CB_GameSceneErrorCGBRequired
 } CB_GameSceneError;
 
 typedef struct
