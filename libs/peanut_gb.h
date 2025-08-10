@@ -49,6 +49,10 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
+/*This macro defines the list of games that are incompatible with
+ * the 16-bit memory write optimizations. */
+#define NEEDS_UNOPTIMIZED_WRITES(title) (strcmp(title, "POKEMON YELLOW") == 0)
+
 /**
  * Sound support must be provided by an external library. When audio_read() and
  * audio_write() functions are provided, define ENABLE_SOUND to a non-zero value
@@ -575,6 +579,7 @@ struct gb_s
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
+        uint8_t unoptimized_writes : 1;
 
         int joypad_interrupt_delay;
 
@@ -2126,24 +2131,27 @@ __core_section("short") static uint16_t __gb_read16(struct gb_s* restrict gb, u1
 
 __core_section("short") static void __gb_write16(struct gb_s* restrict gb, u16 addr, u16 v)
 {
-    // Fast path for WRAM
-    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
+    if (!gb->direct.unoptimized_writes)
     {
-        void* ptr = &gb->wram[addr - WRAM_0_ADDR];
-        if (is_aligned(ptr))
+        // Fast path for WRAM
+        if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
         {
-            *(uint16_t*)ptr = v;
-            return;
+            void* ptr = &gb->wram[addr - WRAM_0_ADDR];
+            if (is_aligned(ptr))
+            {
+                *(uint16_t*)ptr = v;
+                return;
+            }
         }
-    }
-    // Fast path for HRAM
-    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
-    {
-        void* ptr = &gb->hram[addr - HRAM_ADDR];
-        if (is_aligned(ptr))
+        // Fast path for HRAM
+        else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
         {
-            *(uint16_t*)ptr = v;
-            return;
+            void* ptr = &gb->hram[addr - HRAM_ADDR];
+            if (is_aligned(ptr))
+            {
+                *(uint16_t*)ptr = v;
+                return;
+            }
         }
     }
 
@@ -5938,6 +5946,7 @@ __core void gb_run_frame(struct gb_s* gb)
 #define ROM_HEADER_START 0x134
 #define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
 
+const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 void gb_reset(struct gb_s* gb);
 
 struct StateHeader
@@ -6464,6 +6473,16 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
+
+    gb->direct.unoptimized_writes = 0;
+
+    char title_str[17];
+    gb_get_rom_name(gb->gb_rom, title_str);
+
+    if (NEEDS_UNOPTIMIZED_WRITES(title_str))
+    {
+        gb->direct.unoptimized_writes = 1;
+    }
 
     gb_detect_interrupts(gb);
 
