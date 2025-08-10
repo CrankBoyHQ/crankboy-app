@@ -917,13 +917,28 @@ __section__(".rare.cb") static void __gb_rare_write(
     {
         switch (addr & 0xFF)
         {
-        // On a DMG, these writes are ignored.
+        // On a DMG, these writes are ignored. This list is expanded to include
+        // all CGB-only registers that the game is attempting to write to.
         case 0x4D:  // KEY1 (CGB Speed Switch)
         case 0x4F:  // VBK (CGB VRAM Bank)
+        case 0x51:  // HDMA1
+        case 0x52:  // HDMA2
+        case 0x53:  // HDMA3
+        case 0x54:  // HDMA4
+        case 0x55:  // HDMA5 (VRAM DMA)
         case 0x56:  // RP (CGB Infrared Port)
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
-        case 0x70:  // WRAM bank (CGB)
+        case 0x6A:  // OCPS (CGB OBJ Palette Spec)
+        case 0x6B:  // OCPD (CGB OBJ Palette Data)
+        case 0x70:  // SVBK (CGB WRAM Bank)
+        case 0x6C:  // OPRI (CGB Object priority mode)
+
+        // Undocumented CGB registers
+        case 0x72:
+        case 0x73:
+        case 0x74:
+        case 0x75:
             return;
 
         /* Turn off boot ROM */
