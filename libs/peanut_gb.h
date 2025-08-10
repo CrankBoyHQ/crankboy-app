@@ -848,13 +848,27 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct g
     }
 }
 
-// https://stackoverflow.com/a/2602885
 __core_section("short") u8 reverse_bits_u8(u8 b)
 {
+#if TARGET_PLAYDATE
+    uint32_t val = b;
+
+    // The 'rbit' instruction reverses all 32 bits of a register.
+    // For an 8-bit input 'b' = 0b11100010 (loaded into val),
+    // 'rbit' produces 'val' = 0b01000111000000000000000000000000.
+    asm volatile("rbit %0, %1" : "=r"(val) : "r"(val));
+
+    // We shift the result right by 24 bits to move the reversed byte
+    // from the most-significant position to the least-significant.
+    return (u8)(val >> 24);
+
+#else
+    // https://stackoverflow.com/a/2602885
     b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
     b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
     b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
     return b;
+#endif
 }
 
 // 256 bytes of rom that could be covered up by the bios
