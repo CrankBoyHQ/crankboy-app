@@ -2037,6 +2037,30 @@ __core_section("util") clalign
 {
     CB_ASSERT((len & 7) == 0);
 
+#if TARGET_PLAYDATE
+    uint8_t* dst8 = (uint8_t*)_dst;
+    const uint8_t* src8 = (const uint8_t*)_src;
+
+    // Process the main part of the data in 16-byte chunks.
+    while (len >= 16)
+    {
+        asm volatile(
+            "ldmia %1!, {r3, r4, r5, r6} \n"
+            "stmia %0!, {r3, r4, r5, r6} \n"
+            : "+r"(dst8), "+r"(src8)
+            : /* no inputs */
+            : "r3", "r4", "r5", "r6", "memory"
+        );
+        len -= 16;
+    }
+
+    // If there is a final 8-byte chunk remaining, copy it.
+    if (len > 0)
+    {
+        *(uint64_t*)dst8 = *(const uint64_t*)src8;
+    }
+
+#else
     if ((((uintptr_t)_dst | (uintptr_t)_src) & 7) != 0)
     {
         memcpy(_dst, _src, len);
@@ -2050,6 +2074,7 @@ __core_section("util") clalign
     {
         *dst++ = *src++;
     }
+#endif
 }
 
 __core_section("short") static bool is_aligned(const void* pointer)
