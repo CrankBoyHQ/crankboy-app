@@ -9,12 +9,38 @@ on:
     workflow_dispatch:
 
 jobs:
+    check_for_commits:
+        name: Check for Recent Commits
+        runs-on: ubuntu-latest
+        outputs:
+            has_new_commits: ${{ steps.check_git.outputs.has_new_commits }}
+        steps:
+            # Step 1: Checkout repository history without LFS files
+            - name: Checkout for commit history check
+              uses: actions/checkout@v4
+              with:
+                  lfs: false
+                  fetch-depth: 0
+
+            # Step 2: Check for commits in the last 24 hours and set an output
+            - name: Check for commits in the last 24 hours
+              id: check_git
+              run: |
+                  if [ -z "$(git log --since='yesterday' --oneline)" ]; then
+                    echo "No new commits found. Halting workflow."
+                    echo "has_new_commits=false" >> $GITHUB_OUTPUT
+                  else
+                    echo "New commits found. Proceeding with builds."
+                    echo "has_new_commits=true" >> $GITHUB_OUTPUT
+                  fi
+
     build_device:
         name: Create Nightly Device Build
+        needs: check_for_commits
+        if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: ubuntu-latest
-
         steps:
-            # Step 1: Check out the repository's code and its submodules.
+            # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
@@ -78,10 +104,11 @@ jobs:
 
     build_simulator_linux:
         name: Create Nightly Simulator Build (Linux)
+        needs: check_for_commits
+        if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: ubuntu-latest
-
         steps:
-            # Step 1: Check out the repository's code and its submodules.
+            # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
@@ -145,10 +172,11 @@ jobs:
 
     build_simulator_macos:
         name: Create Nightly Simulator Build (macOS)
+        needs: check_for_commits
+        if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: macos-latest
-
         steps:
-            # Step 1: Check out the repository's code and its submodules.
+            # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v4
               with:
