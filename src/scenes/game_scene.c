@@ -652,16 +652,8 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     generate_dither_luts();
 
-    // Reset the audio system to ensure its state is consistent with the new settings.
-    if (audio_settings_changed)
-    {
-        audio_init(&context->gb->audio);
-    }
-
     // Apply sound on/off and sound mode
     bool desiredAudioEnabled = (preferences_sound_mode > 0);
-    const char* mode_labels[] = {"Off", "Fast", "Accurate"};
-    playdate->system->logToConsole("Audio mode setting: %s", mode_labels[preferences_sound_mode]);
     gameScene->audioEnabled = desiredAudioEnabled;
 
     if (desiredAudioEnabled)
