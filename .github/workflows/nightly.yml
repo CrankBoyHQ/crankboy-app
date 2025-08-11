@@ -1,9 +1,9 @@
 name: Nightly Build
 
 on:
-    # Triggers the workflow at 00:00 UTC every day.
+    # Triggers the workflow at 03:00 UTC every day.
     schedule:
-        - cron: "0 0 * * *"
+        - cron: "0 3 * * *"
 
     # Allows you to run this workflow manually from the Actions tab on GitHub.
     workflow_dispatch:
