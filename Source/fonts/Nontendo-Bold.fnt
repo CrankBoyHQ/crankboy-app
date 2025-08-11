@@ -1,3 +1,4 @@
+--metrics={"baseline":0,"xHeight":0,"capHeight":0,"pairs":{},"left":[],"right":[]}
 tracking=1
 
 0	6
@@ -83,4 +84,5 @@ _	6
 Ⓑ	10
 �	10
 é	6
+&	8
 
