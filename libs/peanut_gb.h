@@ -51,7 +51,10 @@ typedef int16_t s16;
 
 /*This macro defines the list of games that are incompatible with
  * the 16-bit memory write optimizations. */
-#define NEEDS_UNOPTIMIZED_WRITES(title) (strcmp(title, "POKEMON YELLOW") == 0)
+#define NEEDS_UNOPTIMIZED_WRITES(title)                                               \
+    (strcmp(title, "POKEMON YELLOW") == 0 || strcmp(title, "POKEMON GELBE") == 0 ||   \
+     strcmp(title, "POKEMON JAUNE") == 0 || strcmp(title, "POKEMON AMARILLO") == 0 || \
+     strcmp(title, "POKEMON GIALLO") == 0 || strcmp(title, "POCKET MONSTERS PIKACHU") == 0)
 
 /**
  * Sound support must be provided by an external library. When audio_read() and
