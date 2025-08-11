@@ -6290,7 +6290,6 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 {
     gb->gb_halt = 0;
     gb->gb_ime = 1;
-    gb->lcd_mode = LCD_HBLANK;
 
     /* Initialise MBC values. */
     gb->selected_rom_bank = 1;
@@ -6320,7 +6319,9 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 
     if (gb->gb_boot_rom && preferences_bios)
     {
-        /* With a boot ROM, we start from 0x0000 and enable the BIOS flag. */
+        /*****************************************************************/
+        /* --- TRUE POWER-ON STATE (When using a Boot ROM) --- */
+        /*****************************************************************/
         gb->gb_bios_enable = 1;
 
         /* Set registers to their power-on state. */
@@ -6330,10 +6331,39 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
         gb->cpu_reg.hl = 0x0000;
         gb->cpu_reg.sp = 0x0000;
         gb->cpu_reg.pc = 0x0000;
+
+        /* Hardware registers are at their power-on defaults */
+        gb->gb_reg.P1 = 0xCF;
+        gb->gb_reg.SB = 0x00;
+        gb->gb_reg.SC = 0x7E;
         gb->gb_reg.DIV = 0x00;
+        gb->gb_reg.TIMA = 0x00;
+        gb->gb_reg.TMA = 0x00;
+        gb->gb_reg.TAC = 0xF8;
+        gb->gb_reg.IF = 0xE1;
+        gb->gb_reg.LCDC = 0x00; /* LCD is off */
+        gb->gb_reg.STAT = 0x80;
+        gb->gb_reg.SCY = 0x00;
+        gb->gb_reg.SCX = 0x00;
+        gb->gb_reg.LY = 0x00;
+        gb->gb_reg.LYC = 0x00;
+        gb->gb_reg.DMA = 0x00;
+        __gb_write(gb, 0xFF47, 0xFC);
+        __gb_write(gb, 0xFF48, 0xFF);
+        __gb_write(gb, 0xFF49, 0xFF);
+        gb->gb_reg.WY = 0x00;
+        gb->gb_reg.WX = 0x00;
+        gb->gb_reg.IE = 0x00;
+
+        /* Timers are reset */
+        gb->counter.div_count = 0x00;
+        gb->lcd_mode = LCD_HBLANK;
     }
     else if (preferences_experimental_gbc_mode)
     {
+        /*****************************************************************/
+        /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
+        /*****************************************************************/
         playdate->system->logToConsole("Starting ROM with GBC registers");
         gb->gb_bios_enable = 0;
         gb->cpu_reg.af = 0x1180;
@@ -6342,11 +6372,39 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
         gb->cpu_reg.hl = 0x000D;
         gb->cpu_reg.sp = 0xFFFE;
         gb->cpu_reg.pc = 0x0100;
-        gb->gb_reg.DIV = 0xAC;  // FIXME -- set this to the correct value
+
+        /* Set registers to state after CGB boot ROM */
+        gb->gb_reg.P1 = 0xCF;
+        gb->gb_reg.SB = 0x00;
+        gb->gb_reg.SC = 0x7E;
+        gb->gb_reg.DIV = 0x26;
+        gb->gb_reg.TIMA = 0x00;
+        gb->gb_reg.TMA = 0x00;
+        gb->gb_reg.TAC = 0xF8;
+        gb->gb_reg.IF = 0xE1;
+        gb->gb_reg.LCDC = 0x91;
+        gb->gb_reg.STAT = 0x85;
+        gb->gb_reg.SCY = 0x00;
+        gb->gb_reg.SCX = 0x00;
+        gb->gb_reg.LY = 144;
+        gb->gb_reg.LYC = 0x00;
+        gb->gb_reg.DMA = 0x00;
+        __gb_write(gb, 0xFF47, 0xFC);
+        __gb_write(gb, 0xFF48, 0xFF);
+        __gb_write(gb, 0xFF49, 0xFF);
+        gb->gb_reg.WY = 0x00;
+        gb->gb_reg.WX = 0x00;
+        gb->gb_reg.IE = 0x00;
+
+        /* CGB internal timer is 0x267C */
+        gb->counter.div_count = 0x7C;
+        gb->lcd_mode = LCD_VBLANK;
     }
     else
     {
-        /* Without a boot ROM, we use the old "skip-BIOS" method. */
+        /*****************************************************************/
+        /* --- POST-BOOT ROM STATE (DMG Skip-BIOS) --- */
+        /*****************************************************************/
         gb->gb_bios_enable = 0;
 
         /* Initialise CPU registers as though the boot ROM has just finished. */
@@ -6356,42 +6414,44 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
         gb->cpu_reg.hl = 0x014D;
         gb->cpu_reg.sp = 0xFFFE;
         gb->cpu_reg.pc = 0x0100;
-        gb->gb_reg.DIV = 0xAC;
+
+        /* Set registers to state after DMG boot ROM */
+        gb->gb_reg.P1 = 0xCF;
+        gb->gb_reg.SB = 0x00;
+        gb->gb_reg.SC = 0x7E;
+        gb->gb_reg.DIV = 0x1B;
+        gb->gb_reg.TIMA = 0x00;
+        gb->gb_reg.TMA = 0x00;
+        gb->gb_reg.TAC = 0xF8;
+        gb->gb_reg.IF = 0xE1;
+        gb->gb_reg.LCDC = 0x91;
+        gb->gb_reg.STAT = 0x85;  // Mode 1 (VBlank)
+        gb->gb_reg.SCY = 0x00;
+        gb->gb_reg.SCX = 0x00;
+        gb->gb_reg.LY = 144;
+        gb->gb_reg.LYC = 0x00;
+        gb->gb_reg.DMA = 0x00;
+        __gb_write(gb, 0xFF47, 0xFC);
+        __gb_write(gb, 0xFF48, 0xFF);
+        __gb_write(gb, 0xFF49, 0xFF);
+        gb->gb_reg.WY = 0x00;
+        gb->gb_reg.WX = 0x00;
+        gb->gb_reg.IE = 0x00;
+
+        /* DMG internal timer is 0x1BE1 */
+        gb->counter.div_count = 0xE1;
+        gb->lcd_mode = LCD_VBLANK;
     }
 
+    /* Common state for all modes */
     gb->counter.lcd_count = 0;
-    gb->counter.div_count = 0;
     gb->counter.tima_count = 0;
     gb->counter.serial_count = 0;
     gb->counter.lcd_off_count = 0;
 
-    gb->gb_reg.TIMA = 0x00;
-    gb->gb_reg.TMA = 0x00;
-    gb->gb_reg.TAC = 0xF8;
-
     __gb_update_tac(gb);
 
-    gb->gb_reg.IF = 0xE1;
-
-    gb->gb_reg.LCDC = 0x91;
-    gb->gb_reg.SCY = 0x00;
-    gb->gb_reg.SCX = 0x00;
-    gb->gb_reg.LYC = 0x00;
-
-    /* Appease valgrind for invalid reads and unconditional jumps. */
-    gb->gb_reg.SC = 0x7E;
-    gb->gb_reg.STAT = 0;
-    gb->gb_reg.LY = 0;
-
-    __gb_write(gb, 0xFF47, 0xFC);  // BGP
-    __gb_write(gb, 0xFF48, 0xFF);  // OBJP0
-    __gb_write(gb, 0xFF49, 0xFF);  // OBJP1
-    gb->gb_reg.WY = 0x00;
-    gb->gb_reg.WX = 0x00;
-    gb->gb_reg.IE = 0x00;
-
     gb->direct.joypad = 0xFF;
-    gb->gb_reg.P1 = 0xCF;
 
     gb->gb_reg.tima_overflow_delay = 0;
 
