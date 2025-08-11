@@ -604,13 +604,27 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (gameScene || (libraryScene && selectedGame))
     {
+        const char* scope_description;
+
+        if (gameScene)
+        {
+            scope_description =
+                "Use shared settings or\ncreate custom ones for\nthis game.\n \n"
+                "Global:\nSettings are shared\nacross all games.\n \n"
+                "Game:\nSettings are unique\nto this game.";
+        }
+        else
+        {
+            scope_description =
+                "Which settings to edit.\n \n"
+                "Global:\nEdit app-wide settings,\nincluding Library options.\n \n"
+                "Game:\nEdit settings specific\nfor the selected game.";
+        }
+
         entries[++i] = (OptionsMenuEntry){
             .name = "Settings scope",
             .values = settings_scope_labels,
-            .description =
-                "Use shared settings or\ncreate custom ones for\nthis game.\n \n"
-                "Global:\nSettings are shared\nacross all games.\n \n"
-                "Game:\nSettings are unique\nto this game.",
+            .description = scope_description,
             .pref_var = &preferences_per_game,
             .max_value = 2,
             .on_press = NULL,
