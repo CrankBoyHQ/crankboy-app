@@ -1646,6 +1646,20 @@ static void CB_LibraryScene_free(void* object)
     cb_free(libraryScene);
 }
 
+void CB_LibraryScene_cleanup(void)
+{
+    if (pending_update_message)
+    {
+        cb_free(pending_update_message);
+        pending_update_message = NULL;
+    }
+    if (pending_update_version)
+    {
+        cb_free(pending_update_version);
+        pending_update_version = NULL;
+    }
+}
+
 static void set_display_and_sort_name(CB_Game* game)
 {
     // set display name

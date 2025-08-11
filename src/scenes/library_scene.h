@@ -85,6 +85,7 @@ typedef struct CB_LibraryScene
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);
+void CB_LibraryScene_cleanup(void);
 
 CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
 void CB_Game_free(CB_Game* game);

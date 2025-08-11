@@ -513,6 +513,8 @@ void CB_quit(void)
     cb_free(CB_App->bundled_rom);
     cb_free(CB_App->bootRomData);
 
+    CB_LibraryScene_cleanup();
+
     script_quit();
     version_quit();
 
