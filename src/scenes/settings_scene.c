@@ -123,7 +123,6 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->topVisibleIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
-    settingsScene->entries = getOptionsEntries(settingsScene);
 
     // Initialize continuous scrolling variables
     settingsScene->scroll_direction = 0;
@@ -133,6 +132,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
     // Store the true global value for UI sounds before any potential changes.
     int global_ui_sounds = preferences_ui_sounds;
+    void* stored_globals = NULL;
 
     if (libraryScene)
     {
@@ -145,9 +145,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             settingsScene->selected_game_settings_path =
                 cb_game_config_path(selectedGame->fullpath);
 
-            void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
-            void* stored_library_globals =
-                preferences_store_subset(PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds);
+            stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
 
             if (settingsScene->selected_game_settings_path)
             {
@@ -156,16 +154,10 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
             if (!preferences_per_game)
                 preferences_restore_subset(stored_globals);
-            else
-                preferences_restore_subset(stored_library_globals);
 
             if (stored_globals)
             {
                 cb_free(stored_globals);
-            }
-            if (stored_library_globals)
-            {
-                cb_free(stored_library_globals);
             }
         }
     }
@@ -174,6 +166,8 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     {
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
     }
+
+    settingsScene->entries = getOptionsEntries(settingsScene);
 
     settingsScene->totalMenuItemCount = 0;
     if (settingsScene->entries)
