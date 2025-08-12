@@ -821,21 +821,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
     }
 
-    #if ENABLE_BGCACHE
-    // transparency
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Transparency",
-        .values = off_on_labels,
-        .description =
-            "Enables drawing of\ntransparent pixels.\n \n"
-            "Increses visual fidelity\nbut comes at the cost\n"
-            "of performance.",
-        .pref_var = &preferences_transparency,
-        .max_value = 2,
-        .on_press = NULL
-    };
-    #endif
-
     entries[++i] = (OptionsMenuEntry){
         .name = "Behavior",
         .header = 1

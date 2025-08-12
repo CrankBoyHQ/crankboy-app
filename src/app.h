@@ -184,10 +184,6 @@ void itcm_core_init(void);
 #define ITCM_CORE_FN(fn) fn
 #endif
 
-#ifndef ENABLE_BGCACHE
-#define ENABLE_BGCACHE 0
-#endif
-
 // don't exceed 60 fps
 #define CAP_FRAME_RATE 1
 
