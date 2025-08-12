@@ -423,6 +423,7 @@ struct gb_s
         uint8_t gb_halt : 1;
         uint8_t gb_ime : 1;
         uint8_t gb_ime_countdown;
+        uint8_t is_cgb_mode : 1;
         uint8_t gb_bios_enable : 1;
 
         /* gb_frame is set when the equivalent time of a frame has
@@ -3486,7 +3487,8 @@ _0x75:
 
 _0x76:
 { /* HALT */
-    if (gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+    // The HALT bug is only present on the DMG.
+    if (!gb->is_cgb_mode && gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
     {
         // HALT bug
         gb->cpu_reg.pc--;
@@ -4996,7 +4998,9 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
             {
                 if unlikely (srcidx == 7)
                 {
-                    if (gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+                    // The HALT bug is only present on the DMG.
+                    if (!gb->is_cgb_mode && gb->gb_ime == 0 &&
+                        (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
                     {
                         gb->cpu_reg.pc--;  // HALT bug
                     }
@@ -6310,6 +6314,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cart_battery = cart_battery[gb->gb_rom[mbc_location]];
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
+
+    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_gbc_mode;
 
     gb->is_mbc1m = __gb_detect_mbc1m(gb);
     if (gb->is_mbc1m)
