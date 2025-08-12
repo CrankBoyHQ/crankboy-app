@@ -422,6 +422,7 @@ struct gb_s
     {
         uint8_t gb_halt : 1;
         uint8_t gb_ime : 1;
+        uint8_t gb_ime_countdown;
         uint8_t gb_bios_enable : 1;
 
         /* gb_frame is set when the equivalent time of a frame has
@@ -3485,8 +3486,16 @@ _0x75:
 
 _0x76:
 { /* HALT */
-    /* TODO: Emulate HALT bug? */
-    gb->gb_halt = 1;
+    if (gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+    {
+        // HALT bug
+        gb->cpu_reg.pc--;
+    }
+    else
+    {
+        gb->gb_halt = 1;
+    }
+    goto exit;
     goto exit;
 }
 
@@ -4493,6 +4502,7 @@ _0xD9:
     temp |= __gb_read_full(gb, gb->cpu_reg.sp++) << 8;
     gb->cpu_reg.pc = temp;
     gb->gb_ime = 1;
+    gb->gb_ime_countdown = 0;
     goto exit;
 }
 
@@ -4665,6 +4675,7 @@ _0xF2:
 _0xF3:
 { /* DI */
     gb->gb_ime = 0;
+    gb->gb_ime_countdown = 0;
     goto exit;
 }
 
@@ -4725,7 +4736,7 @@ _0xFA:
 
 _0xFB:
 { /* EI */
-    gb->gb_ime = 1;
+    gb->gb_ime_countdown = 2;
     goto exit;
 }
 
@@ -4985,7 +4996,14 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
             {
                 if unlikely (srcidx == 7)
                 {
-                    gb->gb_halt = 1;
+                    if (gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+                    {
+                        gb->cpu_reg.pc--;  // HALT bug
+                    }
+                    else
+                    {
+                        gb->gb_halt = 1;
+                    }
                     return 4;
                 }
                 else
@@ -5146,6 +5164,7 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
             if unlikely (opcode == 0xD9)
             {
                 gb->gb_ime = 1;
+                gb->gb_ime_countdown = 0;
             }
         ret:
             cycles += 3;
@@ -5241,6 +5260,7 @@ __shell static void __gb_interrupt(struct gb_s* gb)
     {
         /* Disable interrupts */
         gb->gb_ime = 0;
+        gb->gb_ime_countdown = 0;
 
         /* Push Program Counter */
         __gb_write(gb, --gb->cpu_reg.sp, gb->cpu_reg.pc >> 8);
@@ -5472,6 +5492,15 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
         }
     }
 #endif
+
+    // EI delay handling
+    if (gb->gb_ime_countdown > 0)
+    {
+        if (--gb->gb_ime_countdown == 0)
+        {
+            gb->gb_ime = 1;
+        }
+    }
 
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
@@ -6519,6 +6548,7 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         return 4;
     case 0xF3:
         gb->gb_ime = 0;
+        gb->gb_ime_countdown = 0;
         return 1 * 4;
     case 0xF8:
     {
@@ -6536,7 +6566,7 @@ __shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode
         gb->cpu_reg.sp = gb->cpu_reg.hl;
         return 2 * 4;
     case 0xFB:
-        gb->gb_ime = 1;
+        gb->gb_ime_countdown = 2;
         return 1 * 4;
     default:
         return __gb_invalid_instruction(gb, opcode);
