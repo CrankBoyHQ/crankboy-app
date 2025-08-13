@@ -14,6 +14,7 @@
 #include "../scenes/modal.h"
 #include "../userstack.h"
 #include "../utility.h"
+#include "../script.h"
 #include "credits_scene.h"
 #include "patches_scene.h"
 
@@ -76,9 +77,11 @@ typedef struct OptionsMenuEntry
     bool thumbnail : 1;
     bool graphics_test : 1;
     bool header : 1;
+    bool rebuild_when_changed : 1;
 
     void (*on_press)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
     void (*on_hold)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
+    void (*on_change)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene, int prev_val);
     void* ud;
 } OptionsMenuEntry;
 
@@ -448,6 +451,79 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     update_thumbnail(settingsScene);
 }
 
+static void settings_post_action_per_game(OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val)
+{
+    // special behavior if we've switched between per-game and global settings
+    int global_ui_sounds = preferences_ui_sounds;
+    void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
+
+    const char* game_settings_path;
+    if (settingsScene->gameScene)
+    {
+        game_settings_path = settingsScene->gameScene->settings_filename;
+    }
+    else
+    {
+        game_settings_path = settingsScene->selected_game_settings_path;
+    }
+    if (!preferences_per_game && prev_val)
+    {
+        // write per-game prefs to disk
+        preferences_per_game = 0;  // paranoia: record in game settings that we're
+                                    // using global settings
+        call_with_main_stack_2(
+            preferences_save_to_disk, game_settings_path, prefs_locked_by_script
+        );
+
+        preferences_merge_from_disk(CB_globalPrefsPath);
+        preferences_per_game = 0;
+    }
+    else if (preferences_per_game && !prev_val)
+    {
+        // write global prefs to disk
+        call_with_main_stack_2(
+            preferences_save_to_disk, CB_globalPrefsPath,
+            PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
+        );
+
+        preferences_merge_from_disk(game_settings_path);
+        preferences_per_game = 1;
+    }
+
+    if (stored_save_slot)
+    {
+        preferences_restore_subset(stored_save_slot);
+        cb_free(stored_save_slot);
+    }
+
+    preferences_ui_sounds = global_ui_sounds;
+}
+
+static void settings_post_action_script(OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val)
+{
+    const CB_GameScene* gameScene = settingsScene->gameScene;
+    if (!prev_val && preferences_script_support && gameScene)
+    {
+        ScriptInfo* info = script_get_info_by_rom_path(gameScene->rom_filename);
+        if (info->experimental)
+        {
+            CB_Modal* modal = CB_Modal_new(
+                "This game's script is marked as \"experimental.\"\n \nExpect glitches.",
+                NULL, NULL, NULL
+            );
+            
+            modal->width = 300;
+            modal->height = 150;
+            
+            CB_presentModal(
+                modal->scene
+            );
+        }
+        
+        script_info_free(info);
+    }
+}
+
 static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
@@ -621,7 +697,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .description = scope_description,
             .pref_var = &preferences_per_game,
             .max_value = 2,
+            .rebuild_when_changed = 1,
             .on_press = NULL,
+            .on_change = settings_post_action_per_game,
         };
     }
 
@@ -673,6 +751,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             "itself\nstill runs at full speed.",
         .pref_var = &preferences_frame_skip,
         .max_value = 2,
+        .rebuild_when_changed = 1,
         .on_press = NULL,
     };
 
@@ -687,6 +766,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 "objects.\n \nThis improves visuals\nat a cost to performance.",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
+            .rebuild_when_changed = 1,
             .on_press = NULL,
         };
     }
@@ -711,6 +791,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .description = "Only available when\n30 FPS mode is disabled.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 0,
+            .rebuild_when_changed = 1,
             .on_press = NULL,
         };
     }
@@ -726,6 +807,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 "Auto:\nRecommended. Skips lines\nonly when needed.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 3,
+            .rebuild_when_changed = 1,
             .on_press = NULL,
         };
     }
@@ -884,7 +966,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA
-    // lua scripts
+    // lua/C scripts
     entries[++i] = (OptionsMenuEntry){
         .name = "Game scripts",
         .values = off_on_labels,
@@ -893,7 +975,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
-        .on_press = NULL,
+        .on_change = settings_post_action_script,
     };
 
     if (gameScene)
@@ -1334,8 +1416,6 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
-    preference_t old_preferences_per_game = preferences_per_game;
-
     if (cursor_entry->on_hold && !cursor_entry->locked)
     {
         if (pressed & kButtonA)
@@ -1357,7 +1437,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         if (settingsScene->option_hold_time < 0)
             settingsScene->option_hold_time = 0;
     }
-    if (cursor_entry->on_press && a_pressed)
+    if (cursor_entry->on_press && a_pressed && !cursor_entry->locked)
     {
         cursor_entry->on_press(cursor_entry, settingsScene);
     }
@@ -1374,74 +1454,27 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             *cursor_entry->pref_var =
                 (old_value + direction + cursor_entry->max_value) % cursor_entry->max_value;
 
+            cb_play_ui_sound(CB_UISound_Confirm);
+            
             if (old_value != *cursor_entry->pref_var)
             {
+                if (cursor_entry->on_change)
+                {
+                    cursor_entry->on_change(
+                        cursor_entry, settingsScene, old_value
+                    );
+                }
+                
                 // setting value has changed
-                cb_play_ui_sound(CB_UISound_Confirm);
-
-                // special behavior if we've switched between per-game and global settings
-                if (cursor_entry->pref_var == &preferences_per_game)
-                {
-                    int global_ui_sounds = preferences_ui_sounds;
-                    void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
-
-                    const char* game_settings_path;
-                    if (settingsScene->gameScene)
-                    {
-                        game_settings_path = settingsScene->gameScene->settings_filename;
-                    }
-                    else
-                    {
-                        game_settings_path = settingsScene->selected_game_settings_path;
-                    }
-                    if (!preferences_per_game && old_preferences_per_game)
-                    {
-                        // write per-game prefs to disk
-                        preferences_per_game = 0;  // paranoia: record in game settings that we're
-                                                   // using global settings
-                        call_with_main_stack_2(
-                            preferences_save_to_disk, game_settings_path, prefs_locked_by_script
-                        );
-
-                        preferences_merge_from_disk(CB_globalPrefsPath);
-                        preferences_per_game = 0;
-                    }
-                    else if (preferences_per_game && !old_preferences_per_game)
-                    {
-                        // write global prefs to disk
-                        call_with_main_stack_2(
-                            preferences_save_to_disk, CB_globalPrefsPath,
-                            PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
-                        );
-
-                        preferences_merge_from_disk(game_settings_path);
-                        preferences_per_game = 1;
-                    }
-
-                    if (stored_save_slot)
-                    {
-                        preferences_restore_subset(stored_save_slot);
-                        cb_free(stored_save_slot);
-                    }
-
-                    preferences_ui_sounds = global_ui_sounds;
-
-                    CB_SettingsScene_rebuildEntries(settingsScene);
-                    cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
-                }
-
-                if (strcmp(cursor_entry->name, "30 FPS mode") == 0 ||
-                    strcmp(cursor_entry->name, "Interlacing") == 0 ||
-                    strcmp(cursor_entry->name, "Frame blending") == 0)
-
+                if (cursor_entry->rebuild_when_changed)
                 {
                     CB_SettingsScene_rebuildEntries(settingsScene);
                     cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
                 }
+
+                if (cursor_entry->thumbnail)
+                    update_thumbnail(settingsScene);
             }
-
-            if (cursor_entry->thumbnail)
-                update_thumbnail(settingsScene);
         }
     }
 
