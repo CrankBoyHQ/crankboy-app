@@ -1189,9 +1189,22 @@ __core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* fra
     {
         uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
 
-        for (int x = 0; x < LCD_WIDTH_PACKED; x++)
+        uint32_t* frame_a_32 = (uint32_t*)frame_a;
+        uint32_t* frame_b_32 = (uint32_t*)frame_b_and_dest;
+
+        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
         {
-            frame_b_and_dest[x] = lut_row[frame_a[x]][frame_b_and_dest[x]];
+            uint32_t a_word = frame_a_32[x];
+            uint32_t b_word = frame_b_32[x];
+
+            uint8_t b0 = lut_row[(a_word >> 0) & 0xFF][(b_word >> 0) & 0xFF];
+            uint8_t b1 = lut_row[(a_word >> 8) & 0xFF][(b_word >> 8) & 0xFF];
+            uint8_t b2 = lut_row[(a_word >> 16) & 0xFF][(b_word >> 16) & 0xFF];
+            uint8_t b3 = lut_row[(a_word >> 24) & 0xFF][(b_word >> 24) & 0xFF];
+
+            uint32_t blended_word = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
+
+            frame_b_32[x] = blended_word;
         }
 
         frame_a += LCD_WIDTH_PACKED;
