@@ -448,7 +448,6 @@ struct gb_s
     // state flags for cart ram
     uint8_t enable_cart_ram : 1;
     uint8_t cart_mode_select : 1;  // 1 if ram mode
-    uint8_t joypad_interrupt : 1;
 
     uint8_t overclock : 2;
 
@@ -634,45 +633,10 @@ struct gb_s
 __core unsigned int __gb_step_cpu(struct gb_s* gb);
 
 #ifdef CB_IMPL
-__section__(".rare") bool gb_detect_interrupt(struct gb_s* gb, unsigned addr)
-{
-    const uint8_t* rom = gb->gb_rom;
-
-    // RETI
-    if (rom[addr] == 0xD9)
-        return false;
-
-    // RET
-    if (rom[addr] == 0xC9)
-        return false;
-
-    // EI; RET
-    if (rom[addr] == 0xFB && rom[addr + 1] == 0xC9)
-        return false;
-
-    // nops (technically not safe)
-    // if (rom[addr] == 0 && rom[addr+1] == 0 && rom[addr + 2] == 0 && rom[addr+3] == 0 &&
-    // rom[addr+4] == 0) return false;
-
-    // RST 38 to RST 38
-    if (rom[addr] == 0xFF && rom[0x38] == 0xFF)
-        return false;
-
-    return true;
-}
-
-__section__(".rare") void gb_detect_interrupts(struct gb_s* gb)
-{
-    gb->joypad_interrupt = gb_detect_interrupt(gb, 0x60);
-    // gb->timer_interrupt = gb_detect_interrupt(gb, 0x50);
-    // gb->serial_interrupt = gb_detect_interrupt(gb, 0x58);
-}
-
 __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
 {
     gb->gb_boot_rom = boot_rom;
     memcpy(gb->gb_rom, boot_rom, 0x100);
-    gb_detect_interrupts(gb);
 }
 
 /**
@@ -931,7 +895,6 @@ __section__(".rare.cb") static void __gb_rare_write(
             {
                 gb->gb_bios_enable = 0;
                 memcpy(gb->gb_rom, gb_original_rom, sizeof(gb_original_rom));
-                gb_detect_interrupts(gb);
             }
             return;
 
@@ -960,6 +923,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         /* Interrupt Enable Register */
         case 0xFF:
             gb->gb_reg.IE = val;
+            gb->direct.joypad_interrupts = (val & CONTROL_INTR) != 0;
             return;
         }
     }
@@ -5971,8 +5935,6 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
         memcpy(gb->gb_rom, gb_original_rom, 0x100);
     }
 
-    gb_detect_interrupts(gb);
-
     return NULL;
 }
 
@@ -6323,8 +6285,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     {
         gb->direct.unoptimized_writes = 1;
     }
-
-    gb_detect_interrupts(gb);
 
     return GB_INIT_NO_ERROR;
 }

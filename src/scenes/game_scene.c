@@ -453,10 +453,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
         context->gb->direct.joypad_interrupt_delay = -1;
 
-        playdate->system->logToConsole(
-            "Interrupts detected: Joypad=%d\n", context->gb->joypad_interrupt
-        );
-
         if (gb_ret == GB_INIT_NO_ERROR)
         {
             playdate->system->logToConsole("Initialized gb context.");
@@ -1443,8 +1439,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->direct.interlace_mask = 0xFF;
     }
 #endif
-
-    context->gb->direct.joypad_interrupts = context->gb->joypad_interrupt;
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
