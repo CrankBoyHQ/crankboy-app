@@ -12,9 +12,9 @@
 #include "../preferences.h"
 #include "../revcheck.h"
 #include "../scenes/modal.h"
+#include "../script.h"
 #include "../userstack.h"
 #include "../utility.h"
-#include "../script.h"
 #include "credits_scene.h"
 #include "patches_scene.h"
 
@@ -451,7 +451,9 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     update_thumbnail(settingsScene);
 }
 
-static void settings_post_action_per_game(OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val)
+static void settings_post_action_per_game(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
+)
 {
     // special behavior if we've switched between per-game and global settings
     int global_ui_sounds = preferences_ui_sounds;
@@ -470,7 +472,7 @@ static void settings_post_action_per_game(OptionsMenuEntry* e, CB_SettingsScene*
     {
         // write per-game prefs to disk
         preferences_per_game = 0;  // paranoia: record in game settings that we're
-                                    // using global settings
+                                   // using global settings
         call_with_main_stack_2(
             preferences_save_to_disk, game_settings_path, prefs_locked_by_script
         );
@@ -499,7 +501,9 @@ static void settings_post_action_per_game(OptionsMenuEntry* e, CB_SettingsScene*
     preferences_ui_sounds = global_ui_sounds;
 }
 
-static void settings_post_action_script(OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val)
+static void settings_post_action_script(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
+)
 {
     const CB_GameScene* gameScene = settingsScene->gameScene;
     if (!prev_val && preferences_script_support && gameScene)
@@ -508,18 +512,16 @@ static void settings_post_action_script(OptionsMenuEntry* e, CB_SettingsScene* s
         if (info->experimental)
         {
             CB_Modal* modal = CB_Modal_new(
-                "This game's script is marked as \"experimental.\"\n \nExpect glitches.",
-                NULL, NULL, NULL
+                "This game's script is marked as \"experimental.\"\n \nExpect glitches.", NULL,
+                NULL, NULL
             );
-            
+
             modal->width = 300;
             modal->height = 150;
-            
-            CB_presentModal(
-                modal->scene
-            );
+
+            CB_presentModal(modal->scene);
         }
-        
+
         script_info_free(info);
     }
 }
@@ -664,7 +666,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches",
-            .description = "Manage game patches\nand ROMhacks.",
+            .description = "Manage game patches\nand ROM hacks.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
@@ -1455,16 +1457,14 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 (old_value + direction + cursor_entry->max_value) % cursor_entry->max_value;
 
             cb_play_ui_sound(CB_UISound_Confirm);
-            
+
             if (old_value != *cursor_entry->pref_var)
             {
                 if (cursor_entry->on_change)
                 {
-                    cursor_entry->on_change(
-                        cursor_entry, settingsScene, old_value
-                    );
+                    cursor_entry->on_change(cursor_entry, settingsScene, old_value);
                 }
-                
+
                 // setting value has changed
                 if (cursor_entry->rebuild_when_changed)
                 {
