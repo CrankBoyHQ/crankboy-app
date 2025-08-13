@@ -444,6 +444,22 @@ static void launch_game(void* ud, int option)
     }
 }
 
+static void disable_script_and_launch(void* ud, int option)
+{
+    CB_Game* game = ud;
+    switch (option)
+    {
+    case 0: // launch with scripts as-is
+        launch_game(game, 3);
+        break;
+    case 1: // launch with scripts disabled
+        launch_game(game, 1);
+        break;
+    default: // cancel
+        break;
+    }
+}
+
 static void CB_updatecheck(int code, const char* text, void* ud)
 {
     playdate->system->logToConsole("UPDATE RESULT %d: %s\n", code, text);
@@ -847,33 +863,48 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             preferences_script_has_prompted = 0;
             load_game_prefs(game->fullpath, false);
             int has_prompted = preferences_script_has_prompted;
+            int script_enabled = preferences_script_support;
+            int is_per_game = preferences_per_game;
             preferences_restore_subset(prefs);
             cb_free(prefs);
+            
+            if (!is_per_game) script_enabled = preferences_script_support;
 
-            if (!has_prompted)
+            ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+            if (info)
             {
-                ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
-                if (info)
+                if (!info->experimental && !has_prompted)
                 {
-                    if (!info->experimental)
-                    {
-                        const char* options[] = {"Yes", "No", "About", NULL};
-                        if (!info->info)
-                            options[2] = NULL;
-                        CB_Modal* modal = CB_Modal_new(
-                            "There is native Playdate support for this game.\n"
-                            "Would you like to enable it?",
-                            options, launch_game, game
-                        );
+                    const char* options[] = {"Yes", "No", "About", NULL};
+                    if (!info->info)
+                        options[2] = NULL;
+                    CB_Modal* modal = CB_Modal_new(
+                        "There is native Playdate support for this game.\n"
+                        "Would you like to enable it?",
+                        options, launch_game, game
+                    );
 
-                        modal->width = 290;
-                        modal->height = 152;
+                    modal->width = 290;
+                    modal->height = 152;
 
-                        CB_presentModal(modal->scene);
-                        launch = false;
-                    }
-                    script_info_free(info);
+                    CB_presentModal(modal->scene);
+                    launch = false;
                 }
+                else if (info->experimental && script_enabled)
+                {
+                    const char* options[] = {"No", "Yes", NULL};
+                    CB_Modal* modal = CB_Modal_new(
+                        "This game's script is marked as \"experimental,\" so please expect glitches or even crashes.\n \nDisable script?",
+                        options, disable_script_and_launch, game
+                    );
+                    
+                    modal->width = 310;
+                    modal->height = 224;
+                    
+                    CB_presentModal(modal->scene);
+                    launch = false;
+                }
+                script_info_free(info);
             }
 #endif
 
