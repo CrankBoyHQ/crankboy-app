@@ -1130,53 +1130,82 @@ __core_section("fb") void update_fb_dirty_lines(
 
         fb_y_playdate_current_bottom = current_line_pd_top_y;
 
-        uint8_t* restrict gb_line_data = &lcd[y_gb * LCD_WIDTH_PACKED];
-        uint8_t* restrict pd_fb_line_top_ptr =
-            &framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
-
-        uint32_t* restrict gb_line_data32 = (uint32_t*)gb_line_data;
-        uint32_t* restrict pd_fb_line_top_ptr32 = (uint32_t*)pd_fb_line_top_ptr;
+        uint32_t* restrict gb_line_data32 = (uint32_t*)&lcd[y_gb * LCD_WIDTH_PACKED];
+        uint32_t* restrict pd_fb_line_top_ptr32 =
+            (uint32_t*)&framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
 
         if (row_height_on_playdate == 2)
         {
-            // Dedicated loop for 2-pixel-high rows
             uint32_t* restrict pd_fb_line_bottom_ptr32 =
-                (uint32_t*)(pd_fb_line_top_ptr + PLAYDATE_ROW_STRIDE);
+                (uint32_t*)((uint8_t*)pd_fb_line_top_ptr32 + PLAYDATE_ROW_STRIDE);
 
-            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
+            for (int x = 0; x < LCD_WIDTH_PACKED / 8; ++x)
             {
-                uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
+                uint32_t org_pixelsA = gb_line_data32[x * 2];
+                uint32_t org_pixelsB = gb_line_data32[x * 2 + 1];
 
-                uint8_t p0 = org_pixels32 & 0xFF;
-                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+                uint8_t p0 = org_pixelsA & 0xFF, p1 = (org_pixelsA >> 8) & 0xFF;
+                uint8_t p2 = (org_pixelsA >> 16) & 0xFF, p3 = (org_pixelsA >> 24) & 0xFF;
 
-                pd_fb_line_top_ptr32[x_packed_gb] =
-                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) | (dither_lut0_ptr[p2] << 16) |
-                    (dither_lut0_ptr[p3] << 24);
+                uint8_t p4 = org_pixelsB & 0xFF, p5 = (org_pixelsB >> 8) & 0xFF;
+                uint8_t p6 = (org_pixelsB >> 16) & 0xFF, p7 = (org_pixelsB >> 24) & 0xFF;
 
-                pd_fb_line_bottom_ptr32[x_packed_gb] =
-                    dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) | (dither_lut1_ptr[p2] << 16) |
-                    (dither_lut1_ptr[p3] << 24);
+                pd_fb_line_top_ptr32[x * 2] = dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
+                                              (dither_lut0_ptr[p2] << 16) |
+                                              (dither_lut0_ptr[p3] << 24);
+                pd_fb_line_bottom_ptr32[x * 2] = dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
+                                                 (dither_lut1_ptr[p2] << 16) |
+                                                 (dither_lut1_ptr[p3] << 24);
+
+                pd_fb_line_top_ptr32[x * 2 + 1] = dither_lut0_ptr[p4] | (dither_lut0_ptr[p5] << 8) |
+                                                  (dither_lut0_ptr[p6] << 16) |
+                                                  (dither_lut0_ptr[p7] << 24);
+                pd_fb_line_bottom_ptr32[x * 2 + 1] =
+                    dither_lut1_ptr[p4] | (dither_lut1_ptr[p5] << 8) | (dither_lut1_ptr[p6] << 16) |
+                    (dither_lut1_ptr[p7] << 24);
             }
+
+            // Process final 4-byte remainder
+            uint32_t org_pixels_rem = gb_line_data32[4];
+            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
+            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
+
+            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
+                                      (dither_lut0_ptr[p2_rem] << 16) |
+                                      (dither_lut0_ptr[p3_rem] << 24);
+            pd_fb_line_bottom_ptr32[4] = dither_lut1_ptr[p0_rem] | (dither_lut1_ptr[p1_rem] << 8) |
+                                         (dither_lut1_ptr[p2_rem] << 16) |
+                                         (dither_lut1_ptr[p3_rem] << 24);
         }
-        else  // row_height_on_playdate == 1
+        else
         {
-            // Dedicated loop for 1-pixel-high rows
-            for (int x_packed_gb = 0; x_packed_gb < LCD_WIDTH_PACKED / 4; x_packed_gb++)
+            for (int x = 0; x < LCD_WIDTH_PACKED / 8; ++x)
             {
-                uint32_t org_pixels32 = gb_line_data32[x_packed_gb];
+                uint32_t org_pixelsA = gb_line_data32[x * 2];
+                uint32_t org_pixelsB = gb_line_data32[x * 2 + 1];
 
-                uint8_t p0 = org_pixels32 & 0xFF;
-                uint8_t p1 = (org_pixels32 >> 8) & 0xFF;
-                uint8_t p2 = (org_pixels32 >> 16) & 0xFF;
-                uint8_t p3 = (org_pixels32 >> 24) & 0xFF;
+                uint8_t p0 = org_pixelsA & 0xFF, p1 = (org_pixelsA >> 8) & 0xFF;
+                uint8_t p2 = (org_pixelsA >> 16) & 0xFF, p3 = (org_pixelsA >> 24) & 0xFF;
 
-                pd_fb_line_top_ptr32[x_packed_gb] =
-                    dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) | (dither_lut0_ptr[p2] << 16) |
-                    (dither_lut0_ptr[p3] << 24);
+                uint8_t p4 = org_pixelsB & 0xFF, p5 = (org_pixelsB >> 8) & 0xFF;
+                uint8_t p6 = (org_pixelsB >> 16) & 0xFF, p7 = (org_pixelsB >> 24) & 0xFF;
+
+                pd_fb_line_top_ptr32[x * 2] = dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
+                                              (dither_lut0_ptr[p2] << 16) |
+                                              (dither_lut0_ptr[p3] << 24);
+
+                pd_fb_line_top_ptr32[x * 2 + 1] = dither_lut0_ptr[p4] | (dither_lut0_ptr[p5] << 8) |
+                                                  (dither_lut0_ptr[p6] << 16) |
+                                                  (dither_lut0_ptr[p7] << 24);
             }
+
+            uint32_t org_pixels_rem = gb_line_data32[4];
+            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
+            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
+
+            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
+                                      (dither_lut0_ptr[p2_rem] << 16) |
+                                      (dither_lut0_ptr[p3_rem] << 24);
         }
 
         markUpdatedRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
