@@ -21,7 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple Save State slots per game (note: not currently available if game has its own save data. TBA.)
 - You can download cover art for your library from within CrankBoy.
 - Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
-- Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROMhacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
+- Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
 
@@ -38,11 +38,11 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     2. Upload the `pdx` or `zip` file.
     3. Wait for your Playdate to download and install CrankBoy.
 - **USB sideload**
-    1. Connect your Playdate to a computer and unlock it.
-    2. Put the Playdate into Data Disk mode.
+    1. Connect your Playdate to a computer (or other device) by USB and unlock it.
+    2. Put the Playdate into Data Disk mode (hold ).
     3. Copy the `pdx`to the `Games` folder.
 - **Simulator sideload**
-    1. Download the Simulator build for your OS (Linux or macOS)
+    1. Download the Simulator build for your OS (Linux or macOS -- Windows is [not yet supported](https://github.com/CrankBoyHQ/crankboy-app/issues/43).)
     2. Connect your Playdate to a computer and unlock it.
     3. Open the `pdx` in the Simulator.
     4. Press `Alt+U` on Linux or `⌘+U` on macOS.
@@ -55,12 +55,12 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 
 #### USB
 - Launch the app at least once.
-- Connect your Playdate to a computer, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
+- Connect your Playdate to a computer (or another device) by USB, press and hold `LEFT` + `MENU` + `LOCK` at the same time in the home screen. Or go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in the app data folder; the folder name depends on the sideload method.
     - For Web sideload: `/Data/user.*.app.crankboyhq.crankboy/games/`
     - For USB/Simulator: `/Data/app.crankboyhq.crankboy/games/`
 - ROM filenames must end with `.gb` or `.gbc`
-- Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, or `.bmp`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
+- Cover art can be placed manually in the `covers/` directory. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, `.bmp`, or `.pdi`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
 #### PDX
 
@@ -136,6 +136,8 @@ For developers new to Playdate, please be aware that you will need to [compile C
 ## Contributions
 
 Come chat with us on the [Playdate Developer Forum](https://devforum.play.date/t/60-fps-gameboy-emulation/22865) or on [Discord](https://discord.com/channels/675983554655551509/1378119815641694278). Even if you're not an expert at emulation coding, we could still use some visual assets, look-and-feel, UI, UX, and so on to make the app feel more cute and at-home on a cozy device like Playdate.
+
+For coders: we could use help with setting up a [Windows simulator build CI](https://github.com/CrankBoyHQ/crankboy-app/issues/43), and with [automatic updates](https://github.com/CrankBoyHQ/crankboy-app/issues/44).
 
 CrankBoy uses a heavily modified version of Peanut-GB. Various [advanced optimization techniques](https://devforum.play.date/t/dirty-optimization-secrets-c-for-playdate/23011) were used to tailor the performance to the Playdate. If you wish to work on adding features to the emulator core itself, you may want to glance at those optimization techniques since it explains some of the unusual design choices made.
 

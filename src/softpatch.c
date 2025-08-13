@@ -554,7 +554,7 @@ cleanup:
  * ============================================================================
  * BPS Patching Implementation
  * ============================================================================
- * Implementation based on the official BPS specification by byuu
+ * Implementation based on the official BPS specification by byuu/near
  * and the JavaScript implementation by Marc Robledo.
  *
  * Original Project: RomPatcher.js
