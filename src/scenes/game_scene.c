@@ -207,7 +207,6 @@ __section__(".rare") static void generate_blend_lut(void)
 }
 
 // forces screen refresh
-static int didOpenMenu = 0;
 bool game_menu_button_input_enabled;
 
 static uint8_t CB_bitmask[4][4][4];
@@ -1674,12 +1673,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         prev_game_picture_background_color = game_picture_background_color;
     }
 
-    if (didOpenMenu)
-    {
-        gbScreenRequiresFullRefresh = 1;
-        didOpenMenu--;
-    }
-
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
         bool shouldDisplayStartSelectUI = (!playdate->system->isCrankDocked() &&
@@ -2413,9 +2406,6 @@ __section__(".rare") void CB_GameScene_didSelectLibrary(void* userdata)
 
 __section__(".rare") static void CB_GameScene_showSettings(void* userdata)
 {
-    // force screen refresh for two frames (ugh, why doesn't it work for just 1 frame?)
-    didOpenMenu = 2;
-
     CB_GameScene* gameScene = userdata;
     CB_SettingsScene* settingsScene = CB_SettingsScene_new(gameScene, NULL);
     CB_presentModal(settingsScene->scene);
@@ -2445,7 +2435,6 @@ __section__(".rare") void CB_GameScene_buttonMenuCallback(void* userdata)
 
 static void CB_GameScene_menu(void* object)
 {
-    didOpenMenu = 1;
     CB_GameScene* gameScene = object;
 
     if (gameScene->menuImage != NULL)
