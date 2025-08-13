@@ -247,7 +247,7 @@ void write_update_timestamp(timestamp_t time)
 }
 
 #define DAYLEN (60 * 60 * 24)
-#define TIME_BEFORE_CHECK_FIRST_UPDATE (DAYLEN * 4)
+#define TIME_BEFORE_CHECK_FIRST_UPDATE (DAYLEN * 2)
 #define TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS (DAYLEN)
 
 void possibly_check_for_updates(update_result_cb cb, void* ud)
