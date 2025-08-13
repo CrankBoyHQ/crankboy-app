@@ -413,6 +413,9 @@ struct gb_s
     // shortcut to swappable bank (addr - 0x4000 offset built in)
     uint8_t* selected_bank_addr;
 
+    // precomputed gb_rom + zero_bank_base
+    uint8_t* gb_zero_bank;
+
     struct
     {
         uint8_t gb_halt : 1;
@@ -766,6 +769,11 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(struct gb_s* 
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
 
+__section__(".text.cb") static void __gb_update_zero_bank_addr(struct gb_s* gb)
+{
+    gb->gb_zero_bank = gb->gb_rom + gb->zero_bank_base;
+}
+
 __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct gb_s* gb)
 {
     // NULL indicates special access, must do _full version
@@ -1016,7 +1024,7 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
     case 0x1:
     case 0x2:
     case 0x3:
-        return gb->gb_rom[gb->zero_bank_base + addr];
+        return gb->gb_zero_bank[addr];
 
     case 0x4:
     case 0x5:
@@ -1458,6 +1466,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
                 // MBC1M: sets bits 4–5 of the ROM bank (selects the 0x10/0x20/0x30 group)
                 gb->selected_rom_bank = ((val & 3) << 4) | (gb->selected_rom_bank & 0x0F);
                 gb->zero_bank_base = ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE;
+                __gb_update_zero_bank_addr(gb);
             }
 
             gb->selected_rom_bank &= gb->num_rom_banks_mask;
@@ -1809,7 +1818,7 @@ __core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t
 {
     if likely (addr < 0x4000)
     {
-        return gb->gb_rom[gb->zero_bank_base + addr];
+        return gb->gb_zero_bank[addr];
     }
     if likely (addr < 0x8000)
     {
@@ -1980,7 +1989,7 @@ __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
     uint8_t* rom_ptr;
     if likely (addr < 0x4000)
     {
-        rom_ptr = &gb->gb_rom[gb->zero_bank_base + addr];
+        rom_ptr = &gb->gb_zero_bank[addr];
     }
     else if likely (addr < 0x8000)
     {
@@ -5914,6 +5923,7 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     memset(gb->lcd, 0, LCD_BUFFER_BYTES);
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
+    __gb_update_zero_bank_addr(gb);
 
     // intentionally skipped: lcd; rom
 
@@ -6023,6 +6033,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
 
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
+    __gb_update_zero_bank_addr(gb);
 
     if (gb->gb_boot_rom && preferences_bios)
     {
