@@ -516,6 +516,13 @@ struct gb_s
     struct gb_registers_s gb_reg;
     struct count_s counter;
 
+    /* Pre-computed base pointers to avoid subtractions in memory access. */
+    uint8_t* wram_base;
+    uint8_t* echo_ram_base;
+    uint8_t* vram_base;
+    uint8_t* oam_base;
+    uint8_t* hram_io_base;
+
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
     uint8_t* wram;  // wram[WRAM_SIZE];
     uint8_t* vram;  // vram[VRAM_SIZE];
@@ -551,6 +558,10 @@ struct gb_s
 
         uint8_t window_clear;
         uint8_t WY;
+
+        /* Pre-computed pointers to the current tile maps */
+        uint8_t* bg_map_base;
+        uint8_t* window_map_base;
     } display;
 
     /**
@@ -801,6 +812,24 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct g
     }
 }
 
+__section__(".text.cb") static void __gb_init_memory_pointers(struct gb_s* gb)
+{
+    gb->wram_base = gb->wram - WRAM_0_ADDR;
+    gb->echo_ram_base = gb->wram - ECHO_ADDR;
+    gb->vram_base = gb->vram - VRAM_ADDR;
+    gb->oam_base = gb->oam - OAM_ADDR;
+    gb->hram_io_base = gb->hram - IO_ADDR;
+}
+
+__section__(".text.cb") static void __gb_update_map_pointers(struct gb_s* gb)
+{
+    gb->display.bg_map_base =
+        gb->vram + ((gb->gb_reg.LCDC & LCDC_BG_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1);
+
+    gb->display.window_map_base =
+        gb->vram + ((gb->gb_reg.LCDC & LCDC_WINDOW_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1);
+}
+
 __core_section("short") u8 reverse_bits_u8(u8 b)
 {
 #if TARGET_PLAYDATE
@@ -1035,8 +1064,8 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
     case 0x8:
     case 0x9:
         if (addr < 0x1800 + VRAM_ADDR)
-            return reverse_bits_u8(gb->vram[addr - VRAM_ADDR]);
-        return gb->vram[addr - VRAM_ADDR];
+            return reverse_bits_u8(gb->vram_base[addr]);
+        return gb->vram_base[addr];
 
     case 0xA:
     case 0xB:
@@ -1093,20 +1122,20 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
         return 0xFF;
 
     case 0xC:
-        return gb->wram[addr - WRAM_0_ADDR];
+        return gb->wram_base[addr];
 
     case 0xD:
-        return gb->wram[addr - WRAM_0_ADDR];
+        return gb->wram_base[addr];
 
     case 0xE:
-        return gb->wram[addr - ECHO_ADDR];
+        return gb->echo_ram_base[addr];
 
     case 0xF:
         if (addr < OAM_ADDR)
-            return gb->wram[addr - ECHO_ADDR];
+            return gb->echo_ram_base[addr];
 
         if (addr < UNUSED_ADDR)
-            return gb->oam[addr - OAM_ADDR];
+            return gb->oam_base[addr];
 
         /* Unusable memory area. Reading from this area returns 0.*/
         if (addr < IO_ADDR)
@@ -1114,7 +1143,7 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
 
         /* HRAM */
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
-            return gb->hram[addr - IO_ADDR];
+            return gb->hram_io_base[addr];
 
         /* APU registers. */
         if ((addr >= 0xFF10) && (addr <= 0xFF3F))
@@ -1136,7 +1165,7 @@ __shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
                 };
                 /* clang-format on */
-                return gb->hram[addr - IO_ADDR] | ortab[addr - IO_ADDR];
+                return gb->hram_io_base[addr] | ortab[addr - IO_ADDR];
             }
         }
 
@@ -1503,9 +1532,9 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
     case 0x8:
     case 0x9:
         if (addr < 0x1800 + VRAM_ADDR)
-            gb->vram[addr - VRAM_ADDR] = reverse_bits_u8(val);
+            gb->vram_base[addr] = reverse_bits_u8(val);
         else
-            gb->vram[addr - VRAM_ADDR] = val;
+            gb->vram_base[addr] = val;
         return;
 
     case 0xA:
@@ -1592,27 +1621,27 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
         return;
 
     case 0xC:
-        gb->wram[addr - WRAM_0_ADDR] = val;
+        gb->wram_base[addr] = val;
         return;
 
     case 0xD:
-        gb->wram[addr - WRAM_1_ADDR + WRAM_BANK_SIZE] = val;
+        gb->wram_base[addr] = val;
         return;
 
     case 0xE:
-        gb->wram[addr - ECHO_ADDR] = val;
+        gb->echo_ram_base[addr] = val;
         return;
 
     case 0xF:
         if (addr < OAM_ADDR)
         {
-            gb->wram[addr - ECHO_ADDR] = val;
+            gb->echo_ram_base[addr] = val;
             return;
         }
 
         if (addr < UNUSED_ADDR)
         {
-            gb->oam[addr - OAM_ADDR] = val;
+            gb->oam_base[addr] = val;
             return;
         }
 
@@ -1622,7 +1651,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
 
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
         {
-            gb->hram[addr - IO_ADDR] = val;
+            gb->hram_io_base[addr] = val;
             return;
         }
 
@@ -1634,7 +1663,7 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             }
             else
             {
-                gb->hram[addr - IO_ADDR] = val;
+                gb->hram_io_base[addr] = val;
             }
             return;
         }
@@ -1698,6 +1727,12 @@ __shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const ui
             bool was_enabled = (old_lcdc & LCDC_ENABLE);
 
             gb->gb_reg.LCDC = val;
+
+            if (val != old_lcdc)
+            {
+                __gb_update_map_pointers(gb);
+            }
+
             bool is_enabled = (gb->gb_reg.LCDC & LCDC_ENABLE);
 
             if (was_enabled && !is_enabled)
@@ -2291,7 +2326,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         uint8_t* vram = gb->vram;
 
         // tiles on this line
-        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32 * (bg_y / 8))];
+        uint8_t* vram_line_tiles = gb->display.bg_map_base + (32 * (bg_y / 8));
 
         // points to line data for pixel offset
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
@@ -2343,7 +2378,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
         uint8_t* vram = gb->vram;
 
         // tiles on this line
-        uint8_t* vram_line_tiles = (void*)&vram[(map2 ? 0x1C00 : 0x1800) | (32 * (bg_y / 8))];
+        uint8_t* vram_line_tiles = gb->display.window_map_base + (32 * (bg_y / 8));
 
         // points to line data for pixel offset
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
@@ -6168,6 +6203,7 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
     gb->counter.lcd_off_count = 0;
 
     __gb_update_tac(gb);
+    __gb_update_map_pointers(gb);
 
     gb->direct.joypad = 0xFF;
 
@@ -6239,6 +6275,9 @@ __section__(".rare") enum gb_init_error_e gb_init(
     memcpy(gb_original_rom, gb_rom, sizeof(gb_original_rom));
     gb->gb_error = gb_error;
     gb->direct.priv = priv;
+
+    __gb_init_memory_pointers(gb);
+
     static gb_breakpoint breakpoints[MAX_BREAKPOINTS];
     memset(breakpoints, 0xFF, sizeof(breakpoints));
     gb->breakpoints = breakpoints;
