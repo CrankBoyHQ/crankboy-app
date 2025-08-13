@@ -449,11 +449,11 @@ static void disable_script_and_launch(void* ud, int option)
     CB_Game* game = ud;
     switch (option)
     {
-    case 0: // launch with scripts as-is
-        launch_game(game, 3);
-        break;
-    case 1: // launch with scripts disabled
+    case 0: // launch with scripts disabled
         launch_game(game, 1);
+        break;
+    case 1: // launch with scripts as-is
+        launch_game(game, 3);
         break;
     default: // cancel
         break;
@@ -892,7 +892,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 }
                 else if (info->experimental && script_enabled)
                 {
-                    const char* options[] = {"No", "Yes", NULL};
+                    const char* options[] = {"Yes", "No", NULL};
                     CB_Modal* modal = CB_Modal_new(
                         "This game's script is marked as \"experimental,\" so please expect glitches or even crashes.\n \nDisable script?",
                         options, disable_script_and_launch, game
