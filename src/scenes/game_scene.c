@@ -1183,6 +1183,22 @@ __core_section("fb") void update_fb_dirty_lines(
     }
 }
 
+__core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
+{
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
+
+        for (int x = 0; x < LCD_WIDTH_PACKED; x++)
+        {
+            frame_b_and_dest[x] = lut_row[frame_a[x]][frame_b_and_dest[x]];
+        }
+
+        frame_a += LCD_WIDTH_PACKED;
+        frame_b_and_dest += LCD_WIDTH_PACKED;
+    }
+}
+
 static void save_check(struct gb_s* gb);
 
 static __section__(".text.tick") void display_fps(void)
@@ -1776,21 +1792,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // 4. If the screen was dynamic, blend Frame A and Frame B.
             if (!screen_is_static)
             {
-                uint8_t* frame_a_ptr = frame_A_buffer;
-                uint8_t* blended_dest_ptr = context->gb->lcd;
-
-                for (int y = 0; y < LCD_HEIGHT; y++)
-                {
-                    uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
-
-                    for (int x = 0; x < LCD_WIDTH_PACKED; x++)
-                    {
-                        blended_dest_ptr[x] = lut_row[frame_a_ptr[x]][blended_dest_ptr[x]];
-                    }
-
-                    frame_a_ptr += LCD_WIDTH_PACKED;
-                    blended_dest_ptr += LCD_WIDTH_PACKED;
-                }
+                ITCM_CORE_FN(blend_frames_lut)(frame_A_buffer, context->gb->lcd);
             }
         }
         else
