@@ -35,7 +35,7 @@ extern pthread_mutex_t audio_mutex;
 // margin to prevent intermittent crashes. It was increased to 0x2380
 // specifically to ensure stability in games like Pokemon Gold/Silver,
 // which have a higher runtime stack requirement.
-#define PLAYDATE_STACK_SIZE 0x2380
+#define PLAYDATE_STACK_SIZE 0x2500
 
 #define FPS_AVG_DECAY 0.8f
 
