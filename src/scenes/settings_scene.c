@@ -529,8 +529,9 @@ static void settings_post_action_script(
 static void settings_action_save_state(void* _settingsScene, int option)
 {
     CB_SettingsScene* settingsScene = _settingsScene;
-    if (option != 0) return;
-    
+    if (option != 0)
+        return;
+
     CB_GameScene* gameScene = settingsScene->gameScene;
     gameScene->save_state_requires_warning = false;
     int slot = preferences_save_state_slot;
@@ -562,7 +563,8 @@ static void settings_action_save_state(void* _settingsScene, int option)
 static void settings_action_load_state(void* _settingsScene, int option)
 {
     CB_SettingsScene* settingsScene = _settingsScene;
-    if (option != 1) return;
+    if (option != 1)
+        return;
     CB_GameScene* gameScene = settingsScene->gameScene;
     gameScene->save_state_requires_warning = false;
     int slot = preferences_save_state_slot;
@@ -600,22 +602,24 @@ static void settings_action_load_state(void* _settingsScene, int option)
     }
 }
 
-static void settings_action_save_state_possibly_warn(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+static void settings_action_save_state_possibly_warn(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene
+)
 {
     CB_GameScene* gameScene = e->ud;
     if (gameScene->save_state_requires_warning)
     {
         const char* options[] = {"Understood", NULL};
         CB_Modal* modal = CB_Modal_new(
-            "WARNING! This game has its own save data system, and a snapshot of that data will be included in this save state.\n\nIf you later load this state, this game's save data will revert to whatever it is now, and progress could be permanently lost.",
+            "WARNING! This game has its own save data system, and a snapshot of that data will be "
+            "included in this save state.\n\nIf you later load this state, this game's save data "
+            "will revert to whatever it is now, and progress could be permanently lost.",
             options, (void*)settings_action_save_state, settingsScene
         );
         modal->width = 380;
         modal->height = 224;
         modal->margin = 12;
-        CB_presentModal(
-            modal->scene
-        );
+        CB_presentModal(modal->scene);
     }
     else
     {
@@ -623,7 +627,9 @@ static void settings_action_save_state_possibly_warn(OptionsMenuEntry* e, CB_Set
     }
 }
 
-static void settings_action_load_state_possibly_warn(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+static void settings_action_load_state_possibly_warn(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene
+)
 {
     CB_GameScene* gameScene = e->ud;
     if (gameScene->cartridge_has_battery)
@@ -631,14 +637,16 @@ static void settings_action_load_state_possibly_warn(OptionsMenuEntry* e, CB_Set
         const char* options[] = {"Cancel", "Load", NULL};
         unsigned timestamp = get_save_state_timestamp(gameScene, preferences_save_state_slot);
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-        
+
         int h = 234;
-        
+
         char* text;
         if (timestamp == 0 || timestamp >= now)
         {
             text = aprintf(
-                "WARNING! This game has its own save data system, which will be PERMANENTLY reset to match that of this state. You will not be able to undo this by resetting. If this game has multiple files, all will be affected.\n \nYou have been warned."
+                "WARNING! This game has its own save data system, which will be PERMANENTLY reset "
+                "to match that of this state. You will not be able to undo this by resetting. If "
+                "this game has multiple files, all will be affected.\n \nYou have been warned."
             );
         }
         else
@@ -648,30 +656,31 @@ static void settings_action_load_state_possibly_warn(OptionsMenuEntry* e, CB_Set
             {
                 // more elaborate error message if state >= 15 minutes old
                 text = aprintf(
-                    "WARNING! This game has its own save data system, which will be PERMANENTLY reset back %s. You will not be able to recover it by resetting. If this game has multiple files, all files will be affected.\n\nPerhaps make a back-up before proceeding. You have been warned.",
+                    "WARNING! This game has its own save data system, which will be PERMANENTLY "
+                    "reset back %s. You will not be able to recover it by resetting. If this game "
+                    "has multiple files, all files will be affected.\n\nPerhaps make a back-up "
+                    "before proceeding. You have been warned.",
                     human_time
                 );
             }
             else
             {
                 text = aprintf(
-                    "WARNING! This game has its own save data system, which will be permanently reset back %s. You will not be able to undo this by resetting the game.",
+                    "WARNING! This game has its own save data system, which will be permanently "
+                    "reset back %s. You will not be able to undo this by resetting the game.",
                     human_time
                 );
                 h = 180;
             }
             cb_free(human_time);
         }
-        CB_Modal* modal = CB_Modal_new(
-            text, options, (void*)settings_action_load_state, settingsScene
-        );
+        CB_Modal* modal =
+            CB_Modal_new(text, options, (void*)settings_action_load_state, settingsScene);
         cb_free(text);
         modal->width = 390;
         modal->height = h;
         modal->margin = 12;
-        CB_presentModal(
-            modal->scene
-        );
+        CB_presentModal(modal->scene);
     }
     else
     {
@@ -939,32 +948,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // stabilization
-    if (preferences_blend_frames && preferences_frame_skip)
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Stabilization",
-            .values = off_on_labels,
-            .description = "Unavailable when 30 FPS\nmode and Frame blending\nare both enabled.",
-            .pref_var = &preferences_dither_stable,
-            .max_value = 0,
-            .on_press = NULL
-        };
-    }
-    else
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Stabilization",
-            .values = off_on_labels,
-            .description =
-                "Stabilizes scaling artifacts\nby making them scroll with\nthe camera.\n  \n"
-                "This prevents textures\nfrom shimmering, but may\n"
-                "reduce performance\nslightly in scroll-heavy \ngames.\n  \n"
-                "Works best with Dither\nset to \"Staggered\".",
-            .pref_var = &preferences_dither_stable,
-            .max_value = 2,
-            .on_press = NULL
-        };
-    }
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Stabilization",
+        .values = off_on_labels,
+        .description =
+            "Stabilizes scaling artifacts\nby making them scroll with\nthe camera.\n  \n"
+            "This prevents textures\nfrom shimmering, but may\n"
+            "reduce performance\nslightly in scroll-heavy \ngames.\n  \n"
+            "Works best with Dither\nset to \"Staggered\".",
+        .pref_var = &preferences_dither_stable,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     entries[++i] = (OptionsMenuEntry){
         .name = "Behavior",

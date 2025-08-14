@@ -1859,8 +1859,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         int scy = context->gb->gb_reg.SCY;
 
         const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
-        if (preferences_dither_stable && (!preferences_blend_frames || !preferences_frame_skip) &&
-            scy % scaling != last_scy % scaling)
+        if (preferences_dither_stable && scy % scaling != last_scy % scaling)
         {
             force_all_lines_dirty = true;
             last_scy = scy;
