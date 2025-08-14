@@ -90,6 +90,9 @@ UINCDIR += libs/pdnewlib
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
 UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
 
+# flags applied to simulator only
+SIMULATOR_FLAGS += 
+
 # flags applied to both simulator and device
 COMMON_FLAGS += 
 
@@ -103,9 +106,6 @@ ULIBDIR =
 ULIBS =
 
 override LDSCRIPT=./link_map.ld
-
-# ugly to allow defs for simulator
-override INCDIR = $(patsubst %,-I %,$(DINCDIR) $(UINCDIR)) $(COMMON_FLAGS)
 
 include $(SDK)/C_API/buildsupport/common.mk
 
@@ -123,6 +123,9 @@ endif
 endif
 
 PDCFLAGS += --quiet
+
+# flags for simulator
+DYLIB_FLAGS += $(COMMON_FLAGS) $(SIMULATOR_FLAGS)
 
 # --- CUSTOM CLEANUP ---
 .PHONY: clean-scripts
