@@ -289,6 +289,7 @@ typedef struct StateHeader
 #define PGB_SAVESTATE_UPGRADE_IMPL
 #endif
 
+#pragma push_macro("PGB_VERSION")
 #include "pgb/pgb_v2.h"
 
 typedef struct PGB_VERSIONED(gb_s) gb_s;
@@ -6112,4 +6113,5 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 }
 
 #endif
+#pragma pop_macro("PGB_VERSION")
 #endif  // PEANUT_GB_H

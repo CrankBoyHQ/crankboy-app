@@ -558,7 +558,6 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
             return aprintf("%s", result);
     }
     char* const v1_in = in;
-    DEFER(if (v1_in != org_in) cb_free(v1_in));
 
 #define DEFINE(type, name, src)    \
     type* const name = (void*)src; \
@@ -569,7 +568,11 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
 
     char* v2_org = mallocz(sizeof(StateHeader) + sizeof(struct gb_s_v2));
     if (!v2_org)
+    {
+        if (v1_in != org_in)
+            cb_free(v1_in);
         return aprintf("Out of memory");
+    }
     char* v2 = v2_org;
 
     DEFINE(StateHeader, v2_header, v2);
@@ -614,9 +617,15 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
 
     // now that we have the data in the struct, we can resize
     *out_size = gb_get_state_size_v2(v2_gb);
-    v2_org = cb_realloc(v2_org, *out_size);
-    if (!v2_org)
+    char* v2_realloc = cb_realloc(v2_org, *out_size);
+    if (!v2_realloc)
+    {
+        if (v1_in != org_in)
+            cb_free(v1_in);
+        cb_free(v2_org);
         return aprintf("Out of memory");
+    }
+    v2_org = v2_realloc;
 
     CB_ASSERT(
         *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
@@ -630,11 +639,11 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     );
 
     *out = v2_org;
+    if (v1_in != org_in)
+        cb_free(v1_in);
     return NULL;
 
 #undef DEFINE
 }
 
 #endif
-
-#pragma pop_macro("PGB_VERSION")
