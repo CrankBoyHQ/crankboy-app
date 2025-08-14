@@ -25,7 +25,7 @@ typedef struct CB_Modal
     char* text;
     int options_count;
     int option_selected;
-    int width, height;
+    int width, height, margin;
     char* options[MODAL_MAX_OPTIONS];
     CB_ModalCallback callback;
     int timer;

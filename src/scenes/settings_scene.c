@@ -526,10 +526,13 @@ static void settings_post_action_script(
     }
 }
 
-static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+static void settings_action_save_state(void* _settingsScene, int option)
 {
-    cb_play_ui_sound(CB_UISound_Confirm);
-    CB_GameScene* gameScene = e->ud;
+    CB_SettingsScene* settingsScene = _settingsScene;
+    if (option != 0) return;
+    
+    CB_GameScene* gameScene = settingsScene->gameScene;
+    gameScene->save_state_requires_warning = false;
     int slot = preferences_save_state_slot;
 
     unsigned timestamp = get_save_state_timestamp(gameScene, slot);
@@ -556,10 +559,12 @@ static void settings_action_save_state(OptionsMenuEntry* e, CB_SettingsScene* se
     }
 }
 
-static void settings_action_load_state(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+static void settings_action_load_state(void* _settingsScene, int option)
 {
-    cb_play_ui_sound(CB_UISound_Confirm);
-    CB_GameScene* gameScene = e->ud;
+    CB_SettingsScene* settingsScene = _settingsScene;
+    if (option != 1) return;
+    CB_GameScene* gameScene = settingsScene->gameScene;
+    gameScene->save_state_requires_warning = false;
     int slot = preferences_save_state_slot;
 
     // confirmation needed if more than 2 minutes of progress made
@@ -595,6 +600,85 @@ static void settings_action_load_state(OptionsMenuEntry* e, CB_SettingsScene* se
     }
 }
 
+static void settings_action_save_state_possibly_warn(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+{
+    CB_GameScene* gameScene = e->ud;
+    if (gameScene->save_state_requires_warning)
+    {
+        const char* options[] = {"Understood", NULL};
+        CB_Modal* modal = CB_Modal_new(
+            "WARNING! This game has its own save data system, and a snapshot of that data will be included in this save state.\n\nIf you later load this state, this game's save data will revert to whatever it is now, and progress could be permanently lost.",
+            options, (void*)settings_action_save_state, settingsScene
+        );
+        modal->width = 380;
+        modal->height = 224;
+        modal->margin = 12;
+        CB_presentModal(
+            modal->scene
+        );
+    }
+    else
+    {
+        settings_action_save_state(settingsScene, 0);
+    }
+}
+
+static void settings_action_load_state_possibly_warn(OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+{
+    CB_GameScene* gameScene = e->ud;
+    if (gameScene->cartridge_has_battery)
+    {
+        const char* options[] = {"Cancel", "Load", NULL};
+        unsigned timestamp = get_save_state_timestamp(gameScene, preferences_save_state_slot);
+        unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+        
+        int h = 234;
+        
+        char* text;
+        if (timestamp == 0 || timestamp >= now)
+        {
+            text = aprintf(
+                "WARNING! This game has its own save data system, which will be PERMANENTLY reset to match that of this state. You will not be able to undo this by resetting. If this game has multiple files, all will be affected.\n \nYou have been warned."
+            );
+        }
+        else
+        {
+            char* human_time = en_human_time(now - timestamp);
+            if (now - timestamp >= 900)
+            {
+                // more elaborate error message if state >= 15 minutes old
+                text = aprintf(
+                    "WARNING! This game has its own save data system, which will be PERMANENTLY reset back %s. You will not be able to recover it by resetting. If this game has multiple files, all files will be affected.\n\nPerhaps make a back-up before proceeding. You have been warned.",
+                    human_time
+                );
+            }
+            else
+            {
+                text = aprintf(
+                    "WARNING! This game has its own save data system, which will be permanently reset back %s. You will not be able to undo this by resetting the game.",
+                    human_time
+                );
+                h = 180;
+            }
+            cb_free(human_time);
+        }
+        CB_Modal* modal = CB_Modal_new(
+            text, options, (void*)settings_action_load_state, settingsScene
+        );
+        cb_free(text);
+        modal->width = 390;
+        modal->height = h;
+        modal->margin = 12;
+        CB_presentModal(
+            modal->scene
+        );
+    }
+    else
+    {
+        settings_action_load_state(settingsScene, 1);
+    }
+}
+
 static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 {
     CB_GameScene* gameScene = scene->gameScene;
@@ -615,51 +699,34 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (gameScene)
     {
-        if (!gameScene->save_states_supported)
-        {
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Save state",
-                .values = NULL,
-                .description =
-                    "CrankBoy does not\ncurrently support\ncreating save states\n"
-                    "with a ROM that has its\nown save data.",
-                .pref_var = &preferences_save_state_slot,
-                .max_value = 0,
-                .locked = 1,
-                .on_press = NULL
-            };
-        }
-        else
-        {
-            // save state
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Save state",
-                .values = slot_labels,
-                .description =
-                    "Create a snapshot of\nthis moment, which\ncan be resumed later.",
-                .pref_var = &preferences_save_state_slot,
-                .max_value = SAVE_STATE_SLOT_COUNT,
-                .show_value_only_on_hover = 1,
-                .thumbnail = 1,
-                .on_press = settings_action_save_state,
-                .ud = gameScene,
-            };
+        // save state
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Save state",
+            .values = slot_labels,
+            .description =
+                "Create a snapshot of\nthis moment, which\ncan be resumed later.",
+            .pref_var = &preferences_save_state_slot,
+            .max_value = SAVE_STATE_SLOT_COUNT,
+            .show_value_only_on_hover = 1,
+            .thumbnail = 1,
+            .on_press = settings_action_save_state_possibly_warn,
+            .ud = gameScene,
+        };
 
-            // load state
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Load state",
-                .values = slot_labels,
-                .description =
-                    "Restore the previously-\ncreated snapshot."
-                ,
-                .pref_var = &preferences_save_state_slot,
-                .max_value = SAVE_STATE_SLOT_COUNT,
-                .show_value_only_on_hover = 1,
-                .thumbnail = 1,
-                .on_press = settings_action_load_state,
-                .ud = gameScene,
-            };
-        }
+        // load state
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Load state",
+            .values = slot_labels,
+            .description =
+                "Restore the previously-\ncreated snapshot."
+            ,
+            .pref_var = &preferences_save_state_slot,
+            .max_value = SAVE_STATE_SLOT_COUNT,
+            .show_value_only_on_hover = 1,
+            .thumbnail = 1,
+            .on_press = settings_action_load_state_possibly_warn,
+            .ud = gameScene,
+        };
     }
 
     if (libraryScene && selectedGame)

@@ -506,21 +506,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             gameScene->base_filename = cb_basename(rom_filename, true);
 
             gameScene->cartridge_has_battery = context->gb->cart_battery;
+            gameScene->save_state_requires_warning = context->gb->cart_battery;
             playdate->system->logToConsole(
                 "Cartridge has battery: %s", gameScene->cartridge_has_battery ? "Yes" : "No"
             );
-
-            //      _             ____
-            //     / \           /    \,
-            //    / ! \         | STOP |
-            //   /_____\         \____/
-            //      |              |
-            //      |              |
-            // WARNING -- SEE MESSAGE [7700] IN "game_scene.h" BEFORE ALTERING
-            // THIS LINE           |
-            //      |              |
-            gameScene->save_states_supported = !gameScene->cartridge_has_battery;
-            ;
 
             gameScene->last_save_time = 0;
 
@@ -2477,13 +2466,10 @@ static void CB_GameScene_menu(void* object)
         }
 
         unsigned int last_state_save_time = 0;
-        if (gameScene->save_states_supported)
+        for (int i = 0; i < SAVE_STATE_SLOT_COUNT; ++i)
         {
-            for (int i = 0; i < SAVE_STATE_SLOT_COUNT; ++i)
-            {
-                last_state_save_time =
-                    MAX(last_state_save_time, get_save_state_timestamp(gameScene, i));
-            }
+            last_state_save_time =
+                MAX(last_state_save_time, get_save_state_timestamp(gameScene, i));
         }
 
         bool show_time_info = false;

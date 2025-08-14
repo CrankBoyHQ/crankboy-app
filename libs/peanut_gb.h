@@ -5391,9 +5391,8 @@ __section__(".rare") void gb_state_save(gb_s* gb, char* out)
 #endif
     header.bits = sizeof(void*);
     memcpy(out, &header, sizeof(header));
-    out += sizeof(header);
 
-    PGB_VERSIONED(gb_state_save)(gb, out);
+    PGB_VERSIONED(gb_state_save)(gb, out + sizeof(header));
 
     {
         StateHeader* header = (void*)out;

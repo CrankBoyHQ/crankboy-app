@@ -102,7 +102,7 @@ void CB_Modal_update(CB_Modal* modal)
         h - (total_thickness * 2), kColorWhite
     );
 
-    int m = 24;  // margin
+    int m = modal->margin;  // margin
     playdate->graphics->setFont(CB_App->bodyFont);
     if (modal->text)
     {
@@ -199,6 +199,7 @@ CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback 
 
     modal->width = 250;
     modal->height = 120;
+    modal->margin = 24;
 
     modal->options_count = 0;
     if (options)
