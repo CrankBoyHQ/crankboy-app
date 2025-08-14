@@ -391,6 +391,8 @@ static void launch_game(void* ud, int option)
     {
     case 0:  // launch w/ scripts enabled
     case 1:  // launch w/ scripts disabled
+    case 4: // launch w/ scripts enabled (don't set prompted)
+    case 5: // launch w/ scripts disabled (don't set prompted)
     {
         char* settings_path = cb_game_config_path(game->fullpath);
         if (settings_path)
@@ -402,7 +404,10 @@ static void launch_game(void* ud, int option)
             // Set preferences based on option.
             preferences_script_support = (option == 0);
             preferences_per_game = 1;
-            preferences_script_has_prompted = 1;
+            if (option <= 3)
+            {
+                preferences_script_has_prompted = 1;
+            }
 
             call_with_main_stack_2(
                 preferences_save_to_disk, settings_path,
@@ -449,14 +454,109 @@ static void disable_script_and_launch(void* ud, int option)
     CB_Game* game = ud;
     switch (option)
     {
-    case 0:  // launch with scripts disabled
-        launch_game(game, 1);
+    case 0: // launch with scripts disabled
+        launch_game(game, 5);
         break;
-    case 1:  // launch with scripts as-is
+    case 1: // launch with scripts as-is
         launch_game(game, 3);
         break;
     default:  // cancel
         break;
+    }
+}
+
+static bool crank_would_cause_input(CB_Game* game)
+{
+    // TODO
+    void* prefs = preferences_store_subset(-1);
+    load_game_prefs(game->fullpath, true);
+    int crank_mode = preferences_crank_mode;
+    preferences_restore_subset(prefs);
+    cb_free(prefs);
+    
+    float crank_angle = playdate->system->getCrankAngle();
+    bool docked = playdate->system->isCrankDocked();
+    
+    if (crank_mode == CRANK_MODE_START_SELECT)
+    {
+        if (!docked && crank_angle >= 45.0f && crank_angle <= 315.0f)
+        {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+static void launch_game_prompt_if_script(void* ud, int option)
+{
+    if (option != 0) return;
+    
+    CB_Game* game = ud;
+
+    if (preferences_library_remember_selection)
+    {
+        call_with_user_stack_1(save_last_selected_index, game->fullpath);
+    }
+
+    bool launch = true;
+
+#ifndef NOLUA
+    // Prompt for use game script
+
+    // check if user has already accepted/rejected script prompt for this game before
+    void* prefs = preferences_store_subset(-1);
+    preferences_script_has_prompted = 0; // ignore global ver. of this setting
+    load_game_prefs(game->fullpath, false);
+    int has_prompted = preferences_script_has_prompted;
+    int script_enabled = preferences_script_support;
+    int is_per_game = preferences_per_game;
+    preferences_restore_subset(prefs);
+    cb_free(prefs);
+    
+    if (!is_per_game) script_enabled = preferences_script_support;
+
+    ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+    if (info)
+    {
+        if (!info->experimental && !has_prompted)
+        {
+            const char* options[] = {"Yes", "No", "About", NULL};
+            if (!info->info)
+                options[2] = NULL;
+            CB_Modal* modal = CB_Modal_new(
+                "There is native Playdate support for this game.\n"
+                "Would you like to enable it?",
+                options, launch_game, game
+            );
+
+            modal->width = 290;
+            modal->height = 152;
+
+            CB_presentModal(modal->scene);
+            launch = false;
+        }
+        else if (info->experimental && script_enabled)
+        {
+            const char* options[] = {"Yes", "No", NULL};
+            CB_Modal* modal = CB_Modal_new(
+                "This game's script is marked as \"experimental,\" so please expect glitches or even crashes.\n \nDisable script?",
+                options, disable_script_and_launch, game
+            );
+            
+            modal->width = 310;
+            modal->height = 224;
+            
+            CB_presentModal(modal->scene);
+            launch = false;
+        }
+        script_info_free(info);
+    }
+#endif
+
+    if (launch)
+    {
+        launch_game(game, 3);
     }
 }
 
@@ -845,74 +945,28 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
         {
             cb_play_ui_sound(CB_UISound_Confirm);
+            
             last_selected_game_index = selectedItem;
             CB_Game* game = libraryScene->games->items[selectedItem];
-
-            if (preferences_library_remember_selection)
+            
+            // warn if the crank is in a bad position
+            if (crank_would_cause_input(game))
             {
-                call_with_user_stack_1(save_last_selected_index, game->fullpath);
+                const char* options[] = {"Ignore", "Cancel", NULL};
+                CB_Modal* modal = CB_Modal_new(
+                    "The crank's current position will cause an input in-game.\n \nPlease dock the crank now.",
+                    options, launch_game_prompt_if_script, game
+                );
+
+                modal->width = 290;
+                modal->height = 190;
+                modal->accept_on_dock = 1;
+
+                CB_presentModal(modal->scene);
             }
-
-            bool launch = true;
-
-#ifndef NOLUA
-            // Prompt for use game script
-
-            // check if user has already accepted/rejected script prompt for this game before
-            void* prefs = preferences_store_subset(-1);
-            preferences_script_has_prompted = 0;
-            load_game_prefs(game->fullpath, false);
-            int has_prompted = preferences_script_has_prompted;
-            int script_enabled = preferences_script_support;
-            int is_per_game = preferences_per_game;
-            preferences_restore_subset(prefs);
-            cb_free(prefs);
-
-            if (!is_per_game)
-                script_enabled = preferences_script_support;
-
-            ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
-            if (info)
+            else
             {
-                if (!info->experimental && !has_prompted)
-                {
-                    const char* options[] = {"Yes", "No", "About", NULL};
-                    if (!info->info)
-                        options[2] = NULL;
-                    CB_Modal* modal = CB_Modal_new(
-                        "There is native Playdate support for this game.\n"
-                        "Would you like to enable it?",
-                        options, launch_game, game
-                    );
-
-                    modal->width = 290;
-                    modal->height = 152;
-
-                    CB_presentModal(modal->scene);
-                    launch = false;
-                }
-                else if (info->experimental && script_enabled)
-                {
-                    const char* options[] = {"Yes", "No", NULL};
-                    CB_Modal* modal = CB_Modal_new(
-                        "This game's script is marked as \"experimental,\" so please expect "
-                        "glitches or even crashes.\n \nDisable script?",
-                        options, disable_script_and_launch, game
-                    );
-
-                    modal->width = 310;
-                    modal->height = 224;
-
-                    CB_presentModal(modal->scene);
-                    launch = false;
-                }
-                script_info_free(info);
-            }
-#endif
-
-            if (launch)
-            {
-                launch_game(game, 3);
+                launch_game_prompt_if_script(game, 0);
             }
         }
     }

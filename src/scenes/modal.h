@@ -32,6 +32,7 @@ typedef struct CB_Modal
     int droptimer;
     bool exit : 1;
     bool setup : 1;
+    bool accept_on_dock : 1;
     int result;
 
     LCDBitmap* dissolveMask;
