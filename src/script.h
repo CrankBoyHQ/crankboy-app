@@ -16,20 +16,22 @@ at build time, and they must contain a C_SCRIPT { ... } declaration.
 */
 
 struct CB_GameScene;
-struct gb_s;
+#ifndef PEANUT_GB_H
+typedef void gb_s;
+#endif
 struct lua_State;
 
 // returns user-data; return value of NULL indicates an error.
-typedef void* (*CS_OnBegin)(struct gb_s* gb, const char* rom_header_name);
+typedef void* (*CS_OnBegin)(gb_s* gb, const char* rom_header_name);
 
-typedef void (*CS_OnTick)(struct gb_s* gb, void* userdata);
+typedef void (*CS_OnTick)(gb_s* gb, void* userdata);
 
-typedef void (*CS_OnDraw)(struct gb_s* gb, void* userdata);
+typedef void (*CS_OnDraw)(gb_s* gb, void* userdata);
 
 // should free userdata
-typedef void (*CS_OnEnd)(struct gb_s* gb, void* userdata);
+typedef void (*CS_OnEnd)(gb_s* gb, void* userdata);
 
-typedef void (*CS_OnBreakpoint)(struct gb_s* gb, uint16_t addr, int breakpoint_idx, void* userdata);
+typedef void (*CS_OnBreakpoint)(gb_s* gb, uint16_t addr, int breakpoint_idx, void* userdata);
 
 struct CScriptInfo
 {
@@ -78,7 +80,7 @@ void cb_register_all_scripts(void);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.
-int c_script_add_hw_breakpoint(struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback);
+int c_script_add_hw_breakpoint(gb_s* gb, uint16_t addr, CS_OnBreakpoint callback);
 
 // script info
 void script_info_free(ScriptInfo* info);

@@ -6,6 +6,7 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
+#include "game_scene.h"
 #include "library_scene.h"
 
 #include "../../libs/lz4/lz4.h"
@@ -21,7 +22,6 @@
 #include "../utility.h"
 #include "../version.h"
 #include "credits_scene.h"
-#include "game_scene.h"
 #include "info_scene.h"
 #include "settings_scene.h"
 

@@ -3,7 +3,7 @@
         "logo": true
     },
     {
-        "section": "Primary Coding",
+        "section": "Primary Developers",
         "contributors": ["NaOH (Sodium Hydroxide)", "stonerl"]
     },
     {
@@ -57,7 +57,8 @@
             "florin (StackOverflow)",
             "Sean Eron Anderson",
             "Deathwink",
-            "Zoomll"
+            "Zoomll",
+            "Paul Sorensen (defer.h)"
         ]
     },
     {
@@ -70,6 +71,7 @@
             "",
             "Copyright © 2024-2025, CrankBoy contributors",
             "Copyright © 2023-2024, Risolvi Productions",
+            "Copyright © 2023, Paul Sorensen",
             "Copyright © 2018-2022, Mahyar Koshkouei",
             "Copyright © 2015-2019, Lior Halphon",
             "",

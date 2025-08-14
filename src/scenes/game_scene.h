@@ -66,12 +66,14 @@ typedef struct
     bool selectPressed;
 } CB_CrankSelector;
 
-struct gb_s;
-
 typedef struct CB_GameSceneContext
 {
     CB_GameScene* scene;
-    struct gb_s* gb;
+    #ifdef PEANUT_GB_H
+    gb_s* gb;
+    #else
+    void* gb;
+    #endif
     uint8_t wram[WRAM_SIZE];
     uint8_t vram[VRAM_SIZE];
     uint8_t* rom;

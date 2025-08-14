@@ -166,7 +166,7 @@ static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, in
     }
 }
 
-static ScriptData* on_begin(struct gb_s* gb, char* header_name)
+static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
 
@@ -241,7 +241,7 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     return data;
 }
 
-static void on_end(struct gb_s* gb, ScriptData* data)
+static void on_end(gb_s* gb, ScriptData* data)
 {
     code_replacement_free(data->patch_no_door);
     code_replacement_free(data->patch_start_flying);
@@ -249,7 +249,7 @@ static void on_end(struct gb_s* gb, ScriptData* data)
     cb_free(data);
 }
 
-static void on_tick(struct gb_s* gb, ScriptData* data)
+static void on_tick(gb_s* gb, ScriptData* data)
 {
     bool in_game = gb->gb_reg.WY >= 100 && gb->gb_reg.WX < 100;
 
@@ -421,7 +421,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     data->crank_angle = new_crank_angle;
 }
 
-static void on_draw(struct gb_s* gb, ScriptData* data)
+static void on_draw(gb_s* gb, ScriptData* data)
 {
     bool in_game = (game_picture_x_offset == 0);
 

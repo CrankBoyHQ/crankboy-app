@@ -12,7 +12,7 @@
 typedef unsigned romaddr_t;
 typedef u16 addr16_t;
 
-extern struct gb_s* script_gb;
+extern gb_s* script_gb;
 
 u8 rom_peek(romaddr_t addr);
 void rom_poke(romaddr_t addr, u8 v);
@@ -202,7 +202,7 @@ static struct ScriptBreakpointDef
 */
 
 #define SCRIPT_BREAKPOINT__(x, ...)                                             \
-    static void breakpoint_##x(struct gb_s* gb, u16 addr, int bpidx, USERDATA); \
+    static void breakpoint_##x(gb_s* gb, u16 addr, int bpidx, USERDATA); \
     static romaddr_t bp_addrs_##x[] = {__VA_ARGS__};                            \
     static struct ScriptBreakpointDef script_bp_##x = {                         \
         .bp = (CS_OnBreakpoint)breakpoint_##x,                                  \
@@ -213,7 +213,7 @@ static struct ScriptBreakpointDef
         script_bp_##x.next = script_breakpoints;                                \
         script_breakpoints = &script_bp_##x;                                    \
     }                                                                           \
-    static void breakpoint_##x(struct gb_s* gb, u16 addr, int bpidx, USERDATA)
+    static void breakpoint_##x(gb_s* gb, u16 addr, int bpidx, USERDATA)
 
 #define SCRIPT_BREAKPOINT_(x, ...) SCRIPT_BREAKPOINT__(x, __VA_ARGS__)
 #define SCRIPT_BREAKPOINT(...) SCRIPT_BREAKPOINT_(__COUNTER__, __VA_ARGS__)

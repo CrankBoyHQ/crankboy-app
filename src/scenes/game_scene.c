@@ -6,7 +6,7 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#define CB_IMPL
+#define PGB_IMPL
 #include "game_scene.h"
 
 #include "../../libs/minigb_apu/minigb_apu.h"
@@ -72,12 +72,12 @@ static uint8_t* read_rom_to_ram(
 // returns 2 if data and RTC loaded
 // returns -1 on error
 static int read_cart_ram_file(
-    const char* save_filename, struct gb_s* gb, unsigned int* last_save_time
+    const char* save_filename, gb_s* gb, unsigned int* last_save_time
 );
-static void write_cart_ram_file(const char* save_filename, struct gb_s* gb);
+static void write_cart_ram_file(const char* save_filename, gb_s* gb);
 
-static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16_t val);
-static void gb_save_to_disk(struct gb_s* gb);
+static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val);
+static void gb_save_to_disk(gb_s* gb);
 
 static const char* startButtonText = "start";
 static const char* selectButtonText = "select";
@@ -430,11 +430,11 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     DTCM_VERIFY();
 
     CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
-    struct gb_s* gb;
-    static struct gb_s gb_fallback;  // use this gb struct if dtcm alloc not available
+    gb_s* gb;
+    static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available
     if (dtcm_enabled())
     {
-        gb = dtcm_alloc(sizeof(struct gb_s));
+        gb = dtcm_alloc(sizeof(gb_s));
     }
     else
     {
@@ -445,7 +445,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     itcm_core_init();
 
-    memset(gb, 0, sizeof(struct gb_s));
+    memset(gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
 
     if (CB_App->soundSource == NULL)
@@ -821,7 +821,7 @@ static uint8_t* read_rom_to_ram(
 }
 
 static int read_cart_ram_file(
-    const char* save_filename, struct gb_s* gb, unsigned int* last_save_time
+    const char* save_filename, gb_s* gb, unsigned int* last_save_time
 )
 {
     *last_save_time = 0;
@@ -873,7 +873,7 @@ static int read_cart_ram_file(
     return code;
 }
 
-static void write_cart_ram_file(const char* save_filename, struct gb_s* gb)
+static void write_cart_ram_file(const char* save_filename, gb_s* gb)
 {
     // Get the size of the save RAM from the gb context.
     const size_t sram_len = gb_get_save_size(gb);
@@ -990,7 +990,7 @@ cleanup:
         cb_free(bak_filename);
 }
 
-static void gb_save_to_disk_(struct gb_s* gb)
+static void gb_save_to_disk_(gb_s* gb)
 {
     DTCM_VERIFY_DEBUG();
 
@@ -1026,7 +1026,7 @@ static void gb_save_to_disk_(struct gb_s* gb)
     DTCM_VERIFY_DEBUG();
 }
 
-static void gb_save_to_disk(struct gb_s* gb)
+static void gb_save_to_disk(gb_s* gb)
 {
     call_with_main_stack_1(gb_save_to_disk_, gb);
 }
@@ -1035,7 +1035,7 @@ static void gb_save_to_disk(struct gb_s* gb)
  * Handles an error reported by the emulator. The emulator context may be used
  * to better understand why the error given in gb_err was reported.
  */
-static void gb_error(struct gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
+static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
 {
     CB_GameSceneContext* context = gb->direct.priv;
 
@@ -1240,7 +1240,7 @@ __core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* fra
     }
 }
 
-static void save_check(struct gb_s* gb);
+static void save_check(gb_s* gb);
 
 static __section__(".text.tick") void display_fps(void)
 {
@@ -1763,7 +1763,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         CB_ASSERT(context == context->gb->direct.priv);
 
-        struct gb_s* tmp_gb = context->gb;
+        gb_s* tmp_gb = context->gb;
 
 #ifdef TARGET_SIMULATOR
         pthread_mutex_lock(&audio_mutex);
@@ -1773,13 +1773,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         int stack_gb_size = 1;
         if (!dtcm_enabled())
         {
-            stack_gb_size = sizeof(struct gb_s);
+            stack_gb_size = sizeof(gb_s);
         }
         char stack_gb_data[stack_gb_size];
         if (!dtcm_enabled())
         {
             gameScene->audioLocked = 1;
-            memcpy(stack_gb_data, tmp_gb, sizeof(struct gb_s));
+            memcpy(stack_gb_data, tmp_gb, sizeof(gb_s));
             context->gb = (void*)stack_gb_data;
             gameScene->audioLocked = 0;
         }
@@ -1789,9 +1789,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
 
 #ifdef DTCM_ALLOC
-        void (*run_frame_function_pointer)(struct gb_s*) = ITCM_CORE_FN(gb_run_frame);
+        void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame);
 #else
-        void (*run_frame_function_pointer)(struct gb_s*) = gb_run_frame;
+        void (*run_frame_function_pointer)(gb_s*) = gb_run_frame;
 #endif
 
         if (preferences_frame_skip && preferences_blend_frames)
@@ -1849,7 +1849,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         if (!dtcm_enabled())
         {
             gameScene->audioLocked = 1;
-            memcpy(tmp_gb, context->gb, sizeof(struct gb_s));
+            memcpy(tmp_gb, context->gb, sizeof(gb_s));
             context->gb = tmp_gb;
             gameScene->audioLocked = 0;
         }
@@ -2319,7 +2319,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     gameScene->model.crank_mode = preferences_crank_mode;
 }
 
-__section__(".text.tick") __space static void save_check(struct gb_s* gb)
+__section__(".text.tick") __space static void save_check(gb_s* gb)
 {
     static uint32_t frames_since_sram_update;
 
@@ -3286,7 +3286,7 @@ static void CB_GameScene_free(void* object)
     DTCM_VERIFY();
 }
 
-__section__(".rare") void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_number)
+__section__(".rare") void __gb_on_breakpoint(gb_s* gb, int breakpoint_number)
 {
     CB_GameSceneContext* context = gb->direct.priv;
     CB_GameScene* gameScene = context->scene;

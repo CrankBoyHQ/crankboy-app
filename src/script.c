@@ -32,7 +32,7 @@ struct CScriptNode* c_script_list_head = NULL;
 size_t c_script_count = 0;
 const struct CScriptInfo** c_scripts = NULL;
 
-struct gb_s* script_gb;
+gb_s* script_gb;
 
 static bool lua_check_args(lua_State* L, int min, int max)
 {
@@ -48,14 +48,14 @@ static struct CB_GameScene* get_game_scene(lua_State* L)
     return scene;
 }
 
-static struct gb_s* get_gb(lua_State* L)
+static gb_s* get_gb(lua_State* L)
 {
     return get_game_scene(L)->context->gb;
 }
 
 static int cb_rom_size(lua_State* L)
 {
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     lua_pushinteger(L, gb->gb_rom_size);
     return 1;
 }
@@ -67,7 +67,7 @@ static int cb_rom_poke(lua_State* L)
         return luaL_error(L, "cb.rom_poke(addr, value) takes two arguments");
     }
 
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
 
     int addr = luaL_checkinteger(L, 1);
     int value = luaL_checkinteger(L, 2);
@@ -82,7 +82,7 @@ static int cb_rom_poke(lua_State* L)
     return 0;
 }
 
-int set_hw_breakpoint(struct gb_s* gb, uint32_t rom_addr);
+int set_hw_breakpoint(gb_s* gb, uint32_t rom_addr);
 static int cb_rom_set_breakpoint(lua_State* L)
 {
 
@@ -92,7 +92,7 @@ static int cb_rom_set_breakpoint(lua_State* L)
         return luaL_error(L, "cb.rom_set_breakpoint(addr, function) takes two arguments");
     }
 
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     int addr = luaL_checkinteger(L, 1);
     luaL_checktype(L, 2, LUA_TFUNCTION);
     size_t rom_size = gb->gb_rom_size;
@@ -138,7 +138,7 @@ static int cb_rom_peek(lua_State* L)
         return luaL_error(L, "cb.rom_peek(addr) takes one argument");
     }
 
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
 
     int addr = luaL_checkinteger(L, 1);
     size_t rom_size = gb->gb_rom_size;
@@ -152,8 +152,8 @@ static int cb_rom_peek(lua_State* L)
     return 1;
 }
 
-uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr);
-void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, uint8_t);
+uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr);
+void __gb_write_full(gb_s* gb, const uint_fast16_t addr, uint8_t);
 
 static int cb_ram_peek(lua_State* L)
 {
@@ -162,7 +162,7 @@ static int cb_ram_peek(lua_State* L)
         return luaL_error(L, "cb.ram_peek(addr) takes one argument");
     }
 
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
 
     int addr = luaL_checkinteger(L, 1);
 
@@ -182,7 +182,7 @@ static int cb_ram_poke(lua_State* L)
         return luaL_error(L, "cb.ram_poke(addr, value) takes two arguments");
     }
 
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
 
     int addr = luaL_checkinteger(L, 1);
     int val = luaL_checkinteger(L, 2);
@@ -198,7 +198,7 @@ static int cb_ram_poke(lua_State* L)
 
 static int cb_get_gb_buttons(lua_State* L)
 {
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     lua_pushinteger(L, gb->direct.joypad ^ 0xFF);
     return 1;
 }
@@ -252,7 +252,7 @@ __section__(".rare") static int cb_force_pref(lua_State* L)
 static int cb_step_cpu(lua_State* L)
 {
     // UNTESTED
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     __gb_step_cpu(gb);
     return 0;
 }
@@ -273,7 +273,7 @@ static int cb_close(lua_State* L)
 
 __section__(".rare") static int cb_regs_index(lua_State* L)
 {
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     const char* reg_name = luaL_checkstring(L, 2);
 
     if (strcmp(reg_name, "af") == 0)
@@ -342,7 +342,7 @@ __section__(".rare") static int cb_regs_index(lua_State* L)
 
 __section__(".rare") static int cb_regs_newindex(lua_State* L)
 {
-    struct gb_s* gb = get_gb(L);
+    gb_s* gb = get_gb(L);
     const char* reg_name = luaL_checkstring(L, 2);
     int value = luaL_checkinteger(L, 3);
 
@@ -743,7 +743,7 @@ void script_draw(ScriptState* state, struct CB_GameScene* game_scene)
 
 // for C scripts
 __section__(".rare") int c_script_add_hw_breakpoint(
-    struct gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
+    gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
 )
 {
     // get script from gb (rather indirect :/)
@@ -778,7 +778,7 @@ __section__(".rare") void script_on_breakpoint(struct CB_GameScene* gameScene, i
     script_gb = gameScene->context->gb;
 
     ScriptState* state = gameScene->script;
-    struct gb_s* gb = gameScene->context->gb;
+    gb_s* gb = gameScene->context->gb;
 
 #ifndef NOLUA
     if (state->L)

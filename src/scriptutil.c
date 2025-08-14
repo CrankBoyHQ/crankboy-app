@@ -2,8 +2,8 @@
 
 #define GB script_gb
 
-uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr);
-void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, uint8_t);
+uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr);
+void __gb_write_full(gb_s* gb, const uint_fast16_t addr, uint8_t);
 
 u8 rom_peek(romaddr_t addr)
 {

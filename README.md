@@ -43,11 +43,9 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     3. Copy the `pdx`to the `Games` folder.
 - **Simulator sideload**
     1. Download the Simulator build for your OS (Linux or macOS -- Windows is [not yet supported](https://github.com/CrankBoyHQ/crankboy-app/issues/43).)
-    2. Connect your Playdate to a computer and unlock it.
+    2. Connect your Playdate to your computer via USB and unlock it.
     3. Open the `pdx` in the Simulator.
     4. Press `Alt+U` on Linux or `⌘+U` on macOS.
-
-> Note: Simulator sideloading is not supported on Windows.
 
 ### Installing ROMs
 

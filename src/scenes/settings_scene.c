@@ -265,11 +265,11 @@ static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* setti
 {
     if (!load_state(gameScene, preferences_save_state_slot))
     {
-        playdate->system->logToConsole("Error loading state %d", 0);
+        playdate->system->logToConsole("Error loading state %d", preferences_save_state_slot);
     }
     else
     {
-        playdate->system->logToConsole("Loaded save state %d", 0);
+        playdate->system->logToConsole("Loaded save state %d", preferences_save_state_slot);
 
         // TODO: something less invasive than a modal here.
         const char* options[] = {"Game", "Settings", NULL};

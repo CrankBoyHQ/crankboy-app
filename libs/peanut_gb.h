@@ -81,8 +81,12 @@ typedef int16_t s16;
 /* Memory section sizes for DMG */
 #define WRAM_SIZE 0x2000
 #define VRAM_SIZE 0x2000
+#define XRAM_SIZE (0x100 - 0xA0)
 #define HRAM_SIZE 0x0100
 #define OAM_SIZE 0x00A0
+
+#define ROM_HEADER_START 0x134
+#define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
 
 /* Memory addresses */
 #define ROM_0_ADDR 0x0000
@@ -193,7 +197,7 @@ typedef int16_t s16;
 #define PEANUT_GB_ARRAYSIZE(array) (sizeof(array) / sizeof(array[0]))
 
 #define CB_SAVE_STATE_MAGIC "\xFA\x43\42sav\n\x1A"
-#define CB_SAVE_STATE_VERSION 1
+#define CB_SAVE_STATE_VERSION PGB_VERSION
 
 #define IO_PLAYDATE_EXTENSION_CTL 0x57
 #define IO_PLAYDATE_EXTENSION_CRANK_LO 0x58
@@ -204,136 +208,6 @@ typedef int16_t s16;
 #define IO_PLAYDATE_EXTENSION_ACCY_HI 0x5D
 #define IO_PLAYDATE_EXTENSION_ACCZ_LO 0x5E
 #define IO_PLAYDATE_EXTENSION_ACCZ_HI 0x5F
-
-typedef struct gb_breakpoint
-{
-    // -1 to disable
-    uint32_t rom_addr : 24;
-
-    // what byte was replaced?
-    char opcode;
-} gb_breakpoint;
-
-struct cpu_registers_s
-{
-    union
-    {
-        struct
-        {
-            uint8_t c;
-            uint8_t b;
-        };
-        uint16_t bc;
-    };
-
-    union
-    {
-        struct
-        {
-            uint8_t e;
-            uint8_t d;
-        };
-        uint16_t de;
-    };
-
-    union
-    {
-        struct
-        {
-            uint8_t l;
-            uint8_t h;
-        };
-        uint16_t hl;
-    };
-
-    /* Combine A and F registers. */
-    union
-    {
-        struct
-        {
-            uint8_t a;
-            /* Define specific bits of Flag register. */
-            union
-            {
-                struct
-                {
-                    uint8_t unused : 4;
-                    uint8_t c : 1; /* Carry flag. */
-                    uint8_t h : 1; /* Half carry flag. */
-                    uint8_t n : 1; /* Add/sub flag. */
-                    uint8_t z : 1; /* Zero flag. */
-                } f_bits;
-                uint8_t f;
-            };
-        };
-        uint16_t af;
-    };
-
-    uint16_t sp; /* Stack pointer */
-    uint16_t pc; /* Program counter */
-};
-
-struct count_s
-{
-    uint_fast16_t lcd_count;     /* LCD Timing */
-    uint_fast16_t div_count;     /* Divider Register Counter */
-    uint_fast16_t tima_count;    /* Timer Counter */
-    uint_fast16_t serial_count;  /* Serial Counter */
-    uint_fast32_t lcd_off_count; /* Cycles LCD has been disabled */
-};
-
-struct gb_registers_s
-{
-    /* Registers sorted by memory address. */
-
-    /* Joypad info (0xFF00) */
-    uint8_t P1;
-
-    /* Serial data (0xFF01 - 0xFF02) */
-    uint8_t SB;
-    uint8_t SC;
-
-    /* Timer Registers (0xFF04 - 0xFF07) */
-    uint8_t DIV;
-    uint8_t TIMA;
-    uint8_t TMA;
-    union
-    {
-        struct
-        {
-            uint8_t tac_rate : 2;   /* Input clock select */
-            uint8_t tac_enable : 1; /* Timer enable */
-            uint8_t unused : 5;
-        };
-        uint8_t TAC;
-    };
-
-    /* Interrupt Flag (0xFF0F) */
-    uint8_t IF;
-
-    /* LCD Registers (0xFF40 - 0xFF4B) */
-    uint8_t LCDC;
-    uint8_t STAT;
-    uint8_t SCY;
-    uint8_t SCX;
-    uint8_t LY;
-    uint8_t LYC;
-    uint8_t DMA;
-    uint8_t BGP;
-    uint8_t OBP0;
-    uint8_t OBP1;
-    uint8_t WY;
-    uint8_t WX;
-
-    /* Interrupt Enable (0xFFFF) */
-    uint8_t IE;
-
-    /* Internal emulator state for timer implementation. */
-    uint16_t tac_cycles;
-    uint8_t tac_cycles_shift;
-
-    uint8_t tima_overflow_delay : 1;
-};
 
 #if ENABLE_LCD
 /* Bit mask for the shade of pixel to display */
@@ -386,268 +260,44 @@ enum gb_serial_rx_ret_e
     GB_SERIAL_RX_NO_CONNECTION = 1
 };
 
-/**
- * Emulator context.
- *
- * Only values within the `direct` struct may be modified directly by the
- * front-end implementation. Other variables must not be modified.
- */
-struct gb_s
+// NOTE: header struct is shared between save state version,
+// so we must keep the size consistent and not reorder fields.
+// (_reserved can be shrunk.)
+typedef struct StateHeader
 {
-    uint8_t* gb_rom;
-    uint8_t* gb_cart_ram;
+    char magic[8];
+    u32 version;
 
-    /**
-     * Notify front-end of error.
-     *
-     * \param gb_s          emulator context
-     * \param gb_error_e    error code
-     * \param val           arbitrary value related to error
-     */
-    void (*gb_error)(struct gb_s*, const enum gb_error_e, const uint16_t val);
+    // emulator architecture
+    uint8_t big_endian : 1;
+    uint8_t bits : 4;
 
-    /* Transmit one byte and return the received byte. */
-    void (*gb_serial_tx)(struct gb_s*, const uint8_t tx);
-    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct gb_s*, uint8_t* rx);
+    // indicates if a script is active
+    uint8_t script : 1;
 
-    // shortcut to swappable bank (addr - 0x4000 offset built in)
-    uint8_t* selected_bank_addr;
+    // Custom field for CrankBoy timestamp.
+    uint32_t timestamp;
+    
+    // Size of the gb_s struct (for verification.)
+    uint32_t gb_s_size;
+    
+    // for use in future versions
+    char _reserved[16];
+} StateHeader;
 
-    // precomputed gb_rom + zero_bank_base
-    uint8_t* gb_zero_bank;
+#ifdef PGB_IMPL
+    #define PGB_SAVESTATE_UPGRADE_IMPL
+#endif
 
-    struct
-    {
-        uint8_t gb_halt : 1;
-        uint8_t gb_ime : 1;
-        uint8_t gb_ime_countdown;
-        uint8_t is_cgb_mode : 1;
-        uint8_t gb_bios_enable : 1;
+#include "pgb/pgb_v2.h"
 
-        /* gb_frame is set when the equivalent time of a frame has
-         * passed. It is likely that a new frame has been drawn,
-         * but it is also possible that the LCD was off. */
+typedef struct PGB_VERSIONED(gb_s) gb_s;
+typedef struct PGB_VERSIONED(gb_breakpoint) gb_breakpoint;
 
-        uint8_t gb_frame : 1;
+__core unsigned int __gb_step_cpu(gb_s* gb);
 
-#define LCD_HBLANK 0
-#define LCD_VBLANK 1
-#define LCD_SEARCH_OAM 2
-#define LCD_TRANSFER 3
-        uint8_t lcd_mode : 2;
-        uint8_t lcd_blank : 1;
-        uint8_t lcd_master_enable : 1;
-    };
-
-    /* Cartridge information:
-     * Memory Bank Controller (MBC) type. */
-    uint8_t mbc;
-    /* Whether the MBC has internal RAM. */
-    uint8_t cart_ram : 1;
-    uint8_t cart_battery : 1;
-    uint8_t is_mbc1m : 1;
-    uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
-
-    // state flags for cart ram
-    uint8_t enable_cart_ram : 1;
-    uint8_t cart_mode_select : 1;  // 1 if ram mode
-
-    uint8_t overclock : 2;
-
-    uint8_t* selected_cart_bank_addr;
-
-    /* Number of ROM banks in cartridge. */
-    uint16_t num_rom_banks_mask;
-    /* Number of RAM banks in cartridge. */
-    uint8_t num_ram_banks;
-
-    uint16_t selected_rom_bank;
-    /* WRAM and VRAM bank selection not available. */
-    uint8_t cart_ram_bank;
-
-    /* Tracks if 0x00 was the last value written to 6000-7FFF */
-    uint8_t rtc_latch_s1;
-
-    /* Stores a copy of the RTC registers when latched */
-    uint8_t latched_rtc[5];
-
-    union
-    {
-        struct
-        {
-            uint8_t sec;
-            uint8_t min;
-            uint8_t hour;
-            uint8_t yday;
-            uint8_t high;
-        } rtc_bits;
-        uint8_t cart_rtc[5];
-
-        struct
-        {
-            /* RAM Enable Flags */
-            uint8_t ram_enable_1;
-            uint8_t ram_enable_2;
-
-            /* Accelerometer State */
-            uint8_t accel_latch_state;
-            uint16_t accel_x_latched;
-            uint16_t accel_y_latched;
-
-            /* EEPROM State */
-            uint8_t eeprom_pins;
-            uint8_t eeprom_state;
-            uint8_t eeprom_write_enabled;
-            uint16_t eeprom_shift_reg;
-            uint8_t eeprom_bits_shifted;
-            uint8_t eeprom_addr;
-            uint16_t eeprom_read_buffer;
-        } mbc7;
-
-        // Put other MBC-specific data in this union.
-    };
-
-    union
-    {
-        struct cpu_registers_s cpu_reg;
-        uint8_t cpu_reg_raw[12];
-        uint16_t cpu_reg_raw16[6];
-    };
-    struct gb_registers_s gb_reg;
-    struct count_s counter;
-
-    /* Pre-computed base pointers to avoid subtractions in memory access. */
-    uint8_t* wram_base;
-    uint8_t* echo_ram_base;
-    uint8_t* vram_base;
-    uint8_t* oam_base;
-    uint8_t* hram_io_base;
-
-    /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
-    uint8_t* wram;  // wram[WRAM_SIZE];
-    uint8_t* vram;  // vram[VRAM_SIZE];
-    uint8_t hram[HRAM_SIZE];
-    uint8_t oam[OAM_SIZE];
-    uint8_t* lcd;
-
-    struct
-    {
-        /**
-         * Draw line on screen.
-         *
-         * \param gb_s      emulator context
-         * \param pixels    The 160 pixels to draw.
-         *                  Bits 1-0 are the colour to draw.
-         *                  Bits 5-4 are the palette, where:
-         *                      OBJ0 = 0b00,
-         *                      OBJ1 = 0b01,
-         *                      BG = 0b10
-         *                  Other bits are undefined.
-         *                  Bits 5-4 are only required by front-ends
-         *                  which want to use a different colour for
-         *                  different object palettes. This is what
-         *                  the Game Boy Color (CGB) does to DMG
-         *                  games.
-         * \param line      Line to draw pixels on. This is
-         *                  guaranteed to be between 0-144 inclusive.
-         */
-
-        /* Palettes */
-        uint8_t bg_palette[4];
-        uint8_t sp_palette[8];
-
-        uint8_t window_clear;
-        uint8_t WY;
-
-        /* Pre-computed pointers to the current tile maps */
-        uint8_t* bg_map_base;
-        uint8_t* window_map_base;
-    } display;
-
-    /**
-     * Variables that may be modified directly by the front-end.
-     * This method seems to be easier and possibly less overhead than
-     * calling a function to modify these variables each time.
-     *
-     * None of this is thread-safe.
-     */
-    struct
-    {
-        /* Set to enable interlacing. Interlacing will start immediately
-         * (at the next line drawing).
-         */
-        uint8_t frame_skip : 1;
-        uint8_t sound : 1;
-        uint8_t dynamic_rate_enabled : 1;
-        uint8_t sram_updated : 1;
-        uint8_t sram_dirty : 1;
-        uint8_t crank_docked : 1;
-        uint8_t joypad_interrupts : 1;
-        uint8_t enable_xram : 1;
-        uint8_t unoptimized_writes : 1;
-
-        int joypad_interrupt_delay;
-
-        // if set, causes crank register to behave as delta-menu-selection instead
-        uint8_t ext_crank_menu_indexing : 1;
-
-        // where this is 0, skip the line
-        uint8_t interlace_mask;
-
-        union
-        {
-            struct
-            {
-                uint8_t a : 1;
-                uint8_t b : 1;
-                uint8_t select : 1;
-                uint8_t start : 1;
-                uint8_t right : 1;
-                uint8_t left : 1;
-                uint8_t up : 1;
-                uint8_t down : 1;
-            } joypad_bits;
-            uint8_t joypad;
-        };
-
-#define CB_IDLE_FRAMES_BEFORE_SAVE 180
-        union
-        {
-            uint16_t peripherals[4];
-            struct
-            {
-                uint16_t crank;
-                uint16_t accel_x;
-                uint16_t accel_y;
-                uint16_t accel_z;
-            };
-        };
-
-        // for ext_crank_menu_indexing. Defaults to 0x8000.
-        uint16_t crank_menu_accumulation;
-        int8_t crank_menu_delta;
-
-        /* Implementation defined data. Set to NULL if not required. */
-        void* priv;
-    } direct;
-
-    uint32_t gb_cart_ram_size;
-
-    gb_breakpoint* breakpoints;
-
-    size_t gb_rom_size;
-    uint8_t* gb_boot_rom;
-
-    // NOTE: this MUST be the last member of gb_s.
-    // sometimes we perform memory operations on the whole gb struct except for
-    // audio.
-    audio_data audio;
-};
-
-__core unsigned int __gb_step_cpu(struct gb_s* gb);
-
-#ifdef CB_IMPL
-__section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
+#ifdef PGB_IMPL
+__section__(".rare") void gb_init_boot_rom(gb_s* gb, uint8_t* boot_rom)
 {
     gb->gb_boot_rom = boot_rom;
     memcpy(gb->gb_rom, boot_rom, 0x100);
@@ -661,7 +311,7 @@ __section__(".rare") void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom)
  * The logic is inspired by SameBoy's RTC implementation.
  *
  */
-__section__(".text.cb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned int seconds_to_add)
+__section__(".text.cb") void gb_catch_up_rtc_direct(gb_s* gb, unsigned int seconds_to_add)
 {
     if ((gb->rtc_bits.high & 0x40) || seconds_to_add == 0)
     {
@@ -709,7 +359,7 @@ __section__(".text.cb") void gb_catch_up_rtc_direct(struct gb_s* gb, unsigned in
  * gb_catch_up_rtc_direct() function. It is kept for reference and potential
  * future use in a cycle-accurate timing model.
  */
-__section__(".text.cb") void gb_tick_rtc(struct gb_s* gb)
+__section__(".text.cb") void gb_tick_rtc(gb_s* gb)
 {
     /* is timer running? */
     if ((gb->cart_rtc[4] & 0x40) == 0)
@@ -745,7 +395,7 @@ __section__(".text.cb") void gb_tick_rtc(struct gb_s* gb)
  * Set initial values in RTC.
  * Should be called after gb_init().
  */
-__section__(".text.cb") void gb_set_rtc(struct gb_s* gb, const struct tm* const time)
+__section__(".text.cb") void gb_set_rtc(gb_s* gb, const struct tm* const time)
 {
     gb->cart_rtc[0] = time->tm_sec;
     gb->cart_rtc[1] = time->tm_min;
@@ -764,7 +414,7 @@ __section__(".text.cb") void gb_set_rtc(struct gb_s* gb, const struct tm* const 
     memcpy(gb->latched_rtc, gb->cart_rtc, sizeof(gb->latched_rtc));
 }
 
-__section__(".text.cb") static void __gb_update_tac(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_tac(gb_s* gb)
 {
     static const uint8_t TAC_CYCLES[4] = {10, 4, 6, 8};
 
@@ -773,19 +423,19 @@ __section__(".text.cb") static void __gb_update_tac(struct gb_s* gb)
     gb->gb_reg.tac_cycles = (1 << (int)TAC_CYCLES[gb->gb_reg.tac_rate]) - 1;
 }
 
-__section__(".text.cb") static void __gb_update_selected_bank_addr(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     int32_t offset = (gb->selected_rom_bank - 1) * ROM_BANK_SIZE;
 
     gb->selected_bank_addr = gb->gb_rom + offset;
 }
 
-__section__(".text.cb") static void __gb_update_zero_bank_addr(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_zero_bank_addr(gb_s* gb)
 {
     gb->gb_zero_bank = gb->gb_rom + gb->zero_bank_base;
 }
 
-__section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb)
 {
     // NULL indicates special access, must do _full version
     gb->selected_cart_bank_addr = NULL;
@@ -812,7 +462,7 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(struct g
     }
 }
 
-__section__(".text.cb") static void __gb_init_memory_pointers(struct gb_s* gb)
+__section__(".text.cb") static void __gb_init_memory_pointers(gb_s* gb)
 {
     gb->wram_base = gb->wram - WRAM_0_ADDR;
     gb->echo_ram_base = gb->wram - ECHO_ADDR;
@@ -821,7 +471,7 @@ __section__(".text.cb") static void __gb_init_memory_pointers(struct gb_s* gb)
     gb->hram_io_base = gb->hram - IO_ADDR;
 }
 
-__section__(".text.cb") static void __gb_update_map_pointers(struct gb_s* gb)
+__section__(".text.cb") static void __gb_update_map_pointers(gb_s* gb)
 {
     gb->display.bg_map_base =
         gb->vram + ((gb->gb_reg.LCDC & LCDC_BG_MAP) ? VRAM_BMAP_2 : VRAM_BMAP_1);
@@ -853,15 +503,9 @@ __core_section("short") u8 reverse_bits_u8(u8 b)
 #endif
 }
 
-// 256 bytes of rom that could be covered up by the bios
-static uint8_t gb_original_rom[0x100];
-
-// extended ram feature offered by crankboy
-static uint8_t xram[0x100 - 0xA0];
-
 /* Detect MBC1M (multi-cart) by scanning for a Nintendo logo
  * at 0x0104 in banks 0x10/0x20/0x30 when ROM size >= 512 KiB. */
-__section__(".rare") static uint8_t __gb_detect_mbc1m(const struct gb_s* gb)
+__section__(".rare") static uint8_t __gb_detect_mbc1m(const gb_s* gb)
 {
     if (gb->mbc != 1 || gb->gb_rom_size < 0x80000)
         return false;
@@ -882,7 +526,7 @@ __section__(".rare") static uint8_t __gb_detect_mbc1m(const struct gb_s* gb)
 }
 
 __section__(".rare.cb") static void __gb_rare_write(
-    struct gb_s* gb, const uint16_t addr, const uint8_t val
+    gb_s* gb, const uint16_t addr, const uint8_t val
 )
 {
     // unused memory area
@@ -890,7 +534,7 @@ __section__(".rare.cb") static void __gb_rare_write(
     {
         if (gb->direct.enable_xram)
         {
-            xram[addr - 0xFEA0] = val;
+            gb->xram[addr - 0xFEA0] = val;
         }
         return;
     }
@@ -931,7 +575,7 @@ __section__(".rare.cb") static void __gb_rare_write(
             if (gb->gb_bios_enable)
             {
                 gb->gb_bios_enable = 0;
-                memcpy(gb->gb_rom, gb_original_rom, sizeof(gb_original_rom));
+                memcpy(gb->gb_rom, gb->gb_original_rom, 0x100);
             }
             return;
 
@@ -940,7 +584,7 @@ __section__(".rare.cb") static void __gb_rare_write(
             playdate->system->logToConsole("Set accelerometer enabled: %d", val & 1);
             playdate->system->setPeripheralsEnabled((val & 1) ? kAccelerometer : kNone);
 
-            // bit 1: xram
+            // bit 1: gb->xram
             gb->direct.enable_xram = !!(val & 2);
 
             // bit 2: crank menu indexing mode
@@ -968,13 +612,13 @@ __section__(".rare.cb") static void __gb_rare_write(
     (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
-__section__(".rare.cb") static uint8_t __gb_rare_read(struct gb_s* gb, const uint16_t addr)
+__section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t addr)
 {
     if (addr >= 0xFEA0 && addr < 0xFF00)
     {
         if (gb->direct.enable_xram)
         {
-            return xram[addr - 0xFEA0];
+            return gb->xram[addr - 0xFEA0];
         }
         else
         {
@@ -1045,7 +689,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(struct gb_s* gb, const uin
 /**
  * Internal function used to read bytes.
  */
-__shell uint8_t __gb_read_full(struct gb_s* gb, const uint_fast16_t addr)
+__shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 {
     switch (addr >> 12)
     {
@@ -1275,7 +919,7 @@ rare_read:
  * Handles a clock tick for the MBC7 EEPROM.
  * This function is called on the rising edge of the EEPROM's CLK pin.
  */
-__section__(".text.cb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
+__section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
 {
     uint8_t di = (gb->mbc7.eeprom_pins & 0x02) >> 1;
 
@@ -1378,7 +1022,7 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(struct gb_s* gb)
 /**
  * Internal function to check for LY=LYC coincidence and update STAT.
  */
-__core static void __gb_check_lyc(struct gb_s* gb)
+__core static void __gb_check_lyc(gb_s* gb)
 {
     if (gb->gb_reg.LY == gb->gb_reg.LYC)
     {
@@ -1398,7 +1042,7 @@ __core static void __gb_check_lyc(struct gb_s* gb)
 /**
  * Internal function used to write bytes.
  */
-__shell void __gb_write_full(struct gb_s* gb, const uint_fast16_t addr, const uint8_t val)
+__shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t val)
 {
     switch (addr >> 12)
     {
@@ -1849,7 +1493,7 @@ rare_write:
     __gb_rare_write(gb, addr, val);
 }
 
-__core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t addr)
+__core_section("short") static uint8_t __gb_read(gb_s* gb, const uint16_t addr)
 {
     if likely (addr < 0x4000)
     {
@@ -1875,7 +1519,7 @@ __core_section("short") static uint8_t __gb_read(struct gb_s* gb, const uint16_t
 }
 
 __core_section("short") static void __gb_write(
-    struct gb_s* restrict gb, const uint16_t addr, uint8_t v
+    gb_s* restrict gb, const uint16_t addr, uint8_t v
 )
 {
     if likely (addr >= 0xC000 && addr < 0xE000)
@@ -1948,7 +1592,7 @@ __core_section("short") static bool is_aligned(const void* pointer)
     return ((uintptr_t)pointer & (sizeof(uint16_t) - 1)) == 0;
 }
 
-__core_section("short") static uint16_t __gb_read16(struct gb_s* restrict gb, u16 addr)
+__core_section("short") static uint16_t __gb_read16(gb_s* restrict gb, u16 addr)
 {
     // Fast path for WRAM
     if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
@@ -1975,7 +1619,7 @@ __core_section("short") static uint16_t __gb_read16(struct gb_s* restrict gb, u1
     return v;
 }
 
-__core_section("short") static void __gb_write16(struct gb_s* restrict gb, u16 addr, u16 v)
+__core_section("short") static void __gb_write16(gb_s* restrict gb, u16 addr, u16 v)
 {
     if (!gb->direct.unoptimized_writes)
     {
@@ -2006,12 +1650,12 @@ __core_section("short") static void __gb_write16(struct gb_s* restrict gb, u16 a
     __gb_write(gb, addr + 1, v >> 8);
 }
 
-__core_section("short") static uint8_t __gb_fetch8(struct gb_s* restrict gb)
+__core_section("short") static uint8_t __gb_fetch8(gb_s* restrict gb)
 {
     return __gb_read(gb, gb->cpu_reg.pc++);
 }
 
-__core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
+__core_section("short") static uint16_t __gb_fetch16(gb_s* restrict gb)
 {
     u16 addr = gb->cpu_reg.pc;
 
@@ -2040,7 +1684,7 @@ __core_section("short") static uint16_t __gb_fetch16(struct gb_s* restrict gb)
     return *(uint16_t*)rom_ptr;
 }
 
-__core_section("short") static uint16_t __gb_pop16(struct gb_s* restrict gb)
+__core_section("short") static uint16_t __gb_pop16(gb_s* restrict gb)
 {
     u16 v;
     if likely (gb->cpu_reg.sp >= HRAM_ADDR && gb->cpu_reg.sp < 0xFFFE)
@@ -2056,7 +1700,7 @@ __core_section("short") static uint16_t __gb_pop16(struct gb_s* restrict gb)
     return v;
 }
 
-__core_section("short") static void __gb_push16(struct gb_s* restrict gb, u16 v)
+__core_section("short") static void __gb_push16(gb_s* restrict gb, u16 v)
 {
     if likely (gb->cpu_reg.sp >= HRAM_ADDR + 2)
     {
@@ -2076,7 +1720,7 @@ __core_section("short") static void __gb_push16(struct gb_s* restrict gb, u16 v)
     }
 }
 
-__core static uint8_t __gb_execute_cb(struct gb_s* gb)
+__core static uint8_t __gb_execute_cb(gb_s* gb)
 {
     uint8_t inst_cycles;
     uint8_t cbop = __gb_fetch8(gb);
@@ -2244,7 +1888,7 @@ __core_section("draw") static u8 __gb_get_pixel(uint8_t* line, u8 x)
 }
 
 // renders one scanline
-__core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
+__core_section("draw") void __gb_draw_line(gb_s* restrict gb)
 {
     if (gb->direct.dynamic_rate_enabled)
     {
@@ -2562,7 +2206,7 @@ __core_section("draw") void __gb_draw_line(struct gb_s* restrict gb)
 }
 #endif
 
-__shell static unsigned __gb_run_instruction(struct gb_s* gb, uint8_t opcode)
+__shell static unsigned __gb_run_instruction(gb_s* gb, uint8_t opcode)
 {
     static const uint8_t op_cycles[0x100] = {
         /* clang-format off */
@@ -4775,7 +4419,7 @@ exit:
     return inst_cycles;
 }
 
-__core_section("short") static bool __gb_get_op_flag(struct gb_s* restrict gb, uint8_t op8)
+__core_section("short") static bool __gb_get_op_flag(gb_s* restrict gb, uint8_t op8)
 {
     op8 %= 4;
     bool flag = (op8 <= 1) ? gb->cpu_reg.f_bits.z : gb->cpu_reg.f_bits.c;
@@ -4783,7 +4427,7 @@ __core_section("short") static bool __gb_get_op_flag(struct gb_s* restrict gb, u
     return flag;
 }
 
-__core_section("short") static u16 __gb_add16(struct gb_s* restrict gb, u16 a, u16 b)
+__core_section("short") static u16 __gb_add16(gb_s* restrict gb, u16 a, u16 b)
 {
     unsigned temp = a + b;
     gb->cpu_reg.f_bits.n = 0;
@@ -4792,9 +4436,9 @@ __core_section("short") static u16 __gb_add16(struct gb_s* restrict gb, u16 a, u
     return temp;
 }
 
-__shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode);
+__shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode);
 
-__core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
+__core static unsigned __gb_run_instruction_micro(gb_s* gb)
 {
 #define FETCH8(gb) __gb_fetch8(gb)
 
@@ -5259,7 +4903,7 @@ __core static unsigned __gb_run_instruction_micro(struct gb_s* gb)
     return cycles * 4;
 }
 
-__shell static void __gb_interrupt(struct gb_s* gb)
+__shell static void __gb_interrupt(gb_s* gb)
 {
     gb->gb_halt = 0;
 
@@ -5302,7 +4946,7 @@ __shell static void __gb_interrupt(struct gb_s* gb)
     }
 }
 
-__shell static uint16_t __gb_calc_halt_cycles(struct gb_s* gb)
+__shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 {
     int src[] = {512, 512, 512};
 
@@ -5343,7 +4987,7 @@ __shell static uint16_t __gb_calc_halt_cycles(struct gb_s* gb)
 /**
  * Internal function used to step the CPU.
  */
-__core unsigned int __gb_step_cpu(struct gb_s* gb)
+__core unsigned int __gb_step_cpu(gb_s* gb)
 {
     unsigned inst_cycles = 16;
 
@@ -5381,7 +5025,7 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
         static u8 _wram[2][WRAM_SIZE];
         static u8 _vram[2][VRAM_SIZE];
         static u8 _cart_ram[2][0x20000];
-        static struct gb_s _gb[2];
+        static gb_s _gb[2];
 
         memcpy(_wram[0], gb->wram, WRAM_SIZE);
         memcpy(_vram[0], gb->vram, VRAM_SIZE);
@@ -5396,13 +5040,13 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
 
         memcpy(_wram[1], gb->wram, WRAM_SIZE);
         memcpy(_vram[1], gb->vram, VRAM_SIZE);
-        memcpy(&_gb[1], gb, sizeof(struct gb_s));
+        memcpy(&_gb[1], gb, sizeof(gb_s));
         if (gb->gb_cart_ram_size > 0)
             memcpy(_cart_ram[1], gb->gb_cart_ram, gb->gb_cart_ram_size);
 
         memcpy(gb->wram, _wram[0], WRAM_SIZE);
         memcpy(gb->vram, _vram[0], VRAM_SIZE);
-        memcpy(gb, &_gb[0], sizeof(struct gb_s));
+        memcpy(gb, &_gb[0], sizeof(gb_s));
         if (gb->gb_cart_ram_size > 0)
             memcpy(gb->gb_cart_ram, _cart_ram[0], gb->gb_cart_ram_size);
 
@@ -5470,8 +5114,8 @@ __core unsigned int __gb_step_cpu(struct gb_s* gb)
         }
 
         // assert audio data is final member of gb_s
-        CB_ASSERT(sizeof(struct gb_s) - sizeof(audio_data) == offsetof(struct gb_s, audio));
-        if (memcmp(gb, &_gb[1], offsetof(struct gb_s, audio)))
+        CB_ASSERT(sizeof(gb_s) - sizeof(audio_data) == offsetof(gb_s, audio));
+        if (memcmp(gb, &_gb[1], offsetof(gb_s, audio)))
         {
             gb->gb_frame = 1;
             playdate->system->error("difference in gb struct on opcode %x, pc=%x", opcode, pc);
@@ -5726,7 +5370,7 @@ done_instr:
     return inst_cycles;
 }
 
-__core void gb_run_frame(struct gb_s* gb)
+__core void gb_run_frame(gb_s* gb)
 {
     gb->gb_frame = 0;
     unsigned int total_cycles = 0;
@@ -5743,45 +5387,17 @@ __core void gb_run_frame(struct gb_s* gb)
     }
 }
 
-#define ROM_HEADER_START 0x134
-#define ROM_HEADER_SIZE (0x150 - ROM_HEADER_START)
-
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
-void gb_reset(struct gb_s* gb);
+void gb_reset(gb_s* gb);
 
-struct StateHeader
+// Note: this function can be called on unswizzled structs;
+// therefore, no pointers in the gb struct should be followed.
+__section__(".rare") uint32_t gb_get_state_size(gb_s* gb)
 {
-    char magic[8];
-    u32 version;
-
-    // Size of the gb_s struct for versioning.
-    uint32_t gb_s_size;
-
-    // emulator architecture
-    uint8_t big_endian : 1;
-    uint8_t bits : 4;
-
-    // indicates if a script is active
-    uint8_t script : 1;
-
-    // Custom field for CrankBoy timestamp.
-    uint32_t timestamp;
-
-    char reserved[16];
-};
-
-// Note: this version can be used on unswizzled structs,
-// i.e. no pointers should be followed
-__section__(".rare") uint32_t gb_get_state_size(struct gb_s* gb)
-{
-    return sizeof(struct StateHeader) + sizeof(struct gb_s) + ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE + VRAM_SIZE + sizeof(xram) + gb->gb_cart_ram_size +
-           MAX_BREAKPOINTS * sizeof(gb_breakpoint);
-
-    // skipped: lcd; rom
+    return PGB_VERSIONED(gb_get_state_size)(gb);
 }
 
-__section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
+__section__(".rare") void gb_state_save(gb_s* gb, char* out)
 {
     // header
     struct StateHeader header;
@@ -5789,7 +5405,7 @@ __section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
     CB_ASSERT(strlen(CB_SAVE_STATE_MAGIC) == sizeof(header.magic));
     memcpy(header.magic, CB_SAVE_STATE_MAGIC, sizeof(header.magic));
     header.version = CB_SAVE_STATE_VERSION;
-    header.gb_s_size = sizeof(struct gb_s);
+    header.gb_s_size = sizeof(gb_s);
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
     header.big_endian = 1;
 #else
@@ -5798,41 +5414,14 @@ __section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
     header.bits = sizeof(void*);
     memcpy(out, &header, sizeof(header));
     out += sizeof(header);
-
-    // gb
-    memcpy(out, gb, sizeof(*gb));
-    out += sizeof(*gb);
-
-    // rom header (so we know the associated rom for this state)
-    memcpy(out, gb->gb_rom + ROM_HEADER_START, ROM_HEADER_SIZE);
-    out += ROM_HEADER_SIZE;
-
-    // wram
-    memcpy(out, gb->wram, WRAM_SIZE);
-    out += WRAM_SIZE;
-
-    // vram
-    memcpy(out, gb->vram, VRAM_SIZE);
-    out += VRAM_SIZE;
-
-    // xram
-    memcpy(out, xram, sizeof(xram));
-    out += sizeof(xram);
-
-    // cart ram
-    if (gb->gb_cart_ram_size > 0)
+    
+    PGB_VERSIONED(gb_state_save)(gb, out);
+    
     {
-        memcpy(out, gb->gb_cart_ram, gb->gb_cart_ram_size);
-        out += gb->gb_cart_ram_size;
+        StateHeader* header = (void*)out;
+        CB_ASSERT(header->version == PGB_VERSION);
+        CB_ASSERT(!strncmp(header->magic, CB_SAVE_STATE_MAGIC, sizeof(header->magic)));
     }
-
-    // breakpoints
-    memcpy(out, gb->breakpoints, MAX_BREAKPOINTS * sizeof(gb_breakpoint));
-    out += MAX_BREAKPOINTS * sizeof(gb_breakpoint);
-
-    // intentionally skipped: lcd; rom
-
-    // TODO: audio
 }
 
 // returns NULL on success; error message otherwise
@@ -5840,40 +5429,48 @@ __section__(".rare") void gb_state_save(struct gb_s* gb, char* out)
 // Note: provided gb must already be initialized for the given ROM;
 // in particular, it needs to have a gb_cart_ram field init'd with the correct
 // size, and rom needs to be already loaded.
-__section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, size_t size)
+__section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, size_t size)
 {
     // at least enough to read save header, rom header, and gb struct fields
-    if (size < sizeof(struct StateHeader) + sizeof(struct gb_s) + ROM_HEADER_SIZE)
+    if (size < sizeof(struct StateHeader) + sizeof(gb_s) + ROM_HEADER_SIZE)
     {
         return "State size too small.";
     }
 
     struct StateHeader* header = (struct StateHeader*)in;
-    in += sizeof(struct StateHeader);
 
     if (strncmp(header->magic, CB_SAVE_STATE_MAGIC, sizeof(header->magic)))
     {
         return "Not a CrankBoy savestate.";
     }
-
-    if (header->version < CB_SAVE_STATE_VERSION)
-    {
-        return "State comes from an incompatible older version of CrankBoy.";
-    }
-
-    if (header->version > CB_SAVE_STATE_VERSION)
+    
+    if (header->version > PGB_VERSION)
     {
         return "State comes from an incompatible future version of CrankBoy.";
     }
-
-    if (header->gb_s_size != sizeof(struct gb_s))
-    {
-        return "State is from an incompatible build (struct size mismatch).";
-    }
-
+    
     if (header->bits != sizeof(void*))
     {
         return "State is for a different device (Playdate vs Simulator).";
+    }
+    
+    if (header->version < PGB_VERSION)
+    {
+        char* upgraded_in;
+        size_t upgraded_in_size;
+        const char* result = PGB_VERSIONED(savestate_upgrade_to)(&upgraded_in, &upgraded_in_size, (char*)in, size);
+        if (result) return result;
+        if (upgraded_in != in)
+        {
+            result = gb_state_load(gb, upgraded_in, upgraded_in_size);
+            cb_free(upgraded_in);
+            return result;
+        }
+    }
+
+    if (header->gb_s_size != sizeof(gb_s))
+    {
+        return "State is from an incompatible build (struct size mismatch).";
     }
 
 #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
@@ -5884,83 +5481,14 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     {
         return "State endianness incorrect";
     }
-
-    struct gb_s* in_gb = (struct gb_s*)(void*)in;
-    in += sizeof(*gb);
-    size_t state_size = gb_get_state_size(in_gb);
-
-    if (size != state_size)
-    {
-        return "State size mismatch";
-    }
-
-    if (gb->gb_cart_ram_size != in_gb->gb_cart_ram_size)
-    {
-        return "Cartridge RAM size mismatch";
-    }
-
-    const uint8_t* in_rom_header = (const uint8_t*)in;
-    const uint8_t* gb_rom_header = gb->gb_rom + ROM_HEADER_START;
-    if (memcmp(in_rom_header, gb_rom_header, 15))
-    {
-        return "State appears to be for a different ROM";
-    }
-    in += ROM_HEADER_SIZE;
-
-    // -- we're in the clear now --
-
-    void* preserved_fields[] = {
-        &gb->gb_rom,       &gb->wram,         &gb->vram,        &gb->gb_cart_ram,
-        &gb->breakpoints,  &gb->lcd,          &gb->direct.priv, &gb->gb_error,
-        &gb->gb_serial_tx, &gb->gb_serial_rx, &gb->gb_boot_rom,
-    };
-
-    void* preserved_data[sizeof(preserved_fields)];
-    for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
-    {
-        memcpy(preserved_data + i, preserved_fields[i], sizeof(void*));
-    }
-
-    // gb struct
-    memcpy(gb, in_gb, sizeof(*gb));
-
-    for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
-    {
-        memcpy(preserved_fields[i], preserved_data + i, sizeof(void*));
-    }
-
-    // wram
-    memcpy(gb->wram, in, WRAM_SIZE);
-    in += WRAM_SIZE;
-
-    // vram
-    memcpy(gb->vram, in, VRAM_SIZE);
-    in += VRAM_SIZE;
-
-    // xram
-    // memcpy(xram, in, sizeof(xram));
-    in += sizeof(xram);
-
-    // cartridge ram
-    if (gb->gb_cart_ram_size > 0)
-    {
-        memcpy(gb->gb_cart_ram, in, gb->gb_cart_ram_size);
-        in += gb->gb_cart_ram_size;
-    }
-
-    // breakpoints
-    // NOTE: scripts should only set breakpoints on startup, so
-    // we keep them as they are
-    // memcpy(gb->breakpoints, in, MAX_BREAKPOINTS * sizeof(gb_breakpoint));
-    in += MAX_BREAKPOINTS * sizeof(gb_breakpoint);
-
-    // clear caches and other presentation-layer data
-    memset(gb->lcd, 0, LCD_BUFFER_BYTES);
+    
+    const char* result = PGB_VERSIONED(gb_state_load)(gb, in, size);
+    if (result) return result;
+    
+    // re-compute precomputed fields
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
-
-    // intentionally skipped: lcd; rom
 
     // update boot rom overlay state
     if (gb->gb_bios_enable)
@@ -5977,16 +5505,16 @@ __section__(".rare") const char* gb_state_load(struct gb_s* gb, const char* in, 
     }
     else
     {
-        memcpy(gb->gb_rom, gb_original_rom, 0x100);
+        memcpy(gb->gb_rom, &gb->gb_original_rom[0], 0x100);
     }
-
+    
     return NULL;
 }
 
 /**
  * Gets the size of the save file required for the ROM.
  */
-uint_fast32_t gb_get_save_size(struct gb_s* gb)
+uint_fast32_t gb_get_save_size(gb_s* gb)
 {
     // Special case for MBC2, which has fixed internal RAM of 512.
     if (gb->mbc == 2)
@@ -6009,8 +5537,8 @@ uint_fast32_t gb_get_save_size(struct gb_s* gb)
  * no cable is connected to the console, return 0xFF.
  */
 void gb_init_serial(
-    struct gb_s* gb, void (*gb_serial_tx)(struct gb_s*, const uint8_t),
-    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct gb_s*, uint8_t*)
+    gb_s* gb, void (*gb_serial_tx)(gb_s*, const uint8_t),
+    enum gb_serial_rx_ret_e (*gb_serial_rx)(gb_s*, uint8_t*)
 )
 {
     gb->gb_serial_tx = gb_serial_tx;
@@ -6020,9 +5548,9 @@ void gb_init_serial(
 /**
  * Provides the emulator with the 256-byte boot ROM data.
  */
-void gb_init_boot_rom(struct gb_s* gb, uint8_t* boot_rom);
+void gb_init_boot_rom(gb_s* gb, uint8_t* boot_rom);
 
-uint8_t gb_colour_hash(struct gb_s* gb)
+uint8_t gb_colour_hash(gb_s* gb)
 {
 #define ROM_TITLE_START_ADDR 0x0134
 #define ROM_TITLE_END_ADDR 0x0143
@@ -6038,7 +5566,7 @@ uint8_t gb_colour_hash(struct gb_s* gb)
 /**
  * Resets the context, and initialises startup values.
  */
-__section__(".rare") void gb_reset(struct gb_s* gb)
+__section__(".rare") void gb_reset(gb_s* gb)
 {
     gb->gb_halt = 0;
     gb->gb_ime = 1;
@@ -6221,8 +5749,8 @@ __section__(".rare") void gb_reset(struct gb_s* gb)
  * the CPU.
  */
 __section__(".rare") enum gb_init_error_e gb_init(
-    struct gb_s* gb, uint8_t* wram, uint8_t* vram, uint8_t* lcd, uint8_t* gb_rom, size_t rom_size,
-    void (*gb_error)(struct gb_s*, const enum gb_error_e, const uint16_t), void* priv
+    gb_s* gb, uint8_t* wram, uint8_t* vram, uint8_t* lcd, uint8_t* gb_rom, size_t rom_size,
+    void (*gb_error)(gb_s*, const enum gb_error_e, const uint16_t), void* priv
 )
 {
     const uint16_t mbc_location = 0x0147;
@@ -6265,14 +5793,22 @@ __section__(".rare") enum gb_init_error_e gb_init(
         0, 1, 1, 4, 16, 8
     };
     /* clang-format on */
+    
+    static uint8_t org_rom[0x100];
+    static uint8_t xram[XRAM_SIZE];
+    
+    memset(xram, 0, XRAM_SIZE);
+    
+    gb->gb_original_rom = org_rom;
+    gb->xram = xram;
 
     gb->wram = wram;
     gb->vram = vram;
-    memset(xram, 0, sizeof(xram));
+    memset(gb->xram, 0, XRAM_SIZE);
     gb->lcd = lcd;
     gb->gb_rom = gb_rom;
     gb->gb_rom_size = rom_size;
-    memcpy(gb_original_rom, gb_rom, sizeof(gb_original_rom));
+    memcpy(gb->gb_original_rom, gb_rom, 0x100);
     gb->gb_error = gb_error;
     gb->direct.priv = priv;
 
@@ -6335,7 +5871,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     {
         gb->direct.unoptimized_writes = 1;
     }
-
+    
     return GB_INIT_NO_ERROR;
 }
 
@@ -6370,13 +5906,13 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
     return title_start;
 }
 
-void __gb_on_breakpoint(struct gb_s* gb, int breakpoint_number);
+void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
 
-static unsigned __gb_run_instruction_micro(struct gb_s* gb);
+static unsigned __gb_run_instruction_micro(gb_s* gb);
 
 // returns negative if failure
 // returns breakpoint index otherwise
-__section__(".rare") int set_hw_breakpoint(struct gb_s* gb, uint32_t rom_addr)
+__section__(".rare") int set_hw_breakpoint(gb_s* gb, uint32_t rom_addr)
 {
     size_t rom_size = 0x4000 * (gb->num_rom_banks_mask + 1);
     if (rom_addr > rom_size)
@@ -6400,7 +5936,7 @@ __section__(".rare") int set_hw_breakpoint(struct gb_s* gb, uint32_t rom_addr)
 
 // returns 0 if no breakpoint at current location
 // returns cycles executed if breakpoint existed (runs breakpoint)
-static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
+static __section__(".rare") int __gb_try_breakpoint(gb_s* gb)
 {
     // only ROM-address breakpoints are supported
     size_t pc = gb->cpu_reg.pc - 1;
@@ -6456,7 +5992,7 @@ static __section__(".rare") int __gb_try_breakpoint(struct gb_s* gb)
 
 #if ENABLE_LCD
 
-void gb_init_lcd(struct gb_s* gb)
+void gb_init_lcd(gb_s* gb)
 {
     gb->direct.frame_skip = 0;
 
@@ -6469,13 +6005,13 @@ void gb_init_lcd(struct gb_s* gb)
 
 #else
 
-void gb_init_lcd(struct gb_s* gb)
+void gb_init_lcd(gb_s* gb)
 {
 }
 
 #endif
 
-__section__(".rare") static u8 __gb_invalid_instruction(struct gb_s* restrict gb, uint8_t opcode)
+__section__(".rare") static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8_t opcode)
 {
     if (opcode == CB_HW_BREAKPOINT_OPCODE)
     {
@@ -6491,7 +6027,7 @@ __section__(".rare") static u8 __gb_invalid_instruction(struct gb_s* restrict gb
     return 1 * 4;  // ?
 }
 
-__shell static u8 __gb_rare_instruction(struct gb_s* restrict gb, uint8_t opcode)
+__shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 {
     switch (opcode)
     {

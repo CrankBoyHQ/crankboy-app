@@ -23,7 +23,7 @@ typedef struct ScriptData
     uint32_t tiledata_checksum;
 } ScriptData;
 
-static ScriptData* on_begin(struct gb_s* gb, char* header_name)
+static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
 
@@ -58,7 +58,7 @@ static ScriptData* on_begin(struct gb_s* gb, char* header_name)
     return data;
 }
 
-static void on_tick(struct gb_s* gb, ScriptData* data)
+static void on_tick(gb_s* gb, ScriptData* data)
 {
     int game_state = ram_peek(0xDB95);
     bool gameOver = ram_peek(0xFF9C) >= 3;  // not positive about this
@@ -140,7 +140,7 @@ static void on_tick(struct gb_s* gb, ScriptData* data)
     }
 }
 
-static void on_draw(struct gb_s* gb, ScriptData* data)
+static void on_draw(gb_s* gb, ScriptData* data)
 {
     int sidebar_x = game_picture_x_offset * 2 + 320;
     int sidebar_w = 80;

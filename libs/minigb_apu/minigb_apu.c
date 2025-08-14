@@ -19,7 +19,7 @@
 #include <string.h>
 
 #define audio_mem(audio) \
-    ((uint8_t*)((void*)audio - offsetof(struct gb_s, audio) + offsetof(struct gb_s, hram) + 0x10))
+    ((uint8_t*)((void*)audio - offsetof(gb_s, audio) + offsetof(gb_s, hram) + 0x10))
 
 #define DMG_CLOCK_FREQ_U ((unsigned)DMG_CLOCK_FREQ)
 
