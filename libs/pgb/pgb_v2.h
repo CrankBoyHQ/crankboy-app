@@ -155,15 +155,15 @@ struct PGB_VERSIONED(gb_s)
      * \param gb_error_e    error code
      * \param val           arbitrary value related to error
      */
-    void (*gb_error)(struct PGB_VERSIONED(gb_s)*, const enum gb_error_e, const uint16_t val);
+    void (*gb_error)(struct PGB_VERSIONED(gb_s) *, const enum gb_error_e, const uint16_t val);
 
     /* Transmit one byte and return the received byte. */
-    void (*gb_serial_tx)(struct PGB_VERSIONED(gb_s)*, const uint8_t tx);
-    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct PGB_VERSIONED(gb_s)*, uint8_t* rx);
+    void (*gb_serial_tx)(struct PGB_VERSIONED(gb_s) *, const uint8_t tx);
+    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct PGB_VERSIONED(gb_s) *, uint8_t* rx);
 
     // shortcut to swappable bank (addr - 0x4000 offset built in)
     uint8_t* selected_bank_addr;
-    
+
     // precomputed gb_rom + zero_bank_base
     uint8_t* gb_zero_bank;
 
@@ -191,7 +191,7 @@ struct PGB_VERSIONED(gb_s)
     };
 
     uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
-    
+
     /* Cartridge information:
      * Memory Bank Controller (MBC) type. */
     uint8_t mbc;
@@ -267,7 +267,7 @@ struct PGB_VERSIONED(gb_s)
     };
     struct PGB_VERSIONED(gb_registers_s) gb_reg;
     struct PGB_VERSIONED(count_s) counter;
-    
+
     /* Pre-computed base pointers to avoid subtractions in memory access. */
     uint8_t* wram_base;
     uint8_t* echo_ram_base;
@@ -290,7 +290,7 @@ struct PGB_VERSIONED(gb_s)
 
         uint8_t window_clear;
         uint8_t WY;
-        
+
         uint8_t* bg_map_base;
         uint8_t* window_map_base;
     } display;
@@ -364,11 +364,11 @@ struct PGB_VERSIONED(gb_s)
 
     uint32_t gb_cart_ram_size;
 
-    struct PGB_VERSIONED(gb_breakpoint)* breakpoints;
+    struct PGB_VERSIONED(gb_breakpoint) * breakpoints;
 
     size_t gb_rom_size;
     uint8_t* gb_boot_rom;
-    
+
     // 256 bytes of rom that could be covered up by the bios
     uint8_t* gb_original_rom;
 
@@ -381,8 +381,8 @@ struct PGB_VERSIONED(gb_s)
     audio_data audio;
 };
 
-// Note: used on unswizzled gb struct, so must 
-FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s)* gb)
+// Note: used on unswizzled gb struct, so must
+FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +
@@ -391,7 +391,7 @@ FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s
     // skipped: lcd; rom
 }
 
-FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s)* gb, char* out)
+FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, char* out)
 {
     // gb
     memcpy(out, gb, sizeof(*gb));
@@ -429,9 +429,12 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s)* gb, c
     // TODO: audio
 }
 
-FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(struct PGB_VERSIONED(gb_s)* gb, const char* in, size_t size)
+FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
+    struct PGB_VERSIONED(gb_s) * gb, const char* in, size_t size
+)
 {
-    const StateHeader* header = (void*)in; in += sizeof(*header);
+    const StateHeader* header = (void*)in;
+    in += sizeof(*header);
     if (header->version != PGB_VERSION)
     {
         return "State comes from an incompatible version of CrankBoy.";
@@ -461,13 +464,13 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(struct PGB_VERSIONED(gb_s)
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {
-        &gb->gb_rom,       &gb->wram,         &gb->vram,        &gb->gb_cart_ram,
-        &gb->breakpoints,  &gb->lcd,          &gb->direct.priv, &gb->gb_error,
-        &gb->gb_serial_tx, &gb->gb_serial_rx, &gb->gb_boot_rom, &gb->gb_original_rom,
-        &gb->wram_base, &gb->echo_ram_base, &gb->vram_base, &gb->oam_base,
-        &gb->hram_io_base, &gb->gb_zero_bank, &gb->xram
-    };
+    void* preserved_fields[] = {&gb->gb_rom,       &gb->wram,          &gb->vram,
+                                &gb->gb_cart_ram,  &gb->breakpoints,   &gb->lcd,
+                                &gb->direct.priv,  &gb->gb_error,      &gb->gb_serial_tx,
+                                &gb->gb_serial_rx, &gb->gb_boot_rom,   &gb->gb_original_rom,
+                                &gb->wram_base,    &gb->echo_ram_base, &gb->vram_base,
+                                &gb->oam_base,     &gb->hram_io_base,  &gb->gb_zero_bank,
+                                &gb->xram};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
@@ -490,7 +493,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(struct PGB_VERSIONED(gb_s)
     // vram
     memcpy(gb->vram, in, VRAM_SIZE);
     in += VRAM_SIZE;
-    
+
     // xram
     memcpy(gb->xram, in, XRAM_SIZE);
     in += XRAM_SIZE;
@@ -510,7 +513,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(struct PGB_VERSIONED(gb_s)
 
     // clear caches and other presentation-layer data
     memset(gb->lcd, 0, LCD_BUFFER_BYTES);
-    
+
     // intentionally skipped: lcd; rom
 
     return NULL;
@@ -544,38 +547,40 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
         *out = in;
         return NULL;
     }
-    
+
     // upgrade `in` to v1 if needed
     char* const org_in = in;
     size_t const org_in_size = in_size;
     if (in_header->version < 1)
     {
         const char* result = savestate_upgrade_to_v1(&in, &in_size, org_in, org_in_size);
-        if (result) return aprintf("%s", result);
+        if (result)
+            return aprintf("%s", result);
     }
     char* const v1_in = in;
     DEFER(if (v1_in != org_in) cb_free(v1_in));
-    
-    #define DEFINE(type, name, src) type* const name = (void*)src; src += sizeof(type);
-    
+
+#define DEFINE(type, name, src)    \
+    type* const name = (void*)src; \
+    src += sizeof(type);
+
     DEFINE(const StateHeader, v1_header, in);
     DEFINE(const struct gb_s_v1, v1_gb, in);
-    
-    char* v2_org = mallocz(
-        sizeof(StateHeader) + sizeof(struct gb_s_v2)
-    );
-    if (!v2_org) return aprintf("Out of memory");
+
+    char* v2_org = mallocz(sizeof(StateHeader) + sizeof(struct gb_s_v2));
+    if (!v2_org)
+        return aprintf("Out of memory");
     char* v2 = v2_org;
-    
+
     DEFINE(StateHeader, v2_header, v2);
     DEFINE(struct gb_s_v2, v2_gb, v2);
-    
+
     memcpy(v2_header, v1_header, sizeof(StateHeader));
     v2_header->version = PGB_VERSION;
     v2_header->gb_s_size = sizeof(struct PGB_VERSIONED(gb_s));
-    
+
     set_fields(v2_gb, v1_gb, gb_rom, selected_bank_addr);
-    
+
     set_field(v2_gb, v1_gb, gb_halt);
     set_field(v2_gb, v1_gb, gb_ime);
     set_field(v2_gb, v1_gb, gb_bios_enable);
@@ -583,10 +588,10 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, lcd_mode);
     set_field(v2_gb, v1_gb, lcd_blank);
     set_field(v2_gb, v1_gb, lcd_master_enable);
-    
+
     v2_gb->zero_bank_base = 0;
-    v2_gb->is_mbc1m = 0; // (mbc1m not supported previously)
-    
+    v2_gb->is_mbc1m = 0;  // (mbc1m not supported previously)
+
     set_field(v2_gb, v1_gb, mbc);
     set_field(v2_gb, v1_gb, cart_ram);
     set_field(v2_gb, v1_gb, cart_battery);
@@ -594,9 +599,9 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, cart_mode_select);
     set_field(v2_gb, v1_gb, overclock);
     set_fields(v2_gb, v1_gb, selected_cart_bank_addr, counter);
-    
+
     set_fields(v2_gb, v1_gb, wram, display.WY);
-    
+
     set_field(v2_gb, v1_gb, direct.frame_skip);
     set_field(v2_gb, v1_gb, direct.sound);
     set_field(v2_gb, v1_gb, direct.dynamic_rate_enabled);
@@ -606,25 +611,28 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, direct.joypad_interrupts);
     set_field(v2_gb, v1_gb, direct.enable_xram);
     set_fields(v2_gb, v1_gb, direct.joypad_interrupt_delay, gb_rom_size);
-    
+
     // now that we have the data in the struct, we can resize
     *out_size = gb_get_state_size_v2(v2_gb);
     v2_org = cb_realloc(v2_org, *out_size);
-    if (!v2_org) return aprintf("Out of memory");
-    
-    CB_ASSERT(*out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1));
-    
+    if (!v2_org)
+        return aprintf("Out of memory");
+
+    CB_ASSERT(
+        *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
+    );
+
     // copy the remaning data (should be the same between v1 and v2)
     memcpy(
         v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2),
         org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
         *out_size - sizeof(StateHeader) - sizeof(struct gb_s_v2)
     );
-    
+
     *out = v2_org;
     return NULL;
-    
-    #undef DEFINE
+
+#undef DEFINE
 }
 
 #endif

@@ -6,7 +6,6 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include "game_scene.h"
 #include "library_scene.h"
 
 #include "../../libs/lz4/lz4.h"
@@ -22,6 +21,7 @@
 #include "../utility.h"
 #include "../version.h"
 #include "credits_scene.h"
+#include "game_scene.h"
 #include "info_scene.h"
 #include "settings_scene.h"
 
@@ -449,13 +449,13 @@ static void disable_script_and_launch(void* ud, int option)
     CB_Game* game = ud;
     switch (option)
     {
-    case 0: // launch with scripts disabled
+    case 0:  // launch with scripts disabled
         launch_game(game, 1);
         break;
-    case 1: // launch with scripts as-is
+    case 1:  // launch with scripts as-is
         launch_game(game, 3);
         break;
-    default: // cancel
+    default:  // cancel
         break;
     }
 }
@@ -867,8 +867,9 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             int is_per_game = preferences_per_game;
             preferences_restore_subset(prefs);
             cb_free(prefs);
-            
-            if (!is_per_game) script_enabled = preferences_script_support;
+
+            if (!is_per_game)
+                script_enabled = preferences_script_support;
 
             ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
             if (info)
@@ -894,13 +895,14 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 {
                     const char* options[] = {"Yes", "No", NULL};
                     CB_Modal* modal = CB_Modal_new(
-                        "This game's script is marked as \"experimental,\" so please expect glitches or even crashes.\n \nDisable script?",
+                        "This game's script is marked as \"experimental,\" so please expect "
+                        "glitches or even crashes.\n \nDisable script?",
                         options, disable_script_and_launch, game
                     );
-                    
+
                     modal->width = 310;
                     modal->height = 224;
-                    
+
                     CB_presentModal(modal->scene);
                     launch = false;
                 }

@@ -151,11 +151,11 @@ struct PGB_VERSIONED(gb_s)
      * \param gb_error_e    error code
      * \param val           arbitrary value related to error
      */
-    void (*gb_error)(struct PGB_VERSIONED(gb_s)*, const enum gb_error_e, const uint16_t val);
+    void (*gb_error)(struct PGB_VERSIONED(gb_s) *, const enum gb_error_e, const uint16_t val);
 
     /* Transmit one byte and return the received byte. */
-    void (*gb_serial_tx)(struct PGB_VERSIONED(gb_s)*, const uint8_t tx);
-    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct PGB_VERSIONED(gb_s)*, uint8_t* rx);
+    void (*gb_serial_tx)(struct PGB_VERSIONED(gb_s) *, const uint8_t tx);
+    enum gb_serial_rx_ret_e (*gb_serial_rx)(struct PGB_VERSIONED(gb_s) *, uint8_t* rx);
 
     // shortcut to swappable bank (addr - 0x4000 offset built in)
     uint8_t* selected_bank_addr;
@@ -343,7 +343,7 @@ struct PGB_VERSIONED(gb_s)
 
     uint32_t gb_cart_ram_size;
 
-    struct PGB_VERSIONED(gb_breakpoint)* breakpoints;
+    struct PGB_VERSIONED(gb_breakpoint) * breakpoints;
 
     size_t gb_rom_size;
     uint8_t* gb_boot_rom;
@@ -354,7 +354,7 @@ struct PGB_VERSIONED(gb_s)
     audio_data audio;
 };
 
-FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s)* gb)
+FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +
@@ -366,7 +366,7 @@ FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s
 char* PGB_VERSIONED(gb_savestate_upgrade_to)(char** out, const char* in);
 
 #ifdef PGB_SAVESTATE_UPGRADE_IMPL
-    
+
 char* savestate_upgrade_to_v1(char** out, size_t* out_size, char* in, size_t in_size)
 {
     const StateHeader* const in_header = (const void*)in;
@@ -374,7 +374,7 @@ char* savestate_upgrade_to_v1(char** out, size_t* out_size, char* in, size_t in_
     {
         return aprintf("Save state version too high: v%u", (unsigned)in_header->version);
     }
-    
+
     // Note: v1 and v0 are actually identical.
     *out = in;
     return NULL;

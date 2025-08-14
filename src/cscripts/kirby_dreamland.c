@@ -427,7 +427,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
     if (!in_game)
     {
-        data->prev_in_game = false; // Sidebar is not visible
+        data->prev_in_game = false;  // Sidebar is not visible
         return;
     }
 
@@ -437,7 +437,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
     bool refresh = gbScreenRequiresFullRefresh || !data->prev_in_game;
-    data->prev_in_game = true; // Sidebar is now visible
+    data->prev_in_game = true;  // Sidebar is now visible
 
     uint8_t* lcd = playdate->graphics->getFrame();
     int rowbytes = PLAYDATE_ROW_STRIDE;

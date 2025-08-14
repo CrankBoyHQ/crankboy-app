@@ -12,6 +12,7 @@
 #include "../array.h"
 #include "../listview.h"
 #include "../scene.h"
+#include "game_scene.h"
 
 #include <stdio.h>
 

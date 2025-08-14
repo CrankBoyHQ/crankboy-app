@@ -71,9 +71,7 @@ static uint8_t* read_rom_to_ram(
 // returns 1 if data found and loaded, but not RTC
 // returns 2 if data and RTC loaded
 // returns -1 on error
-static int read_cart_ram_file(
-    const char* save_filename, gb_s* gb, unsigned int* last_save_time
-);
+static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int* last_save_time);
 static void write_cart_ram_file(const char* save_filename, gb_s* gb);
 
 static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val);
@@ -820,9 +818,7 @@ static uint8_t* read_rom_to_ram(
     return rom;
 }
 
-static int read_cart_ram_file(
-    const char* save_filename, gb_s* gb, unsigned int* last_save_time
-)
+static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int* last_save_time)
 {
     *last_save_time = 0;
 

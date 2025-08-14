@@ -277,16 +277,16 @@ typedef struct StateHeader
 
     // Custom field for CrankBoy timestamp.
     uint32_t timestamp;
-    
+
     // Size of the gb_s struct (for verification.)
     uint32_t gb_s_size;
-    
+
     // for use in future versions
     char _reserved[16];
 } StateHeader;
 
 #ifdef PGB_IMPL
-    #define PGB_SAVESTATE_UPGRADE_IMPL
+#define PGB_SAVESTATE_UPGRADE_IMPL
 #endif
 
 #include "pgb/pgb_v2.h"
@@ -1518,9 +1518,7 @@ __core_section("short") static uint8_t __gb_read(gb_s* gb, const uint16_t addr)
     return __gb_read_full(gb, addr);
 }
 
-__core_section("short") static void __gb_write(
-    gb_s* restrict gb, const uint16_t addr, uint8_t v
-)
+__core_section("short") static void __gb_write(gb_s* restrict gb, const uint16_t addr, uint8_t v)
 {
     if likely (addr >= 0xC000 && addr < 0xE000)
     {
@@ -5414,9 +5412,9 @@ __section__(".rare") void gb_state_save(gb_s* gb, char* out)
     header.bits = sizeof(void*);
     memcpy(out, &header, sizeof(header));
     out += sizeof(header);
-    
+
     PGB_VERSIONED(gb_state_save)(gb, out);
-    
+
     {
         StateHeader* header = (void*)out;
         CB_ASSERT(header->version == PGB_VERSION);
@@ -5443,23 +5441,25 @@ __section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, s
     {
         return "Not a CrankBoy savestate.";
     }
-    
+
     if (header->version > PGB_VERSION)
     {
         return "State comes from an incompatible future version of CrankBoy.";
     }
-    
+
     if (header->bits != sizeof(void*))
     {
         return "State is for a different device (Playdate vs Simulator).";
     }
-    
+
     if (header->version < PGB_VERSION)
     {
         char* upgraded_in;
         size_t upgraded_in_size;
-        const char* result = PGB_VERSIONED(savestate_upgrade_to)(&upgraded_in, &upgraded_in_size, (char*)in, size);
-        if (result) return result;
+        const char* result =
+            PGB_VERSIONED(savestate_upgrade_to)(&upgraded_in, &upgraded_in_size, (char*)in, size);
+        if (result)
+            return result;
         if (upgraded_in != in)
         {
             result = gb_state_load(gb, upgraded_in, upgraded_in_size);
@@ -5481,10 +5481,11 @@ __section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, s
     {
         return "State endianness incorrect";
     }
-    
+
     const char* result = PGB_VERSIONED(gb_state_load)(gb, in, size);
-    if (result) return result;
-    
+    if (result)
+        return result;
+
     // re-compute precomputed fields
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
@@ -5507,7 +5508,7 @@ __section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, s
     {
         memcpy(gb->gb_rom, &gb->gb_original_rom[0], 0x100);
     }
-    
+
     return NULL;
 }
 
@@ -5793,12 +5794,12 @@ __section__(".rare") enum gb_init_error_e gb_init(
         0, 1, 1, 4, 16, 8
     };
     /* clang-format on */
-    
+
     static uint8_t org_rom[0x100];
     static uint8_t xram[XRAM_SIZE];
-    
+
     memset(xram, 0, XRAM_SIZE);
-    
+
     gb->gb_original_rom = org_rom;
     gb->xram = xram;
 
@@ -5871,7 +5872,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     {
         gb->direct.unoptimized_writes = 1;
     }
-    
+
     return GB_INIT_NO_ERROR;
 }
 

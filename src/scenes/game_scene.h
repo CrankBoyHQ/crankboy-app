@@ -69,11 +69,11 @@ typedef struct
 typedef struct CB_GameSceneContext
 {
     CB_GameScene* scene;
-    #ifdef PEANUT_GB_H
+#ifdef PEANUT_GB_H
     gb_s* gb;
-    #else
+#else
     void* gb;
-    #endif
+#endif
     uint8_t wram[WRAM_SIZE];
     uint8_t vram[VRAM_SIZE];
     uint8_t* rom;

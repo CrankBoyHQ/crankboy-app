@@ -201,18 +201,18 @@ static struct ScriptBreakpointDef
     // alternatively, just directly use `c_script_add_hw_breakpoint(gb, addr, cb)`
 */
 
-#define SCRIPT_BREAKPOINT__(x, ...)                                             \
+#define SCRIPT_BREAKPOINT__(x, ...)                                      \
     static void breakpoint_##x(gb_s* gb, u16 addr, int bpidx, USERDATA); \
-    static romaddr_t bp_addrs_##x[] = {__VA_ARGS__};                            \
-    static struct ScriptBreakpointDef script_bp_##x = {                         \
-        .bp = (CS_OnBreakpoint)breakpoint_##x,                                  \
-        .rom_addrs = bp_addrs_##x,                                              \
-    };                                                                          \
-    static __attribute__((constructor)) void setup_bp_##x(void)                 \
-    {                                                                           \
-        script_bp_##x.next = script_breakpoints;                                \
-        script_breakpoints = &script_bp_##x;                                    \
-    }                                                                           \
+    static romaddr_t bp_addrs_##x[] = {__VA_ARGS__};                     \
+    static struct ScriptBreakpointDef script_bp_##x = {                  \
+        .bp = (CS_OnBreakpoint)breakpoint_##x,                           \
+        .rom_addrs = bp_addrs_##x,                                       \
+    };                                                                   \
+    static __attribute__((constructor)) void setup_bp_##x(void)          \
+    {                                                                    \
+        script_bp_##x.next = script_breakpoints;                         \
+        script_breakpoints = &script_bp_##x;                             \
+    }                                                                    \
     static void breakpoint_##x(gb_s* gb, u16 addr, int bpidx, USERDATA)
 
 #define SCRIPT_BREAKPOINT_(x, ...) SCRIPT_BREAKPOINT__(x, __VA_ARGS__)
