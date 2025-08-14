@@ -139,7 +139,8 @@ int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 // very short entrypoint function that pre-empts the eventHandlerShim.
 // This must be located at exactly the segment start, so that it aligns with the
 // entrypoint in the bootstrapper
-__attribute__((section(".entry"))) __attribute__((naked)) void _entrypoint_(
+__attribute__((section(".entry"))) __attribute__((naked))
+int _entrypoint_(
     PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg
 )
 {
