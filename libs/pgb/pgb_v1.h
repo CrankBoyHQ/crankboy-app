@@ -354,7 +354,7 @@ struct PGB_VERSIONED(gb_s)
     audio_data audio;
 };
 
-FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s) * gb)
+FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +

@@ -272,13 +272,11 @@ struct PGB_VERSIONED(gb_s)
     uint8_t* wram_base;
     uint8_t* echo_ram_base;
     uint8_t* vram_base;
-    uint8_t* oam_base;
-    uint8_t* hram_io_base;
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
     uint8_t* wram;  // wram[WRAM_SIZE];
     uint8_t* vram;  // vram[VRAM_SIZE];
-    uint8_t hram[HRAM_SIZE];
+    uint8_t hram[HRAM_SIZE]; // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
 
@@ -315,7 +313,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
-        uint8_t unoptimized_writes : 1;
 
         int joypad_interrupt_delay;
 
@@ -382,7 +379,7 @@ struct PGB_VERSIONED(gb_s)
 };
 
 // Note: used on unswizzled gb struct, so must
-FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(struct PGB_VERSIONED(gb_s) * gb)
+FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +
@@ -469,8 +466,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
                                 &gb->direct.priv,  &gb->gb_error,      &gb->gb_serial_tx,
                                 &gb->gb_serial_rx, &gb->gb_boot_rom,   &gb->gb_original_rom,
                                 &gb->wram_base,    &gb->echo_ram_base, &gb->vram_base,
-                                &gb->oam_base,     &gb->hram_io_base,  &gb->gb_zero_bank,
-                                &gb->xram};
+                                &gb->gb_zero_bank, &gb->xram};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)

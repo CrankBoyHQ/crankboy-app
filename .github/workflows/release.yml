@@ -34,6 +34,8 @@ jobs:
 
             # Step 4: Build the Project for Device
             - name: Build Project for Device
+              env:
+                COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0"
               run: make -j$(nproc) device
 
             # Step 5: Package the device build as a zip file
@@ -72,6 +74,8 @@ jobs:
 
             # Step 4: Build a universal .pdx for both Device and Simulator
             - name: Build Universal Project (Device & Simulator)
+              env:
+                COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0"
               run: make -j$(nproc)
 
             # Step 5: Package the simulator build as a zip file

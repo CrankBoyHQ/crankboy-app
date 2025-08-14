@@ -24,12 +24,14 @@ extern PlaydateAPI* playdate;
 #define CB_DEBUG_UPDATED_ROWS false
 #define ENABLE_RENDER_PROFILER false
 
+#ifndef ENABLE_CPU_VALIDATION
 /* Enables (1) or disables (0) CPU validation in the Simulator.
  * Use this if you make changes to the optimized CPU instructions
  * and want to test them agains the unoptimized path.
  * Note: use this for debugging only.
  */
-#define ENABLE_CPU_VALIDATION 0
+#define ENABLE_CPU_VALIDATION 1
+#endif
 
 #define CB_LCD_WIDTH 320
 #define CB_LCD_HEIGHT 240
@@ -218,6 +220,12 @@ static inline float toward(float x, float dst, float step)
 
 #ifdef TARGET_SIMULATOR
 #define CPU_VALIDATE ENABLE_CPU_VALIDATION
+
+// This message lets us inspect CI to ensure that CPU validation is disabled.
+// CPU validation costs performance but is important for development.
+#if ENABLE_CPU_VALIDATION == 0
+#  pragma message("Note: CPU validation disabled.")
+#endif
 
 #if CPU_VALIDATE == 1
 #define CB_ASSERT(x) \

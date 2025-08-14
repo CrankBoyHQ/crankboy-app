@@ -79,6 +79,8 @@ UINCDIR += libs/lz4
 UINCDIR += libs/lua-5.4.7
 UINCDIR += libs/pdnewlib
 
+# (device-only flags)
+
 # Note: if there are unexplained crashes, try disabling these.
 # LUA: enable lua scripting (uses embedded lua engine)
 # DTCM_ALLOC: allow allocating variables in DTCM at the low-address end of the region reserved for the stack.
@@ -86,7 +88,10 @@ UINCDIR += libs/pdnewlib
 # NOLUA: disable lua support
 # Note: DTCM only active on Rev A regardless.
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
-UDEFS = -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
+UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
+
+# flags applied to both simulator and device
+COMMON_FLAGS += 
 
 # Define ASM defines here
 UADEFS =
@@ -98,6 +103,9 @@ ULIBDIR =
 ULIBS =
 
 override LDSCRIPT=./link_map.ld
+
+# ugly to allow defs for simulator
+override INCDIR = $(patsubst %,-I %,$(DINCDIR) $(UINCDIR)) $(COMMON_FLAGS)
 
 include $(SDK)/C_API/buildsupport/common.mk
 

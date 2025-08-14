@@ -49,13 +49,6 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
-/*This macro defines the list of games that are incompatible with
- * the 16-bit memory write optimizations. */
-#define NEEDS_UNOPTIMIZED_WRITES(title)                                               \
-    (strcmp(title, "POKEMON YELLOW") == 0 || strcmp(title, "POKEMON GELBE") == 0 ||   \
-     strcmp(title, "POKEMON JAUNE") == 0 || strcmp(title, "POKEMON AMARILLO") == 0 || \
-     strcmp(title, "POKEMON GIALLO") == 0 || strcmp(title, "POCKET MONSTERS PIKACHU") == 0)
-
 /**
  * Sound support must be provided by an external library. When audio_read() and
  * audio_write() functions are provided, define ENABLE_SOUND to a non-zero value
@@ -471,8 +464,6 @@ __section__(".text.cb") static void __gb_init_memory_pointers(gb_s* gb)
     gb->wram_base = gb->wram - WRAM_0_ADDR;
     gb->echo_ram_base = gb->wram - ECHO_ADDR;
     gb->vram_base = gb->vram - VRAM_ADDR;
-    gb->oam_base = gb->oam - OAM_ADDR;
-    gb->hram_io_base = gb->hram - IO_ADDR;
 }
 
 __section__(".text.cb") static void __gb_update_map_pointers(gb_s* gb)
@@ -783,7 +774,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->echo_ram_base[addr];
 
         if (addr < UNUSED_ADDR)
-            return gb->oam_base[addr];
+            return gb->oam[addr - OAM_ADDR];
 
         /* Unusable memory area. Reading from this area returns 0.*/
         if (addr < IO_ADDR)
@@ -791,7 +782,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         /* HRAM */
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
-            return gb->hram_io_base[addr];
+            return gb->hram[addr - IO_ADDR];
 
         /* APU registers. */
         if ((addr >= 0xFF10) && (addr <= 0xFF3F))
@@ -813,7 +804,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
                 };
                 /* clang-format on */
-                return gb->hram_io_base[addr] | ortab[addr - IO_ADDR];
+                return gb->hram[addr - IO_ADDR] | ortab[addr - IO_ADDR];
             }
         }
 
@@ -1289,7 +1280,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (addr < UNUSED_ADDR)
         {
-            gb->oam_base[addr] = val;
+            gb->oam[addr - OAM_ADDR] = val;
             return;
         }
 
@@ -1299,7 +1290,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (HRAM_ADDR <= addr && addr < INTR_EN_ADDR)
         {
-            gb->hram_io_base[addr] = val;
+            gb->hram[addr - IO_ADDR] = val;
             return;
         }
 
@@ -1311,7 +1302,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             }
             else
             {
-                gb->hram_io_base[addr] = val;
+                gb->hram[addr - IO_ADDR] = val;
             }
             return;
         }
@@ -1599,20 +1590,14 @@ __core_section("short") static uint16_t __gb_read16(gb_s* restrict gb, u16 addr)
     // Fast path for WRAM
     if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
     {
-        void* ptr = &gb->wram[addr - WRAM_0_ADDR];
-        if (is_aligned(ptr))
-        {
-            return *(uint16_t*)ptr;
-        }
+        void* ptr = &gb->wram_base[addr];
+        return *(uint16_t*)ptr;
     }
     // Fast path for HRAM
     else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
     {
-        void* ptr = &gb->hram[addr - HRAM_ADDR];
-        if (is_aligned(ptr))
-        {
-            return *(uint16_t*)ptr;
-        }
+        void* ptr = &gb->hram[addr - IO_ADDR];
+        return *(uint16_t*)ptr;
     }
 
     // Fallback for all other cases (unaligned, ROM, I/O, etc.)
@@ -1623,31 +1608,22 @@ __core_section("short") static uint16_t __gb_read16(gb_s* restrict gb, u16 addr)
 
 __core_section("short") static void __gb_write16(gb_s* restrict gb, u16 addr, u16 v)
 {
-    if (!gb->direct.unoptimized_writes)
+    // Fast path for WRAM
+    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
     {
-        // Fast path for WRAM
-        if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
-        {
-            void* ptr = &gb->wram[addr - WRAM_0_ADDR];
-            if (is_aligned(ptr))
-            {
-                *(uint16_t*)ptr = v;
-                return;
-            }
-        }
-        // Fast path for HRAM
-        else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
-        {
-            void* ptr = &gb->hram[addr - HRAM_ADDR];
-            if (is_aligned(ptr))
-            {
-                *(uint16_t*)ptr = v;
-                return;
-            }
-        }
+        void* ptr = &gb->wram_base[addr];
+        *(uint16_t*)ptr = v;
+        return;
+    }
+    // Fast path for HRAM
+    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+    {
+        void* ptr = &gb->hram[addr - IO_ADDR];
+        *(uint16_t*)ptr = v;
+        return;
     }
 
-    // Fallback for unaligned or other memory regions
+    // Fallback for other memory regions
     __gb_write(gb, addr, v & 0xFF);
     __gb_write(gb, addr + 1, v >> 8);
 }
@@ -5072,7 +5048,7 @@ __core unsigned int __gb_step_cpu(gb_s* gb)
             playdate->system->error("difference in cart ram on opcode %x", opcode);
         }
 
-        if (memcmp(&gb->cpu_reg, &_gb[1].cpu_reg, sizeof(struct cpu_registers_s)))
+        if (memcmp(&gb->cpu_reg, &_gb[1].cpu_reg, sizeof(struct PGB_VERSIONED(cpu_registers_s))))
         {
             gb->gb_frame = 1;
             playdate->system->error("difference in CPU regs on opcode %x", opcode);
@@ -5867,15 +5843,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
 
-    gb->direct.unoptimized_writes = 0;
-
     char title_str[17];
     gb_get_rom_name(gb->gb_rom, title_str);
-
-    if (NEEDS_UNOPTIMIZED_WRITES(title_str))
-    {
-        gb->direct.unoptimized_writes = 1;
-    }
 
     return GB_INIT_NO_ERROR;
 }
