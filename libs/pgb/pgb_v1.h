@@ -164,7 +164,7 @@ struct PGB_VERSIONED(gb_s)
     {
         uint8_t gb_halt : 1;
         uint8_t gb_ime : 1;
-        uint8_t gb_bios_enable : 1;
+        uint8_t gb_bios_enable : 1; // (deprecated)
 
         /* gb_frame is set when the equivalent time of a frame has
          * passed. It is likely that a new frame has been drawn,
@@ -346,7 +346,7 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(gb_breakpoint) * breakpoints;
 
     size_t gb_rom_size;
-    uint8_t* gb_boot_rom;
+    uint8_t* gb_boot_rom; // deprecated
 
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for

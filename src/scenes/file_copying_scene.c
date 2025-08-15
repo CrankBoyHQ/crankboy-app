@@ -45,10 +45,6 @@ static bool copy_one_file(const char* full_path, const char* filename)
     {
         dst_path = aprintf("%s/%s", CB_statesPath, filename);
     }
-    else if (!strcmp(filename, "dmg_boot.bin"))
-    {
-        dst_path = aprintf("./%s", filename);
-    }
 
     if (!dst_path)
     {

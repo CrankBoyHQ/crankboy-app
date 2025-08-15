@@ -1015,18 +1015,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    // BIOS
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Boot sequence",
-        .values = off_on_labels,
-        .description =
-            "Enables \"Boot ROM\" on\ngame start.\n \n\"dmg_boot.bin\" must\nbe present."
-        ,
-        .pref_var = &preferences_bios,
-        .max_value = 2,
-        .on_press = NULL
-    };
-
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA

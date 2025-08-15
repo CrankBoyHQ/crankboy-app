@@ -173,7 +173,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t gb_ime : 1;
         uint8_t gb_ime_countdown : 2;
         uint8_t is_cgb_mode : 1;
-        uint8_t gb_bios_enable : 1;
 
         /* gb_frame is set when the equivalent time of a frame has
          * passed. It is likely that a new frame has been drawn,
@@ -364,10 +363,6 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(gb_breakpoint) * breakpoints;
 
     size_t gb_rom_size;
-    uint8_t* gb_boot_rom;
-
-    // 256 bytes of rom that could be covered up by the bios
-    uint8_t* gb_original_rom;
 
     // extended ram feature offered by crankboy
     uint8_t* xram;
@@ -464,9 +459,8 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     void* preserved_fields[] = {&gb->gb_rom,       &gb->wram,          &gb->vram,
                                 &gb->gb_cart_ram,  &gb->breakpoints,   &gb->lcd,
                                 &gb->direct.priv,  &gb->gb_error,      &gb->gb_serial_tx,
-                                &gb->gb_serial_rx, &gb->gb_boot_rom,   &gb->gb_original_rom,
-                                &gb->wram_base,    &gb->echo_ram_base, &gb->vram_base,
-                                &gb->gb_zero_bank, &gb->xram};
+                                &gb->gb_serial_rx, &gb->wram_base,    &gb->echo_ram_base,
+                                &gb->vram_base, &gb->gb_zero_bank, &gb->xram};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
@@ -582,7 +576,6 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
 
     set_field(v2_gb, v1_gb, gb_halt);
     set_field(v2_gb, v1_gb, gb_ime);
-    set_field(v2_gb, v1_gb, gb_bios_enable);
     set_field(v2_gb, v1_gb, gb_frame);
     set_field(v2_gb, v1_gb, lcd_mode);
     set_field(v2_gb, v1_gb, lcd_blank);

@@ -294,11 +294,6 @@ typedef struct PGB_VERSIONED(gb_breakpoint) gb_breakpoint;
 __core unsigned int __gb_step_cpu(gb_s* gb);
 
 #ifdef PGB_IMPL
-__section__(".rare") void gb_init_boot_rom(gb_s* gb, uint8_t* boot_rom)
-{
-    gb->gb_boot_rom = boot_rom;
-    memcpy(gb->gb_rom, boot_rom, 0x100);
-}
 
 /**
  * Directly calculates and applies the RTC state after a given
@@ -565,13 +560,8 @@ __section__(".rare.cb") static void __gb_rare_write(
         case 0x75:
             return;
 
-        /* Turn off boot ROM */
         case 0x50:
-            if (gb->gb_bios_enable)
-            {
-                gb->gb_bios_enable = 0;
-                memcpy(gb->gb_rom, gb->gb_original_rom, 0x100);
-            }
+            /* Turn off boot ROM (not supported) */
             return;
 
         case IO_PLAYDATE_EXTENSION_CTL:
@@ -1425,7 +1415,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             return;
 
         /* LY (0xFF44) is read-only. Writes are ignored on real hardware.
-         * The boot ROM attempts to write to this register. */
+         * The boot ROM (not supported) attempts to write to this register. */
         case 0x44:
             return;
 
@@ -4992,11 +4982,6 @@ __core unsigned int __gb_step_cpu(gb_s* gb)
         // can't validate if breakpoint
         __gb_run_instruction_micro(gb);
     }
-    else if (gb->gb_bios_enable)
-    {
-        // can't validate if bios
-        __gb_run_instruction_micro(gb);
-    }
     else
     {
         const u16 pc = gb->cpu_reg.pc;
@@ -5470,24 +5455,6 @@ __section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, s
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
 
-    // update boot rom overlay state
-    if (gb->gb_bios_enable)
-    {
-        if (gb->gb_boot_rom && preferences_bios)
-        {
-            memcpy(gb->gb_rom, gb->gb_boot_rom, 0x100);
-        }
-        else
-        {
-            // best we can do if boot rom is no longer available
-            gb_reset(gb);
-        }
-    }
-    else
-    {
-        memcpy(gb->gb_rom, &gb->gb_original_rom[0], 0x100);
-    }
-
     return NULL;
 }
 
@@ -5524,11 +5491,6 @@ void gb_init_serial(
     gb->gb_serial_tx = gb_serial_tx;
     gb->gb_serial_rx = gb_serial_rx;
 }
-
-/**
- * Provides the emulator with the 256-byte boot ROM data.
- */
-void gb_init_boot_rom(gb_s* gb, uint8_t* boot_rom);
 
 uint8_t gb_colour_hash(gb_s* gb)
 {
@@ -5578,55 +5540,12 @@ __section__(".rare") void gb_reset(gb_s* gb)
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
 
-    if (gb->gb_boot_rom && preferences_bios)
-    {
-        /*****************************************************************/
-        /* --- TRUE POWER-ON STATE (When using a Boot ROM) --- */
-        /*****************************************************************/
-        gb->gb_bios_enable = 1;
-
-        /* Set registers to their power-on state. */
-        gb->cpu_reg.af = 0x0000;
-        gb->cpu_reg.bc = 0x0000;
-        gb->cpu_reg.de = 0x0000;
-        gb->cpu_reg.hl = 0x0000;
-        gb->cpu_reg.sp = 0x0000;
-        gb->cpu_reg.pc = 0x0000;
-
-        /* Hardware registers are at their power-on defaults */
-        gb->gb_reg.P1 = 0xCF;
-        gb->gb_reg.SB = 0x00;
-        gb->gb_reg.SC = 0x7E;
-        gb->gb_reg.DIV = 0x00;
-        gb->gb_reg.TIMA = 0x00;
-        gb->gb_reg.TMA = 0x00;
-        gb->gb_reg.TAC = 0xF8;
-        gb->gb_reg.IF = 0xE1;
-        gb->gb_reg.LCDC = 0x00; /* LCD is off */
-        gb->gb_reg.STAT = 0x80;
-        gb->gb_reg.SCY = 0x00;
-        gb->gb_reg.SCX = 0x00;
-        gb->gb_reg.LY = 0x00;
-        gb->gb_reg.LYC = 0x00;
-        gb->gb_reg.DMA = 0x00;
-        __gb_write(gb, 0xFF47, 0xFC);
-        __gb_write(gb, 0xFF48, 0xFF);
-        __gb_write(gb, 0xFF49, 0xFF);
-        gb->gb_reg.WY = 0x00;
-        gb->gb_reg.WX = 0x00;
-        gb->gb_reg.IE = 0x00;
-
-        /* Timers are reset */
-        gb->counter.div_count = 0x00;
-        gb->lcd_mode = LCD_HBLANK;
-    }
-    else if (preferences_experimental_gbc_mode)
+    if (preferences_experimental_gbc_mode)
     {
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
         /*****************************************************************/
         playdate->system->logToConsole("Starting ROM with GBC registers");
-        gb->gb_bios_enable = 0;
         gb->cpu_reg.af = 0x1180;
         gb->cpu_reg.bc = 0x0000;
         gb->cpu_reg.de = 0xFF56;
@@ -5666,7 +5585,6 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (DMG Skip-BIOS) --- */
         /*****************************************************************/
-        gb->gb_bios_enable = 0;
 
         /* Initialise CPU registers as though the boot ROM has just finished. */
         gb->cpu_reg.af = 0x01B0;
@@ -5774,12 +5692,10 @@ __section__(".rare") enum gb_init_error_e gb_init(
     };
     /* clang-format on */
 
-    static uint8_t org_rom[0x100];
     static uint8_t xram[XRAM_SIZE];
 
     memset(xram, 0, XRAM_SIZE);
 
-    gb->gb_original_rom = org_rom;
     gb->xram = xram;
 
     gb->wram = wram;
@@ -5788,7 +5704,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->lcd = lcd;
     gb->gb_rom = gb_rom;
     gb->gb_rom_size = rom_size;
-    memcpy(gb->gb_original_rom, gb_rom, 0x100);
     gb->gb_error = gb_error;
     gb->direct.priv = priv;
 

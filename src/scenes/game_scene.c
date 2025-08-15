@@ -488,11 +488,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
         CB_ASSERT((((uintptr_t)context->previous_lcd) & 7) == 0);
 
-        if (CB_App->bootRomData && preferences_bios)
-        {
-            gb_init_boot_rom(context->gb, CB_App->bootRomData);
-        }
-
         gb_reset(context->gb);
 
         context->gb->direct.joypad_interrupt_delay = -1;
@@ -1727,8 +1722,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
 
         context->gb->overclock = (unsigned)(preferences_overclock);
-        if (context->gb->gb_bios_enable)
-            context->gb->overclock = 0;  // overclocked boot ROM is glitchy
 
         if (gbScreenRequiresFullRefresh)
         {

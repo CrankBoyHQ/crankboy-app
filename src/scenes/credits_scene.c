@@ -17,8 +17,6 @@
 // pixels per degree
 #define CRANK_RATE 1.1f
 
-const char* get_pdboot_name_and_version(void);
-
 static void shuffle_array(JsonArray* array)
 {
     for (size_t i = 1; i < array->n; ++i)

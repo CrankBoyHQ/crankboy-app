@@ -230,32 +230,6 @@ void CB_init(void)
     CB_App->startSelectBitmap =
         playdate->graphics->loadBitmap("images/selector-start-select", NULL);
 
-    // --- Boot ROM data ---
-    const char* bootRomPath = "dmg_boot.bin";
-    SDFile* file = playdate->file->open(bootRomPath, kFileRead | kFileReadData);
-    if (file)
-    {
-        CB_App->bootRomData = cb_malloc(256);
-        int bytesRead = playdate->file->read(file, CB_App->bootRomData, 256);
-        playdate->file->close(file);
-        if (bytesRead != 256)
-        {
-            playdate->system->logToConsole(
-                "Error: Read %d bytes from dmg_boot.bin, expected 256.", bytesRead
-            );
-            cb_free(CB_App->bootRomData);
-            CB_App->bootRomData = NULL;
-        }
-        else
-        {
-            playdate->system->logToConsole("Successfully loaded dmg_boot.bin");
-        }
-    }
-    else
-    {
-        playdate->system->logToConsole("Note: could not find %s. Skipping Boot ROM.", bootRomPath);
-    }
-
     // add audio callback later
     CB_App->soundSource = NULL;
 
@@ -511,7 +485,6 @@ void CB_quit(void)
     }
 
     cb_free(CB_App->bundled_rom);
-    cb_free(CB_App->bootRomData);
 
     CB_LibraryScene_cleanup();
 

@@ -88,7 +88,6 @@ typedef struct CB_Application
     float avg_dt;       // for fps calculation
     float avg_dt_mult;  // reciprocal number of emulated frames last frame
     float crankChange;
-    uint8_t* bootRomData;
     CB_Scene* scene;
     CB_Scene* pendingScene;
     LCDFont* bodyFont;
@@ -118,7 +117,7 @@ typedef struct CB_Application
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
-    char* bundled_rom;
+    char* bundled_rom; // (path to bundled rom)
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -135,6 +134,9 @@ void CB_dismiss(CB_Scene* scene);
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.
 void* dtcm_alloc(size_t size);
+
+// returns NULL if was not booted by pdboot.
+const char* get_pdboot_name_and_version(void);
 
 #define PLAYDATE_ROW_STRIDE 52
 

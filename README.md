@@ -20,7 +20,6 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Settings to fine-tune performance, visual appearance, and crank controls
 - Multiple Save State slots per game (note: not currently available if game has its own save data. TBA.)
 - You can download cover art for your library from within CrankBoy.
-- Checks for an update once a day (you can disable this by revoking the networking permission for CrankBoy in your Playdate's settings)
 - Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
@@ -32,7 +31,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Audio is not accurate to sub-frame precision, so audio clips (like in *Pokémon Yellow* or *The Chessmaster*) will be unrecognizable or silent.
 - Link Cable is not supported.
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options. 60 fps interlaced is also possible.
-- Updates are not currently downloaded automatically.
+- Although CrankBoy will notify you if an update is available, updates are not currently downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
 
 ## Installing
 
@@ -136,7 +135,7 @@ The value for each preference under `"default"` must be a non-negative integer, 
 
 As an alternative to marking preferences as hidden, you can instead whitelist preferences that you wish to be exposed to the user by using `"visible"` instead of `"hidden"`. If you wish for the preferences menu to be hidden _entirely_, simply use `"visible": []`. A list of preferences and their names can be found [here](./src/prefs.x).
 
-Additionally, if you are releasing your own game that is not licensed by Nintendo, please remove `dmg_boot.bin`. It's also strongly recommended that you add a [Lua script](./lua-docs.md) and/or [C script](src/cscripts/kirby_dreamland.c) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy. (Or just write the script in C instead.)
+Additionally, it's also strongly recommended that you add a [C script](src/cscripts/kirby_dreamland.c) (or, if that's troublesome, a [Lua script](./lua-docs.md), which may impact performance) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy. (Or just write the script in C instead.)
 
 For developers new to Playdate, please be aware that you will need to [compile CrankBoy](https://sdk.play.date/2.7.6/Inside%20Playdate%20with%20C.html#_prerequisites) (§2, §4.2) yourself if you want to run it with the Simulator.
 
