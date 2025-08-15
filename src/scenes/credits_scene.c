@@ -17,6 +17,8 @@
 // pixels per degree
 #define CRANK_RATE 1.1f
 
+const char* get_pdboot_name_and_version();
+
 static void shuffle_array(JsonArray* array)
 {
     for (size_t i = 1; i < array->n; ++i)
@@ -201,13 +203,22 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
         if (logo.type == kJSONTrue)
         {
             playdate->graphics->setFont(CB_App->labelFont);
+            const char* pdboot_version = get_pdboot_name_and_version();
             const char* version = get_current_version();
+
+            if (pdboot_version)
+            {
+                playdate->graphics->drawTextInRect(
+                    pdboot_version, strlen(pdboot_version), kUTF8Encoding, margin + creditsScene->scroll * 8,
+                    margin, width, 100, kWrapWord, kAlignTextRight
+                );
+            }
 
             if (version)
             {
                 playdate->graphics->drawTextInRect(
-                    version, strlen(version), kUTF8Encoding, margin + creditsScene->scroll * 8,
-                    margin, width, 100, kWrapWord, kAlignTextRight
+                    version, strlen(version), kUTF8Encoding, margin - creditsScene->scroll * 8,
+                    margin, width, 100, kWrapWord, kAlignTextLeft
                 );
             }
 
