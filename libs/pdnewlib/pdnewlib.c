@@ -37,24 +37,12 @@ extern int errno;
 
 static PlaydateAPI* pd;
 
-static int _is_init = 0;
-
-static PlaydateAPI* pd;
-
-__attribute__((constructor)) static void _init(void)
-{
-    _is_init = 1;
-}
 
 int eventHandler_pdnewlib(PlaydateAPI* _pd, PDSystemEvent event, uint32_t arg)
 {
     if (event == kEventInit)
     {
         pd = _pd;
-        if (!_is_init)
-        {
-            printf("Warning: __attribute__((constructor)) not supported\n");
-        }
     }
     return 0;
 }

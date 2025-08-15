@@ -13,6 +13,9 @@
 # symbol file, for manually checking alignment
 syms*.txt
 
+# disassembly file, for debugging
+disasm*.txt
+
 # paranoia
 *.gb
 *.gbc
