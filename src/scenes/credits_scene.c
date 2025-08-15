@@ -17,7 +17,7 @@
 // pixels per degree
 #define CRANK_RATE 1.1f
 
-const char* get_pdboot_name_and_version();
+const char* get_pdboot_name_and_version(void);
 
 static void shuffle_array(JsonArray* array)
 {
@@ -209,8 +209,9 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             if (pdboot_version)
             {
                 playdate->graphics->drawTextInRect(
-                    pdboot_version, strlen(pdboot_version), kUTF8Encoding, margin + creditsScene->scroll * 8,
-                    margin, width, 100, kWrapWord, kAlignTextRight
+                    pdboot_version, strlen(pdboot_version), kUTF8Encoding,
+                    margin + creditsScene->scroll * 8, margin, width, 100, kWrapWord,
+                    kAlignTextRight
                 );
             }
 
