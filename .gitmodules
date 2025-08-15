@@ -1,3 +1,6 @@
 [submodule "toolchain"]
 	path = toolchain
 	url = https://github.com/CrankBoyHQ/crankboy-toolchain.git
+[submodule "libs/pdboot"]
+	path = libs/pdboot
+	url = https://github.com/CrankBoyHQ/pdboot.git
