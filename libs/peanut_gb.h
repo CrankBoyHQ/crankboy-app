@@ -5592,7 +5592,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /* --- POST-BOOT ROM STATE (DMG Skip-BIOS) --- */
         /*****************************************************************/
 
-        /* Initialise CPU registers as though the boot ROM has just finished. */
+        /* Initialize CPU registers as though the boot ROM has just finished. */
         gb->cpu_reg.af = 0x01B0;
         gb->cpu_reg.bc = 0x0013;
         gb->cpu_reg.de = 0x00D8;
@@ -5604,18 +5604,60 @@ __section__(".rare") void gb_reset(gb_s* gb)
         gb->gb_reg.P1 = 0xCF;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7E;
-        gb->gb_reg.DIV = 0x1B;
+        gb->gb_reg.DIV = 0xAB;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
         gb->gb_reg.IF = 0xE1;
+
+        /* Sound registers */
+        __gb_write(gb, 0xFF10, 0x80);
+        __gb_write(gb, 0xFF11, 0xBF);
+        __gb_write(gb, 0xFF12, 0xF3);
+        __gb_write(gb, 0xFF13, 0xFF);
+        __gb_write(gb, 0xFF14, 0xBF);
+        __gb_write(gb, 0xFF16, 0x3F);
+        __gb_write(gb, 0xFF17, 0x00);
+        __gb_write(gb, 0xFF18, 0xFF);
+        __gb_write(gb, 0xFF19, 0xBF);
+        __gb_write(gb, 0xFF1A, 0x7F);
+        __gb_write(gb, 0xFF1B, 0xFF);
+        __gb_write(gb, 0xFF1C, 0x9F);
+        __gb_write(gb, 0xFF1D, 0xFF);
+        __gb_write(gb, 0xFF1E, 0xBF);
+        __gb_write(gb, 0xFF20, 0xFF);
+        __gb_write(gb, 0xFF21, 0x00);
+        __gb_write(gb, 0xFF22, 0x00);
+        __gb_write(gb, 0xFF23, 0xBF);
+        __gb_write(gb, 0xFF24, 0x77);
+        __gb_write(gb, 0xFF25, 0xF3);
+        __gb_write(gb, 0xFF26, 0xF1);
+
+        /* Wave RAM */
+        __gb_write(gb, 0xFF30, 0xAC);
+        __gb_write(gb, 0xFF31, 0xDD);
+        __gb_write(gb, 0xFF32, 0xDA);
+        __gb_write(gb, 0xFF33, 0x48);
+        __gb_write(gb, 0xFF34, 0x36);
+        __gb_write(gb, 0xFF35, 0x02);
+        __gb_write(gb, 0xFF36, 0xCF);
+        __gb_write(gb, 0xFF37, 0x16);
+        __gb_write(gb, 0xFF38, 0x2C);
+        __gb_write(gb, 0xFF39, 0x04);
+        __gb_write(gb, 0xFF3A, 0xE5);
+        __gb_write(gb, 0xFF3B, 0x2C);
+        __gb_write(gb, 0xFF3C, 0xAC);
+        __gb_write(gb, 0xFF3D, 0xDD);
+        __gb_write(gb, 0xFF3E, 0xDA);
+        __gb_write(gb, 0xFF3F, 0x48);
+
         gb->gb_reg.LCDC = 0x91;
         gb->gb_reg.STAT = 0x85;  // Mode 1 (VBlank)
         gb->gb_reg.SCY = 0x00;
         gb->gb_reg.SCX = 0x00;
         gb->gb_reg.LY = 144;
         gb->gb_reg.LYC = 0x00;
-        gb->gb_reg.DMA = 0x00;
+        gb->gb_reg.DMA = 0xFF;
         __gb_write(gb, 0xFF47, 0xFC);
         __gb_write(gb, 0xFF48, 0xFF);
         __gb_write(gb, 0xFF49, 0xFF);
@@ -5623,8 +5665,8 @@ __section__(".rare") void gb_reset(gb_s* gb)
         gb->gb_reg.WX = 0x00;
         gb->gb_reg.IE = 0x00;
 
-        /* DMG internal timer is 0x1BE1 */
-        gb->counter.div_count = 0xE1;
+        /* DMG internal timer is 0xABCC */
+        gb->counter.div_count = 0xCC;
         gb->lcd_mode = LCD_VBLANK;
     }
 
