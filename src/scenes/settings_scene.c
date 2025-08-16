@@ -385,6 +385,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
+static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
@@ -838,12 +839,13 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
-            .values = off_on_labels,
+            .values = blend_frames_labels,
             .description =
-                "Blends frames together\nto create a transparency\neffect for flickering\n"
-                "objects.\n \nThis improves visuals\nat a cost to performance.",
+                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.\n \n"
+                "On:\nSlower, but effects work\ncorrectly in all games.\n \n"
+                "Auto:\nFaster, but may not work\nfor all games.",
             .pref_var = &preferences_blend_frames,
-            .max_value = 2,
+            .max_value = 3,
             .rebuild_when_changed = 1,
             .on_press = NULL,
         };
