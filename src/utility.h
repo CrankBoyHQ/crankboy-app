@@ -224,7 +224,7 @@ static inline float toward(float x, float dst, float step)
 // This message lets us inspect CI to ensure that CPU validation is disabled.
 // CPU validation costs performance but is important for development.
 #if ENABLE_CPU_VALIDATION == 0
-#  pragma message("Note: CPU validation disabled.")
+#pragma message("Note: CPU validation disabled.")
 #endif
 
 #if CPU_VALIDATE == 1

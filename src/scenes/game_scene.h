@@ -107,7 +107,7 @@ typedef struct CB_GameScene
     uint16_t rtc_seconds_to_catch_up;
 
     CB_GameSceneState state;
-    CB_GameSceneContext *context;
+    CB_GameSceneContext* context;
     CB_GameSceneModel model;
     CB_GameSceneError error;
 
@@ -122,8 +122,8 @@ typedef struct CB_GameScene
 
     struct ScriptState* script;
 
-    LCDBitmap *menuImage;
-    int button_hold_mode; // 0: Select, 1: None, 2: Start
+    LCDBitmap* menuImage;
+    int button_hold_mode;  // 0: Select, 1: None, 2: Start
     int button_hold_frames_remaining;
 
     float crank_turbo_accumulator;
@@ -141,12 +141,12 @@ typedef struct CB_GameScene
     uint8_t previous_joypad_state;
 } CB_GameScene;
 
-CB_GameScene *CB_GameScene_new(const char *rom_filename, char* name_short);
-void CB_GameScene_apply_settings(CB_GameScene *gameScene, bool audio_settings_changed);
+CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short);
+void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed);
 void CB_GameScene_didSelectLibrary(void* userdata);
 
-unsigned get_save_state_timestamp(CB_GameScene *gameScene, unsigned slot);
-bool load_state_thumbnail(CB_GameScene *gameScene, unsigned slot, uint8_t* out);
+unsigned get_save_state_timestamp(CB_GameScene* gameScene, unsigned slot);
+bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
 
 struct CB_Game;
 void show_game_script_info(const char* rompath, const char* name_short);

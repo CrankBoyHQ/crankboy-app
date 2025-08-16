@@ -26,7 +26,7 @@ void CB_Modal_update(CB_Modal* modal)
             modal->droptimer = MODAL_DROP_TIME;
     }
     PDButtons pushed = CB_App->buttons_pressed;
-    
+
     if (modal->accept_on_dock && playdate->system->isCrankDocked())
     {
         pushed |= kButtonA;
@@ -138,7 +138,7 @@ void CB_Modal_update(CB_Modal* modal)
 
     if (modal->exit || modal->droptimer < MODAL_DROP_TIME)
         return;
-    
+
     if ((pushed & kButtonB) || (modal->options_count == 0 && (pushed & kButtonA)))
     {
         modal->exit = 1;
