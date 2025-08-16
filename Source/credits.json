@@ -14,7 +14,12 @@
     {
         "section": "Based on Peanut-GB",
         "subtitle": "-by-",
-        "contributors": ["deltabeard"]
+        "contributors": ["Mahyar Koshkouei (deltabeard)"]
+    },
+    {
+        "section": "Based on\nGreg's GameBoy Emulator",
+        "subtitle": "-by-",
+        "contributors": ["Greg Tourville"]
     },
     {
         "section": "Playdate Optimization Research",
