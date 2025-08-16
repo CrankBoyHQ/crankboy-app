@@ -232,3 +232,107 @@ jobs:
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/
+
+    build_simulator_windows:
+        name: Create Nightly Simulator Build (Windows)
+        needs: check_for_commits
+        if: needs.check_for_commits.outputs.has_new_commits == 'true'
+        runs-on: windows-latest
+        defaults:
+            run:
+                shell: msys2 {0}
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4
+              with:
+                  submodules: "recursive"
+                  lfs: true
+
+            - name: Setup MSYS2 MinGW64
+              uses: msys2/setup-msys2@v2
+              with:
+                  msystem: MINGW64
+                  update: true
+                  install: >-
+                      mingw-w64-x86_64-gcc
+                      mingw-w64-x86_64-make
+                      mingw-w64-x86_64-cmake
+                      mingw-w64-x86_64-pkg-config
+                      make
+                      unzip
+                      p7zip
+                      curl
+                      tar
+                      git
+                      zip
+
+            - name: Setup ARM GCC Toolchain and Playdate SDK from Submodule
+              run: |
+                  echo "Extracting ARM GCC toolchain from toolchain/win/..."
+                  7z x toolchain/win/gcc-arm-none-eabi-9-2019-q4-major-win32.zip -ogcc-arm-toolchain -y
+                  TOOLCHAIN_PATH="$(pwd)/gcc-arm-toolchain/bin"
+                  echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
+                  echo "Extracting SDK from toolchain/win/..."
+                  7z x toolchain/win/PlaydateSDK-2.7.6.exe -oPlaydateSDK -y
+                  echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
+
+            - name: Prepare Lua Scripts
+              run: |
+                  mkdir -p Source/scripts
+                  for file in src/scripts/*.lua; do
+                      if [ -e "$file" ]; then
+                          base=$(basename "$file" .lua)
+                          cp "$file" "Source/scripts/${base}.l"
+                      fi
+                  done
+
+            - name: Update Version and Build Number
+              run: |
+                  DATE_STAMP=$(date +'%Y%m%d')
+                  CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
+                  sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+
+            - name: Build Universal Project (Device & Simulator) for Windows
+              run: |
+                  export PLAYDATE_SDK_PATH="$(pwd)/PlaydateSDK"
+                  # Create build directory
+                  mkdir -p build
+                  
+                  # Build device binary using ARM GCC
+                  echo "Building device binary..."
+                  arm-none-eabi-gcc --version
+                  make -j$(nproc) device
+                  
+                  # Build simulator extension DLL
+                  echo "Building simulator DLL..."
+                  gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 \
+                      -I . -I "$PLAYDATE_SDK_PATH/C_API" -I src -I libs \
+                      -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib \
+                      -o build/pdex.dll \
+                      src/cscripts/*.c src/*.c src/scenes/*.c \
+                      libs/minigb_apu/minigb_apu.c libs/pdnewlib/pdnewlib.c main.c \
+                      libs/lua-5.4.7/onelua.c libs/lz4/lz4.c \
+                      "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
+                  
+                  # Copy DLL to existing .pdx folder (which now contains device binary)
+                  cp build/pdex.dll CrankBoy.pdx/
+
+            - name: Get Windows Simulator Artifact Name
+              id: artifact_details
+              shell: bash
+              run: |
+                  APP_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
+                  ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-windows"
+                  echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
+
+            - name: Prepare Artifact for Upload
+              run: |
+                  mkdir -p artifact_root
+                  mv CrankBoy.pdx artifact_root/
+
+            - name: Upload Windows Simulator Artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: ${{ steps.artifact_details.outputs.artifact_name }}
+                  path: artifact_root/
