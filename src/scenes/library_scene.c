@@ -1187,7 +1187,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         int leftPanelWidth = screenWidth - rightPanelWidth;
 
-        libraryScene->listView->needsDisplay = needsDisplay;
+        libraryScene->listView->needsDisplay = libraryScene->listView->needsDisplay || needsDisplay;
         libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
 
 #ifdef TARGET_SIMULATOR
