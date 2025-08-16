@@ -273,9 +273,9 @@ struct PGB_VERSIONED(gb_s)
     uint8_t* vram_base;
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
-    uint8_t* wram;  // wram[WRAM_SIZE];
-    uint8_t* vram;  // vram[VRAM_SIZE];
-    uint8_t hram[HRAM_SIZE]; // note: includes both registers and hram for some reason
+    uint8_t* wram;            // wram[WRAM_SIZE];
+    uint8_t* vram;            // vram[VRAM_SIZE];
+    uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
 
@@ -312,6 +312,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
+        uint8_t frame_had_obp1_obj : 1;
 
         int joypad_interrupt_delay;
 
@@ -456,11 +457,11 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {&gb->gb_rom,       &gb->wram,          &gb->vram,
-                                &gb->gb_cart_ram,  &gb->breakpoints,   &gb->lcd,
-                                &gb->direct.priv,  &gb->gb_error,      &gb->gb_serial_tx,
+    void* preserved_fields[] = {&gb->gb_rom,       &gb->wram,         &gb->vram,
+                                &gb->gb_cart_ram,  &gb->breakpoints,  &gb->lcd,
+                                &gb->direct.priv,  &gb->gb_error,     &gb->gb_serial_tx,
                                 &gb->gb_serial_rx, &gb->wram_base,    &gb->echo_ram_base,
-                                &gb->vram_base, &gb->gb_zero_bank, &gb->xram};
+                                &gb->vram_base,    &gb->gb_zero_bank, &gb->xram};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)

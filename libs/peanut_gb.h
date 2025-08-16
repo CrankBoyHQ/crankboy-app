@@ -2122,6 +2122,11 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
             uint8_t OT = gb->oam[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
             uint8_t OF = gb->oam[s_4 + 3];
 
+            if (OF & OBJ_PALETTE)
+            {
+                gb->direct.frame_had_obp1_obj = 1;
+            }
+
             uint8_t py = gb->gb_reg.LY - (OY - 16);
 
             if (OF & OBJ_FLIP_Y)
@@ -5336,6 +5341,7 @@ done_instr:
 __core void gb_run_frame(gb_s* gb)
 {
     gb->gb_frame = 0;
+    gb->direct.frame_had_obp1_obj = 0;
     unsigned int total_cycles = 0;
 
     while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)

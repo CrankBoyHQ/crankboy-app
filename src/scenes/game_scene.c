@@ -1788,9 +1788,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
             memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
 
-            // 2. Determine if the screen is static.
+            // 2. Determine if the screen is static and if sprites were rendered.
             bool screen_is_static =
                 (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+            bool transparent_sprites_were_rendered = context->gb->direct.frame_had_obp1_obj;
 
             // 3. Run the emulator for the second frame period.
             context->gb->direct.frame_skip = screen_is_static;
@@ -1802,8 +1803,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             run_frame_function_pointer(context->gb);
 #endif
 
-            // 4. If the screen was dynamic, blend Frame A and Frame B.
-            if (!screen_is_static)
+            // 4. If the screen was dynamic AND had sprites, blend Frame A and Frame B.
+            if (!screen_is_static && transparent_sprites_were_rendered)
             {
                 ITCM_CORE_FN(blend_frames_lut)(frame_A_buffer, context->gb->lcd);
             }
