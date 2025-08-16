@@ -4,7 +4,17 @@
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
     "- Full aspect ratio; no vertical squishing.\n"                              \
     "- Can open save menu with just start+select.\n"                             \
+    "- In fishing mini-game: CCW Crank = Reel, CW Crank = Cast.\n"               \
     "- Intro cutscene can be skipped with Ⓐ.\n"
+
+#define FISHING_SCENE_CHECKSUM 11276
+
+#define CRANK_INPUT_THRESHOLD 45.0f
+#define MAX_CRANK_VELOCITY_DEG_PER_FRAME 70.0f
+#define PRESS_COOLDOWN_FRAMES_60FPS 8
+#define PRESS_COOLDOWN_FRAMES_30FPS 4
+#define LOCKOUT_DURATION_FRAMES_60FPS 30
+#define LOCKOUT_DURATION_FRAMES_30FPS 15
 
 typedef struct ScriptData
 {
@@ -19,6 +29,13 @@ typedef struct ScriptData
     // Link's Awakening: DX
     bool is_ladx;
 
+    // --- fishing mini-game ---
+    bool is_in_fishing_scene;
+    float crank_cw_accumulator;
+    float crank_ccw_accumulator;
+    int input_cooldown_timer;
+    int lockout_timer;
+
     uint32_t tilemap_checksum;
     uint32_t tiledata_checksum;
 } ScriptData;
@@ -27,8 +44,18 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
 
+    force_pref(crank_mode, CRANK_MODE_START_SELECT);
+    force_pref(crank_dock_button, PREF_BUTTON_NONE);
+    force_pref(crank_undock_button, PREF_BUTTON_NONE);
+
     force_pref(dither_stable, false);
     force_pref(dither_line, 0);
+
+    data->is_in_fishing_scene = false;
+    data->crank_cw_accumulator = 0.0f;
+    data->crank_ccw_accumulator = 0.0f;
+    data->input_cooldown_timer = 0;
+    data->lockout_timer = 0;
 
     data->is_ladx = (rom_peek(0xE64) == 0xF0);
 
@@ -58,8 +85,107 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     return data;
 }
 
+static void on_end(gb_s* gb, ScriptData* data)
+{
+    cb_free(data);
+}
+
 static void on_tick(gb_s* gb, ScriptData* data)
 {
+    uint32_t vram_checksum = 0;
+    for (int y = 0; y < 10; y++)
+    {
+        for (int x = 0; x < 10; x++)
+        {
+            vram_checksum += gb->vram[0x1800 + y * 32 + x];
+        }
+    }
+
+    bool is_fishing_now = (vram_checksum == FISHING_SCENE_CHECKSUM);
+
+    if (is_fishing_now != data->is_in_fishing_scene)
+    {
+        if (is_fishing_now)
+        {
+            force_pref(crank_mode, CRANK_MODE_OFF);
+        }
+        else
+        {
+            force_pref(crank_mode, CRANK_MODE_START_SELECT);
+        }
+        data->is_in_fishing_scene = is_fishing_now;
+    }
+
+    if (data->input_cooldown_timer > 0)
+    {
+        data->input_cooldown_timer--;
+    }
+    if (data->lockout_timer > 0)
+    {
+        data->lockout_timer--;
+    }
+
+    if (data->is_in_fishing_scene)
+    {
+        if (data->lockout_timer > 0)
+        {
+            data->crank_cw_accumulator = 0;
+            data->crank_ccw_accumulator = 0;
+        }
+        else
+        {
+            float crank_change = playdate->system->getCrankChange();
+
+            if (fabsf(crank_change) > MAX_CRANK_VELOCITY_DEG_PER_FRAME)
+            {
+                data->lockout_timer = preferences_frame_skip ? LOCKOUT_DURATION_FRAMES_30FPS
+                                                             : LOCKOUT_DURATION_FRAMES_60FPS;
+            }
+            else
+            {
+                if (crank_change > 0)
+                {
+                    data->crank_cw_accumulator += crank_change;
+                }
+                if (crank_change < 0)
+                {
+                    data->crank_ccw_accumulator += crank_change;
+                }
+            }
+        }
+
+        if (data->input_cooldown_timer == 0 && data->lockout_timer == 0)
+        {
+            bool button_pressed = false;
+
+            if (data->crank_cw_accumulator >= CRANK_INPUT_THRESHOLD)
+            {
+                script_gb->direct.joypad_bits.up = 0;
+                data->crank_cw_accumulator = 0.0f;
+                button_pressed = true;
+            }
+            else if (data->crank_ccw_accumulator <= -CRANK_INPUT_THRESHOLD)
+            {
+                script_gb->direct.joypad_bits.a = 0;
+                data->crank_ccw_accumulator = 0.0f;
+                button_pressed = true;
+            }
+
+            if (button_pressed)
+            {
+                data->input_cooldown_timer = preferences_frame_skip ? PRESS_COOLDOWN_FRAMES_30FPS
+                                                                    : PRESS_COOLDOWN_FRAMES_60FPS;
+            }
+        }
+    }
+    else
+    {
+        data->input_cooldown_timer = 0;
+        data->lockout_timer = 0;
+        data->crank_cw_accumulator = 0.0f;
+        data->crank_ccw_accumulator = 0.0f;
+    }
+
     int game_state = ram_peek(0xDB95);
     bool gameOver = ram_peek(0xFF9C) >= 3;  // not positive about this
 
@@ -333,4 +459,5 @@ C_SCRIPT{
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
+    .on_end = (CS_OnEnd)on_end,
 };
