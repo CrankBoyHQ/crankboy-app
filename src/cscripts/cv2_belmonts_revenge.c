@@ -3,6 +3,7 @@
 #define DESCRIPTION                                                              \
     "- Widescreen display\n" \
     "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n" \
+    "- Automatically enables frame blending in certain rooms where flicker is used to imitate transparency\n"
     
 #define ASSETS_DIR SCRIPT_ASSETS_DIR "cv2br/"
 
@@ -167,6 +168,9 @@ static int get_game_mode(gb_s* gb, ScriptData* data)
 static void on_tick(gb_s* gb, ScriptData* data)
 {
     int game_state = get_game_mode(gb, data);
+    int game_stage = ram_peek(0xC8C0);
+    int game_substage = ram_peek(0xC8C1);
+    int stages_beaten = ram_peek(0xC8A0);
     
     game_picture_background_color = kColorWhite;
     
@@ -210,14 +214,30 @@ static void on_tick(gb_s* gb, ScriptData* data)
         game_picture_x_offset = 0;
         game_picture_scaling = 0;
         game_picture_y_top = 4;
-        force_pref(blend_frames, false);
-        force_pref(dither_stable, true);
+        {
+            // enable blending only in certain rooms
+            bool blend = false;
+            if (game_stage == 3 && game_substage == 0)
+            {
+                blend = true;
+            }
+            if (game_stage == 3 && game_substage == 3 && ram_peek(0xCA8D) == 2)
+            {
+                blend = true;
+            }
+            if (game_stage == 3 && game_substage == 4)
+            {
+                blend = true;
+            }
+            force_pref(blend_frames, blend);
+            force_pref(dither_stable, !blend);
+        }
         break;
     case GAME_STATE_GAME_OVER:
         force_pref(blend_frames, true);
         force_pref(dither_stable, false);
         game_picture_scaling = 0;
-        game_picture_y_top = 16; // eyeballed
+        game_picture_y_top = 12; // eyeballed
         break;
     default:
         break;
@@ -233,7 +253,7 @@ static void on_tick(gb_s* gb, ScriptData* data)
     }
     
     // has level intro timer started
-    if (game_state == GAME_STATE_STAGE_SELECT && ram_peek(0xCB81) == 7)
+    if (game_state == GAME_STATE_STAGE_SELECT && ram_peek(0xCB81) == 7 && (stages_beaten & 0x0F) != 0x0F)
     {
         data->level_start_timer += preferences_frame_skip ? 2 : 1;
         
@@ -261,14 +281,12 @@ static void on_tick(gb_s* gb, ScriptData* data)
         game_picture_y_bottom = 120;
     }
     game_picture_y_bottom += game_picture_y_top;
-    
-    int game_stage = ram_peek(0xC8C0);
-    int game_substage = ram_peek(0xC8C1);
 }
 
 static void on_draw(gb_s* gb, ScriptData* data)
 {
     int game_state = get_game_mode(gb, data);
+    int stages_beaten = ram_peek(0xC8A0);
     uint8_t* lcd = playdate->graphics->getFrame();
     int rowbytes = PLAYDATE_ROW_STRIDE;
     
@@ -343,12 +361,13 @@ static void on_draw(gb_s* gb, ScriptData* data)
         if (subweapon != data->subweapon)
         {
             data->subweapon = subweapon;
-            data->subweapon_refresh_countdown = 5;
+            data->subweapon_refresh_countdown = 12;
             refresh_subweapon = true;
         }
         if (data->subweapon_refresh_countdown > 0)
         {
-            if (--data->subweapon_refresh_countdown == 0)
+            data->subweapon_refresh_countdown -= (preferences_frame_skip ? 2 : 1);
+            if (data->subweapon_refresh_countdown <= 0)
             {
                 refresh_subweapon = true;
             }
@@ -374,8 +393,27 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
     switch(game_state)
     {
+    case GAME_STATE_TITLE:
+        // cover up mysterious playdate-only glitch
+        playdate->graphics->fillRect(
+            0, LCD_ROWS - 2, LCD_COLUMNS, 2, kColorWhite
+        );
+        break;
+    case GAME_STATE_PASSWORD:
+    case GAME_STATE_SOUND_TEST:
+        // mysterious
+        playdate->graphics->fillRect(
+            0, 0, screen_x0, LCD_ROWS, kColorBlack
+        );
+        playdate->graphics->fillRect(
+            screen_x1, 0, LCD_COLUMNS - screen_x1, LCD_ROWS, kColorBlack
+        );
+        break;
     case GAME_STATE_STAGE_SELECT:
         {
+            // don't draw bar in castle-appear cutscene
+            if ((stages_beaten & 0x0F) == 0x0F) break;
+            
             int y0 = get_game_scanline_row(
                 game_picture_scaling, preferences_dither_line,
                 8 - game_picture_y_top
