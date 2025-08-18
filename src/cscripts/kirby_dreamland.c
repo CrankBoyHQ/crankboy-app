@@ -243,6 +243,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 
 static void on_end(gb_s* gb, ScriptData* data)
 {
+    if (data->sidebar)
+        playdate->graphics->freeBitmap(data->sidebar);
     code_replacement_free(data->patch_no_door);
     code_replacement_free(data->patch_start_flying);
 

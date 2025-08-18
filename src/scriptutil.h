@@ -8,6 +8,7 @@
 #include "scenes/game_scene.h"
 #include "script.h"
 #include "utility.h"
+#include "revcheck.h"
 
 typedef unsigned romaddr_t;
 typedef u16 addr16_t;
@@ -279,6 +280,9 @@ LCDColor get_palette_color(int c);
 // first_squished only matters if scaling does not divide 240;
 // it is the same meaning as preferences_dither_line.
 unsigned get_game_picture_height(int scaling, int first_squished);
+
+// as above, but for a specific scanline
+unsigned get_game_scanline_row(int scaling, int first_squished, int scanline);
 
 #define $JOYPAD (script_gb->direct.joypad ^ 0xFF)
 

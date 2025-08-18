@@ -30,14 +30,14 @@ romaddr_t rom_size(void)
 
 void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val)
 {
-    u32 addr32 = bank * 0x4000 | (addr % 0x4000);
+    u32 addr32 = (bank * 0x4000) | (addr % 0x4000);
     u8 actual = rom_peek(addr32);
     if (actual != prev)
     {
         playdate->system->error(
-            "SCRIPT ERROR -- is this the right ROM? Poke_verify failed at %04x; expected %02x, but "
+            "SCRIPT ERROR -- is this the right ROM? Poke_verify failed at %x:%04x (%04x); expected %02x, but "
             "was %02x (should replace with %02x)",
-            addr32, prev, actual, val
+            bank, addr, addr32, prev, actual, val
         );
     }
 
@@ -252,20 +252,25 @@ LCDColor get_palette_color(int c)
     }
 }
 
-unsigned get_game_picture_height(int scaling, int first_squished)
+unsigned get_game_scanline_row(int scaling, int first_squished, int scanline)
 {
     if (scaling <= 0)
-        return 2 * LCD_HEIGHT;
+        return 2 * scanline;
 
-    unsigned h = (LCD_HEIGHT / scaling) * (1 + 2 * (scaling - 1));
+    unsigned h = (scanline / scaling) * (1 + 2 * (scaling - 1));
 
-    if (LCD_HEIGHT % scaling)
+    if (scanline % scaling)
     {
-        h += (LCD_HEIGHT % scaling) * 2;
-        h -= (LCD_HEIGHT % scaling >= first_squished);
+        h += (scanline % scaling) * 2;
+        h -= (scanline % scaling >= first_squished);
     }
 
     return h;
+}
+
+unsigned get_game_picture_height(int scaling, int first_squished)
+{
+    return get_game_scanline_row(scaling, first_squished, LCD_HEIGHT);
 }
 
 void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y)
