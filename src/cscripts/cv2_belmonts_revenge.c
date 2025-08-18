@@ -1,7 +1,8 @@
 #include "../scriptutil.h"
 
 #define DESCRIPTION                                                              \
-    "[TBD]" \
+    "- Widescreen display\n" \
+    "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n" \
     
 #define ASSETS_DIR SCRIPT_ASSETS_DIR "cv2br/"
 
@@ -62,6 +63,8 @@ static void drawBCD12(ScriptData* data, uint8_t* lcd, int rowbytes, int bcd, int
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
+    
+    force_pref(crank_mode, CRANK_MODE_OFF);
     
     data->sidebar = playdate->graphics->loadBitmap(ASSETS_DIR "sidebar", NULL);
     if (data->sidebar)
