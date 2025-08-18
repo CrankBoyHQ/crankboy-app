@@ -542,7 +542,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
         {
             const char* options[] = {"Yes", "No", NULL};
             CB_Modal* modal = CB_Modal_new(
-                "This game's script is marked as \"experimental,\" so please expect glitches or "
+                "This game's script is marked as \"experimental\", so please expect glitches or "
                 "even crashes.\n \nDisable script?",
                 options, disable_script_and_launch, game
             );
