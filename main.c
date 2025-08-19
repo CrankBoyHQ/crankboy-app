@@ -13,7 +13,7 @@
 #include "src/userstack.h"
 
 #if __has_include("pdboot/pdboot.h")
-    #include "pdboot/pdboot.h"
+#include "pdboot/pdboot.h"
 #endif
 
 #include <stdio.h>
@@ -59,16 +59,21 @@ __section__(".rare") static void exec_array(init_routine_t* start, init_routine_
 #ifdef _PDBOOT_H
 pdboot_data_t pdboot_data;
 
-const char* get_pdboot_name_and_version(void) {
+const char* get_pdboot_name_and_version(void)
+{
     if (!memcmp(pdboot_data.magic, PDBOOT_MAGIC, sizeof(pdboot_data.magic)))
     {
         return pdboot_data.name_and_version;
     }
-    else return NULL;
+    else
+        return NULL;
 }
 #else
 
-const char* get_pdboot_name_and_version() { return NULL; }
+const char* get_pdboot_name_and_version()
+{
+    return NULL;
+}
 #endif
 
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
@@ -88,11 +93,14 @@ __section__(".text.main") DllExport
     if (event == kEventInit)
     {
         playdate = pd;
-        
+
+        int headphone, mic;
+        playdate->sound->getHeadphoneState(&headphone, &mic, CB_headphone_state_changed);
+
 #ifdef _PDBOOT_H
         memcpy(&pdboot_data, playdate->graphics->getFrame(), sizeof(pdboot_data));
 #endif
-        
+
         init_user_stack();
         srand(time(NULL));
 
@@ -163,8 +171,7 @@ int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 // very short entrypoint function that pre-empts the eventHandlerShim.
 // This must be located at exactly the segment start, so that it aligns with the
 // entrypoint in the bootstrapper
-__attribute__((section(".entry"))) __attribute__((naked))
-int _entrypoint_(
+__attribute__((section(".entry"))) __attribute__((naked)) int _entrypoint_(
     PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg
 )
 {

@@ -256,6 +256,14 @@ void CB_init(void)
     }
 }
 
+void CB_headphone_state_changed(int headphone, int mic)
+{
+    if (audioGameScene)
+    {
+        reconfigure_audio_source(audioGameScene, headphone);
+    }
+}
+
 static void collect_game_filenames_callback(const char* filename, void* userdata)
 {
     CB_Array* filenames_array = userdata;
@@ -431,6 +439,8 @@ void free_game_names(const CB_GameName* gameName)
 
 void CB_quit(void)
 {
+    playdate->sound->getHeadphoneState(NULL, NULL, NULL);
+
     if (CB_App->scene)
     {
         void* managedObject = CB_App->scene->managedObject;

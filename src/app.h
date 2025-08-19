@@ -117,7 +117,7 @@ typedef struct CB_Application
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
-    char* bundled_rom; // (path to bundled rom)
+    char* bundled_rom;  // (path to bundled rom)
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -130,6 +130,7 @@ void CB_quit(void);
 void CB_goToLibrary(void);
 void CB_presentModal(CB_Scene* scene);
 void CB_dismiss(CB_Scene* scene);
+void CB_headphone_state_changed(int headphone, int mic);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.

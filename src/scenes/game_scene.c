@@ -228,6 +228,37 @@ static const char* quitGameOptions[] = {"No", "Yes", NULL};
 static bool CB_run_profiler_on_next_frame = false;
 #endif
 
+void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
+{
+    if (!gameScene)
+        return;
+
+    bool use_stereo = (headphones) ? preferences_headphone_audio : 0;
+
+    playdate->system->logToConsole(
+        "Reconfiguring audio. Headphones: %s, New mode: %s", (headphones ? "Yes" : "No"),
+        (use_stereo ? "Stereo" : "Mono")
+    );
+
+    gameScene->is_stereo = use_stereo;
+
+    if (CB_App->soundSource != NULL)
+    {
+        playdate->sound->removeSource(CB_App->soundSource);
+    }
+
+    CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
+
+    if (headphones)
+    {
+        playdate->sound->setOutputsActive(1, 0);
+    }
+    else
+    {
+        playdate->sound->setOutputsActive(0, 1);
+    }
+}
+
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
 
@@ -446,10 +477,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     memset(gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
 
-    if (CB_App->soundSource == NULL)
-    {
-        CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, 0);
-    }
     audio_enabled = 1;
     context->gb = gb;
     context->scene = gameScene;
@@ -669,7 +696,13 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     generate_dither_luts();
 
-    // Apply sound on/off and sound mode
+    if (audio_settings_changed)
+    {
+        int headphones;
+        playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
+        reconfigure_audio_source(gameScene, headphones);
+    }
+
     bool desiredAudioEnabled = (preferences_sound_mode > 0);
     gameScene->audioEnabled = desiredAudioEnabled;
 

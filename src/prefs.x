@@ -4,8 +4,9 @@ PREF(per_game, 0)         // (note: never visible in Bundle mode)
 PREF(save_state_slot, 0)  // (note: has two corresponding settings)
 
 // audio
-PREF(sound_mode, 2)
+PREF(sound_mode, 2) // 0: Off, 1: Fast, 2: Accurate
 PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
+PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 
 // display
 PREF(frame_skip, true)

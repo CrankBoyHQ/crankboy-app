@@ -1,5 +1,5 @@
 //
-// settings_scene.c
+//  settings_scene.c
 //  CrankBoy
 //
 //  Maintained and developed by the CrankBoy dev team.
@@ -212,6 +212,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
     settingsScene->initial_sound_mode = preferences_sound_mode;
     settingsScene->initial_sample_rate = preferences_sample_rate;
+    settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
 
     if (gameScene)
@@ -385,6 +386,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
+static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
@@ -813,6 +815,17 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .on_press = NULL,
+    };
+
+    // Headphone Audio
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Headphone",
+        .values = audio_output_labels,
+        .description = "Select the audio output\nmode when headphones\nare connected."
+                       "\n \nStereo:\nImmersive sound with\nspatial separation.\n \nMono:\n"
+                       "Combines channels, which\nimproves performance.",
+        .pref_var = &preferences_headphone_audio,
+        .max_value = 2,
     };
 
     entries[++i] = (OptionsMenuEntry){
@@ -1885,7 +1898,8 @@ static void CB_SettingsScene_free(void* object)
     {
         bool audio_settings_changed =
             (settingsScene->initial_sound_mode != preferences_sound_mode) ||
-            (settingsScene->initial_sample_rate != preferences_sample_rate);
+            (settingsScene->initial_sample_rate != preferences_sample_rate) ||
+            (settingsScene->initial_headphone_audio != preferences_headphone_audio);
 
         CB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;

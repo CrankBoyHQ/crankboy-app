@@ -38,6 +38,7 @@ typedef struct CB_SettingsScene
 
     int initial_sound_mode;
     int initial_sample_rate;
+    int initial_headphone_audio;
     int initial_per_game;
     preference_t* immutable_settings;
 

@@ -180,7 +180,7 @@ __audio static void update_sweep(struct chan* c, int sample_rate)
 }
 
 __audio static void update_square(
-    audio_data* restrict audio, int16_t* buffer, const bool ch2, int len
+    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
 )
 {
     struct chan* c = audio->chans + ch2;
@@ -245,17 +245,40 @@ __audio static void update_square(
             // --- Hardware ---
             int16_t sample16 = sample / 4;
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-            int32_t stereo_sum;
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 #else
             // --- Simulator Path ---
             sample /= 4;
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
         else
@@ -280,13 +303,28 @@ __audio static void update_square(
             int16_t sample16 = mono_sample >> 2;
 
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-            int32_t stereo_sum;
 
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
 
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 
 #else
             // --- Simulator Path ---
@@ -307,10 +345,17 @@ __audio static void update_square(
             sample *= c->volume;
             sample >>= 2;
 
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
     }
@@ -337,7 +382,7 @@ __audio static int8_t wave_sample(
     return volume ? (signed_sample >> (volume - 1)) : 0;
 }
 
-__audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int len)
+__audio static void update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
     struct chan* chans = audio->chans;
     struct chan* c = chans + 2;
@@ -397,17 +442,41 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             // --- Hardware Path ---
             int16_t sample16 = sample / 4;
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-            int32_t stereo_sum;
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 #else
             // --- Simulator Path ---
             sample /= 4;
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
         else
@@ -432,11 +501,27 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
             int32_t stereo_sum;
 
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
 
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 #else
             // --- Simulator Path ---
             c->freq_counter += c->freq_inc;
@@ -453,16 +538,23 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* buffer, int
             int32_t sample = (int32_t)wave_val * (INT16_MAX / 32);
             sample >>= 2;
 
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
     }
 }
 
-__audio static void update_noise(audio_data* restrict audio, int16_t* buffer, int len)
+__audio static void update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
     struct chan* c = audio->chans + 3;
 
@@ -540,17 +632,41 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
             // --- Hardware Path ---
             int16_t sample16 = sample / 4;
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-            int32_t stereo_sum;
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 #else
             // --- Simulator Path ---
             sample /= 4;
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
         else
@@ -580,13 +696,28 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
             int16_t sample16 = mono_sample >> 2;
 
             uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-            int32_t stereo_sum;
 
-            asm volatile("smuad %0, %1, %2"
-                         : "=r"(stereo_sum)
-                         : "r"(packed_sample), "r"(packed_vols));
+            if (left == right)  // MONO
+            {
+                int32_t stereo_sum;
+                asm volatile("smuad %0, %1, %2"
+                             : "=r"(stereo_sum)
+                             : "r"(packed_sample), "r"(packed_vols));
 
-            buffer[i] += (int16_t)(stereo_sum >> 1);
+                left[i] += (int16_t)(stereo_sum >> 1);
+            }
+            else  // STEREO
+            {
+                int32_t left_contrib, right_contrib;
+                asm volatile("smulbb %0, %1, %2"
+                             : "=r"(left_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                asm volatile("smultt %0, %1, %2"
+                             : "=r"(right_contrib)
+                             : "r"(packed_sample), "r"(packed_vols));
+                left[i] += (int16_t)left_contrib;
+                right[i] += (int16_t)right_contrib;
+            }
 #else
             // --- Simulator Path ---
             c->freq_counter += c->freq_inc;
@@ -611,10 +742,17 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* buffer, in
             sample *= c->volume;
             sample >>= 2;
 
-            int32_t left_contrib = sample * c->on_left * audio->vol_l;
-            int32_t right_contrib = sample * c->on_right * audio->vol_r;
-
-            buffer[i] += (left_contrib + right_contrib) / 2;
+            if (left == right)  // MONO
+            {
+                int32_t left_contrib = sample * c->on_left * audio->vol_l;
+                int32_t right_contrib = sample * c->on_right * audio->vol_r;
+                left[i] += (left_contrib + right_contrib) / 2;
+            }
+            else  // STEREO
+            {
+                left[i] += sample * c->on_left * audio->vol_l;
+                right[i] += sample * c->on_right * audio->vol_r;
+            }
 #endif
         }
     }
@@ -928,12 +1066,23 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     {
         int chunksize = len >= max_chunk ? max_chunk : len;
 
-        memset(left, 0, chunksize * sizeof(int16_t));
-
-        update_wave(audio, left, chunksize);
-        update_square(audio, left, 0, chunksize);
-        update_square(audio, left, 1, chunksize);
-        update_noise(audio, left, chunksize);
+        if (gameScene->is_stereo)
+        {
+            memset(left, 0, chunksize * sizeof(int16_t));
+            memset(right, 0, chunksize * sizeof(int16_t));
+            update_wave(audio, left, right, chunksize);
+            update_square(audio, left, right, 0, chunksize);
+            update_square(audio, left, right, 1, chunksize);
+            update_noise(audio, left, right, chunksize);
+        }
+        else
+        {
+            memset(left, 0, chunksize * sizeof(int16_t));
+            update_wave(audio, left, left, chunksize);
+            update_square(audio, left, left, 0, chunksize);
+            update_square(audio, left, left, 1, chunksize);
+            update_noise(audio, left, left, chunksize);
+        }
 
         // 3. Handle sample replication on the 'left' buffer.
         if (sample_replication > 1)
@@ -943,13 +1092,18 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                 for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
                 {
                     left[i + j] = left[i];
+                    if (gameScene->is_stereo)
+                    {
+                        right[i + j] = right[i];
+                    }
                 }
             }
         }
 
         len -= chunksize;
         left += chunksize;
-        right += chunksize;
+        if (gameScene->is_stereo)
+            right += chunksize;
     }
 
 #ifdef TARGET_SIMULATOR

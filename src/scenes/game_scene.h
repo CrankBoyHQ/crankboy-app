@@ -97,6 +97,7 @@ typedef struct CB_GameScene
     bool cartridge_has_battery;
     bool cartridge_has_rtc;
     bool staticSelectorUIDrawn;
+    bool is_stereo;
     unsigned int last_save_time;
     bool save_data_loaded_successfully : 1;
     bool save_state_requires_warning : 1;
@@ -144,6 +145,8 @@ typedef struct CB_GameScene
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short);
 void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed);
 void CB_GameScene_didSelectLibrary(void* userdata);
+
+void reconfigure_audio_source(CB_GameScene* gameScene, int headphones);
 
 unsigned get_save_state_timestamp(CB_GameScene* gameScene, unsigned slot);
 bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
