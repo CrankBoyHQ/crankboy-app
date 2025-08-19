@@ -98,6 +98,7 @@ typedef struct CB_GameScene
     bool cartridge_has_rtc;
     bool staticSelectorUIDrawn;
     bool is_stereo;
+    bool is_mirroring;
     unsigned int last_save_time;
     bool save_data_loaded_successfully : 1;
     bool save_state_requires_warning : 1;

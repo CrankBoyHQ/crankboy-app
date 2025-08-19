@@ -819,11 +819,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     // Headphone Audio
     entries[++i] = (OptionsMenuEntry){
-        .name = "Headphone",
+        .name = "Headphones",
         .values = audio_output_labels,
         .description = "Select the audio output\nmode when headphones\nare connected."
                        "\n \nStereo:\nImmersive sound with\nspatial separation.\n \nMono:\n"
-                       "Combines channels, which\nimproves performance.",
+                       "Combines channels, which\nimproves performance.\n \n"
+                       "Also used in Mirror.",
         .pref_var = &preferences_headphone_audio,
         .max_value = 2,
     };

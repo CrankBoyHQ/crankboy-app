@@ -233,10 +233,11 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
     if (!gameScene)
         return;
 
-    bool use_stereo = (headphones) ? preferences_headphone_audio : 0;
+    bool use_stereo = (headphones || gameScene->is_mirroring) ? preferences_headphone_audio : 0;
 
     playdate->system->logToConsole(
-        "Reconfiguring audio. Headphones: %s, New mode: %s", (headphones ? "Yes" : "No"),
+        "Reconfiguring audio. Headphones: %s, Mirroring: %s, New mode: %s",
+        (headphones ? "Yes" : "No"), (gameScene->is_mirroring ? "Yes" : "No"),
         (use_stereo ? "Stereo" : "Mono")
     );
 
@@ -383,6 +384,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     gameScene->interlace_lock_frames_remaining = 0;
 
     gameScene->isCurrentlySaving = false;
+    gameScene->is_mirroring = false;
 
     gameScene->menuImage = NULL;
 
@@ -3200,6 +3202,23 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
+        }
+        break;
+    case kEventMirrorStarted:
+        gameScene->is_mirroring = true;
+        {
+            int headphones;
+            playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
+            reconfigure_audio_source(gameScene, headphones);
+        }
+        break;
+
+    case kEventMirrorEnded:
+        gameScene->is_mirroring = false;
+        {
+            int headphones;
+            playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
+            reconfigure_audio_source(gameScene, headphones);
         }
         break;
     case kEventKeyPressed:
