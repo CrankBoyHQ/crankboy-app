@@ -47,7 +47,6 @@ typedef struct ScriptData
     bool fly_thrust_enabled;
     int fly_thrust;
     bool continue_flying;
-    bool prev_in_game;
 
 } ScriptData;
 
@@ -176,8 +175,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     force_prefs();
 
     ScriptData* data = allocz(ScriptData);
-
-    data->prev_in_game = false;
 
     const char* err = NULL;
     data->sidebar = playdate->graphics->loadBitmap(KIRBY_ASSETS_DIR "sidebar", &err);
@@ -425,33 +422,22 @@ static void on_tick(gb_s* gb, ScriptData* data)
 
 static void on_draw(gb_s* gb, ScriptData* data)
 {
-    bool in_game = (game_picture_x_offset == 0);
-
-    if (!in_game)
+    if (game_picture_x_offset != 0)
     {
-        data->prev_in_game = false;  // Sidebar is not visible
         return;
     }
-
-    // Set the draw mode to a known default at the start of any drawing.
-    // This prevents state from other scenes (like the settings menu)
-    // from corrupting this script's drawing operations.
-    playdate->graphics->setDrawMode(kDrawModeCopy);
-
-    bool refresh = gbScreenRequiresFullRefresh || !data->prev_in_game;
-    data->prev_in_game = true;  // Sidebar is now visible
 
     uint8_t* lcd = playdate->graphics->getFrame();
     int rowbytes = PLAYDATE_ROW_STRIDE;
 
-    if (refresh)
+    if (gbScreenRequiresFullRefresh)
     {
         playdate->graphics->drawBitmap(data->sidebar, 320, 0, kBitmapUnflipped);
     }
 
     // lives
     uint8_t newlives = ram_peek(0xD089);
-    if (newlives != data->lives || refresh)
+    if (newlives != data->lives || gbScreenRequiresFullRefresh)
     {
         data->lives = newlives;
 
@@ -465,7 +451,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
     // health
     uint8_t newhealth = ram_peek(0xD086);
-    if (newhealth != data->health || refresh)
+    if (newhealth != data->health || gbScreenRequiresFullRefresh)
     {
         data->health = newhealth;
 
@@ -490,7 +476,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         boss = 0xFF;
     }
 
-    if (boss != data->boss || refresh)
+    if (boss != data->boss || gbScreenRequiresFullRefresh)
     {
         data->boss = boss;
 
@@ -524,7 +510,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     uint32_t newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
                         (ram_peek(0xD073) << 24);
 
-    if (newscore != data->score || refresh)
+    if (newscore != data->score || gbScreenRequiresFullRefresh)
     {
         int y = 240 - 13;
         bool isDrawing = 0;
