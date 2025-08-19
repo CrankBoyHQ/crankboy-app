@@ -1895,6 +1895,8 @@ static void CB_SettingsScene_free(void* object)
     DTCM_VERIFY();
     CB_SettingsScene* settingsScene = object;
 
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+
     if (settingsScene->gameScene)
     {
         bool audio_settings_changed =
