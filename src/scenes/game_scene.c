@@ -1226,7 +1226,7 @@ __core_section("fb") void update_fb_dirty_lines(
     }
 }
 
-__core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
+static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
 {
     for (int y = 0; y < LCD_HEIGHT; y++)
     {
@@ -1255,7 +1255,7 @@ __core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* fra
     }
 }
 
-__core_section("fb") static void blend_frames_lut_rect(
+static void blend_frames_lut_rect(
     uint8_t* frame_a, uint8_t* frame_b_and_dest, uint8_t x_min, uint8_t y_min, uint8_t x_max,
     uint8_t y_max
 )
@@ -1898,14 +1898,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             {
                 if (!screen_is_static)
                 {
-                    ITCM_CORE_FN(blend_frames_lut)(frame_A_buffer, context->gb->lcd);
+                    blend_frames_lut(frame_A_buffer, context->gb->lcd);
                 }
             }
             else if (preferences_blend_frames == 2)  // "Auto" mode
             {
                 if (!screen_is_static && has_blendable_sprites)
                 {
-                    ITCM_CORE_FN(blend_frames_lut_rect)(
+                    blend_frames_lut_rect(
                         frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
                         context->gb->direct.blend_rect_y_min, context->gb->direct.blend_rect_x_max,
                         context->gb->direct.blend_rect_y_max
