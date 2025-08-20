@@ -1255,6 +1255,60 @@ __core_section("fb") static void blend_frames_lut(uint8_t* frame_a, uint8_t* fra
     }
 }
 
+__core_section("fb") static void blend_frames_lut_rect(
+    uint8_t* frame_a, uint8_t* frame_b_and_dest, uint8_t x_min, uint8_t y_min, uint8_t x_max,
+    uint8_t y_max
+)
+{
+    if (y_max > LCD_HEIGHT)
+        y_max = LCD_HEIGHT;
+    if (x_max > LCD_WIDTH)
+        x_max = LCD_WIDTH;
+
+    int start_x_byte = x_min / LCD_PACKING;
+    int end_x_byte = (x_max + (LCD_PACKING - 1)) / LCD_PACKING;
+
+    for (int y = y_min; y < y_max; y++)
+    {
+        uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
+
+        uint8_t* row_a = frame_a + (y * LCD_WIDTH_PACKED);
+        uint8_t* row_b = frame_b_and_dest + (y * LCD_WIDTH_PACKED);
+
+        int x = start_x_byte;
+
+        while ((x < end_x_byte) && ((uintptr_t)(row_a + x) % 4 != 0))
+        {
+            row_b[x] = lut_row[row_a[x]][row_b[x]];
+            x++;
+        }
+
+        uint32_t* row_a_32 = (uint32_t*)(row_a + x);
+        uint32_t* row_b_32 = (uint32_t*)(row_b + x);
+        int end_x_word = (end_x_byte - x) / 4;
+
+        for (int i = 0; i < end_x_word; i++)
+        {
+            uint32_t a_word = row_a_32[i];
+            uint32_t b_word = row_b_32[i];
+
+            uint8_t b0 = lut_row[(a_word >> 0) & 0xFF][(b_word >> 0) & 0xFF];
+            uint8_t b1 = lut_row[(a_word >> 8) & 0xFF][(b_word >> 8) & 0xFF];
+            uint8_t b2 = lut_row[(a_word >> 16) & 0xFF][(b_word >> 16) & 0xFF];
+            uint8_t b3 = lut_row[(a_word >> 24) & 0xFF][(b_word >> 24) & 0xFF];
+
+            row_b_32[i] = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
+        }
+
+        x += end_x_word * 4;
+        while (x < end_x_byte)
+        {
+            row_b[x] = lut_row[row_a[x]][row_b[x]];
+            x++;
+        }
+    }
+}
+
 static void save_check(gb_s* gb);
 
 static __section__(".text.tick") void display_fps(void)
@@ -1826,7 +1880,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // 2. Determine if the screen is static and if sprites were rendered.
             bool screen_is_static =
                 (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
-            bool obp1_sprites_were_rendered = context->gb->direct.frame_had_obp1_obj;
+            bool has_blendable_sprites =
+                context->gb->direct.blend_rect_x_min < context->gb->direct.blend_rect_x_max;
 
             // 3. Run the emulator for the second frame period.
             context->gb->direct.frame_skip = screen_is_static;
@@ -1839,19 +1894,23 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
 
             // 4. Decide whether to blend based on the preference setting
-            bool should_blend = false;
             if (preferences_blend_frames == 1)  // "On" mode
             {
-                should_blend = !screen_is_static;
+                if (!screen_is_static)
+                {
+                    ITCM_CORE_FN(blend_frames_lut)(frame_A_buffer, context->gb->lcd);
+                }
             }
             else if (preferences_blend_frames == 2)  // "Auto" mode
             {
-                should_blend = !screen_is_static && obp1_sprites_were_rendered;
-            }
-
-            if (should_blend)
-            {
-                ITCM_CORE_FN(blend_frames_lut)(frame_A_buffer, context->gb->lcd);
+                if (!screen_is_static && has_blendable_sprites)
+                {
+                    ITCM_CORE_FN(blend_frames_lut_rect)(
+                        frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
+                        context->gb->direct.blend_rect_y_min, context->gb->direct.blend_rect_x_max,
+                        context->gb->direct.blend_rect_y_max
+                    );
+                }
             }
         }
         else

@@ -312,7 +312,10 @@ struct PGB_VERSIONED(gb_s)
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
-        uint8_t frame_had_obp1_obj : 1;
+        uint8_t blend_rect_x_min;
+        uint8_t blend_rect_y_min;
+        uint8_t blend_rect_x_max;
+        uint8_t blend_rect_y_max;
 
         int joypad_interrupt_delay;
 
