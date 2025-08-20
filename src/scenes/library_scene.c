@@ -449,6 +449,14 @@ static void launch_game(void* ud, int option)
     }
 }
 
+static void launch_game_normal(void* ud, int option)
+{
+    if (option >= 0)
+    {
+        launch_game(ud, 3);
+    }
+}
+
 static void disable_script_and_launch(void* ud, int option)
 {
     CB_Game* game = ud;
@@ -518,7 +526,8 @@ static void launch_game_prompt_if_script(void* ud, int option)
     if (!is_per_game)
         script_enabled = preferences_script_support;
 
-    ScriptInfo* info = script_get_info_by_rom_path(game->fullpath);
+    char rom_name[17];
+    ScriptInfo* info = script_get_info_by_rom_path_and_get_header_name(game->fullpath, rom_name);
     if (info)
     {
         if (!info->experimental && !has_prompted)
@@ -554,6 +563,20 @@ static void launch_game_prompt_if_script(void* ud, int option)
             launch = false;
         }
         script_info_free(info);
+    }
+    else if (!memcmp(rom_name, "LSDj", 4))
+    {
+        const char* options[] = {"Ok", NULL};
+        CB_Modal* modal = CB_Modal_new(
+            "CrankBoy's sound emulation is not yet accurate enough for music composition to be recommended.",
+            options, launch_game_normal, game
+        );
+
+        modal->width = 350;
+        modal->height = 170;
+
+        CB_presentModal(modal->scene);
+        launch = false;
     }
 #endif
 

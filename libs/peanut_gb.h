@@ -5849,7 +5849,7 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
     {
         const char title_char = gb_rom[title_loc];
 
-        if (title_char >= ' ' && title_char <= '_')
+        if (title_char >= ' ' && title_char <= '~')
         {
             *title_str = title_char;
             title_str++;

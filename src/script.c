@@ -826,8 +826,10 @@ __section__(".rare") void script_on_breakpoint(struct CB_GameScene* gameScene, i
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 
-ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
+ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name)
 {
+    if (o_rom_name) o_rom_name[0] = 0;
+    
     // first, open the ROM to read the game name
     size_t len;
     SDFile* file = playdate->file->open(game_path, kFileReadDataOrBundle);
@@ -845,6 +847,11 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
 
     char title[17];
     gb_get_rom_name(buff, title);
+    
+    if (o_rom_name)
+    {
+        memcpy(o_rom_name, title, sizeof(title));
+    }
 
     ScriptInfo* info = get_script_info(title);
 
@@ -853,7 +860,12 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path)
 
 ScriptInfo* script_get_info_by_rom_path(const char* game_path)
 {
-    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, game_path);
+    return (ScriptInfo*)call_with_main_stack_2(script_get_info_by_rom_path_, game_path, NULL);
+}
+
+ScriptInfo* script_get_info_by_rom_path_and_get_header_name(const char* game_path, char* o_rom_name)
+{
+    return (ScriptInfo*)call_with_main_stack_2(script_get_info_by_rom_path_, game_path, o_rom_name);
 }
 
 bool script_exists(const char* game_path)
