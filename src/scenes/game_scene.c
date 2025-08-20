@@ -1915,10 +1915,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
         else
         {
-            // --- 60fps and non-blended 30fps logic ---
-            for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+            // --- 30fps Ghost frame logic ---
+            if (preferences_frame_skip && preferences_ghost_frame_30fps)
             {
-                context->gb->direct.frame_skip = (preferences_frame_skip != frame);
+
+                static clalign uint8_t oam_ghost_buffer_storage[OAM_SIZE];
+                context->gb->direct.oam_ghost_buffer = NULL;
+
+                context->gb->direct.frame_skip = 1;
 #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
@@ -1926,6 +1930,34 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                 run_frame_function_pointer(context->gb);
 #endif
+
+                memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
+
+                context->gb->direct.oam_ghost_buffer = oam_ghost_buffer_storage;
+                context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+#else
+                run_frame_function_pointer(context->gb);
+#endif
+                context->gb->direct.oam_ghost_buffer = NULL;
+            }
+            else
+            {
+                // --- 60fps and non-blended 30fps logic ---
+                for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+                {
+                    context->gb->direct.frame_skip = (preferences_frame_skip != frame);
+#ifdef DTCM_ALLOC
+                    DTCM_VERIFY_DEBUG();
+                    run_frame_function_pointer(context->gb);
+                    DTCM_VERIFY_DEBUG();
+#else
+                    run_frame_function_pointer(context->gb);
+#endif
+                }
             }
         }
 

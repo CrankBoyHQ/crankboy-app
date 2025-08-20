@@ -312,6 +312,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
+        uint8_t* oam_ghost_buffer;
         uint8_t blend_rect_x_min;
         uint8_t blend_rect_y_min;
         uint8_t blend_rect_x_max;
@@ -460,11 +461,12 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {&gb->gb_rom,       &gb->wram,         &gb->vram,
-                                &gb->gb_cart_ram,  &gb->breakpoints,  &gb->lcd,
-                                &gb->direct.priv,  &gb->gb_error,     &gb->gb_serial_tx,
-                                &gb->gb_serial_rx, &gb->wram_base,    &gb->echo_ram_base,
-                                &gb->vram_base,    &gb->gb_zero_bank, &gb->xram};
+    void* preserved_fields[] = {&gb->gb_rom,        &gb->wram,         &gb->vram,
+                                &gb->gb_cart_ram,   &gb->breakpoints,  &gb->direct.oam_ghost_buffer,
+                                &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
+                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base,
+                                &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
+                                &gb->xram};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)

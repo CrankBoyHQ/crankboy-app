@@ -11,6 +11,7 @@ PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 // display
 PREF(frame_skip, true)
 PREF(blend_frames, 0)
+PREF(ghost_frame_30fps, 0)
 PREF(dither_pattern, rand() % 2)
 PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))

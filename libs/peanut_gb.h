@@ -1855,6 +1855,145 @@ __core_section("draw") static u8 __gb_get_pixel(uint8_t* line, u8 x)
     return (*pix >> x) % (1 << LCD_BITS_PER_PIXEL);
 }
 
+__core_section("draw") static void __gb_draw_line_sprites(
+    gb_s* restrict gb, const uint8_t* oam_src, bool is_ghost, const uint32_t* line_priority,
+    uint8_t* pixels
+)
+{
+    uint8_t number_of_sprites = 0;
+    struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
+
+    /* Find up to 10 sprites on this line, sorted by priority.
+     * Lower X-coordinate has higher priority. If X is the same,
+     * lower OAM index has higher priority. */
+
+    // Gather all visible sprites for this scanline (LY).
+    const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+    const int16_t current_ly = gb->gb_reg.LY;
+
+    for (uint8_t s = 0; s < NUM_SPRITES && number_of_sprites < MAX_SPRITES_LINE; s++)
+    {
+        const uint8_t* oam = &oam_src[s * 4];
+        const uint8_t oam_y = oam[0];
+        const uint8_t oam_x = oam[1];
+
+        if (oam_x > 0 && (current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
+        {
+            sprites_to_render[number_of_sprites].sprite_number = s;
+            sprites_to_render[number_of_sprites].x = oam_x;
+            number_of_sprites++;
+        }
+    }
+
+    // Sort the small list of found sprites.
+    if (number_of_sprites > 1)
+    {
+        for (int i = 1; i < number_of_sprites; i++)
+        {
+            struct sprite_data key = sprites_to_render[i];
+            int j = i - 1;
+            while (j >= 0 && compare_sprites(&sprites_to_render[j], &key) > 0)
+            {
+                sprites_to_render[j + 1] = sprites_to_render[j];
+                j = j - 1;
+            }
+            sprites_to_render[j + 1] = key;
+        }
+    }
+
+    const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
+
+    /* Render sprites from lowest priority to highest priority. */
+    for (int8_t i = number_of_sprites - 1; i >= 0; i--)
+    {
+        uint8_t s_idx = sprites_to_render[i].sprite_number;
+        uint8_t s_4 = s_idx * 4;
+
+        uint8_t OY = oam_src[s_4 + 0];
+        uint8_t OX = oam_src[s_4 + 1];
+        uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
+        uint8_t OF = oam_src[s_4 + 3];
+
+        if (!is_ghost && (OF & OBJ_PALETTE))
+        {
+            int16_t sprite_x = OX - 8;
+            int16_t sprite_y = OY - 16;
+            uint8_t sprite_w = 8;
+            uint8_t sprite_h = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+            int16_t sprite_x2 = sprite_x + sprite_w;
+            int16_t sprite_y2 = sprite_y + sprite_h;
+
+            if (sprite_x < gb->direct.blend_rect_x_min)
+                gb->direct.blend_rect_x_min = (sprite_x < 0) ? 0 : sprite_x;
+            if (sprite_y < gb->direct.blend_rect_y_min)
+                gb->direct.blend_rect_y_min = (sprite_y < 0) ? 0 : sprite_y;
+            if (sprite_x2 > gb->direct.blend_rect_x_max)
+                gb->direct.blend_rect_x_max = (sprite_x2 > LCD_WIDTH) ? LCD_WIDTH : sprite_x2;
+            if (sprite_y2 > gb->direct.blend_rect_y_max)
+                gb->direct.blend_rect_y_max = (sprite_y2 > LCD_HEIGHT) ? LCD_HEIGHT : sprite_y2;
+        }
+
+        uint8_t py = gb->gb_reg.LY - (OY - 16);
+        if (OF & OBJ_FLIP_Y)
+            py = (sprite_height - 1) - py;
+
+        uint16_t t1_i = VRAM_TILES_1 + OT * 0x10 + 2 * py;
+        uint8_t t1 = gb->vram[t1_i];
+        uint8_t t2 = gb->vram[t1_i + 1];
+
+        int dir, start, end;
+        if (OF & OBJ_FLIP_X)
+        {
+            dir = 1;
+            start = OX - 8;
+            end = OX;
+        }
+        else
+        {
+            dir = -1;
+            start = OX - 1;
+            end = OX - 9;
+        }
+
+        uint8_t c_add = (OF & OBJ_PALETTE) ? 4 : 0;
+
+        for (int disp_x = start; disp_x != end; disp_x += dir)
+        {
+            if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
+                goto next_sprite_pixel;
+
+            uint8_t c = ((t1 & 0x80) >> 7) | ((t2 & 0x80) >> 6);
+            if (c != 0)
+            {
+                int P_segment_index = disp_x / 32;
+                int P_bit_in_segment = disp_x % 32;
+                uint8_t bg_is_transparent =
+                    (line_priority[P_segment_index] >> P_bit_in_segment) & 1;
+
+                if (!((OF & OBJ_PRIORITY) && !bg_is_transparent))
+                {
+                    uint8_t color_value = (OBP >> (c * 2 + c_add * 2)) & 3;
+                    if (is_ghost)
+                    {
+                        uint8_t old_color = __gb_get_pixel(pixels, disp_x);
+                        if (color_value > old_color)
+                        {
+                            __gb_draw_pixel(pixels, disp_x, color_value);
+                        }
+                    }
+                    else
+                    {
+                        __gb_draw_pixel(pixels, disp_x, color_value);
+                    }
+                }
+            }
+        next_sprite_pixel:
+            t1 <<= 1;
+            t2 <<= 1;
+        }
+    }
+}
+
 // renders one scanline
 __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
 {
@@ -1933,7 +2072,6 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
         uint8_t bg_x = gb->gb_reg.SCX;
         int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
         int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
-        int map2 = !!(gb->gb_reg.LCDC & LCDC_BG_MAP);
 
         uint8_t* vram = gb->vram;
 
@@ -1984,7 +2122,6 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
         uint8_t bg_x = 256 - wx;
         uint8_t bg_y = gb->display.window_clear;
         int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
-        int map2 = !!(gb->gb_reg.LCDC & LCDC_WINDOW_MAP);
         int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
         uint8_t* vram = gb->vram;
@@ -2044,8 +2181,7 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
         gb->display.window_clear++;
     }
 
-    // remap background pixel by palette,
-    // and set priority
+    // remap background pixel by palette, and set priority
     uint32_t pal = gb->gb_reg.BGP;
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
     {
@@ -2059,137 +2195,19 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
 #pragma GCC unroll 16
         BG_REMAP(pal, t0, t1, rm);
         *(uint32_t*)p = rm;
-
         ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
 
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-        uint8_t number_of_sprites = 0;
-        struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
+        __gb_draw_line_sprites(gb, gb->oam, false, line_priority, pixels);
+    }
 
-        /* Find up to 10 sprites on this line, sorted by priority.
-         * Lower X-coordinate has higher priority. If X is the same,
-         * lower OAM index has higher priority. */
-
-        // Gather all visible sprites for this scanline (LY).
-        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-        const int16_t current_ly = gb->gb_reg.LY;
-
-        for (uint8_t s = 0; s < NUM_SPRITES && number_of_sprites < MAX_SPRITES_LINE; s++)
-        {
-            const uint8_t* oam = &gb->oam[s * 4];
-            const uint8_t oam_y = oam[0];
-            const uint8_t oam_x = oam[1];
-
-            if (oam_x > 0 && (current_ly + 16 >= oam_y) &&
-                (current_ly + 16 < oam_y + sprite_height))
-            {
-                sprites_to_render[number_of_sprites].sprite_number = s;
-                sprites_to_render[number_of_sprites].x = oam_x;
-                number_of_sprites++;
-            }
-        }
-
-        // Sort the small list of found sprites.
-        if (number_of_sprites > 1)
-        {
-            for (int i = 1; i < number_of_sprites; i++)
-            {
-                struct sprite_data key = sprites_to_render[i];
-                int j = i - 1;
-
-                while (j >= 0 && compare_sprites(&sprites_to_render[j], &key) > 0)
-                {
-                    sprites_to_render[j + 1] = sprites_to_render[j];
-                    j = j - 1;
-                }
-                sprites_to_render[j + 1] = key;
-            }
-        }
-
-        const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
-
-        /* Render sprites from lowest priority to highest priority. */
-        for (int8_t i = number_of_sprites - 1; i >= 0; i--)
-        {
-            uint8_t s_idx = sprites_to_render[i].sprite_number;
-            uint8_t s_4 = s_idx * 4;
-
-            uint8_t OY = gb->oam[s_4 + 0];
-            uint8_t OX = gb->oam[s_4 + 1];
-            uint8_t OT = gb->oam[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
-            uint8_t OF = gb->oam[s_4 + 3];
-
-            if (OF & OBJ_PALETTE)
-            {
-                int16_t sprite_x = OX - 8;
-                int16_t sprite_y = OY - 16;
-                uint8_t sprite_w = 8;
-                uint8_t sprite_h = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-
-                int16_t sprite_x2 = sprite_x + sprite_w;
-                int16_t sprite_y2 = sprite_y + sprite_h;
-
-                if (sprite_x < gb->direct.blend_rect_x_min)
-                    gb->direct.blend_rect_x_min = (sprite_x < 0) ? 0 : sprite_x;
-                if (sprite_y < gb->direct.blend_rect_y_min)
-                    gb->direct.blend_rect_y_min = (sprite_y < 0) ? 0 : sprite_y;
-                if (sprite_x2 > gb->direct.blend_rect_x_max)
-                    gb->direct.blend_rect_x_max = (sprite_x2 > LCD_WIDTH) ? LCD_WIDTH : sprite_x2;
-                if (sprite_y2 > gb->direct.blend_rect_y_max)
-                    gb->direct.blend_rect_y_max = (sprite_y2 > LCD_HEIGHT) ? LCD_HEIGHT : sprite_y2;
-            }
-
-            uint8_t py = gb->gb_reg.LY - (OY - 16);
-
-            if (OF & OBJ_FLIP_Y)
-                py = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 15 : 7) - py;
-
-            uint16_t t1_i = VRAM_TILES_1 + OT * 0x10 + 2 * py;
-            uint8_t t1 = gb->vram[t1_i];
-            uint8_t t2 = gb->vram[t1_i + 1];
-
-            int dir, start, end;
-            if (OF & OBJ_FLIP_X)
-            {
-                dir = 1;
-                start = OX - 8;
-                end = OX;
-            }
-            else
-            {
-                dir = -1;
-                start = OX - 1;
-                end = OX - 9;
-            }
-
-            uint8_t c_add = (OF & OBJ_PALETTE) ? 8 : 0;
-
-            for (int disp_x = start; disp_x != end; disp_x += dir)
-            {
-                if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
-                    goto next_loop;
-
-                uint8_t c = ((t1 & 0x80) >> 6) | ((t2 & 0x80) >> 5);
-                if (c != 0)
-                {
-                    int P_segment_index = disp_x / 32;
-                    int P_bit_in_segment = disp_x % 32;
-                    uint8_t bg_is_transparent =
-                        (line_priority[P_segment_index] >> P_bit_in_segment) & 1;
-
-                    if (!((OF & OBJ_PRIORITY) && !bg_is_transparent))
-                    {
-                        __gb_draw_pixel(pixels, disp_x, (OBP >> (c | c_add)) & 3);
-                    }
-                }
-            next_loop:
-                t1 <<= 1;
-                t2 <<= 1;
-            }
-        }
+    // draw ghost sprites
+    if (gb->direct.oam_ghost_buffer)
+    {
+        __gb_draw_line_sprites(gb, gb->direct.oam_ghost_buffer, true, line_priority, pixels);
     }
 }
 #endif

@@ -876,6 +876,34 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
     }
 
+    // Ghost frame (Flicker Fix)
+    if (preferences_frame_skip && preferences_blend_frames == 0)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Ghost frame",
+            .values = off_on_labels,
+            .description = "Fixes invisible sprites in\n30 FPS mode.\n \n"
+                           "A Performance-focused\n"
+                           "option; does not provide\n"
+                           "transparency effects.\n \n"
+                           "May cause minor visual\nglitches in some games.",
+            .pref_var = &preferences_ghost_frame_30fps,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Ghost frame",
+            .values = off_on_labels,
+            .description = "Only available when\n30 FPS Mode is On and\nFrame Blending is Off.",
+            .pref_var = &preferences_ghost_frame_30fps,
+            .max_value = 0, // Disables interaction
+            .on_press = NULL,
+        };
+    }
+
     // dynamic rate adjustment
     if (preferences_frame_skip)
     {
