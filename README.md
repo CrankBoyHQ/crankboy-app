@@ -84,6 +84,8 @@ Also note that ROMs and cover art cannot be _replaced_ or _deleted_ through this
 
 ## Softpatching
 
+CrankBoy can apply patches (i.e. ROM hacks) to your games for you, and you can select which patches to apply before launching the game. This means you don't need to make multiple copies of a ROM for each combination of hacks to apply.
+
 Using the USB method described above, create a folder in the game's data directory, in the `patches/`
 subdirectory, matching the associated ROM name without extension. For instance, given a ROM `Squid Game Boy.gb`,
 create the directory `patches/Squid Game Boy/`, and place your various `.ips` patch files in this directory.
@@ -96,13 +98,14 @@ Then, you can enable, disable, and reorder your patches by going to `⊙ > setti
 
 - You can delete cover art from the library view by holding Ⓑ for 5 seconds.
 - Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or, if the *Crank* preference is set to `Start/Select`, by rotating the crank to 6 o'clock (i.e. straight down).
+    - Be careful -- many games use Start+Select+A+B as a shortcut to reset the game. Try not to keep the crank in this position. long term.
 
 ## Bundle Mode
 
 Bundling a ROM allows you to have a Game Boy ROM appear directly on the Playdate OS main menu along
 with your other non-game-boy games and apps. The primary reason for this is to allow Game Boy
 developers to release their games directly as playdate games. However, you can also use it if you'd
-simply like for one or more ROMs to appear directly in the Playdate OS main menu.
+simply like for one or more Game Boy games to appear directly in the Playdate OS main menu.
 
 There are two steps to enabling Bundle mode. Step 1 is to modify the [launcher assets](./Source/launcher/)
 and [pdxinfo](./Source/pdxinfo) to suit your application. You **must** change the `bundleID` field
