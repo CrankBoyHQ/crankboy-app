@@ -15,6 +15,7 @@
 #include "utility.h"
 
 #include <math.h>
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -30,6 +31,16 @@ extern pthread_mutex_t audio_mutex;
 #if !defined(TARGET_DEVICE) && defined(DTCM_ALLOC)
 #undef DTCM_ALLOC
 #endif
+
+#define AUDIO_RING_BUFFER_SIZE 4096  // ~90ms of audio at 44.1kHz.
+
+typedef struct
+{
+    int16_t left[AUDIO_RING_BUFFER_SIZE];
+    int16_t right[AUDIO_RING_BUFFER_SIZE];
+    atomic_uint write_pos;
+    atomic_uint read_pos;
+} AudioSyncBuffer;
 
 // Defines the main stack size. This value provides a necessary safety
 // margin to prevent intermittent crashes. It was increased to 0x2380
@@ -121,6 +132,8 @@ typedef struct CB_Application
 } CB_Application;
 
 extern CB_Application* CB_App;
+extern AudioSyncBuffer g_audio_sync_buffer;
+extern atomic_uint g_samples_generated_total;
 
 void CB_init(void);
 void CB_event(PDSystemEvent event, uint32_t arg);

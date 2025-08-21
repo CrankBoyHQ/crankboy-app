@@ -1046,64 +1046,105 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     CB_GameScene** gameScene_ptr = context;
     CB_GameScene* gameScene = *gameScene_ptr;
 
+    // Prevent white noise in the settings menu.
     if (!gameScene || gameScene->audioLocked)
     {
-        return 0;
+        memset(left, 0, len * sizeof(int16_t));
+        if (left != right)
+        {
+            memset(right, 0, len * sizeof(int16_t));
+        }
+        return 1;
     }
 
 #ifdef TARGET_SIMULATOR
     pthread_mutex_lock(&audio_mutex);
 #endif
 
-    audio_data* audio = &gameScene->context->gb->audio;
-
-    __builtin_prefetch(left, 1);
-
-    int sample_replication = get_sample_replication();
-    int max_chunk = ((256 + sample_replication - 1) / sample_replication) * sample_replication;
-
-    while (len > 0)
+    if (preferences_audio_sync == 1)
     {
-        int chunksize = len >= max_chunk ? max_chunk : len;
+        uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
+        uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
+        uint32_t samples_available = write_pos - read_pos;
 
-        if (gameScene->is_stereo)
+        if (samples_available < len)
         {
-            memset(left, 0, chunksize * sizeof(int16_t));
-            memset(right, 0, chunksize * sizeof(int16_t));
-            update_wave(audio, left, right, chunksize);
-            update_square(audio, left, right, 0, chunksize);
-            update_square(audio, left, right, 1, chunksize);
-            update_noise(audio, left, right, chunksize);
+            playdate->system->logToConsole(
+                "AUDIO UNDERRUN! available: %d, needed: %d", samples_available, len
+            );
+            memset(left, 0, len * sizeof(int16_t));
+            if (left != right)
+            {
+                memset(right, 0, len * sizeof(int16_t));
+            }
         }
         else
         {
-            memset(left, 0, chunksize * sizeof(int16_t));
-            update_wave(audio, left, left, chunksize);
-            update_square(audio, left, left, 0, chunksize);
-            update_square(audio, left, left, 1, chunksize);
-            update_noise(audio, left, left, chunksize);
-        }
-
-        // 3. Handle sample replication on the 'left' buffer.
-        if (sample_replication > 1)
-        {
-            for (int i = 0; i < chunksize; i += sample_replication)
+            for (int i = 0; i < len; ++i)
             {
-                for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
+                uint32_t current_pos = (read_pos + i) % AUDIO_RING_BUFFER_SIZE;
+                left[i] = g_audio_sync_buffer.left[current_pos];
+                if (left != right)
                 {
-                    left[i + j] = left[i];
-                    if (gameScene->is_stereo)
-                    {
-                        right[i + j] = right[i];
-                    }
+                    right[i] = g_audio_sync_buffer.right[current_pos];
                 }
             }
         }
 
-        len -= chunksize;
-        left += chunksize;
-        if (gameScene->is_stereo)
-            right += chunksize;
+        atomic_store(&g_audio_sync_buffer.read_pos, read_pos + len);
+    }
+    else
+    {
+        audio_data* audio = &gameScene->context->gb->audio;
+
+        __builtin_prefetch(left, 1);
+
+        int sample_replication = get_sample_replication();
+        int max_chunk = ((256 + sample_replication - 1) / sample_replication) * sample_replication;
+
+        while (len > 0)
+        {
+            int chunksize = len >= max_chunk ? max_chunk : len;
+
+            if (gameScene->is_stereo)
+            {
+                memset(left, 0, chunksize * sizeof(int16_t));
+                memset(right, 0, chunksize * sizeof(int16_t));
+                update_wave(audio, left, right, chunksize);
+                update_square(audio, left, right, 0, chunksize);
+                update_square(audio, left, right, 1, chunksize);
+                update_noise(audio, left, right, chunksize);
+            }
+            else
+            {
+                memset(left, 0, chunksize * sizeof(int16_t));
+                update_wave(audio, left, left, chunksize);
+                update_square(audio, left, left, 0, chunksize);
+                update_square(audio, left, left, 1, chunksize);
+                update_noise(audio, left, left, chunksize);
+            }
+
+            // 3. Handle sample replication on the 'left' buffer.
+            if (sample_replication > 1)
+            {
+                for (int i = 0; i < chunksize; i += sample_replication)
+                {
+                    for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
+                    {
+                        left[i + j] = left[i];
+                        if (gameScene->is_stereo)
+                        {
+                            right[i + j] = right[i];
+                        }
+                    }
+                }
+            }
+
+            len -= chunksize;
+            left += chunksize;
+            if (gameScene->is_stereo)
+                right += chunksize;
+        }
     }
 
 #ifdef TARGET_SIMULATOR
@@ -1113,4 +1154,21 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     DTCM_VERIFY_DEBUG();
 
     return 1;
+}
+
+void audio_update_square(
+    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
+)
+{
+    update_square(audio, left, right, ch2, len);
+}
+
+void audio_update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+{
+    update_wave(audio, left, right, len);
+}
+
+void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+{
+    update_noise(audio, left, right, len);
 }

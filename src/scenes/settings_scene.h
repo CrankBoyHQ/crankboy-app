@@ -40,6 +40,7 @@ typedef struct CB_SettingsScene
     int initial_sample_rate;
     int initial_headphone_audio;
     int initial_per_game;
+    int initial_audio_sync;
     preference_t* immutable_settings;
 
     struct OptionsMenuEntry* entries;

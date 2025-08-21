@@ -25,6 +25,9 @@
 
 CB_Application* CB_App;
 
+AudioSyncBuffer g_audio_sync_buffer;
+atomic_uint g_samples_generated_total = 0;
+
 #if defined(TARGET_SIMULATOR)
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif

@@ -214,6 +214,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->initial_sample_rate = preferences_sample_rate;
     settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
+    settingsScene->initial_audio_sync = preferences_audio_sync;
 
     if (gameScene)
     {
@@ -391,6 +392,7 @@ static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
+static const char* audio_sync_labels[] = {"Fast", "Accurate"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
@@ -802,6 +804,21 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
+
+    // Timing
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Timing",
+        .values = audio_sync_labels,
+        .description = "Change how audio is timed.\n \n"
+                       "Fast:\nGood performance. Sound\n"
+                       "timing is less precise.\n \n"
+                       "Accurate:\nMost faithful audio.\n"
+                       "Uses a buffer to ensure\n"
+                       "sound pitch and speed are\n"
+                       "perfect. Comes at a minor\nperformance cost.",
+        .pref_var = &preferences_audio_sync,
+        .max_value = 2,
+    };
 
     // sample rate
     entries[++i] = (OptionsMenuEntry){
@@ -1930,9 +1947,21 @@ static void CB_SettingsScene_free(void* object)
         bool audio_settings_changed =
             (settingsScene->initial_sound_mode != preferences_sound_mode) ||
             (settingsScene->initial_sample_rate != preferences_sample_rate) ||
-            (settingsScene->initial_headphone_audio != preferences_headphone_audio);
+            (settingsScene->initial_headphone_audio != preferences_headphone_audio) ||
+            (settingsScene->initial_audio_sync != preferences_audio_sync);
 
+        // Apply any changed settings (this will reconfigure the sound source if needed).
         CB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
+
+        // If the buffered audio sync is the active mode upon leaving the settings,
+        // we MUST reset our timing baseline. This recalibrates our sample counter
+        // against the hardware clock, closing the "time gap" that was created
+        // while the settings menu was open.
+        if (preferences_audio_sync == 1)
+        {
+            CB_reset_audio_sync_state();
+        }
+
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
 

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 /* Calculating VSYNC. */
@@ -116,6 +117,15 @@ void audio_init(audio_data* audio);
  * Playdate audio callback function.
  */
 int audio_callback(void* context, int16_t* left, int16_t* right, int len);
+
+/*
+ * Functions to generate audio for each channel into a buffer.
+ */
+void audio_update_square(
+    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
+);
+void audio_update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len);
+void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len);
 
 unsigned audio_get_state_size(void);
 void audio_state_save(void* buff);

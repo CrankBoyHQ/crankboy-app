@@ -25,6 +25,7 @@
 #include "library_scene.h"
 #include "settings_scene.h"
 
+#include <stdatomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -55,6 +56,48 @@
 #define LOG_DIRTY_LINES 0
 
 CB_GameScene* audioGameScene = NULL;
+
+void CB_reset_audio_sync_state(void)
+{
+    atomic_store(&g_audio_sync_buffer.read_pos, 0);
+    atomic_store(&g_audio_sync_buffer.write_pos, 0);
+    atomic_store(&g_samples_generated_total, playdate->sound->getCurrentTime());
+}
+
+static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generate)
+{
+    if (samples_to_generate <= 0)
+        return;
+
+    audio_data* audio = &gameScene->context->gb->audio;
+
+    int16_t* temp_left = cb_malloc(samples_to_generate * sizeof(int16_t));
+    int16_t* temp_right =
+        gameScene->is_stereo ? cb_malloc(samples_to_generate * sizeof(int16_t)) : temp_left;
+
+    memset(temp_left, 0, samples_to_generate * sizeof(int16_t));
+    if (gameScene->is_stereo)
+        memset(temp_right, 0, samples_to_generate * sizeof(int16_t));
+
+    audio_update_wave(audio, temp_left, temp_right, samples_to_generate);
+    audio_update_square(audio, temp_left, temp_right, 0, samples_to_generate);
+    audio_update_square(audio, temp_left, temp_right, 1, samples_to_generate);
+    audio_update_noise(audio, temp_left, temp_right, samples_to_generate);
+
+    uint32_t write_pos_local = atomic_load(&g_audio_sync_buffer.write_pos);
+    for (int i = 0; i < samples_to_generate; ++i)
+    {
+        uint32_t current_pos = (write_pos_local + i) % AUDIO_RING_BUFFER_SIZE;
+        g_audio_sync_buffer.left[current_pos] = temp_left[i];
+        if (gameScene->is_stereo)
+            g_audio_sync_buffer.right[current_pos] = temp_right[i];
+    }
+
+    atomic_fetch_add(&g_audio_sync_buffer.write_pos, samples_to_generate);
+    cb_free(temp_left);
+    if (gameScene->is_stereo)
+        cb_free(temp_right);
+}
 
 static void CB_GameScene_selector_init(CB_GameScene* gameScene);
 static void CB_GameScene_update(void* object, uint32_t u32enc_dt);
@@ -629,6 +672,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
             audio_init(&gb->audio);
             CB_GameScene_apply_settings(gameScene, true);
+            CB_reset_audio_sync_state();
 
             if (gameScene->audioEnabled)
             {
@@ -1973,6 +2017,41 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         pthread_mutex_unlock(&audio_mutex);
 #endif
 
+        if (preferences_audio_sync == 1 && gameScene->audioEnabled && !gameScene->audioLocked)
+        {
+            uint32_t samples_played = playdate->sound->getCurrentTime();
+            uint32_t samples_generated = atomic_load(&g_samples_generated_total);
+
+            // Target having a buffer of ~3 frames of audio (at 60fps)
+            uint32_t target_lead_samples = (44100 / 60) * 3;
+            uint32_t target_sample_count = samples_played + target_lead_samples;
+
+            int samples_to_generate = 0;
+            if (target_sample_count > samples_generated)
+            {
+                samples_to_generate = target_sample_count - samples_generated;
+            }
+
+            int max_gen_this_frame = (44100 / 60) * 4;
+            if (samples_to_generate > max_gen_this_frame)
+            {
+                samples_to_generate = max_gen_this_frame;
+            }
+
+            if (samples_to_generate > 0)
+            {
+                uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
+                uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
+                uint32_t available_space = AUDIO_RING_BUFFER_SIZE - (write_pos - read_pos);
+
+                if (samples_to_generate < available_space)
+                {
+                    generate_audio_chunk(gameScene, samples_to_generate);
+                    atomic_fetch_add(&g_samples_generated_total, samples_to_generate);
+                }
+            }
+        }
+
         if (gameScene->cartridge_has_battery)
         {
             save_check(context->gb);
@@ -3284,6 +3363,15 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         if (gameScene->audioEnabled)
         {
             audioGameScene = gameScene;
+
+            // If the buffered audio sync is the active mode upon leaving the settings,
+            // we MUST reset our timing baseline. This recalibrates our sample counter
+            // against the hardware clock, closing the "time gap" that was created
+            // while the device was locked or the system menu was open.
+            if (preferences_audio_sync == 1)
+            {
+                CB_reset_audio_sync_state();
+            }
         }
         break;
     case kEventLowPower:
@@ -3365,6 +3453,11 @@ static void CB_GameScene_free(void* object)
     {
         playdate->sound->removeSource(CB_App->soundSource);
         CB_App->soundSource = NULL;
+    }
+
+    if (preferences_audio_sync == 1)
+    {
+        CB_reset_audio_sync_state();
     }
 
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
