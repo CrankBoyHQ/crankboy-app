@@ -1909,6 +1909,19 @@ __core_section("draw") static void __gb_draw_line_sprites(
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
 
+        if (is_ghost)
+        {
+            const uint8_t* ghost_oam = &oam_src[s_4];
+            const uint8_t* visible_oam = &gb->oam[s_4];
+
+            // To prevent thickening, check if the ghost sprite is within 4 pixel of the
+            // real sprite. If so, skip rendering the ghost.
+            if (abs(ghost_oam[1] - visible_oam[1]) <= 4 && abs(ghost_oam[0] - visible_oam[0]) <= 4)
+            {
+                continue;
+            }
+        }
+
         uint8_t OY = oam_src[s_4 + 0];
         uint8_t OX = oam_src[s_4 + 1];
         uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
