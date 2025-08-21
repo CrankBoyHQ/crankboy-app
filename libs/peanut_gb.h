@@ -1521,6 +1521,7 @@ __core_section("short") static void __gb_write(gb_s* restrict gb, const uint16_t
         u8 prev = *b;
         *b = v;
         gb->direct.sram_updated |= prev != v;
+        return;
     }
     __gb_write_full(gb, addr, v);
 }
