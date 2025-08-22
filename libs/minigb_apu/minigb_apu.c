@@ -104,6 +104,35 @@ __audio static void update_env(struct chan* c, int sample_rate)
     }
 }
 
+__audio static bool calculate_new_sweep_freq(struct chan* c)
+{
+    uint16_t new_freq;
+    new_freq = c->sweep.freq >> c->sweep.shift;
+
+    if (!c->sweep_up)
+    {
+        new_freq = c->sweep.freq - new_freq;
+    }
+    else
+    {
+        new_freq = c->sweep.freq + new_freq;
+    }
+
+    if (new_freq > 2047)
+    {
+        c->enabled = 0;
+        return true;
+    }
+
+    if (c->sweep.shift > 0)
+    {
+        c->freq = new_freq;
+        c->sweep.freq = new_freq;
+    }
+
+    return false;  // Channel still active
+}
+
 // returns sample index at which to stop outputting in channel
 __audio static int update_len(audio_data* restrict audio, struct chan* c, int len)
 {
@@ -150,32 +179,54 @@ __audio static bool update_freq(struct chan* c, uint32_t* pos, int sample_rate)
 
 __audio static void update_sweep(struct chan* c, int sample_rate)
 {
+    if (c->sweep.rate == 0)
+    {
+        return;
+    }
+
     c->sweep.counter += c->sweep.inc;
 
     while (c->sweep.counter > sample_rate)
     {
-        if (c->sweep.shift)
-        {
-            uint16_t inc = (c->sweep.freq >> c->sweep.shift);
-            if (!c->sweep_up)
-                inc *= -1;
+        c->sweep.counter -= sample_rate;
 
-            c->freq += inc;
-            if (c->freq > 2047)
+        uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
+        if (!c->sweep_up)
+        {
+            new_freq = c->sweep.freq - new_freq;
+        }
+        else
+        {
+            new_freq = c->sweep.freq + new_freq;
+        }
+
+        if (new_freq > 2047)
+        {
+            c->enabled = 0;
+            return;
+        }
+
+        if (c->sweep.shift > 0)
+        {
+            c->freq = new_freq;
+            c->sweep.freq = new_freq;
+
+            uint16_t second_new_freq = c->sweep.freq >> c->sweep.shift;
+            if (!c->sweep_up)
             {
-                c->enabled = 0;
+                second_new_freq = c->sweep.freq - second_new_freq;
             }
             else
             {
-                set_note_freq(c, DMG_CLOCK_FREQ_U / ((2048 - c->freq) << 5));
-                c->freq_inc *= 8;
+                second_new_freq = c->sweep.freq + second_new_freq;
+            }
+
+            if (second_new_freq > 2047)
+            {
+                c->enabled = 0;
+                return;
             }
         }
-        else if (c->sweep.rate)
-        {
-            c->enabled = 0;
-        }
-        c->sweep.counter -= sample_rate;
     }
 }
 
@@ -687,8 +738,24 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->sweep.rate = (val >> 4) & 0x07;
         c->sweep_up = !(val & 0x08);
         c->sweep.shift = (val & 0x07);
-        c->sweep.inc = c->sweep.rate ? 128 / c->sweep.rate : 0;
-        c->sweep.counter = get_audio_sample_rate();
+
+        uint8_t period = c->sweep.rate;
+        if (period == 0)
+        {
+            period = 8;
+        }
+
+        c->sweep.inc = (128 / period);
+
+        if (c->sweep.rate > 0 || c->sweep.shift > 0)
+        {
+            if (calculate_new_sweep_freq(c))
+            {
+                return;
+            }
+        }
+
+        c->sweep.counter = 0;
     }
 
     int len_max = 64;
