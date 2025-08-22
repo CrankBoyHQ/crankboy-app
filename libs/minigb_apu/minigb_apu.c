@@ -776,31 +776,39 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     case 0xFF17:
     case 0xFF21:
     {
-        chans[i].volume_init = val >> 4;
-        chans[i].powered = (val >> 3) != 0;
-
-        // "zombie mode" stuff, needed for Prehistorik Man and probably
-        // others
+        // --- Zombie Mode ---
         if (chans[i].powered && chans[i].enabled)
         {
-            if ((chans[i].env.step == 0 && chans[i].env.inc != 0))
+            uint8_t old_step = chans[i].env.step;
+            bool old_dir_is_up = chans[i].env.up;
+            bool envelope_is_running = (chans[i].env.inc != 0);
+
+            bool new_dir_is_up = (val & 0x08) != 0;
+
+            if (envelope_is_running)
             {
-                if (val & 0x08)
+                if (old_step == 0)
                 {
                     chans[i].volume++;
                 }
-                else
+                else if (!old_dir_is_up)
                 {
                     chans[i].volume += 2;
                 }
-            }
-            else
-            {
-                chans[i].volume = 16 - chans[i].volume;
+
+                if (old_dir_is_up != new_dir_is_up)
+                {
+                    chans[i].volume = 16 - chans[i].volume;
+                }
             }
             chans[i].volume &= 0x0F;
             chans[i].env.step = val & 0x07;
         }
+
+        chans[i].volume_init = val >> 4;
+        chans[i].powered = (val >> 3) != 0;
+        chans[i].env.up = (val & 0x08) != 0;
+        chans[i].env.step = val & 0x07;
     }
     break;
 
