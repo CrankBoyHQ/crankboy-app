@@ -594,167 +594,69 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
     {
         update_env(c, sample_rate);
 
-        if (preferences_sound_mode == 2)
+        c->freq_counter += c->freq_inc;
+        while (c->freq_counter >= sample_rate)
         {
-            // --- ACCURATE MODE ---
-            uint32_t pos = 0;
-            uint32_t prev_pos = 0;
-            int32_t sample = 0;
+            c->freq_counter -= sample_rate;
+            c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MIN / MAX_CHAN_VOLUME)
+                                             : (VOL_INIT_MAX / MAX_CHAN_VOLUME);
 
-            while (update_freq(c, &pos, sample_rate))
+            uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) ^ ((c->noise.lfsr_reg >> 1) & 1);
+
+            c->noise.lfsr_reg >>= 1;
+            c->noise.lfsr_reg |= (xor_res << 14);
+
+            if (!c->lfsr_wide)
             {
-                c->noise.lfsr_reg =
-                    (c->noise.lfsr_reg << 1) | (c->val >= VOL_INIT_MAX / MAX_CHAN_VOLUME);
-
-                if (c->lfsr_wide)
-                {
-                    c->val = !(((c->noise.lfsr_reg >> 14) & 1) ^ ((c->noise.lfsr_reg >> 13) & 1))
-                                 ? VOL_INIT_MAX / MAX_CHAN_VOLUME
-                                 : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-                }
-                else
-                {
-                    c->val = !(((c->noise.lfsr_reg >> 6) & 1) ^ ((c->noise.lfsr_reg >> 5) & 1))
-                                 ? VOL_INIT_MAX / MAX_CHAN_VOLUME
-                                 : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-                }
-                sample += ((pos - prev_pos) / c->freq_inc) * c->val;
-                prev_pos = pos;
+                c->noise.lfsr_reg |= (xor_res << 6);
             }
+        }
 
-            if (c->muted)
-                continue;
+        if (c->muted)
+            continue;
 
-            sample += c->val;
-            sample *= c->volume;
-
+        int32_t mono_sample = c->val * c->volume;
 #if TARGET_PLAYDATE
-            // --- Hardware Path ---
-            int16_t sample16 = sample / 4;
-            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+        int16_t sample16 = mono_sample >> 2;
 
-            if (left == right)  // MONO
-            {
-                int32_t stereo_sum;
-                asm volatile("smuad %0, %1, %2"
-                             : "=r"(stereo_sum)
-                             : "r"(packed_sample), "r"(packed_vols));
-                left[i] += (int16_t)(stereo_sum >> 1);
-            }
-            else  // STEREO
-            {
-                int32_t left_contrib, right_contrib;
-                asm volatile("smulbb %0, %1, %2"
-                             : "=r"(left_contrib)
-                             : "r"(packed_sample), "r"(packed_vols));
-                asm volatile("smultt %0, %1, %2"
-                             : "=r"(right_contrib)
-                             : "r"(packed_sample), "r"(packed_vols));
-                left[i] += (int16_t)left_contrib;
-                right[i] += (int16_t)right_contrib;
-            }
+        uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+
+        if (left == right)  // MONO
+        {
+            int32_t stereo_sum;
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+
+            left[i] += (int16_t)(stereo_sum >> 1);
+        }
+        else  // STEREO
+        {
+            int32_t left_contrib, right_contrib;
+            asm volatile("smulbb %0, %1, %2"
+                         : "=r"(left_contrib)
+                         : "r"(packed_sample), "r"(packed_vols));
+            asm volatile("smultt %0, %1, %2"
+                         : "=r"(right_contrib)
+                         : "r"(packed_sample), "r"(packed_vols));
+            left[i] += (int16_t)left_contrib;
+            right[i] += (int16_t)right_contrib;
+        }
 #else
-            // --- Simulator Path ---
-            sample /= 4;
-            if (left == right)  // MONO
-            {
-                int32_t left_contrib = sample * c->on_left * audio->vol_l;
-                int32_t right_contrib = sample * c->on_right * audio->vol_r;
-                left[i] += (left_contrib + right_contrib) / 2;
-            }
-            else  // STEREO
-            {
-                left[i] += sample * c->on_left * audio->vol_l;
-                right[i] += sample * c->on_right * audio->vol_r;
-            }
-#endif
+        // --- Simulator Path ---
+        mono_sample >>= 2;
+        if (left == right)
+        {
+            int32_t left_contrib = mono_sample * c->on_left * audio->vol_l;
+            int32_t right_contrib = mono_sample * c->on_right * audio->vol_r;
+            left[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
-            // --- FAST MODE ---
-#if TARGET_PLAYDATE
-            // --- Hardware Path ---
-            c->freq_counter += c->freq_inc;
-            while (c->freq_counter >= sample_rate)
-            {
-                c->freq_counter -= sample_rate;
-
-                uint16_t old_lfsr = c->noise.lfsr_reg;
-                c->noise.lfsr_reg <<= 1;
-
-                uint8_t xor_res = (c->lfsr_wide) ? (((old_lfsr >> 14) & 1) ^ ((old_lfsr >> 13) & 1))
-                                                 : (((old_lfsr >> 6) & 1) ^ ((old_lfsr >> 5) & 1));
-
-                c->noise.lfsr_reg |= xor_res;
-                c->val = !xor_res ? VOL_INIT_MAX / MAX_CHAN_VOLUME : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-            }
-
-            if (c->muted)
-                continue;
-
-            int32_t mono_sample = c->val * c->volume;
-            int16_t sample16 = mono_sample >> 2;
-
-            uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
-
-            if (left == right)  // MONO
-            {
-                int32_t stereo_sum;
-                asm volatile("smuad %0, %1, %2"
-                             : "=r"(stereo_sum)
-                             : "r"(packed_sample), "r"(packed_vols));
-
-                left[i] += (int16_t)(stereo_sum >> 1);
-            }
-            else  // STEREO
-            {
-                int32_t left_contrib, right_contrib;
-                asm volatile("smulbb %0, %1, %2"
-                             : "=r"(left_contrib)
-                             : "r"(packed_sample), "r"(packed_vols));
-                asm volatile("smultt %0, %1, %2"
-                             : "=r"(right_contrib)
-                             : "r"(packed_sample), "r"(packed_vols));
-                left[i] += (int16_t)left_contrib;
-                right[i] += (int16_t)right_contrib;
-            }
-#else
-            // --- Simulator Path ---
-            c->freq_counter += c->freq_inc;
-            while (c->freq_counter >= sample_rate)
-            {
-                c->freq_counter -= sample_rate;
-
-                uint16_t old_lfsr = c->noise.lfsr_reg;
-                c->noise.lfsr_reg <<= 1;
-
-                uint8_t xor_res = (c->lfsr_wide) ? (((old_lfsr >> 14) & 1) ^ ((old_lfsr >> 13) & 1))
-                                                 : (((old_lfsr >> 6) & 1) ^ ((old_lfsr >> 5) & 1));
-
-                c->noise.lfsr_reg |= xor_res;
-                c->val = !xor_res ? VOL_INIT_MAX / MAX_CHAN_VOLUME : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-            }
-
-            if (c->muted)
-                continue;
-
-            int32_t sample = c->val;
-            sample *= c->volume;
-            sample >>= 2;
-
-            if (left == right)  // MONO
-            {
-                int32_t left_contrib = sample * c->on_left * audio->vol_l;
-                int32_t right_contrib = sample * c->on_right * audio->vol_r;
-                left[i] += (left_contrib + right_contrib) / 2;
-            }
-            else  // STEREO
-            {
-                left[i] += sample * c->on_left * audio->vol_l;
-                right[i] += sample * c->on_right * audio->vol_r;
-            }
-#endif
+            left[i] += mono_sample * c->on_left * audio->vol_l;
+            right[i] += mono_sample * c->on_right * audio->vol_r;
         }
+#endif
     }
 }
 
