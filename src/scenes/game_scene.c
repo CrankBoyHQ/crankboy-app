@@ -3458,6 +3458,8 @@ static void CB_GameScene_free(void* object)
     if (preferences_audio_sync == 1)
     {
         CB_reset_audio_sync_state();
+        memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
+        memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
     }
 
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
