@@ -674,13 +674,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             CB_GameScene_apply_settings(gameScene, true);
             CB_reset_audio_sync_state();
 
-            if (gameScene->audioEnabled)
-            {
-                playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
-                context->gb->direct.sound = 1;
-                audioGameScene = gameScene;
-            }
-
             gb_init_lcd(context->gb);
             memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
             gameScene->state = CB_GameSceneStateLoaded;
