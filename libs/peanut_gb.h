@@ -6108,7 +6108,7 @@ __section__(".rare") static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8
 
     (gb->gb_error)(gb, GB_INVALID_OPCODE, opcode);
     gb->gb_frame = 1;
-    return 1 * 4;  // ?
+    return 0;
 }
 
 __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
