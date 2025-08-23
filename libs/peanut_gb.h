@@ -156,8 +156,8 @@ typedef int16_t s16;
 
 /* Simplified PPU timing model for performance */
 #define PPU_MODE_2_OAM_CYCLES 80
-#define PPU_MODE_3_VRAM_CYCLES 168
-#define PPU_MODE_0_HBLANK_CYCLES 208 /* 456 - 80 - 168 */
+#define PPU_MODE_3_VRAM_CYCLES 172
+#define PPU_MODE_0_HBLANK_CYCLES 204 /* 456 - 80 - 172 */
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -5380,7 +5380,8 @@ done_instr:
             }
             break;
 
-        // Mode 3: Pixel Transfer (variable, avg. ~168-172 cycles)
+        // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
+        //         Using a fixed 172 for performance.
         case LCD_TRANSFER:
             if (gb->counter.lcd_count >= PPU_MODE_3_VRAM_CYCLES)
             {
