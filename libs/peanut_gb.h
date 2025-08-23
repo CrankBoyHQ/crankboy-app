@@ -1386,6 +1386,22 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         case 0x41:  // STAT Register
         {
+            bool interrupt_requested = false;
+
+            // --- Spurious STAT interrupt quirk (DMG-only) ---
+            // On DMG, a write to STAT can trigger an interrupt if an observable
+            // condition (a specific PPU mode or LY=LYC) is already true,
+            // regardless of the STAT enable bits.
+            // The check is for any mode except Mode 3 (Pixel Transfer).
+            if (!gb->is_cgb_mode && (gb->gb_reg.LCDC & LCDC_ENABLE))
+            {
+                if (gb->lcd_mode != LCD_TRANSFER || (gb->gb_reg.STAT & STAT_LYC_COINC))
+                {
+                    interrupt_requested = true;
+                }
+            }
+
+            // --- Standard STAT register write and check ---
             gb->gb_reg.STAT = (val & STAT_USER_BITS) | (gb->gb_reg.STAT & ~STAT_USER_BITS);
 
             if (gb->gb_reg.LCDC & LCDC_ENABLE)
@@ -1400,9 +1416,15 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
                 if (mode_interrupt || lyc_interrupt)
                 {
-                    gb->gb_reg.IF |= LCDC_INTR;
+                    interrupt_requested = true;
                 }
             }
+
+            if (interrupt_requested)
+            {
+                gb->gb_reg.IF |= LCDC_INTR;
+            }
+
             return;
         }
 
