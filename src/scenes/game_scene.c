@@ -747,7 +747,8 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (desiredAudioEnabled)
     {
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.4f);
+        float volume = gameScene->is_stereo ? 0.2f : 0.4f;
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
         context->gb->direct.sound = 1;
         audioGameScene = gameScene;
     }
