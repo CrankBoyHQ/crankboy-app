@@ -21,6 +21,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple save state slots per game.
 - Settings to fine-tune performance, visual appearance, and crank controls
 - Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
+  - Conveniently browse and download ROM hacks directly from within CrankBoy.
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
 
@@ -87,7 +88,9 @@ Also note that ROMs and cover art cannot be _replaced_ or _deleted_ through this
 
 CrankBoy can apply patches (i.e. ROM hacks) to your games for you, and you can select which patches to apply before launching the game. This means you don't need to make multiple copies of a ROM for each combination of hacks to apply.
 
-Using the USB method described above, create a folder in the game's data directory, in the `patches/`
+You can download hacks mirrored from [romhacking.net](https://www.romhacking.net/) directly through CrankBoy, for convenience.
+
+Alternatively, using the USB method described above, create a folder in the game's data directory, in the `patches/`
 subdirectory, matching the associated ROM name without extension. For instance, given a ROM `Squid Game Boy.gb`,
 create the directory `patches/Squid Game Boy/`, and place your various `.ips` patch files in this directory.
 (If you go to `⊙ > settings > Patch...` from the main library within CrankBoy, this directory will be
