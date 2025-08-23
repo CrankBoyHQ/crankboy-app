@@ -34,6 +34,7 @@ VPATH += libs
 SRC += $(wildcard src/cscripts/*.c)
 
 # List C source files here
+SRC += src/scenes/patch_download_scene.c
 SRC += src/app.c
 SRC += src/array.c
 SRC += src/dtcm.c

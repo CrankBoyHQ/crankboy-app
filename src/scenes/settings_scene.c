@@ -16,7 +16,7 @@
 #include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
-#include "patches_scene.h"
+#include "patch_download_scene.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -110,8 +110,8 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
 static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
-    CB_PatchesScene* patchesScene = CB_PatchesScene_new(option->ud);
-    CB_presentModal(patchesScene->scene);
+    CB_PatchDownloadScene* s = CB_PatchDownloadScene_new(option->ud);
+    CB_presentModal(s->scene);
 }
 
 CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene* libraryScene)

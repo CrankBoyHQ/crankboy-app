@@ -219,6 +219,7 @@ void itcm_core_init(void);
 #define PATCH_LIST_FILE "manifest.json"
 #define VERSION_INFO_FILE "version.json"
 #define BUNDLE_FILE "bundle.json"
+#define ROMHACK_DB_FILE "rhdb.json"
 
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
 

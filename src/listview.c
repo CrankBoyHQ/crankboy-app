@@ -348,8 +348,8 @@ void CB_ListView_update(CB_ListView* listView)
                 // Makes scroll-back duration 2/3 of scroll-to-end duration
                 const float SCROLL_BACK_DURATION_FACTOR = 2.0f / 3.0f;
 
-                float pauseAtStartDuration = 1.5f;
-                float pauseAtEndDuration = 2.0f;
+                float pauseAtStartDuration = 0.7f;
+                float pauseAtEndDuration = 1.5f;
 
                 float maxOffset = textWidth - availableWidth;
 
@@ -639,7 +639,7 @@ static CB_ListItem* CB_ListItem_new(void)
     return item;
 }
 
-CB_ListItemButton* CB_ListItemButton_new(char* title)
+CB_ListItemButton* CB_ListItemButton_new(const char* title)
 {
     CB_ListItemButton* button = cb_malloc(sizeof(CB_ListItemButton));
     memset(button, 0, sizeof(CB_ListItemButton));
@@ -648,8 +648,7 @@ CB_ListItemButton* CB_ListItemButton_new(char* title)
     button->item.height = CB_ListView_rowHeight;
     button->item.object = NULL;
 
-    button->title = cb_strdup(title ? title : "There be dragons...");
-    button->coverImage = NULL;
+    button->title = cb_strdup(title);
     button->textScrollOffset = 0.0f;
     button->needsTextScroll = false;
 
@@ -664,11 +663,6 @@ void CB_ListItemButton_free(CB_ListItemButton* itemButton)
     }
 
     cb_free(itemButton->title);
-
-    if (itemButton->coverImage != NULL)
-    {
-        playdate->graphics->freeBitmap(itemButton->coverImage);
-    }
 
     cb_free(itemButton);
 }

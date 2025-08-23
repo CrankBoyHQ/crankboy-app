@@ -297,6 +297,8 @@ __section__(".rare") json_value json_get_table_value(json_value j, const char* k
 {
     if (j.type != kJSONTable)
         goto ret_null;
+    if (!key)
+        goto ret_null;
     JsonObject* obj = j.data.tableval;
     if (!obj)
         goto ret_null;

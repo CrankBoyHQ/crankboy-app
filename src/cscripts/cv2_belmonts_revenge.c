@@ -236,8 +236,6 @@ static void on_tick(gb_s* gb, ScriptData* data)
     case GAME_STATE_GAME_OVER:
         force_pref(blend_frames, true);
         force_pref(dither_stable, false);
-        game_picture_scaling = 0;
-        game_picture_y_top = 12; // eyeballed
         break;
     default:
         break;
