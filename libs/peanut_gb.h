@@ -2040,21 +2040,26 @@ __core_section("draw") void __gb_draw_line(gb_s* restrict gb)
     uint32_t priority_bits = 0;
 
     int wx = LCD_WIDTH;
-    if (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE && gb->gb_reg.LY >= gb->display.WY &&
-        gb->gb_reg.WX < LCD_WIDTH + 7)
+
+    if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.LY >= gb->display.WY) &&
+        (gb->gb_reg.WX < LCD_WIDTH + 7))
     {
-        // TODO: behaviour of wx if WX = 0-6 or WX = 166; apparently there are
-        // hardware bugs?
-        if (gb->gb_reg.WX >= 7)
+        if (gb->gb_reg.WX == 166)
         {
-            wx = gb->gb_reg.WX - 7;
+            // WX=166 is unreliable and can corrupt the next scanline.
+            // We treat it as fully off-screen to prevent rendering artifacts.
+            wx = LCD_WIDTH;
+        }
+        else if (gb->gb_reg.WX < 7)
+        {
+            // WX=0 causes the window to "stutter" based on SCX scroll.
+            // Values 1-6 also seem to be unreliable
+            wx = 0;
         }
         else
         {
-            wx = 0;
+            wx = gb->gb_reg.WX - 7;
         }
-        if (wx >= LCD_WIDTH)
-            wx = LCD_WIDTH;
     }
 
     // clear row
