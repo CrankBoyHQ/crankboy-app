@@ -330,7 +330,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 NULL, NULL, NULL
             );
             modal->width = 300;
-            modal->height = 240;
+            modal->height = 140;
             CB_presentModal(modal->scene);
             return;
         }
@@ -810,7 +810,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
             NULL, NULL, NULL
         );
         modal->width = 300;
-        modal->height = 240;
+        modal->height = 180;
         cb_free(msg);
         CB_presentModal(modal->scene);
         return false;
