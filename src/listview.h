@@ -63,6 +63,11 @@ typedef struct
     char* title;
     float textScrollOffset;
     bool needsTextScroll;
+    union
+    {
+        void* ptr;
+        uintptr_t uint;
+    } ud;
 } CB_ListItemButton;
 
 typedef struct

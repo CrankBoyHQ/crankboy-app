@@ -1,12 +1,14 @@
 #include "pd_api.h"
 #include "patch_download_scene.h"
 #include "patches_scene.h"
+#include "info_scene.h"
 #include "utility.h"
 #include "userstack.h"
 #include "jparse.h"
 #include "modal.h"
 #include "http.h"
 #include "script.h"
+#include "softpatch.h"
 
 typedef void(*context_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 typedef void(*context_draw_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active);
@@ -17,6 +19,19 @@ typedef char*(*context_hint_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
 static bool push_patch_list(CB_PatchDownloadScene* pds);
+static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs);
+static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud);
+static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud);
+
+enum file_type
+{
+    FT_DIRECTORY = 0,
+    FT_TEXT = 1,
+    FT_PATCH_SUPPORTED = 2,
+    FT_PATCH_UNSUPPORTED = 3,
+    FT_UNSUPPORTED = 4
+};
+#define FILETYPE_BITS 4
 
 // modifies a string in-place to replace numeric escape sequences like &#127; with 
 // the appropriate byte. Does not affect non-numeric escape sequences like &amp; etc.
@@ -64,7 +79,7 @@ static void draw_common(CB_PatchDownloadScene* pds, PatchDownloadContext* contex
     );
 }
 
-static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n)
+static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n, int* o_hackkey)
 {
     json_value jv = { .type = kJSONNull };
     JsonArray* arr = (pds->game_hacks.type == kJSONArray)
@@ -76,6 +91,7 @@ static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n)
         json_value j = arr->data[n];
         if (j.type == kJSONInteger)
         {
+            if (o_hackkey) *o_hackkey = j.data.intval;
             char* hackkey_str = aprintf("%d", j.data.intval);
             json_value hacks = json_get_table_value(pds->rhdb, "hacks");
             json_value hack = json_get_table_value(hacks, hackkey_str);
@@ -90,6 +106,14 @@ static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n)
 static void context_top_level_select_download(unsigned flags, void* ud)
 {
     CB_PatchDownloadScene* pds = ud;
+    
+    // already cancelled?
+    if (pds->http_in_progress != 1)
+    {
+        pds->http_in_progress = 0;
+        return;
+    }
+    
     pds->http_in_progress = 0;
     if (flags & HTTP_ENABLE_DENIED)
     {
@@ -103,7 +127,7 @@ static void context_top_level_select_download(unsigned flags, void* ud)
     }
     else if (flags & ~HTTP_ENABLE_ASKED)
     {
-        char* s = aprintf("HTTP Error (flags=%x)", flags);
+        char* s = aprintf("HTTP Error (flags=0x%03x)", flags);
         CB_Modal* modal = CB_Modal_new(
             s,
             NULL, NULL, NULL
@@ -117,6 +141,301 @@ static void context_top_level_select_download(unsigned flags, void* ud)
     }
 }
 
+static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
+{
+    PatchDownloadContext* context = &pds->context[depth];
+    if (context->type != PDSCT_PATCH_FILES_BROWSE)
+    {
+        return aprintf("z%s", pds->filekey);
+    }
+    else
+    {
+        char* prefix = get_path_to_selected_item(pds, depth-1);
+        if (!prefix) return NULL;
+        int i = context->list->selectedItem;
+        JsonObject* obj = (context->j.type == kJSONTable)
+            ? context->j.data.tableval
+            : NULL;
+        if (!obj || i >= obj->n)
+        {
+            cb_free(prefix);
+            return NULL;
+        }
+        char* full = aprintf("%s/%s", prefix, obj->data[i].key);
+        cb_free(prefix);
+        return full;
+    }
+}
+
+static void context_patch_files_browse_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+{
+    update_common(pds, context);
+    
+    if (CB_App->buttons_pressed & kButtonA)
+    {
+        JsonObject* obj = (context->j.type == kJSONTable)
+            ? context->j.data.tableval
+            : NULL;
+        
+        int i = context->list->selectedItem;
+        if (i < context->list->items->length)
+        {
+            const CB_ListItemButton* const button = context->list->items->items[i];
+            enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
+            unsigned const file_size = (button->ud.uint >> FILETYPE_BITS);
+            bool const unknown_file_size = (file_size >= (1 << (32 - FILETYPE_BITS)));
+            
+            if (unknown_file_size)
+            {
+                CB_Modal* modal = CB_Modal_new(
+                    "Unknown file size.",
+                    NULL, NULL, NULL
+                );
+                CB_presentModal(modal->scene);
+                return;
+            }
+            
+            if (ft == FT_DIRECTORY)
+            {
+                if (i < obj->n)
+                {
+                    push_file_browser(pds, obj->data[i].value);
+                }
+                return;
+            }
+            
+            if (ft == FT_TEXT || ft == FT_PATCH_SUPPORTED)
+            {
+                char* path = get_path_to_selected_item(pds, pds->context_depth-1);
+                if (!path)
+                {
+                    playdate->system->logToConsole("unable to get path to item");
+                    return;
+                }
+                
+                char* http_path = aprintf("%sextracted/%s", pds->prefix, path);
+                cb_free(path);
+                
+                char* http_path_san = sanitize_url_path(http_path);
+                cb_free(http_path);
+                
+                pds->http_in_progress = 1;
+                if (ft == FT_TEXT)
+                {
+                    pds->text_file_title = obj->data[i].key;
+                    http_get(
+                        pds->domain, http_path_san, "to download this text file", 
+                        on_get_textfile, 15000, pds, NULL
+                    );
+                }
+                else
+                {
+                    pds->basename = obj->data[i].key;
+                    CB_ASSERT(ft == FT_PATCH_SUPPORTED);
+                    http_get(
+                        pds->domain, http_path_san, "to download this patch file", 
+                        on_get_patch, 15000, pds, NULL
+                    );
+                }
+                cb_free(http_path_san);
+            }
+        }
+    }
+}
+
+static void context_patch_list_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+{
+    update_common(pds, context);
+    
+    if (CB_App->buttons_pressed & kButtonA)
+    {
+        pds->selected_hack = get_nth_patch_for_game(pds, context->list->selectedItem, &pds->selected_hack_key);
+        json_value jfilekey = json_get_table_value(pds->selected_hack, "filekey");
+        const char* filekey = (jfilekey.type == kJSONString)
+            ? jfilekey.data.stringval
+            : "x";
+        pds->filekey = filekey;
+        char* fs_path = aprintf("z%s", filekey);
+        pds->hack_fs = json_get_table_value(json_get_table_value(pds->rhdb, "fs"), fs_path);
+        cb_free(fs_path);
+        
+        if (pds->hack_fs.type != kJSONTable || pds->selected_hack.type != kJSONTable)
+        {
+            // failed to find info on hack
+            CB_Modal* modal = CB_Modal_new(
+                "Patch database missing entry.",
+                NULL, NULL, NULL
+            );
+            CB_presentModal(modal->scene);
+        }
+        else
+        {
+            PatchDownloadContext* c = push_context(pds);
+            if (!c) return;
+            
+            c->type = PDSCT_PATCH_CHOOSE_INTERACTION;
+            CB_ListItemButton* itemButton;
+    
+            itemButton = CB_ListItemButton_new("View Description…");
+            array_push(c->list->items, itemButton);
+            
+            itemButton = CB_ListItemButton_new("Download Files…");
+            array_push(c->list->items, itemButton);
+            
+            itemButton = CB_ListItemButton_new("View README…");
+            array_push(c->list->items, itemButton);
+            
+            CB_ListView_reload(c->list);
+        }
+    }
+}
+
+static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
+{
+    CB_PatchDownloadScene* pds = ud;
+    
+    if (!pds->http_in_progress) return;
+    pds->http_in_progress = 0;
+    
+    if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
+    {
+        char* msg = aprintf("Failed to download patch file. (flags=0x%03x)", flags);
+        CB_Modal* modal = CB_Modal_new(
+            msg,
+            NULL, NULL, NULL
+        );
+        cb_free(msg);
+        CB_presentModal(modal->scene);
+        return;
+    }
+    else
+    {
+        char* path = aprintf("%s/%s", pds->patches_dir_path, pds->basename);
+        
+        bool success = call_with_main_stack_3(cb_write_entire_file, path, data, data_len);
+        cb_free(path);
+        if (!success)
+        {
+            CB_Modal* modal = CB_Modal_new(
+                "Failed to save patch file to disk after successfully downloading it.",
+                NULL, NULL, NULL
+            );
+            CB_presentModal(modal->scene);
+            return;
+        }
+        else
+        {
+            CB_Modal* modal = CB_Modal_new(
+                "Patch file downloaded. Remember to enable the patch in settings > patches > manage",
+                NULL, NULL, NULL
+            );
+            modal->width = 300;
+            modal->height = 240;
+            CB_presentModal(modal->scene);
+            return;
+        }
+    }
+}
+
+static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud)
+{
+    CB_PatchDownloadScene* pds = ud;
+    
+    if (!pds->http_in_progress) return;
+    pds->http_in_progress = 0;
+    
+    if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
+    {
+        char* msg = aprintf("Failed to download text file. (flags=0x%03x)", flags);
+        CB_Modal* modal = CB_Modal_new(
+            msg,
+            NULL, NULL, NULL
+        );
+        cb_free(msg);
+        CB_presentModal(modal->scene);
+        return;
+    }
+    else
+    {
+        // paranoia
+        data[data_len - 1] = 0;
+        CB_InfoScene* infoScene = CB_InfoScene_new(pds->text_file_title, data);
+        CB_presentModal(infoScene->scene);
+    }
+}
+
+static void context_patch_choose_interaction_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+{
+    update_common(pds, context);
+    
+    if (CB_App->buttons_pressed & kButtonA)
+    {
+        switch(context->list->selectedItem)
+        {
+        case 0: // view description
+            {
+                cb_play_ui_sound(CB_UISound_Confirm);
+                json_value jtitle = json_get_table_value(pds->selected_hack, "title");
+                char* title = (jtitle.type == kJSONString) ? jtitle.data.stringval : NULL;
+                if (title) decode_numeric_escapes(title);
+                
+                json_value jauthor = json_get_table_value(pds->selected_hack, "author");
+                char* author = (jauthor.type == kJSONString) ? jauthor.data.stringval : NULL;
+                if (author) decode_numeric_escapes(author);
+                
+                json_value jreldate = json_get_table_value(pds->selected_hack, "reldate");
+                char* reldate = (jreldate.type == kJSONString) ? jreldate.data.stringval : NULL;
+                
+                json_value jdescription = json_get_table_value(pds->selected_hack, "description");
+                char* description = (jdescription.type == kJSONString) ? jdescription.data.stringval : NULL;
+                if (description) decode_numeric_escapes(description);
+                
+                json_value jrominfo = json_get_table_value(pds->selected_hack, "rominfo");
+                char* rominfo = (jrominfo.type == kJSONString) ? jrominfo.data.stringval : NULL;
+                if (rominfo) decode_numeric_escapes(rominfo);
+                
+                char* text = aprintf(
+                    "Author: %s\nRelease Date: %s\n\n-- Description --\n\n%s\n\n-- ROM Info --\n\n%s",
+                    author ? author : "(unknown)",
+                    reldate ? reldate : "(missing)",
+                    description ? description : "",
+                    rominfo ? rominfo : ""
+                );
+                
+                CB_InfoScene* infoScene = CB_InfoScene_new(title, text);
+                cb_free(text);
+                CB_presentModal(infoScene->scene);
+            }
+            break;
+        case 1: // view patch files
+            if (!push_file_browser(
+                pds, pds->hack_fs
+            )) {
+                CB_Modal* modal = CB_Modal_new(
+                    "Failed to open directory",
+                    NULL, NULL, NULL
+                );
+                CB_presentModal(modal->scene);
+            }
+            break;
+        case 2: // view README
+            {
+                char* path = aprintf("%spatches/%sreadme.txt", pds->prefix, pds->filekey);
+                pds->http_in_progress = 1;
+                pds->text_file_title = "README";
+                http_get(
+                    pds->domain, path, "to download a patch README", 
+                    on_get_textfile, 15000, pds, NULL
+                );
+                cb_free(path);
+            }
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
 {
     update_common(pds, context);
@@ -125,19 +444,28 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
     {
         switch(context->list->selectedItem)
         {
-        case 0:
+        case 0: // manage
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
-                CB_PatchDownloadScene* s = CB_PatchDownloadScene_new(pds->game);
+                CB_PatchesScene* s = CB_PatchesScene_new(pds->game);
                 CB_presentModal(s->scene);
             }
             break;
-        case 1:
+        case 1: // download
             cb_play_ui_sound(CB_UISound_Confirm);
             {
+                pds->prefix = NULL;
+                json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
+                if (jprefix.type == kJSONString)
+                {
+                    pds->prefix = jprefix.data.stringval;
+                }
+                
+                pds->domain = NULL;
                 json_value jdomain = json_get_table_value(pds->rhdb, "domain");
                 if (jdomain.type == kJSONString)
                 {
+                    pds->domain = jdomain.data.stringval;
                     pds->http_in_progress = 1;
                     enable_http(
                         jdomain.data.stringval,
@@ -158,10 +486,6 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
             break;
         }
     }
-    else if (CB_App->buttons_pressed & kButtonB)
-    {
-        --pds->target_context_depth;
-    }
 }
 
 static void context_top_level_draw(CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active)
@@ -169,9 +493,75 @@ static void context_top_level_draw(CB_PatchDownloadScene* pds, PatchDownloadCont
     draw_common(pds, context, x, active);
 }
 
+static char* context_patch_files_browse_hint(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+{
+    int i = context->list->selectedItem;
+    if (i < context->list->items->length)
+    {
+        const CB_ListItemButton* const button = context->list->items->items[i];
+        enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
+        unsigned const file_size = (button->ud.uint >> FILETYPE_BITS);
+        bool const unknown_file_size = (file_size >= (1 << (32 - FILETYPE_BITS)));
+        
+        char* en_file_size = unknown_file_size ? aprintf("unknown") : en_human_bytes(file_size);
+        char* v = NULL;
+        switch(ft)
+        {
+        case FT_DIRECTORY:
+            v = aprintf("Directory.\nPress Ⓐ to view contents.");
+            break;
+        case FT_TEXT:
+            v = aprintf("Size: %s\nText file.\nPress Ⓐ to view contents.", en_file_size);
+            break;
+        case FT_PATCH_SUPPORTED:
+            v = aprintf("Size: %s\nPress Ⓐ to download this patch file.", en_file_size);
+            break;
+        case FT_PATCH_UNSUPPORTED:
+            v = aprintf("Size: %s\nCrankBoy does not support this type of patch yet.", en_file_size);
+            break;
+        case FT_UNSUPPORTED:
+            v = aprintf("Size: %s\nCrankBoy does not know how to open this type of file.", en_file_size);
+            break;
+        default:
+            break;
+        }
+        
+        cb_free(en_file_size);
+        
+        return v;
+    }
+    
+    return NULL;
+}
+
+static char* context_patch_choose_interaction_hint(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+{
+    json_value jtitle = json_get_table_value(pds->selected_hack, "title");
+    const char* title = NULL;
+    if (jtitle.type == kJSONString) title = jtitle.data.stringval;
+    
+    switch (context->list->selectedItem)
+    {
+    case 0:
+        return aprintf(
+            "View info for hack \"%s\"", title ? title : "?"
+        );
+    case 1:
+        return aprintf(
+            "Download patch files for hack \"%s\"", title ? title : "?"
+        );
+    case 2:
+        return aprintf(
+            "View README for hack \"%s\"", title ? title : "?"
+        );
+    default:
+        return NULL;
+    }
+}
+
 static char* context_hack_list_hint(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
 {
-    json_value hack = get_nth_patch_for_game(pds, context->list->selectedItem);
+    json_value hack = get_nth_patch_for_game(pds, context->list->selectedItem, NULL);
     json_value jauthor = json_get_table_value(hack, "author");
     const char* author = NULL;
     if (jauthor.type == kJSONString) author = jauthor.data.stringval;
@@ -214,22 +604,22 @@ static uint32_t get_hint_key(CB_PatchDownloadScene* pds)
 
 static context_fn context_free[PDSCT_MAX] = {
     NULL, NULL, NULL,
-    NULL, NULL, NULL
+    NULL, NULL
 };
 
 static context_hint_fn context_hint[PDSCT_MAX] = {
-    context_top_level_hint, context_hack_list_hint, NULL,
-    NULL, NULL, NULL
+    context_top_level_hint, context_hack_list_hint, context_patch_choose_interaction_hint,
+    context_patch_files_browse_hint, NULL
 };
 
 static context_fn context_update[PDSCT_MAX] = {
-    context_top_level_update, update_common, NULL,
-    update_common, NULL, NULL
+    context_top_level_update, context_patch_list_update, context_patch_choose_interaction_update,
+    context_patch_files_browse_update, NULL
 };
 
 static context_draw_fn context_draw[PDSCT_MAX] = {
-    context_top_level_draw, draw_common, NULL,
-    draw_common, NULL, NULL
+    context_top_level_draw, draw_common, draw_common,
+    draw_common, NULL
 };
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
@@ -246,6 +636,7 @@ PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
 
 void pop_context(CB_PatchDownloadScene* pds)
 {
+    playdate->system->logToConsole("Pop context\n");
     PatchDownloadContext* context = &pds->context[--pds->context_depth];
     
     context_fn _free = context_free[context->type];
@@ -287,12 +678,17 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             CB_dismiss(pds->scene);
             return;
         }
-        else if (pds->context_depth_p < prev_context_depth - 1)
+        else if (pds->context_depth_p <= pds->context_depth - 2 && pds->context_depth > 0)
         {
             pop_context(pds);
         }
     }
-    else if (!pds->http_in_progress)
+    else if (pds->http_in_progress == 0 && (CB_App->buttons_pressed & kButtonB))
+    {
+        // back out
+        --pds->target_context_depth;
+    }
+    else if (pds->http_in_progress == 0)
     {
         // update selected
         PatchDownloadContext* context = &pds->context[pds->context_depth - 1];
@@ -358,6 +754,24 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             kAlignTextLeft
         );
     }
+    
+    if (pds->http_in_progress)
+    {
+        // crude loading bar
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
+        
+        pds->anim_t += dt;
+        if (pds->anim_t >= 1) --pds->anim_t;
+        
+        int m = 8;
+        int w = 128;
+        int x = pds->anim_t * (LCD_COLUMNS + w) - w;
+        playdate->graphics->fillRect(x, LCD_ROWS/2 - m/2, w, m/2, kColorBlack);
+    }
+    else
+    {
+        pds->anim_t = 0;
+    }
 }
 
 static bool push_patch_list(CB_PatchDownloadScene* pds)
@@ -373,11 +787,14 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     }
     else if (pds->game_hacks.type != kJSONArray)
     {
+    missing_entry:;
         char* msg = aprintf("ROM header name \"%s\" not found in patch database", pds->header_name);
         CB_Modal* modal = CB_Modal_new(
             msg,
             NULL, NULL, NULL
         );
+        modal->width = 300;
+        modal->height = 240;
         cb_free(msg);
         CB_presentModal(modal->scene);
         return false;
@@ -391,6 +808,18 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
         : NULL;
     if (arr)
     {
+        if (arr->n == 0)
+        {
+            char* msg = aprintf("No patches found for \"%s\"", pds->header_name);
+            CB_Modal* modal = CB_Modal_new(
+                msg,
+                NULL, NULL, NULL
+            );
+            cb_free(msg);
+            CB_presentModal(modal->scene);
+            return false;
+        }
+        
         for (int i = 0; i < arr->n; ++i)
         {
             const char* s = NULL;
@@ -415,10 +844,97 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
             array_push(context->list->items, itemButton);
         }
     }
+    else
+    {
+        // seems unlikely; we're already guarding
+        goto missing_entry;
+    }
     
     CB_ListView_reload(context->list);
     
     context->type = PDSCT_LIST_PATCHES;
+    return true;
+}
+
+static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
+{
+    JsonObject* arr = (fs.type == kJSONTable)
+        ? fs.data.tableval
+        : NULL;
+    if (!arr || arr->n == 0) return false;
+    
+    CB_ListItemButton* itemButton;
+    PatchDownloadContext* context = push_context(pds);
+    if (!context) return false;
+    
+    context->j = fs;
+    
+    for (size_t i = 0; i < arr->n; ++i)
+    {
+        const char* key = arr->data[i].key;
+        
+        if (arr->data[i].value.type == kJSONTable)
+        {
+            // directory
+            char* text = aprintf("%s/", key);
+            itemButton = CB_ListItemButton_new(text);
+            itemButton->ud.uint = FT_DIRECTORY;
+            cb_free(text);
+            array_push(context->list->items, itemButton);
+        }
+        else
+        {
+            itemButton = CB_ListItemButton_new(key);
+            
+            const char* extension = strrchr(key, '.');
+            if (!extension) extension = key + strlen(key); // (empty string)
+            
+            // supported patches
+            if (extension_is_supported_patch_file(extension))
+            {
+                itemButton->ud.uint = FT_PATCH_SUPPORTED;
+            }
+            
+            // any other patch file .bps, .bsdiff, .cht, .ips, .xdelta, .ups, .vcdiff
+            else if (!strcasecmp(extension, ".bsdiff") || !strcasecmp(extension, ".cht") || !strcasecmp(extension, ".xdelta") || !strcasecmp(extension, ".vcdiff")
+                || !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") || !strcasecmp(extension, ".ups"))
+            {
+                itemButton->ud.uint = FT_PATCH_UNSUPPORTED;
+            }
+            
+            else if (!strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") || !strcasecmp(key, "readme") || !strcasecmp(key, "license"))
+            {
+                itemButton->ud.uint = FT_TEXT;
+            }
+            
+            else
+            {
+                itemButton->ud.uint = FT_UNSUPPORTED;
+            }
+            
+            unsigned size = -1;
+            if (arr->data[i].value.type == kJSONInteger)
+            {
+                size = (unsigned)arr->data[i].value.data.intval;
+            }
+            
+            if (size < (1 << (32 - FILETYPE_BITS)))
+            {
+                itemButton->ud.uint |= size << FILETYPE_BITS;
+            }
+            else
+            {
+                itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+            }
+            
+            array_push(context->list->items, itemButton);
+        }
+    }
+    
+    CB_ListView_reload(context->list);
+    
+    context->type = PDSCT_PATCH_FILES_BROWSE;
+    
     return true;
 }
 

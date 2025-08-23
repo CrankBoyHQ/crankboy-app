@@ -6,8 +6,9 @@
 
 #define USE_SSL true
 
+// all of these indicate failure except for HTTP_ENABLE_ASKED.
 #define HTTP_ENABLE_DENIED 1
-#define HTTP_ENABLE_ASKED 2
+#define HTTP_ENABLE_ASKED 2 /* does not indicate failure */
 #define HTTP_ENABLE_IN_PROGRESS 4
 #define HTTP_ERROR 8
 #define HTTP_MEM_ERROR 16

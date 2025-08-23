@@ -18,6 +18,16 @@
 
 extern PlaydateAPI* playdate;
 
+// these must not be edited in place, so that it can be assumed a screen update
+// is not needed if the ptr doesn't change.
+extern const uint8_t lcdp_25[16];
+extern const uint8_t lcdp_25s[16];
+extern const uint8_t lcdp_50[16];
+extern const uint8_t lcdp_75[16];
+extern const uint8_t lcdp_75s[16];
+
+extern const uint8_t lcdp_t_50[16];
+
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
 #define CB_DEBUG false
@@ -165,6 +175,9 @@ char* aprintf(const char* fmt, ...);
 
 // caller-freed
 char* en_human_time(unsigned seconds);
+
+// caller-freed
+char* en_human_bytes(unsigned bytes);
 
 bool string_has_descenders(const char* str);
 
@@ -314,6 +327,8 @@ void* mallocz(size_t size);
 float nnfmodf(float a, float b);
 
 void memswap(void* a, void* b, size_t size);
+
+char* sanitize_url_path(const char* original);
 
 // https://github.com/aedrax/defer.h
 #define DEFER_MERGE(a, b) a##b

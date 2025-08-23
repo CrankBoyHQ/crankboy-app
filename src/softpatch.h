@@ -23,6 +23,8 @@ typedef struct SoftPatch
     int _order : 12;
 } SoftPatch;
 
+// extension should start with '.'
+bool extension_is_supported_patch_file(const char* extension);
 char* get_patches_directory(const char* rom_path);
 bool patches_directory_exists(const char* rom_path);
 SoftPatch* list_patches(const char* rom_path, int* o_new_patch_count);

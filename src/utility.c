@@ -28,6 +28,28 @@ const char* CB_settingsPath = "settings";
 const char* CB_globalPrefsPath = "preferences.json";
 const char* CB_patchesPath = "patches";
 
+// these must not be edited in place, so that it can be assumed a screen update
+// is not needed if the ptr doesn't change.
+const uint8_t lcdp_25[16] = {
+    0x88, 0x00, 0x88, 0x00, 0x88, 0x00, 0x88, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+const uint8_t lcdp_25s[16] = {
+    0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+const uint8_t lcdp_50[16] = {
+    0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+const uint8_t lcdp_75[16] = {
+    0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF, 0x77, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+const uint8_t lcdp_75s[16] = {
+    0x77, 0xFF, 0xBB, 0xFF, 0x77, 0xFF, 0xBB, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+};
+
+const uint8_t lcdp_t_50[16] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+};
+
 /* clang-format off */
 const clalign uint8_t CB_patterns[4][4][4] = {
     {
@@ -62,8 +84,10 @@ char* cb_strdup(const char* string)
     if (!string)
         return NULL;
 
-    char* copied = cb_malloc(strlen(string) + 1);
-    strcpy(copied, string);
+    size_t len = strlen(string) + 1;
+    char* copied = cb_malloc(len);
+    if (!copied) return NULL;
+    memcpy(copied, string, len);
     return copied;
 }
 
@@ -90,6 +114,22 @@ static const char* en_plural(int n)
 static const char* en_pluraly(int n)
 {
     return (n == 1 || n == -1) ? "y" : "ies";
+}
+
+char* en_human_bytes(unsigned bytes)
+{
+    if (bytes < 1000) return aprintf("%u B", bytes);
+    
+    bytes /= 1000;
+    
+    if (bytes < 1000) return aprintf("%u kB", bytes);
+    
+    bytes /= 1000;
+    
+    if (bytes < 1000) return aprintf("%u MB", bytes);
+    
+    bytes /= 1000;
+    return aprintf("%u GB", bytes);
 }
 
 char* en_human_time(unsigned secondsAgo)
@@ -1305,4 +1345,67 @@ bool string_has_descenders(const char* str)
     if (!str)
         return false;
     return strpbrk(str, "gjpqy") != NULL;
+}
+
+static int is_allowed_in_path(char c) {
+    // Check for alphanumeric characters
+    if (isalnum((unsigned char)c)) {
+        return 1;
+    }
+    // Check for the set of reserved characters specific to the path
+    // and the general unreserved characters.
+    switch (c) {
+        case '-': case '.': case '_': case '~':
+        case ':': case '/': case '@':
+        case '$': case '&': case '\'': case '(':
+        case ')': case '*': case '+': case ',':
+        case ';': case '=': case '?': case '#':
+            return 1;
+        default:
+            return 0;
+    }
+}
+
+char* sanitize_url_path(const char* original)
+{
+    if (original == NULL) {
+        return NULL;
+    }
+
+    size_t original_len = strlen(original);
+    size_t new_len = 0;
+
+    for (size_t i = 0; i < original_len; i++) {
+        if (is_allowed_in_path(original[i])) {
+            new_len += 1;
+        } else {
+            new_len += 3;
+        }
+    }
+
+    char* sanitized = mallocz(new_len + 1);
+    if (sanitized == NULL) {
+        return NULL;
+    }
+
+    size_t sanitized_index = 0;
+    for (size_t i = 0; i < original_len; i++) {
+        unsigned char current_char = original[i];
+
+        if (is_allowed_in_path(current_char)) {
+            sanitized[sanitized_index++] = current_char;
+        } else {
+            // percent-encode
+            int written = sprintf(sanitized + sanitized_index, "%%%02X", current_char);
+            if (written != 3) {
+                free(sanitized);
+                return NULL;
+            }
+            sanitized_index += 3;
+        }
+    }
+    
+    sanitized[sanitized_index] = '\0';
+
+    return sanitized;
 }

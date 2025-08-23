@@ -38,6 +38,12 @@ struct ListPatchAcc
     const char* patch_dir;
 };
 
+bool extension_is_supported_patch_file(const char* extension)
+{
+    if (!extension) return false;
+    return !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") || !strcasecmp(extension, ".ups");
+}
+
 void list_patch_cb(const char* filename, void* ud)
 {
     struct ListPatchAcc* acc = ud;

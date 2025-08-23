@@ -260,6 +260,8 @@ static void CB_Permission(unsigned flags, void* ud)
     {
         httpud->connection = playdate->network->http->newConnection(httpud->domain, 0, USE_SSL);
         HTTPConnection* connection = httpud->connection;
+        
+        playdate->system->logToConsole("http GET: %s%s", httpud->domain, httpud->path);
 
         if (!connection)
             goto fail;

@@ -747,7 +747,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches",
-            .description = "Manage game patches\nand ROM hacks.",
+            .description = "Manage and download\ngame patches\n(ROM hacks.)",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,

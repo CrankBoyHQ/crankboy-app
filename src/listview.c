@@ -641,8 +641,7 @@ static CB_ListItem* CB_ListItem_new(void)
 
 CB_ListItemButton* CB_ListItemButton_new(const char* title)
 {
-    CB_ListItemButton* button = cb_malloc(sizeof(CB_ListItemButton));
-    memset(button, 0, sizeof(CB_ListItemButton));
+    CB_ListItemButton* button = allocz(CB_ListItemButton);
 
     button->item.type = CB_ListViewItemTypeButton;
     button->item.height = CB_ListView_rowHeight;
