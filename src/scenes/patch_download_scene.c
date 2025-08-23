@@ -436,6 +436,11 @@ static void context_patch_choose_interaction_update(CB_PatchDownloadScene* pds, 
     }
 }
 
+char* get_rom_info(CB_PatchDownloadScene* pds)
+{
+    return aprintf("ROM Header title: %s\nCRC32: %X", pds->header_name, pds->game->names->crc32);
+}
+
 static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
 {
     update_common(pds, context);
@@ -482,6 +487,15 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
                     );
                     CB_presentModal(modal->scene);
                 }
+            }
+            break;
+        case 2: // rom info
+            {
+                cb_play_ui_sound(CB_UISound_Confirm);
+                char* text = get_rom_info(pds);
+                CB_InfoScene* infoScene = CB_InfoScene_new(pds->game->names->name_short_leading_article, text);
+                cb_free(text);
+                CB_presentModal(infoScene->scene);
             }
             break;
         }
@@ -587,9 +601,11 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     case 1:
         return aprintf("Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)", pds->game->names->name_short_leading_article);
         break;
+    case 2:
+        return get_rom_info(pds);
+    default:
+        return NULL;
     }
-    
-    return NULL;
 }
 
 // a value that changes when selection changes.
@@ -952,6 +968,9 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     itemButton = CB_ListItemButton_new("Download…");
     array_push(context->list->items, itemButton);
     
+    itemButton = CB_ListItemButton_new("ROM Info…");
+    array_push(context->list->items, itemButton);
+    
     CB_ListView_reload(context->list);
     
     return true;
@@ -981,6 +1000,16 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game)
         game->fullpath, pds->header_name
     );
     script_info_free(info);
+    
+    // trim trailing spaces from header name
+    for (int i = strlen(pds->header_name) - 1; i >= 0; --i)
+    {
+        if (pds->header_name[i] == ' ')
+        {
+            pds->header_name[i] = 0;
+        }
+        else break;
+    }
     
     json_value lookup = json_get_table_value(pds->rhdb, "lookup");
     json_value gamekey = json_get_table_value(lookup, pds->header_name);
