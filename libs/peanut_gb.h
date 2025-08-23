@@ -2423,8 +2423,32 @@ _0x0F:
 
 _0x10:
 { /* STOP */
-    gb->gb_ime = 0;
-    gb->gb_halt = 1;
+    /* We check for button-press glitch on DMG. */
+    if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
+    {
+        /* STOP becomes a 1-byte NOP. The PC was advanced by the main
+           loop's fetch, but we do NOT advance it further. The byte
+           at the original PC+1 (the STOP operand) will be executed next. */
+        goto exit;
+    }
+
+    gb->cpu_reg.pc++;
+
+    if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+    {
+        if (gb->gb_ime == 0)
+        {
+            /* HALT Bug: PC fails to increment correctly.
+               Rewind PC to re-execute the operand as an instruction. */
+            gb->cpu_reg.pc--;
+        }
+    }
+    else
+    {
+        /* NORMAL OPERATION: Enter low-power STOP mode. */
+        gb->gb_stop = 1;
+        gb->gb_reg.DIV = 0;
+    }
     goto exit;
 }
 
@@ -4488,7 +4512,42 @@ __core static unsigned __gb_run_instruction_micro(gb_s* gb)
         case 0:
         case 8:
             if (opcode == 0)
-                break;  // nop
+                break;           // nop
+            if (opcode == 0x10)  // STOP
+            {
+                // We check for the button-press glitch on DMG.
+                // A button is pressed, and a direction/action line is selected.
+                if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) &&
+                    ((gb->gb_reg.P1 & 0x30) != 0x30))
+                {
+                    cycles = 1;
+                    break;
+                }
+
+                if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+                {
+                    if (gb->gb_ime == 0)
+                    {
+                        // HALT Bug: pc fails to increment correctly.
+                        // We rewind the pc to re-execute the byte after the opcode.
+                        gb->cpu_reg.pc--;
+                    }
+                    else
+                    {
+                        gb->cpu_reg.pc++;
+                    }
+                }
+                else
+                {
+                    // NORMAL OPERATION: Enter low-power STOP mode.
+                    gb->cpu_reg.pc++;
+                    gb->gb_stop = 1;
+                    gb->gb_reg.DIV = 0;
+                }
+
+                cycles = 1;
+                break;
+            }
             if (opcode < 0x18)
                 return __gb_rare_instruction(gb, opcode);
             {
@@ -5020,6 +5079,16 @@ __core unsigned int __gb_step_cpu(gb_s* gb)
     if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
     {
         __gb_interrupt(gb);
+    }
+
+    if unlikely (gb->gb_stop)
+    {
+        // In STOP mode, the CPU is paused until a button is pressed.
+        if (gb->direct.joypad != 0xFF)
+        {
+            gb->gb_stop = 0;
+        }
+        goto done_instr;
     }
 
     if unlikely (gb->gb_halt)

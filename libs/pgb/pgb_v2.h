@@ -170,6 +170,7 @@ struct PGB_VERSIONED(gb_s)
     struct
     {
         uint8_t gb_halt : 1;
+        uint8_t gb_stop : 1;
         uint8_t gb_ime : 1;
         uint8_t gb_ime_countdown : 2;
         uint8_t is_cgb_mode : 1;
