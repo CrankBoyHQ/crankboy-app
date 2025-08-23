@@ -5816,6 +5816,11 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /* DMG internal timer is 0xABCC */
         gb->counter.div_count = 0xCC;
         gb->lcd_mode = LCD_VBLANK;
+
+        // F-1 Pole Position checks the value at 0xFF80 and enters an
+        // infinite rst loop if it's zero. Real hardware boot ROM leaves
+        // non-zero garbage here.
+        gb->hram[0x80] = 0x95;
     }
 
     /* Common state for all modes */
