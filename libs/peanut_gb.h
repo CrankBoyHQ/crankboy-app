@@ -5731,6 +5731,47 @@ __section__(".rare") void gb_reset(gb_s* gb)
         gb->gb_reg.WX = 0x00;
         gb->gb_reg.IE = 0x00;
 
+        /* Sound registers */
+        __gb_write(gb, 0xFF10, 0x80);
+        __gb_write(gb, 0xFF11, 0xBF);
+        __gb_write(gb, 0xFF12, 0xF3);
+        __gb_write(gb, 0xFF13, 0xFF);
+        __gb_write(gb, 0xFF14, 0xBF);
+        __gb_write(gb, 0xFF16, 0x3F);
+        __gb_write(gb, 0xFF17, 0x00);
+        __gb_write(gb, 0xFF18, 0xFF);
+        __gb_write(gb, 0xFF19, 0xBF);
+        __gb_write(gb, 0xFF1A, 0x7F);
+        __gb_write(gb, 0xFF1B, 0xFF);
+        __gb_write(gb, 0xFF1C, 0x9F);
+        __gb_write(gb, 0xFF1D, 0xFF);
+        __gb_write(gb, 0xFF1E, 0xBF);
+        __gb_write(gb, 0xFF20, 0xFF);
+        __gb_write(gb, 0xFF21, 0x00);
+        __gb_write(gb, 0xFF22, 0x00);
+        __gb_write(gb, 0xFF23, 0xBF);
+        __gb_write(gb, 0xFF24, 0x77);
+        __gb_write(gb, 0xFF25, 0xF3);
+        __gb_write(gb, 0xFF26, 0xF1);
+
+        /* Wave RAM */
+        __gb_write(gb, 0xFF30, 0xAC);
+        __gb_write(gb, 0xFF31, 0xDD);
+        __gb_write(gb, 0xFF32, 0xDA);
+        __gb_write(gb, 0xFF33, 0x48);
+        __gb_write(gb, 0xFF34, 0x36);
+        __gb_write(gb, 0xFF35, 0x02);
+        __gb_write(gb, 0xFF36, 0xCF);
+        __gb_write(gb, 0xFF37, 0x16);
+        __gb_write(gb, 0xFF38, 0x2C);
+        __gb_write(gb, 0xFF39, 0x04);
+        __gb_write(gb, 0xFF3A, 0xE5);
+        __gb_write(gb, 0xFF3B, 0x2C);
+        __gb_write(gb, 0xFF3C, 0xAC);
+        __gb_write(gb, 0xFF3D, 0xDD);
+        __gb_write(gb, 0xFF3E, 0xDA);
+        __gb_write(gb, 0xFF3F, 0x48);
+
         /* CGB internal timer is 0x267C */
         gb->counter.div_count = 0x7C;
         gb->lcd_mode = LCD_VBLANK;
