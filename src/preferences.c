@@ -98,12 +98,15 @@ void preferences_read_from_disk(const char* filename)
 
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
 {
+    // This ensures transient settings are NEVER saved to disk automatically.
+    preferences_bitfield_t final_leave_as_is_mask = leave_as_is | PREFBITS_TRANSIENT;
+
     playdate->system->logToConsole("Save preferences to %s...", filename);
 
     void* preserved_all = preferences_store_subset(-1);
-    void* preserved_to_write = preferences_store_subset(~leave_as_is);
+    void* preserved_to_write = preferences_store_subset(~final_leave_as_is_mask);
 
-    if (leave_as_is != 0 && preserved_to_write)
+    if (final_leave_as_is_mask != 0 && preserved_to_write)
     {
         preferences_merge_from_disk(filename);
         preferences_restore_subset(preserved_to_write);
@@ -120,17 +123,24 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     json_value j;
     j.type = kJSONTable;
     j.data.tableval = &data.obj;
-    data.obj.n = pref_count;
 
     TableKeyPair* pairs = (TableKeyPair*)(&data.obj + 1);
 
     int i = 0;
-#define PREF(x, ...)                              \
-    pairs[i].key = #x;                            \
-    pairs[i].value.type = kJSONInteger;           \
-    pairs[i].value.data.intval = preferences_##x; \
+    int pairs_count = 0;
+
+#define PREF(x, ...)                                            \
+    if (!((final_leave_as_is_mask) & (1 << i)))                 \
+    {                                                           \
+        pairs[pairs_count].key = #x;                            \
+        pairs[pairs_count].value.type = kJSONInteger;           \
+        pairs[pairs_count].value.data.intval = preferences_##x; \
+        ++pairs_count;                                          \
+    }                                                           \
     ++i;
 #include "prefs.x"
+
+    data.obj.n = pairs_count;
 
     if (preserved_all)
     {
