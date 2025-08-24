@@ -51,6 +51,24 @@
     __attribute__((optimize("Os"))) __attribute__((section(".audio"))) __attribute__((short_call))
 #endif
 
+/* The factors are calculated using the formula:
+ * 0.999958^(DMG_CLOCK_FREQ / sample_rate)
+ */
+static const float get_charge_factors[] = {
+    0.996f,  // High quality: 44100 Hz
+    0.992f,  // Medium quality: 22050 Hz
+    0.988f,  // Low quality: 14700 Hz
+};
+
+static inline int16_t clamp16(float s)
+{
+    if (s < -32768.0f)
+        return -32768;
+    if (s > 32767.0f)
+        return 32767;
+    return (int16_t)s;
+}
+
 static inline int get_sample_replication(void)
 {
     // preferences_sample_rate: 0 -> 1 (44.1kHz), 1 -> 2 (22.05kHz)
@@ -887,6 +905,9 @@ void audio_init(audio_data* audio)
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
 
+    audio->capacitor_l = 0.0f;
+    audio->capacitor_r = 0.0f;
+
     /* Initialise IO registers. */
     { /* clang-format off */
         static const uint8_t regs_init[] = {
@@ -953,14 +974,27 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     CB_GameScene** gameScene_ptr = context;
     CB_GameScene* gameScene = *gameScene_ptr;
 
-    // Prevent white noise in the settings menu.
-    if (!gameScene || gameScene->audioLocked)
+    if (!gameScene)
     {
         memset(left, 0, len * sizeof(int16_t));
         if (left != right)
         {
             memset(right, 0, len * sizeof(int16_t));
         }
+        return 1;
+    }
+
+    audio_data* audio = &gameScene->context->gb->audio;
+
+    if (gameScene->audioLocked)
+    {
+        memset(left, 0, len * sizeof(int16_t));
+        if (left != right)
+        {
+            memset(right, 0, len * sizeof(int16_t));
+        }
+        audio->capacitor_l = 0.0f;
+        audio->capacitor_r = 0.0f;
         return 1;
     }
 
@@ -1002,56 +1036,75 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     }
     else
     {
-        audio_data* audio = &gameScene->context->gb->audio;
-
         __builtin_prefetch(left, 1);
-
         int sample_replication = get_sample_replication();
         int max_chunk = ((256 + sample_replication - 1) / sample_replication) * sample_replication;
 
-        while (len > 0)
+        int16_t* left_ptr = left;
+        int16_t* right_ptr = gameScene->is_stereo ? right : left;
+        int remaining_len = len;
+
+        while (remaining_len > 0)
         {
-            int chunksize = len >= max_chunk ? max_chunk : len;
+            int chunksize = remaining_len >= max_chunk ? max_chunk : remaining_len;
 
+            memset(left_ptr, 0, chunksize * sizeof(int16_t));
             if (gameScene->is_stereo)
-            {
-                memset(left, 0, chunksize * sizeof(int16_t));
-                memset(right, 0, chunksize * sizeof(int16_t));
-                update_wave(audio, left, right, chunksize);
-                update_square(audio, left, right, 0, chunksize);
-                update_square(audio, left, right, 1, chunksize);
-                update_noise(audio, left, right, chunksize);
-            }
-            else
-            {
-                memset(left, 0, chunksize * sizeof(int16_t));
-                update_wave(audio, left, left, chunksize);
-                update_square(audio, left, left, 0, chunksize);
-                update_square(audio, left, left, 1, chunksize);
-                update_noise(audio, left, left, chunksize);
-            }
+                memset(right_ptr, 0, chunksize * sizeof(int16_t));
 
-            // 3. Handle sample replication on the 'left' buffer.
+            update_wave(audio, left_ptr, right_ptr, chunksize);
+            update_square(audio, left_ptr, right_ptr, 0, chunksize);
+            update_square(audio, left_ptr, right_ptr, 1, chunksize);
+            update_noise(audio, left_ptr, right_ptr, chunksize);
+
             if (sample_replication > 1)
             {
                 for (int i = 0; i < chunksize; i += sample_replication)
                 {
                     for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
                     {
-                        left[i + j] = left[i];
+                        left_ptr[i + j] = left_ptr[i];
                         if (gameScene->is_stereo)
                         {
-                            right[i + j] = right[i];
+                            right_ptr[i + j] = right_ptr[i];
                         }
                     }
                 }
             }
-
-            len -= chunksize;
-            left += chunksize;
+            remaining_len -= chunksize;
+            left_ptr += chunksize;
             if (gameScene->is_stereo)
-                right += chunksize;
+                right_ptr += chunksize;
         }
+    }
+
+    // --- High-Pass Filter ---
+    bool dacs_enabled = audio->chans[0].powered || audio->chans[1].powered ||
+                        audio->chans[2].powered || audio->chans[3].powered;
+
+    if (dacs_enabled)
+    {
+        float charge_factor = get_charge_factors[preferences_sample_rate];
+        for (int i = 0; i < len; i++)
+        {
+            float in_l = left[i];
+            float out_l = in_l - audio->capacitor_l;
+            audio->capacitor_l = in_l - out_l * charge_factor;
+            left[i] = clamp16(out_l);
+
+            if (left != right)
+            {
+                float in_r = right[i];
+                float out_r = in_r - audio->capacitor_r;
+                audio->capacitor_r = in_r - out_r * charge_factor;
+                right[i] = clamp16(out_r);
+            }
+        }
+    }
+    else
+    {
+        audio->capacitor_l = 0.0f;
+        audio->capacitor_r = 0.0f;
     }
 
 #ifdef TARGET_SIMULATOR

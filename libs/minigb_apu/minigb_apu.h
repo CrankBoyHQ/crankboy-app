@@ -96,6 +96,9 @@ typedef struct audio_data
     int vol_r : 4;
     uint8_t* audio_mem;
     struct chan chans[4];
+
+    float capacitor_l;
+    float capacitor_r;
 } audio_data;
 
 /**
