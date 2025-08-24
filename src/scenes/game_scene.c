@@ -3521,11 +3521,14 @@ static void CB_GameScene_free(void* object)
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
 
-    prefs_locked_by_script = 0;
-
-    preferences_read_from_disk(CB_globalPrefsPath);
-    preferences_per_game = 0;
-    preferences_save_state_slot = 0;
+    if (gameScene->state != CB_GameSceneStateCGBConfirm)
+    {
+        prefs_locked_by_script = 0;
+        preferences_read_from_disk(CB_globalPrefsPath);
+        preferences_per_game = 0;
+        preferences_save_state_slot = 0;
+        gb_save_to_disk(context->gb);
+    }
 
     if (audioGameScene == gameScene)
     {
@@ -3556,8 +3559,6 @@ static void CB_GameScene_free(void* object)
     playdate->system->setMenuImage(NULL, 0);
 
     CB_Scene_free(gameScene->scene);
-
-    gb_save_to_disk(context->gb);
 
     gb_reset(context->gb);
 
