@@ -351,7 +351,6 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
 
-    audio_init(&context->gb->audio);
     gb_reset(context->gb);
 
     context->gb->direct.joypad_interrupt_delay = -1;
@@ -672,6 +671,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             {
                 DTCM_VERIFY();
 
+                audio_init(&gb->audio);
                 CB_GameScene_apply_settings(gameScene, true);
                 CB_reset_audio_sync_state();
 
