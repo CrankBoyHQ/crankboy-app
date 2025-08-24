@@ -57,7 +57,7 @@
 #define LOG_DIRTY_LINES 0
 
 CB_GameScene* audioGameScene = NULL;
-static bool force_gbc_mode_on_next_init = false;
+static bool ignore_cgb_check_on_next_init = false;
 
 void CB_reset_audio_sync_state(void)
 {
@@ -650,10 +650,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
 
-        if (force_gbc_mode_on_next_init)
+        if (ignore_cgb_check_on_next_init)
         {
-            preferences_experimental_gbc_mode = 1;
-            force_gbc_mode_on_next_init = false;
+            gb->direct.ignore_cgb_check = true;
+            ignore_cgb_check_on_next_init = false;
         }
 
         enum gb_init_error_e gb_ret = gb_init(
@@ -2468,15 +2468,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if (pushed & kButtonA)
         {
-            force_gbc_mode_on_next_init = true;
-
-            char* rom_filename = cb_strdup(gameScene->rom_filename);
-            char* name_short = cb_strdup(gameScene->name_short);
-
-            CB_App->pendingScene = CB_GameScene_new(rom_filename, name_short)->scene;
-
-            cb_free(rom_filename);
-            cb_free(name_short);
+            ignore_cgb_check_on_next_init = true;
+            CB_App->pendingScene =
+                CB_GameScene_new(gameScene->rom_filename, gameScene->name_short)->scene;
 
             return;
         }

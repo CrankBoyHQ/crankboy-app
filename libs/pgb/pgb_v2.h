@@ -313,6 +313,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t crank_docked : 1;
         uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
+        uint8_t ignore_cgb_check : 1;
         uint8_t* oam_ghost_buffer;
         uint8_t blend_rect_x_min;
         uint8_t blend_rect_y_min;
