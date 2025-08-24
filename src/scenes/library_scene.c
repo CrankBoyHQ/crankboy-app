@@ -564,12 +564,13 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
+    /* Sound is perfect now, so we don't need this warning anymore.
     else if (!memcmp(rom_name, "LSDj", 4))
     {
         const char* options[] = {"Ok", NULL};
         CB_Modal* modal = CB_Modal_new(
-            "CrankBoy's sound emulation is not yet accurate enough for music composition to be recommended.",
-            options, launch_game_normal, game
+            "CrankBoy's sound emulation is not yet accurate enough for music composition to be
+    recommended.", options, launch_game_normal, game
         );
 
         modal->width = 350;
@@ -578,6 +579,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
         CB_presentModal(modal->scene);
         launch = false;
     }
+    */
 #endif
 
     if (launch)
