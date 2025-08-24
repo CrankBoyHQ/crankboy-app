@@ -5965,7 +5965,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     const uint16_t cgb_flag_location = 0x0143;
     const uint8_t cgb_flag = gb->gb_rom[cgb_flag_location];
 
-    if ((gb->gb_rom[0x0143] == 0xC0) && !gb->direct.ignore_cgb_check)
+    if (!preferences_experimental_gbc_mode && (gb->gb_rom[0x0143] == 0xC0) &&
+        !gb->direct.ignore_cgb_check)
     {
         return GB_INIT_CARTRIDGE_UNSUPPORTED;
     }
