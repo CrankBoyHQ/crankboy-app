@@ -351,6 +351,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
 
+    audio_init(&context->gb->audio);
     gb_reset(context->gb);
 
     context->gb->direct.joypad_interrupt_delay = -1;
@@ -437,8 +438,6 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
             }
         }
     }
-
-    playdate->system->logToConsole("Initializing audio...");
     return true;
 }
 
@@ -673,7 +672,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             {
                 DTCM_VERIFY();
 
-                audio_init(&gb->audio);
                 CB_GameScene_apply_settings(gameScene, true);
                 CB_reset_audio_sync_state();
 
@@ -3520,23 +3518,26 @@ static void CB_GameScene_free(void* object)
     preferences_per_game = 0;
     preferences_save_state_slot = 0;
 
-    if (CB_App->soundSource != NULL)
+    if (audioGameScene == gameScene)
     {
-        playdate->sound->removeSource(CB_App->soundSource);
-        CB_App->soundSource = NULL;
+        if (CB_App->soundSource != NULL)
+        {
+            playdate->sound->removeSource(CB_App->soundSource);
+            CB_App->soundSource = NULL;
+        }
+
+        if (preferences_audio_sync == 1)
+        {
+            CB_reset_audio_sync_state();
+            memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
+            memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
+        }
+
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
+
+        audioGameScene = NULL;
+        audio_enabled = 0;
     }
-
-    if (preferences_audio_sync == 1)
-    {
-        CB_reset_audio_sync_state();
-        memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
-        memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
-    }
-
-    playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
-
-    audioGameScene = NULL;
-    audio_enabled = 0;
 
     if (gameScene->menuImage)
     {
