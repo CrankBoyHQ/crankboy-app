@@ -29,7 +29,7 @@
  * function, you may need to increase this value to prevent buffer overflows,
  * which can lead to unpredictable crashes.
  *
- * As of August 2025, the theoretical maximum count is 32 entries.
+ * As of August 2025, the theoretical maximum count is 34 entries.
  * This value provides a safe buffer for future additions.
  */
 #define TOTAL_MENU_ITEMS 40
@@ -1195,6 +1195,16 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_uncap_fps,
         .max_value = 2,
         .on_press = NULL
+    };
+
+    // skip cgb confirm
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Skip CGB warning",
+        .values = off_on_labels,
+        .description = "Directly launches Game\nBoy Color-only games,\nskipping the warning.\n \nNote:\nSome games may not work\ncorrectly, or run at all.",
+        .pref_var = &preferences_skip_cgb_confirm,
+        .max_value = 2,
+        .on_press = NULL,
     };
 
     if (!gameScene && !preferences_per_game)

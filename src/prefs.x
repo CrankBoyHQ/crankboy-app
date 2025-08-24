@@ -5,6 +5,7 @@ PREF(save_state_slot, 0)  // (note: has two corresponding settings)
 
 // audio
 PREF(sound_mode, 2) // 0: Off, 1: Fast, 2: Accurate
+PREF(audio_sync, 0) // 0: Fast, 1: Accurate
 PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 
@@ -40,6 +41,6 @@ PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(experimental_gbc_mode, 0)
-PREF(audio_sync, 0) // 0: Fast, 1: Accurate
+PREF(skip_cgb_confirm, false)
 
 #undef PREF

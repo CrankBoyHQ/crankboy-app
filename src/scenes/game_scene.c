@@ -2419,6 +2419,15 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
     else if (gameScene->state == CB_GameSceneStateCGBConfirm)
     {
+        if (preferences_skip_cgb_confirm)
+        {
+            ignore_cgb_check_on_next_init = true;
+            CB_App->pendingScene =
+                CB_GameScene_new(gameScene->rom_filename, gameScene->name_short)->scene;
+
+            return;
+        }
+
         gameScene->scene->preferredRefreshRate = 30;
 
         if (gbScreenRequiresFullRefresh)
