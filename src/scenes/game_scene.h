@@ -24,7 +24,8 @@ extern CB_GameScene* audioGameScene;
 typedef enum
 {
     CB_GameSceneStateLoaded,
-    CB_GameSceneStateError
+    CB_GameSceneStateError,
+    CB_GameSceneStateCGBConfirm
 } CB_GameSceneState;
 
 typedef enum
@@ -32,7 +33,8 @@ typedef enum
     CB_GameSceneErrorUndefined,
     CB_GameSceneErrorLoadingRom,
     CB_GameSceneErrorWrongLocation,
-    CB_GameSceneErrorFatal
+    CB_GameSceneErrorFatal,
+    CB_GameSceneErrorSaveData
 } CB_GameSceneError;
 
 typedef struct

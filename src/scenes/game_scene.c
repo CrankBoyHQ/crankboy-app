@@ -26,6 +26,7 @@
 #include "settings_scene.h"
 
 #include <stdatomic.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -56,6 +57,7 @@
 #define LOG_DIRTY_LINES 0
 
 CB_GameScene* audioGameScene = NULL;
+static bool force_gbc_mode_on_next_init = false;
 
 void CB_reset_audio_sync_state(void)
 {
@@ -345,6 +347,101 @@ void itcm_core_init(void)
 }
 #endif
 
+static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
+{
+    CB_GameSceneContext* context = gameScene->context;
+
+    gb_reset(context->gb);
+
+    context->gb->direct.joypad_interrupt_delay = -1;
+
+    playdate->system->logToConsole("Initialized gb context.");
+    char* save_filename = cb_save_filename(gameScene->rom_filename, false);
+    gameScene->save_filename = save_filename;
+
+    gameScene->base_filename = cb_basename(gameScene->rom_filename, true);
+
+    gameScene->cartridge_has_battery = context->gb->cart_battery;
+    gameScene->save_state_requires_warning = context->gb->cart_battery;
+    playdate->system->logToConsole(
+        "Cartridge has battery: %s", gameScene->cartridge_has_battery ? "Yes" : "No"
+    );
+
+    gameScene->last_save_time = 0;
+
+    int ram_load_result =
+        read_cart_ram_file(save_filename, context->gb, &gameScene->last_save_time);
+
+    switch (ram_load_result)
+    {
+    case 0:
+        playdate->system->logToConsole("No previous cartridge save data found");
+        break;
+    case 1:
+    case 2:
+        playdate->system->logToConsole("Loaded cartridge save data");
+        break;
+    default:
+    {
+        if (context->gb && context->gb->gb_cart_ram)
+        {
+            cb_free(context->gb->gb_cart_ram);
+            context->gb->gb_cart_ram = NULL;
+        }
+
+        gameScene->error = CB_GameSceneErrorSaveData;
+        return false;
+    }
+    }
+
+    context->cart_ram = context->gb->gb_cart_ram;
+    gameScene->save_data_loaded_successfully = true;
+
+    unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+    gameScene->rtc_time = now;
+    gameScene->rtc_seconds_to_catch_up = 0;
+
+    gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
+
+    if (gameScene->cartridge_has_rtc)
+    {
+        playdate->system->logToConsole("Cartridge is MBC3 with battery: RTC Enabled.");
+
+        if (ram_load_result == 2)
+        {
+            playdate->system->logToConsole("Loaded RTC state and timestamp from save file.");
+
+            if (now > gameScene->last_save_time)
+            {
+                unsigned int seconds_to_advance = now - gameScene->last_save_time;
+                if (seconds_to_advance > 0)
+                {
+                    playdate->system->logToConsole(
+                        "Catching up RTC by %u seconds...", seconds_to_advance
+                    );
+                    gb_catch_up_rtc_direct(context->gb, seconds_to_advance);
+                }
+            }
+        }
+        else
+        {
+            playdate->system->logToConsole(
+                "No valid RTC save data. Initializing clock to system "
+                "time."
+            );
+            time_t time_for_core = gameScene->rtc_time + 946684800;
+            struct tm* timeinfo = localtime(&time_for_core);
+            if (timeinfo != NULL)
+            {
+                gb_set_rtc(context->gb, timeinfo);
+            }
+        }
+    }
+
+    playdate->system->logToConsole("Initializing audio...");
+    return true;
+}
+
 // Helper function to generate the config file path for a game
 char* cb_game_config_path(const char* rom_filename)
 {
@@ -553,6 +650,12 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
 
+        if (force_gbc_mode_on_next_init)
+        {
+            preferences_experimental_gbc_mode = 1;
+            force_gbc_mode_on_next_init = false;
+        }
+
         enum gb_init_error_e gb_ret = gb_init(
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
         );
@@ -560,125 +663,31 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
         CB_ASSERT((((uintptr_t)context->previous_lcd) & 7) == 0);
 
-        gb_reset(context->gb);
-
-        context->gb->direct.joypad_interrupt_delay = -1;
-
         if (gb_ret == GB_INIT_NO_ERROR)
         {
-            playdate->system->logToConsole("Initialized gb context.");
-            char* save_filename = cb_save_filename(rom_filename, false);
-            gameScene->save_filename = save_filename;
-
-            gameScene->base_filename = cb_basename(rom_filename, true);
-
-            gameScene->cartridge_has_battery = context->gb->cart_battery;
-            gameScene->save_state_requires_warning = context->gb->cart_battery;
-            playdate->system->logToConsole(
-                "Cartridge has battery: %s", gameScene->cartridge_has_battery ? "Yes" : "No"
-            );
-
-            gameScene->last_save_time = 0;
-
-            int ram_load_result =
-                read_cart_ram_file(save_filename, context->gb, &gameScene->last_save_time);
-
-            switch (ram_load_result)
+            if (!CB_GameScene_complete_successful_init(gameScene))
             {
-            case 0:
-                playdate->system->logToConsole("No previous cartridge save data found");
-                break;
-            case 1:
-            case 2:
-                playdate->system->logToConsole("Loaded cartridge save data");
-                break;
-            default:
+                gameScene->state = CB_GameSceneStateError;
+            }
+            else
             {
-                playdate->system->logToConsole(
-                    "Error loading save data. To protect your data, the game "
-                    "will not start."
-                );
+                DTCM_VERIFY();
 
-                CB_presentModal(CB_Modal_new(
-                                    "Error loading save data. To protect your "
-                                    "data, the game will not start.",
-                                    NULL, NULL, NULL
-                )
-                                    ->scene);
+                audio_init(&gb->audio);
+                CB_GameScene_apply_settings(gameScene, true);
+                CB_reset_audio_sync_state();
 
-                audioGameScene = NULL;
+                gb_init_lcd(context->gb);
+                memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
+                gameScene->state = CB_GameSceneStateLoaded;
 
-                if (context->gb && context->gb->gb_cart_ram)
-                {
-                    cb_free(context->gb->gb_cart_ram);
-                    context->gb->gb_cart_ram = NULL;
-                }
-
-                // Now, free the scene and context.
-                CB_GameScene_free(gameScene);
-                return NULL;
+                playdate->system->logToConsole("gb context initialized.");
             }
-            }
-
-            context->cart_ram = context->gb->gb_cart_ram;
-            gameScene->save_data_loaded_successfully = true;
-
-            unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-            gameScene->rtc_time = now;
-            gameScene->rtc_seconds_to_catch_up = 0;
-
-            gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
-
-            if (gameScene->cartridge_has_rtc)
-            {
-                playdate->system->logToConsole("Cartridge is MBC3 with battery: RTC Enabled.");
-
-                if (ram_load_result == 2)
-                {
-                    playdate->system->logToConsole(
-                        "Loaded RTC state and timestamp from save file."
-                    );
-
-                    if (now > gameScene->last_save_time)
-                    {
-                        unsigned int seconds_to_advance = now - gameScene->last_save_time;
-                        if (seconds_to_advance > 0)
-                        {
-                            playdate->system->logToConsole(
-                                "Catching up RTC by %u seconds...", seconds_to_advance
-                            );
-                            gb_catch_up_rtc_direct(context->gb, seconds_to_advance);
-                        }
-                    }
-                }
-                else
-                {
-                    playdate->system->logToConsole(
-                        "No valid RTC save data. Initializing clock to system "
-                        "time."
-                    );
-                    time_t time_for_core = gameScene->rtc_time + 946684800;
-                    struct tm* timeinfo = localtime(&time_for_core);
-                    if (timeinfo != NULL)
-                    {
-                        gb_set_rtc(context->gb, timeinfo);
-                    }
-                }
-            }
-
-            playdate->system->logToConsole("Initializing audio...");
-
-            DTCM_VERIFY();
-
-            audio_init(&gb->audio);
-            CB_GameScene_apply_settings(gameScene, true);
-            CB_reset_audio_sync_state();
-
-            gb_init_lcd(context->gb);
-            memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-            gameScene->state = CB_GameSceneStateLoaded;
-
-            playdate->system->logToConsole("gb context initialized.");
+        }
+        else if (gb_ret == GB_INIT_CARTRIDGE_UNSUPPORTED)
+        {
+            gameScene->state = CB_GameSceneStateCGBConfirm;
+            playdate->system->logToConsole("Cartridge is CGB-only, requires user confirmation.");
         }
         else
         {
@@ -1794,6 +1803,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         wasSelectorVisible = shouldDisplayStartSelectUI;
 
         bool animatedSelectorBitmapNeedsRedraw = false;
+
         if (gbScreenRequiresFullRefresh || !gameScene->staticSelectorUIDrawn ||
             gameScene->model.selectorIndex != gameScene->selector.index)
         {
@@ -2409,6 +2419,73 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             display_fps();
         }
     }
+    else if (gameScene->state == CB_GameSceneStateCGBConfirm)
+    {
+        gameScene->scene->preferredRefreshRate = 30;
+
+        if (gbScreenRequiresFullRefresh)
+        {
+            char* title = "Game Boy Color Required";
+            const char* messages[] = {
+                "This game may not work correctly.", "", "Press Ⓐ to continue booting,",
+                "or Ⓑ to return to the Library."
+            };
+            int msg_count = sizeof(messages) / sizeof(char*);
+
+            playdate->graphics->clear(kColorWhite);
+            int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
+            int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+            int lineSpacing = 2;
+            int titleToMessageSpacing = 12;
+            int messagesHeight = messageHeight * msg_count + lineSpacing * (msg_count - 1);
+            int containerHeight = titleHeight + titleToMessageSpacing + messagesHeight;
+            int titleX = (playdate->display->getWidth() -
+                          playdate->graphics->getTextWidth(
+                              CB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
+                          )) /
+                         2;
+            int titleY = (playdate->display->getHeight() - containerHeight) / 2;
+
+            playdate->graphics->setFont(CB_App->titleFont);
+            playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
+
+            int messageY = titleY + titleHeight + titleToMessageSpacing;
+            playdate->graphics->setFont(CB_App->bodyFont);
+            for (int i = 0; i < msg_count; i++)
+            {
+                const char* msg = messages[i];
+                int messageX = (playdate->display->getWidth() -
+                                playdate->graphics->getTextWidth(
+                                    CB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
+                                )) /
+                               2;
+                playdate->graphics->drawText(msg, strlen(msg), kUTF8Encoding, messageX, messageY);
+                messageY += messageHeight + lineSpacing;
+            }
+        }
+        PDButtons pushed;
+        playdate->system->getButtonState(NULL, &pushed, NULL);
+
+        if (pushed & kButtonA)
+        {
+            force_gbc_mode_on_next_init = true;
+
+            char* rom_filename = cb_strdup(gameScene->rom_filename);
+            char* name_short = cb_strdup(gameScene->name_short);
+
+            CB_App->pendingScene = CB_GameScene_new(rom_filename, name_short)->scene;
+
+            cb_free(rom_filename);
+            cb_free(name_short);
+
+            return;
+        }
+        else if (pushed & kButtonB)
+        {
+            CB_GameScene_didSelectLibrary(gameScene);
+            return;
+        }
+    }
     else if (gameScene->state == CB_GameSceneStateError)
     {
         // Check for pushed A or B button to return to the library
@@ -2442,6 +2519,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 errorMessagesCount = 2;
                 errorMessages[0] = "Please move the ROM to";
                 errorMessages[1] = "/Data/*.crankboy/games/";
+            }
+            else if (gameScene->error == CB_GameSceneErrorSaveData)
+            {
+                errorTitle = "Save Data Error";
+                errorMessagesCount = 1;
+                errorMessages[0] = "Failed to load save data.";
             }
             else if (gameScene->error == CB_GameSceneErrorFatal)
             {
