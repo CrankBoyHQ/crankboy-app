@@ -1923,13 +1923,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         pthread_mutex_lock(&audio_mutex);
 #endif
 
-        // copy gb to stack (DTCM) temporarily only if dtcm not enabled
-        int stack_gb_size = 1;
-        if (!dtcm_enabled())
-        {
-            stack_gb_size = sizeof(gb_s);
-        }
-        char stack_gb_data[stack_gb_size];
+        // Static buffer for the !dtcm_enabled path to prevent stack overflow on the simulator.
+        static char stack_gb_data[sizeof(gb_s)];
+
         if (!dtcm_enabled())
         {
             gameScene->audioLocked = 1;
