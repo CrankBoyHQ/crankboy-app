@@ -127,6 +127,7 @@ PDCFLAGS += --quiet
 
 # flags for simulator
 DYLIB_FLAGS += $(COMMON_FLAGS) $(SIMULATOR_FLAGS)
+UDEFS += $(COMMON_FLAGS)
 
 # --- CUSTOM CLEANUP ---
 .PHONY: clean-scripts
