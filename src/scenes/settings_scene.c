@@ -341,9 +341,8 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             result = (int)(intptr_t)call_with_main_stack_2(
                 preferences_save_to_disk, CB_globalPrefsPath,
 
-                // never save these to global prefs
-                PREFBIT_per_game | PREFBIT_save_state_slot |
-                    PREFBITS_LIBRARY_ONLY
+                PREFBIT_per_game |
+                    PREFBIT_save_state_slot
 
                     // these prefs are locked, so we shouldn't be able to change them
                     | prefs_locked_by_script
