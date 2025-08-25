@@ -207,10 +207,13 @@ struct PGB_VERSIONED(gb_s)
     uint8_t is_mbc1m : 1;
     
     // 1-7, cgb only
+    bool cgb_fast_mode_armed : 1;
     uint8_t cgb_wram_bank : 3;
-    uint8_t cgb_ff6c : 1;
     uint8_t cgb_ff75 : 3;
+    bool cgb_fast_mode : 1;
+    uint8_t cgb_ff6c : 1;
     uint8_t cgb_vram_bank : 1;
+    
     
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
