@@ -571,6 +571,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             gameScene->save_filename = save_filename;
 
             gameScene->base_filename = cb_basename(rom_filename, true);
+            
+            #if PGB_CGB
+            context->gb->direct.cgb = 1;
+            #endif
 
             gameScene->cartridge_has_battery = context->gb->cart_battery;
             gameScene->save_state_requires_warning = context->gb->cart_battery;

@@ -74,8 +74,8 @@ typedef struct CB_GameSceneContext
 #else
     void* gb;
 #endif
-    uint8_t wram[WRAM_SIZE];
-    uint8_t vram[VRAM_SIZE];
+    uint8_t wram[WRAM_SIZE_CGB];
+    uint8_t vram[VRAM_SIZE_CGB];
     uint8_t* rom;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];

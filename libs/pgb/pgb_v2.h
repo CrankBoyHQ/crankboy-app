@@ -205,6 +205,18 @@ struct PGB_VERSIONED(gb_s)
     uint8_t overclock : 2;
 
     uint8_t is_mbc1m : 1;
+    
+    // 1-7, cgb only
+    uint8_t cgb_wram_bank : 3;
+    uint8_t cgb_ff6c : 1;
+    uint8_t cgb_ff75 : 3;
+    uint8_t cgb_vram_bank : 1;
+    
+    uint8_t cgb_ff7x[3];
+    uint16_t cgb_hdma_src;
+    uint16_t cgb_hdma_dst;
+    uint16_t cgb_hdma_len : 7;
+    bool cgb_hdma_active : 1;
 
     uint8_t* selected_cart_bank_addr;
 
@@ -269,13 +281,14 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(count_s) counter;
 
     /* Pre-computed base pointers to avoid subtractions in memory access. */
-    uint8_t* wram_base;
+    uint8_t* wram_base[2];
+    uint8_t* wram_hi_base;
     uint8_t* echo_ram_base;
     uint8_t* vram_base;
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
-    uint8_t* wram;            // wram[WRAM_SIZE];
-    uint8_t* vram;            // vram[VRAM_SIZE];
+    uint8_t* wram;            // wram[WRAM_SIZE_CGB];
+    uint8_t* vram;            // vram[VRAM_SIZE_CGB];
     uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
@@ -383,7 +396,7 @@ struct PGB_VERSIONED(gb_s)
 FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +
+           + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + gb->gb_cart_ram_size +
            MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint));
 
     // skipped: lcd; rom
@@ -400,12 +413,12 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, 
     out += ROM_HEADER_SIZE;
 
     // wram
-    memcpy(out, gb->wram, WRAM_SIZE);
-    out += WRAM_SIZE;
+    memcpy(out, gb->wram, WRAM_SIZE_CGB);
+    out += WRAM_SIZE_CGB;
 
     // vram
-    memcpy(out, gb->vram, VRAM_SIZE);
-    out += VRAM_SIZE;
+    memcpy(out, gb->vram, VRAM_SIZE_CGB);
+    out += VRAM_SIZE_CGB;
 
     // xram
     memcpy(out, gb->xram, XRAM_SIZE);
@@ -465,7 +478,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     void* preserved_fields[] = {&gb->gb_rom,        &gb->wram,         &gb->vram,
                                 &gb->gb_cart_ram,   &gb->breakpoints,  &gb->direct.oam_ghost_buffer,
                                 &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
-                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base,
+                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base[0], &gb->wram_base[1],
                                 &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
                                 &gb->xram};
 
@@ -484,12 +497,12 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     }
 
     // wram
-    memcpy(gb->wram, in, WRAM_SIZE);
-    in += WRAM_SIZE;
+    memcpy(gb->wram, in, WRAM_SIZE_CGB);
+    in += WRAM_SIZE_CGB;
 
     // vram
-    memcpy(gb->vram, in, VRAM_SIZE);
-    in += VRAM_SIZE;
+    memcpy(gb->vram, in, VRAM_SIZE_CGB);
+    in += VRAM_SIZE_CGB;
 
     // xram
     memcpy(gb->xram, in, XRAM_SIZE);
@@ -626,12 +639,26 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     CB_ASSERT(
         *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
     );
-
-    // copy the remaning data (should be the same between v1 and v2)
+    
+    // copy rom header and wram (wram is resized in v2)
     memcpy(
         v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2),
         org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
-        *out_size - sizeof(StateHeader) - sizeof(struct gb_s_v2)
+        ROM_HEADER_SIZE + WRAM_SIZE
+    );
+    
+    // copy vram (vram is resized in v2)
+    memcpy(
+        v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2) + ROM_HEADER_SIZE + WRAM_SIZE_CGB,
+        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1) + ROM_HEADER_SIZE + WRAM_SIZE,
+        VRAM_SIZE
+    );
+
+    // copy the remaning data (should be the same between v1 and v2)
+    memcpy(
+        v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2) + ROM_HEADER_SIZE + WRAM_SIZE_CGB + VRAM_SIZE_CGB,
+        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1) + ROM_HEADER_SIZE + WRAM_SIZE + VRAM_SIZE,
+        *out_size - sizeof(StateHeader) - sizeof(struct gb_s_v2) - ROM_HEADER_SIZE - WRAM_SIZE_CGB - VRAM_SIZE_CGB
     );
 
     *out = v2_org;

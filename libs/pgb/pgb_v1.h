@@ -300,6 +300,8 @@ struct PGB_VERSIONED(gb_s)
 
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
+        
+        uint8_t cgb : 1;
 
         // where this is 0, skip the line
         uint8_t interlace_mask;
