@@ -101,6 +101,47 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
         cb_free(temp_right);
 }
 
+static void tick_audio_sync(CB_GameScene* gameScene)
+{
+    if (!gameScene || !gameScene->audioEnabled || gameScene->audioLocked ||
+        preferences_audio_sync != 1)
+    {
+        return;
+    }
+
+    uint32_t samples_played = playdate->sound->getCurrentTime();
+    uint32_t samples_generated = atomic_load(&g_samples_generated_total);
+
+    // Target having a buffer of ~3 frames of audio (at 60fps)
+    uint32_t target_lead_samples = (44100 / 60) * 3;
+    uint32_t target_sample_count = samples_played + target_lead_samples;
+
+    int samples_to_generate = 0;
+    if (target_sample_count > samples_generated)
+    {
+        samples_to_generate = target_sample_count - samples_generated;
+    }
+
+    int max_gen_this_frame = (44100 / 60) * 4;
+    if (samples_to_generate > max_gen_this_frame)
+    {
+        samples_to_generate = max_gen_this_frame;
+    }
+
+    if (samples_to_generate > 0)
+    {
+        uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
+        uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
+        uint32_t available_space = AUDIO_RING_BUFFER_SIZE - (write_pos - read_pos);
+
+        if (samples_to_generate < available_space)
+        {
+            generate_audio_chunk(gameScene, samples_to_generate);
+            atomic_fetch_add(&g_samples_generated_total, samples_to_generate);
+        }
+    }
+}
+
 static void CB_GameScene_selector_init(CB_GameScene* gameScene);
 static void CB_GameScene_update(void* object, uint32_t u32enc_dt);
 static void CB_GameScene_menu(void* object);
@@ -1921,6 +1962,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
             run_frame_function_pointer(context->gb);
 #endif
+            tick_audio_sync(gameScene);
             memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
 
             // 2. Determine if the screen is static and if sprites were rendered.
@@ -1938,6 +1980,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
             run_frame_function_pointer(context->gb);
 #endif
+            tick_audio_sync(gameScene);
 
             // 4. Decide whether to blend based on the preference setting
             if (preferences_blend_frames == 1)  // "On" mode
@@ -1976,7 +2019,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                 run_frame_function_pointer(context->gb);
 #endif
-
+                tick_audio_sync(gameScene);
                 memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
 
                 context->gb->direct.oam_ghost_buffer = oam_ghost_buffer_storage;
@@ -1988,6 +2031,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                 run_frame_function_pointer(context->gb);
 #endif
+                tick_audio_sync(gameScene);
                 context->gb->direct.oam_ghost_buffer = NULL;
             }
             else
@@ -2003,6 +2047,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                     run_frame_function_pointer(context->gb);
 #endif
+                    tick_audio_sync(gameScene);
                 }
             }
         }
@@ -2018,41 +2063,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #ifdef TARGET_SIMULATOR
         pthread_mutex_unlock(&audio_mutex);
 #endif
-
-        if (preferences_audio_sync == 1 && gameScene->audioEnabled && !gameScene->audioLocked)
-        {
-            uint32_t samples_played = playdate->sound->getCurrentTime();
-            uint32_t samples_generated = atomic_load(&g_samples_generated_total);
-
-            // Target having a buffer of ~3 frames of audio (at 60fps)
-            uint32_t target_lead_samples = (44100 / 60) * 3;
-            uint32_t target_sample_count = samples_played + target_lead_samples;
-
-            int samples_to_generate = 0;
-            if (target_sample_count > samples_generated)
-            {
-                samples_to_generate = target_sample_count - samples_generated;
-            }
-
-            int max_gen_this_frame = (44100 / 60) * 4;
-            if (samples_to_generate > max_gen_this_frame)
-            {
-                samples_to_generate = max_gen_this_frame;
-            }
-
-            if (samples_to_generate > 0)
-            {
-                uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
-                uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
-                uint32_t available_space = AUDIO_RING_BUFFER_SIZE - (write_pos - read_pos);
-
-                if (samples_to_generate < available_space)
-                {
-                    generate_audio_chunk(gameScene, samples_to_generate);
-                    atomic_fetch_add(&g_samples_generated_total, samples_to_generate);
-                }
-            }
-        }
 
         if (gameScene->cartridge_has_battery)
         {
