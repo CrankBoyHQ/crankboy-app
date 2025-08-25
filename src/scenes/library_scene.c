@@ -479,7 +479,7 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_audio_sync = 1;       // Accurate
         preferences_sample_rate = 0;      // High
         preferences_headphone_audio = 1;  // Stereo
-        preferences_frame_skip = 0;       // 60fps
+        preferences_frame_skip = 1;       // 30fps
         preferences_dither_stable = 0;    // Off
         preferences_overclock = 0;        // Off
         preferences_itcm = 1;             // On
@@ -616,7 +616,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
 
             if (preferences_per_game == 1 && preferences_sound_mode == 2 &&
                 preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
-                preferences_headphone_audio == 1 && preferences_frame_skip == 0 &&
+                preferences_headphone_audio == 1 && preferences_frame_skip == 1 &&
                 preferences_dither_stable == 0 && preferences_overclock == 0 &&
                 preferences_itcm == 1 && preferences_uncap_fps == 0)
             {
