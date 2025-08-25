@@ -457,6 +457,46 @@ static void launch_game_normal(void* ud, int option)
     }
 }
 
+static void apply_lsdj_settings_and_launch(void* ud, int option)
+{
+    if (option != 0)
+    {
+        return;
+    }
+
+    CB_Game* game = ud;
+    char* settings_path = cb_game_config_path(game->fullpath);
+
+    if (settings_path)
+    {
+        void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
+
+        preferences_merge_from_disk(settings_path);
+
+        // Optimal settings for LSDj
+        preferences_per_game = 1;
+        preferences_sound_mode = 2;       // Accurate
+        preferences_audio_sync = 1;       // Accurate
+        preferences_sample_rate = 0;      // High
+        preferences_headphone_audio = 1;  // Stereo
+        preferences_frame_skip = 0;       // 60fps
+        preferences_dither_stable = 0;    // Off
+        preferences_overclock = 0;        // Off
+        preferences_itcm = 1;             // On
+        preferences_uncap_fps = 0;        // Off
+
+        call_with_main_stack_2(
+            preferences_save_to_disk, settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+        );
+
+        preferences_restore_subset(stored_globals);
+        cb_free(stored_globals);
+        cb_free(settings_path);
+    }
+
+    launch_game(game, 3);
+}
+
 static void disable_script_and_launch(void* ud, int option)
 {
     CB_Game* game = ud;
@@ -564,22 +604,47 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
-    /* Sound is perfect now, so we don't need this warning anymore.
     else if (!memcmp(rom_name, "LSDj", 4))
     {
-        const char* options[] = {"Ok", NULL};
-        CB_Modal* modal = CB_Modal_new(
-            "CrankBoy's sound emulation is not yet accurate enough for music composition to be
-    recommended.", options, launch_game_normal, game
-        );
+        bool settings_are_optimal = false;
+        char* settings_path = cb_game_config_path(game->fullpath);
 
-        modal->width = 350;
-        modal->height = 170;
+        if (playdate->file->stat(settings_path, NULL) == 0)
+        {
+            void* stored_prefs = preferences_store_subset(~(preferences_bitfield_t)0);
+            preferences_merge_from_disk(settings_path);
 
-        CB_presentModal(modal->scene);
-        launch = false;
+            if (preferences_per_game == 1 && preferences_sound_mode == 2 &&
+                preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
+                preferences_headphone_audio == 1 && preferences_frame_skip == 0 &&
+                preferences_dither_stable == 0 && preferences_overclock == 0 &&
+                preferences_itcm == 1 && preferences_uncap_fps == 0)
+            {
+                settings_are_optimal = true;
+            }
+
+            preferences_restore_subset(stored_prefs);
+            cb_free(stored_prefs);
+        }
+
+        cb_free(settings_path);
+
+        if (!settings_are_optimal)
+        {
+            const char* options[] = {"OK", NULL, NULL};
+            CB_Modal* modal = CB_Modal_new(
+                "LSDj requires accurate timing.\n\nTo ensure it runs "
+                "correctly, CrankBoy will apply the recommended settings.",
+                options, apply_lsdj_settings_and_launch, game
+            );
+
+            modal->width = 350;
+            modal->height = 200;
+
+            CB_presentModal(modal->scene);
+            launch = false;
+        }
     }
-    */
 #endif
 
     if (launch)
