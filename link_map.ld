@@ -70,6 +70,7 @@ SECTIONS
 		*(.itcm.cb)
 		. = ALIGN(32);
 		*(.itcm.micro)
+		*(.itcm.hdma)
 	    *(.itcm.*)
         __itcm_end = .;
 
