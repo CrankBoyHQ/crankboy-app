@@ -126,6 +126,7 @@ def create_split_game_json_256():
     # --- LOCAL JSON INTEGRATION ---
     integrate_json_file(all_games_dict, "homebrew.json", SCRIPT_DIR, "homebrew games")
     integrate_json_file(all_games_dict, "romhacks.json", SCRIPT_DIR, "romhacks")
+    integrate_json_file(all_games_dict, "lsdj.json", SCRIPT_DIR, "LSDj versions")
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 

@@ -1,8 +1,4 @@
 {
-    "774F3421": {
-        "long": "Squid Game: Game Boy Demake (64 Bits Animation)",
-        "short": "Squid Game"
-    },
     "77D7E5B7": {
         "long": "Hollywood Pinball (Japan) (GB Compatible)",
         "short": "Hollywood Pinball"
@@ -38,5 +34,9 @@
     "77C3AA0B": {
         "long": "World Circuit Series (USA)",
         "short": "World Circuit Series"
+    },
+    "774F3421": {
+        "long": "Squid Game: Game Boy Demake (64 Bits Animation)",
+        "short": "Squid Game"
     }
 }
