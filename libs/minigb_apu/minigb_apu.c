@@ -1079,32 +1079,35 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     }
 
     // --- High-Pass Filter ---
-    bool dacs_enabled = audio->chans[0].powered || audio->chans[1].powered ||
-                        audio->chans[2].powered || audio->chans[3].powered;
-
-    if (dacs_enabled)
+    if (preferences_sound_mode == 2)
     {
-        float charge_factor = get_charge_factors[preferences_sample_rate];
-        for (int i = 0; i < len; i++)
-        {
-            float in_l = left[i];
-            float out_l = in_l - audio->capacitor_l;
-            audio->capacitor_l = in_l - out_l * charge_factor;
-            left[i] = clamp16(out_l);
+        bool dacs_enabled = audio->chans[0].powered || audio->chans[1].powered ||
+                            audio->chans[2].powered || audio->chans[3].powered;
 
-            if (left != right)
+        if (dacs_enabled)
+        {
+            float charge_factor = get_charge_factors[preferences_sample_rate];
+            for (int i = 0; i < len; i++)
             {
-                float in_r = right[i];
-                float out_r = in_r - audio->capacitor_r;
-                audio->capacitor_r = in_r - out_r * charge_factor;
-                right[i] = clamp16(out_r);
+                float in_l = left[i];
+                float out_l = in_l - audio->capacitor_l;
+                audio->capacitor_l = in_l - out_l * charge_factor;
+                left[i] = clamp16(out_l);
+
+                if (left != right)
+                {
+                    float in_r = right[i];
+                    float out_r = in_r - audio->capacitor_r;
+                    audio->capacitor_r = in_r - out_r * charge_factor;
+                    right[i] = clamp16(out_r);
+                }
             }
         }
-    }
-    else
-    {
-        audio->capacitor_l = 0.0f;
-        audio->capacitor_r = 0.0f;
+        else
+        {
+            audio->capacitor_l = 0.0f;
+            audio->capacitor_r = 0.0f;
+        }
     }
 
 #ifdef TARGET_SIMULATOR
