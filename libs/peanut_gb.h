@@ -1005,6 +1005,33 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
 }
 
 /**
+ * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
+ */
+__core static void __gb_update_stat_irq(gb_s* gb)
+{
+    /* No STAT interrupts can occur when the LCD is off. */
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+    {
+        gb->direct.stat_line = 0;
+        return;
+    }
+
+    bool line_is_high =
+        ((gb->gb_reg.STAT & STAT_MODE_0_INTR) && (gb->lcd_mode == LCD_HBLANK)) ||
+        ((gb->gb_reg.STAT & STAT_MODE_1_INTR) && (gb->lcd_mode == LCD_VBLANK)) ||
+        ((gb->gb_reg.STAT & STAT_MODE_2_INTR) && (gb->lcd_mode == LCD_SEARCH_OAM)) ||
+        ((gb->gb_reg.STAT & STAT_LYC_INTR) && (gb->gb_reg.STAT & STAT_LYC_COINC));
+
+    /* On a rising edge (from low to high), request the interrupt. */
+    if (!gb->direct.stat_line && line_is_high)
+    {
+        gb->gb_reg.IF |= LCDC_INTR;
+    }
+
+    gb->direct.stat_line = line_is_high;
+}
+
+/**
  * Internal function to check for LY=LYC coincidence and update STAT.
  */
 __core static void __gb_check_lyc(gb_s* gb)
@@ -1012,11 +1039,6 @@ __core static void __gb_check_lyc(gb_s* gb)
     if (gb->gb_reg.LY == gb->gb_reg.LYC)
     {
         gb->gb_reg.STAT |= STAT_LYC_COINC;
-
-        if (gb->gb_reg.STAT & STAT_LYC_INTR)
-        {
-            gb->gb_reg.IF |= LCDC_INTR;
-        }
     }
     else
     {
@@ -1386,45 +1408,23 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         case 0x41:  // STAT Register
         {
-            bool interrupt_requested = false;
-
             // --- Spurious STAT interrupt quirk (DMG-only) ---
             // On DMG, a write to STAT can trigger an interrupt if an observable
             // condition (a specific PPU mode or LY=LYC) is already true,
             // regardless of the STAT enable bits.
             // The check is for any mode except Mode 3 (Pixel Transfer).
+            // Required for games like Road Rash and F-1 Racing.
             if (!gb->is_cgb_mode && (gb->gb_reg.LCDC & LCDC_ENABLE))
             {
                 if (gb->lcd_mode != LCD_TRANSFER || (gb->gb_reg.STAT & STAT_LYC_COINC))
                 {
-                    interrupt_requested = true;
+                    gb->gb_reg.IF |= LCDC_INTR;
                 }
             }
 
-            // --- Standard STAT register write and check ---
             gb->gb_reg.STAT = (val & STAT_USER_BITS) | (gb->gb_reg.STAT & ~STAT_USER_BITS);
 
-            if (gb->gb_reg.LCDC & LCDC_ENABLE)
-            {
-                bool mode_interrupt =
-                    (gb->gb_reg.STAT & STAT_MODE_0_INTR && gb->lcd_mode == LCD_HBLANK) ||
-                    (gb->gb_reg.STAT & STAT_MODE_1_INTR && gb->lcd_mode == LCD_VBLANK) ||
-                    (gb->gb_reg.STAT & STAT_MODE_2_INTR && gb->lcd_mode == LCD_SEARCH_OAM);
-
-                bool lyc_interrupt =
-                    (gb->gb_reg.STAT & STAT_LYC_INTR) && (gb->gb_reg.STAT & STAT_LYC_COINC);
-
-                if (mode_interrupt || lyc_interrupt)
-                {
-                    interrupt_requested = true;
-                }
-            }
-
-            if (interrupt_requested)
-            {
-                gb->gb_reg.IF |= LCDC_INTR;
-            }
-
+            __gb_update_stat_irq(gb);
             return;
         }
 
@@ -1448,6 +1448,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             if (gb->gb_reg.LCDC & LCDC_ENABLE)
             {
                 __gb_check_lyc(gb);
+                __gb_update_stat_irq(gb);
             }
             return;
 
@@ -5394,9 +5395,7 @@ done_instr:
 
                 gb->lcd_mode = LCD_HBLANK;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
-
-                if (gb->gb_reg.STAT & STAT_MODE_0_INTR)
-                    gb->gb_reg.IF |= LCDC_INTR;
+                __gb_update_stat_irq(gb);
             }
             break;
 
@@ -5409,6 +5408,7 @@ done_instr:
                 gb->gb_reg.LY++;
 
                 __gb_check_lyc(gb);
+                __gb_update_stat_irq(gb);
 
                 if (gb->gb_reg.LY == LCD_HEIGHT)
                 {
@@ -5418,16 +5418,14 @@ done_instr:
                     gb->gb_reg.IF |= VBLANK_INTR;
                     gb->lcd_blank = 0;
 
-                    if (gb->gb_reg.STAT & STAT_MODE_1_INTR)
-                        gb->gb_reg.IF |= LCDC_INTR;
+                    __gb_update_stat_irq(gb);
                 }
                 else
                 {
                     gb->lcd_mode = LCD_SEARCH_OAM;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
-                    if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
-                        gb->gb_reg.IF |= LCDC_INTR;
+                    __gb_update_stat_irq(gb);
                 }
             }
             break;
@@ -5450,14 +5448,14 @@ done_instr:
                 }
 
                 __gb_check_lyc(gb);
+                __gb_update_stat_irq(gb);
 
                 if (gb->gb_reg.LY == 0)
                 {
                     gb->lcd_mode = LCD_SEARCH_OAM;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
-                    if (gb->gb_reg.STAT & STAT_MODE_2_INTR)
-                        gb->gb_reg.IF |= LCDC_INTR;
+                    __gb_update_stat_irq(gb);
 
                     gb->display.window_clear = 0;
                     gb->display.WY = gb->gb_reg.WY;
@@ -5875,6 +5873,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
     __gb_update_map_pointers(gb);
 
     gb->direct.joypad = 0xFF;
+    gb->direct.stat_line = 0;
 
     gb->gb_reg.tima_overflow_delay = 0;
 
