@@ -2600,9 +2600,6 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
 {
     static uint32_t frames_since_sram_update;
 
-    // save SRAM under some conditions
-    // TODO: also save if menu opens, playdate goes to sleep, app closes, or
-    // powers down
     gb->direct.sram_dirty |= gb->direct.sram_updated;
 
     if (gb->direct.sram_updated)
@@ -2616,7 +2613,9 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
 
     if (gb->cart_battery && gb->direct.sram_dirty && !gb->direct.sram_updated)
     {
-        if (frames_since_sram_update >= CB_IDLE_FRAMES_BEFORE_SAVE)
+        // With audio sync enabled, idle-saving can cause audio under-runs.
+        // In this case, we rely on saving when the menu is opened or the system is locked.
+        if (preferences_audio_sync != 1 && frames_since_sram_update >= CB_IDLE_FRAMES_BEFORE_SAVE)
         {
             playdate->system->logToConsole("Saving (idle detected)");
             gb_save_to_disk(gb);
