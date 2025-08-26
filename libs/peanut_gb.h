@@ -5892,7 +5892,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
         /*****************************************************************/
         playdate->system->logToConsole("Starting ROM with GBC registers");
-        gb->cpu_reg.af = 0x1180;
+        gb->cpu_reg.af = 0x8011;
         gb->cpu_reg.bc = 0x0000;
         gb->cpu_reg.de = 0xFF56;
         gb->cpu_reg.hl = 0x000D;
@@ -5933,7 +5933,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /*****************************************************************/
 
         /* Initialize CPU registers as though the boot ROM has just finished. */
-        gb->cpu_reg.af = 0x01B0;
+        gb->cpu_reg.af = 0xB001;
         gb->cpu_reg.bc = 0x0013;
         gb->cpu_reg.de = 0x00D8;
         gb->cpu_reg.hl = 0x014D;

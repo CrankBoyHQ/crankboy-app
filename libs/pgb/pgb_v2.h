@@ -53,8 +53,8 @@ struct PGB_VERSIONED(cpu_registers_s)
     {
         struct
         {
+            // Note: stored order of AF is swapped compared to convention
             uint8_t a;
-            /* Define specific bits of Flag register. */
             union
             {
                 struct
