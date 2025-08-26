@@ -116,7 +116,13 @@ __audio static void update_env(struct chan* c, int sample_rate)
             {
                 c->env.inc = 0;
             }
+#if TARGET_PLAYDATE
+            int volume = c->volume;
+            asm volatile("usat %0, #4, %0" : "+r"(volume));
+            c->volume = volume;
+#else
             c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
+#endif
         }
         c->env.counter -= sample_rate;
     }
