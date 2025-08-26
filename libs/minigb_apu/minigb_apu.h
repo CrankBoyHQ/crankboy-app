@@ -97,8 +97,13 @@ typedef struct audio_data
     uint8_t* audio_mem;
     struct chan chans[4];
 
+#if TARGET_PLAYDATE
+    int32_t capacitor_l;
+    int32_t capacitor_r;
+#else
     float capacitor_l;
     float capacitor_r;
+#endif
 } audio_data;
 
 /**

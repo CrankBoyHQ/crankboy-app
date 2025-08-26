@@ -51,6 +51,16 @@
     __attribute__((optimize("Os"))) __attribute__((section(".audio"))) __attribute__((short_call))
 #endif
 
+#if TARGET_PLAYDATE
+// Q1.15 fixed-point equivalents of the factors below.
+// Formula: (int16_t)((0.999958 ^ (DMG_CLOCK_FREQ / sample_rate)) * 32768)
+static const int16_t get_charge_factors_q15[] = {
+    32637,  // 0.996f
+    32507,  // 0.992f
+    32378   // 0.988f
+};
+#else
+
 /* The factors are calculated using the formula:
  * 0.999958^(DMG_CLOCK_FREQ / sample_rate)
  */
@@ -68,6 +78,7 @@ static inline int16_t clamp16(float s)
         return 32767;
     return (int16_t)s;
 }
+#endif
 
 static inline int get_sample_replication(void)
 {
@@ -911,8 +922,13 @@ void audio_init(audio_data* audio)
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
 
+#if TARGET_PLAYDATE
+    audio->capacitor_l = 0;
+    audio->capacitor_r = 0;
+#else
     audio->capacitor_l = 0.0f;
     audio->capacitor_r = 0.0f;
+#endif
 
     /* Initialise IO registers. */
     { /* clang-format off */
@@ -1074,6 +1090,65 @@ __attribute__((always_inline)) static inline void replicate_samples_optimized(
         }
     }
 }
+
+__attribute__((always_inline)) static inline void high_pass_filter_fixed_asm(
+    int16_t* left, int16_t* right, int len, audio_data* audio, int16_t charge_factor_q15
+)
+{
+    int32_t cap_l = audio->capacitor_l;
+    int32_t cap_r = audio->capacitor_r;
+
+    for (int i = 0; i < len; i++)
+    {
+        uint32_t in_lr, out_lr;
+        int32_t next_cap_l, next_cap_r;
+
+        if (left == right)
+        {
+            uint16_t sample = left[i];
+            in_lr = ((uint32_t)sample) | ((uint32_t)sample << 16);
+        }
+        else
+        {
+            in_lr = (uint32_t)((uint16_t)left[i]) | ((uint32_t)right[i] << 16);
+        }
+
+        asm volatile(
+            "asr r0, %[cap_l_in], #16\n\t"
+            "asr r1, %[cap_r_in], #16\n\t"
+            "pkhbt r0, r0, r1, lsl #16\n\t"
+
+            "qsub16 %[out_lr_out], %[in_lr_in], r0\n\t"
+
+            "smulbb r1, %[out_lr_out], %[charge_in]\n\t"
+            "lsl r1, r1, #1\n\t"
+            "lsl r0, %[in_l_in], #16\n\t"
+            "sub %[cap_l_out], r0, r1\n\t"
+
+            "smultb r1, %[out_lr_out], %[charge_in]\n\t"
+            "lsl r1, r1, #1\n\t"
+            "lsl r0, %[in_r_in], #16\n\t"
+            "sub %[cap_r_out], r0, r1\n\t"
+
+            :
+            [out_lr_out] "=&r"(out_lr), [cap_l_out] "=&r"(next_cap_l), [cap_r_out] "=&r"(next_cap_r)
+            : [in_lr_in] "r"(in_lr), [in_l_in] "r"((int16_t)in_lr),
+              [in_r_in] "r"((int16_t)(in_lr >> 16)), [cap_l_in] "r"(cap_l), [cap_r_in] "r"(cap_r),
+              [charge_in] "r"(charge_factor_q15)
+            : "r0", "r1", "cc"
+        );
+
+        cap_l = next_cap_l;
+        cap_r = next_cap_r;
+        left[i] = (int16_t)out_lr;
+        if (left != right)
+        {
+            right[i] = (int16_t)(out_lr >> 16);
+        }
+    }
+    audio->capacitor_l = cap_l;
+    audio->capacitor_r = cap_r;
+}
 #endif
 
 /**
@@ -1108,8 +1183,13 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         {
             memset(right, 0, len * sizeof(int16_t));
         }
+#if TARGET_PLAYDATE
+        audio->capacitor_l = 0;
+        audio->capacitor_r = 0;
+#else
         audio->capacitor_l = 0.0f;
         audio->capacitor_r = 0.0f;
+#endif
         return 1;
     }
 
@@ -1208,6 +1288,10 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
         if (dacs_enabled)
         {
+#if TARGET_PLAYDATE
+            int16_t charge_factor = get_charge_factors_q15[preferences_sample_rate];
+            high_pass_filter_fixed_asm(left, right, len, audio, charge_factor);
+#else
             float charge_factor = get_charge_factors[preferences_sample_rate];
             for (int i = 0; i < len; i++)
             {
@@ -1224,11 +1308,17 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                     right[i] = clamp16(out_r);
                 }
             }
+#endif
         }
         else
         {
+#if TARGET_PLAYDATE
+            audio->capacitor_l = 0;
+            audio->capacitor_r = 0;
+#else
             audio->capacitor_l = 0.0f;
             audio->capacitor_r = 0.0f;
+#endif
         }
     }
 
