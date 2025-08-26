@@ -967,6 +967,115 @@ void audio_init(audio_data* audio)
 
 int audio_enabled;
 
+#if TARGET_PLAYDATE
+__attribute__((always_inline)) static inline void replicate_samples_optimized(
+    int16_t* left_ptr, int16_t* right_ptr, int chunksize, int sample_replication, bool is_stereo
+)
+{
+    if (sample_replication <= 1)
+        return;
+
+    for (int i = 0; i < chunksize; i += sample_replication)
+    {
+        int samples_to_replicate = sample_replication - 1;
+        if (i + samples_to_replicate >= chunksize)
+        {
+            samples_to_replicate = chunksize - i - 1;
+        }
+        if (samples_to_replicate <= 0)
+            continue;
+
+        if (is_stereo)
+        {
+            int16_t sample_l = left_ptr[i];
+            int16_t sample_r = right_ptr[i];
+            int16_t* dest_l = &left_ptr[i + 1];
+            int16_t* dest_r = &right_ptr[i + 1];
+
+            asm volatile(
+                "mov r0, %[sl]\n\t"
+                "mov r1, r0\n\t"
+                "mov r2, r0\n\t"
+                "mov r3, r0\n\t"
+                "mov r4, %[sr]\n\t"
+                "mov r5, r4\n\t"
+                "mov r6, r4\n\t"
+                "mov r7, r4\n\t"
+
+                "1:\n\t"
+                "cmp %[count], #4\n\t"
+                "blt 2f\n\t"
+                "stmia %[dl]!, {r0-r3}\n\t"
+                "stmia %[dr]!, {r4-r7}\n\t"
+                "sub %[count], #4\n\t"
+                "b 1b\n\t"
+                "2:\n\t"
+
+                : [dl] "+r"(dest_l), [dr] "+r"(dest_r), [count] "+r"(samples_to_replicate)
+                : [sl] "r"(sample_l), [sr] "r"(sample_r)
+                : "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "memory", "cc"
+            );
+
+            if (samples_to_replicate > 0)
+            {
+                uint32_t packed_l = (uint32_t)((uint16_t)sample_l) | ((uint32_t)sample_l << 16);
+                uint32_t packed_r = (uint32_t)((uint16_t)sample_r) | ((uint32_t)sample_r << 16);
+                if (samples_to_replicate >= 2)
+                {
+                    *((uint32_t*)dest_l) = packed_l;
+                    *((uint32_t*)dest_r) = packed_r;
+                    dest_l += 2;
+                    dest_r += 2;
+                    samples_to_replicate -= 2;
+                }
+                if (samples_to_replicate > 0)
+                {
+                    *dest_l = sample_l;
+                    *dest_r = sample_r;
+                }
+            }
+        }
+        else
+        {
+            int16_t sample = left_ptr[i];
+            int16_t* dest = &left_ptr[i + 1];
+
+            asm volatile(
+                "mov r0, %[s]\n\t"
+                "mov r1, r0\n\t"
+                "mov r2, r0\n\t"
+                "mov r3, r0\n\t"
+                "1:\n\t"
+                "cmp %[count], #4\n\t"
+                "blt 2f\n\t"
+                "stmia %[d]!, {r0-r3}\n\t"
+                "sub %[count], #4\n\t"
+                "b 1b\n\t"
+                "2:\n\t"
+                : [d] "+r"(dest), [count] "+r"(samples_to_replicate)
+                : [s] "r"(sample)
+                : "r0", "r1", "r2", "r3", "memory", "cc"
+            );
+
+            if (samples_to_replicate > 0)
+            {
+                uint32_t packed = (uint32_t)((uint16_t)sample) | ((uint32_t)sample << 16);
+                if (samples_to_replicate >= 2)
+                {
+                    *((uint32_t*)dest) = packed;
+                    dest += 2;
+                    samples_to_replicate -= 2;
+                }
+                if (samples_to_replicate > 0)
+                {
+                    *dest = sample;
+                }
+            }
+        }
+    }
+}
+#endif
+
 /**
  * Playdate audio callback function.
  */
@@ -1063,6 +1172,12 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             update_square(audio, left_ptr, right_ptr, 1, chunksize);
             update_noise(audio, left_ptr, right_ptr, chunksize);
 
+#if TARGET_PLAYDATE
+            replicate_samples_optimized(
+                left_ptr, right_ptr, chunksize, sample_replication, gameScene->is_stereo
+            );
+#else
+
             if (sample_replication > 1)
             {
                 for (int i = 0; i < chunksize; i += sample_replication)
@@ -1077,6 +1192,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                     }
                 }
             }
+#endif
             remaining_len -= chunksize;
             left_ptr += chunksize;
             if (gameScene->is_stereo)
