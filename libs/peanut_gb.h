@@ -5678,7 +5678,7 @@ __core void gb_run_frame(gb_s* gb)
 
     unsigned int total_cycles = 0;
     
-    static bool latch_log = false;
+    static bool latch_log = true;
 
     while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
     {
@@ -5694,16 +5694,7 @@ __core void gb_run_frame(gb_s* gb)
         );
         else
         {
-            if (gb->cpu_reg.pc == 0x63e8)
-            {
-                //latch_log = true;
-            }
-            
-            if (gb->cpu_reg.pc == 0x0468)
-            {
-                playdate->system->logToConsole("wait 0x%02x frames", gb->cpu_reg.c);
-                playdate->system->logToConsole("  RA: %04X", __gb_read16(gb, gb->cpu_reg.sp));
-            }
+            // enable/disable logging at specified points
         }
 #endif
     }
@@ -5899,7 +5890,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
 
-    if (preferences_experimental_gbc_mode)
+    if (preferences_experimental_cgb_mode)
     {
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
@@ -6169,7 +6160,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     const uint16_t cgb_flag_location = 0x0143;
     const uint8_t cgb_flag = gb->gb_rom[cgb_flag_location];
 
-    if (!preferences_experimental_gbc_mode && (gb->gb_rom[0x0143] == 0xC0) &&
+    if (!preferences_experimental_cgb_mode && (gb->gb_rom[0x0143] == 0xC0) &&
         !gb->direct.ignore_cgb_check)
     {
         return GB_INIT_CARTRIDGE_UNSUPPORTED;
@@ -6199,7 +6190,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
 
-    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_gbc_mode;
+    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_cgb_mode;
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
     gb->cgb_wram_bank = 1;
