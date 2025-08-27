@@ -32,6 +32,12 @@ extern pthread_mutex_t audio_mutex;
 #undef DTCM_ALLOC
 #endif
 
+#ifdef TARGET_SIMULATOR
+#define __space
+#else
+#define __space __attribute__((optimize("Os")))
+#endif
+
 #define AUDIO_RING_BUFFER_SIZE 4096  // ~90ms of audio at 44.1kHz.
 
 typedef struct
@@ -162,24 +168,6 @@ const char* get_pdboot_name_and_version(void);
 
 #define PLAYDATE_ROW_STRIDE 52
 
-// relocatable and tightly-packed interpreter code
-#ifdef TARGET_SIMULATOR
-#define __core
-#define __core_section(x)
-#define __space
-#else
-#define __space __attribute__((optimize("Os")))
-#ifdef ITCM_CORE
-#define __core \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm"))) __attribute__((short_call))
-#define __core_section(x) \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm." x))) __attribute__((short_call))
-#else
-#define __core __attribute__((optimize("Os"))) __attribute__((section(".text.itcm")))
-#define __core_section(x) __core
-#endif
-#endif
-
 // Any function which a __core fn can call MUST be marked as long_call (i.e.
 // __shell) to ensure portability.
 #ifdef TARGET_SIMULATOR
@@ -194,18 +182,6 @@ const char* get_pdboot_name_and_version(void);
 #else
 #define __shell __attribute((noinline)) __section__(".text.cb")
 #endif
-#endif
-
-#ifdef ITCM_CORE
-extern char __itcm_start[];
-extern char __itcm_end[];
-extern void* core_itcm_reloc;
-#define itcm_core_size ((uintptr_t)&__itcm_end - (uintptr_t)&__itcm_start)
-#define ITCM_CORE_FN(fn) \
-    ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_start + core_itcm_reloc))
-void itcm_core_init(void);
-#else
-#define ITCM_CORE_FN(fn) fn
 #endif
 
 // don't exceed 60 fps
