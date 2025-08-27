@@ -214,7 +214,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     poke_verify(6, 0x4097, 0x08, 0x01);
     poke_verify(6, 0x4098, 0x28, 0x20);
 
-    unsigned cave_1_addr, cave_1_size;
+    romaddr_t cave_1_addr, cave_1_size;
     find_code_cave(1, &cave_1_addr, &cave_1_size);
 
     if (cave_1_size < 40)
