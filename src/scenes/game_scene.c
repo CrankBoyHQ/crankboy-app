@@ -807,6 +807,15 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
         audioGameScene = NULL;
     }
 
+    if (preferences_crank_down_action == 0)
+    {
+        gameScene->selector.deadAngle = 45;
+    }
+    else
+    {
+        gameScene->selector.deadAngle = 20;
+    }
+
     playdate->system->setAutoLockDisabled(preferences_disable_autolock);
 }
 
@@ -861,7 +870,6 @@ static void CB_GameScene_selector_init(CB_GameScene* gameScene)
     gameScene->selector.selectButtonY = selectButtonY;
     gameScene->selector.numberOfFrames = 27;
     gameScene->selector.triggerAngle = 45;
-    gameScene->selector.deadAngle = 20;
     gameScene->selector.index = 0;
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;

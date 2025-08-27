@@ -534,8 +534,8 @@ static bool crank_would_cause_input(CB_Game* game)
 
     if (crank_mode == CRANK_MODE_START_SELECT)
     {
-        float triggerAngle = 45.0f;
-        float deadAngle = 20.0f;
+        const float triggerAngle = 45.0f;
+        const float deadAngle = (crank_down_action == 0) ? 45.0f : 20.0f;
 
         bool in_active_zone = (crank_angle >= triggerAngle && crank_angle <= 360.0f - triggerAngle);
         bool in_down_dead_zone =
