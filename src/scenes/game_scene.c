@@ -806,6 +806,8 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
         context->gb->direct.sound = 0;
         audioGameScene = NULL;
     }
+
+    playdate->system->setAutoLockDisabled(preferences_disable_autolock);
 }
 
 static void CB_GameScene_selector_init(CB_GameScene* gameScene)
@@ -3426,6 +3428,9 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     case kEventPause:
         audioGameScene = NULL;
 
+        // Re-enable auto-lock when the system menu is open.
+        playdate->system->setAutoLockDisabled(0);
+
         DTCM_VERIFY();
         if (gameScene->cartridge_has_battery)
         {
@@ -3443,6 +3448,9 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         break;
     case kEventUnlock:
     case kEventResume:
+        // Re-apply the user's auto-lock preference on resume.
+        playdate->system->setAutoLockDisabled(preferences_disable_autolock);
+
         if (gameScene->audioEnabled)
         {
             audioGameScene = gameScene;
@@ -3525,6 +3533,8 @@ static void CB_GameScene_free(void* object)
     DTCM_VERIFY();
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
+
+    playdate->system->setAutoLockDisabled(0);
 
     if (gameScene->state != CB_GameSceneStateCGBConfirm)
     {

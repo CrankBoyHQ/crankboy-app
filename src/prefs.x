@@ -26,6 +26,7 @@ PREF(crank_undock_button, PREF_BUTTON_NONE)
 PREF(crank_dock_button, PREF_BUTTON_NONE)
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))
+PREF(disable_autolock, 0)
 PREF(script_has_prompted, false)  // (not a real setting)
 
 // library

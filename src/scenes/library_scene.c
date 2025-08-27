@@ -475,15 +475,16 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
 
         // Optimal settings for LSDj
         preferences_per_game = 1;
-        preferences_sound_mode = 2;       // Accurate
-        preferences_audio_sync = 1;       // Accurate
-        preferences_sample_rate = 0;      // High
-        preferences_headphone_audio = 1;  // Stereo
-        preferences_frame_skip = 1;       // 30fps
-        preferences_dither_stable = 0;    // Off
-        preferences_overclock = 0;        // Off
-        preferences_itcm = 1;             // On
-        preferences_uncap_fps = 0;        // Off
+        preferences_sound_mode = 2;        // Accurate
+        preferences_audio_sync = 1;        // Accurate
+        preferences_sample_rate = 0;       // High
+        preferences_headphone_audio = 1;   // Stereo
+        preferences_frame_skip = 1;        // 30fps
+        preferences_dither_stable = 0;     // Off
+        preferences_disable_autolock = 1;  // On
+        preferences_overclock = 0;         // Off
+        preferences_itcm = 1;              // On
+        preferences_uncap_fps = 0;         // Off
 
         call_with_main_stack_2(
             preferences_save_to_disk, settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
@@ -618,7 +619,8 @@ static void launch_game_prompt_if_script(void* ud, int option)
                 preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
                 preferences_headphone_audio == 1 && preferences_frame_skip == 1 &&
                 preferences_dither_stable == 0 && preferences_overclock == 0 &&
-                preferences_itcm == 1 && preferences_uncap_fps == 0)
+                preferences_itcm == 1 && preferences_disable_autolock == 1 &&
+                preferences_uncap_fps == 0)
             {
                 settings_are_optimal = true;
             }
