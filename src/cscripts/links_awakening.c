@@ -3,7 +3,7 @@
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
     "- Full aspect ratio; no vertical squishing.\n"                              \
-    "- Can open save menu with just start+select.\n"                             \
+    "- Open save menu by docking the Crank.\n"                                   \
     "- In fishing mini-game: CCW Crank = Reel, CW Crank = Cast.\n"               \
     "- Intro cutscene can be skipped with Ⓐ.\n"
 
@@ -45,7 +45,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     ScriptData* data = allocz(ScriptData);
 
     force_pref(crank_mode, CRANK_MODE_START_SELECT);
-    force_pref(crank_dock_button, PREF_BUTTON_NONE);
+    force_pref(crank_down_action, 0);
+    force_pref(crank_dock_button, PREF_BUTTON_START_SELECT);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
 
     force_pref(dither_stable, false);
