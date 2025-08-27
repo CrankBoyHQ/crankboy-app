@@ -218,9 +218,9 @@ struct PGB_VERSIONED(gb_s)
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
     uint16_t cgb_hdma_dst;
-    uint16_t cgb_hdma_len : 7;
+    int16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
-
+    
     uint8_t* selected_cart_bank_addr;
 
     /* Number of ROM banks in cartridge. */
@@ -483,7 +483,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
                                 &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
                                 &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base[0], &gb->wram_base[1],
                                 &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
-                                &gb->xram};
+                                &gb->xram, &gb->display.bg_map_base, &gb->display.window_map_base};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)

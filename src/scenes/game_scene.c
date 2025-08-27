@@ -3507,6 +3507,12 @@ static void CB_GameScene_free(void* object)
     DTCM_VERIFY();
 }
 
+__section__(".rare") void __gb_dump_vram(gb_s* gb)
+{
+    playdate->system->logToConsole("dumping vram to vram.bin");
+    call_with_main_stack_3(cb_write_entire_file, "vram.bin", gb->vram, VRAM_SIZE_CGB);
+}
+
 __section__(".rare") void __gb_on_breakpoint(gb_s* gb, int breakpoint_number)
 {
     CB_GameSceneContext* context = gb->direct.priv;

@@ -651,12 +651,13 @@ ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene
         if (csi->on_begin)
         {
             state->ud = csi->on_begin(game_scene->context->gb, game_name);
-        }
-        else
-        {
-            playdate->system->error("Script returned NULL from on_begin, indicating an error.");
-            cb_free(state);
-            return NULL;
+            
+            if (!state->ud)
+            {
+                playdate->system->error("Script returned NULL from on_begin, indicating an error.");
+                cb_free(state);
+                return NULL;
+            }
         }
     }
 
@@ -743,7 +744,7 @@ void script_draw(ScriptState* state, struct CB_GameScene* game_scene)
 
 // for C scripts
 __section__(".rare") int c_script_add_hw_breakpoint(
-    gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
+    gb_s* gb, uint32_t addr, CS_OnBreakpoint callback
 )
 {
     // get script from gb (rather indirect :/)

@@ -80,7 +80,7 @@ void cb_register_all_scripts(void);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.
-int c_script_add_hw_breakpoint(gb_s* gb, uint16_t addr, CS_OnBreakpoint callback);
+int c_script_add_hw_breakpoint(gb_s* gb, uint32_t addr, CS_OnBreakpoint callback);
 
 // script info
 void script_info_free(ScriptInfo* info);

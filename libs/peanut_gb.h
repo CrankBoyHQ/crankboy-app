@@ -49,6 +49,12 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
+#define TRACE_LOG 1
+#ifdef CPU_VALIDATE
+    #undef CPU_VALIDATE
+#endif
+#define CPU_VALIDATE 0
+
 // color game boy support
 #ifndef PGB_CGB
 #define PGB_CGB 0
@@ -302,6 +308,9 @@ __core unsigned int __gb_step_cpu(gb_s* gb);
 
 #ifdef PGB_IMPL
 
+void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
+void __gb_dump_vram(gb_s* gb);
+
 /**
  * Directly calculates and applies the RTC state after a given
  * number of seconds have passed.
@@ -425,7 +434,7 @@ __section__(".text.cb") static void __gb_update_tac(gb_s* gb)
 __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     // swappable cartridge ROM bank
-    int32_t offset = (gb->selected_rom_bank - 1) * ROM_BANK_SIZE;
+    int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
     gb->selected_bank_addr = gb->gb_rom + offset;
     
     // swappable cgb wram bank
@@ -544,14 +553,10 @@ static uint8_t __gb_read(gb_s* gb, const uint16_t addr);
 __core_section("hdma") static
 void __gb_do_hdma(gb_s* gb)
 {
-    int hdma_remaning = gb->cgb_hdma_len - 1;
-    if (hdma_remaning < 0)
-    {
-        gb->cgb_hdma_active = false;
-    }
+    int hdma_remaning = ((int8_t)gb->cgb_hdma_len);
     
     uint16_t src = gb->cgb_hdma_src;
-    uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE);
+    uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE) ;
     // OPTIMIZE: common sources
     for (int i = 0; i < 0x10; ++i)
     {
@@ -562,7 +567,8 @@ void __gb_do_hdma(gb_s* gb)
         dst++;
     }
     
-    gb->cgb_hdma_len = hdma_remaning;
+    gb->cgb_hdma_len = hdma_remaning - 1;
+    gb->cgb_hdma_active = hdma_remaning > 0;
     
     // TODO: verify
     gb->cgb_hdma_src += 0x10;
@@ -600,28 +606,28 @@ __section__(".rare.cb") static void __gb_rare_write(
                 __gb_update_selected_bank_addr(gb);
             }
             return;
-        case 0x51:  // HDMA1
+        case 0x52:  // HDMA src lo
             if (gb->is_cgb_mode)
             {
                 gb->cgb_hdma_src &= 0xFF00;
-                gb->cgb_hdma_src |= val;
+                gb->cgb_hdma_src |= val & 0xF0;
             }
             return;
-        case 0x52:  // HDMA2
+        case 0x51:  // HDMA src hi
             if (gb->is_cgb_mode)
             {
                 gb->cgb_hdma_src &= 0x00FF;
-                gb->cgb_hdma_src |= ((unsigned)val) << 8;
+                gb->cgb_hdma_src |= ((unsigned)val & 0xF0) << 8;
             }
             return;
-        case 0x53:  // HDMA3
+        case 0x54:  // HDMA dst lo
             if (gb->is_cgb_mode)
             {
                 gb->cgb_hdma_dst &= 0xFF00;
                 gb->cgb_hdma_dst |= val;
             }
             return;
-        case 0x54:  // HDMA4
+        case 0x53:  // HDMA dst hi
             if (gb->is_cgb_mode)
             {
                 gb->cgb_hdma_dst &= 0x00FF;
@@ -629,24 +635,37 @@ __section__(".rare.cb") static void __gb_rare_write(
             }
             return;
         case 0x55:  // HDMA5 (VRAM DMA)
+            if (gb->is_cgb_mode)
             {
-                bool was_hdma_in_progress = gb->cgb_hdma_active;
-                bool hdma_hblank_mode = val >> 7;
+                int was_len = gb->cgb_hdma_len;
                 gb->cgb_hdma_len = val & 0x7F;
-                if (hdma_hblank_mode)
+                bool was_active = gb->cgb_hdma_active;
+                gb->cgb_hdma_active = (val >> 7);
+                
+                if (!gb->cgb_hdma_active && was_active)
                 {
-                    gb->cgb_hdma_active = true;
-                }
-                else if (!was_hdma_in_progress)
-                {
-                    // FIXME: this should take time (ms), but we pretend it doesn't
-                    gb->cgb_hdma_active = true;
-                    while (gb->cgb_hdma_active) __gb_do_hdma(gb);
+                    playdate->system->logToConsole("active HDMA stopped, pc=%x, len was %d", gb->cpu_reg.pc, was_len);
                 }
                 else
                 {
-                    // stopped hdma in progress
-                    gb->cgb_hdma_active = false;
+                    if (gb->cgb_hdma_active)
+                    {
+                        playdate->system->logToConsole("HDMA (async) 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc);
+                    }
+                    else
+                    {
+                        if (gb->cgb_hdma_len != -1) // TODO: double-check this condition
+                        {
+                            playdate->system->logToConsole("HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc);
+                            gb->cgb_hdma_active = true;
+                            while (gb->cgb_hdma_active) __gb_do_hdma(gb);
+                        }
+                        else
+                        {
+                            // TODO: is this real behaviour?
+                            playdate->system->logToConsole("HDMA (null) 0x%x -> 0x%x, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cpu_reg.pc);
+                        }
+                    }
                 }
             }
             return;
@@ -775,33 +794,15 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
             return 0xFF;
         
         case 0x51:  // HDMA1
-            if (gb->is_cgb_mode)
-            {
-                return gb->cgb_hdma_src & 0xFF;
-            }
-            return 0xFF;
         case 0x52:  // HDMA2
-            if (gb->is_cgb_mode)
-            {
-                return gb->cgb_hdma_src >> 8;
-            }
-            return 0xFF;
         case 0x53:  // HDMA3
-            if (gb->is_cgb_mode)
-            {
-                return gb->cgb_hdma_dst & 0xFF;
-            }
-            return 0xFF;
         case 0x54:  // HDMA4
-            if (gb->is_cgb_mode)
-            {
-                return gb->cgb_hdma_dst >> 8;
-            }
-            return 0xFF;
+            return 0xFF; // (confirmed)
+        
         case 0x55:  // HDMA5 (VRAM DMA)
             if (gb->is_cgb_mode)
             {
-                return gb->cgb_hdma_len | (gb->cgb_hdma_active << 7);
+                return ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80);
             }
             return 0xFF;
             
@@ -2650,7 +2651,7 @@ _0x10:
 
     gb->cpu_reg.pc++;
 
-    if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+    if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR /* FIXME: why can't we assume (IF & ~ANY_INTR) is 0?*/)
     {
         if (gb->gb_ime == 0)
         {
@@ -5238,7 +5239,20 @@ __shell static void __gb_interrupt(gb_s* gb)
 
 __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 {
+    // In STOP mode, the CPU is paused until a button is pressed.
+    if (gb->gb_halt && gb->direct.joypad != 0xFF)
+    {
+        gb->gb_stop = 0;
+        return 16;
+    }
+    
     int src[] = {512, 512, 512};
+    int ppu_timing_by_mode[4] = {
+        PPU_MODE_0_HBLANK_CYCLES,
+        LCD_LINE_CYCLES,
+        PPU_MODE_2_OAM_CYCLES,
+        PPU_MODE_3_VRAM_CYCLES,
+    };
 
 #if 0
     // TODO: optimize serial
@@ -5251,15 +5265,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
                  ((0x100 - gb->gb_reg.TIMA) << gb->gb_reg.tac_cycles_shift);
     }
 
-    src[2] = LCD_LINE_CYCLES - gb->counter.lcd_count;
-    if (gb->lcd_mode == LCD_HBLANK)
-    {
-        src[2] = PPU_MODE_0_HBLANK_CYCLES - gb->counter.lcd_count;
-    }
-    else if (gb->lcd_mode == LCD_SEARCH_OAM)
-    {
-        src[2] = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-    }
+    src[2] = ppu_timing_by_mode[gb->lcd_mode] - gb->counter.lcd_count;
 
     // return max{16, min(src...)}
     int cycles = src[0];
@@ -5287,17 +5293,7 @@ __core unsigned int __gb_step_cpu(gb_s* gb)
         __gb_interrupt(gb);
     }
 
-    if unlikely (gb->gb_stop)
-    {
-        // In STOP mode, the CPU is paused until a button is pressed.
-        if (gb->direct.joypad != 0xFF)
-        {
-            gb->gb_stop = 0;
-        }
-        goto done_instr;
-    }
-
-    if unlikely (gb->gb_halt)
+    if unlikely (gb->gb_halt || gb->gb_stop)
     {
         inst_cycles = __gb_calc_halt_cycles(gb);
         goto done_instr;
@@ -5683,15 +5679,34 @@ __core void gb_run_frame(gb_s* gb)
     gb->direct.blend_rect_y_max = 0;
 
     unsigned int total_cycles = 0;
+    
+    static bool latch_log = false;
 
     while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
     {
         total_cycles += __gb_step_cpu(gb);
-#ifdef TRACE_LOG
+#if defined(TRACE_LOG)
+        if (latch_log)
         playdate->system->logToConsole(
-            "%x:%04x %02x\n", gb->selected_rom_bank, gb->cpu_reg.pc, gb->cpu_reg.a
+            "%x:%04x af=%02x%02x bc=%02x%02x ly=%02x",
+            gb->selected_rom_bank, gb->cpu_reg.pc,
+            gb->cpu_reg.a, gb->cpu_reg.f,
+            gb->cpu_reg.b, gb->cpu_reg.c,
+            gb->gb_reg.LY
         );
-        f
+        else
+        {
+            if (gb->cpu_reg.pc == 0x63e8)
+            {
+                //latch_log = true;
+            }
+            
+            if (gb->cpu_reg.pc == 0x0468)
+            {
+                playdate->system->logToConsole("wait 0x%02x frames", gb->cpu_reg.c);
+                playdate->system->logToConsole("  RA: %04X", __gb_read16(gb, gb->cpu_reg.sp));
+            }
+        }
 #endif
     }
 }
@@ -5891,7 +5906,6 @@ __section__(".rare") void gb_reset(gb_s* gb)
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
         /*****************************************************************/
-        playdate->system->logToConsole("Starting ROM with GBC registers");
         gb->cpu_reg.af = 0x8011;
         gb->cpu_reg.bc = 0x0000;
         gb->cpu_reg.de = 0xFF56;
@@ -6191,8 +6205,6 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
     *title_str = '\0';
     return title_start;
 }
-
-void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
 
 static unsigned __gb_run_instruction_micro(gb_s* gb);
 
