@@ -253,7 +253,7 @@ static int cb_step_cpu(lua_State* L)
 {
     // UNTESTED
     gb_s* gb = get_gb(L);
-    __gb_step_cpu(gb);
+    gb_step_cpu(gb);
     return 0;
 }
 

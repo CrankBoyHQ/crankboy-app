@@ -6,6 +6,17 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
+#include <stdbool.h>
+#include "pd_api.h"
+
+unsigned game_picture_x_offset;
+unsigned game_picture_y_top;
+unsigned game_picture_y_bottom;
+unsigned game_picture_scaling;
+LCDColor game_picture_background_color;
+bool game_hide_indicator;
+bool gbScreenRequiresFullRefresh;
+
 #define PGB_IMPL
 #include "game_scene.h"
 
@@ -26,7 +37,6 @@
 #include "settings_scene.h"
 
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -164,14 +174,6 @@ static void gb_save_to_disk(gb_s* gb);
 
 static const char* startButtonText = "start";
 static const char* selectButtonText = "select";
-
-unsigned game_picture_x_offset;
-unsigned game_picture_y_top;
-unsigned game_picture_y_bottom;
-unsigned game_picture_scaling;
-LCDColor game_picture_background_color;
-bool game_hide_indicator;
-bool gbScreenRequiresFullRefresh;
 
 static int last_scy = -1;
 static uint8_t CB_dither_lut_row0[256];
@@ -353,19 +355,43 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
+intptr_t core_itcm_offset = 0;
 
-__section__(".rare") void itcm_core_init()
+extern char __itcm_dmg_start[];
+extern char __itcm_dmg_end[];
+extern char __itcm_cgb_start[];
+extern char __itcm_cgb_end[];
+
+#define ITCM_CORE_FN(fn) \
+    ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
+
+__section__(".rare") void itcm_core_init(bool cgb)
 {
+    void* itcm_start = cgb
+        ? &__itcm_cgb_start
+        : &__itcm_dmg_start;
+        
+    void* itcm_end = cgb
+        ? &__itcm_cgb_end
+        : &__itcm_dmg_end;
+        
+    uintptr_t core_size = itcm_end - itcm_start;
+    
     // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
     if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
-        core_itcm_reloc = (void*)&__itcm_start;
+        core_itcm_reloc = itcm_start;
+        core_itcm_offset = 0;
+        
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
 
-    if (core_itcm_reloc == (void*)&__itcm_start)
+    if (core_itcm_reloc == (void*)&__itcm_dmg_start)
+        core_itcm_reloc = NULL;
+    
+    if (core_itcm_reloc == (void*)&__itcm_cgb_start)
         core_itcm_reloc = NULL;
 
     if (core_itcm_reloc != NULL)
@@ -375,20 +401,23 @@ __section__(".rare") void itcm_core_init()
     int MARGIN = 4;
 
     // make region to copy instructions to; ensure it has same cache alignment
-    core_itcm_reloc = dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_start);
+    core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
     DTCM_VERIFY();
-    memcpy(core_itcm_reloc, __itcm_start, itcm_core_size);
+    memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
     playdate->system->logToConsole(
-        "itcm start: %x, end %x: run_frame: %x", &__itcm_start, &__itcm_end, &gb_run_frame
+        "itcm start: %p, end %p: (%s)", itcm_start, itcm_end, cgb ? "cgb" : "dmg"
     );
     playdate->system->logToConsole(
-        "core is 0x%X bytes, relocated at 0x%X", itcm_core_size, core_itcm_reloc
+        "core is 0x%X bytes, relocated at %p", core_size, core_itcm_reloc
     );
     playdate->system->clearICache();
 }
 #else
-void itcm_core_init(void)
+
+#define ITCM_CORE_FN(fn) fn
+
+void itcm_core_init(bool cgb)
 {
 }
 #endif
@@ -646,19 +675,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
     gb_s* gb;
-    static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available
-    if (dtcm_enabled())
-    {
-        gb = dtcm_alloc(sizeof(gb_s));
-    }
-    else
-    {
-        gb = &gb_fallback;
-    }
+    static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available. Also during initialization.
+    gb = &gb_fallback;
 
     DTCM_VERIFY();
-
-    itcm_core_init();
 
     memset(gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
@@ -739,6 +759,14 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             playdate->system->logToConsole(
                 "%s:%i: Error initializing gb context", __FILE__, __LINE__
             );
+        }
+        
+        itcm_core_init(context->gb->is_cgb_mode);
+        
+        if (dtcm_enabled())
+        {
+            gb = dtcm_alloc(sizeof(gb_s));
+            memcpy(gb, &gb_fallback, sizeof(gb_s));
         }
     }
     else
@@ -1209,130 +1237,6 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
 
     return;
-}
-
-typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
-
-__core_section("fb") void update_fb_dirty_lines(
-    uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-    const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
-    bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
-)
-{
-    framebuffer += game_picture_x_offset / 8;
-    unsigned fb_y_playdate_current_bottom = CB_LCD_Y + CB_LCD_HEIGHT;
-    const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
-
-    int scale_index = preferences_dither_line;
-    if (preferences_dither_stable)
-        scale_index += 256 - scy;
-    scale_index %= scaling;
-    uint8_t* restrict dither_lut0_ptr = dither_lut0;
-    uint8_t* restrict dither_lut1_ptr = dither_lut1;
-
-    for (int y_gb = game_picture_y_bottom; y_gb-- > game_picture_y_top;)
-    {
-        int row_height_on_playdate = 2;
-        if (++scale_index == scaling)
-        {
-            scale_index = 0;
-            row_height_on_playdate = 1;
-
-            uint8_t* restrict temp_ptr = dither_lut0_ptr;
-            dither_lut0_ptr = dither_lut1_ptr;
-            dither_lut1_ptr = temp_ptr;
-        }
-
-        unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
-
-        if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
-        {
-            fb_y_playdate_current_bottom = current_line_pd_top_y;
-            continue;
-        }
-
-        fb_y_playdate_current_bottom = current_line_pd_top_y;
-
-        uint32_t* restrict gb_line_data32 = (uint32_t*)&lcd[y_gb * LCD_WIDTH_PACKED];
-        uint32_t* restrict pd_fb_line_top_ptr32 =
-            (uint32_t*)&framebuffer[current_line_pd_top_y * PLAYDATE_ROW_STRIDE];
-
-        if (row_height_on_playdate == 2)
-        {
-            uint32_t* restrict pd_fb_line_bottom_ptr32 =
-                (uint32_t*)((uint8_t*)pd_fb_line_top_ptr32 + PLAYDATE_ROW_STRIDE);
-
-            for (int x = 0; x < LCD_WIDTH_PACKED / 8; ++x)
-            {
-                uint32_t org_pixelsA = gb_line_data32[x * 2];
-                uint32_t org_pixelsB = gb_line_data32[x * 2 + 1];
-
-                uint8_t p0 = org_pixelsA & 0xFF, p1 = (org_pixelsA >> 8) & 0xFF;
-                uint8_t p2 = (org_pixelsA >> 16) & 0xFF, p3 = (org_pixelsA >> 24) & 0xFF;
-
-                uint8_t p4 = org_pixelsB & 0xFF, p5 = (org_pixelsB >> 8) & 0xFF;
-                uint8_t p6 = (org_pixelsB >> 16) & 0xFF, p7 = (org_pixelsB >> 24) & 0xFF;
-
-                pd_fb_line_top_ptr32[x * 2] = dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                                              (dither_lut0_ptr[p2] << 16) |
-                                              (dither_lut0_ptr[p3] << 24);
-                pd_fb_line_bottom_ptr32[x * 2] = dither_lut1_ptr[p0] | (dither_lut1_ptr[p1] << 8) |
-                                                 (dither_lut1_ptr[p2] << 16) |
-                                                 (dither_lut1_ptr[p3] << 24);
-
-                pd_fb_line_top_ptr32[x * 2 + 1] = dither_lut0_ptr[p4] | (dither_lut0_ptr[p5] << 8) |
-                                                  (dither_lut0_ptr[p6] << 16) |
-                                                  (dither_lut0_ptr[p7] << 24);
-                pd_fb_line_bottom_ptr32[x * 2 + 1] =
-                    dither_lut1_ptr[p4] | (dither_lut1_ptr[p5] << 8) | (dither_lut1_ptr[p6] << 16) |
-                    (dither_lut1_ptr[p7] << 24);
-            }
-
-            // Process final 4-byte remainder
-            uint32_t org_pixels_rem = gb_line_data32[4];
-            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
-            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
-
-            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
-                                      (dither_lut0_ptr[p2_rem] << 16) |
-                                      (dither_lut0_ptr[p3_rem] << 24);
-            pd_fb_line_bottom_ptr32[4] = dither_lut1_ptr[p0_rem] | (dither_lut1_ptr[p1_rem] << 8) |
-                                         (dither_lut1_ptr[p2_rem] << 16) |
-                                         (dither_lut1_ptr[p3_rem] << 24);
-        }
-        else
-        {
-            for (int x = 0; x < LCD_WIDTH_PACKED / 8; ++x)
-            {
-                uint32_t org_pixelsA = gb_line_data32[x * 2];
-                uint32_t org_pixelsB = gb_line_data32[x * 2 + 1];
-
-                uint8_t p0 = org_pixelsA & 0xFF, p1 = (org_pixelsA >> 8) & 0xFF;
-                uint8_t p2 = (org_pixelsA >> 16) & 0xFF, p3 = (org_pixelsA >> 24) & 0xFF;
-
-                uint8_t p4 = org_pixelsB & 0xFF, p5 = (org_pixelsB >> 8) & 0xFF;
-                uint8_t p6 = (org_pixelsB >> 16) & 0xFF, p7 = (org_pixelsB >> 24) & 0xFF;
-
-                pd_fb_line_top_ptr32[x * 2] = dither_lut0_ptr[p0] | (dither_lut0_ptr[p1] << 8) |
-                                              (dither_lut0_ptr[p2] << 16) |
-                                              (dither_lut0_ptr[p3] << 24);
-
-                pd_fb_line_top_ptr32[x * 2 + 1] = dither_lut0_ptr[p4] | (dither_lut0_ptr[p5] << 8) |
-                                                  (dither_lut0_ptr[p6] << 16) |
-                                                  (dither_lut0_ptr[p7] << 24);
-            }
-
-            uint32_t org_pixels_rem = gb_line_data32[4];
-            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
-            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
-
-            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
-                                      (dither_lut0_ptr[p2_rem] << 16) |
-                                      (dither_lut0_ptr[p3_rem] << 24);
-        }
-
-        markUpdatedRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
-    }
 }
 
 static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
@@ -1974,10 +1878,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         CB_App->avg_dt_mult =
             (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
 
+        void* gb_run_frame_ = (context->gb->is_cgb_mode)
+            ? gb_run_frame__cgb
+            : gb_run_frame__dmg;
 #ifdef DTCM_ALLOC
-        void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame);
+        void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
 #else
-        void (*run_frame_function_pointer)(gb_s*) = gb_run_frame;
+        void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
 
         if (preferences_frame_skip && preferences_blend_frames)
@@ -2123,6 +2030,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         int scale_index_for_calc = dither_preference;
 #endif
 
+        void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len)
+            = context->gb->is_cgb_mode
+                ? gb_fast_memcpy_64__cgb
+                : gb_fast_memcpy_64__dmg;
+        
+        gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
+
         if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
         {
             for (int y = 0; y < LCD_HEIGHT; y++)
@@ -2134,7 +2048,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 {
                     line_has_changed[y / 16] |= (1 << (y % 16));
 
-                    ITCM_CORE_FN(gb_fast_memcpy_64)(prv, cur, LCD_WIDTH_PACKED);
+                    gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
                     if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
@@ -2225,6 +2139,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
 #endif
 
+    void (*update_fb_dirty_lines_)(
+        uint8_t* restrict framebuffer, uint8_t* restrict lcd,
+        const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
+        bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
+    )
+            = context->gb->is_cgb_mode
+                ? update_fb_dirty_lines__cgb
+                : update_fb_dirty_lines__dmg;
+        
+    update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
+
 #if ENABLE_RENDER_PROFILER
         if (CB_run_profiler_on_next_frame)
         {
@@ -2237,7 +2162,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             float startTime = playdate->system->getElapsedTime();
 
-            ITCM_CORE_FN(update_fb_dirty_lines)(
+            update_fb_dirty_lines_(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
                 CB_dither_lut_row0, CB_dither_lut_row1
@@ -2270,7 +2195,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
 
-        ITCM_CORE_FN(update_fb_dirty_lines)(
+        update_fb_dirty_lines_(
             playdate->graphics->getFrame(), current_lcd, line_has_changed,
             playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, CB_dither_lut_row0,
             CB_dither_lut_row1
@@ -2278,7 +2203,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
         {
-            ITCM_CORE_FN(gb_fast_memcpy_64)(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
+            gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
         }
 
         // Always request the update loop to run at 30 FPS.
@@ -3281,8 +3206,17 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
                 for (unsigned x = 0; x < SAVE_STATE_THUMBNAIL_W; ++x)
                 {
                     // very bespoke dithering algorithm lol
-                    u8 p0 = __gb_get_pixel(line0, x);
-                    u8 p1 = __gb_get_pixel(line0, x ^ 1);
+                    u8 p0, p1;
+                    if (context->gb->is_cgb_mode)
+                    {
+                        p0 = __gb_get_pixel__cgb(line0, x);
+                        p1 = __gb_get_pixel__cgb(line0, x ^ 1);
+                    }
+                    else
+                    {
+                        p0 = __gb_get_pixel__dmg(line0, x);
+                        p1 = __gb_get_pixel__dmg(line0, x ^ 1);
+                    }
 
                     u8 val = p0;
                     if (val >= 2)
