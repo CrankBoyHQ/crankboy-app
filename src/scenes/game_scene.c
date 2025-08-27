@@ -694,6 +694,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
+        
+        gameScene->cgb_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_CGB);
+        gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
@@ -3062,7 +3065,12 @@ static void CB_GameScene_menu(void* object)
     }
     if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
     {
-        playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
+        // not sure what might happen if some settings are changed in an unusual game scene state.
+        // best not find out.
+        if (gameScene->state == CB_GameSceneStateLoaded)
+        {
+            playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
+        }
     }
     else
     {

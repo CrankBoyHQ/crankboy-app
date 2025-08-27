@@ -49,12 +49,6 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
-#define TRACE_LOG 1
-#ifdef CPU_VALIDATE
-    #undef CPU_VALIDATE
-#endif
-#define CPU_VALIDATE 0
-
 // color game boy support
 #ifndef PGB_CGB
 #define PGB_CGB 0
@@ -310,6 +304,50 @@ __core unsigned int __gb_step_cpu(gb_s* gb);
 
 void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
 void __gb_dump_vram(gb_s* gb);
+
+enum {
+    GB_SUPPORT_DMG = 1,
+    GB_SUPPORT_CGB = 2,
+    GB_SUPPORT_DMG_AND_CGB = 3,
+} gb_get_models_supported(uint8_t* gb_rom)
+{
+    uint8_t cgb_byte = gb_rom[0x143];
+    if (cgb_byte == 0x80) return GB_SUPPORT_DMG_AND_CGB;
+    if (cgb_byte == 0xC0) return GB_SUPPORT_CGB;
+    
+    return GB_SUPPORT_DMG;
+}
+
+/**
+ * Returns the title of ROM.
+ *
+ * \param gb        Initialised context.
+ * \param title_str Allocated string at least 16 characters.
+ * \returns         Pointer to start of string, null terminated.
+ */
+const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
+{
+    uint_fast16_t title_loc = 0x134;
+    /* End of title may be 0x13E for newer games. */
+    const uint_fast16_t title_end = 0x143;
+    const char* title_start = title_str;
+
+    for (; title_loc <= title_end; title_loc++)
+    {
+        const char title_char = gb_rom[title_loc];
+
+        if (title_char >= ' ' && title_char <= '~')
+        {
+            *title_str = title_char;
+            title_str++;
+        }
+        else
+            break;
+    }
+
+    *title_str = '\0';
+    return title_start;
+}
 
 /**
  * Directly calculates and applies the RTC state after a given
@@ -5842,19 +5880,6 @@ void gb_init_serial(
     gb->gb_serial_rx = gb_serial_rx;
 }
 
-uint8_t gb_colour_hash(gb_s* gb)
-{
-#define ROM_TITLE_START_ADDR 0x0134
-#define ROM_TITLE_END_ADDR 0x0143
-
-    uint8_t x = 0;
-
-    for (uint16_t i = ROM_TITLE_START_ADDR; i <= ROM_TITLE_END_ADDR; i++)
-        x += gb->gb_rom[i];
-
-    return x;
-}
-
 /**
  * Resets the context, and initialises startup values.
  */
@@ -6160,12 +6185,12 @@ __section__(".rare") enum gb_init_error_e gb_init(
     const uint16_t cgb_flag_location = 0x0143;
     const uint8_t cgb_flag = gb->gb_rom[cgb_flag_location];
 
-    if (!preferences_experimental_cgb_mode && (gb->gb_rom[0x0143] == 0xC0) &&
-        !gb->direct.ignore_cgb_check)
+    if (!preferences_experimental_cgb_mode && !preferences_skip_cgb_confirm && !(GB_SUPPORT_DMG & gb_get_models_supported(gb_rom)))
     {
         return GB_INIT_CARTRIDGE_UNSUPPORTED;
     }
 
+#if 0 /* ignore checksum */
     /* Check valid ROM using checksum value. */
     {
         uint8_t x = 0;
@@ -6176,6 +6201,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
         if (x != gb->gb_rom[ROM_HEADER_CHECKSUM_LOC])
             return GB_INIT_INVALID_CHECKSUM;
     }
+#endif
 
     /* Check if cartridge type is supported, and set MBC type. */
     {
@@ -6218,37 +6244,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb_get_rom_name(gb->gb_rom, title_str);
 
     return GB_INIT_NO_ERROR;
-}
-
-/**
- * Returns the title of ROM.
- *
- * \param gb        Initialised context.
- * \param title_str Allocated string at least 16 characters.
- * \returns         Pointer to start of string, null terminated.
- */
-const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
-{
-    uint_fast16_t title_loc = 0x134;
-    /* End of title may be 0x13E for newer games. */
-    const uint_fast16_t title_end = 0x143;
-    const char* title_start = title_str;
-
-    for (; title_loc <= title_end; title_loc++)
-    {
-        const char title_char = gb_rom[title_loc];
-
-        if (title_char >= ' ' && title_char <= '~')
-        {
-            *title_str = title_char;
-            title_str++;
-        }
-        else
-            break;
-    }
-
-    *title_str = '\0';
-    return title_start;
 }
 
 static unsigned __gb_run_instruction_micro(gb_s* gb);
