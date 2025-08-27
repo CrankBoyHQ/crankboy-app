@@ -29,7 +29,7 @@
  * function, you may need to increase this value to prevent buffer overflows,
  * which can lead to unpredictable crashes.
  *
- * As of August 2025, the theoretical maximum count is 34 entries.
+ * As of August 2025, the theoretical maximum count is 36 entries.
  * This value provides a safe buffer for future additions.
  */
 #define TOTAL_MENU_ITEMS 40
@@ -390,6 +390,7 @@ static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
+static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* audio_sync_labels[] = {"Fast", "Accurate"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
@@ -1022,22 +1023,48 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     entries[++i] = (OptionsMenuEntry){
-        .name = "Behavior",
+        .name = "Crank",
         .header = 1
     };
 
     // crank mode
     entries[++i] = (OptionsMenuEntry){
-        .name = "Crank",
+        .name = "Mode",
         .values = crank_mode_labels,
         .description =
-            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for "
-            "Start, CCW for Select.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
-            "B/A:\nCW for B, CCW for A.\n \n",
+            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for Start, CCW for "
+            "Select.\nSee 'Down' option below.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
+            "B/A:\nCW for B, CCW for A.",
         .pref_var = &preferences_crank_mode,
         .max_value = 4,
+        .rebuild_when_changed = 1,
         .on_press = NULL
     };
+
+    // crank down action
+    if (preferences_crank_mode == CRANK_MODE_START_SELECT)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Down",
+            .values = crank_down_action_labels,
+            .description = "When the crank is pointed\ndown (between Start and\n"
+                           "Select), choose whether\nto hold Start + Select or\ndo nothing.",
+            .pref_var = &preferences_crank_down_action,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Down",
+            .values = crank_down_action_labels,
+            .description = "Only available when\nCrank mode is set to\nStart/Select.",
+            .pref_var = &preferences_crank_down_action,
+            .max_value = 0,
+            .on_press = NULL,
+        };
+    }
 
     // undock
     entries[++i] = (OptionsMenuEntry){
@@ -1059,6 +1086,11 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_crank_dock_button,
         .max_value = 3,
         .on_press = NULL
+    };
+
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Behavior",
+        .header = 1
     };
 
     // overclocking

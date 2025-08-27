@@ -520,17 +520,30 @@ static bool crank_would_cause_input(CB_Game* game)
     void* prefs = preferences_store_subset(-1);
     load_game_prefs(game->fullpath, true);
     int crank_mode = preferences_crank_mode;
+    int crank_down_action = preferences_crank_down_action;
     preferences_restore_subset(prefs);
     cb_free(prefs);
 
     float crank_angle = playdate->system->getCrankAngle();
     bool docked = playdate->system->isCrankDocked();
 
+    if (docked)
+    {
+        return false;
+    }
+
     if (crank_mode == CRANK_MODE_START_SELECT)
     {
-        if (!docked && crank_angle >= 45.0f && crank_angle <= 315.0f)
+        float triggerAngle = 45.0f;
+        float deadAngle = 20.0f;
+
+        bool in_active_zone = (crank_angle >= triggerAngle && crank_angle <= 360.0f - triggerAngle);
+        bool in_down_dead_zone =
+            (crank_angle > 180.0f - deadAngle && crank_angle < 180.0f + deadAngle);
+
+        if (in_active_zone)
         {
-            return true;
+            return in_down_dead_zone ? (crank_down_action == 1) : true;
         }
     }
 

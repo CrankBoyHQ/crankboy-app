@@ -1494,30 +1494,41 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
 
     if (preferences_crank_mode == CRANK_MODE_START_SELECT)
     {
-        if (angle <= (180 - gameScene->selector.deadAngle))
-        {
-            if (angle >= gameScene->selector.triggerAngle)
-            {
-                gameScene->selector.startPressed = true;
-            }
+        gameScene->selector.startPressed = false;
+        gameScene->selector.selectPressed = false;
 
-            float adjustedAngle = fminf(angle, gameScene->selector.triggerAngle);
-            *progress = 0.5f - adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
-        }
-        else if (angle >= (180 + gameScene->selector.deadAngle))
-        {
-            if (angle <= (360 - gameScene->selector.triggerAngle))
-            {
-                gameScene->selector.selectPressed = true;
-            }
-
-            float adjustedAngle = fminf(360.0f - angle, gameScene->selector.triggerAngle);
-            *progress = 0.5f + adjustedAngle / gameScene->selector.triggerAngle * 0.5f;
-        }
-        else
+        if (preferences_crank_down_action == 1 && angle > (180 - gameScene->selector.deadAngle) &&
+            angle < (180 + gameScene->selector.deadAngle))
         {
             gameScene->selector.startPressed = true;
             gameScene->selector.selectPressed = true;
+        }
+        else
+        {
+            if (angle <= 180)
+            {
+                if (angle >= gameScene->selector.triggerAngle &&
+                    angle <= (180 - gameScene->selector.triggerAngle))
+                {
+                    gameScene->selector.startPressed = true;
+                }
+
+                float dist = fminf(angle, 180.0f - angle);
+                float adjustedAngle = fminf(dist, gameScene->selector.triggerAngle);
+                *progress = 0.5f - (adjustedAngle / gameScene->selector.triggerAngle * 0.5f);
+            }
+            else
+            {
+                if (angle >= (180 + gameScene->selector.triggerAngle) &&
+                    angle <= (360 - gameScene->selector.triggerAngle))
+                {
+                    gameScene->selector.selectPressed = true;
+                }
+
+                float dist = fminf(360.0f - angle, angle - 180.0f);
+                float adjustedAngle = fminf(dist, gameScene->selector.triggerAngle);
+                *progress = 0.5f + (adjustedAngle / gameScene->selector.triggerAngle * 0.5f);
+            }
         }
     }
     else if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
