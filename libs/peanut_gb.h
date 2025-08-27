@@ -156,8 +156,8 @@ typedef int16_t s16;
 
 /* Simplified PPU timing model for performance */
 #define PPU_MODE_2_OAM_CYCLES 80
-#define PPU_MODE_3_VRAM_CYCLES 172
-#define PPU_MODE_0_HBLANK_CYCLES 204 /* 456 - 80 - 172 */
+#define PPU_MODE_3_VRAM_CYCLES 200
+#define PPU_MODE_0_HBLANK_CYCLES 176 /* 456 - 80 - 200 */
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
