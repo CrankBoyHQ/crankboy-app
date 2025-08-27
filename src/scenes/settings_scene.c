@@ -1122,17 +1122,17 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 3,
         .on_press = NULL
     };
-
-    // Disable Auto Lock
+    
+    // CGB support
     entries[++i] = (OptionsMenuEntry){
-        .name = "Disable auto lock",
+        .name = "CGB mode",
         .values = off_on_labels,
-        .description = "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This only applies\nwhile a game is running.",
-        .pref_var = &preferences_disable_autolock,
-        .max_value = 2,
-        .on_press = NULL,
-        .rebuild_when_changed = 0,
-        .on_change = NULL,
+        .description =
+            "Experimental mode\nfor emulating\nGame Boy Color.\n\nExpect glitches."
+        ,
+        .pref_var = &preferences_experimental_cgb_mode,
+        .max_value = 3,
+        .on_press = NULL
     };
 
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
@@ -1278,6 +1278,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
+    
+    // Disable Auto Lock
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Disable auto lock",
+        .values = off_on_labels,
+        .description = "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This only applies\nwhile a game is running.",
+        .pref_var = &preferences_disable_autolock,
+        .max_value = 2,
+        .on_press = NULL,
+        .rebuild_when_changed = 0,
+        .on_change = NULL,
+    };
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
