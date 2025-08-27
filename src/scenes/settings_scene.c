@@ -1135,7 +1135,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
     
-    if (!gameScene->cgb_compatible)
+    if (gameScene && !gameScene->cgb_compatible)
     {
         entries[i].locked = true;
     }
