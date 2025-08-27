@@ -83,6 +83,6 @@ extern preferences_bitfield_t prefs_locked_by_script;
      PREFBIT_display_sort | PREFBIT_library_remember_selection)
 
 // preferences that are never saved to disk
-#define PREFBITS_TRANSIENT (PREFBIT_experimental_gbc_mode)
+#define PREFBITS_TRANSIENT (0)
 
 #endif /* preferences_h */

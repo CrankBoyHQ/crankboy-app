@@ -1173,12 +1173,12 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
     else if (gb_err == GB_INVALID_READ)
     {
-        if (!preferences_experimental_gbc_mode)
+        if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid read: addr %04x", val);
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
-        if (!preferences_experimental_gbc_mode)
+        if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid write: addr %04x", val);
     }
     else
