@@ -3565,7 +3565,10 @@ static void CB_GameScene_free(void* object)
 
     CB_Scene_free(gameScene->scene);
 
-    gb_reset(context->gb);
+    if (gameScene->state != CB_GameSceneStateCGBConfirm)
+    {
+        gb_reset(context->gb);
+    }
 
     cb_free(gameScene->rom_filename);
     cb_free(gameScene->save_filename);
@@ -3592,7 +3595,11 @@ static void CB_GameScene_free(void* object)
     cb_free(context);
     cb_free(gameScene);
 
-    dtcm_deinit();
+    if (gameScene->state != CB_GameSceneStateCGBConfirm)
+    {
+        dtcm_deinit();
+    }
+
     DTCM_VERIFY();
 }
 
