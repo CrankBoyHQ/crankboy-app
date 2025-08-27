@@ -675,3 +675,5 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
 }
 
 #endif
+
+#pragma pop_macro("PGB_VERSION")
