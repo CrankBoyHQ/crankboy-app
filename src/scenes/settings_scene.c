@@ -388,7 +388,7 @@ static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
-static const char* gb_button_labels[] = {"None", "Start", "Select", "A", "B"};
+static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "Off"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
@@ -1073,7 +1073,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .description =
             "Assign a button input\nfor undocking the crank.\n \n",
         .pref_var = &preferences_crank_undock_button,
-        .max_value = 3,
+        .max_value = 4,
         .on_press = NULL
     };
 
@@ -1084,7 +1084,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .description =
             "Assign a button input\nfor docking the crank.\n \n",
         .pref_var = &preferences_crank_dock_button,
-        .max_value = 3,
+        .max_value = 4,
         .on_press = NULL
     };
 

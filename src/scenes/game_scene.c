@@ -1725,17 +1725,19 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             gameScene->button_hold_mode = 2;
         else if (preferences_crank_undock_button == PREF_BUTTON_SELECT)
             gameScene->button_hold_mode = 0;
+        else if (preferences_crank_undock_button == PREF_BUTTON_START_SELECT)
+            gameScene->button_hold_mode = 3;
         gameScene->button_hold_frames_remaining = 10;
     }
     if (preferences_crank_dock_button && !gameScene->crank_was_docked &&
         playdate->system->isCrankDocked())
     {
         if (preferences_crank_dock_button == PREF_BUTTON_START)
-        {
             gameScene->button_hold_mode = 2;
-        }
         else if (preferences_crank_dock_button == PREF_BUTTON_SELECT)
             gameScene->button_hold_mode = 0;
+        else if (preferences_crank_dock_button == PREF_BUTTON_START_SELECT)
+            gameScene->button_hold_mode = 3;
         gameScene->button_hold_frames_remaining = 10;
     }
 
