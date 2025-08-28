@@ -86,6 +86,8 @@ static void draw_common(
     int left_margin = 0;
     int right_margin = 0;
 
+    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+
     if (context->type == PDSCT_TOP_LEVEL)
     {
         left_margin = 20;
@@ -93,8 +95,7 @@ static void draw_common(
     }
 
     PDRect frame = {
-        x + left_margin, HEADER_HEIGHT, kDividerX - left_margin - right_margin,
-        LCD_ROWS - HEADER_HEIGHT
+        x + left_margin, header_y, kDividerX - left_margin - right_margin, LCD_ROWS - header_y
     };
 
     context->list->frame = frame;
@@ -522,11 +523,11 @@ static void context_top_level_draw(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
+    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+
     if (pds->is_fetching_list && active)
     {
-        playdate->graphics->fillRect(
-            x, HEADER_HEIGHT, kDividerX, LCD_ROWS - HEADER_HEIGHT, kColorWhite
-        );
+        playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
 
         const char* base_text = "Searching patches";
         const char* width_calc_string = "Searching patches...";
@@ -545,7 +546,7 @@ static void context_top_level_draw(
             CB_App->bodyFont, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
         );
         int textX = x + (kDividerX - msg_width) / 2;
-        int textY = HEADER_HEIGHT + (LCD_ROWS - HEADER_HEIGHT) / 2 -
+        int textY = header_y + (LCD_ROWS - header_y) / 2 -
                     playdate->graphics->getFontHeight(CB_App->bodyFont) / 2;
 
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
@@ -558,9 +559,9 @@ static void context_top_level_draw(
         CB_ListView* listView = context->list;
         int listX = x;
         listView->frame.x = listX;
-        listView->frame.y = HEADER_HEIGHT;
+        listView->frame.y = header_y;
         listView->frame.width = kDividerX;
-        listView->frame.height = LCD_ROWS - HEADER_HEIGHT;
+        listView->frame.height = LCD_ROWS - header_y;
         playdate->graphics->setFont(CB_App->bodyFont);
         int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
         playdate->graphics->setClipRect(
@@ -801,83 +802,117 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         return;
     }
 
-    if (pds->context_depth_p != pds->target_context_depth)
+    if (pds->is_dismissing)
     {
-        // scroll left/right
-        pds->context_depth_p =
-            toward(pds->context_depth_p, pds->target_context_depth, dt * SCROLL_RATE);
-        if (pds->context_depth_p < 0)
+        TOWARD(pds->header_animation_p, 0.0f, dt * HEADER_ANIMATION_RATE);
+        if (pds->header_animation_p == 0.0f)
         {
             CB_dismiss(pds->scene);
             return;
         }
-        else if (pds->context_depth_p <= pds->context_depth - 2 && pds->context_depth > 0)
+    }
+    else
+    {
+        TOWARD(pds->header_animation_p, 1.0f, dt * HEADER_ANIMATION_RATE);
+
+        if (pds->context_depth_p != pds->target_context_depth)
         {
-            pop_context(pds);
+            pds->context_depth_p =
+                toward(pds->context_depth_p, pds->target_context_depth, dt * SCROLL_RATE);
+            if (pds->context_depth_p < 0)
+            {
+                CB_dismiss(pds->scene);
+                return;
+            }
+            else if (pds->context_depth_p <= pds->context_depth - 2 && pds->context_depth > 0)
+            {
+                pop_context(pds);
+            }
+        }
+        else if (pds->http_in_progress == 0 && (CB_App->buttons_pressed & kButtonB))
+        {
+            // At the top level panel
+            if (pds->context_depth == 1)
+            {
+                if (pds->started_without_header)
+                {
+                    pds->is_dismissing = true;
+                }
+                else
+                {
+                    --pds->target_context_depth;
+                }
+            }
+            else
+            {
+                --pds->target_context_depth;
+            }
+        }
+
+        if (pds->is_fetching_list)
+        {
+            pds->loading_anim_timer += dt;
+            if (pds->loading_anim_timer >= 0.5f)
+            {
+                pds->loading_anim_timer -= 0.5f;
+                pds->loading_anim_step = (pds->loading_anim_step + 1) % 4;
+            }
         }
     }
-    else if (pds->http_in_progress == 0 && (CB_App->buttons_pressed & kButtonB))
-    {
-        // back out
-        --pds->target_context_depth;
-    }
 
-    if (pds->is_fetching_list)
-    {
-        pds->loading_anim_timer += dt;
-        if (pds->loading_anim_timer >= 0.5f)
-        {
-            pds->loading_anim_timer -= 0.5f;
-            pds->loading_anim_step = (pds->loading_anim_step + 1) % 4;
-        }
-    }
-
+    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
     bool isAnimating = (pds->context_depth_p != pds->target_context_depth);
     playdate->graphics->clear(kColorWhite);
 
-    // Draw the sliding panels
+    // Dynamically calculate top padding for the LEFT list view (24px -> 15px)
+    int list_padding_top = 24 - (int)(9.0f * pds->header_animation_p);
+
     int n = (pds->context_depth_p >= 1) ? 2 : 1;
+    if (pds->is_dismissing)
+    {
+        n = 1;
+    }
+
     for (int i = 0; i < n; ++i)
     {
         int ci = ceil(pds->context_depth_p) - i;
-
-        // Gracefully handle potential out-of-bounds access during animation.
         if (ci < 0 || ci >= pds->context_depth)
-        {
             continue;
-        }
 
         PatchDownloadContext* context = &pds->context[ci];
 
-        if (!isAnimating && i == 0 && pds->http_in_progress == 0)
+        if (context->list)
         {
-            context_fn fn = context_update[context->type];
-            if (fn)
-                fn(pds, context);
+            context->list->paddingTop = list_padding_top;
+            CB_ListView_invalidateLayout(context->list);
         }
-        else if (isAnimating)
+
+        if (!pds->is_dismissing)
         {
-            if (context->list)
-                CB_ListView_update(context->list);
+            if (!isAnimating && i == 0 && pds->http_in_progress == 0)
+            {
+                context_fn fn = context_update[context->type];
+                if (fn)
+                    fn(pds, context);
+            }
+            else if (isAnimating)
+            {
+                if (context->list)
+                    CB_ListView_update(context->list);
+            }
         }
 
         float d = ci - pds->context_depth_p;
         float x = d * kDividerX;
         context_draw_fn fn = context_draw[context->type];
-
         if (context->list)
-        {
-            context->list->hideScrollIndicator = isAnimating;
-        }
-
+            context->list->hideScrollIndicator = isAnimating || pds->is_dismissing;
         if (fn)
-        {
             fn(pds, context, x, i == 0);
-        }
     }
 
     playdate->graphics->fillRect(
-        kDividerX, HEADER_HEIGHT, LCD_COLUMNS - kDividerX, LCD_ROWS - HEADER_HEIGHT, kColorWhite
+        kDividerX, header_y, LCD_COLUMNS - kDividerX, LCD_ROWS - header_y, kColorWhite
     );
 
     uint32_t hint_key = get_hint_key(pds);
@@ -887,17 +922,12 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         {
             pds->cached_hint_key = hint_key;
             cb_free(pds->cached_hint);
-
             PatchDownloadContext* context = &pds->context[pds->context_depth - 1];
             context_hint_fn fn = context_hint[context->type];
             if (fn)
-            {
                 pds->cached_hint = fn(pds, context);
-            }
             else
-            {
                 pds->cached_hint = NULL;
-            }
         }
     }
 
@@ -906,20 +936,23 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         LCDFont* font = CB_App->labelFont;
         playdate->graphics->setFont(font);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
-
         int rightPaneX = kDividerX + kRightPanePadding;
-        int rightPaneY = HEADER_HEIGHT + 20;
+
+        // Calculate dynamic top padding for the RIGHT hint pane (29px -> 20px)
+        int hint_padding_top = 29 - (int)(9.0f * pds->header_animation_p);
+        int rightPaneY = header_y + hint_padding_top;
+
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
         int rightPaneHeight = LCD_ROWS - rightPaneY;
-
         playdate->graphics->drawTextInRect(
             pds->cached_hint, strlen(pds->cached_hint), kUTF8Encoding, rightPaneX, rightPaneY,
             rightPaneWidth, rightPaneHeight, kWrapWord, kAlignTextLeft
         );
     }
 
-    playdate->graphics->drawLine(kDividerX, HEADER_HEIGHT, kDividerX, LCD_ROWS, 1, kColorBlack);
+    playdate->graphics->drawLine(kDividerX, header_y, kDividerX, LCD_ROWS, 1, kColorBlack);
 
+    if (header_y > 0)
     {
         const char* name = pds->game->names->name_short_leading_article;
         playdate->graphics->setFont(CB_App->labelFont);
@@ -928,11 +961,10 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         );
         int textX = LCD_COLUMNS / 2 - nameWidth / 2;
         int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-
         int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
+        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
 
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, HEADER_HEIGHT, kColorBlack);
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
         playdate->graphics->setDrawMode(kDrawModeFillWhite);
         playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
@@ -940,13 +972,10 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
 
     if (pds->http_in_progress && !pds->is_fetching_list)
     {
-        // crude loading bar
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
-
         pds->anim_t += dt;
         if (pds->anim_t >= 1)
             --pds->anim_t;
-
         int m = 8;
         int w = 128;
         int x = pds->anim_t * (LCD_COLUMNS + w) - w;
@@ -1142,12 +1171,15 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     return true;
 }
 
-CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game)
+CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_header_p)
 {
     CB_Scene* scene = CB_Scene_new();
     CB_PatchDownloadScene* pds = allocz(CB_PatchDownloadScene);
     pds->scene = scene;
     pds->game = game;
+    pds->header_animation_p = initial_header_p;
+    pds->started_without_header = (initial_header_p < 1.0f);
+    pds->is_dismissing = false;
     scene->managedObject = pds;
 
     pds->loading_anim_timer = 0.0f;

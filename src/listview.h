@@ -103,6 +103,8 @@ CB_ListView* CB_ListView_new(void);
 void CB_ListView_update(CB_ListView* listView);
 void CB_ListView_draw(CB_ListView* listView);
 
+void CB_ListView_invalidateLayout(CB_ListView* listView);
+
 void CB_ListView_reload(CB_ListView* listView);
 
 void CB_ListView_free(CB_ListView* listView);

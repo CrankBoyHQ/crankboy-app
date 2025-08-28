@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
+#define HEADER_ANIMATION_RATE 2.8f
 
 typedef enum PatchDownloadSceneContextType
 {
@@ -28,6 +29,10 @@ typedef struct CB_PatchDownloadScene
 {
     CB_Scene* scene;
     CB_Game* game;
+
+    float header_animation_p;
+    bool started_without_header;
+    bool is_dismissing;
 
     int context_depth;
     int target_context_depth;
@@ -64,4 +69,4 @@ typedef struct CB_PatchDownloadScene
 
 } CB_PatchDownloadScene;
 
-CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game);
+CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_header_p);
