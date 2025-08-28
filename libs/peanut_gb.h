@@ -5055,7 +5055,20 @@ __shell static void __gb_interrupt(gb_s* gb)
 
 __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 {
+    // In STOP mode, the CPU is paused until a button is pressed.
+    if (gb->gb_halt && gb->direct.joypad != 0xFF)
+    {
+        gb->gb_stop = 0;
+        return 16;
+    }
+
     int src[] = {512, 512, 512};
+    int ppu_timing_by_mode[4] = {
+        PPU_MODE_0_HBLANK_CYCLES,
+        LCD_LINE_CYCLES,
+        PPU_MODE_2_OAM_CYCLES,
+        PPU_MODE_3_VRAM_CYCLES,
+    };
 
 #if 0
     // TODO: optimize serial
@@ -5068,15 +5081,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
                  ((0x100 - gb->gb_reg.TIMA) << gb->gb_reg.tac_cycles_shift);
     }
 
-    src[2] = LCD_LINE_CYCLES - gb->counter.lcd_count;
-    if (gb->lcd_mode == LCD_HBLANK)
-    {
-        src[2] = PPU_MODE_0_HBLANK_CYCLES - gb->counter.lcd_count;
-    }
-    else if (gb->lcd_mode == LCD_SEARCH_OAM)
-    {
-        src[2] = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-    }
+    src[2] = ppu_timing_by_mode[gb->lcd_mode] - gb->counter.lcd_count;
 
     // return max{16, min(src...)}
     int cycles = src[0];
@@ -5104,17 +5109,7 @@ __core unsigned int __gb_step_cpu(gb_s* gb)
         __gb_interrupt(gb);
     }
 
-    if unlikely (gb->gb_stop)
-    {
-        // In STOP mode, the CPU is paused until a button is pressed.
-        if (gb->direct.joypad != 0xFF)
-        {
-            gb->gb_stop = 0;
-        }
-        goto done_instr;
-    }
-
-    if unlikely (gb->gb_halt)
+    if unlikely (gb->gb_halt || gb->gb_stop)
     {
         inst_cycles = __gb_calc_halt_cycles(gb);
         goto done_instr;
