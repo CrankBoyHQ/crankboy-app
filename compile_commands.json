@@ -173,5 +173,20 @@
         "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/file_copying_scene.c -o build/src/scenes/file_copying_scene.o",
         "directory": "${workspace.path}",
         "file": "src/scenes/file_copying_scene.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/cscripts/alleyway.c -o build/src/cscripts/alleyway.o",
+        "directory": "${workspace.path}",
+        "file": "src/cscripts/alleyway.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/cscripts/cv2_belmonts_revenge.c -o build/src/cscripts/cv2_belmonts_revenge.o",
+        "directory": "${workspace.path}",
+        "file": "src/cscripts/cv2_belmonts_revenge.c"
+    },
+    {
+        "command": "clang -g -rdynamic -lm -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 -I . -I ${env:PLAYDATE_SDK_PATH}/C_API -I src -I libs -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib -c src/scenes/patch_download_scene.c -o build/src/scenes/patch_download_scene.o",
+        "directory": "${workspace.path}",
+        "file": "src/scenes/patch_download_scene.c"
     }
 ]
