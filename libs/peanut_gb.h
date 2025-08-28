@@ -635,9 +635,9 @@ void __gb_do_hdma(gb_s* gb)
     for (int i = 0; i < 0x10; ++i)
     {
         // FIXME: bugs when this is an unusual address
-        // NOTE: we use __gbc version because hdma is only possible on GBC.
+        // NOTE: we use __cgb version because hdma is only possible on CGB.
         uint8_t v = __gb_read__cgb(gb, src);
-        __gb_write__cgb(gb, dst, v);
+        gb->vram_base[dst] = v;
         src++;
         dst++;
     }
