@@ -20,6 +20,7 @@
 #include "script.h"
 #include "userstack.h"
 #include "version.h"
+#include "serial.h"
 
 #include <string.h>
 
@@ -170,7 +171,6 @@ static int check_is_bundle(void)
 #include "prefs.x"
             }
         }
-
         // always fixed in a bundle
         preferences_default_bitfield |= PREFBIT_per_game;
         preferences_bundle_hidden |= PREFBIT_per_game;
@@ -238,6 +238,8 @@ void CB_init(void)
 
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
+    
+    playdate->system->setSerialMessageCallback(CB_on_serial_message);
 
     // if not a bundled rom, check for files to copy from the PDX
     if (!CB_App->bundled_rom)
@@ -310,11 +312,28 @@ __section__(".text.main") void CB_update(float dt)
     CB_App->avg_dt_mult = 1.0f;
 
     CB_App->crankChange = playdate->system->getCrankChange();
+   
+    PDButtons prev_down = CB_App->buttons_down;
 
     playdate->system->getButtonState(
         &CB_App->buttons_down, &CB_App->buttons_pressed, &CB_App->buttons_released
     );
-
+    
+    // simulated button presses
+    for (int i = 0; i < 6; ++i)
+    {
+        if (CB_App->simulate_button_presses[i])
+        {
+            PDButtons b = (1 << i);
+            --CB_App->simulate_button_presses[i];
+            CB_App->buttons_down |= b;
+            if (!(prev_down & b))
+            {
+                CB_App->buttons_pressed |= b;
+            }
+            // TODO: buttons released
+        }
+    }
     CB_App->buttons_released &= ~CB_App->buttons_suppress;
     CB_App->buttons_suppress &= CB_App->buttons_down;
     CB_App->buttons_down &= ~CB_App->buttons_suppress;
