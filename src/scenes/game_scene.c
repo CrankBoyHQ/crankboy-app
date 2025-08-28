@@ -405,6 +405,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
     DTCM_VERIFY();
     memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
+    core_itcm_offset = core_itcm_reloc - itcm_start;
     playdate->system->logToConsole(
         "itcm start: %p, end %p: (%s)", itcm_start, itcm_end, cgb ? "cgb" : "dmg"
     );
