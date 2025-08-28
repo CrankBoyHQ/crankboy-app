@@ -19,6 +19,7 @@ typedef char* (*context_hint_fn)(CB_PatchDownloadScene* pds, PatchDownloadContex
 
 #define SCROLL_RATE 2.3f
 #define SCROLL_AREA 180
+#define HEADER_HEIGHT 18
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
 static bool push_patch_list(CB_PatchDownloadScene* pds);
@@ -81,7 +82,9 @@ static void draw_common(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    PDRect frame = {x, 0, MIN(LCD_COLUMNS, LCD_COLUMNS - x), SCROLL_AREA};
+    PDRect frame = {
+        x, HEADER_HEIGHT, MIN(LCD_COLUMNS, LCD_COLUMNS - x), SCROLL_AREA - HEADER_HEIGHT
+    };
     context->list->frame = frame;
     context->list->needsDisplay = true;
 
@@ -723,6 +726,25 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     int n = (pds->context_depth_p >= 1) ? 2 : 1;
 
     playdate->graphics->clear(kColorWhite);
+
+    // Draw Header
+    {
+        const char* name = pds->game->names->name_short_leading_article;
+        playdate->graphics->setFont(CB_App->labelFont);
+        int nameWidth = playdate->graphics->getTextWidth(
+            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
+        );
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
+
+        int vertical_offset = string_has_descenders(name) ? 1 : 2;
+        int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, HEADER_HEIGHT, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    }
 
     for (int i = 0; i < n; ++i)
     {
