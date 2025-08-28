@@ -174,6 +174,59 @@ char* cb_find_cover_art_path_from_list(
     const char* rom_clean_basename_no_ext
 );
 
+// force inline so that core can call this.
+static FORCE_INLINE uint8_t reverse_bits_u8(uint8_t b)
+{
+#if TARGET_PLAYDATE
+    uint32_t val = b;
+
+    // The 'rbit' instruction reverses all 32 bits of a register.
+    // For an 8-bit input 'b' = 0b11100010 (loaded into val),
+    // 'rbit' produces 'val' = 0b01000111000000000000000000000000.
+    asm volatile("rbit %0, %1" : "=r"(val) : "r"(val));
+
+    // We shift the result right by 24 bits to move the reversed byte
+    // from the most-significant position to the least-significant.
+    return (uint8_t)(val >> 24);
+
+#else
+    // https://stackoverflow.com/a/2602885
+    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+    return b;
+#endif
+}
+
+static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t b, bool condition)
+{
+#if TARGET_PLAYDATE
+    asm volatile(
+        "cmp    %[cond], #0\n"
+        "itt ne\n"
+            // reverse bits
+            "rbitne %[val], %[val]\n"
+            
+            // reverse byte
+            "revne  %[val], %[val]\n"
+        : [val] "+r"(b)
+        : [cond] "r"(condition)
+        : "cc" // condition codes are clobbered
+    );
+    return b;
+#else
+    if (condition)
+    {
+        return (reverse_bits_u8(b & 0xFF) | (reverse_bits_u8((b >> 8) & 0xFF) << 8));
+    }
+    else
+    {
+        return b;
+    }
+#endif
+}
+
+
 CB_FetchedNames cb_get_titles_from_db(const char* fullpath);
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc);
 char* cb_url_encode_for_github_raw(const char* str);

@@ -149,6 +149,14 @@ typedef int16_t s16;
 #define LCDC_OBJ_SIZE 0x04
 #define LCDC_OBJ_ENABLE 0x02
 #define LCDC_BG_ENABLE 0x01
+#define LCDC_CGB_MASTER_PRIORITY 0x01
+
+/* CGB BG map tile attributes */
+#define BG_MAP_ATTR_PRIORITY 0x80
+#define BG_MAP_ATTR_Y_FLIP 0x40
+#define BG_MAP_ATTR_X_FLIP 0x20
+#define BG_MAP_ATTR_BANK 0x08
+#define BG_MAP_ATTR_PALETTE 0x07
 
 /* LCD characteristics */
 #define LCD_VERT_LINES 154
@@ -371,30 +379,6 @@ enum {
     return GB_SUPPORT_DMG;
 }
 
-__section__(".text.cb") u8 reverse_bits_u8(u8 b)
-{
-#if TARGET_PLAYDATE
-    uint32_t val = b;
-
-    // The 'rbit' instruction reverses all 32 bits of a register.
-    // For an 8-bit input 'b' = 0b11100010 (loaded into val),
-    // 'rbit' produces 'val' = 0b01000111000000000000000000000000.
-    asm volatile("rbit %0, %1" : "=r"(val) : "r"(val));
-
-    // We shift the result right by 24 bits to move the reversed byte
-    // from the most-significant position to the least-significant.
-    return (u8)(val >> 24);
-
-#else
-    // https://stackoverflow.com/a/2602885
-    b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
-    b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
-    b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
-    return b;
-#endif
-}
-
-
 /**
  * Returns the title of ROM.
  *
@@ -513,6 +497,8 @@ __section__(".text.cb") void gb_tick_rtc(gb_s* gb)
         }
     }
 }
+
+u8 reverse_bits_u8(u8 b);
 
 /**
  * Set initial values in RTC.
