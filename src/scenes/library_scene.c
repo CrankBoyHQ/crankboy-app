@@ -398,21 +398,36 @@ static void launch_game(void* ud, int option)
         if (settings_path)
         {
             void* prefs = preferences_store_subset(-1);
-
+            preference_t global_scripts_enabled = preferences_script_support;
             load_game_prefs(game->fullpath, false);
+            preference_t was_per_game = preferences_per_game;
 
             // Set preferences based on option.
-            preferences_script_support = (option == 0);
+            preferences_script_support = (option == 0 || option == 4);
             preferences_per_game = 1;
             if (option <= 3)
             {
                 preferences_script_has_prompted = 1;
             }
 
-            call_with_main_stack_2(
-                preferences_save_to_disk, settings_path,
-                ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
-            );
+            if (preferences_script_support || was_per_game || global_scripts_enabled)
+            {
+                playdate->system->logToConsole("switching to per-game prefs (%d/%d/%d)", preferences_script_support, was_per_game, global_scripts_enabled);
+                call_with_main_stack_2(
+                    preferences_save_to_disk, settings_path,
+                    ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
+                );
+            }
+            else
+            {
+                playdate->system->logToConsole("not switching to per-game prefs");
+                // if global scripts disabled, AND we aren't using per-game prefs for this game, AND we didn't ask to enable script support,
+                // then just mark prompted (and don't enable per-game + script support.)
+                call_with_main_stack_2(
+                    preferences_save_to_disk, settings_path,
+                    ~(PREFBIT_script_has_prompted)
+                );
+            }
 
             preferences_restore_subset(prefs);
             if (prefs)
@@ -429,7 +444,7 @@ static void launch_game(void* ud, int option)
         }
         break;
 
-    case 3:  // launch game
+    case 3:  // launch game normally (don't alter settings)
     launch_normal:
     {
         CB_GameScene* gameScene =
