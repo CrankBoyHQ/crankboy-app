@@ -837,14 +837,16 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 break;           // nop
             if (opcode == 0x10)  // STOP
             {
-                // We check for the button-press glitch on DMG.
-                // A button is pressed, and a direction/action line is selected.
-                if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) &&
-                    ((gb->gb_reg.P1 & 0x30) != 0x30))
-                {
-                    cycles = 1;
-                    break;
-                }
+                #if PGB_IS_DMG
+                    // We check for the button-press glitch on DMG.
+                    // A button is pressed, and a direction/action line is selected.
+                    if ((gb->direct.joypad != 0xFF) &&
+                        ((gb->gb_reg.P1 & 0x30) != 0x30))
+                    {
+                        cycles = 1;
+                        break;
+                    }
+                #endif
 
                 if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
                 {
@@ -1467,10 +1469,16 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
     {
-        inst_cycles >>= gb->overclock;
+        inst_cycles >>= gb->cgb_fast_mode;
     }
     
+    #if PGB_IS_CGB
     inst_cycles >>= gb->cgb_fast_mode;
+    
+    // FIXME: we can avoid having to do this if we change the cycle units
+    // to allow more fixed-point precision here.
+    inst_cycles = MAX(1, inst_cycles);
+    #endif
 
 done_instr:
 {
@@ -1597,7 +1605,9 @@ done_instr:
                 gb->lcd_mode = LCD_HBLANK;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
                 $(__gb_update_stat_irq)(gb);
+                #if PGB_IS_CGB
                 if (gb->cgb_hdma_active) __gb_do_hdma(gb);
+                #endif
             }
             break;
 
@@ -1616,8 +1626,10 @@ done_instr:
                 {
                     gb->lcd_mode = LCD_VBLANK;
                     
+                    #if PGB_IS_CGB
                     // FIXME: is this correct?
                     while (gb->cgb_hdma_active) __gb_do_hdma(gb);
+                    #endif
                     
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
                     gb->gb_frame = 1;
