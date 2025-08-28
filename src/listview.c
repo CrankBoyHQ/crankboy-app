@@ -68,6 +68,8 @@ CB_ListView* CB_ListView_new(void)
     listView->paddingTop = 0;
     listView->paddingBottom = 0;
 
+    listView->hideScrollIndicator = false;
+
     return listView;
 }
 
@@ -561,7 +563,7 @@ void CB_ListView_draw(CB_ListView* listView)
 
         playdate->graphics->clearClipRect();
 
-        if (listView->scroll.indicatorVisible)
+        if (listView->scroll.indicatorVisible && !listView->hideScrollIndicator)
         {
             int indicatorLineWidth = 1;
 

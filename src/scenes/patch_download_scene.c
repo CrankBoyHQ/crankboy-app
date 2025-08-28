@@ -702,7 +702,6 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     if (pds->context_depth_p != pds->target_context_depth)
     {
         // scroll left/right
-        int prev_context_depth = pds->context_depth_p;
         pds->context_depth_p =
             toward(pds->context_depth_p, pds->target_context_depth, dt * SCROLL_RATE);
         if (pds->context_depth_p < 0)
@@ -729,31 +728,11 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             fn(pds, context);
     }
 
-    // draw scenes
-
-    int n = (pds->context_depth_p >= 1) ? 2 : 1;
-
+    bool isAnimating = (pds->context_depth_p != pds->target_context_depth);
     playdate->graphics->clear(kColorWhite);
 
-    // Draw Header
-    {
-        const char* name = pds->game->names->name_short_leading_article;
-        playdate->graphics->setFont(CB_App->labelFont);
-        int nameWidth = playdate->graphics->getTextWidth(
-            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, HEADER_HEIGHT, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
-        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-    }
-
+    // Draw the sliding panels
+    int n = (pds->context_depth_p >= 1) ? 2 : 1;
     for (int i = 0; i < n; ++i)
     {
         int ci = ceil(pds->context_depth_p) - i;
@@ -762,30 +741,38 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         float x = d * kDividerX;
         context_draw_fn fn = context_draw[context->type];
 
+        if (context->list)
+        {
+            context->list->hideScrollIndicator = isAnimating;
+        }
+
         if (fn)
         {
             fn(pds, context, x, i == 0);
         }
     }
 
-    // hint
+    playdate->graphics->fillRect(
+        kDividerX, HEADER_HEIGHT, LCD_COLUMNS - kDividerX, LCD_ROWS - HEADER_HEIGHT, kColorWhite
+    );
+
     uint32_t hint_key = get_hint_key(pds);
     if (hint_key != pds->cached_hint_key)
     {
-        pds->cached_hint_key = hint_key;
-        cb_free(pds->cached_hint);
+        if (hint_key != (uint32_t)(-1))
+        {
+            pds->cached_hint_key = hint_key;
+            cb_free(pds->cached_hint);
 
-        if (hint_key == (uint32_t)(-1))
-        {
-            pds->cached_hint = NULL;
-        }
-        else
-        {
             PatchDownloadContext* context = &pds->context[pds->context_depth - 1];
             context_hint_fn fn = context_hint[context->type];
             if (fn)
             {
                 pds->cached_hint = fn(pds, context);
+            }
+            else
+            {
+                pds->cached_hint = NULL;
             }
         }
     }
@@ -808,6 +795,24 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     }
 
     playdate->graphics->drawLine(kDividerX, HEADER_HEIGHT, kDividerX, LCD_ROWS, 1, kColorBlack);
+
+    {
+        const char* name = pds->game->names->name_short_leading_article;
+        playdate->graphics->setFont(CB_App->labelFont);
+        int nameWidth = playdate->graphics->getTextWidth(
+            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
+        );
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
+
+        int vertical_offset = string_has_descenders(name) ? 1 : 2;
+        int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, HEADER_HEIGHT, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    }
 
     if (pds->http_in_progress)
     {

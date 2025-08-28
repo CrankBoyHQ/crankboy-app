@@ -94,6 +94,8 @@ typedef struct
 
     float textScrollTime;
     float textScrollPause;
+
+    bool hideScrollIndicator;
 } CB_ListView;
 
 CB_ListView* CB_ListView_new(void);
