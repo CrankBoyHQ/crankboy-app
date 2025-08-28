@@ -11,15 +11,16 @@
 #include "patches_scene.h"
 #include "pd_api.h"
 
+#define HEADER_HEIGHT 18
+#define SCROLL_RATE 2.3f
+#define kDividerX 240
+#define kRightPanePadding 10
+
 typedef void (*context_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 typedef void (*context_draw_fn)(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 );
 typedef char* (*context_hint_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
-
-#define SCROLL_RATE 2.3f
-#define SCROLL_AREA 180
-#define HEADER_HEIGHT 18
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
 static bool push_patch_list(CB_PatchDownloadScene* pds);
@@ -82,9 +83,17 @@ static void draw_common(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
+    int left_margin = 0;
+
+    if (context->type == PDSCT_TOP_LEVEL)
+    {
+        left_margin = 20;
+    }
+
     PDRect frame = {
-        x, HEADER_HEIGHT, MIN(LCD_COLUMNS, LCD_COLUMNS - x), SCROLL_AREA - HEADER_HEIGHT
+        x + left_margin, HEADER_HEIGHT, kDividerX - left_margin, LCD_ROWS - HEADER_HEIGHT
     };
+
     context->list->frame = frame;
     context->list->needsDisplay = true;
 
@@ -650,7 +659,8 @@ PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
     memset(context, 0, sizeof(*context));
 
     context->list = CB_ListView_new();
-
+    context->list->paddingTop = 10;
+    context->list->paddingBottom = 10;
     return context;
 }
 
@@ -719,8 +729,6 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             fn(pds, context);
     }
 
-    int margin = 48;
-
     // draw scenes
 
     int n = (pds->context_depth_p >= 1) ? 2 : 1;
@@ -751,7 +759,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         int ci = ceil(pds->context_depth_p) - i;
         PatchDownloadContext* context = &pds->context[ci];
         float d = ci - pds->context_depth_p;
-        float x = d * (LCD_COLUMNS) + margin;
+        float x = d * kDividerX;
         context_draw_fn fn = context_draw[context->type];
 
         if (fn)
@@ -784,17 +792,22 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
 
     if (pds->cached_hint)
     {
-        int margin = 16;
-
         LCDFont* font = CB_App->labelFont;
         playdate->graphics->setFont(font);
-        playdate->graphics->fillRect(0, SCROLL_AREA, LCD_COLUMNS, 2, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+        int rightPaneX = kDividerX + kRightPanePadding;
+        int rightPaneY = HEADER_HEIGHT + 10;
+        int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
+        int rightPaneHeight = LCD_ROWS - rightPaneY;
+
         playdate->graphics->drawTextInRect(
-            pds->cached_hint, strlen(pds->cached_hint), kUTF8Encoding, margin,
-            SCROLL_AREA + margin / 2, LCD_COLUMNS - 2 * margin, LCD_ROWS - SCROLL_AREA - margin,
-            kWrapWord, kAlignTextLeft
+            pds->cached_hint, strlen(pds->cached_hint), kUTF8Encoding, rightPaneX, rightPaneY,
+            rightPaneWidth, rightPaneHeight, kWrapWord, kAlignTextLeft
         );
     }
+
+    playdate->graphics->drawLine(kDividerX, HEADER_HEIGHT, kDividerX, LCD_ROWS, 1, kColorBlack);
 
     if (pds->http_in_progress)
     {

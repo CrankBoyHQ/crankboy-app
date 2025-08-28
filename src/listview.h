@@ -89,6 +89,9 @@ typedef struct
     bool needsDisplay;
     PDRect frame;
 
+    int paddingTop;
+    int paddingBottom;
+
     float textScrollTime;
     float textScrollPause;
 } CB_ListView;

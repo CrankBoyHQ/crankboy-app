@@ -65,13 +65,16 @@ CB_ListView* CB_ListView_new(void)
     listView->textScrollTime = 0;
     listView->textScrollPause = 0;
 
+    listView->paddingTop = 0;
+    listView->paddingBottom = 0;
+
     return listView;
 }
 
 void CB_ListView_invalidateLayout(CB_ListView* listView)
 {
 
-    int y = 0;
+    int y = listView->paddingTop;
 
     for (int i = 0; i < listView->items->length; i++)
     {
@@ -80,9 +83,10 @@ void CB_ListView_invalidateLayout(CB_ListView* listView)
         y += button->item.height;
     }
 
-    listView->contentSize = y;
+    listView->contentSize = y + listView->paddingBottom;
 
-    int scrollHeight = listView->frame.height - CB_ListView_scrollInset * 2;
+    int scrollHeight = listView->frame.height - listView->paddingTop - listView->paddingBottom -
+                       CB_ListView_scrollInset * 2;
 
     bool indicatorVisible = false;
     if (listView->contentSize > listView->frame.height)
@@ -95,7 +99,7 @@ void CB_ListView_invalidateLayout(CB_ListView* listView)
     if (listView->contentSize > listView->frame.height && listView->frame.height != 0)
     {
         indicatorHeight = CB_MAX(
-            scrollHeight * (listView->frame.height / listView->contentSize),
+            scrollHeight * ((float)listView->frame.height / listView->contentSize),
             CB_ListView_scrollIndicatorMinHeight
         );
     }
@@ -305,14 +309,14 @@ void CB_ListView_update(CB_ListView* listView)
         }
     }
 
-    float indicatorOffset = CB_ListView_scrollInset;
+    float indicatorOffset = listView->paddingTop + CB_ListView_scrollInset;
     if (listView->contentSize > listView->frame.height)
     {
-        int scrollHeight = listView->frame.height -
+        int scrollHeight = listView->frame.height - listView->paddingTop - listView->paddingBottom -
                            (CB_ListView_scrollInset * 2 + listView->scroll.indicatorHeight);
         indicatorOffset =
-            CB_ListView_scrollInset +
-            (listView->contentOffset / (listView->contentSize - listView->frame.height)) *
+            listView->paddingTop + CB_ListView_scrollInset +
+            ((float)listView->contentOffset / (listView->contentSize - listView->frame.height)) *
                 scrollHeight;
     }
     listView->scroll.indicatorOffset = indicatorOffset;
@@ -463,6 +467,11 @@ void CB_ListView_draw(CB_ListView* listView)
             listX, listY, listView->frame.width, listView->frame.height, kColorWhite
         );
 
+        playdate->graphics->setClipRect(
+            listX, listY + listView->paddingTop, listView->frame.width,
+            listView->frame.height - listView->paddingTop - listView->paddingBottom
+        );
+
         for (int i = 0; i < listView->items->length; i++)
         {
             CB_ListItemButton* button = listView->items->items[i];
@@ -550,13 +559,16 @@ void CB_ListView_draw(CB_ListView* listView)
             }
         }
 
+        playdate->graphics->clearClipRect();
+
         if (listView->scroll.indicatorVisible)
         {
             int indicatorLineWidth = 1;
 
             PDRect indicatorFillRect = PDRectMake(
-                listView->frame.width - CB_ListView_scrollInset - CB_ListView_scrollIndicatorWidth,
-                listView->scroll.indicatorOffset, CB_ListView_scrollIndicatorWidth,
+                listX + listView->frame.width - CB_ListView_scrollInset -
+                    CB_ListView_scrollIndicatorWidth,
+                listY + listView->scroll.indicatorOffset, CB_ListView_scrollIndicatorWidth,
                 listView->scroll.indicatorHeight
             );
             PDRect indicatorBorderRect = PDRectMake(
