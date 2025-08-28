@@ -198,6 +198,13 @@ static FORCE_INLINE uint8_t reverse_bits_u8(uint8_t b)
 #endif
 }
 
+// base-two logarithm (index of highest bit)
+inline int lg2(uint32_t v)
+{
+    if (v == 0) return -1;
+    return 31 - __builtin_clz(v);
+}
+
 static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t b, bool condition)
 {
 #if TARGET_PLAYDATE
