@@ -286,8 +286,7 @@ static void initialize_directory(void)
 
 void CB_init(void)
 {
-    CB_App = cb_calloc(1, sizeof(CB_Application));
-    memset(CB_App, 0, sizeof(*CB_App));
+    CB_App = allocz(CB_Application);
 
     cb_register_all_c_scripts();
 
