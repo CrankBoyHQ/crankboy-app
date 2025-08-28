@@ -84,14 +84,17 @@ static void draw_common(
 )
 {
     int left_margin = 0;
+    int right_margin = 0;
 
     if (context->type == PDSCT_TOP_LEVEL)
     {
         left_margin = 20;
+        right_margin = 20;
     }
 
     PDRect frame = {
-        x + left_margin, HEADER_HEIGHT, kDividerX - left_margin, LCD_ROWS - HEADER_HEIGHT
+        x + left_margin, HEADER_HEIGHT, kDividerX - left_margin - right_margin,
+        LCD_ROWS - HEADER_HEIGHT
     };
 
     context->list->frame = frame;
@@ -513,7 +516,88 @@ static void context_top_level_draw(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    draw_common(pds, context, x, active);
+    int left_margin = 20;
+    int right_margin = 20;
+
+    CB_ListView* listView = context->list;
+
+    int listX = x;
+
+    listView->frame.x = listX;
+    listView->frame.y = HEADER_HEIGHT;
+    listView->frame.width = kDividerX;
+    listView->frame.height = LCD_ROWS - HEADER_HEIGHT;
+
+    playdate->graphics->setFont(CB_App->bodyFont);
+    int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+
+    playdate->graphics->setClipRect(
+        listX, listView->frame.y, listView->frame.width, listView->frame.height
+    );
+
+    for (int i = 0; i < listView->items->length; i++)
+    {
+        CB_ListItemButton* button = listView->items->items[i];
+        CB_ListItem* item = &button->item;
+
+        int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
+
+        if (rowY + item->height < listView->frame.y ||
+            rowY > listView->frame.y + listView->frame.height)
+        {
+            continue;
+        }
+
+        bool selected = (i == listView->selectedItem && active);
+
+        if (selected)
+        {
+            playdate->graphics->fillRect(listX, rowY, kDividerX, item->height, kColorBlack);
+            playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        }
+        else
+        {
+            playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        }
+
+        char* fullText = cb_strdup(button->title);
+        char* rightText = strchr(fullText, '\t');
+        char* leftText = fullText;
+
+        if (rightText != NULL)
+        {
+            *rightText = '\0';
+            rightText++;
+        }
+        else
+        {
+            rightText = "";
+        }
+
+        int textY = rowY + (item->height - fontHeight) / 2;
+
+        playdate->graphics->drawText(
+            leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
+        );
+
+        if (strlen(rightText) > 0)
+        {
+            int rightWidth = playdate->graphics->getTextWidth(
+                CB_App->bodyFont, rightText, strlen(rightText), kUTF8Encoding, 0
+            );
+            playdate->graphics->drawText(
+                rightText, strlen(rightText), kUTF8Encoding,
+                listX + kDividerX - rightWidth - right_margin, textY
+            );
+        }
+
+        cb_free(fullText);
+    }
+
+    playdate->graphics->clearClipRect();
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+
+    listView->needsDisplay = false;
 }
 
 static char* context_patch_files_browse_hint(
@@ -1004,13 +1088,13 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
 
     context->type = PDSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Manage…");
+    itemButton = CB_ListItemButton_new("Manage patches\t>");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Download…");
+    itemButton = CB_ListItemButton_new("Download patches\t>");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("ROM Info…");
+    itemButton = CB_ListItemButton_new("ROM Info\t>");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);
