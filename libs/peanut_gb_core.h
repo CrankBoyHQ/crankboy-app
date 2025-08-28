@@ -6,6 +6,11 @@
  * if ITCM acceleration is enabled. __core functions can only
  * safely call __core, __shell, or FORCE_INLINE functions.
  * 
+ * ITCM is a small, fast region of memory. Small functions that are
+ * called very frequently -- many times per frame -- should be placed
+ * in ITCM (i.e. __core). Functions which are not called often, but are
+ * called from a __core function, should be desginated as __shell functions.
+ * 
  * Although it's not good practice, some of these functions are
  * called from outside of the core. If the __dmg and __cgb
  * implementations are the same, or the __cgb implementation is a
@@ -418,6 +423,19 @@ __core_section("draw") static u8 $(__gb_get_pixel)(uint8_t* line, u8 x)
     return (*pix >> x) % (1 << LCD_BITS_PER_PIXEL);
 }
 
+__core_section("draw") static inline int $(compare_sprites)(
+    const struct sprite_data* const sd1, const struct sprite_data* const sd2
+)
+{
+    /* Smaller X-coordinate has higher priority. */
+    int x_res = (int)sd1->x - (int)sd2->x;
+    if (x_res != 0)
+        return x_res;
+
+    /* If X is the same, smaller OAM index has higher priority. */
+    return (int)sd1->sprite_number - (int)sd2->sprite_number;
+}
+
 __core_section("draw") static void $(__gb_draw_line_sprites)(
     gb_s* restrict gb, const uint8_t* oam_src, bool is_ghost, const uint32_t* line_priority,
     uint8_t* pixels
@@ -455,7 +473,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         {
             struct sprite_data key = sprites_to_render[i];
             int j = i - 1;
-            while (j >= 0 && compare_sprites(&sprites_to_render[j], &key) > 0)
+            while (j >= 0 && $(compare_sprites)(&sprites_to_render[j], &key) > 0)
             {
                 sprites_to_render[j + 1] = sprites_to_render[j];
                 j = j - 1;
@@ -474,11 +492,13 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 
         if (is_ghost)
         {
-            const uint8_t* ghost_oam = &oam_src[s_4];
-            const uint8_t* visible_oam = &gb->oam[s_4];
-
             // To prevent thickening, check if the ghost sprite is within 4 pixel of the
             // real sprite. If so, skip rendering the ghost.
+            
+            // FIXME: this doesn't work if sprites are re-ordered, as they likely are in many games.
+            
+            const uint8_t* ghost_oam = &oam_src[s_4];
+            const uint8_t* visible_oam = &gb->oam[s_4];
             if (abs(ghost_oam[1] - visible_oam[1]) <= 4 && abs(ghost_oam[0] - visible_oam[0]) <= 4)
             {
                 continue;
@@ -488,7 +508,15 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         uint8_t OY = oam_src[s_4 + 0];
         uint8_t OX = oam_src[s_4 + 1];
         uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
-        uint8_t OF = oam_src[s_4 + 3];
+        uint8_t OF = oam_src[s_4 + 3]; // flags
+        
+        unsigned bank = 0;
+        #if PGB_IS_CGB
+        if (OF & OBJ_CGB_BANK)
+        {
+            bank = VRAM_SIZE;
+        }
+        #endif
 
         if (!is_ghost && (OF & OBJ_PALETTE))
         {
@@ -513,7 +541,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         if (OF & OBJ_FLIP_Y)
             py = (sprite_height - 1) - py;
 
-        uint16_t t1_i = VRAM_TILES_1 + OT * 0x10 + 2 * py;
+        uint16_t t1_i = bank + VRAM_TILES_1 + OT * 0x10 + 2 * py;
         uint8_t t1 = gb->vram[t1_i];
         uint8_t t2 = gb->vram[t1_i + 1];
 
@@ -685,7 +713,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
         
         #if PGB_IS_CGB
-        uint8_t* vram_line_tile_attrs = vram_line_tiles + 0x2000;
+        uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
         
         // points to line data for flipped-y offset
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
@@ -705,7 +733,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = 0x2000;
+                bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             if (tile_attributes & BG_MAP_ATTR_Y_FLIP)
             {
@@ -728,7 +756,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
         if (tile_attributes & BG_MAP_ATTR_BANK)
         {
-            bank_offset = 0x2000;
+            bank_offset = VRAM_SIZE / sizeof(uint16_t);
         }
         #endif
         
@@ -756,7 +784,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = 0x2000;
+                bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             #endif
             
@@ -800,7 +828,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
         
         #if PGB_IS_CGB
-        uint8_t* vram_line_tile_attrs = vram_line_tiles + 0x2000;
+        uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
         
         // points to line data for flipped-y offset
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
@@ -819,7 +847,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = 0x2000;
+                bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             if (tile_attributes & BG_MAP_ATTR_Y_FLIP)
             {
@@ -842,7 +870,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
         if (tile_attributes & BG_MAP_ATTR_BANK)
         {
-            bank_offset = 0x2000;
+            bank_offset = VRAM_SIZE / sizeof(uint16_t);
         }
         #endif
         
@@ -879,7 +907,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = 0x2000;
+                bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             #endif
             
@@ -929,17 +957,26 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         *(uint32_t*)p = rm;
         ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
+    
+    uint32_t* used_line_priority = line_priority;
+    
+    #if IS_CGB_MODE
+    if (!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY))
+    {
+        used_line_priority = gb->zero32;
+    }
+    #endif
 
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-        $(__gb_draw_line_sprites)(gb, gb->oam, false, line_priority, pixels);
+        $(__gb_draw_line_sprites)(gb, gb->oam, false, used_line_priority, pixels);
     }
 
     // draw ghost sprites
     if (gb->direct.oam_ghost_buffer)
     {
-        $(__gb_draw_line_sprites)(gb, gb->direct.oam_ghost_buffer, true, line_priority, pixels);
+        $(__gb_draw_line_sprites)(gb, gb->direct.oam_ghost_buffer, true, used_line_priority, pixels);
     }
 }
 

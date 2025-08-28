@@ -196,6 +196,8 @@ typedef int16_t s16;
 #define OBJ_FLIP_Y 0x40
 #define OBJ_FLIP_X 0x20
 #define OBJ_PALETTE 0x10
+#define OBJ_CGB_BANK 0x08
+#define OBJ_CGB_PALETTE 0x07
 
 #define ROM_HEADER_CHECKSUM_LOC 0x014D
 
@@ -637,6 +639,10 @@ void __gb_do_hdma(gb_s* gb)
         // FIXME: bugs when this is an unusual address
         // NOTE: we use __cgb version because hdma is only possible on CGB.
         uint8_t v = __gb_read__cgb(gb, src);
+        if (dst < 0x9800)
+        {
+            v = reverse_bits_u8(v);
+        }
         gb->vram_base[dst] = v;
         src++;
         dst++;
@@ -1735,19 +1741,6 @@ struct sprite_data
     uint8_t sprite_number;
     uint8_t x;
 };
-
-__shell static int compare_sprites(
-    const struct sprite_data* const sd1, const struct sprite_data* const sd2
-)
-{
-    /* Smaller X-coordinate has higher priority. */
-    int x_res = (int)sd1->x - (int)sd2->x;
-    if (x_res != 0)
-        return x_res;
-
-    /* If X is the same, smaller OAM index has higher priority. */
-    return (int)sd1->sprite_number - (int)sd2->sprite_number;
-}
 #endif
 
 __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode);

@@ -3529,6 +3529,10 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
                 playdate->system->logToConsole("Load state %d failed", 0);
             }
             break;
+        case 0x76: // V
+            {
+                __gb_dump_vram(context->gb);
+            }
 #if ENABLE_RENDER_PROFILER
         case 0x39:  // 9
             playdate->system->logToConsole("Profiler triggered. Will run on next frame.");
@@ -3620,7 +3624,21 @@ static void CB_GameScene_free(void* object)
 __section__(".rare") void __gb_dump_vram(gb_s* gb)
 {
     playdate->system->logToConsole("dumping vram to vram.bin");
-    call_with_main_stack_3(cb_write_entire_file, "vram.bin", gb->vram, VRAM_SIZE_CGB);
+    
+    // reverse byte order of appropriate bytes
+    for (int pass = 0; pass <= 1; ++pass)
+    {
+        for (int b = 0; b <= gb->is_cgb_mode; ++b)
+        {
+            for (int i = 0; i < 0x1800; ++i)
+            {
+                gb->vram[i | (0x2000 * b)] = reverse_bits_u8(gb->vram[i | (0x2000 * b)]);
+            }
+        }
+        
+        if (pass == 0)
+            call_with_main_stack_3(cb_write_entire_file, "vram.bin", gb->vram, (gb->is_cgb_mode) ? VRAM_SIZE_CGB : VRAM_SIZE);
+    }
 }
 
 __section__(".rare") void __gb_on_breakpoint(gb_s* gb, int breakpoint_number)
