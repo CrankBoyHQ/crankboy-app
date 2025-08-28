@@ -693,6 +693,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
         int subx = bg_x % 8;
 
+        #if 0
         // prefetch each tile's data
         for (int x = 0; x <= (wx + 7) / 8; ++x)
         {
@@ -718,6 +719,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 0
             );
         }
+        #endif
 
         uint8_t tile_hi = vram_line_tiles[(bg_x / 8) % 32];
             
@@ -804,6 +806,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
         #endif
 
+        #if 0
         // prefetch each tile's data
         for (int x = wx / 8; x <= LCD_WIDTH / 8; ++x)
         {
@@ -830,6 +833,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 0
             );
         }
+        #endif
 
         uint8_t tile_hi = vram_line_tiles[(bg_x / 8 + wx / 8) % 32];
             
