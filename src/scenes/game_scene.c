@@ -761,13 +761,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             );
         }
         
-        itcm_core_init(context->gb->is_cgb_mode);
-        
         if (dtcm_enabled())
         {
             gb = dtcm_alloc(sizeof(gb_s));
             memcpy(gb, &gb_fallback, sizeof(gb_s));
         }
+        
+        itcm_core_init(context->gb->is_cgb_mode);
     }
     else
     {
