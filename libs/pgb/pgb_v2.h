@@ -287,11 +287,11 @@ struct PGB_VERSIONED(gb_s)
     uint8_t* wram_base[2];
     uint8_t* wram_hi_base;
     uint8_t* echo_ram_base;
-    uint8_t* vram_base;
+    uint8_t* vram_base; // see note about vram
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
     uint8_t* wram;            // wram[WRAM_SIZE_CGB];
-    uint8_t* vram;            // vram[VRAM_SIZE_CGB];
+    uint8_t* vram;            // vram[VRAM_SIZE_CGB]; /* NOTE: tile data (0-0x1800) is stored in reverse bit order. */
     uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
@@ -390,6 +390,11 @@ struct PGB_VERSIONED(gb_s)
 
     // extended ram feature offered by crankboy
     uint8_t* xram;
+    
+    // always 32 zero bytes. Useful hack to implement CGB LCDC priority
+    // bit, but can be used for other things
+    // (so long as nothing writes anything non-zero here.)
+    uint32_t zero32[5];
 
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
@@ -628,6 +633,7 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, direct.joypad_interrupts);
     set_field(v2_gb, v1_gb, direct.enable_xram);
     set_fields(v2_gb, v1_gb, direct.joypad_interrupt_delay, gb_rom_size);
+    set_field(v2_gb, v1_gb, audio);
 
     // now that we have the data in the struct, we can resize
     *out_size = gb_get_state_size_v2(v2_gb);
