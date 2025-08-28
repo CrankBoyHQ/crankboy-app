@@ -1,9 +1,9 @@
 #pragma once
 
-#include <stdlib.h>
-#include "../softpatch.h"
+#include "../listview.h"
 #include "library_scene.h"
-#include "listview.h"
+
+#include <stdlib.h>
 
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
 
@@ -28,13 +28,13 @@ typedef struct CB_PatchDownloadScene
 {
     CB_Scene* scene;
     CB_Game* game;
-    
+
     int context_depth;
     int target_context_depth;
     float context_depth_p;
     char* patches_dir_path;
     char* cached_hint;
-    
+
     const char* gamekey;
     const char* prefix;
     const char* filekey;
@@ -44,21 +44,21 @@ typedef struct CB_PatchDownloadScene
         const char* text_file_title;
         const char* basename;
     };
-    
+
     json_value game_hacks;
     json_value hack_fs;
     json_value selected_hack;
     int selected_hack_key;
-    
+
     uint32_t cached_hint_key;
     json_value rhdb;
-    
+
     bool http_in_progress : 1;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
-    
+
     float anim_t;
-    
+
 } CB_PatchDownloadScene;
 
 CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game);

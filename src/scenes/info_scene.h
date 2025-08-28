@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../scene.h"
-#include "../utility.h"
 #include "pd_api.h"
 
 // Just displays some text. Plain and simple.
