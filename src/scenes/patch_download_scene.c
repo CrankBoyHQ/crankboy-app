@@ -130,6 +130,8 @@ static void context_top_level_select_download(unsigned flags, void* ud)
 {
     CB_PatchDownloadScene* pds = ud;
 
+    pds->is_fetching_list = false;
+
     // already cancelled?
     if (pds->http_in_progress != 1)
     {
@@ -483,6 +485,10 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
                 {
                     pds->domain = jdomain.data.stringval;
                     pds->http_in_progress = 1;
+                    pds->is_fetching_list = true;
+                    pds->loading_anim_timer = 0.0f;
+                    pds->loading_anim_step = 0;
+                    context->list->needsDisplay = true;
                     enable_http(
                         jdomain.data.stringval, "to download game patches",
                         context_top_level_select_download, pds
@@ -516,88 +522,100 @@ static void context_top_level_draw(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    int left_margin = 20;
-    int right_margin = 20;
-
-    CB_ListView* listView = context->list;
-
-    int listX = x;
-
-    listView->frame.x = listX;
-    listView->frame.y = HEADER_HEIGHT;
-    listView->frame.width = kDividerX;
-    listView->frame.height = LCD_ROWS - HEADER_HEIGHT;
-
-    playdate->graphics->setFont(CB_App->bodyFont);
-    int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
-
-    playdate->graphics->setClipRect(
-        listX, listView->frame.y, listView->frame.width, listView->frame.height
-    );
-
-    for (int i = 0; i < listView->items->length; i++)
+    if (pds->is_fetching_list && active)
     {
-        CB_ListItemButton* button = listView->items->items[i];
-        CB_ListItem* item = &button->item;
-
-        int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
-
-        if (rowY + item->height < listView->frame.y ||
-            rowY > listView->frame.y + listView->frame.height)
-        {
-            continue;
-        }
-
-        bool selected = (i == listView->selectedItem && active);
-
-        if (selected)
-        {
-            playdate->graphics->fillRect(listX, rowY, kDividerX, item->height, kColorBlack);
-            playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        }
-        else
-        {
-            playdate->graphics->setDrawMode(kDrawModeFillBlack);
-        }
-
-        char* fullText = cb_strdup(button->title);
-        char* rightText = strchr(fullText, '\t');
-        char* leftText = fullText;
-
-        if (rightText != NULL)
-        {
-            *rightText = '\0';
-            rightText++;
-        }
-        else
-        {
-            rightText = "";
-        }
-
-        int textY = rowY + (item->height - fontHeight) / 2;
-
-        playdate->graphics->drawText(
-            leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
+        playdate->graphics->fillRect(
+            x, HEADER_HEIGHT, kDividerX, LCD_ROWS - HEADER_HEIGHT, kColorWhite
         );
 
-        if (strlen(rightText) > 0)
+        const char* base_text = "Searching patches";
+        const char* width_calc_string = "Searching patches...";
+        char message[32];
+
+        const int dot_counts[] = {0, 1, 2, 3};
+        int num_dots = dot_counts[pds->loading_anim_step];
+        snprintf(message, sizeof(message), "%s", base_text);
+        for (int i = 0; i < num_dots; i++)
         {
-            int rightWidth = playdate->graphics->getTextWidth(
-                CB_App->bodyFont, rightText, strlen(rightText), kUTF8Encoding, 0
-            );
-            playdate->graphics->drawText(
-                rightText, strlen(rightText), kUTF8Encoding,
-                listX + kDividerX - rightWidth - right_margin, textY
-            );
+            strncat(message, ".", sizeof(message) - strlen(message) - 1);
         }
 
-        cb_free(fullText);
+        playdate->graphics->setFont(CB_App->bodyFont);
+        int msg_width = playdate->graphics->getTextWidth(
+            CB_App->bodyFont, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
+        );
+        int textX = x + (kDividerX - msg_width) / 2;
+        int textY = HEADER_HEIGHT + (LCD_ROWS - HEADER_HEIGHT) / 2 -
+                    playdate->graphics->getFontHeight(CB_App->bodyFont) / 2;
+
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
     }
-
-    playdate->graphics->clearClipRect();
-    playdate->graphics->setDrawMode(kDrawModeCopy);
-
-    listView->needsDisplay = false;
+    else
+    {
+        int left_margin = 20;
+        int right_margin = 20;
+        CB_ListView* listView = context->list;
+        int listX = x;
+        listView->frame.x = listX;
+        listView->frame.y = HEADER_HEIGHT;
+        listView->frame.width = kDividerX;
+        listView->frame.height = LCD_ROWS - HEADER_HEIGHT;
+        playdate->graphics->setFont(CB_App->bodyFont);
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+        playdate->graphics->setClipRect(
+            listX, listView->frame.y, listView->frame.width, listView->frame.height
+        );
+        for (int i = 0; i < listView->items->length; i++)
+        {
+            CB_ListItemButton* button = listView->items->items[i];
+            CB_ListItem* item = &button->item;
+            int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
+            if (rowY + item->height < listView->frame.y ||
+                rowY > listView->frame.y + listView->frame.height)
+                continue;
+            bool selected = (i == listView->selectedItem && active);
+            if (selected)
+            {
+                playdate->graphics->fillRect(listX, rowY, kDividerX, item->height, kColorBlack);
+                playdate->graphics->setDrawMode(kDrawModeFillWhite);
+            }
+            else
+            {
+                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+            }
+            char* fullText = cb_strdup(button->title);
+            char* rightText = strchr(fullText, '\t');
+            char* leftText = fullText;
+            if (rightText != NULL)
+            {
+                *rightText = '\0';
+                rightText++;
+            }
+            else
+            {
+                rightText = "";
+            }
+            int textY = rowY + (item->height - fontHeight) / 2;
+            playdate->graphics->drawText(
+                leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
+            );
+            if (strlen(rightText) > 0)
+            {
+                int rightWidth = playdate->graphics->getTextWidth(
+                    CB_App->bodyFont, rightText, strlen(rightText), kUTF8Encoding, 0
+                );
+                playdate->graphics->drawText(
+                    rightText, strlen(rightText), kUTF8Encoding,
+                    listX + kDividerX - rightWidth - right_margin, textY
+                );
+            }
+            cb_free(fullText);
+        }
+        playdate->graphics->clearClipRect();
+        playdate->graphics->setDrawMode(kDrawModeCopy);
+        listView->needsDisplay = false;
+    }
 }
 
 static char* context_patch_files_browse_hint(
@@ -743,8 +761,8 @@ PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
     memset(context, 0, sizeof(*context));
 
     context->list = CB_ListView_new();
-    context->list->paddingTop = 10;
-    context->list->paddingBottom = 10;
+    context->list->paddingTop = 15;
+    context->list->paddingBottom = 15;
     return context;
 }
 
@@ -803,13 +821,15 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         // back out
         --pds->target_context_depth;
     }
-    else if (pds->http_in_progress == 0)
+
+    if (pds->is_fetching_list)
     {
-        // update selected
-        PatchDownloadContext* context = &pds->context[pds->context_depth - 1];
-        context_fn fn = context_update[context->type];
-        if (fn)
-            fn(pds, context);
+        pds->loading_anim_timer += dt;
+        if (pds->loading_anim_timer >= 0.5f)
+        {
+            pds->loading_anim_timer -= 0.5f;
+            pds->loading_anim_step = (pds->loading_anim_step + 1) % 4;
+        }
     }
 
     bool isAnimating = (pds->context_depth_p != pds->target_context_depth);
@@ -820,7 +840,27 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     for (int i = 0; i < n; ++i)
     {
         int ci = ceil(pds->context_depth_p) - i;
+
+        // Gracefully handle potential out-of-bounds access during animation.
+        if (ci < 0 || ci >= pds->context_depth)
+        {
+            continue;
+        }
+
         PatchDownloadContext* context = &pds->context[ci];
+
+        if (!isAnimating && i == 0 && pds->http_in_progress == 0)
+        {
+            context_fn fn = context_update[context->type];
+            if (fn)
+                fn(pds, context);
+        }
+        else if (isAnimating)
+        {
+            if (context->list)
+                CB_ListView_update(context->list);
+        }
+
         float d = ci - pds->context_depth_p;
         float x = d * kDividerX;
         context_draw_fn fn = context_draw[context->type];
@@ -868,7 +908,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
         int rightPaneX = kDividerX + kRightPanePadding;
-        int rightPaneY = HEADER_HEIGHT + 10;
+        int rightPaneY = HEADER_HEIGHT + 20;
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
         int rightPaneHeight = LCD_ROWS - rightPaneY;
 
@@ -898,7 +938,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 
-    if (pds->http_in_progress)
+    if (pds->http_in_progress && !pds->is_fetching_list)
     {
         // crude loading bar
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
@@ -1109,6 +1149,9 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game)
     pds->scene = scene;
     pds->game = game;
     scene->managedObject = pds;
+
+    pds->loading_anim_timer = 0.0f;
+    pds->loading_anim_step = 0;
 
     pds->cached_hint_key = -2;
     pds->patches_dir_path = get_patches_directory(game->fullpath);

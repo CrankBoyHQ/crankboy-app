@@ -54,10 +54,13 @@ typedef struct CB_PatchDownloadScene
     json_value rhdb;
 
     bool http_in_progress : 1;
+    bool is_fetching_list : 1;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
 
     float anim_t;
+    float loading_anim_timer;
+    int loading_anim_step;
 
 } CB_PatchDownloadScene;
 
