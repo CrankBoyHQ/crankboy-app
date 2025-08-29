@@ -16,6 +16,13 @@
 #define kDividerX 240
 #define kRightPanePadding 10
 
+static const uint8_t black_transparent_dither[16] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
+};
+static const uint8_t white_transparent_dither[16] = {
+    0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
+};
+
 typedef void (*context_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 typedef void (*context_draw_fn)(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
@@ -293,13 +300,32 @@ static void context_patch_list_update(CB_PatchDownloadScene* pds, PatchDownloadC
             c->type = PDSCT_PATCH_CHOOSE_INTERACTION;
             CB_ListItemButton* itemButton;
 
-            itemButton = CB_ListItemButton_new("View Description…");
+            itemButton = CB_ListItemButton_new("Download files\t>");
             array_push(c->list->items, itemButton);
 
-            itemButton = CB_ListItemButton_new("Download Files…");
+            itemButton = CB_ListItemButton_new("Patch info\t>");
             array_push(c->list->items, itemButton);
 
-            itemButton = CB_ListItemButton_new("View README…");
+            json_value fs = pds->hack_fs;
+
+            bool has_readme = (json_get_table_value(fs, "readme.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "README.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "readme.md").type != kJSONNull) ||
+                              (json_get_table_value(fs, "Read me.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "Read Me.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "read_me.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "Read_Me.txt").type != kJSONNull) ||
+                              (json_get_table_value(fs, "readme").type != kJSONNull);
+
+            itemButton = CB_ListItemButton_new("Readme\t>");
+            itemButton->ud.uint = has_readme ? 0 : 1;  // 1 means disabled
+            array_push(c->list->items, itemButton);
+
+            bool has_changelog = (json_get_table_value(fs, "changelog.txt").type != kJSONNull) ||
+                                 (json_get_table_value(fs, "releasenotes.txt").type != kJSONNull);
+
+            itemButton = CB_ListItemButton_new("Changelog\t>");
+            itemButton->ud.uint = has_changelog ? 0 : 1;  // 1 means disabled
             array_push(c->list->items, itemButton);
 
             CB_ListView_reload(c->list);
@@ -388,7 +414,14 @@ static void context_patch_choose_interaction_update(
     {
         switch (context->list->selectedItem)
         {
-        case 0:  // view description
+        case 0:  // Download Files
+            if (!push_file_browser(pds, pds->hack_fs))
+            {
+                CB_Modal* modal = CB_Modal_new("Failed to open directory", NULL, NULL, NULL);
+                CB_presentModal(modal->scene);
+            }
+            break;
+        case 1:  // Patch Info
         {
             cb_play_ui_sound(CB_UISound_Confirm);
             json_value jtitle = json_get_table_value(pds->selected_hack, "title");
@@ -426,22 +459,92 @@ static void context_patch_choose_interaction_update(
             CB_presentModal(infoScene->scene);
         }
         break;
-        case 1:  // view patch files
-            if (!push_file_browser(pds, pds->hack_fs))
-            {
-                CB_Modal* modal = CB_Modal_new("Failed to open directory", NULL, NULL, NULL);
-                CB_presentModal(modal->scene);
-            }
-            break;
-        case 2:  // view README
+        case 2:  // Readme
         {
-            char* path = aprintf("%spatches/%sreadme.txt", pds->prefix, pds->filekey);
-            pds->http_in_progress = 1;
-            pds->text_file_title = "README";
-            http_get(
-                pds->domain, path, "to download a patch README", on_get_textfile, 15000, pds, NULL
-            );
-            cb_free(path);
+            const CB_ListItemButton* button =
+                context->list->items->items[context->list->selectedItem];
+            if (button->ud.uint == 1)
+            {  // is disabled
+                break;
+            }
+            cb_play_ui_sound(CB_UISound_Confirm);
+
+            json_value fs = pds->hack_fs;
+            const char* readme_filename = NULL;
+            if (json_get_table_value(fs, "readme.txt").type != kJSONNull)
+                readme_filename = "readme.txt";
+            else if (json_get_table_value(fs, "README.txt").type != kJSONNull)
+                readme_filename = "README.txt";
+            else if (json_get_table_value(fs, "readme.md").type != kJSONNull)
+                readme_filename = "readme.md";
+            else if (json_get_table_value(fs, "Read me.txt").type != kJSONNull)
+                readme_filename = "Read me.txt";
+            else if (json_get_table_value(fs, "Read Me.txt").type != kJSONNull)
+                readme_filename = "Read Me.txt";
+            else if (json_get_table_value(fs, "read_me.txt").type != kJSONNull)
+                readme_filename = "read_me.txt";
+            else if (json_get_table_value(fs, "Read_Me.txt").type != kJSONNull)
+                readme_filename = "Read_Me.txt";
+            else if (json_get_table_value(fs, "readme").type != kJSONNull)
+                readme_filename = "readme";
+
+            if (readme_filename)
+            {
+                char* fs_path = aprintf("z%s/%s", pds->filekey, readme_filename);
+                char* http_path = aprintf("%sextracted/%s", pds->prefix, fs_path);
+                cb_free(fs_path);
+
+                char* http_path_san = sanitize_url_path(http_path);
+                cb_free(http_path);
+
+                pds->http_in_progress = 1;
+                pds->text_file_title = "Readme";
+                http_get(
+                    pds->domain, http_path_san, "to download a patch README", on_get_textfile,
+                    15000, pds, NULL
+                );
+                cb_free(http_path_san);
+            }
+        }
+        break;
+        case 3:  // Changelog
+        {
+            const CB_ListItemButton* button =
+                context->list->items->items[context->list->selectedItem];
+            if (button->ud.uint == 1)
+            {  // is disabled
+                break;
+            }
+            cb_play_ui_sound(CB_UISound_Confirm);
+
+            json_value fs = pds->hack_fs;
+            const char* changelog_filename = NULL;
+            if (json_get_table_value(fs, "changelog.txt").type != kJSONNull)
+            {
+                changelog_filename = "changelog.txt";
+            }
+            else if (json_get_table_value(fs, "releasenotes.txt").type != kJSONNull)
+            {
+                changelog_filename = "releasenotes.txt";
+            }
+
+            if (changelog_filename)
+            {
+                char* fs_path = aprintf("z%s/%s", pds->filekey, changelog_filename);
+                char* http_path = aprintf("%sextracted/%s", pds->prefix, fs_path);
+                cb_free(fs_path);
+
+                char* http_path_san = sanitize_url_path(http_path);
+                cb_free(http_path);
+
+                pds->http_in_progress = 1;
+                pds->text_file_title = "Changelog";
+                http_get(
+                    pds->domain, http_path_san, "to download the changelog", on_get_textfile, 15000,
+                    pds, NULL
+                );
+                cb_free(http_path_san);
+            }
         }
         break;
         default:
@@ -598,10 +701,15 @@ static void context_top_level_draw(
                 rightText = "";
             }
             int textY = rowY + (item->height - fontHeight) / 2;
+
+            bool is_disabled =
+                (context->type == PDSCT_PATCH_CHOOSE_INTERACTION && button->ud.uint == 1);
+
             playdate->graphics->drawText(
                 leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
             );
-            if (strlen(rightText) > 0)
+
+            if (strlen(rightText) > 0 && !is_disabled)
             {
                 int rightWidth = playdate->graphics->getTextWidth(
                     CB_App->bodyFont, rightText, strlen(rightText), kUTF8Encoding, 0
@@ -611,6 +719,19 @@ static void context_top_level_draw(
                     listX + kDividerX - rightWidth - right_margin, textY
                 );
             }
+
+            if (is_disabled)
+            {
+                const uint8_t* dither =
+                    selected ? white_transparent_dither : black_transparent_dither;
+                int leftWidth = playdate->graphics->getTextWidth(
+                    CB_App->bodyFont, leftText, strlen(leftText), kUTF8Encoding, 0
+                );
+                playdate->graphics->fillRect(
+                    listX + left_margin, textY, leftWidth, fontHeight, (LCDColor)dither
+                );
+            }
+
             cb_free(fullText);
         }
         playdate->graphics->clearClipRect();
@@ -678,11 +799,27 @@ static char* context_patch_choose_interaction_hint(
     switch (context->list->selectedItem)
     {
     case 0:
-        return aprintf("View info for hack \"%s\"", title ? title : "?");
-    case 1:
         return aprintf("Download patch files for hack \"%s\"", title ? title : "?");
+    case 1:
+        return aprintf("View patch info for hack \"%s\"", title ? title : "?");
     case 2:
-        return aprintf("View README for hack \"%s\"", title ? title : "?");
+    {
+        const CB_ListItemButton* button = context->list->items->items[context->list->selectedItem];
+        if (button->ud.uint == 1)
+        {  // is disabled
+            return aprintf("No readme available for this hack.");
+        }
+        return aprintf("View readme for hack \"%s\"", title ? title : "?");
+    }
+    case 3:
+    {
+        const CB_ListItemButton* button = context->list->items->items[context->list->selectedItem];
+        if (button->ud.uint == 1)
+        {  // is disabled
+            return aprintf("No changelog available for this hack.");
+        }
+        return aprintf("View changelog for hack \"%s\"", title ? title : "?");
+    }
     default:
         return NULL;
     }
@@ -750,7 +887,7 @@ static context_fn context_update[PDSCT_MAX] = {
 };
 
 static context_draw_fn context_draw[PDSCT_MAX] = {
-    context_top_level_draw, draw_common, draw_common, draw_common, NULL
+    context_top_level_draw, draw_common, context_top_level_draw, draw_common, NULL
 };
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
