@@ -15,6 +15,7 @@
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
 #define kRightPanePadding 10
+#define PDS_FONT CB_App->bodyFont
 
 static const uint8_t black_transparent_dither[16] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
@@ -644,13 +645,13 @@ static void context_top_level_draw(
             strncat(message, ".", sizeof(message) - strlen(message) - 1);
         }
 
-        playdate->graphics->setFont(CB_App->bodyFont);
+        playdate->graphics->setFont(PDS_FONT);
         int msg_width = playdate->graphics->getTextWidth(
-            CB_App->bodyFont, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
+            PDS_FONT, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
         );
         int textX = x + (kDividerX - msg_width) / 2;
-        int textY = header_y + (LCD_ROWS - header_y) / 2 -
-                    playdate->graphics->getFontHeight(CB_App->bodyFont) / 2;
+        int textY =
+            header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
 
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
         playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
@@ -665,8 +666,8 @@ static void context_top_level_draw(
         listView->frame.y = header_y;
         listView->frame.width = kDividerX;
         listView->frame.height = LCD_ROWS - header_y;
-        playdate->graphics->setFont(CB_App->bodyFont);
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+        playdate->graphics->setFont(PDS_FONT);
+        int fontHeight = playdate->graphics->getFontHeight(PDS_FONT);
         playdate->graphics->setClipRect(
             listX, listView->frame.y, listView->frame.width, listView->frame.height
         );
@@ -712,7 +713,7 @@ static void context_top_level_draw(
             if (strlen(rightText) > 0 && !is_disabled)
             {
                 int rightWidth = playdate->graphics->getTextWidth(
-                    CB_App->bodyFont, rightText, strlen(rightText), kUTF8Encoding, 0
+                    PDS_FONT, rightText, strlen(rightText), kUTF8Encoding, 0
                 );
                 playdate->graphics->drawText(
                     rightText, strlen(rightText), kUTF8Encoding,
@@ -725,7 +726,7 @@ static void context_top_level_draw(
                 const uint8_t* dither =
                     selected ? white_transparent_dither : black_transparent_dither;
                 int leftWidth = playdate->graphics->getTextWidth(
-                    CB_App->bodyFont, leftText, strlen(leftText), kUTF8Encoding, 0
+                    PDS_FONT, leftText, strlen(leftText), kUTF8Encoding, 0
                 );
                 playdate->graphics->fillRect(
                     listX + left_margin, textY, leftWidth, fontHeight, (LCDColor)dither
@@ -899,6 +900,7 @@ PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
     memset(context, 0, sizeof(*context));
 
     context->list = CB_ListView_new();
+    context->list->font = PDS_FONT;
     context->list->paddingTop = 15;
     context->list->paddingBottom = 15;
     return context;

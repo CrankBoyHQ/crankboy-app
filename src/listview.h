@@ -96,6 +96,7 @@ typedef struct
     float textScrollPause;
 
     bool hideScrollIndicator;
+    LCDFont* font;
 } CB_ListView;
 
 CB_ListView* CB_ListView_new(void);

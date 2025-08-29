@@ -69,6 +69,7 @@ CB_ListView* CB_ListView_new(void)
     listView->paddingBottom = 0;
 
     listView->hideScrollIndicator = false;
+    listView->font = CB_App->subheadFont;
 
     return listView;
 }
@@ -329,9 +330,9 @@ void CB_ListView_update(CB_ListView* listView)
 
         if (button->item.type == CB_ListViewItemTypeButton)
         {
-            playdate->graphics->setFont(CB_App->subheadFont);
+            playdate->graphics->setFont(listView->font);
             int textWidth = playdate->graphics->getTextWidth(
-                CB_App->subheadFont, button->title, strlen(button->title), kUTF8Encoding, 0
+                listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
             );
             int availableWidth = listView->scroll.active
                                      ? listView->frame.width - (CB_ListView_inset * 2)
@@ -511,11 +512,11 @@ void CB_ListView_draw(CB_ListView* listView)
                 }
 
                 int textX = listX + CB_ListView_inset;
-                int textY = rowY + (float)(item->height -
-                                           playdate->graphics->getFontHeight(CB_App->subheadFont)) /
-                                       2;
+                int textY =
+                    rowY +
+                    (float)(item->height - playdate->graphics->getFontHeight(listView->font)) / 2;
 
-                playdate->graphics->setFont(CB_App->subheadFont);
+                playdate->graphics->setFont(listView->font);
 
                 int rightSidePadding;
 
