@@ -2461,11 +2461,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             gb_s* gb = context->gb;
 
             gb->direct.ignore_cgb_check = true;
+            
+            // ugh.
+            void* stored_prefs = preferences_store_subset(-1);
+            preferences_skip_cgb_confirm = true;
 
             enum gb_init_error_e gb_ret = gb_init(
                 gb, context->wram, context->vram, gb->lcd, context->rom, context->rom_size,
                 gb_error, context
             );
+            
+            preferences_restore_subset(stored_prefs);
 
             if (gb_ret == GB_INIT_NO_ERROR)
             {
@@ -3003,7 +3009,7 @@ static void CB_GameScene_menu(void* object)
         playdate->system->addMenuItem("About", CB_showCredits, gameScene);
     }
 
-    if (game_menu_button_input_enabled)
+    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded)
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
             "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
