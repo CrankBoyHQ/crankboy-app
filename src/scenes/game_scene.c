@@ -57,7 +57,6 @@
 #define LOG_DIRTY_LINES 0
 
 CB_GameScene* audioGameScene = NULL;
-static bool ignore_cgb_check_on_next_init = false;
 
 void CB_reset_audio_sync_state(void)
 {
@@ -685,15 +684,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         }
 
         context->rom = rom;
+        context->rom_size = rom_size;
 
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
-
-        if (ignore_cgb_check_on_next_init)
-        {
-            gb->direct.ignore_cgb_check = true;
-            ignore_cgb_check_on_next_init = false;
-        }
 
         enum gb_init_error_e gb_ret = gb_init(
             context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
@@ -2448,71 +2442,114 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
     else if (gameScene->state == CB_GameSceneStateCGBConfirm)
     {
+        bool should_boot_cgb = false;
+
         if (preferences_skip_cgb_confirm)
         {
-            ignore_cgb_check_on_next_init = true;
-            CB_App->pendingScene =
-                CB_GameScene_new(gameScene->rom_filename, gameScene->name_short)->scene;
-
-            return;
+            should_boot_cgb = true;
         }
-
-        gameScene->scene->preferredRefreshRate = 30;
-
-        if (gbScreenRequiresFullRefresh)
+        else
         {
-            char* title = "Game Boy Color Required";
-            const char* messages[] = {
-                "This game may not work correctly.", "", "Press Ⓐ to continue booting,",
-                "or Ⓑ to return to the Library."
-            };
-            int msg_count = sizeof(messages) / sizeof(char*);
+            gameScene->scene->preferredRefreshRate = 30;
 
-            playdate->graphics->clear(kColorWhite);
-            int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
-            int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
-            int lineSpacing = 2;
-            int titleToMessageSpacing = 12;
-            int messagesHeight = messageHeight * msg_count + lineSpacing * (msg_count - 1);
-            int containerHeight = titleHeight + titleToMessageSpacing + messagesHeight;
-            int titleX = (playdate->display->getWidth() -
-                          playdate->graphics->getTextWidth(
-                              CB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
-                          )) /
-                         2;
-            int titleY = (playdate->display->getHeight() - containerHeight) / 2;
-
-            playdate->graphics->setFont(CB_App->titleFont);
-            playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
-
-            int messageY = titleY + titleHeight + titleToMessageSpacing;
-            playdate->graphics->setFont(CB_App->bodyFont);
-            for (int i = 0; i < msg_count; i++)
+            if (gbScreenRequiresFullRefresh)
             {
-                const char* msg = messages[i];
-                int messageX = (playdate->display->getWidth() -
-                                playdate->graphics->getTextWidth(
-                                    CB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
-                                )) /
-                               2;
-                playdate->graphics->drawText(msg, strlen(msg), kUTF8Encoding, messageX, messageY);
-                messageY += messageHeight + lineSpacing;
+                char* title = "Game Boy Color Required";
+                const char* messages[] = {
+                    "This game may not work correctly.", "", "Press Ⓐ to continue booting,",
+                    "or Ⓑ to return to the Library."
+                };
+                int msg_count = sizeof(messages) / sizeof(char*);
+
+                playdate->graphics->clear(kColorWhite);
+                int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
+                int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+                int lineSpacing = 2;
+                int titleToMessageSpacing = 12;
+                int messagesHeight = messageHeight * msg_count + lineSpacing * (msg_count - 1);
+                int containerHeight = titleHeight + titleToMessageSpacing + messagesHeight;
+                int titleX = (playdate->display->getWidth() -
+                              playdate->graphics->getTextWidth(
+                                  CB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
+                              )) /
+                             2;
+                int titleY = (playdate->display->getHeight() - containerHeight) / 2;
+
+                playdate->graphics->setFont(CB_App->titleFont);
+                playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
+
+                int messageY = titleY + titleHeight + titleToMessageSpacing;
+                playdate->graphics->setFont(CB_App->bodyFont);
+                for (int i = 0; i < msg_count; i++)
+                {
+                    const char* msg = messages[i];
+                    int messageX = (playdate->display->getWidth() -
+                                    playdate->graphics->getTextWidth(
+                                        CB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
+                                    )) /
+                                   2;
+                    playdate->graphics->drawText(
+                        msg, strlen(msg), kUTF8Encoding, messageX, messageY
+                    );
+                    messageY += messageHeight + lineSpacing;
+                }
+            }
+
+            PDButtons pushed;
+            playdate->system->getButtonState(NULL, &pushed, NULL);
+
+            if (pushed & kButtonA)
+            {
+                should_boot_cgb = true;
+            }
+            else if (pushed & kButtonB)
+            {
+                CB_GameScene_didSelectLibrary(gameScene);
+                return;
             }
         }
-        PDButtons pushed;
-        playdate->system->getButtonState(NULL, &pushed, NULL);
 
-        if (pushed & kButtonA)
+        // --- Perform In-Place Re-initialization if Required ---
+        if (should_boot_cgb)
         {
-            ignore_cgb_check_on_next_init = true;
-            CB_App->pendingScene =
-                CB_GameScene_new(gameScene->rom_filename, gameScene->name_short)->scene;
+            CB_GameSceneContext* context = gameScene->context;
+            gb_s* gb = context->gb;
 
-            return;
-        }
-        else if (pushed & kButtonB)
-        {
-            CB_GameScene_didSelectLibrary(gameScene);
+            gb->direct.ignore_cgb_check = true;
+
+            enum gb_init_error_e gb_ret = gb_init(
+                gb, context->wram, context->vram, gb->lcd, context->rom, context->rom_size,
+                gb_error, context
+            );
+
+            if (gb_ret == GB_INIT_NO_ERROR)
+            {
+                if (!CB_GameScene_complete_successful_init(gameScene))
+                {
+                    gameScene->state = CB_GameSceneStateError;
+                    gameScene->error = CB_GameSceneErrorFatal;
+                }
+                else
+                {
+                    DTCM_VERIFY();
+                    audio_init(&gb->audio);
+                    CB_GameScene_apply_settings(gameScene, true);
+                    CB_reset_audio_sync_state();
+                    gb_init_lcd(gb);
+                    memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
+
+                    gameScene->state = CB_GameSceneStateLoaded;
+                    playdate->system->logToConsole(
+                        "gb context re-initialized for CGB successfully."
+                    );
+                }
+            }
+            else
+            {
+                gameScene->state = CB_GameSceneStateError;
+                gameScene->error = CB_GameSceneErrorFatal;
+                playdate->system->logToConsole("Error re-initializing gb context for CGB.");
+            }
             return;
         }
     }
@@ -3557,14 +3594,11 @@ static void CB_GameScene_free(void* object)
 
     playdate->system->setAutoLockDisabled(0);
 
-    if (gameScene->state != CB_GameSceneStateCGBConfirm)
-    {
-        prefs_locked_by_script = 0;
-        preferences_read_from_disk(CB_globalPrefsPath);
-        preferences_per_game = 0;
-        preferences_save_state_slot = 0;
-        gb_save_to_disk(context->gb);
-    }
+    prefs_locked_by_script = 0;
+    preferences_read_from_disk(CB_globalPrefsPath);
+    preferences_per_game = 0;
+    preferences_save_state_slot = 0;
+    gb_save_to_disk(context->gb);
 
     if (audioGameScene == gameScene)
     {
@@ -3596,10 +3630,7 @@ static void CB_GameScene_free(void* object)
 
     CB_Scene_free(gameScene->scene);
 
-    if (gameScene->state != CB_GameSceneStateCGBConfirm)
-    {
-        gb_reset(context->gb);
-    }
+    gb_reset(context->gb);
 
     cb_free(gameScene->rom_filename);
     cb_free(gameScene->save_filename);
@@ -3626,10 +3657,7 @@ static void CB_GameScene_free(void* object)
     cb_free(context);
     cb_free(gameScene);
 
-    if (gameScene->state != CB_GameSceneStateCGBConfirm)
-    {
-        dtcm_deinit();
-    }
+    dtcm_deinit();
 
     DTCM_VERIFY();
 }
