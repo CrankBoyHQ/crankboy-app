@@ -60,6 +60,7 @@ typedef struct CB_PatchDownloadScene
 
     bool http_in_progress : 1;
     bool is_fetching_list : 1;
+    char* list_fetch_error_message;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
 

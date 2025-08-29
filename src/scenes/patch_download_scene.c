@@ -148,7 +148,18 @@ static void context_top_level_select_download(unsigned flags, void* ud)
     }
 
     pds->http_in_progress = 0;
-    if (flags & HTTP_ENABLE_DENIED)
+
+    if (pds->list_fetch_error_message)
+    {
+        cb_free(pds->list_fetch_error_message);
+        pds->list_fetch_error_message = NULL;
+    }
+
+    if (flags & HTTP_WIFI_NOT_AVAILABLE)
+    {
+        pds->list_fetch_error_message = cb_strdup("Wi-Fi not available.");
+    }
+    else if (flags & HTTP_ENABLE_DENIED)
     {
         CB_Modal* modal = CB_Modal_new(
             "CrankBoy must be granted networking privileges in order to download ROM hacks. You "
@@ -161,10 +172,7 @@ static void context_top_level_select_download(unsigned flags, void* ud)
     }
     else if (flags & ~HTTP_ENABLE_ASKED)
     {
-        char* s = aprintf("HTTP Error (flags=0x%03x)", flags);
-        CB_Modal* modal = CB_Modal_new(s, NULL, NULL, NULL);
-        cb_free(s);
-        CB_presentModal(modal->scene);
+        pds->list_fetch_error_message = cb_strdup("Searching patches failed.");
     }
     else
     {
@@ -576,6 +584,12 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
         case 1:  // download
             cb_play_ui_sound(CB_UISound_Confirm);
             {
+                if (pds->list_fetch_error_message)
+                {
+                    cb_free(pds->list_fetch_error_message);
+                    pds->list_fetch_error_message = NULL;
+                }
+
                 pds->prefix = NULL;
                 json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
                 if (jprefix.type == kJSONString)
@@ -648,6 +662,22 @@ static void context_top_level_draw(
         int msg_width = playdate->graphics->getTextWidth(
             PDS_FONT, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
         );
+        int textX = x + (kDividerX - msg_width) / 2;
+        int textY =
+            header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
+
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
+    }
+    else if (pds->list_fetch_error_message && active)
+    {
+        playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
+
+        const char* message = pds->list_fetch_error_message;
+
+        playdate->graphics->setFont(PDS_FONT);
+        int msg_width =
+            playdate->graphics->getTextWidth(PDS_FONT, message, strlen(message), kUTF8Encoding, 0);
         int textX = x + (kDividerX - msg_width) / 2;
         int textY =
             header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
@@ -928,6 +958,8 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
         pop_context(pds);
     }
     cb_free(pds->patches_dir_path);
+    cb_free(pds->cached_hint);
+    cb_free(pds->list_fetch_error_message);
     cb_free(pds);
 }
 
@@ -968,9 +1000,15 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         }
         else if (pds->http_in_progress == 0 && (CB_App->buttons_pressed & kButtonB))
         {
-            // At the top level panel
-            if (pds->context_depth == 1)
+            if (pds->list_fetch_error_message)
             {
+                cb_free(pds->list_fetch_error_message);
+                pds->list_fetch_error_message = NULL;
+                pds->context[pds->context_depth - 1].list->needsDisplay = true;
+            }
+            else if (pds->context_depth == 1)
+            {
+                // At the top level panel
                 if (pds->started_without_header)
                 {
                     pds->is_dismissing = true;
