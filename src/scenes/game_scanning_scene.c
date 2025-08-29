@@ -7,6 +7,12 @@
 #include "library_scene.h"
 #include "pd_api.h"
 
+struct ScriptInfo;
+struct ScriptInfo* script_get_info_by_rom_path_and_get_header_name(
+    const char* rom_path, char* header_name
+);
+
+void script_info_free(struct ScriptInfo* info);
 void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt);
 void CB_GameScanningScene_free(void* object);
 
@@ -65,6 +71,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
 
     uint32_t crc = 0;
     bool needs_calculation = true;
+    char header_name_buffer[17] = {0};
 
     json_value cached_entry = {.type = kJSONNull};
     if (scanScene->crc_cache.type == kJSONTable)
@@ -89,14 +96,19 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
         json_value cached_crc_val = json_get_table_value(cached_entry, "crc32");
         json_value cached_size_val = json_get_table_value(cached_entry, "size");
         json_value cached_mtime_val = json_get_table_value(cached_entry, "m_time");
+        json_value cached_header_val = json_get_table_value(cached_entry, "name_header");
 
         if (cached_crc_val.type == kJSONInteger && cached_size_val.type == kJSONInteger &&
-            cached_mtime_val.type == kJSONInteger)
+            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString)
         {
             if ((uint32_t)cached_size_val.data.intval == stat.size &&
                 (uint32_t)cached_mtime_val.data.intval == m_time_epoch)
             {
                 crc = (uint32_t)cached_crc_val.data.intval;
+                strncpy(
+                    header_name_buffer, cached_header_val.data.stringval,
+                    sizeof(header_name_buffer) - 1
+                );
                 needs_calculation = false;
             }
         }
@@ -106,6 +118,24 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
 
     if (needs_calculation)
     {
+        struct ScriptInfo* info =
+            script_get_info_by_rom_path_and_get_header_name(fullpath, header_name_buffer);
+        if (info)
+        {
+            script_info_free(info);
+        }
+        for (int i = strlen(header_name_buffer) - 1; i >= 0; --i)
+        {
+            if (header_name_buffer[i] == ' ')
+            {
+                header_name_buffer[i] = 0;
+            }
+            else
+            {
+                break;
+            }
+        }
+
         if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
         {
             fetched.failedToOpenROM = false;
@@ -118,7 +148,11 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
             json_value crc_val = {.type = kJSONInteger, .data.intval = crc};
             json_value size_val = {.type = kJSONInteger, .data.intval = stat.size};
             json_value mtime_val = {.type = kJSONInteger, .data.intval = m_time_epoch};
+            json_value header_val = {
+                .type = kJSONString, .data.stringval = cb_strdup(header_name_buffer)
+            };
 
+            json_set_table_value(&new_entry_val, "name_header", header_val);
             json_set_table_value(&new_entry_val, "crc32", crc_val);
             json_set_table_value(&new_entry_val, "size", size_val);
             json_set_table_value(&new_entry_val, "m_time", mtime_val);
@@ -131,6 +165,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     {
         fetched.failedToOpenROM = false;
     }
+
+    newName->name_header = cb_strdup(header_name_buffer);
 
     if (!fetched.failedToOpenROM)
     {

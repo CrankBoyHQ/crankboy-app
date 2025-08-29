@@ -70,6 +70,7 @@ typedef struct
     char* name_short_leading_article;
     char* name_detailed_leading_article;
     char* name_filename_leading_article;
+    char* name_header;
 } CB_GameName;
 
 // Note: does not free CB_GameName struct, only its members.
@@ -116,9 +117,9 @@ typedef struct CB_Application
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
     struct PDSynth* clickSynth;
-    
+
     unsigned simulate_button_presses[6];
-    
+
     PDButtons buttons_down;
     PDButtons buttons_pressed;
     PDButtons buttons_released;

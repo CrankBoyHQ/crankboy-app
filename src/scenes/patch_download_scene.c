@@ -2,7 +2,6 @@
 
 #include "../http.h"
 #include "../jparse.h"
-#include "../script.h"
 #include "../softpatch.h"
 #include "../userstack.h"
 #include "../utility.h"
@@ -1334,21 +1333,14 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_he
 
     call_with_main_stack_3(parse_json, ROMHACK_DB_FILE, &pds->rhdb, kFileRead);
 
-    // FIXME: we don't really need script info; this is just a convenient way to
-    // get the header name.
-    ScriptInfo* info =
-        script_get_info_by_rom_path_and_get_header_name(game->fullpath, pds->header_name);
-    script_info_free(info);
-
-    // trim trailing spaces from header name
-    for (int i = strlen(pds->header_name) - 1; i >= 0; --i)
+    if (game->names->name_header)
     {
-        if (pds->header_name[i] == ' ')
-        {
-            pds->header_name[i] = 0;
-        }
-        else
-            break;
+        strncpy(pds->header_name, game->names->name_header, sizeof(pds->header_name) - 1);
+        pds->header_name[sizeof(pds->header_name) - 1] = '\0';
+    }
+    else
+    {
+        pds->header_name[0] = '\0';
     }
 
     json_value lookup = json_get_table_value(pds->rhdb, "lookup");

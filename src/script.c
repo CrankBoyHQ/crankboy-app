@@ -828,8 +828,9 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 
 ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name)
 {
-    if (o_rom_name) o_rom_name[0] = 0;
-    
+    if (o_rom_name)
+        o_rom_name[0] = 0;
+
     // first, open the ROM to read the game name
     size_t len;
     SDFile* file = playdate->file->open(game_path, kFileReadDataOrBundle);
@@ -847,7 +848,7 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name
 
     char title[17];
     gb_get_rom_name(buff, title);
-    
+
     if (o_rom_name)
     {
         memcpy(o_rom_name, title, sizeof(title));

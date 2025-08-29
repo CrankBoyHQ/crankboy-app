@@ -412,7 +412,10 @@ static void launch_game(void* ud, int option)
 
             if (preferences_script_support || was_per_game || global_scripts_enabled)
             {
-                playdate->system->logToConsole("switching to per-game prefs (%d/%d/%d)", preferences_script_support, was_per_game, global_scripts_enabled);
+                playdate->system->logToConsole(
+                    "switching to per-game prefs (%d/%d/%d)", preferences_script_support,
+                    was_per_game, global_scripts_enabled
+                );
                 call_with_main_stack_2(
                     preferences_save_to_disk, settings_path,
                     ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
@@ -421,11 +424,11 @@ static void launch_game(void* ud, int option)
             else
             {
                 playdate->system->logToConsole("not switching to per-game prefs");
-                // if global scripts disabled, AND we aren't using per-game prefs for this game, AND we didn't ask to enable script support,
-                // then just mark prompted (and don't enable per-game + script support.)
+                // if global scripts disabled, AND we aren't using per-game prefs for this game, AND
+                // we didn't ask to enable script support, then just mark prompted (and don't enable
+                // per-game + script support.)
                 call_with_main_stack_2(
-                    preferences_save_to_disk, settings_path,
-                    ~(PREFBIT_script_has_prompted)
+                    preferences_save_to_disk, settings_path, ~(PREFBIT_script_has_prompted)
                 );
             }
 
@@ -595,8 +598,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
     if (!is_per_game)
         script_enabled = preferences_script_support;
 
-    char rom_name[17];
-    ScriptInfo* info = script_get_info_by_rom_path_and_get_header_name(game->fullpath, rom_name);
+    ScriptInfo* info = get_script_info(game->names->name_header);
     if (info)
     {
         if (!info->experimental && !has_prompted)
@@ -633,7 +635,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
-    else if (!memcmp(rom_name, "LSDj", 4))
+    else if (game->names->name_header && !memcmp(game->names->name_header, "LSDj", 4))
     {
         bool settings_are_optimal = false;
         char* settings_path = cb_game_config_path(game->fullpath);

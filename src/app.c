@@ -18,9 +18,9 @@
 #include "scenes/info_scene.h"
 #include "scenes/library_scene.h"
 #include "script.h"
+#include "serial.h"
 #include "userstack.h"
 #include "version.h"
-#include "serial.h"
 
 #include <string.h>
 
@@ -238,7 +238,7 @@ void CB_init(void)
 
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
-    
+
     playdate->system->setSerialMessageCallback(CB_on_serial_message);
 
     // if not a bundled rom, check for files to copy from the PDX
@@ -312,13 +312,13 @@ __section__(".text.main") void CB_update(float dt)
     CB_App->avg_dt_mult = 1.0f;
 
     CB_App->crankChange = playdate->system->getCrankChange();
-   
+
     PDButtons prev_down = CB_App->buttons_down;
 
     playdate->system->getButtonState(
         &CB_App->buttons_down, &CB_App->buttons_pressed, &CB_App->buttons_released
     );
-    
+
     // simulated button presses
     for (int i = 0; i < 6; ++i)
     {
@@ -457,6 +457,8 @@ void free_game_names(const CB_GameName* gameName)
     cb_free(gameName->name_short_leading_article);
     cb_free(gameName->name_detailed_leading_article);
     cb_free(gameName->name_filename_leading_article);
+    if (gameName->name_header)
+        cb_free(gameName->name_header);
 }
 
 void CB_quit(void)

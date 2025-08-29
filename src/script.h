@@ -86,6 +86,10 @@ int c_script_add_hw_breakpoint(gb_s* gb, uint16_t addr, CS_OnBreakpoint callback
 void script_info_free(ScriptInfo* info);
 ScriptInfo* script_get_info_by_rom_path(const char* game_path);
 
+ScriptInfo* get_script_info(const char* game_name);
+
 // o_rom_name must point to a buffer at least length 17
-ScriptInfo* script_get_info_by_rom_path_and_get_header_name(const char* game_path, char* o_rom_name);
+ScriptInfo* script_get_info_by_rom_path_and_get_header_name(
+    const char* game_path, char* o_rom_name
+);
 bool script_exists(const char* game_path);
