@@ -218,7 +218,11 @@ void CB_init(void)
     check_is_bundle();
 
     if (!CB_App->bundled_rom)
+    {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+        parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
+    }
+
     preferences_init();
 
     CB_App->clickSynth = playdate->sound->synth->newSynth();
@@ -518,7 +522,15 @@ void CB_quit(void)
         CB_App->coverCache = NULL;
     }
 
-    cb_free(CB_App->bundled_rom);
+    if (!CB_App->bundled_rom)
+    {
+        free_json_data(CB_App->rhdb_cache);
+    }
+
+    if (CB_App->bundled_rom)
+    {
+        cb_free(CB_App->bundled_rom);
+    }
 
     CB_LibraryScene_cleanup();
 

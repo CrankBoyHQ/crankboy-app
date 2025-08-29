@@ -116,6 +116,7 @@ typedef struct CB_Application
     CB_Array* coverCache;
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
+    json_value rhdb_cache;
     struct PDSynth* clickSynth;
 
     unsigned simulate_button_presses[6];

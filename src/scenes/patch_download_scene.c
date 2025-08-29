@@ -928,7 +928,6 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
         pop_context(pds);
     }
     cb_free(pds->patches_dir_path);
-    free_json_data(pds->rhdb);
     cb_free(pds);
 }
 
@@ -1331,7 +1330,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_he
     // in unpredictable ways, like truncated paths.
     call_with_main_stack_1(playdate->file->mkdir, pds->patches_dir_path);
 
-    call_with_main_stack_3(parse_json, ROMHACK_DB_FILE, &pds->rhdb, kFileRead);
+    pds->rhdb = CB_App->rhdb_cache;
 
     if (game->names->name_header)
     {
