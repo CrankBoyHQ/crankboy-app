@@ -262,7 +262,7 @@ __section__(".rare") void encode_json(json_encoder* e, json_value j)
     break;
     case kJSONArray:
         e->startArray(e);
-        JsonArray* obj = j.data.tableval;
+        JsonArray* obj = j.data.arrayval;
         for (size_t i = 0; i < obj->n; ++i)
         {
             e->addArrayMember(e);
