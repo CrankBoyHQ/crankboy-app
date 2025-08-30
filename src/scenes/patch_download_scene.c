@@ -23,6 +23,10 @@ static const uint8_t white_transparent_dither[16] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
 };
 
+typedef struct
+{
+    CB_PatchDownloadScene* pds;
+} PatchDownloadUD;
 typedef void (*context_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 typedef void (*context_draw_fn)(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
@@ -254,13 +258,16 @@ static void context_patch_files_browse_update(
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
 
+                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
+                userdata->pds = pds;
+
                 pds->http_in_progress = 1;
                 if (ft == FT_TEXT)
                 {
                     pds->text_file_title = obj->data[i].key;
                     http_get(
                         pds->domain, http_path_san, "to download this text file", on_get_textfile,
-                        15000, pds, NULL
+                        15000, userdata, &pds->active_http_connection
                     );
                 }
                 else
@@ -269,7 +276,7 @@ static void context_patch_files_browse_update(
                     CB_ASSERT(ft == FT_PATCH_SUPPORTED);
                     http_get(
                         pds->domain, http_path_san, "to download this patch file", on_get_patch,
-                        15000, pds, NULL
+                        15000, userdata, &pds->active_http_connection
                     );
                 }
                 cb_free(http_path_san);
@@ -343,10 +350,16 @@ static void context_patch_list_update(CB_PatchDownloadScene* pds, PatchDownloadC
 
 static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 {
-    CB_PatchDownloadScene* pds = ud;
+    PatchDownloadUD* pud = ud;
+    CB_PatchDownloadScene* pds = pud->pds;
+    pds->active_http_connection = NULL;
 
     if (!pds->http_in_progress)
+    {
+        cb_free(pud);
         return;
+    }
+
     pds->http_in_progress = 0;
 
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
@@ -355,6 +368,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
+        cb_free(pud);
         return;
     }
     else
@@ -370,6 +384,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 NULL
             );
             CB_presentModal(modal->scene);
+            cb_free(pud);
             return;
         }
         else
@@ -382,6 +397,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
             modal->width = 300;
             modal->height = 140;
             CB_presentModal(modal->scene);
+            cb_free(pud);
             return;
         }
     }
@@ -389,10 +405,16 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 
 static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud)
 {
-    CB_PatchDownloadScene* pds = ud;
+    PatchDownloadUD* pud = ud;
+    CB_PatchDownloadScene* pds = pud->pds;
+    pds->active_http_connection = NULL;
 
     if (!pds->http_in_progress)
+    {
+        cb_free(pud);
         return;
+    }
+
     pds->http_in_progress = 0;
 
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
@@ -401,6 +423,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
+        cb_free(pud);
         return;
     }
     else
@@ -409,6 +432,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         data[data_len - 1] = 0;
         CB_InfoScene* infoScene = CB_InfoScene_new(pds->text_file_title, data);
         CB_presentModal(infoScene->scene);
+        cb_free(pud);
     }
 }
 
@@ -505,11 +529,14 @@ static void context_patch_choose_interaction_update(
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
 
+                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
+                userdata->pds = pds;
+
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Readme";
                 http_get(
                     pds->domain, http_path_san, "to download a patch README", on_get_textfile,
-                    15000, pds, NULL
+                    15000, userdata, &pds->active_http_connection
                 );
                 cb_free(http_path_san);
             }
@@ -545,11 +572,14 @@ static void context_patch_choose_interaction_update(
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
 
+                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
+                userdata->pds = pds;
+
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Changelog";
                 http_get(
                     pds->domain, http_path_san, "to download the changelog", on_get_textfile, 15000,
-                    pds, NULL
+                    userdata, &pds->active_http_connection
                 );
                 cb_free(http_path_san);
             }
@@ -952,6 +982,12 @@ void pop_context(CB_PatchDownloadScene* pds)
 
 void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 {
+    if (pds->active_http_connection)
+    {
+        http_cancel_and_cleanup(pds->active_http_connection);
+        pds->active_http_connection = NULL;
+    }
+
     CB_Scene_free(pds->scene);
     while (pds->context_depth > 0)
     {
@@ -998,9 +1034,31 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
                 pop_context(pds);
             }
         }
-        else if (pds->http_in_progress == 0 && (CB_App->buttons_pressed & kButtonB))
+        else if (CB_App->buttons_pressed & kButtonB)
         {
-            if (pds->list_fetch_error_message)
+            if (pds->http_in_progress)
+            {
+                if (pds->is_fetching_list)
+                {
+                    // "Searching patches..." is not a real cancellable request.
+                    // Just flag it as cancelled.
+                    pds->http_in_progress = 0;
+                    pds->is_fetching_list = false;
+                    if (pds->list_fetch_error_message)
+                    {
+                        cb_free(pds->list_fetch_error_message);
+                        pds->list_fetch_error_message = NULL;
+                    }
+                    pds->context[pds->context_depth - 1].list->needsDisplay = true;
+                }
+                else if (pds->active_http_connection)
+                {
+                    http_cancel_and_cleanup(pds->active_http_connection);
+                    pds->active_http_connection = NULL;
+                    pds->http_in_progress = 0;
+                }
+            }
+            else if (pds->list_fetch_error_message)
             {
                 cb_free(pds->list_fetch_error_message);
                 pds->list_fetch_error_message = NULL;
@@ -1176,12 +1234,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     else if (pds->game_hacks.type != kJSONArray)
     {
     missing_entry:;
-        char* msg = aprintf("ROM header name \"%s\" not found in patch database", pds->header_name);
-        CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
-        modal->width = 300;
-        modal->height = 180;
-        cb_free(msg);
-        CB_presentModal(modal->scene);
+        pds->list_fetch_error_message = cb_strdup("No patches found.");
         return false;
     }
 
@@ -1194,10 +1247,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     {
         if (arr->n == 0)
         {
-            char* msg = aprintf("No patches found for \"%s\"", pds->header_name);
-            CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
-            cb_free(msg);
-            CB_presentModal(modal->scene);
+            pds->list_fetch_error_message = cb_strdup("No patches found.");
             return false;
         }
 
