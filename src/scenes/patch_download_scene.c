@@ -62,6 +62,21 @@ enum file_type
 };
 #define FILETYPE_BITS 4
 
+typedef struct
+{
+    char* name;
+    enum file_type type;
+    unsigned int original_index;
+    unsigned int size;
+} FileBrowserItem;
+
+static int compare_file_browser_items(const void* a, const void* b)
+{
+    const FileBrowserItem* itemA = (const FileBrowserItem*)a;
+    const FileBrowserItem* itemB = (const FileBrowserItem*)b;
+    return strcasecmp(itemA->name, itemB->name);
+}
+
 static void CB_PatchDownloadScene_didSelectLibrary(void* userdata)
 {
     CB_PatchDownloadScene* pds = userdata;
@@ -1433,8 +1448,9 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
         return false;
 
     context->j = fs;
-    context->index_map = cb_malloc(sizeof(int) * arr->n);
-    context->index_map_size = 0;
+
+    FileBrowserItem* items_to_sort = cb_malloc(sizeof(FileBrowserItem) * arr->n);
+    int items_count = 0;
 
     for (size_t i = 0; i < arr->n; ++i)
     {
@@ -1468,39 +1484,82 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 
         if (is_supported_for_display)
         {
-            CB_ListItemButton* itemButton;
-            if (ft == FT_DIRECTORY)
-            {
-                char* text = aprintf("%s/", key);
-                itemButton = CB_ListItemButton_new(text);
-                cb_free(text);
-            }
-            else
-            {
-                itemButton = CB_ListItemButton_new(key);
-            }
-
-            itemButton->ud.uint = ft;
+            items_to_sort[items_count].name = (char*)key;
+            items_to_sort[items_count].type = ft;
+            items_to_sort[items_count].original_index = i;
 
             unsigned size = -1;
             if (arr->data[i].value.type == kJSONInteger)
             {
                 size = (unsigned)arr->data[i].value.data.intval;
             }
+            items_to_sort[items_count].size = size;
 
-            if (size < (1 << (32 - FILETYPE_BITS)))
+            items_count++;
+        }
+    }
+
+    qsort(items_to_sort, items_count, sizeof(FileBrowserItem), compare_file_browser_items);
+
+    context->index_map = cb_malloc(sizeof(int) * items_count);
+    context->index_map_size = 0;
+
+    // Group 1: Supported Patch Files
+    for (int i = 0; i < items_count; i++)
+    {
+        if (items_to_sort[i].type == FT_PATCH_SUPPORTED)
+        {
+            CB_ListItemButton* itemButton = CB_ListItemButton_new(items_to_sort[i].name);
+            itemButton->ud.uint = items_to_sort[i].type;
+            if (items_to_sort[i].size < (1 << (32 - FILETYPE_BITS)))
             {
-                itemButton->ud.uint |= size << FILETYPE_BITS;
+                itemButton->ud.uint |= items_to_sort[i].size << FILETYPE_BITS;
             }
             else
             {
                 itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
             }
-
             array_push(context->list->items, itemButton);
-            context->index_map[context->index_map_size++] = i;
+            context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
         }
     }
+
+    // Group 2: Text Files
+    for (int i = 0; i < items_count; i++)
+    {
+        if (items_to_sort[i].type == FT_TEXT)
+        {
+            CB_ListItemButton* itemButton = CB_ListItemButton_new(items_to_sort[i].name);
+            itemButton->ud.uint = items_to_sort[i].type;
+            if (items_to_sort[i].size < (1 << (32 - FILETYPE_BITS)))
+            {
+                itemButton->ud.uint |= items_to_sort[i].size << FILETYPE_BITS;
+            }
+            else
+            {
+                itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+            }
+            array_push(context->list->items, itemButton);
+            context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
+        }
+    }
+
+    // Group 3: Directories
+    for (int i = 0; i < items_count; i++)
+    {
+        if (items_to_sort[i].type == FT_DIRECTORY)
+        {
+            char* text = aprintf("%s/", items_to_sort[i].name);
+            CB_ListItemButton* itemButton = CB_ListItemButton_new(text);
+            cb_free(text);
+            itemButton->ud.uint = items_to_sort[i].type;
+            itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+            array_push(context->list->items, itemButton);
+            context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
+        }
+    }
+
+    cb_free(items_to_sort);
 
     CB_ListView_reload(context->list);
     context->type = PDSCT_PATCH_FILES_BROWSE;
