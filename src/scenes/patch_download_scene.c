@@ -47,6 +47,10 @@ static bool push_patch_list(CB_PatchDownloadScene* pds);
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs);
 static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud);
 static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud);
+static void on_permission_granted_for_download(unsigned flags, void* ud);
+static void initiate_download_with_permission_check(
+    CB_PatchDownloadScene* pds, PendingDownloadType type, const char* purpose, char* http_path_san
+);
 
 enum file_type
 {
@@ -191,50 +195,75 @@ static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n, int*
     return jv;
 }
 
-static void context_top_level_select_download(unsigned flags, void* ud)
+static void on_permission_granted_for_download(unsigned flags, void* ud)
 {
     CB_PatchDownloadScene* pds = ud;
 
-    pds->is_fetching_list = false;
-
-    // already cancelled?
-    if (pds->http_in_progress != 1)
+    if ((flags & ~HTTP_ENABLE_ASKED) != 0)
     {
         pds->http_in_progress = 0;
+        if (pds->pending_http_path)
+        {
+            cb_free(pds->pending_http_path);
+            pds->pending_http_path = NULL;
+        }
+
+        char* msg;
+        if (flags & HTTP_WIFI_NOT_AVAILABLE)
+        {
+            msg = cb_strdup("Wi-Fi not available.");
+        }
+        else if (flags & HTTP_ENABLE_DENIED)
+        {
+            msg = cb_strdup("Network permission was denied.");
+        }
+        else
+        {
+            msg = aprintf("A network error occurred. (0x%03x)", flags);
+        }
+
+        CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
+        cb_free(msg);
+        CB_presentModal(modal->scene);
         return;
     }
 
-    pds->http_in_progress = 0;
+    PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
+    userdata->pds = pds;
 
-    if (pds->list_fetch_error_message)
+    if (pds->pending_download_type == PD_PATCH)
     {
-        cb_free(pds->list_fetch_error_message);
-        pds->list_fetch_error_message = NULL;
-    }
-
-    if (flags & HTTP_WIFI_NOT_AVAILABLE)
-    {
-        pds->list_fetch_error_message = cb_strdup("Wi-Fi not available.");
-    }
-    else if (flags & HTTP_ENABLE_DENIED)
-    {
-        CB_Modal* modal = CB_Modal_new(
-            "CrankBoy must be granted networking privileges in order to download ROM hacks. You "
-            "can do this from the Playdate OS settings.",
-            NULL, NULL, NULL
+        http_get(
+            pds->domain, pds->pending_http_path, "to download this patch file", on_get_patch, 15000,
+            userdata, &pds->active_http_connection
         );
-        modal->width = 350;
-        modal->height = 180;
-        CB_presentModal(modal->scene);
     }
-    else if (flags & ~HTTP_ENABLE_ASKED)
+    else if (pds->pending_download_type == PD_TEXTFILE)
     {
-        pds->list_fetch_error_message = cb_strdup("Searching patches failed.");
+        http_get(
+            pds->domain, pds->pending_http_path, "to download this text file", on_get_textfile,
+            15000, userdata, &pds->active_http_connection
+        );
     }
-    else
+
+    cb_free(pds->pending_http_path);
+    pds->pending_http_path = NULL;
+    pds->pending_download_type = PD_NONE;
+}
+
+static void initiate_download_with_permission_check(
+    CB_PatchDownloadScene* pds, PendingDownloadType type, const char* purpose, char* http_path_san
+)
+{
+    if (pds->pending_http_path)
     {
-        push_patch_list(pds);
+        cb_free(pds->pending_http_path);
     }
+    pds->pending_http_path = cb_strdup(http_path_san);
+    pds->pending_download_type = type;
+    pds->http_in_progress = 1;
+
+    enable_http(pds->domain, purpose, on_permission_granted_for_download, pds);
 }
 
 static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
@@ -317,23 +346,23 @@ static void context_patch_files_browse_update(
                 userdata->pds = pds;
 
                 pds->http_in_progress = 1;
+
                 if (ft == FT_TEXT)
                 {
                     pds->text_file_title = obj->data[i].key;
-                    http_get(
-                        pds->domain, http_path_san, "to download this text file", on_get_textfile,
-                        15000, userdata, &pds->active_http_connection
+                    initiate_download_with_permission_check(
+                        pds, PD_TEXTFILE, "to download this text file", http_path_san
                     );
                 }
                 else
                 {
                     pds->basename = obj->data[i].key;
                     CB_ASSERT(ft == FT_PATCH_SUPPORTED);
-                    http_get(
-                        pds->domain, http_path_san, "to download this patch file", on_get_patch,
-                        15000, userdata, &pds->active_http_connection
+                    initiate_download_with_permission_check(
+                        pds, PD_PATCH, "to download this patch file", http_path_san
                     );
                 }
+
                 cb_free(http_path_san);
             }
         }
@@ -602,9 +631,8 @@ static void context_patch_choose_interaction_update(
 
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Readme";
-                http_get(
-                    pds->domain, http_path_san, "to download a patch README", on_get_textfile,
-                    15000, userdata, &pds->active_http_connection
+                initiate_download_with_permission_check(
+                    pds, PD_TEXTFILE, "to download a patch README", http_path_san
                 );
                 cb_free(http_path_san);
             }
@@ -644,9 +672,8 @@ static void context_patch_choose_interaction_update(
 
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Changelog";
-                http_get(
-                    pds->domain, http_path_san, "to download the changelog", on_get_textfile, 15000,
-                    userdata, &pds->active_http_connection
+                initiate_download_with_permission_check(
+                    pds, PD_TEXTFILE, "to download the changelog", http_path_san
                 );
                 cb_free(http_path_san);
             }
@@ -741,18 +768,6 @@ static void context_top_level_update(
         case 1:  // download
             cb_play_ui_sound(CB_UISound_Confirm);
             {
-                if (pds->has_presented_patch_list)
-                {
-                    push_patch_list(pds);
-                    break;
-                }
-
-                if (pds->list_fetch_error_message)
-                {
-                    cb_free(pds->list_fetch_error_message);
-                    pds->list_fetch_error_message = NULL;
-                }
-
                 pds->prefix = NULL;
                 json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
                 if (jprefix.type == kJSONString)
@@ -765,22 +780,7 @@ static void context_top_level_update(
                 if (jdomain.type == kJSONString)
                 {
                     pds->domain = jdomain.data.stringval;
-                    pds->http_in_progress = 1;
-
-                    // Only show the "Searching..." indicator if we haven't already
-                    // determined that no patches are available.
-                    if (!pds->no_patches_available)
-                    {
-                        pds->is_fetching_list = true;
-                    }
-
-                    pds->loading_anim_timer = 0.0f;
-                    pds->loading_anim_step = 0;
-                    context->list->needsDisplay = true;
-                    enable_http(
-                        jdomain.data.stringval, "to download game patches",
-                        context_top_level_select_download, pds
-                    );
+                    push_patch_list(pds);
                 }
                 else
                 {
@@ -812,34 +812,7 @@ static void context_top_level_draw(
 {
     int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
 
-    if (pds->is_fetching_list && active)
-    {
-        playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
-
-        const char* base_text = "Searching patches";
-        const char* width_calc_string = "Searching patches...";
-        char message[32];
-
-        const int dot_counts[] = {0, 1, 2, 3};
-        int num_dots = dot_counts[pds->loading_anim_step];
-        snprintf(message, sizeof(message), "%s", base_text);
-        for (int i = 0; i < num_dots; i++)
-        {
-            strncat(message, ".", sizeof(message) - strlen(message) - 1);
-        }
-
-        playdate->graphics->setFont(PDS_FONT);
-        int msg_width = playdate->graphics->getTextWidth(
-            PDS_FONT, width_calc_string, strlen(width_calc_string), kUTF8Encoding, 0
-        );
-        int textX = x + (kDividerX - msg_width) / 2;
-        int textY =
-            header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
-
-        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
-    }
-    else if (pds->list_fetch_error_message && active)
+    if (pds->list_fetch_error_message && active)
     {
         playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
 
@@ -1194,35 +1167,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         }
         else if (CB_App->buttons_pressed & kButtonB)
         {
-            if (pds->http_in_progress)
-            {
-                if (pds->is_fetching_list)
-                {
-                    // "Searching patches..." is not a real cancellable request.
-                    // Just flag it as cancelled.
-                    pds->http_in_progress = 0;
-                    pds->is_fetching_list = false;
-                    if (pds->list_fetch_error_message)
-                    {
-                        cb_free(pds->list_fetch_error_message);
-                        pds->list_fetch_error_message = NULL;
-                    }
-                    pds->context[pds->context_depth - 1].list->needsDisplay = true;
-                }
-                else if (pds->active_http_connection)
-                {
-                    http_cancel_and_cleanup(pds->active_http_connection);
-                    pds->active_http_connection = NULL;
-                    pds->http_in_progress = 0;
-                }
-            }
-            else if (pds->list_fetch_error_message)
-            {
-                cb_free(pds->list_fetch_error_message);
-                pds->list_fetch_error_message = NULL;
-                pds->context[pds->context_depth - 1].list->needsDisplay = true;
-            }
-            else if (pds->context_depth == 1)
+            if (pds->context_depth == 1)
             {
                 // At the top level panel
                 if (pds->started_without_header)
@@ -1237,16 +1182,6 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             else
             {
                 --pds->target_context_depth;
-            }
-        }
-
-        if (pds->is_fetching_list)
-        {
-            pds->loading_anim_timer += dt;
-            if (pds->loading_anim_timer >= 0.5f)
-            {
-                pds->loading_anim_timer -= 0.5f;
-                pds->loading_anim_step = (pds->loading_anim_step + 1) % 4;
             }
         }
     }
@@ -1373,7 +1308,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 
-    if (pds->http_in_progress && !pds->is_fetching_list)
+    if (pds->http_in_progress)
     {
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
         pds->anim_t += dt;
@@ -1405,7 +1340,6 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     {
     missing_entry:;
         pds->list_fetch_error_message = cb_strdup("No patches found.");
-        pds->no_patches_available = true;
         return false;
     }
 
@@ -1419,7 +1353,6 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
         if (arr->n == 0)
         {
             pds->list_fetch_error_message = cb_strdup("No patches found.");
-            pds->no_patches_available = true;
             return false;
         }
 
@@ -1456,7 +1389,6 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     CB_ListView_reload(context->list);
 
     context->type = PDSCT_LIST_PATCHES;
-    pds->has_presented_patch_list = true;
     return true;
 }
 
@@ -1582,8 +1514,6 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     pds->header_animation_p = initial_header_p;
     pds->started_without_header = (initial_header_p < 1.0f);
     pds->option_hold_time = 0.0f;
-    pds->no_patches_available = false;
-    pds->has_presented_patch_list = false;
     pds->is_dismissing = false;
     scene->managedObject = pds;
 

@@ -8,6 +8,8 @@
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
 #define HEADER_ANIMATION_RATE 2.8f
 
+struct CB_SettingsScene;
+
 typedef enum PatchDownloadSceneContextType
 {
     PDSCT_TOP_LEVEL,
@@ -18,7 +20,12 @@ typedef enum PatchDownloadSceneContextType
     PDSCT_MAX
 } PatchDownloadSceneContextType;
 
-struct CB_SettingsScene;
+typedef enum
+{
+    PD_NONE = 0,
+    PD_PATCH,
+    PD_TEXTFILE
+} PendingDownloadType;
 
 typedef struct PatchDownloadContext
 {
@@ -61,11 +68,11 @@ typedef struct CB_PatchDownloadScene
     uint32_t cached_hint_key;
     json_value rhdb;
 
+    PendingDownloadType pending_download_type;
+    char* pending_http_path;
+
     bool http_in_progress : 1;
-    bool is_fetching_list : 1;
     bool has_local_patches : 1;
-    bool has_presented_patch_list : 1;
-    bool no_patches_available : 1;
     char* list_fetch_error_message;
     float option_hold_time;
     HTTPConnection* active_http_connection;
