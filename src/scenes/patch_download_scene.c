@@ -764,7 +764,14 @@ static void context_top_level_update(
                 {
                     pds->domain = jdomain.data.stringval;
                     pds->http_in_progress = 1;
-                    pds->is_fetching_list = true;
+
+                    // Only show the "Searching..." indicator if we haven't already
+                    // determined that no patches are available.
+                    if (!pds->no_patches_available)
+                    {
+                        pds->is_fetching_list = true;
+                    }
+
                     pds->loading_anim_timer = 0.0f;
                     pds->loading_anim_step = 0;
                     context->list->needsDisplay = true;
@@ -1384,6 +1391,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     {
     missing_entry:;
         pds->list_fetch_error_message = cb_strdup("No patches found.");
+        pds->no_patches_available = true;
         return false;
     }
 
@@ -1397,6 +1405,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
         if (arr->n == 0)
         {
             pds->list_fetch_error_message = cb_strdup("No patches found.");
+            pds->no_patches_available = true;
             return false;
         }
 
@@ -1559,6 +1568,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     pds->header_animation_p = initial_header_p;
     pds->started_without_header = (initial_header_p < 1.0f);
     pds->option_hold_time = 0.0f;
+    pds->no_patches_available = false;
     pds->has_presented_patch_list = false;
     pds->is_dismissing = false;
     scene->managedObject = pds;
