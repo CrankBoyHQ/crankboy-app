@@ -31,6 +31,12 @@ void* call_with_main_stack_3_impl(user_stack_fn, void* a, void* b, void* c);
     call_with_main_stack_3_impl(                                                               \
         (user_stack_fn)fn, (void*)(uintptr_t)(a), (void*)(uintptr_t)(b), (void*)(uintptr_t)(c) \
     )
+void* call_with_main_stack_4_impl(user_stack_fn, void* a, void* b, void* c, void* d);
+#define call_with_main_stack_4(fn, a, b, c, d)                                                  \
+    call_with_main_stack_4_impl(                                                                \
+        (user_stack_fn)fn, (void*)(uintptr_t)(a), (void*)(uintptr_t)(b), (void*)(uintptr_t)(c), \
+        (void*)(uintptr_t)(d)                                                                   \
+    )
 
 #else
 
@@ -42,6 +48,7 @@ void* call_with_main_stack_3_impl(user_stack_fn, void* a, void* b, void* c);
 #define call_with_main_stack_1(fn, a) (fn(a))
 #define call_with_main_stack_2(fn, a, b) (fn(a, b))
 #define call_with_main_stack_3(fn, a, b, c) (fn(a, b, c))
+#define call_with_main_stack_4(fn, a, b, c, d) (fn(a, b, c, d))
 
 #endif
 
