@@ -739,6 +739,12 @@ static void context_top_level_update(
         case 1:  // download
             cb_play_ui_sound(CB_UISound_Confirm);
             {
+                if (pds->has_presented_patch_list)
+                {
+                    push_patch_list(pds);
+                    break;
+                }
+
                 if (pds->list_fetch_error_message)
                 {
                     cb_free(pds->list_fetch_error_message);
@@ -1427,6 +1433,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     CB_ListView_reload(context->list);
 
     context->type = PDSCT_LIST_PATCHES;
+    pds->has_presented_patch_list = true;
     return true;
 }
 
@@ -1552,6 +1559,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     pds->header_animation_p = initial_header_p;
     pds->started_without_header = (initial_header_p < 1.0f);
     pds->option_hold_time = 0.0f;
+    pds->has_presented_patch_list = false;
     pds->is_dismissing = false;
     scene->managedObject = pds;
 

@@ -64,6 +64,7 @@ typedef struct CB_PatchDownloadScene
     bool http_in_progress : 1;
     bool is_fetching_list : 1;
     bool has_local_patches : 1;
+    bool has_presented_patch_list : 1;
     char* list_fetch_error_message;
     float option_hold_time;
     HTTPConnection* active_http_connection;
