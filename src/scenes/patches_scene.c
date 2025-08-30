@@ -195,10 +195,6 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
 {
     char* patches_dir_path = get_patches_directory(game->fullpath);
 
-    // We must run this on the main stack, otherwise it can fail
-    // in unpredictable ways, like truncated paths.
-    call_with_main_stack_1(playdate->file->mkdir, patches_dir_path);
-
     SoftPatch* patches = call_with_main_stack_2(list_patches, game->fullpath, NULL);
 
     // If no patches are found, display an informational scene.
