@@ -1280,9 +1280,21 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         {
             if (!isAnimating && i == 0 && pds->http_in_progress == 0)
             {
+                int old_selection = -1;
+                if (context->list)
+                {
+                    old_selection = context->list->selectedItem;
+                }
+
                 context_update_fn fn = context_update[context->type];
                 if (fn)
                     fn(pds, context, dt);
+
+                if (context->list && old_selection != -1 &&
+                    old_selection != context->list->selectedItem)
+                {
+                    cb_play_ui_sound(CB_UISound_Navigate);
+                }
             }
             else if (isAnimating)
             {
