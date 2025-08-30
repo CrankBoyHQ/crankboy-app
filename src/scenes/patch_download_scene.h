@@ -32,6 +32,9 @@ typedef struct PatchDownloadContext
     PatchDownloadSceneContextType type;
     CB_ListView* list;
     json_value j;
+
+    int* index_map;
+    int index_map_size;
 } PatchDownloadContext;
 
 typedef struct CB_PatchDownloadScene

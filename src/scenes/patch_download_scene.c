@@ -278,14 +278,17 @@ static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
         char* prefix = get_path_to_selected_item(pds, depth - 1);
         if (!prefix)
             return NULL;
-        int i = context->list->selectedItem;
+
+        int selected_idx = context->list->selectedItem;
+        int original_idx = context->index_map[selected_idx];
+
         JsonObject* obj = (context->j.type == kJSONTable) ? context->j.data.tableval : NULL;
-        if (!obj || i >= obj->n)
+        if (!obj || original_idx >= obj->n)
         {
             cb_free(prefix);
             return NULL;
         }
-        char* full = aprintf("%s/%s", prefix, obj->data[i].key);
+        char* full = aprintf("%s/%s", prefix, obj->data[original_idx].key);
         cb_free(prefix);
         return full;
     }
@@ -302,12 +305,21 @@ static void context_patch_files_browse_update(
         cb_play_ui_sound(CB_UISound_Confirm);
 
         JsonObject* obj = (context->j.type == kJSONTable) ? context->j.data.tableval : NULL;
+        int selected_idx = context->list->selectedItem;
 
-        int i = context->list->selectedItem;
-        if (i < context->list->items->length)
+        if (obj && selected_idx < context->index_map_size)
         {
-            const CB_ListItemButton* const button = context->list->items->items[i];
+            int original_idx = context->index_map[selected_idx];
+
+            const CB_ListItemButton* const button = context->list->items->items[selected_idx];
             enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
+
+            if (ft == FT_DIRECTORY)
+            {
+                push_file_browser(pds, obj->data[original_idx].value);
+                return;
+            }
+
             unsigned const file_size = (button->ud.uint >> FILETYPE_BITS);
             bool const unknown_file_size = (file_size >= (1 << (32 - FILETYPE_BITS)));
 
@@ -315,15 +327,6 @@ static void context_patch_files_browse_update(
             {
                 CB_Modal* modal = CB_Modal_new("Unknown file size.", NULL, NULL, NULL);
                 CB_presentModal(modal->scene);
-                return;
-            }
-
-            if (ft == FT_DIRECTORY)
-            {
-                if (i < obj->n)
-                {
-                    push_file_browser(pds, obj->data[i].value);
-                }
                 return;
             }
 
@@ -342,22 +345,16 @@ static void context_patch_files_browse_update(
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
 
-                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
-                userdata->pds = pds;
-
-                pds->http_in_progress = 1;
-
                 if (ft == FT_TEXT)
                 {
-                    pds->text_file_title = obj->data[i].key;
+                    pds->text_file_title = obj->data[original_idx].key;
                     initiate_download_with_permission_check(
                         pds, PD_TEXTFILE, "to download this text file", http_path_san
                     );
                 }
                 else
                 {
-                    pds->basename = obj->data[i].key;
-                    CB_ASSERT(ft == FT_PATCH_SUPPORTED);
+                    pds->basename = obj->data[original_idx].key;
                     initiate_download_with_permission_check(
                         pds, PD_PATCH, "to download this patch file", http_path_san
                     );
@@ -923,6 +920,32 @@ static void context_top_level_draw(
     }
 }
 
+static void context_patch_files_browse_draw(
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
+)
+{
+    if (context->list->items->length == 0 && active)
+    {
+        int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+        playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
+
+        const char* message = "No supported files found.";
+        playdate->graphics->setFont(PDS_FONT);
+        int msg_width =
+            playdate->graphics->getTextWidth(PDS_FONT, message, strlen(message), kUTF8Encoding, 0);
+        int textX = x + (kDividerX - msg_width) / 2;
+        int textY =
+            header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
+
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
+    }
+    else
+    {
+        draw_common(pds, context, x, active);
+    }
+}
+
 static char* context_patch_files_browse_hint(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context
 )
@@ -1078,7 +1101,8 @@ static context_update_fn context_update[PDSCT_MAX] = {
 };
 
 static context_draw_fn context_draw[PDSCT_MAX] = {
-    context_top_level_draw, draw_common, context_top_level_draw, draw_common, NULL
+    context_top_level_draw, draw_common, context_top_level_draw, context_patch_files_browse_draw,
+    NULL
 };
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
@@ -1108,6 +1132,12 @@ void pop_context(CB_PatchDownloadScene* pds)
     if (context->list)
     {
         CB_ListView_free(context->list);
+    }
+
+    if (context->index_map)
+    {
+        cb_free(context->index_map);
+        context->index_map = NULL;
     }
 }
 
@@ -1395,62 +1425,62 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 {
     JsonObject* arr = (fs.type == kJSONTable) ? fs.data.tableval : NULL;
-    if (!arr || arr->n == 0)
+    if (!arr)
         return false;
 
-    CB_ListItemButton* itemButton;
     PatchDownloadContext* context = push_context(pds);
     if (!context)
         return false;
 
     context->j = fs;
+    context->index_map = cb_malloc(sizeof(int) * arr->n);
+    context->index_map_size = 0;
 
     for (size_t i = 0; i < arr->n; ++i)
     {
         const char* key = arr->data[i].key;
+        enum file_type ft = FT_UNSUPPORTED;
+        bool is_supported_for_display = false;
 
         if (arr->data[i].value.type == kJSONTable)
         {
-            // directory
-            char* text = aprintf("%s/", key);
-            itemButton = CB_ListItemButton_new(text);
-            itemButton->ud.uint = FT_DIRECTORY;
-            cb_free(text);
-            array_push(context->list->items, itemButton);
+            ft = FT_DIRECTORY;
+            is_supported_for_display = true;
         }
         else
         {
-            itemButton = CB_ListItemButton_new(key);
-
             const char* extension = strrchr(key, '.');
             if (!extension)
-                extension = key + strlen(key);  // (empty string)
+                extension = key + strlen(key);
 
-            // supported patches
             if (extension_is_supported_patch_file(extension))
             {
-                itemButton->ud.uint = FT_PATCH_SUPPORTED;
+                ft = FT_PATCH_SUPPORTED;
+                is_supported_for_display = true;
             }
-
-            // any other patch file .bps, .bsdiff, .cht, .ips, .xdelta, .ups, .vcdiff
-            else if (!strcasecmp(extension, ".bsdiff") || !strcasecmp(extension, ".cht") ||
-                     !strcasecmp(extension, ".xdelta") || !strcasecmp(extension, ".vcdiff") ||
-                     !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") ||
-                     !strcasecmp(extension, ".ups"))
-            {
-                itemButton->ud.uint = FT_PATCH_UNSUPPORTED;
-            }
-
             else if (!strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
                      !strcasecmp(key, "readme") || !strcasecmp(key, "license"))
             {
-                itemButton->ud.uint = FT_TEXT;
+                ft = FT_TEXT;
+                is_supported_for_display = true;
             }
+        }
 
+        if (is_supported_for_display)
+        {
+            CB_ListItemButton* itemButton;
+            if (ft == FT_DIRECTORY)
+            {
+                char* text = aprintf("%s/", key);
+                itemButton = CB_ListItemButton_new(text);
+                cb_free(text);
+            }
             else
             {
-                itemButton->ud.uint = FT_UNSUPPORTED;
+                itemButton = CB_ListItemButton_new(key);
             }
+
+            itemButton->ud.uint = ft;
 
             unsigned size = -1;
             if (arr->data[i].value.type == kJSONInteger)
@@ -1468,11 +1498,11 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             }
 
             array_push(context->list->items, itemButton);
+            context->index_map[context->index_map_size++] = i;
         }
     }
 
     CB_ListView_reload(context->list);
-
     context->type = PDSCT_PATCH_FILES_BROWSE;
 
     return true;
