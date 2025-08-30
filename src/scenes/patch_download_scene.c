@@ -270,6 +270,8 @@ static void context_patch_files_browse_update(
 
     if (CB_App->buttons_pressed & kButtonA)
     {
+        cb_play_ui_sound(CB_UISound_Confirm);
+
         JsonObject* obj = (context->j.type == kJSONTable) ? context->j.data.tableval : NULL;
 
         int i = context->list->selectedItem;
@@ -346,6 +348,7 @@ static void context_patch_list_update(
 
     if (CB_App->buttons_pressed & kButtonA)
     {
+        cb_play_ui_sound(CB_UISound_Confirm);
         pds->selected_hack =
             get_nth_patch_for_game(pds, context->list->selectedItem, &pds->selected_hack_key);
         json_value jfilekey = json_get_table_value(pds->selected_hack, "filekey");
@@ -509,6 +512,8 @@ static void context_patch_choose_interaction_update(
 
     if (CB_App->buttons_pressed & kButtonA)
     {
+        cb_play_ui_sound(CB_UISound_Confirm);
+
         switch (context->list->selectedItem)
         {
         case 0:  // Download Files
@@ -520,7 +525,6 @@ static void context_patch_choose_interaction_update(
             break;
         case 1:  // Patch Info
         {
-            cb_play_ui_sound(CB_UISound_Confirm);
             json_value jtitle = json_get_table_value(pds->selected_hack, "title");
             char* title = (jtitle.type == kJSONString) ? jtitle.data.stringval : NULL;
             if (title)
@@ -564,7 +568,6 @@ static void context_patch_choose_interaction_update(
             {  // is disabled
                 break;
             }
-            cb_play_ui_sound(CB_UISound_Confirm);
 
             json_value fs = pds->hack_fs;
             const char* readme_filename = NULL;
@@ -615,7 +618,6 @@ static void context_patch_choose_interaction_update(
             {  // is disabled
                 break;
             }
-            cb_play_ui_sound(CB_UISound_Confirm);
 
             json_value fs = pds->hack_fs;
             const char* changelog_filename = NULL;
