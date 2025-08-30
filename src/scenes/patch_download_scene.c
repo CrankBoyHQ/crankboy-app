@@ -69,7 +69,7 @@ static void CB_PatchDownloadScene_didSelectLibrary(void* userdata)
     {
         pds->settingsScene->shouldDismiss = true;
     }
-    --pds->target_context_depth;
+    pds->target_context_depth = -1;
 }
 
 static void CB_PatchDownloadScene_didSelectSettings(void* userdata)
@@ -82,7 +82,7 @@ static void CB_PatchDownloadScene_didSelectSettings(void* userdata)
     }
     else
     {
-        --pds->target_context_depth;
+        pds->target_context_depth = -1;
     }
 }
 
