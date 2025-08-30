@@ -49,6 +49,18 @@ enum file_type
 };
 #define FILETYPE_BITS 4
 
+static void check_for_patches_callback(const char* path, void* userdata)
+{
+    bool* has_patches_flag = userdata;
+    if (*has_patches_flag)
+    {
+        return;
+    }
+    const char* extension = strrchr(path, '.');
+    if (extension_is_supported_patch_file(extension))
+        *has_patches_flag = true;
+}
+
 // modifies a string in-place to replace numeric escape sequences like &#127; with
 // the appropriate byte. Does not affect non-numeric escape sequences like &amp; etc.
 static void decode_numeric_escapes(char* s)
@@ -389,6 +401,16 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         }
         else
         {
+            if (!pds->has_local_patches)
+            {
+                pds->has_local_patches = true;
+                if (pds->context[0].type == PDSCT_TOP_LEVEL)
+                {
+                    CB_ListItemButton* manage_button = pds->context[0].list->items->items[0];
+                    manage_button->ud.uint = 0;  // enabled
+                }
+            }
+
             CB_Modal* modal = CB_Modal_new(
                 "Patch file downloaded. Remember to enable the patch in settings > patches > "
                 "manage",
@@ -606,6 +628,13 @@ static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadCo
         {
         case 0:  // manage
         {
+            const CB_ListItemButton* button =
+                context->list->items->items[context->list->selectedItem];
+            if (button->ud.uint == 1)
+            {  // is disabled
+                break;
+            }
+
             cb_play_ui_sound(CB_UISound_Confirm);
             CB_PatchesScene* s = CB_PatchesScene_new(pds->game);
             CB_presentModal(s->scene);
@@ -762,8 +791,7 @@ static void context_top_level_draw(
             }
             int textY = rowY + (item->height - fontHeight) / 2;
 
-            bool is_disabled =
-                (context->type == PDSCT_PATCH_CHOOSE_INTERACTION && button->ud.uint == 1);
+            bool is_disabled = button->ud.uint == 1;
 
             playdate->graphics->drawText(
                 leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
@@ -906,6 +934,11 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     switch (context->list->selectedItem)
     {
     case 0:
+        if (!pds->has_local_patches)
+        {
+            return aprintf("No local patches found for this game.");
+        }
+
         return aprintf(
             "Toggle installed patches and and rearrange the order in which they are applied."
         );
@@ -1383,6 +1416,7 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     context->type = PDSCT_TOP_LEVEL;
 
     itemButton = CB_ListItemButton_new("Manage patches\t>");
+    itemButton->ud.uint = pds->has_local_patches ? 0 : 1;
     array_push(context->list->items, itemButton);
 
     itemButton = CB_ListItemButton_new("Download patches\t>");
@@ -1417,6 +1451,13 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_he
     // We must run this on the main stack, otherwise it can fail
     // in unpredictable ways, like truncated paths.
     call_with_main_stack_1(playdate->file->mkdir, pds->patches_dir_path);
+
+    bool has_local_patches = false;
+    call_with_main_stack_4(
+        playdate->file->listfiles, pds->patches_dir_path, check_for_patches_callback,
+        &has_local_patches, 0
+    );
+    pds->has_local_patches = has_local_patches;
 
     pds->rhdb = CB_App->rhdb_cache;
 
