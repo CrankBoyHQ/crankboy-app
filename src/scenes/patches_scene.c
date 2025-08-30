@@ -186,42 +186,24 @@ static void CB_PatchesScene_free(void* object)
     cb_free(patchesScene);
 }
 
+static void CB_PatchesScene_didSelectBack(void* userdata)
+{
+    CB_PatchesScene* patchesScene = userdata;
+    patchesScene->dismiss = true;
+}
+
 static void CB_PatchesScene_menu(void* object)
 {
-    // TODO -- "return" button
+    CB_PatchesScene* patchesScene = object;
+    playdate->system->removeAllMenuItems();
+    playdate->system->addMenuItem("back", CB_PatchesScene_didSelectBack, patchesScene);
 }
 
 CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
 {
     char* patches_dir_path = get_patches_directory(game->fullpath);
-
     SoftPatch* patches = call_with_main_stack_2(list_patches, game->fullpath, NULL);
 
-    // If no patches are found, display an informational scene.
-    if (!patches || !patches[0].fullpath)
-    {
-        // For the help message, get the ROM's basename to show the user.
-        char* rom_basename = cb_basename(game->fullpath, true);
-
-        char* msg = aprintf(
-            "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
-            "2. Via USB connection, add patch files to: Data/*crankboy/patches/%s/\n"
-            "3. Finally, enable them from this screen (settings > Patches).\n\n"
-            "You may find patches on romhacking.net or romhack.ing",
-            rom_basename
-        );
-
-        cb_free(rom_basename);
-        cb_free(patches_dir_path);
-        if (patches)
-        {
-            free_patches(patches);
-        }
-
-        return (void*)CB_InfoScene_new(game->names->name_short_leading_article, msg);
-    }
-
-    // If patches were found, create the patches scene.
     CB_Scene* scene = CB_Scene_new();
     CB_PatchesScene* patchesScene = allocz(CB_PatchesScene);
     patchesScene->scene = scene;

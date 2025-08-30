@@ -649,9 +649,22 @@ static void context_top_level_update(
         {
             pds->option_hold_time = 0;
             cb_play_ui_sound(CB_UISound_Confirm);
-            CB_PatchesScene* s = CB_PatchesScene_new(pds->game);
-            CB_presentModal(s->scene);
-            return;  // Scene is changing, exit update
+            char* rom_basename = cb_basename(pds->game->fullpath, true);
+            char* msg = aprintf(
+                "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
+                "2. Via USB connection, add patch files to: Data/*crankboy/patches/%s/\n"
+                "3. Finally, enable them from this screen (settings > Patches > Manage "
+                "patches).\n\n"
+                "You may find patches on romhacking.net or romhack.ing",
+                rom_basename
+            );
+            cb_free(rom_basename);
+
+            CB_InfoScene* infoScene =
+                CB_InfoScene_new(pds->game->names->name_short_leading_article, msg);
+            CB_presentModal(infoScene->scene);
+            cb_free(msg);
+            return;
         }
 
         if (pds->option_hold_time < 0)
