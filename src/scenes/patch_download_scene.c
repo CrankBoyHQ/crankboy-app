@@ -9,6 +9,7 @@
 #include "modal.h"
 #include "patches_scene.h"
 #include "pd_api.h"
+#include "settings_scene.h"
 
 #define HEADER_HEIGHT 18
 #define SCROLL_RATE 2.3f
@@ -56,6 +57,38 @@ enum file_type
     FT_UNSUPPORTED = 4
 };
 #define FILETYPE_BITS 4
+
+static void CB_PatchDownloadScene_didSelectLibrary(void* userdata)
+{
+    CB_PatchDownloadScene* pds = userdata;
+    if (pds->settingsScene)
+    {
+        pds->settingsScene->shouldDismiss = true;
+    }
+    --pds->target_context_depth;
+}
+
+static void CB_PatchDownloadScene_didSelectSettings(void* userdata)
+{
+    CB_PatchDownloadScene* pds = userdata;
+
+    if (pds->started_without_header)
+    {
+        pds->is_dismissing = true;
+    }
+    else
+    {
+        --pds->target_context_depth;
+    }
+}
+
+static void CB_PatchDownloadScene_menu(void* object)
+{
+    CB_PatchDownloadScene* pds = object;
+    playdate->system->removeAllMenuItems();
+    playdate->system->addMenuItem("library", CB_PatchDownloadScene_didSelectLibrary, pds);
+    playdate->system->addMenuItem("settings", CB_PatchDownloadScene_didSelectSettings, pds);
+}
 
 static void check_for_patches_callback(const char* path, void* userdata)
 {
@@ -1507,11 +1540,14 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     return true;
 }
 
-CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_header_p)
+CB_PatchDownloadScene* CB_PatchDownloadScene_new(
+    CB_Game* game, struct CB_SettingsScene* settingsScene, float initial_header_p
+)
 {
     CB_Scene* scene = CB_Scene_new();
     CB_PatchDownloadScene* pds = allocz(CB_PatchDownloadScene);
     pds->scene = scene;
+    pds->settingsScene = settingsScene;
     pds->game = game;
     pds->header_animation_p = initial_header_p;
     pds->started_without_header = (initial_header_p < 1.0f);
@@ -1560,6 +1596,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_he
 
     scene->update = (void*)CB_PatchDownloadScene_update;
     scene->free = (void*)CB_PatchDownloadScene_free;
+    scene->menu = (void*)CB_PatchDownloadScene_menu;
 
     push_top_level(pds);
 

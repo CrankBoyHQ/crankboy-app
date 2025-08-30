@@ -111,7 +111,7 @@ static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsSce
 {
     cb_play_ui_sound(CB_UISound_Confirm);
     CB_PatchDownloadScene* s =
-        CB_PatchDownloadScene_new(option->ud, settingsScene->header_animation_p);
+        CB_PatchDownloadScene_new(option->ud, settingsScene, settingsScene->header_animation_p);
     CB_presentModal(s->scene);
 }
 

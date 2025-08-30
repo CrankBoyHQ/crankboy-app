@@ -18,6 +18,8 @@ typedef enum PatchDownloadSceneContextType
     PDSCT_MAX
 } PatchDownloadSceneContextType;
 
+struct CB_SettingsScene;
+
 typedef struct PatchDownloadContext
 {
     PatchDownloadSceneContextType type;
@@ -29,6 +31,7 @@ typedef struct CB_PatchDownloadScene
 {
     CB_Scene* scene;
     CB_Game* game;
+    struct CB_SettingsScene* settingsScene;
 
     float header_animation_p;
     bool started_without_header;
@@ -73,4 +76,6 @@ typedef struct CB_PatchDownloadScene
 
 } CB_PatchDownloadScene;
 
-CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_header_p);
+CB_PatchDownloadScene* CB_PatchDownloadScene_new(
+    CB_Game* game, struct CB_SettingsScene* settingsScene, float initial_header_p
+);
