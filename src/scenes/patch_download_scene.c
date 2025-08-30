@@ -16,6 +16,11 @@
 #define kRightPanePadding 10
 #define PDS_FONT CB_App->bodyFont
 
+#define HOLD_TIME_SUPPRESS_RELEASE 0.25f
+#define HOLD_TIME_MARGIN 0.15f
+#define HOLD_TIME 1.09f
+#define HOLD_FADE_RATE 2.9f
+
 static const uint8_t black_transparent_dither[16] = {
     0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
 };
@@ -27,7 +32,10 @@ typedef struct
 {
     CB_PatchDownloadScene* pds;
 } PatchDownloadUD;
-typedef void (*context_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
+typedef void (*context_update_fn)(
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
+);
+typedef void (*context_free_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 typedef void (*context_draw_fn)(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 );
@@ -222,7 +230,7 @@ static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
 }
 
 static void context_patch_files_browse_update(
-    CB_PatchDownloadScene* pds, PatchDownloadContext* context
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
 )
 {
     update_common(pds, context);
@@ -297,7 +305,9 @@ static void context_patch_files_browse_update(
     }
 }
 
-static void context_patch_list_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+static void context_patch_list_update(
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
+)
 {
     update_common(pds, context);
 
@@ -459,7 +469,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
 }
 
 static void context_patch_choose_interaction_update(
-    CB_PatchDownloadScene* pds, PatchDownloadContext* context
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
 )
 {
     update_common(pds, context);
@@ -618,11 +628,51 @@ char* get_rom_info(CB_PatchDownloadScene* pds)
     return aprintf("ROM Header title: %s\nCRC32: %X", pds->header_name, pds->game->names->crc32);
 }
 
-static void context_top_level_update(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
+static void context_top_level_update(
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
+)
 {
     update_common(pds, context);
 
-    if (CB_App->buttons_pressed & kButtonA)
+    if (context->list->selectedItem == 0 && !pds->has_local_patches)
+    {
+        if (CB_App->buttons_down & kButtonA)
+        {
+            pds->option_hold_time += dt;
+        }
+        else
+        {
+            pds->option_hold_time -= HOLD_FADE_RATE * dt;
+        }
+
+        if (pds->option_hold_time >= HOLD_TIME)
+        {
+            pds->option_hold_time = 0;
+            cb_play_ui_sound(CB_UISound_Confirm);
+            CB_PatchesScene* s = CB_PatchesScene_new(pds->game);
+            CB_presentModal(s->scene);
+            return;  // Scene is changing, exit update
+        }
+
+        if (pds->option_hold_time < 0)
+            pds->option_hold_time = 0;
+    }
+    else
+    {
+        pds->option_hold_time = 0;
+    }
+
+    bool a_pressed = (CB_App->buttons_pressed & kButtonA);
+
+    if (context->list->selectedItem == 0 && !pds->has_local_patches)
+    {
+        if (pds->option_hold_time >= HOLD_TIME_SUPPRESS_RELEASE)
+        {
+            a_pressed = false;
+        }
+    }
+
+    if (a_pressed)
     {
         switch (context->list->selectedItem)
         {
@@ -820,6 +870,17 @@ static void context_top_level_draw(
                 );
             }
 
+            if (i == 0 && selected && !pds->has_local_patches &&
+                pds->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
+            {
+                float p = (pds->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) /
+                          (HOLD_TIME - HOLD_TIME_MARGIN - HOLD_TIME_SUPPRESS_RELEASE);
+                if (p > 1.0f)
+                    p = 1.0f;
+
+                playdate->graphics->fillRect(listX, rowY, kDividerX * p, item->height, kColorXOR);
+            }
+
             cb_free(fullText);
         }
         playdate->graphics->clearClipRect();
@@ -936,7 +997,10 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     case 0:
         if (!pds->has_local_patches)
         {
-            return aprintf("No local patches found for this game.");
+            return aprintf(
+                "No local patches found.\n \nHold Ⓐ to view instructions for adding patches "
+                "manually."
+            );
         }
 
         return aprintf(
@@ -967,14 +1031,14 @@ static uint32_t get_hint_key(CB_PatchDownloadScene* pds)
     return key;
 }
 
-static context_fn context_free[PDSCT_MAX] = {NULL, NULL, NULL, NULL, NULL};
+static context_free_fn context_free[PDSCT_MAX] = {NULL, NULL, NULL, NULL, NULL};
 
 static context_hint_fn context_hint[PDSCT_MAX] = {
     context_top_level_hint, context_hack_list_hint, context_patch_choose_interaction_hint,
     context_patch_files_browse_hint, NULL
 };
 
-static context_fn context_update[PDSCT_MAX] = {
+static context_update_fn context_update[PDSCT_MAX] = {
     context_top_level_update, context_patch_list_update, context_patch_choose_interaction_update,
     context_patch_files_browse_update, NULL
 };
@@ -1003,7 +1067,7 @@ void pop_context(CB_PatchDownloadScene* pds)
     playdate->system->logToConsole("Pop context\n");
     PatchDownloadContext* context = &pds->context[--pds->context_depth];
 
-    context_fn _free = context_free[context->type];
+    context_free_fn _free = context_free[context->type];
     if (_free)
         _free(pds, context);
 
@@ -1157,9 +1221,9 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         {
             if (!isAnimating && i == 0 && pds->http_in_progress == 0)
             {
-                context_fn fn = context_update[context->type];
+                context_update_fn fn = context_update[context->type];
                 if (fn)
-                    fn(pds, context);
+                    fn(pds, context, dt);
             }
             else if (isAnimating)
             {
@@ -1438,6 +1502,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(CB_Game* game, float initial_he
     pds->game = game;
     pds->header_animation_p = initial_header_p;
     pds->started_without_header = (initial_header_p < 1.0f);
+    pds->option_hold_time = 0.0f;
     pds->is_dismissing = false;
     scene->managedObject = pds;
 

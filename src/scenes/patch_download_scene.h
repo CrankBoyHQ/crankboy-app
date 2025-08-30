@@ -62,6 +62,7 @@ typedef struct CB_PatchDownloadScene
     bool is_fetching_list : 1;
     bool has_local_patches : 1;
     char* list_fetch_error_message;
+    float option_hold_time;
     HTTPConnection* active_http_connection;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
