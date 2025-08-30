@@ -57,14 +57,28 @@ static bool get_list_item_prefix_len(const char* text, int text_len, int* out_pr
     return false;
 }
 
+static void CB_InfoScene_didSelectBack(void* userdata)
+{
+    CB_InfoScene* infoScene = userdata;
+    infoScene->dismiss = true;
+}
+
+static void CB_InfoScene_menu(void* object)
+{
+    CB_InfoScene* infoScene = object;
+    playdate->system->removeAllMenuItems();
+    playdate->system->addMenuItem("back", CB_InfoScene_didSelectBack, infoScene);
+}
+
 static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 {
-    if (CB_App->pendingScene)
+    CB_InfoScene* infoScene = object;
+    if (CB_App->pendingScene || infoScene->dismiss)
     {
+        CB_dismiss(infoScene->scene);
         return;
     }
 
-    CB_InfoScene* infoScene = object;
     LCDFont* font = CB_App->bodyFont;
     playdate->graphics->setFont(font);
 
@@ -317,7 +331,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     {
         if (infoScene->canClose)
         {
-            CB_dismiss(infoScene->scene);
+            infoScene->dismiss = true;
         }
     }
 }
@@ -362,7 +376,9 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
     infoScene->canClose = true;
     infoScene->textIsStatic = false;
     scene->managedObject = infoScene;
+    infoScene->dismiss = false;
     scene->update = (void*)CB_InfoScene_update;
     scene->free = (void*)CB_InfoScene_free;
+    scene->menu = (void*)CB_InfoScene_menu;
     return infoScene;
 }
