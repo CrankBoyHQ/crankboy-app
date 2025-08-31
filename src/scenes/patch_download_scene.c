@@ -45,6 +45,7 @@ typedef char* (*context_hint_fn)(CB_PatchDownloadScene* pds, PatchDownloadContex
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
 static bool push_patch_list(CB_PatchDownloadScene* pds);
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs);
+static bool has_supported_files_recursive(json_value fs);
 static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud);
 static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud);
 static void on_permission_granted_for_download(unsigned flags, void* ud);
@@ -1457,12 +1458,43 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     }
 }
 
+static bool has_supported_patch_files_recursive(json_value fs)
+{
+    if (fs.type != kJSONTable)
+        return false;
+
+    JsonObject* arr = fs.data.tableval;
+    for (size_t i = 0; i < arr->n; ++i)
+    {
+        const char* key = arr->data[i].key;
+        json_value value = arr->data[i].value;
+
+        if (value.type == kJSONTable)
+        {
+            if (has_supported_patch_files_recursive(value))
+            {
+                return true;
+            }
+        }
+        else
+        {
+            const char* extension = strrchr(key, '.');
+            if (extension && extension_is_supported_patch_file(extension))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static bool push_patch_list(CB_PatchDownloadScene* pds)
 {
     if (!pds->header_name[0])
     {
         CB_Modal* modal = CB_Modal_new(
-            "ROM lacks a title in its header, so CrankBoy cannot match it to any patch database",
+            "ROM lacks a title in its header, so CrankBoy cannot match it to any patch in the "
+            "database",
             NULL, NULL, NULL
         );
         CB_presentModal(modal->scene);
@@ -1488,28 +1520,49 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
             return false;
         }
 
+        json_value hacks = json_get_table_value(pds->rhdb, "hacks");
+        json_value fs_table = json_get_table_value(pds->rhdb, "fs");
+
         for (int i = 0; i < arr->n; ++i)
         {
-            const char* s = NULL;
             json_value j = arr->data[i];
-            if (j.type == kJSONInteger)
+            if (j.type != kJSONInteger)
+                continue;
+
+            char* hackkey_str = aprintf("%d", j.data.intval);
+            json_value hack = json_get_table_value(hacks, hackkey_str);
+            cb_free(hackkey_str);
+
+            if (hack.type != kJSONTable)
+                continue;
+
+            json_value jfilekey = json_get_table_value(hack, "filekey");
+            if (jfilekey.type != kJSONString)
+                continue;
+
+            const char* filekey = jfilekey.data.stringval;
+            char* fs_path = aprintf("z%s", filekey);
+            json_value hack_fs = json_get_table_value(fs_table, fs_path);
+            cb_free(fs_path);
+
+            if (!has_supported_patch_files_recursive(hack_fs))
+                continue;
+
+            const char* s = NULL;
+            json_value title = json_get_table_value(hack, "title");
+            if (title.type == kJSONString)
             {
-                char* hackkey_str = aprintf("%d", j.data.intval);
-                json_value hacks = json_get_table_value(pds->rhdb, "hacks");
-                json_value hack = json_get_table_value(hacks, hackkey_str);
-                cb_free(hackkey_str);
-                json_value title = json_get_table_value(hack, "title");
-                if (title.type == kJSONString)
-                {
-                    s = title.data.stringval;
-                    decode_numeric_escapes((char*)s);
-                }
+                s = title.data.stringval;
+                decode_numeric_escapes((char*)s);
             }
 
-            CB_ListItemButton* itemButton;
-
-            itemButton = CB_ListItemButton_new(s ? s : "?");
+            CB_ListItemButton* itemButton = CB_ListItemButton_new(s ? s : "?");
             array_push(context->list->items, itemButton);
+        }
+
+        if (context->list->items->length == 0)
+        {
+            pds->list_fetch_error_message = cb_strdup("No patches found.");
         }
     }
     else
