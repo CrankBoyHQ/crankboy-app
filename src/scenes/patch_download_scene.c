@@ -61,6 +61,8 @@ enum file_type
     FT_UNSUPPORTED = 4
 };
 #define FILETYPE_BITS 4
+#define FT_DOWNLOADED_BIT (1 << FILETYPE_BITS)
+#define FILE_META_BITS (FILETYPE_BITS + 1)
 
 typedef struct
 {
@@ -166,16 +168,10 @@ static void draw_common(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    int left_margin = 0;
+    int left_margin = 4;
     int right_margin = 0;
 
     int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
-
-    if (context->type == PDSCT_TOP_LEVEL)
-    {
-        left_margin = 20;
-        right_margin = 20;
-    }
 
     PDRect frame = {
         x + left_margin, header_y, kDividerX - left_margin - right_margin, LCD_ROWS - header_y
@@ -317,22 +313,31 @@ static void context_patch_files_browse_update(
 
     if (context->list->items->length == 1)
     {
-        // This is the <empty> placeholder, which is not interactive.
-        return;
+        CB_ListItemButton* button = context->list->items->items[0];
+        if (strcmp(button->title, "<empty>") == 0)
+        {
+            // This is the <empty> placeholder, which is not interactive.
+            return;
+        }
     }
 
     if (CB_App->buttons_pressed & kButtonA)
     {
-        cb_play_ui_sound(CB_UISound_Confirm);
-
         JsonObject* obj = (context->j.type == kJSONTable) ? context->j.data.tableval : NULL;
         int selected_idx = context->list->selectedItem;
 
         if (obj && selected_idx < context->index_map_size)
         {
-            int original_idx = context->index_map[selected_idx];
-
             const CB_ListItemButton* const button = context->list->items->items[selected_idx];
+            if ((button->ud.uint & FT_DOWNLOADED_BIT) != 0)
+            {
+                // Already downloaded, do nothing.
+                return;
+            }
+
+            cb_play_ui_sound(CB_UISound_Confirm);
+
+            int original_idx = context->index_map[selected_idx];
             enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
 
             if (ft == FT_DIRECTORY)
@@ -341,8 +346,8 @@ static void context_patch_files_browse_update(
                 return;
             }
 
-            unsigned const file_size = (button->ud.uint >> FILETYPE_BITS);
-            bool const unknown_file_size = (file_size >= (1 << (32 - FILETYPE_BITS)));
+            unsigned const file_size = (button->ud.uint >> FILE_META_BITS);
+            bool const unknown_file_size = (file_size >= (1 << (32 - FILE_META_BITS)));
 
             if (unknown_file_size)
             {
@@ -494,6 +499,12 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         }
         else
         {
+            // Add the newly downloaded file to the local files list for immediate UI update
+            pds->local_files->count++;
+            pds->local_files->files =
+                cb_realloc(pds->local_files->files, sizeof(char*) * pds->local_files->count);
+            pds->local_files->files[pds->local_files->count - 1] = cb_strdup(pds->basename);
+
             if (!pds->has_local_patches)
             {
                 pds->has_local_patches = true;
@@ -644,9 +655,6 @@ static void context_patch_choose_interaction_update(
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
 
-                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
-                userdata->pds = pds;
-
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Readme";
                 initiate_download_with_permission_check(
@@ -684,9 +692,6 @@ static void context_patch_choose_interaction_update(
 
                 char* http_path_san = sanitize_url_path(http_path);
                 cb_free(http_path);
-
-                PatchDownloadUD* userdata = cb_malloc(sizeof(PatchDownloadUD));
-                userdata->pds = pds;
 
                 pds->http_in_progress = 1;
                 pds->text_file_title = "Changelog";
@@ -944,22 +949,79 @@ static void context_top_level_draw(
     }
 }
 
+static void context_patch_files_browse_draw(
+    CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
+)
+{
+    draw_common(pds, context, x, active);
+
+    CB_ListView* listView = context->list;
+    LCDFont* font = PDS_FONT;
+    int fontHeight = playdate->graphics->getFontHeight(font);
+    int left_margin = 0;
+    int listX = x;
+
+    playdate->graphics->setClipRect(
+        listView->frame.x, listView->frame.y, listView->frame.width, listView->frame.height
+    );
+
+    for (int i = 0; i < listView->items->length; i++)
+    {
+        CB_ListItemButton* button = listView->items->items[i];
+
+        if ((button->ud.uint & FT_DOWNLOADED_BIT) != 0)
+        {
+            CB_ListItem* item = &button->item;
+
+            int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
+            if (rowY + item->height < listView->frame.y ||
+                rowY > listView->frame.y + listView->frame.height)
+                continue;
+
+            bool selected = (i == listView->selectedItem && active);
+            const uint8_t* dither = selected ? white_transparent_dither : black_transparent_dither;
+
+            int textY = rowY + (item->height - fontHeight) / 2;
+            int leftWidth = playdate->graphics->getTextWidth(
+                font, button->title, strlen(button->title), kUTF8Encoding, 0
+            );
+
+            int maxWidth = listView->frame.width;
+
+            playdate->graphics->fillRect(
+                listX + left_margin, textY, leftWidth, fontHeight, (LCDColor)dither
+            );
+        }
+    }
+    playdate->graphics->clearClipRect();
+}
+
 static char* context_patch_files_browse_hint(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context
 )
 {
     if (context->list->items->length == 1)
     {
-        return cb_strdup("This directory contains no supported files.");
+        CB_ListItemButton* button = context->list->items->items[0];
+        if (strcmp(button->title, "<empty>") == 0)
+        {
+            return cb_strdup("This directory contains no supported files.");
+        }
     }
 
     int i = context->list->selectedItem;
     if (i < context->list->items->length)
     {
         const CB_ListItemButton* const button = context->list->items->items[i];
+
+        if ((button->ud.uint & FT_DOWNLOADED_BIT) != 0)
+        {
+            return cb_strdup("This patch file has already been downloaded.");
+        }
+
         enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
-        unsigned const file_size = (button->ud.uint >> FILETYPE_BITS);
-        bool const unknown_file_size = (file_size >= (1 << (32 - FILETYPE_BITS)));
+        unsigned const file_size = (button->ud.uint >> FILE_META_BITS);
+        bool const unknown_file_size = (file_size >= (1 << (32 - FILE_META_BITS)));
 
         char* en_file_size = unknown_file_size ? aprintf("unknown") : en_human_bytes(file_size);
         char* v = NULL;
@@ -1104,7 +1166,8 @@ static context_update_fn context_update[PDSCT_MAX] = {
 };
 
 static context_draw_fn context_draw[PDSCT_MAX] = {
-    context_top_level_draw, draw_common, context_top_level_draw, draw_common, NULL
+    context_top_level_draw, draw_common, context_top_level_draw, context_patch_files_browse_draw,
+    NULL
 };
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
@@ -1159,7 +1222,37 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
     cb_free(pds->patches_dir_path);
     cb_free(pds->cached_hint);
     cb_free(pds->list_fetch_error_message);
+
+    if (pds->local_files)
+    {
+        for (int i = 0; i < pds->local_files->count; ++i)
+        {
+            cb_free(pds->local_files->files[i]);
+        }
+        cb_free(pds->local_files->files);
+        cb_free(pds->local_files);
+    }
+
     cb_free(pds);
+}
+
+static void list_local_patches_callback(const char* path, void* userdata)
+{
+    CB_LocalFileSet* file_set = userdata;
+    const char* basename = strrchr(path, '/');
+    basename = basename ? basename + 1 : path;
+
+    if (strlen(basename) == 0)
+        return;
+
+    // Check if the file is a patch file before adding
+    const char* extension = strrchr(basename, '.');
+    if (extension_is_supported_patch_file(extension))
+    {
+        file_set->count++;
+        file_set->files = cb_realloc(file_set->files, sizeof(char*) * file_set->count);
+        file_set->files[file_set->count - 1] = cb_strdup(basename);
+    }
 }
 
 void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt)
@@ -1463,6 +1556,20 @@ static bool has_supported_files_recursive(json_value fs)
     return false;
 }
 
+static bool is_file_downloaded(CB_PatchDownloadScene* pds, const char* filename)
+{
+    if (!pds->local_files)
+        return false;
+    for (int i = 0; i < pds->local_files->count; ++i)
+    {
+        if (strcasecmp(pds->local_files->files[i], filename) == 0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 {
     JsonObject* arr = (fs.type == kJSONTable) ? fs.data.tableval : NULL;
@@ -1539,15 +1646,22 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
         if (items_to_sort[i].type == FT_PATCH_SUPPORTED)
         {
             CB_ListItemButton* itemButton = CB_ListItemButton_new(items_to_sort[i].name);
-            itemButton->ud.uint = items_to_sort[i].type;
-            if (items_to_sort[i].size < (1 << (32 - FILETYPE_BITS)))
+            uintptr_t ud = items_to_sort[i].type;
+
+            if (is_file_downloaded(pds, items_to_sort[i].name))
             {
-                itemButton->ud.uint |= items_to_sort[i].size << FILETYPE_BITS;
+                ud |= FT_DOWNLOADED_BIT;
+            }
+
+            if (items_to_sort[i].size < (1 << (32 - FILE_META_BITS)))
+            {
+                ud |= items_to_sort[i].size << FILE_META_BITS;
             }
             else
             {
-                itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+                ud |= ((uintptr_t)-1) << FILE_META_BITS;
             }
+            itemButton->ud.uint = ud;
             array_push(context->list->items, itemButton);
             context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
         }
@@ -1559,15 +1673,16 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
         if (items_to_sort[i].type == FT_TEXT)
         {
             CB_ListItemButton* itemButton = CB_ListItemButton_new(items_to_sort[i].name);
-            itemButton->ud.uint = items_to_sort[i].type;
-            if (items_to_sort[i].size < (1 << (32 - FILETYPE_BITS)))
+            uintptr_t ud = items_to_sort[i].type;
+            if (items_to_sort[i].size < (1 << (32 - FILE_META_BITS)))
             {
-                itemButton->ud.uint |= items_to_sort[i].size << FILETYPE_BITS;
+                ud |= items_to_sort[i].size << FILE_META_BITS;
             }
             else
             {
-                itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+                ud |= ((uintptr_t)-1) << FILE_META_BITS;
             }
+            itemButton->ud.uint = ud;
             array_push(context->list->items, itemButton);
             context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
         }
@@ -1581,8 +1696,9 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             char* text = aprintf("%s/", items_to_sort[i].name);
             CB_ListItemButton* itemButton = CB_ListItemButton_new(text);
             cb_free(text);
-            itemButton->ud.uint = items_to_sort[i].type;
-            itemButton->ud.uint |= ((uintptr_t)-1) << FILETYPE_BITS;
+            uintptr_t ud = items_to_sort[i].type;
+            ud |= ((uintptr_t)-1) << FILE_META_BITS;
+            itemButton->ud.uint = ud;
             array_push(context->list->items, itemButton);
             context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
         }
@@ -1652,12 +1768,13 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     // in unpredictable ways, like truncated paths.
     call_with_main_stack_1(playdate->file->mkdir, pds->patches_dir_path);
 
-    bool has_local_patches = false;
+    pds->local_files = allocz(CB_LocalFileSet);
     call_with_main_stack_4(
-        playdate->file->listfiles, pds->patches_dir_path, check_for_patches_callback,
-        &has_local_patches, 0
+        playdate->file->listfiles, pds->patches_dir_path, list_local_patches_callback,
+        pds->local_files, 0
     );
-    pds->has_local_patches = has_local_patches;
+
+    pds->has_local_patches = (pds->local_files->count > 0);
 
     pds->rhdb = CB_App->rhdb_cache;
 

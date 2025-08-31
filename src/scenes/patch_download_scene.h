@@ -27,6 +27,12 @@ typedef enum
     PD_TEXTFILE
 } PendingDownloadType;
 
+typedef struct
+{
+    char** files;
+    int count;
+} CB_LocalFileSet;
+
 typedef struct PatchDownloadContext
 {
     PatchDownloadSceneContextType type;
@@ -70,6 +76,7 @@ typedef struct CB_PatchDownloadScene
 
     uint32_t cached_hint_key;
     json_value rhdb;
+    CB_LocalFileSet* local_files;
 
     PendingDownloadType pending_download_type;
     char* pending_http_path;
