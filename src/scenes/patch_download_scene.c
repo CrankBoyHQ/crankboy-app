@@ -506,6 +506,24 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 cb_realloc(pds->local_files->files, sizeof(char*) * pds->local_files->count);
             pds->local_files->files[pds->local_files->count - 1] = cb_strdup(pds->basename);
 
+            if (pds->context_depth > 0)
+            {
+                PatchDownloadContext* context = &pds->context[pds->context_depth - 1];
+                if (context->type == PDSCT_PATCH_FILES_BROWSE)
+                {
+                    for (int i = 0; i < context->list->items->length; i++)
+                    {
+                        CB_ListItemButton* button = context->list->items->items[i];
+                        if (strcmp(button->title, pds->basename) == 0)
+                        {
+                            button->ud.uint |= FT_DOWNLOADED_BIT;
+                            pds->cached_hint_key = -1;
+                            break;
+                        }
+                    }
+                }
+            }
+
             if (!pds->has_local_patches)
             {
                 pds->has_local_patches = true;
@@ -959,7 +977,7 @@ static void context_patch_files_browse_draw(
     CB_ListView* listView = context->list;
     LCDFont* font = PDS_FONT;
     int fontHeight = playdate->graphics->getFontHeight(font);
-    int left_margin = 0;
+    int left_margin = 4;
     int listX = x;
 
     playdate->graphics->setClipRect(
@@ -983,14 +1001,10 @@ static void context_patch_files_browse_draw(
             const uint8_t* dither = selected ? white_transparent_dither : black_transparent_dither;
 
             int textY = rowY + (item->height - fontHeight) / 2;
-            int leftWidth = playdate->graphics->getTextWidth(
-                font, button->title, strlen(button->title), kUTF8Encoding, 0
-            );
-
-            int maxWidth = listView->frame.width;
+            int maxWidth = listView->frame.width + left_margin;
 
             playdate->graphics->fillRect(
-                listX + left_margin, textY, leftWidth, fontHeight, (LCDColor)dither
+                listX + left_margin, textY, maxWidth, fontHeight, (LCDColor)dither
             );
         }
     }
