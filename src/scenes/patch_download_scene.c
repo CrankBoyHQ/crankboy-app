@@ -315,6 +315,12 @@ static void context_patch_files_browse_update(
 {
     update_common(pds, context);
 
+    if (context->list->items->length == 1)
+    {
+        // This is the <empty> placeholder, which is not interactive.
+        return;
+    }
+
     if (CB_App->buttons_pressed & kButtonA)
     {
         cb_play_ui_sound(CB_UISound_Confirm);
@@ -938,36 +944,15 @@ static void context_top_level_draw(
     }
 }
 
-static void context_patch_files_browse_draw(
-    CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
-)
-{
-    if (context->list->items->length == 0 && active)
-    {
-        int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
-        playdate->graphics->fillRect(x, header_y, kDividerX, LCD_ROWS - header_y, kColorWhite);
-
-        const char* message = "No supported files found.";
-        playdate->graphics->setFont(PDS_FONT);
-        int msg_width =
-            playdate->graphics->getTextWidth(PDS_FONT, message, strlen(message), kUTF8Encoding, 0);
-        int textX = x + (kDividerX - msg_width) / 2;
-        int textY =
-            header_y + (LCD_ROWS - header_y) / 2 - playdate->graphics->getFontHeight(PDS_FONT) / 2;
-
-        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-        playdate->graphics->drawText(message, strlen(message), kUTF8Encoding, textX, textY);
-    }
-    else
-    {
-        draw_common(pds, context, x, active);
-    }
-}
-
 static char* context_patch_files_browse_hint(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context
 )
 {
+    if (context->list->items->length == 1)
+    {
+        return cb_strdup("This directory contains no supported files.");
+    }
+
     int i = context->list->selectedItem;
     if (i < context->list->items->length)
     {
@@ -1119,8 +1104,7 @@ static context_update_fn context_update[PDSCT_MAX] = {
 };
 
 static context_draw_fn context_draw[PDSCT_MAX] = {
-    context_top_level_draw, draw_common, context_top_level_draw, context_patch_files_browse_draw,
-    NULL
+    context_top_level_draw, draw_common, context_top_level_draw, draw_common, NULL
 };
 
 PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
@@ -1447,6 +1431,38 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     return true;
 }
 
+static bool has_supported_files_recursive(json_value fs)
+{
+    if (fs.type != kJSONTable)
+        return false;
+
+    JsonObject* arr = fs.data.tableval;
+    for (size_t i = 0; i < arr->n; ++i)
+    {
+        const char* key = arr->data[i].key;
+        json_value value = arr->data[i].value;
+
+        if (value.type == kJSONTable)
+        {
+            if (has_supported_files_recursive(value))
+            {
+                return true;
+            }
+        }
+        else
+        {
+            const char* extension = strrchr(key, '.');
+            if (!extension)
+                extension = key + strlen(key);
+            if (extension_is_supported_patch_file(extension) || !strcasecmp(extension, ".txt") ||
+                !strcasecmp(extension, ".md") || !strcasecmp(key, "readme") ||
+                !strcasecmp(key, "license"))
+                return true;
+        }
+    }
+    return false;
+}
+
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 {
     JsonObject* arr = (fs.type == kJSONTable) ? fs.data.tableval : NULL;
@@ -1470,8 +1486,11 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 
         if (arr->data[i].value.type == kJSONTable)
         {
-            ft = FT_DIRECTORY;
-            is_supported_for_display = true;
+            if (has_supported_files_recursive(arr->data[i].value))
+            {
+                ft = FT_DIRECTORY;
+                is_supported_for_display = true;
+            }
         }
         else
         {
@@ -1570,6 +1589,12 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
     }
 
     cb_free(items_to_sort);
+
+    if (context->list->items->length == 0)
+    {
+        CB_ListItemButton* itemButton = CB_ListItemButton_new("<empty>");
+        array_push(context->list->items, itemButton);
+    }
 
     CB_ListView_reload(context->list);
     context->type = PDSCT_PATCH_FILES_BROWSE;
