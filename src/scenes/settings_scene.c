@@ -1033,9 +1033,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Mode",
         .values = crank_mode_labels,
         .description =
-            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nCW for Start, CCW for "
-            "Select.\nSee 'Down' option below.\n \nTurbo A/B:\nCW for A, CCW for B.\n \nTurbo "
-            "B/A:\nCW for B, CCW for A.",
+            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nBack = Start, Front = "
+            "Select\nSee 'Down' option below.\n \nTurbo A/B:\nCW = A, CCW = B\n \nTurbo "
+            "B/A:\nCW = B, CCW = A",
         .pref_var = &preferences_crank_mode,
         .max_value = 4,
         .rebuild_when_changed = 1,
