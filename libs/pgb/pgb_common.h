@@ -1,6 +1,6 @@
 #pragma push_macro("PGB_VERSION")
 #ifdef PGB_VERSION
-    #undef PGB_VERSION
+#undef PGB_VERSION
 #endif
 
 // header guard

@@ -464,12 +464,26 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {&gb->gb_rom,        &gb->wram,         &gb->vram,
-                                &gb->gb_cart_ram,   &gb->breakpoints,  &gb->direct.oam_ghost_buffer,
-                                &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
-                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base,
-                                &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
-                                &gb->xram};
+    void* preserved_fields[] = {
+        &gb->gb_rom,
+        &gb->wram,
+        &gb->vram,
+        &gb->gb_cart_ram,
+        &gb->breakpoints,
+        &gb->direct.oam_ghost_buffer,
+        &gb->lcd,
+        &gb->direct.priv,
+        &gb->gb_error,
+        &gb->gb_serial_tx,
+        &gb->gb_serial_rx,
+        &gb->wram_base,
+        &gb->echo_ram_base,
+        &gb->vram_base,
+        &gb->gb_zero_bank,
+        &gb->xram,
+        &gb->display.bg_map_base,
+        &gb->display.window_map_base
+    };
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
@@ -612,6 +626,7 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, direct.joypad_interrupts);
     set_field(v2_gb, v1_gb, direct.enable_xram);
     set_fields(v2_gb, v1_gb, direct.joypad_interrupt_delay, gb_rom_size);
+    set_field(v2_gb, v1_gb, audio);
 
     // now that we have the data in the struct, we can resize
     *out_size = gb_get_state_size_v2(v2_gb);
@@ -625,15 +640,26 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     }
     v2_org = v2_realloc;
 
-    CB_ASSERT(
-        *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
-    );
+// Set the historical struct size based on the compilation target (v1.0.2).
+// This is required because the struct layout/padding differs between the 32-bit
+// device and the 64-bit simulator, resulting in a different v0/v1 struct size.
+#if TARGET_PLAYDATE
+    // Verified size for old save states created ON DEVICE.
+    const size_t old_gb_s_v1_size = 844;
+#elif TARGET_SIMULATOR
+    // Verified size for old save states created ON SIMULATOR.
+    const size_t old_gb_s_v1_size = 912;
+#else
+#error "Unknown build target: Cannot determine historical save state size."
+#endif
 
-    // copy the remaning data (should be the same between v1 and v2)
+    // Calculate the size of the payload data (WRAM, VRAM, etc.).
+    size_t payload_size = org_in_size - sizeof(StateHeader) - old_gb_s_v1_size;
+
+    // Copy the payload data from the old buffer to the new one.
     memcpy(
         v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2),
-        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
-        *out_size - sizeof(StateHeader) - sizeof(struct gb_s_v2)
+        org_in + sizeof(StateHeader) + old_gb_s_v1_size, payload_size
     );
 
     *out = v2_org;
