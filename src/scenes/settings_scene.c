@@ -136,7 +136,6 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
     // Store the true global value for UI sounds before any potential changes.
     int global_ui_sounds = preferences_ui_sounds;
-    void* stored_globals = NULL;
 
     if (libraryScene)
     {
@@ -149,15 +148,21 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             settingsScene->selected_game_settings_path =
                 cb_game_config_path(selectedGame->fullpath);
 
-            stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
+            void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
 
             if (settingsScene->selected_game_settings_path)
             {
                 preferences_merge_from_disk(settingsScene->selected_game_settings_path);
             }
 
-            if (!preferences_per_game)
+            int game_uses_per_game_scope = preferences_per_game;
+
+            if (!game_uses_per_game_scope)
+            {
                 preferences_restore_subset(stored_globals);
+            }
+
+            preferences_per_game = game_uses_per_game_scope;
 
             if (stored_globals)
             {
@@ -312,22 +317,28 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
 
     if (settingsScene->libraryScene)
     {
-        result = (int)(intptr_t)call_with_main_stack_2(
-            preferences_save_to_disk, CB_globalPrefsPath,
-            preferences_per_game ? ~(PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds) : 0
-        );
-
-        if (result && game_settings_path)
+        if (preferences_per_game)
         {
-            if (preferences_per_game)
+            if (game_settings_path)
+            {
                 result = (int)(intptr_t)call_with_main_stack_2(
                     preferences_save_to_disk, game_settings_path,
                     PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
                 );
-            else
+            }
+        }
+        else
+        {
+            result = (int)(intptr_t)call_with_main_stack_2(
+                preferences_save_to_disk, CB_globalPrefsPath, 0
+            );
+
+            if (result && game_settings_path)
+            {
                 result = (int)(intptr_t)call_with_main_stack_2(
                     preferences_save_to_disk, game_settings_path, ~PREFBIT_per_game
                 );
+            }
         }
     }
     else if (game_settings_path)
@@ -461,7 +472,7 @@ static void settings_post_action_per_game(
     OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
 )
 {
-    // special behavior if we've switched between per-game and global settings
+    // Special behavior for switching between per-game and global settings
     int global_ui_sounds = preferences_ui_sounds;
     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
 
@@ -474,11 +485,11 @@ static void settings_post_action_per_game(
     {
         game_settings_path = settingsScene->selected_game_settings_path;
     }
+
     if (!preferences_per_game && prev_val)
     {
-        // write per-game prefs to disk
-        preferences_per_game = 0;  // paranoia: record in game settings that we're
-                                   // using global settings
+        // write per - game prefs to disk
+        preferences_per_game = 1;
         call_with_main_stack_2(
             preferences_save_to_disk, game_settings_path, prefs_locked_by_script
         );
@@ -494,6 +505,7 @@ static void settings_post_action_per_game(
             PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
         );
 
+        preferences_set_defaults();
         preferences_merge_from_disk(game_settings_path);
         preferences_per_game = 1;
     }

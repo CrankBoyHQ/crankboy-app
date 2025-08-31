@@ -35,7 +35,7 @@ static void preferences_write_uint8(SDFile* file, uint8_t value);
 static uint32_t preferences_read_uint32(SDFile* file);
 static void preferences_write_uint32(SDFile* file, uint32_t value);
 
-static void preferences_set_defaults(void)
+void preferences_set_defaults(void)
 {
 #define PREF(x, d) preferences_##x = d;
 #include "prefs.x"

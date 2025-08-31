@@ -56,6 +56,8 @@ extern const int pref_count;
 
 void preferences_init(void);
 
+void preferences_set_defaults(void);
+
 void preferences_read_from_disk(const char* filename);
 
 void preferences_merge_from_disk(const char* filename);
