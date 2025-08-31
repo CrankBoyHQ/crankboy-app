@@ -792,7 +792,10 @@ static void context_top_level_update(
                 if (jdomain.type == kJSONString)
                 {
                     pds->domain = jdomain.data.stringval;
-                    push_patch_list(pds);
+                    if (push_patch_list(pds))
+                    {
+                        pds->context_depth_p = pds->target_context_depth;
+                    }
                 }
                 else
                 {
@@ -1226,7 +1229,14 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             }
             else
             {
+                PatchDownloadContext* current_context = &pds->context[pds->context_depth - 1];
                 --pds->target_context_depth;
+                if (current_context->type == PDSCT_LIST_PATCHES)
+                {
+                    // Instantly go back from patch list to top level
+                    pop_context(pds);
+                    pds->context_depth_p = pds->target_context_depth;
+                }
             }
         }
     }
