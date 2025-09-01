@@ -96,7 +96,7 @@ static inline int get_audio_sample_rate(void)
  */
 static uint32_t precomputed_noise_freqs[8][16];
 
-__audio static void set_note_freq(struct chan* c, const uint32_t freq)
+__audio static void set_note_freq(chan* c, const uint32_t freq)
 {
     /* Lowest expected value of freq is 64. */
     // Set frequency increment
@@ -106,7 +106,7 @@ __audio static void set_note_freq(struct chan* c, const uint32_t freq)
 static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enable)
 {
     uint8_t val;
-    struct chan* chans = audio->chans;
+    chan* chans = audio->chans;
     chans[i].enabled = enable;
     val = (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] & 0x80) | (chans[3].enabled << 3) |
           (chans[2].enabled << 2) | (chans[1].enabled << 1) | (chans[0].enabled << 0);
@@ -114,7 +114,7 @@ static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enab
     audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] = val;
 }
 
-__audio static void update_env(struct chan* c, int sample_rate)
+__audio static void update_env(chan* c, int sample_rate)
 {
     c->env.counter += c->env.inc;
 
@@ -139,7 +139,7 @@ __audio static void update_env(struct chan* c, int sample_rate)
     }
 }
 
-__audio static bool calculate_new_sweep_freq(struct chan* c)
+__audio static bool calculate_new_sweep_freq(chan* c)
 {
     uint16_t new_freq;
     new_freq = c->sweep.freq >> c->sweep.shift;
@@ -169,7 +169,7 @@ __audio static bool calculate_new_sweep_freq(struct chan* c)
 }
 
 // returns sample index at which to stop outputting in channel
-__audio static int update_len(audio_data* restrict audio, struct chan* c, int len)
+__audio static int update_len(audio_data* restrict audio, chan* c, int len)
 {
     if (!c->enabled)
         return 0;
@@ -194,7 +194,7 @@ __audio static int update_len(audio_data* restrict audio, struct chan* c, int le
 }
 
 // This function is only for the "Accurate" mode.
-__audio static bool update_freq(struct chan* c, uint32_t* pos, int sample_rate)
+__audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
 {
     uint32_t inc = c->freq_inc - *pos;
     c->freq_counter += inc;
@@ -212,7 +212,7 @@ __audio static bool update_freq(struct chan* c, uint32_t* pos, int sample_rate)
     }
 }
 
-__audio static void update_sweep(struct chan* c, int sample_rate)
+__audio static void update_sweep(chan* c, int sample_rate)
 {
     if (c->sweep.rate == 0)
     {
@@ -269,7 +269,7 @@ __audio static void update_square(
     audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
 )
 {
-    struct chan* c = audio->chans + ch2;
+    chan* c = audio->chans + ch2;
 
     if (!c->powered || !c->enabled)
         return;
@@ -470,7 +470,7 @@ __audio static int8_t wave_sample(
 
 __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
-    struct chan* c = audio->chans + 2;
+    chan* c = audio->chans + 2;
 
     if (!c->powered || !c->enabled)
         return;
@@ -571,7 +571,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
 __audio static void update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
-    struct chan* c = audio->chans + 3;
+    chan* c = audio->chans + 3;
 
     if (!c->powered)
         return;
@@ -677,8 +677,8 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
 static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 {
-    struct chan* chans = audio->chans;
-    struct chan* c = chans + i;
+    chan* chans = audio->chans;
+    chan* c = chans + i;
 
     chan_enable(audio, i, 1);
     c->volume = c->volume_init;
@@ -773,7 +773,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 {
     /* Find sound channel corresponding to register address. */
     uint_fast8_t i;
-    struct chan* chans = audio->chans;
+    chan* chans = audio->chans;
 
     if (addr == 0xFF26)
     {
@@ -915,10 +915,10 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
 void audio_init(audio_data* audio)
 {
-    struct chan* chans = audio->chans;
+    chan* chans = audio->chans;
 
     /* Initialise channels and samples. */
-    memset(chans, 0, 4 * sizeof(struct chan));
+    memset(chans, 0, 4 * sizeof(chan));
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
 

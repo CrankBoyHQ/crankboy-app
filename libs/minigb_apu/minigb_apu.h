@@ -10,6 +10,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "peanut_gb.h"
+
 /* Calculating VSYNC. */
 #ifndef DMG_CLOCK_FREQ
 #define DMG_CLOCK_FREQ 4194304.0f
@@ -24,97 +26,15 @@
 // master audio control
 extern int audio_enabled;
 
-struct chan_len_ctr
-{
-    uint8_t load;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan_vol_env
-{
-    uint8_t step : 3;
-    unsigned up : 1;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan_freq_sweep
-{
-    uint16_t freq;
-    uint8_t rate;
-    uint8_t shift;
-    uint32_t counter;
-    uint32_t inc;
-};
-
-struct chan
-{
-    unsigned enabled : 1;
-    unsigned powered : 1;
-    unsigned on_left : 1;
-    unsigned on_right : 1;
-    unsigned muted : 1;
-    uint8_t lfsr_wide : 1;
-    unsigned sweep_up : 1;
-    unsigned len_enabled : 1;
-
-    uint8_t volume : 4;
-    uint8_t volume_init : 4;
-    uint16_t freq;
-    uint32_t freq_counter;
-    uint32_t freq_inc;
-
-    int_fast16_t val;
-
-    struct chan_len_ctr len;
-    struct chan_vol_env env;
-    struct chan_freq_sweep sweep;
-
-    union
-    {
-        struct
-        {
-            uint8_t duty;
-            uint8_t duty_counter;
-        } square;
-        struct
-        {
-            uint16_t lfsr_reg;
-            uint8_t lfsr_div;
-        } noise;
-        struct
-        {
-            int8_t sample;
-        } wave;
-    };
-};
-
-typedef struct audio_data
-{
-    int vol_l : 4;
-    int vol_r : 4;
-    uint8_t* audio_mem;
-    struct chan chans[4];
-
-#if TARGET_PLAYDATE
-    int32_t capacitor_l;
-    int32_t capacitor_r;
-#else
-    float capacitor_l;
-    float capacitor_r;
-#endif
-} audio_data;
-
 /**
  * Read audio register at given address "addr".
  */
-uint8_t audio_read(struct audio_data* audio, const uint16_t addr);
+uint8_t audio_read(audio_data* audio, const uint16_t addr);
 
 /**
  * Write "val" to audio register at given address "addr".
  */
-void audio_write(struct audio_data* audio, const uint16_t addr, const uint8_t val);
+void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val);
 
 /**
  * Initialise audio driver.

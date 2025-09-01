@@ -32,7 +32,6 @@
 #ifndef PEANUT_GB_H
 #define PEANUT_GB_H
 
-#include "../libs/minigb_apu/minigb_apu.h"
 #include "../src/app.h"
 #include "../src/preferences.h"
 #include "../src/utility.h"
@@ -292,10 +291,17 @@ typedef struct StateHeader
 
 typedef struct PGB_VERSIONED(gb_s) gb_s;
 typedef struct PGB_VERSIONED(gb_breakpoint) gb_breakpoint;
+typedef struct PGB_VERSIONED(audio_data) audio_data;
+typedef struct PGB_VERSIONED(chan_len_ctr) chan_len_ctr;
+typedef struct PGB_VERSIONED(chan_vol_env) chan_vol_env;
+typedef struct PGB_VERSIONED(chan_freq_sweep) chan_freq_sweep;
+typedef struct PGB_VERSIONED(chan) chan;
 
 __core unsigned int __gb_step_cpu(gb_s* gb);
 
 #ifdef PGB_IMPL
+
+#include "minigb_apu/minigb_apu.h"
 
 /**
  * Directly calculates and applies the RTC state after a given
