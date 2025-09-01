@@ -53,8 +53,8 @@ struct PGB_VERSIONED(cpu_registers_s)
     {
         struct
         {
+            // Note: stored order of AF is swapped compared to convention
             uint8_t a;
-            /* Define specific bits of Flag register. */
             union
             {
                 struct
@@ -205,7 +205,22 @@ struct PGB_VERSIONED(gb_s)
     uint8_t overclock : 2;
 
     uint8_t is_mbc1m : 1;
-
+    
+    // 1-7, cgb only
+    bool cgb_fast_mode_armed : 1;
+    uint8_t cgb_wram_bank : 3;
+    uint8_t cgb_ff75 : 3;
+    bool cgb_fast_mode : 1;
+    uint8_t cgb_ff6c : 1;
+    uint8_t cgb_vram_bank : 1;
+    
+    
+    uint8_t cgb_ff7x[3];
+    uint16_t cgb_hdma_src;
+    uint16_t cgb_hdma_dst;
+    int16_t cgb_hdma_len : 7;
+    bool cgb_hdma_active : 1;
+    
     uint8_t* selected_cart_bank_addr;
 
     /* Number of ROM banks in cartridge. */
@@ -269,13 +284,14 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(count_s) counter;
 
     /* Pre-computed base pointers to avoid subtractions in memory access. */
-    uint8_t* wram_base;
+    uint8_t* wram_base[2];
+    uint8_t* wram_hi_base;
     uint8_t* echo_ram_base;
-    uint8_t* vram_base;
+    uint8_t* vram_base; // see note about vram
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
-    uint8_t* wram;            // wram[WRAM_SIZE];
-    uint8_t* vram;            // vram[VRAM_SIZE];
+    uint8_t* wram;            // wram[WRAM_SIZE_CGB];
+    uint8_t* vram;            // vram[VRAM_SIZE_CGB]; /* NOTE: tile data (0-0x1800) is stored in reverse bit order. */
     uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
@@ -374,6 +390,11 @@ struct PGB_VERSIONED(gb_s)
 
     // extended ram feature offered by crankboy
     uint8_t* xram;
+    
+    // always 32 zero bytes. Useful hack to implement CGB LCDC priority
+    // bit, but can be used for other things
+    // (so long as nothing writes anything non-zero here.)
+    uint32_t zero32[5];
 
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
@@ -385,7 +406,7 @@ struct PGB_VERSIONED(gb_s)
 FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE + VRAM_SIZE + XRAM_SIZE + gb->gb_cart_ram_size +
+           + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + gb->gb_cart_ram_size +
            MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint));
 
     // skipped: lcd; rom
@@ -402,12 +423,12 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, 
     out += ROM_HEADER_SIZE;
 
     // wram
-    memcpy(out, gb->wram, WRAM_SIZE);
-    out += WRAM_SIZE;
+    memcpy(out, gb->wram, WRAM_SIZE_CGB);
+    out += WRAM_SIZE_CGB;
 
     // vram
-    memcpy(out, gb->vram, VRAM_SIZE);
-    out += VRAM_SIZE;
+    memcpy(out, gb->vram, VRAM_SIZE_CGB);
+    out += VRAM_SIZE_CGB;
 
     // xram
     memcpy(out, gb->xram, XRAM_SIZE);
@@ -464,26 +485,12 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {
-        &gb->gb_rom,
-        &gb->wram,
-        &gb->vram,
-        &gb->gb_cart_ram,
-        &gb->breakpoints,
-        &gb->direct.oam_ghost_buffer,
-        &gb->lcd,
-        &gb->direct.priv,
-        &gb->gb_error,
-        &gb->gb_serial_tx,
-        &gb->gb_serial_rx,
-        &gb->wram_base,
-        &gb->echo_ram_base,
-        &gb->vram_base,
-        &gb->gb_zero_bank,
-        &gb->xram,
-        &gb->display.bg_map_base,
-        &gb->display.window_map_base
-    };
+    void* preserved_fields[] = {&gb->gb_rom,        &gb->wram,         &gb->vram,
+                                &gb->gb_cart_ram,   &gb->breakpoints,  &gb->direct.oam_ghost_buffer,
+                                &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
+                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base[0], &gb->wram_base[1],
+                                &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
+                                &gb->xram, &gb->display.bg_map_base, &gb->display.window_map_base};
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
@@ -500,12 +507,12 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     }
 
     // wram
-    memcpy(gb->wram, in, WRAM_SIZE);
-    in += WRAM_SIZE;
+    memcpy(gb->wram, in, WRAM_SIZE_CGB);
+    in += WRAM_SIZE_CGB;
 
     // vram
-    memcpy(gb->vram, in, VRAM_SIZE);
-    in += VRAM_SIZE;
+    memcpy(gb->vram, in, VRAM_SIZE_CGB);
+    in += VRAM_SIZE_CGB;
 
     // xram
     memcpy(gb->xram, in, XRAM_SIZE);
@@ -640,26 +647,29 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     }
     v2_org = v2_realloc;
 
-// Set the historical struct size based on the compilation target (v1.0.2).
-// This is required because the struct layout/padding differs between the 32-bit
-// device and the 64-bit simulator, resulting in a different v0/v1 struct size.
-#if TARGET_PLAYDATE
-    // Verified size for old save states created ON DEVICE.
-    const size_t old_gb_s_v1_size = 844;
-#elif TARGET_SIMULATOR
-    // Verified size for old save states created ON SIMULATOR.
-    const size_t old_gb_s_v1_size = 912;
-#else
-#error "Unknown build target: Cannot determine historical save state size."
-#endif
-
-    // Calculate the size of the payload data (WRAM, VRAM, etc.).
-    size_t payload_size = org_in_size - sizeof(StateHeader) - old_gb_s_v1_size;
-
-    // Copy the payload data from the old buffer to the new one.
+    CB_ASSERT(
+        *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
+    );
+    
+    // copy rom header and wram (wram is resized in v2)
     memcpy(
         v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2),
-        org_in + sizeof(StateHeader) + old_gb_s_v1_size, payload_size
+        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
+        ROM_HEADER_SIZE + WRAM_SIZE
+    );
+    
+    // copy vram (vram is resized in v2)
+    memcpy(
+        v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2) + ROM_HEADER_SIZE + WRAM_SIZE_CGB,
+        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1) + ROM_HEADER_SIZE + WRAM_SIZE,
+        VRAM_SIZE
+    );
+
+    // copy the remaning data (should be the same between v1 and v2)
+    memcpy(
+        v2_org + sizeof(StateHeader) + sizeof(struct gb_s_v2) + ROM_HEADER_SIZE + WRAM_SIZE_CGB + VRAM_SIZE_CGB,
+        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1) + ROM_HEADER_SIZE + WRAM_SIZE + VRAM_SIZE,
+        *out_size - sizeof(StateHeader) - sizeof(struct gb_s_v2) - ROM_HEADER_SIZE - WRAM_SIZE_CGB - VRAM_SIZE_CGB
     );
 
     *out = v2_org;
@@ -671,3 +681,5 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
 }
 
 #endif
+
+#pragma pop_macro("PGB_VERSION")
