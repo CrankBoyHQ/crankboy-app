@@ -9,6 +9,7 @@
 
 void CB_Modal_update(CB_Modal* modal)
 {
+    ++modal->master_timer;
     if (modal->exit)
     {
         if (modal->droptimer-- <= 0)
@@ -135,6 +136,26 @@ void CB_Modal_update(CB_Modal* modal)
             oy - option_height, spacing, option_height, kWrapClip, kAlignTextCenter
         );
     }
+    
+    if (modal->icon)
+    {
+        if (modal->master_timer % 15 < 7 || modal->master_timer >= 4*15)
+        {
+            int iw, ih;
+            playdate->graphics->getBitmapData(modal->icon, &iw, &ih, NULL, NULL, NULL);
+            
+            playdate->graphics->drawBitmap(
+                modal->icon, LCD_COLUMNS/2 - iw/2, y - ih/2, kBitmapUnflipped
+            );
+        }
+    }
+    else
+    {
+        if (modal->warning)
+        {
+            modal->icon = playdate->graphics->loadBitmap("images/warning", NULL);
+        }
+    }
 
     if (modal->exit || modal->droptimer < MODAL_DROP_TIME)
         return;
@@ -175,6 +196,9 @@ void CB_Modal_free(CB_Modal* modal)
 {
     if (modal->callback)
         modal->callback(modal->ud, modal->result);
+        
+    if (modal->icon)
+        playdate->graphics->freeBitmap(modal->icon);
 
     if (modal->dissolveMask)
     {
@@ -194,8 +218,7 @@ void CB_Modal_free(CB_Modal* modal)
 
 CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback callback, void* ud)
 {
-    CB_Modal* modal = cb_malloc(sizeof(CB_Modal));
-    memset(modal, 0, sizeof(*modal));
+    CB_Modal* modal = allocz(CB_Modal);
 
     modal->width = 250;
     modal->height = 120;
