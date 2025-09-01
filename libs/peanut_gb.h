@@ -74,6 +74,8 @@ typedef int16_t s16;
 /* Memory section sizes for DMG */
 #define WRAM_SIZE 0x2000
 #define VRAM_SIZE 0x2000
+#define WRAM_SIZE_CGB 0x8000
+#define VRAM_SIZE_CGB 0x4000
 #define XRAM_SIZE (0x100 - 0xA0)
 #define HRAM_SIZE 0x0100
 #define OAM_SIZE 0x00A0
@@ -5875,8 +5877,8 @@ __section__(".rare") void gb_reset(gb_s* gb)
     gb->direct.crank_menu_accumulation = 0x8000;
     gb->direct.crank_menu_delta = 0;
 
-    memset(gb->vram, 0x00, VRAM_SIZE);
-    memset(gb->wram, 0x00, WRAM_SIZE);
+    memset(gb->vram, 0x00, VRAM_SIZE_CGB);
+    memset(gb->wram, 0x00, WRAM_SIZE_CGB);
 }
 
 /**

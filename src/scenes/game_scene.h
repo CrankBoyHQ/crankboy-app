@@ -76,8 +76,8 @@ typedef struct CB_GameSceneContext
 #else
     void* gb;
 #endif
-    uint8_t wram[WRAM_SIZE];
-    uint8_t vram[VRAM_SIZE];
+    uint8_t wram[WRAM_SIZE_CGB];
+    uint8_t vram[VRAM_SIZE_CGB];
     uint8_t* rom;
     size_t rom_size;
     uint8_t* cart_ram;

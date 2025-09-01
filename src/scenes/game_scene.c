@@ -3415,13 +3415,12 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                     if (success)
                     {
                         struct StateHeader* header = (struct StateHeader*)buff;
-                        unsigned int timestamp = 0;
 
                         unsigned int loaded_timestamp = header->timestamp;
 
-                        if (timestamp > 0)
+                        if (loaded_timestamp > 0)
                         {
-                            playdate->system->logToConsole("Save state created at: %u", timestamp);
+                            playdate->system->logToConsole("Save state had been created at: %u", loaded_timestamp);
                         }
                         else
                         {
