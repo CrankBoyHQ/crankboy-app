@@ -137,6 +137,89 @@ struct PGB_VERSIONED(gb_registers_s)
     uint8_t tima_overflow_delay : 1;
 };
 
+struct PGB_VERSIONED(chan_len_ctr)
+{
+    uint8_t load;
+    uint32_t counter;
+    uint32_t inc;
+};
+
+struct PGB_VERSIONED(chan_vol_env)
+{
+    uint8_t step : 3;
+    unsigned up : 1;
+    uint32_t counter;
+    uint32_t inc;
+};
+
+struct PGB_VERSIONED(chan_freq_sweep)
+{
+    uint16_t freq;
+    uint8_t rate;
+    uint8_t shift;
+    uint32_t counter;
+    uint32_t inc;
+};
+
+struct PGB_VERSIONED(chan)
+{
+    unsigned enabled : 1;
+    unsigned powered : 1;
+    unsigned on_left : 1;
+    unsigned on_right : 1;
+    unsigned muted : 1;
+    uint8_t lfsr_wide : 1;
+    unsigned sweep_up : 1;
+    unsigned len_enabled : 1;
+
+    uint8_t volume : 4;
+    uint8_t volume_init : 4;
+    uint16_t freq;
+    uint32_t freq_counter;
+    uint32_t freq_inc;
+
+    int_fast16_t val;
+
+    struct PGB_VERSIONED(chan_len_ctr) len;
+    struct PGB_VERSIONED(chan_vol_env) env;
+    struct PGB_VERSIONED(chan_freq_sweep) sweep;
+
+    union
+    {
+        struct
+        {
+            uint8_t duty;
+            uint8_t duty_counter;
+        } square;
+        struct
+        {
+            uint16_t lfsr_reg;
+            uint8_t lfsr_div;
+        } noise;
+        struct
+        {
+            int8_t sample;
+        } wave;
+    };
+};
+
+struct PGB_VERSIONED(audio_data)
+{
+    int vol_l : 4;
+    int vol_r : 4;
+    uint8_t* audio_mem;
+    struct PGB_VERSIONED(chan) chans[4];
+    
+#if TARGET_PLAYDATE
+    int32_t capacitor_l;
+    int32_t capacitor_r;
+#else
+    float capacitor_l;
+    float capacitor_r;
+#endif
+};
+
+
 /**
  * Emulator context.
  *
@@ -399,7 +482,7 @@ struct PGB_VERSIONED(gb_s)
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
     // audio.
-    audio_data audio;
+    struct PGB_VERSIONED(audio_data) audio;
 };
 
 // Note: used on unswizzled gb struct, so must
@@ -633,7 +716,11 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     set_field(v2_gb, v1_gb, direct.joypad_interrupts);
     set_field(v2_gb, v1_gb, direct.enable_xram);
     set_fields(v2_gb, v1_gb, direct.joypad_interrupt_delay, gb_rom_size);
-    set_field(v2_gb, v1_gb, audio);
+    set_field(v2_gb, v1_gb, audio.vol_l);
+    set_field(v2_gb, v1_gb, audio.vol_r);
+    set_fields(v2_gb, v1_gb, audio.chans[0], audio.chans[3]);
+    v2_gb->audio.capacitor_l = 0;
+    v2_gb->audio.capacitor_r = 0;
 
     // now that we have the data in the struct, we can resize
     *out_size = gb_get_state_size_v2(v2_gb);
@@ -648,7 +735,7 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     v2_org = v2_realloc;
 
     CB_ASSERT(
-        *out_size - sizeof(struct gb_s_v2) == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1)
+        *out_size - sizeof(struct gb_s_v2) - WRAM_SIZE_CGB - VRAM_SIZE_CGB == gb_get_state_size_v1(v1_gb) - sizeof(struct gb_s_v1) - WRAM_SIZE - VRAM_SIZE
     );
     
     // copy rom header and wram (wram is resized in v2)
