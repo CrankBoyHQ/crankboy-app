@@ -140,6 +140,8 @@ typedef struct CB_Application
     
     // true when menu is open
     bool currentlyPaused : 1;
+    
+    char* directory;
 
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
