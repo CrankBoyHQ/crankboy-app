@@ -4,9 +4,7 @@ if not crankboy then
 end
 
 if playdate.system and playdate.system.abortDeviceLock then
-    crankboy.setHasSystemPrivileges(true)
-else
-    crankboy.setHasSystemPrivileges(false)
+    crankboy.setHasSystemPrivileges()
 end
 
 function playdate.deviceWillLock()
