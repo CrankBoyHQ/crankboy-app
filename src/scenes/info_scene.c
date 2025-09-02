@@ -39,7 +39,7 @@ static bool get_list_item_prefix_len(const char* text, int text_len, int* out_pr
         {
             p++;
         }
-        if ((p - text < text_len - 1) && *p == '.' && *(p + 1) == ' ')
+        if ((p - text < text_len - 1) && (*p == '.' || *p == ')') && *(p + 1) == ' ')
         {
             *out_prefix_len = (p - start) + 2;
             return true;
