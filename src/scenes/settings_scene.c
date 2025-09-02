@@ -475,7 +475,7 @@ static void settings_post_action_lock_button(
 )
 {
     static bool has_warned = false;
-    if (prev_val == PREF_BUTTON_NONE) has_warned = true;
+    if (prev_val != PREF_BUTTON_NONE) has_warned = true;
     if (has_warned) return;
     
     if (preferences_lock_button != PREF_BUTTON_NONE)
@@ -483,12 +483,14 @@ static void settings_post_action_lock_button(
         has_warned = true;
         
         CB_Modal* modal = CB_Modal_new(
-            "You will not be able to lock the Playdate normally while in game. Instead, press ⊙ to open the menu, then lock as normal.", NULL,
+            "Note: holding the lock button for 5 seconds will reboot your Playdate.\n \nAlso note: with lock button override enabled, you will not be able to lock the Playdate normally while in game.\nInstead, press ⊙ to open the menu, then lock as normal.", NULL,
             NULL, NULL
         );
         
-        modal->height = 140;
-        modal->width = 360;
+        modal->height = 202;
+        modal->width = 380;
+        modal->margin = 12;
+        modal->warning = true;
         
         CB_presentModal(modal->scene);
     }
