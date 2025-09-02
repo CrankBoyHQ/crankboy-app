@@ -134,6 +134,8 @@ typedef struct CB_GameScene
     LCDBitmap* menuImage;
     int button_hold_mode;  // 0: Select, 1: None, 2: Start
     int button_hold_frames_remaining;
+    
+    int lock_button_hold_frames_remaining;
 
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;

@@ -2,7 +2,6 @@
 //  preferences.c
 //  CrankBoy
 //
-//  Created by Matteo D'Ignazio on 18/05/22.
 //  Maintained and developed by the CrankBoy dev team.
 //
 
@@ -11,6 +10,7 @@
 #include "app.h"
 #include "jparse.h"
 #include "revcheck.h"
+#include "userstack.h"
 
 static const int pref_version = 1;
 
@@ -100,10 +100,10 @@ void preferences_read_from_disk(const char* filename)
     preferences_merge_from_disk(filename);
 }
 
-int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
+int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leave_as_is)
 {
     // This ensures transient settings are NEVER saved to disk automatically.
-    preferences_bitfield_t final_leave_as_is_mask = leave_as_is | PREFBITS_TRANSIENT;
+    preferences_bitfield_t final_leave_as_is_mask = *leave_as_is | PREFBITS_TRANSIENT;
 
     playdate->system->logToConsole("Save preferences to %s...", filename);
 
@@ -157,6 +157,11 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     playdate->system->logToConsole("Save preferences status code %d", error);
 
     return !error;
+}
+
+int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
+{
+    return (int)(intptr_t)call_with_main_stack_2(_preferences_save_to_disk, filename, &leave_as_is);
 }
 
 static uint8_t preferences_read_uint8(SDFile* file)

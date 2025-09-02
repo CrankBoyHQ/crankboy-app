@@ -157,6 +157,7 @@ static void CB_GameScene_menu(void* object);
 static void CB_GameScene_generateBitmask(void);
 static void CB_GameScene_free(void* object);
 static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
+static bool CB_GameScene_lock(void* object);
 
 static uint8_t* read_rom_to_ram(
     const char* filename, CB_GameSceneError* sceneError, size_t* o_rom_size
@@ -566,6 +567,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     scene->menu = CB_GameScene_menu;
     scene->free = CB_GameScene_free;
     scene->event = CB_GameScene_event;
+    scene->lock = CB_GameScene_lock;
     scene->use_user_stack = 0;  // user stack is slower
 
     scene->preferredRefreshRate = 30;
@@ -1799,6 +1801,26 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.joypad_bits.start = gb_joypad_start_is_active_low;
         context->gb->direct.joypad_bits.select = gb_joypad_select_is_active_low;
+        
+        if (gameScene->lock_button_hold_frames_remaining > 0)
+        {
+            --gameScene->lock_button_hold_frames_remaining;
+            switch (preferences_lock_button)
+            {
+            case PREF_BUTTON_START:
+                context->gb->direct.joypad_bits.start = 0;
+                break;
+            case PREF_BUTTON_SELECT:
+                context->gb->direct.joypad_bits.select = 0;
+                break;
+            case PREF_BUTTON_START_SELECT:
+                context->gb->direct.joypad_bits.start = 0;
+                context->gb->direct.joypad_bits.select = 0;
+                break;
+            default:
+                break;
+            }
+        }
 
         context->gb->direct.joypad_bits.a =
             !((current_pd_buttons & kButtonA) || gameScene->crank_turbo_a_active);
@@ -3442,7 +3464,23 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     return success;
 }
 
-__section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
+__section__(".rare") static
+bool CB_GameScene_lock(void* object)
+{
+    CB_GameScene* gameScene = object;
+    CB_GameSceneContext* context = gameScene->context;
+    
+    if (preferences_lock_button != PREF_BUTTON_NONE)
+    {
+        gameScene->lock_button_hold_frames_remaining = 8;
+        return true;
+    }
+    
+    return false;
+}
+
+__section__(".rare") static
+void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
@@ -3450,11 +3488,15 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     switch (event)
     {
     case kEventLock:
+        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE) return;
+        // fallthrough
     case kEventPause:
         audioGameScene = NULL;
 
         // Re-enable auto-lock when the system menu is open.
         playdate->system->setAutoLockDisabled(0);
+        
+        gameScene->lock_button_hold_frames_remaining = 0;
 
         // fall-through
     case kEventTerminate:

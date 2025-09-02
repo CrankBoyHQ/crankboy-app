@@ -413,8 +413,8 @@ static void launch_game(void* ud, int option)
                     "switching to per-game prefs (%d/%d/%d)", preferences_script_support,
                     was_per_game, global_scripts_enabled
                 );
-                call_with_main_stack_2(
-                    preferences_save_to_disk, settings_path,
+                preferences_save_to_disk(
+                    settings_path,
                     ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
                 );
             }
@@ -424,8 +424,8 @@ static void launch_game(void* ud, int option)
                 // if global scripts disabled, AND we aren't using per-game prefs for this game, AND
                 // we didn't ask to enable script support, then just mark prompted (and don't enable
                 // per-game + script support.)
-                call_with_main_stack_2(
-                    preferences_save_to_disk, settings_path, ~(PREFBIT_script_has_prompted)
+                preferences_save_to_disk(
+                    settings_path, ~(PREFBIT_script_has_prompted)
                 );
             }
 
@@ -501,8 +501,8 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_itcm = 1;              // On
         preferences_uncap_fps = 0;         // Off
 
-        call_with_main_stack_2(
-            preferences_save_to_disk, settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+        preferences_save_to_disk(
+            settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
         );
 
         preferences_restore_subset(stored_globals);

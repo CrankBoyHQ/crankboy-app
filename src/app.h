@@ -135,6 +135,12 @@ typedef struct CB_Application
 
     char* directory;
 
+    // can use restricted playdate functionality.
+    bool hasSystemAccess : 1;
+    
+    // true when menu is open
+    bool currentlyPaused : 1;
+
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
     // - library view is omitted
