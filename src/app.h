@@ -132,6 +132,8 @@ typedef struct CB_Application
 
     // true when menu is open
     bool currentlyPaused : 1;
+    
+    char* directory;
 
     // should check the latest-update as saved on the disk
     bool shouldCheckUpdateInfo : 1;
@@ -236,7 +238,9 @@ void itcm_core_init(void);
 #define VERSION_INFO_FILE "version.json"
 #define BUNDLE_FILE "bundle.json"
 #define ROMHACK_DB_FILE "rhdb.json"
+#define DIRECTORY_POINTER "directory.txt"
 
+#define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
 
 // for files which should only appear in data unless we're in bundle mode

@@ -76,7 +76,7 @@ void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
 void script_quit(void);
 
 void register_c_script(const struct CScriptInfo* info);
-void cb_register_all_scripts(void);
+void cb_register_all_c_scripts(void);
 
 // for C scripts.
 // Returns negative on failure; breakpoint index otherwise.

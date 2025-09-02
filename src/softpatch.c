@@ -11,7 +11,7 @@
 char* get_patches_directory(const char* rom_path)
 {
     char* bn = cb_basename(rom_path, true);
-    char* f = aprintf("%s/%s", CB_patchesPath, bn);
+    char* f = aprintf("%s/%s", cb_gb_directory_path(CB_patchesPath), bn);
 
     cb_free(bn);
     return f;

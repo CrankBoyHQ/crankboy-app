@@ -752,10 +752,11 @@ static void context_top_level_update(
             char* rom_basename = cb_basename(pds->game->fullpath, true);
             char* msg = aprintf(
                 "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
-                "2. Via USB connection, add patch files to: Data/*crankboy/patches/%s/\n"
+                "2. Via USB connection, add patch files to: %s/%s/\n"
                 "3. Finally, enable them from this screen (settings > Patches > Manage "
                 "patches).\n\n"
                 "You may find patches on romhacking.net or romhack.ing",
+                cb_gb_directory_path(CB_patchesPath),
                 rom_basename
             );
             cb_free(rom_basename);

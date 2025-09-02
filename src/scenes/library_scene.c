@@ -176,7 +176,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     }
 
     playdate->system->formatString(
-        &cover_dest_path, "%s/%s.pdi", CB_coversPath, rom_basename_no_ext
+        &cover_dest_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), rom_basename_no_ext
     );
 
     if (!cover_dest_path)
@@ -1521,7 +1521,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                             static const char* message_or = "- or -";
                             static const char* message_connect = "Connect to a computer";
                             static const char* message_copy = "and copy cover to:";
-                            static const char* message_path = "Data/*crankboy/covers";
+                            const char* message_path = cb_gb_directory_path(CB_coversPath);
 
                             LCDFont* titleFont = CB_App->bodyFont;
                             LCDFont* bodyFont = CB_App->subheadFont;
@@ -1654,7 +1654,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             static const char* message4_num = "3.";
             static const char* message4_text1 = "Copy games to ";
-            static const char* message4_text2 = "Data/*.crankboy/games";
+            const char* message4_text2 = cb_gb_directory_path(CB_gamesPath);
 
             static const char* message5_text = "(Filenames must end with .gb or .gbc)";
 
@@ -1893,7 +1893,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     memset(game, 0, sizeof(CB_Game));
 
     char* fullpath_str;
-    playdate->system->formatString(&fullpath_str, "%s/%s", CB_gamesPath, cachedName->filename);
+    playdate->system->formatString(&fullpath_str, "%s/%s", cb_gb_directory_path(CB_gamesPath), cachedName->filename);
     game->fullpath = fullpath_str;
 
     game->names = cachedName;
@@ -1921,7 +1921,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     {
         const char* found_cover_name = *found_cover_name_ptr;
         playdate->system->formatString(
-            &game->coverPath, "%s/%s.pdi", CB_coversPath, found_cover_name
+            &game->coverPath, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), found_cover_name
         );
     }
     else
