@@ -491,7 +491,7 @@ char* cb_game_config_path(const char* rom_filename)
 {
     char* basename = cb_basename(rom_filename, true);
     char* path;
-    playdate->system->formatString(&path, "%s/%s.json", CB_settingsPath, basename);
+    playdate->system->formatString(&path, "%s/%s.json", cb_gb_directory_path(CB_settingsPath), basename);
     cb_free(basename);
     return path;
 }
@@ -3120,7 +3120,7 @@ __section__(".rare") static unsigned get_save_state_timestamp_(
 {
     char* path;
     playdate->system->formatString(
-        &path, "%s/%s.%u.state", CB_statesPath, gameScene->base_filename, slot
+        &path, "%s/%s.%u.state", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
     );
 
     SDFile* file = playdate->file->open(path, kFileReadData);
@@ -3173,7 +3173,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     char* buff = NULL;
 
     playdate->system->formatString(
-        &path_prefix, "%s/%s.%u", CB_statesPath, gameScene->base_filename, slot
+        &path_prefix, "%s/%s.%u", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
     );
 
     playdate->system->formatString(&state_name, "%s.state", path_prefix);
@@ -3336,7 +3336,7 @@ __section__(".rare") bool load_state_thumbnail_(
 {
     char* path;
     playdate->system->formatString(
-        &path, "%s/%s.%u.thumb", CB_statesPath, gameScene->base_filename, slot
+        &path, "%s/%s.%u.thumb", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
     );
 
     SDFile* file = playdate->file->open(path, kFileReadData);
@@ -3368,7 +3368,7 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     CB_GameSceneContext* context = gameScene->context;
     char* state_name;
     playdate->system->formatString(
-        &state_name, "%s/%s.%u.state", CB_statesPath, gameScene->base_filename, slot
+        &state_name, "%s/%s.%u.state", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
     );
     bool success = false;
 

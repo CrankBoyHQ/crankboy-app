@@ -65,7 +65,7 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
     case kCoverCacheStateInit:
     {
         playdate->file->listfiles(
-            CB_coversPath, collect_cover_filenames_callback, cacheScene->available_covers, 0
+            cb_gb_directory_path(CB_coversPath), collect_cover_filenames_callback, cacheScene->available_covers, 0
         );
 
         if (cacheScene->available_covers->length > 0)

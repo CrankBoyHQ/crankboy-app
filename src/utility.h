@@ -122,6 +122,8 @@ int cb_listfiles(
 
 int cb_file_exists(const char* path, FileOptions fopts);
 
+bool cb_directory_exists_and_nonempty_or_file_exists(const char* path);
+
 int cb_compare_games_by_display_name(const void* a, const void* b);
 int cb_compare_strings(const void* a, const void* b);
 
@@ -138,6 +140,14 @@ void cb_draw_logo_screen_centered_split(
 
 void cb_fillRoundRect(PDRect rect, int radius, LCDColor color);
 void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
+
+// games/ -> /Shared/Emulation/gb/Games
+// needn't be caller-freed; but only valid until next call to cb_gb_directory_path
+const char* cb_gb_directory_path(const char* path);
+
+// mkdir with intermediate directories too.
+// returns 0 if success, negative if error.
+int full_mkdir(const char* path);
 
 // result must be user-free'd. returns NULL on error.
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags);

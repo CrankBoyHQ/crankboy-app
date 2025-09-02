@@ -184,12 +184,112 @@ static int check_is_bundle(void)
     return !!CB_App->bundled_rom;
 }
 
+static void initialize_directory(void)
+{
+    size_t len;
+    char* shared_directory = (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
+    if (!shared_directory)
+    {
+        shared_directory = aprintf(DEFAULT_SHARED_DIRECTORY);
+    }
+    
+    // check for 'nocopy' tag
+    char* newline = strchr(shared_directory, '\n');
+    bool no_copy = false;
+    if (newline)
+    {
+        *newline = '\0';
+        no_copy = (newline[1] == 'n'); // nocopy
+    }
+    
+    // remove trailing `/`
+    while (shared_directory && *shared_directory)
+    {
+        size_t len = strlen(shared_directory);
+        if (shared_directory[len-1] == '/')
+        {
+            shared_directory[len-1] = '\0';
+        }
+        else
+        {
+            break;
+        }
+    }
+    
+    playdate->system->logToConsole("Directory: %s", shared_directory);
+    
+    CB_App->directory = shared_directory;
+    CB_ASSERT(!!CB_App->directory);
+    
+    full_mkdir(shared_directory);
+    
+    // copy files in from data/ if needed
+    // (Previous versions of CrankBoy used the data/ folder for
+    // storing ROMs.)
+    if (!no_copy)
+    {   
+        playdate->system->logToConsole("Moving files from data/ to new directory...");
+        
+        bool err = false;
+        const char* sources[] = {
+            CB_settingsPath,
+            CB_coversPath,
+            CB_patchesPath,
+            CB_gamesPath,
+            CB_statesPath,
+            CB_savesPath
+        };
+        
+        for (size_t i = 0; i < sizeof(sources)/sizeof(char*); ++i)
+        {
+            const char* dst = cb_gb_directory_path(sources[i]);
+            // move files from data/ but don't replace existing directory
+            if (cb_directory_exists_and_nonempty_or_file_exists(sources[i]) && !cb_directory_exists_and_nonempty_or_file_exists(dst))
+            {
+                int result = playdate->file->rename(sources[i], dst);
+                if (result == 0)
+                {
+                    playdate->system->logToConsole("Moved %s -> %s", sources[i], dst);
+                }
+                else
+                {
+                    playdate->system->logToConsole("Failed to move %s -> %s", sources[i], dst);
+                    err = true;
+                    break;
+                }
+            }
+        }
+        
+        if (!err)
+        {
+            playdate->system->logToConsole("Done moving files.");
+            shared_directory = aprintf("%s\nnocopy", shared_directory);
+        }
+    }
+    
+    cb_write_entire_file(
+        DIRECTORY_POINTER, shared_directory, strlen(shared_directory)
+    );
+    
+    if (shared_directory != CB_App->directory)
+    {
+        cb_free(shared_directory);
+    }
+    
+    full_mkdir(cb_gb_directory_path(CB_savesPath));
+    full_mkdir(cb_gb_directory_path(CB_gamesPath));
+    full_mkdir(cb_gb_directory_path(CB_coversPath));
+    full_mkdir(cb_gb_directory_path(CB_statesPath));
+    full_mkdir(cb_gb_directory_path(CB_settingsPath));
+    full_mkdir(cb_gb_directory_path(CB_patchesPath));
+}
+
 void CB_init(void)
 {
     CB_App = cb_calloc(1, sizeof(CB_Application));
     memset(CB_App, 0, sizeof(*CB_App));
 
-    cb_register_all_scripts();
+    cb_register_all_c_scripts();
 
     CB_App->gameNameCache = array_new();
     CB_App->gameListCache = array_new();
@@ -202,13 +302,6 @@ void CB_init(void)
     CB_App->coverArtCache.rom_path = NULL;
     CB_App->coverArtCache.art.bitmap = NULL;
 
-    playdate->file->mkdir(CB_gamesPath);
-    playdate->file->mkdir(CB_coversPath);
-    playdate->file->mkdir(CB_savesPath);
-    playdate->file->mkdir(CB_statesPath);
-    playdate->file->mkdir(CB_settingsPath);
-    playdate->file->mkdir(CB_patchesPath);
-
     CB_App->bodyFont = playdate->graphics->loadFont("fonts/Roobert-11-Medium", NULL);
     CB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     CB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
@@ -220,7 +313,16 @@ void CB_init(void)
     if (!CB_App->bundled_rom)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+        initialize_directory();
         parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
+    }
+    else
+    {
+        // use local directory as root
+        CB_App->directory = aprintf(".");
+        playdate->file->mkdir(CB_savesPath);
+        playdate->file->mkdir(CB_statesPath);
+        playdate->file->mkdir(CB_settingsPath);
     }
 
     preferences_init();

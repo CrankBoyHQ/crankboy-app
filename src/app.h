@@ -126,6 +126,8 @@ typedef struct CB_Application
     PDButtons buttons_released;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
+    
+    char* directory;
 
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
@@ -225,7 +227,9 @@ void itcm_core_init(void);
 #define VERSION_INFO_FILE "version.json"
 #define BUNDLE_FILE "bundle.json"
 #define ROMHACK_DB_FILE "rhdb.json"
+#define DIRECTORY_POINTER "directory.txt"
 
+#define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
 
 // for files which should only appear in data unless we're in bundle mode

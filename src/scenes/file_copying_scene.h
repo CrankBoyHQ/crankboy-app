@@ -16,12 +16,6 @@ typedef enum
     kFileCopyingStateDone
 } FileCopyingState;
 
-typedef struct
-{
-    char* full_path;
-    char* filename;
-} FileToCopy;
-
 typedef struct CB_FileCopyingScene
 {
     CB_Scene* scene;

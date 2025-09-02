@@ -431,7 +431,7 @@ static int process_png(const char* fname)
     if (pdi && pdi_len > 0)
     {
         char* basename = cb_basename(fname, true);
-        char* pdi_name = aprintf("%s/%s.pdi", CB_coversPath, basename);
+        char* pdi_name = aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), basename);
         if (basename)
             cb_free(basename);
 
@@ -488,14 +488,14 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
         cb_draw_logo_screen_to_buffer(CB_App->subheadFont, "Scanning for new images...");
 
-        playdate->file->listfiles(CB_coversPath, on_list_file, convScene, false);
+        playdate->file->listfiles(cb_gb_directory_path(CB_coversPath), on_list_file, convScene, false);
 
         convScene->state = kStateDone;
 
         // check if any files are in the data directory.
         for (int i = 0; i < convScene->files_count; ++i)
         {
-            char* fpath = aprintf("%s/%s", CB_coversPath, convScene->files[i]);
+            char* fpath = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), convScene->files[i]);
             if (fpath)
             {
                 if (cb_file_exists(fpath, kFileReadData))
@@ -539,7 +539,7 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 fname[len - 1] = '\0';
             }
 
-            char* full_fname = aprintf("%s/%s", CB_coversPath, fname);
+            char* full_fname = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), fname);
             int result = process_png(full_fname);
             cb_free(full_fname);
 

@@ -15,6 +15,12 @@
 void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt);
 void CB_FileCopyingScene_free(void* object);
 
+typedef struct
+{
+    char* full_path;
+    char* filename;
+} FileToCopy;
+
 struct list_files_ud
 {
     CB_FileCopyingScene* scene;
@@ -31,19 +37,19 @@ static bool copy_one_file(const char* full_path, const char* filename)
         !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
         !strcasecmp(extension, ".pdi"))
     {
-        dst_path = aprintf("%s/%s", CB_coversPath, filename);
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), filename);
     }
     else if (!strcasecmp(extension, ".gb") || !strcasecmp(extension, ".gbc"))
     {
-        dst_path = aprintf("%s/%s", CB_gamesPath, filename);
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
     }
     else if (!strcasecmp(extension, ".sav"))
     {
-        dst_path = aprintf("%s/%s", CB_savesPath, filename);
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_savesPath), filename);
     }
     else if (!strcasecmp(extension, ".state"))
     {
-        dst_path = aprintf("%s/%s", CB_statesPath, filename);
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_statesPath), filename);
     }
 
     if (!dst_path)

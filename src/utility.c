@@ -379,7 +379,7 @@ char* cb_save_filename(const char* path, bool isRecovery)
     }
 
     char* buffer;
-    playdate->system->formatString(&buffer, "%s/%s%s.sav", CB_savesPath, filenameNoExt, suffix);
+    playdate->system->formatString(&buffer, "%s/%s%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix);
 
     cb_free(filenameNoExt);
 
@@ -893,6 +893,86 @@ void cb_play_ui_sound(CB_UISound sound)
             CB_App->clickSynth, 880.0f + (rand() % 32), 0.18f, 0.1f, 0
         );
         break;
+    }
+}
+
+const char* cb_gb_directory_path(const char* path)
+{
+    static char* s = NULL;
+    cb_free(s);
+    s = aprintf("%s/%s", CB_App->directory, path);
+    return s;
+}
+
+int full_mkdir(const char* path)
+{
+    if (!path || !*path) return -3;
+    
+    char* path_copy = aprintf("%s", path);
+    if (!path_copy) return -2;
+    
+    char* current = path_copy;
+    int result = 0;
+    
+    // Handle absolute paths starting with '/'
+    if (*current == '/') {
+        current++;
+    }
+    
+    while (*current != '\0') {
+        // Find the next slash
+        char* slash = strchr(current, '/');
+        
+        if (slash) {
+            *slash = '\0';
+        }
+        
+        int mkdir_result = playdate->file->mkdir(path_copy);
+        if (mkdir_result != 0) {
+            result = mkdir_result;
+        }
+        
+        if (slash) {
+            *slash = '/';
+            current = slash + 1;
+        } else {
+            break;
+        }
+    }
+    
+    cb_free(path_copy);
+    return result;
+}
+
+void cb_directory_exists_and_nonempty_or_file_exists_helper(const char* filename, void* ud)
+{
+    bool* exists = ud;
+    *exists = true;
+}
+
+bool cb_directory_exists_and_nonempty_or_file_exists(const char* path)
+{
+    FileStat fs;
+    
+    int result = playdate->file->stat(path, &fs);
+    if (result != 0) return false;
+    
+    if (fs.isdir)
+    {
+        bool exists = false;
+        // check non-empty
+        result = playdate->file->listfiles(
+            path,
+            cb_directory_exists_and_nonempty_or_file_exists_helper,
+            &exists, true
+        );
+        if (result != 0) return false;
+        
+        return exists;
+    }
+    else
+    {
+        return false;
     }
 }
 

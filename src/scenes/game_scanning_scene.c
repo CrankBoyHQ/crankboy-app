@@ -47,7 +47,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
 
     char* fullpath;
-    playdate->system->formatString(&fullpath, "%s/%s", CB_gamesPath, filename);
+    playdate->system->formatString(&fullpath, "%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
 
     FileStat stat;
     if (playdate->file->stat(fullpath, &stat) != 0)
@@ -233,7 +233,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     case kScanningStateInit:
     {
         playdate->file->listfiles(
-            CB_gamesPath, collect_game_filenames_callback, scanScene->game_filenames, 0
+            cb_gb_directory_path(CB_gamesPath), collect_game_filenames_callback, scanScene->game_filenames, 0
         );
 
         array_reserve(CB_App->gameNameCache, scanScene->game_filenames->length);
@@ -312,7 +312,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
 
         bool png_found = false;
-        playdate->file->listfiles(CB_coversPath, checkForPngCallback, &png_found, false);
+        playdate->file->listfiles(cb_gb_directory_path(CB_coversPath), checkForPngCallback, &png_found, false);
 
         if (png_found)
         {

@@ -880,7 +880,7 @@ bool script_exists(const char* game_path)
     return true;
 }
 
-void cb_register_all_scripts(void)
+void cb_register_all_c_scripts(void)
 {
     for (struct CScriptNode* node = c_script_list_head; node; node = node->next)
     {
