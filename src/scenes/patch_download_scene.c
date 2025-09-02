@@ -974,10 +974,8 @@ static void context_patch_files_browse_draw(
     draw_common(pds, context, x, active);
 
     CB_ListView* listView = context->list;
-    LCDFont* font = PDS_FONT;
-    int fontHeight = playdate->graphics->getFontHeight(font);
+    int fontHeight = playdate->graphics->getFontHeight(PDS_FONT);
     int left_margin = 4;
-    int listX = x;
 
     playdate->graphics->setClipRect(
         listView->frame.x, listView->frame.y, listView->frame.width, listView->frame.height
@@ -987,10 +985,14 @@ static void context_patch_files_browse_draw(
     {
         CB_ListItemButton* button = listView->items->items[i];
 
-        if ((button->ud.uint & FT_DOWNLOADED_BIT) != 0)
-        {
-            CB_ListItem* item = &button->item;
+        CB_ListItem* item = &button->item;
+        enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
 
+        bool is_downloaded = (button->ud.uint & FT_DOWNLOADED_BIT) != 0;
+        bool is_unsupported = (ft == FT_UNSUPPORTED || ft == FT_PATCH_UNSUPPORTED);
+
+        if (is_downloaded || is_unsupported)
+        {
             int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
             if (rowY + item->height < listView->frame.y ||
                 rowY > listView->frame.y + listView->frame.height)
@@ -1000,10 +1002,13 @@ static void context_patch_files_browse_draw(
             const uint8_t* dither = selected ? white_transparent_dither : black_transparent_dither;
 
             int textY = rowY + (item->height - fontHeight) / 2;
-            int maxWidth = listView->frame.width + left_margin;
+
+            int textWidth = playdate->graphics->getTextWidth(
+                PDS_FONT, button->title, strlen(button->title), kUTF8Encoding, 0
+            );
 
             playdate->graphics->fillRect(
-                listX + left_margin, textY, maxWidth, fontHeight, (LCDColor)dither
+                listView->frame.x + left_margin, textY, textWidth, fontHeight, (LCDColor)dither
             );
         }
     }
@@ -1603,15 +1608,10 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
     {
         const char* key = arr->data[i].key;
         enum file_type ft = FT_UNSUPPORTED;
-        bool is_supported_for_display = false;
 
         if (arr->data[i].value.type == kJSONTable)
         {
-            if (has_supported_files_recursive(arr->data[i].value))
-            {
-                ft = FT_DIRECTORY;
-                is_supported_for_display = true;
-            }
+            ft = FT_DIRECTORY;
         }
         else
         {
@@ -1622,31 +1622,23 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             if (extension_is_supported_patch_file(extension))
             {
                 ft = FT_PATCH_SUPPORTED;
-                is_supported_for_display = true;
             }
             else if (!strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
                      !strcasecmp(key, "readme") || !strcasecmp(key, "license"))
             {
                 ft = FT_TEXT;
-                is_supported_for_display = true;
             }
         }
 
-        if (is_supported_for_display)
-        {
-            items_to_sort[items_count].name = (char*)key;
-            items_to_sort[items_count].type = ft;
-            items_to_sort[items_count].original_index = i;
+        items_to_sort[items_count].name = (char*)key;
+        items_to_sort[items_count].type = ft;
+        items_to_sort[items_count].original_index = i;
 
-            unsigned size = -1;
-            if (arr->data[i].value.type == kJSONInteger)
-            {
-                size = (unsigned)arr->data[i].value.data.intval;
-            }
-            items_to_sort[items_count].size = size;
-
-            items_count++;
-        }
+        unsigned size = (arr->data[i].value.type == kJSONInteger)
+                            ? (unsigned)arr->data[i].value.data.intval
+                            : -1;
+        items_to_sort[items_count].size = size;
+        items_count++;
     }
 
     qsort(items_to_sort, items_count, sizeof(FileBrowserItem), compare_file_browser_items);
@@ -1712,6 +1704,28 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             cb_free(text);
             uintptr_t ud = items_to_sort[i].type;
             ud |= ((uintptr_t)-1) << FILE_META_BITS;
+            itemButton->ud.uint = ud;
+            array_push(context->list->items, itemButton);
+            context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
+        }
+    }
+
+    // Group 4: Unsupported Files
+    for (int i = 0; i < items_count; i++)
+    {
+        if (items_to_sort[i].type == FT_UNSUPPORTED ||
+            items_to_sort[i].type == FT_PATCH_UNSUPPORTED)
+        {
+            CB_ListItemButton* itemButton = CB_ListItemButton_new(items_to_sort[i].name);
+            uintptr_t ud = items_to_sort[i].type;
+            if (items_to_sort[i].size < (1 << (32 - FILE_META_BITS)))
+            {
+                ud |= items_to_sort[i].size << FILE_META_BITS;
+            }
+            else
+            {
+                ud |= ((uintptr_t)-1) << FILE_META_BITS;
+            }
             itemButton->ud.uint = ud;
             array_push(context->list->items, itemButton);
             context->index_map[context->index_map_size++] = items_to_sort[i].original_index;
