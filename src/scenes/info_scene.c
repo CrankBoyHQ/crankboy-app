@@ -363,6 +363,62 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
     infoScene->title = title ? cb_strdup(title) : NULL;
     infoScene->text = text ? cb_strdup(text) : NULL;
 
+    // Sanitize text: remove carriage returns, remove leading tabs on a line,
+    // and replace other tabs with two spaces.
+    if (infoScene->text)
+    {
+        size_t new_len = 0;
+        bool is_at_line_start = true;
+        for (const char* p = infoScene->text; *p; ++p)
+        {
+            if (*p == '\t')
+            {
+                if (!is_at_line_start)
+                    new_len += 2;
+            }
+            else if (*p != '\r')
+            {
+                new_len++;
+            }
+
+            if (*p == '\n')
+                is_at_line_start = true;
+            else if (!isspace((unsigned char)*p))
+                is_at_line_start = false;
+        }
+
+        char* cleaned_text = cb_malloc(new_len + 1);
+        if (cleaned_text)
+        {
+            char* write_ptr = cleaned_text;
+            is_at_line_start = true;
+            for (const char* read_ptr = infoScene->text; *read_ptr; ++read_ptr)
+            {
+                if (*read_ptr == '\t')
+                {
+                    if (!is_at_line_start)
+                    {
+                        memcpy(write_ptr, "  ", 2);
+                        write_ptr += 2;
+                    }
+                }
+                else if (*read_ptr != '\r')
+                {
+                    *write_ptr++ = *read_ptr;
+                }
+
+                if (*read_ptr == '\n')
+                    is_at_line_start = true;
+                else if (!isspace((unsigned char)*read_ptr))
+                    is_at_line_start = false;
+            }
+            *write_ptr = '\0';
+
+            cb_free(infoScene->text);
+            infoScene->text = cleaned_text;
+        }
+    }
+
     // Trim any trailing whitespace from the text to prevent calculation errors.
     if (infoScene->text)
     {
