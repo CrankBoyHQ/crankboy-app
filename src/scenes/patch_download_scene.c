@@ -305,6 +305,38 @@ static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
     }
 }
 
+static void on_enable_patch_modal_close(void* ud, int option)
+{
+    if (option == 0)
+    {
+        CB_PatchDownloadScene* pds = ud;
+        SoftPatch* patches = call_with_main_stack_2(list_patches, pds->game->fullpath, NULL);
+        if (patches)
+        {
+            char* basename_no_ext = cb_basename(pds->basename, true);
+
+            for (SoftPatch* patch = patches; patch->fullpath; ++patch)
+            {
+                if (strcasecmp(patch->basename, basename_no_ext) == 0)
+                {
+                    patch->state = PATCH_ENABLED;
+                    break;
+                }
+            }
+            cb_free(basename_no_ext);
+
+            for (SoftPatch* patch = patches; patch->fullpath; ++patch)
+            {
+                if (patch->state < 0)
+                    patch->state = PATCH_DISABLED;
+            }
+
+            call_with_main_stack_2(save_patches_state, pds->game->fullpath, patches);
+            free_patches(patches);
+        }
+    }
+}
+
 static void context_patch_files_browse_update(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
 )
@@ -533,12 +565,12 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 }
             }
 
-            CB_Modal* modal = CB_Modal_new(
-                "Patch file downloaded. Remember to enable the patch in settings > patches > "
-                "manage",
-                NULL, NULL, NULL
-            );
-            modal->width = 300;
+            const char* options[] = {"Yes", "No", NULL};
+            char* msg =
+                cb_strdup("Patch downloaded successfully.\nWould you like to enable it now?");
+            CB_Modal* modal = CB_Modal_new(msg, options, on_enable_patch_modal_close, pds);
+            cb_free(msg);
+            modal->width = 320;
             modal->height = 140;
             CB_presentModal(modal->scene);
             cb_free(pud);
