@@ -1623,6 +1623,10 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             {
                 ft = FT_PATCH_SUPPORTED;
             }
+            else if (extension_is_unsupported_patch_file(extension))
+            {
+                ft = FT_PATCH_UNSUPPORTED;
+            }
             else if (!strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
                      !strcasecmp(key, "readme") || !strcasecmp(key, "license"))
             {

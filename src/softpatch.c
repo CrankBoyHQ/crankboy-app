@@ -40,8 +40,18 @@ struct ListPatchAcc
 
 bool extension_is_supported_patch_file(const char* extension)
 {
-    if (!extension) return false;
-    return !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") || !strcasecmp(extension, ".ups");
+    if (!extension)
+        return false;
+    return !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") ||
+           !strcasecmp(extension, ".ups");
+}
+
+bool extension_is_unsupported_patch_file(const char* extension)
+{
+    if (!extension)
+        return false;
+    return !strcasecmp(extension, ".bsdiff") || !strcasecmp(extension, ".cht") ||
+           !strcasecmp(extension, ".xdelta") || !strcasecmp(extension, ".vcdiff");
 }
 
 void list_patch_cb(const char* filename, void* ud)
