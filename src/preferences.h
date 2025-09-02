@@ -32,9 +32,7 @@
 #define DISPLAY_NAME_MODE_FILENAME 2
 
 // at least 1 bit for each setting.
-// WARNING: don't change this blindly, since these are
-// casted down to uintptr_t (potentially 32-bit) for call_with_user_stack
-typedef uint32_t preferences_bitfield_t;
+typedef uint64_t preferences_bitfield_t;
 typedef int preference_t;
 
 typedef enum preference_index_t
@@ -46,7 +44,7 @@ typedef enum preference_index_t
 
 typedef enum preference_index_bit_t
 {
-#define PREF(x, ...) PREFBIT_##x = (1 << (int)PREFI_##x),
+#define PREF(x, ...) PREFBIT_##x = (((preferences_bitfield_t)1) << (int)PREFI_##x),
 #include "prefs.x"
 } preference_index_bit_t;
 

@@ -111,7 +111,7 @@ void CB_Modal_update(CB_Modal* modal)
         // to achieve visual centering.
         int y_offset = (modal->options_count == 0) ? 2 : 0;
         playdate->graphics->drawTextInRect(
-            modal->text, strlen(modal->text), kASCIIEncoding, x + m, y + m + y_offset, w - 2 * m,
+            modal->text, strlen(modal->text), kUTF8Encoding, x + m, y + m + y_offset, w - 2 * m,
             h - 2 * m, kWrapWord, kAlignTextCenter
         );
     }
