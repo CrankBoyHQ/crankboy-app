@@ -100,6 +100,27 @@ static int onSystemDeviceLock(lua_State* L)
     return 1;
 }
 
+static bool useLua(void)
+{
+    if (!cb_file_exists("main.pdz", kFileRead))
+    {
+        playdate->system->logToConsole("main.pdz not found.");
+        return false;
+    }
+    
+    // attempt to access system file to determine if we have system access
+    if (cb_file_exists("/System/Launcher.pdx/pdxinfo", kFileRead | kFileReadData))
+    {
+        return true;
+    }
+    if (cb_file_exists("/System/Data/global.settings", kFileRead | kFileReadData))
+    {
+        return true;
+    }
+    
+    return false;
+}
+
 static void initLua(void)
 {
     playdate->lua->addFunction(setHasSystemPrivileges, "crankboy.setHasSystemPrivileges", NULL);
@@ -162,6 +183,11 @@ __section__(".text.main") DllExport
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
         CB_init();
+        
+        if (!useLua())
+        {
+            pd->system->setUpdateCallback(update, pd);
+        }
     }
     else if (event == kEventInitLua)
     {

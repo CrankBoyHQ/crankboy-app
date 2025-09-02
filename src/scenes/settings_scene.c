@@ -475,6 +475,7 @@ static void settings_post_action_lock_button(
 )
 {
     static bool has_warned = false;
+    if (prev_val == PREF_BUTTON_NONE) has_warned = true;
     if (has_warned) return;
     
     if (preferences_lock_button != PREF_BUTTON_NONE)
