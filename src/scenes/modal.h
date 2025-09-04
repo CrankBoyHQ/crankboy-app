@@ -8,6 +8,15 @@
 
 // pop-up boxes and such
 
+typedef enum
+{
+    CB_MODAL_WARNING_NONE = 0,
+    CB_MODAL_WARNING_TOP,
+    CB_MODAL_WARNING_BOTTOM_LEFT,
+    CB_MODAL_WARNING_BOTTOM_RIGHT,
+    CB_MODAL_WARNING_BOTTOM_LR  // Both left and right
+} CB_ModalWarningPosition;
+
 struct CB_Modal;
 
 // option is -1 if cancelled;
@@ -30,12 +39,13 @@ typedef struct CB_Modal
     CB_ModalCallback callback;
     int timer;
     int droptimer;
-    unsigned master_timer; // ticks ever frame from modal start
+    unsigned master_timer;  // ticks ever frame from modal start
     bool exit : 1;
     bool setup : 1;
     bool accept_on_dock : 1;
-    bool warning : 1;
     int result;
+
+    CB_ModalWarningPosition warning;
 
     LCDBitmap* dissolveMask;
     LCDBitmap* icon;

@@ -630,14 +630,14 @@ static void settings_action_save_state_possibly_warn(
         const char* options[] = {"Understood", NULL};
         CB_Modal* modal = CB_Modal_new(
             "WARNING! This game has an internal save data system, a snapshot of which will be "
-            "included in this save state.\n\nIf you later load this state, this game's internal save data "
-            "will irreversibly revert to its current state.",
+            "included in this save state.\n\nIf you later load this state, this game's internal "
+            "save data will irreversibly revert to its current state.",
             options, (void*)settings_action_save_state, settingsScene
         );
         modal->width = 380;
         modal->height = 224;
         modal->margin = 12;
-        modal->warning = true;
+        modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
         CB_presentModal(modal->scene);
     }
     else
@@ -699,7 +699,7 @@ static void settings_action_load_state_possibly_warn(
         modal->width = 390;
         modal->height = h;
         modal->margin = 12;
-        modal->warning = true;
+        modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
         CB_presentModal(modal->scene);
     }
     else

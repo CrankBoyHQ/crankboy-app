@@ -136,24 +136,61 @@ void CB_Modal_update(CB_Modal* modal)
             oy - option_height, spacing, option_height, kWrapClip, kAlignTextCenter
         );
     }
-    
+
+    if (modal->warning != CB_MODAL_WARNING_NONE && !modal->icon)
+    {
+        modal->icon = playdate->graphics->loadBitmap("images/warning", NULL);
+    }
+
     if (modal->icon)
     {
-        if (modal->master_timer % 15 < 7 || modal->master_timer >= 4*15)
+        if (modal->master_timer % 15 < 7 || modal->master_timer >= 4 * 15)
         {
             int iw, ih;
             playdate->graphics->getBitmapData(modal->icon, &iw, &ih, NULL, NULL, NULL);
-            
-            playdate->graphics->drawBitmap(
-                modal->icon, LCD_COLUMNS/2 - iw/2, y - ih/2, kBitmapUnflipped
-            );
-        }
-    }
-    else
-    {
-        if (modal->warning)
-        {
-            modal->icon = playdate->graphics->loadBitmap("images/warning", NULL);
+
+            int icon_x, icon_y;
+
+            switch (modal->warning)
+            {
+            case CB_MODAL_WARNING_TOP:
+                icon_x = LCD_COLUMNS / 2 - iw / 2;
+                icon_y = y - ih / 2;
+                playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+                break;
+
+            case CB_MODAL_WARNING_BOTTOM_LEFT:
+                icon_x = x + m;
+                icon_y = y + h - m - ih;
+                playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+                break;
+
+            case CB_MODAL_WARNING_BOTTOM_RIGHT:
+                icon_x = x + w - m - iw;
+                icon_y = y + h - m - ih;
+                playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+                break;
+
+            case CB_MODAL_WARNING_BOTTOM_LR:
+                // Draw Left
+                icon_x = x + m;
+                icon_y = y + h - m - ih;
+                playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+
+                // Draw Right
+                icon_x = x + w - m - iw;
+                playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+                break;
+
+            default:
+                if (modal->warning == CB_MODAL_WARNING_NONE)
+                {
+                    icon_x = LCD_COLUMNS / 2 - iw / 2;
+                    icon_y = y - ih / 2;
+                    playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
+                }
+                break;
+            }
         }
     }
 
@@ -196,7 +233,7 @@ void CB_Modal_free(CB_Modal* modal)
 {
     if (modal->callback)
         modal->callback(modal->ud, modal->result);
-        
+
     if (modal->icon)
         playdate->graphics->freeBitmap(modal->icon);
 
