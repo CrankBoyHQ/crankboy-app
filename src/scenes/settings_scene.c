@@ -323,22 +323,17 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             if (game_settings_path)
             {
                 result = preferences_save_to_disk(
-                    game_settings_path,
-                    PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+                    game_settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
                 );
             }
         }
         else
         {
-            result = preferences_save_to_disk(
-                CB_globalPrefsPath, 0
-            );
+            result = preferences_save_to_disk(CB_globalPrefsPath, 0);
 
             if (result && game_settings_path)
             {
-                result = preferences_save_to_disk(
-                    game_settings_path, ~PREFBIT_per_game
-                );
+                result = preferences_save_to_disk(game_settings_path, ~PREFBIT_per_game);
             }
         }
     }
@@ -346,8 +341,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
     {
         if (preferences_per_game)
             result = preferences_save_to_disk(
-                game_settings_path,
-                prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
+                game_settings_path, prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
             );
         else
         {
@@ -364,17 +358,14 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             if (result)
                 // also save that preferences are global in the per-game script,
                 // and also the save slot
-                result = 
-                    preferences_save_to_disk(
-                        game_settings_path,
-                        ~(PREFBIT_per_game | PREFBIT_save_state_slot)
-                    );
+                result = preferences_save_to_disk(
+                    game_settings_path, ~(PREFBIT_per_game | PREFBIT_save_state_slot)
+                );
         }
     }
     else
     {
-        result =
-            preferences_save_to_disk(CB_globalPrefsPath, 0);
+        result = preferences_save_to_disk(CB_globalPrefsPath, 0);
     }
 
     if (!result)
@@ -475,23 +466,27 @@ static void settings_post_action_lock_button(
 )
 {
     static bool has_warned = false;
-    if (prev_val != PREF_BUTTON_NONE) has_warned = true;
-    if (has_warned) return;
-    
+    if (prev_val != PREF_BUTTON_NONE)
+        has_warned = true;
+    if (has_warned)
+        return;
+
     if (preferences_lock_button != PREF_BUTTON_NONE)
     {
         has_warned = true;
-        
+
         CB_Modal* modal = CB_Modal_new(
-            "Note: holding the lock button for 5 seconds will reboot your Playdate.\n \nAlso note: with lock button override enabled, you will not be able to lock the Playdate normally while in game.\nInstead, press ⊙ to open the menu, then lock as normal.", NULL,
-            NULL, NULL
+            "Note: holding the lock button for 5 seconds will reboot your Playdate.\n \nAlso note: "
+            "with lock button override enabled, you will not be able to lock the Playdate normally "
+            "while in game.\nInstead, press ⊙ to open the menu, then lock as normal.",
+            NULL, NULL, NULL
         );
-        
+
         modal->height = 202;
         modal->width = 380;
         modal->margin = 12;
-        modal->warning = true;
-        
+        modal->warning = CB_MODAL_WARNING_TOP;
+
         CB_presentModal(modal->scene);
     }
 }
@@ -518,9 +513,7 @@ static void settings_post_action_per_game(
     {
         // write per - game prefs to disk
         preferences_per_game = 1;
-        preferences_save_to_disk(
-            game_settings_path, prefs_locked_by_script
-        );
+        preferences_save_to_disk(game_settings_path, prefs_locked_by_script);
 
         preferences_merge_from_disk(CB_globalPrefsPath);
         preferences_per_game = 0;
@@ -529,8 +522,7 @@ static void settings_post_action_per_game(
     {
         // write global prefs to disk
         preferences_save_to_disk(
-            CB_globalPrefsPath,
-            PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
+            CB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
         );
 
         preferences_set_defaults();
@@ -1130,12 +1122,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 4,
         .on_press = NULL
     };
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "Behavior",
         .header = 1
     };
-    
+
     // lock button override.
     // Only available if launched with system privileges. (e.g. through FunnyLoader)
     // Since this is still experimental, do not show this option at all unless system privileges are detected.
@@ -1166,7 +1158,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 3,
         .on_press = NULL
     };
-    
+
     // CGB support
     entries[++i] = (OptionsMenuEntry){
         .name = "CGB support",
@@ -1178,7 +1170,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 3,
         .on_press = NULL
     };
-    
+
     if (gameScene && !gameScene->cgb_compatible)
     {
         entries[i].locked = true;
@@ -1327,7 +1319,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
-    
+
     // Disable Auto Lock
     entries[++i] = (OptionsMenuEntry){
         .name = "Disable auto lock",
