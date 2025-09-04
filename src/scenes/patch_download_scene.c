@@ -465,17 +465,8 @@ static void context_patch_list_update(
 
             json_value fs = pds->hack_fs;
 
-            bool has_readme = (json_get_table_value(fs, "readme.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "README.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "readme.md").type != kJSONNull) ||
-                              (json_get_table_value(fs, "Read me.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "Read Me.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "read_me.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "Read_Me.txt").type != kJSONNull) ||
-                              (json_get_table_value(fs, "readme").type != kJSONNull);
-
             itemButton = CB_ListItemButton_new("Readme\t>");
-            itemButton->ud.uint = has_readme ? 0 : 1;  // 1 means disabled
+            itemButton->ud.uint = 0;
             array_push(c->list->items, itemButton);
 
             bool has_changelog = (json_get_table_value(fs, "changelog.txt").type != kJSONNull) ||
@@ -670,48 +661,19 @@ static void context_patch_choose_interaction_update(
         break;
         case 2:  // Readme
         {
-            const CB_ListItemButton* button =
-                context->list->items->items[context->list->selectedItem];
-            if (button->ud.uint == 1)
-            {  // is disabled
-                break;
-            }
+            char* fs_path = aprintf("%sreadme.txt", pds->filekey);
+            char* http_path = aprintf("%spatches/%s", pds->prefix, fs_path);
+            cb_free(fs_path);
 
-            json_value fs = pds->hack_fs;
-            const char* readme_filename = NULL;
-            if (json_get_table_value(fs, "readme.txt").type != kJSONNull)
-                readme_filename = "readme.txt";
-            else if (json_get_table_value(fs, "README.txt").type != kJSONNull)
-                readme_filename = "README.txt";
-            else if (json_get_table_value(fs, "readme.md").type != kJSONNull)
-                readme_filename = "readme.md";
-            else if (json_get_table_value(fs, "Read me.txt").type != kJSONNull)
-                readme_filename = "Read me.txt";
-            else if (json_get_table_value(fs, "Read Me.txt").type != kJSONNull)
-                readme_filename = "Read Me.txt";
-            else if (json_get_table_value(fs, "read_me.txt").type != kJSONNull)
-                readme_filename = "read_me.txt";
-            else if (json_get_table_value(fs, "Read_Me.txt").type != kJSONNull)
-                readme_filename = "Read_Me.txt";
-            else if (json_get_table_value(fs, "readme").type != kJSONNull)
-                readme_filename = "readme";
+            char* http_path_san = sanitize_url_path(http_path);
+            cb_free(http_path);
 
-            if (readme_filename)
-            {
-                char* fs_path = aprintf("z%s/%s", pds->filekey, readme_filename);
-                char* http_path = aprintf("%sextracted/%s", pds->prefix, fs_path);
-                cb_free(fs_path);
-
-                char* http_path_san = sanitize_url_path(http_path);
-                cb_free(http_path);
-
-                pds->http_in_progress = 1;
-                pds->text_file_title = "Readme";
-                initiate_download_with_permission_check(
-                    pds, PD_TEXTFILE, "to download a patch README", http_path_san
-                );
-                cb_free(http_path_san);
-            }
+            pds->http_in_progress = 1;
+            pds->text_file_title = "Readme";
+            initiate_download_with_permission_check(
+                pds, PD_TEXTFILE, "to download a patch README", http_path_san
+            );
+            cb_free(http_path_san);
         }
         break;
         case 3:  // Changelog
