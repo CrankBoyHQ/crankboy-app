@@ -497,7 +497,20 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
-        char* msg = aprintf("Failed to download patch file. (flags=0x%03x)", flags);
+        char* msg;
+        if (flags & HTTP_NOT_FOUND)
+        {
+            msg = cb_strdup("The requested patch file was not found on the server.");
+        }
+        else if (flags & HTTP_WIFI_NOT_AVAILABLE)
+        {
+            msg = cb_strdup("Wi-Fi not available.");
+        }
+        else
+        {
+            msg = aprintf("Failed to download patch file. (Error: 0x%03x)", flags);
+        }
+
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
@@ -586,7 +599,22 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
 
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
-        char* msg = aprintf("Failed to download text file. (flags=0x%03x)", flags);
+        char* msg;
+        if (flags & HTTP_NOT_FOUND)
+        {
+            msg =
+                aprintf("The requested %s file was not found on the server.", pds->text_file_title);
+        }
+        else if (flags & HTTP_WIFI_NOT_AVAILABLE)
+        {
+            msg = cb_strdup("Wi-Fi not available.");
+        }
+        else
+        {
+            msg =
+                aprintf("Failed to download %s file. (Error: 0x%03x)", pds->text_file_title, flags);
+        }
+
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
