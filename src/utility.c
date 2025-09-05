@@ -459,7 +459,7 @@ char* cb_find_cover_art_path_from_list(
             strcmp(cover_basename, rom_basename_no_ext) == 0)
         {
             char* found_path = NULL;
-            playdate->system->formatString(&found_path, "%s/%s.pdi", CB_coversPath, cover_basename);
+            playdate->system->formatString(&found_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_basename);
             return found_path;
         }
     }
