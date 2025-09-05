@@ -28,6 +28,17 @@ typedef enum
     PD_PROCESSING
 } PendingDownloadType;
 
+typedef enum
+{
+    PDC_NONE = 0,
+    PDC_DOWNLOAD_SUCCESS,
+    PDC_DOWNLOAD_FAILED_NOT_FOUND,
+    PDC_DOWNLOAD_FAILED_WIFI,
+    PDC_DOWNLOAD_FAILED_OTHER,
+    PDC_SAVE_FAILED,
+    PDC_TEXTFILE_SUCCESS
+} PostDownloadCommand;
+
 typedef struct
 {
     char** files;
@@ -85,6 +96,11 @@ typedef struct CB_PatchDownloadScene
     bool http_in_progress : 1;
     bool has_local_patches : 1;
     char* list_fetch_error_message;
+
+    PostDownloadCommand post_download_command;
+    unsigned post_download_flags;
+    char* post_download_text_data;
+
     float option_hold_time;
     HTTPConnection* active_http_connection;
     char header_name[17];

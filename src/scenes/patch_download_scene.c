@@ -494,25 +494,19 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         return;
     }
 
+    pds->http_in_progress = 0;
+
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
-        char* msg;
         if (flags & HTTP_NOT_FOUND)
-        {
-            msg = cb_strdup("The requested patch file was not found on the server.");
-        }
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_NOT_FOUND;
         else if (flags & HTTP_WIFI_NOT_AVAILABLE)
-        {
-            msg = cb_strdup("Wi-Fi not available.");
-        }
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_WIFI;
         else
         {
-            msg = aprintf("Failed to download patch file. (Error: 0x%03x)", flags);
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_OTHER;
+            pds->post_download_flags = flags;
         }
-
-        CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
-        cb_free(msg);
-        CB_presentModal(modal->scene);
     }
     else
     {
@@ -524,11 +518,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 
         if (!success)
         {
-            CB_Modal* modal = CB_Modal_new(
-                "Failed to save patch file to disk after successfully downloading it.", NULL, NULL,
-                NULL
-            );
-            CB_presentModal(modal->scene);
+            pds->post_download_command = PDC_SAVE_FAILED;
         }
         else
         {
@@ -566,18 +556,10 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 }
             }
 
-            const char* options[] = {"Yes", "No", NULL};
-            char* msg =
-                cb_strdup("Patch downloaded successfully.\nWould you like to enable it now?");
-            CB_Modal* modal = CB_Modal_new(msg, options, on_enable_patch_modal_close, pds);
-            cb_free(msg);
-            modal->width = 320;
-            modal->height = 140;
-            CB_presentModal(modal->scene);
+            pds->post_download_command = PDC_DOWNLOAD_SUCCESS;
         }
     }
 
-    pds->http_in_progress = 0;
     pds->pending_download_type = PD_NONE;
     cb_free(pud);
 }
@@ -594,39 +576,33 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         return;
     }
 
+    pds->http_in_progress = 0;
+    pds->pending_download_type = PD_NONE;
+
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
-        char* msg;
         if (flags & HTTP_NOT_FOUND)
-        {
-            msg =
-                aprintf("The requested %s file was not found on the server.", pds->text_file_title);
-        }
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_NOT_FOUND;
         else if (flags & HTTP_WIFI_NOT_AVAILABLE)
-        {
-            msg = cb_strdup("Wi-Fi not available.");
-        }
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_WIFI;
         else
         {
-            msg =
-                aprintf("Failed to download %s file. (Error: 0x%03x)", pds->text_file_title, flags);
+            pds->post_download_command = PDC_DOWNLOAD_FAILED_OTHER;
+            pds->post_download_flags = flags;
         }
-
-        CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
-        cb_free(msg);
-        CB_presentModal(modal->scene);
     }
     else
     {
         pds->pending_download_type = PD_PROCESSING;
-
-        data[data_len - 1] = 0;
-        CB_InfoScene* infoScene = CB_InfoScene_new(pds->text_file_title, data);
-        CB_presentModal(infoScene->scene);
+        data[data_len] = 0;  // Null-terminate
+        if (pds->post_download_text_data)
+        {
+            cb_free(pds->post_download_text_data);
+        }
+        pds->post_download_text_data = cb_strdup(data);
+        pds->post_download_command = PDC_TEXTFILE_SUCCESS;
     }
 
-    pds->http_in_progress = 0;
-    pds->pending_download_type = PD_NONE;
     cb_free(pud);
 }
 
@@ -1262,6 +1238,7 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
     cb_free(pds->patches_dir_path);
     cb_free(pds->cached_hint);
     cb_free(pds->list_fetch_error_message);
+    cb_free(pds->post_download_text_data);
 
     if (pds->local_files)
     {
@@ -1554,6 +1531,63 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     {
         pds->anim_t = 0;
         pds->loading_anim_step = 0;
+    }
+
+    if (pds->post_download_command != PDC_NONE)
+    {
+        char* msg = NULL;
+        CB_Modal* modal = NULL;
+
+        switch (pds->post_download_command)
+        {
+        case PDC_DOWNLOAD_SUCCESS:
+        {
+            const char* options[] = {"Yes", "No", NULL};
+            msg = cb_strdup("Patch downloaded successfully.\nWould you like to enable it now?");
+            modal = CB_Modal_new(msg, options, on_enable_patch_modal_close, pds);
+            modal->width = 320;
+            modal->height = 140;
+            break;
+        }
+        case PDC_DOWNLOAD_FAILED_NOT_FOUND:
+            msg = cb_strdup("The requested file was not found on the server.");
+            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            break;
+        case PDC_DOWNLOAD_FAILED_WIFI:
+            msg = cb_strdup("Wi-Fi not available.");
+            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            break;
+        case PDC_DOWNLOAD_FAILED_OTHER:
+            msg = aprintf("Failed to download file. (Error: 0x%03x)", pds->post_download_flags);
+            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            break;
+        case PDC_SAVE_FAILED:
+            msg = cb_strdup("Failed to save patch file to disk after successfully downloading it.");
+            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            break;
+        case PDC_TEXTFILE_SUCCESS:
+        {
+            CB_InfoScene* infoScene =
+                CB_InfoScene_new(pds->text_file_title, pds->post_download_text_data);
+            CB_presentModal(infoScene->scene);
+            cb_free(pds->post_download_text_data);
+            pds->post_download_text_data = NULL;
+            break;
+        }
+        default:
+            break;
+        }
+
+        if (modal)
+        {
+            CB_presentModal(modal->scene);
+        }
+        if (msg)
+        {
+            cb_free(msg);
+        }
+
+        pds->post_download_command = PDC_NONE;
     }
 }
 
@@ -1869,6 +1903,10 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     pds->option_hold_time = 0.0f;
     pds->is_dismissing = false;
     scene->managedObject = pds;
+
+    pds->post_download_command = PDC_NONE;
+    pds->post_download_flags = 0;
+    pds->post_download_text_data = NULL;
 
     pds->loading_anim_timer = 0.0f;
     pds->loading_anim_step = 0;
