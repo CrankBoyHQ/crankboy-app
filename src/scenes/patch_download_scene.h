@@ -24,7 +24,8 @@ typedef enum
 {
     PD_NONE = 0,
     PD_PATCH,
-    PD_TEXTFILE
+    PD_TEXTFILE,
+    PD_PROCESSING
 } PendingDownloadType;
 
 typedef struct

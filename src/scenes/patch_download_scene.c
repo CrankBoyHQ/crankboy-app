@@ -213,6 +213,8 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
     if ((flags & ~HTTP_ENABLE_ASKED) != 0)
     {
         pds->http_in_progress = 0;
+        pds->pending_download_type = PD_NONE;
+
         if (pds->pending_http_path)
         {
             cb_free(pds->pending_http_path);
@@ -259,7 +261,6 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
 
     cb_free(pds->pending_http_path);
     pds->pending_http_path = NULL;
-    pds->pending_download_type = PD_NONE;
 }
 
 static void initiate_download_with_permission_check(
@@ -493,8 +494,6 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         return;
     }
 
-    pds->http_in_progress = 0;
-
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
         char* msg;
@@ -514,15 +513,15 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
-        cb_free(pud);
-        return;
     }
     else
     {
-        char* path = aprintf("%s/%s", pds->patches_dir_path, pds->basename);
+        pds->pending_download_type = PD_PROCESSING;
 
+        char* path = aprintf("%s/%s", pds->patches_dir_path, pds->basename);
         bool success = call_with_main_stack_3(cb_write_entire_file, path, data, data_len);
         cb_free(path);
+
         if (!success)
         {
             CB_Modal* modal = CB_Modal_new(
@@ -530,8 +529,6 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
                 NULL
             );
             CB_presentModal(modal->scene);
-            cb_free(pud);
-            return;
         }
         else
         {
@@ -577,10 +574,12 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
             modal->width = 320;
             modal->height = 140;
             CB_presentModal(modal->scene);
-            cb_free(pud);
-            return;
         }
     }
+
+    pds->http_in_progress = 0;
+    pds->pending_download_type = PD_NONE;
+    cb_free(pud);
 }
 
 static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud)
@@ -594,8 +593,6 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         cb_free(pud);
         return;
     }
-
-    pds->http_in_progress = 0;
 
     if ((flags & ~HTTP_ENABLE_ASKED) || !data || data_len == 0)
     {
@@ -618,17 +615,19 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
-        cb_free(pud);
-        return;
     }
     else
     {
-        // paranoia
+        pds->pending_download_type = PD_PROCESSING;
+
         data[data_len - 1] = 0;
         CB_InfoScene* infoScene = CB_InfoScene_new(pds->text_file_title, data);
         CB_presentModal(infoScene->scene);
-        cb_free(pud);
     }
+
+    pds->http_in_progress = 0;
+    pds->pending_download_type = PD_NONE;
+    cb_free(pud);
 }
 
 static void context_patch_choose_interaction_update(
@@ -1484,17 +1483,77 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     if (pds->http_in_progress)
     {
         playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
+
+        int box_w = 260;
+        int box_h = 70;
+        int box_x = (LCD_COLUMNS - box_w) / 2;
+        int box_y = (LCD_ROWS - box_h) / 2;
+        playdate->graphics->fillRect(box_x, box_y, box_w, box_h, kColorWhite);
+        playdate->graphics->drawRect(box_x, box_y, box_w, box_h, kColorBlack);
+
         pds->anim_t += dt;
-        if (pds->anim_t >= 1)
-            --pds->anim_t;
-        int m = 8;
-        int w = 128;
-        int x = pds->anim_t * (LCD_COLUMNS + w) - w;
-        playdate->graphics->fillRect(x, LCD_ROWS / 2 - m / 2, w, m / 2, kColorBlack);
+        if (pds->anim_t >= 0.5f)
+        {
+            pds->anim_t -= 0.5f;
+            pds->loading_anim_step = (pds->loading_anim_step + 1) % 3;
+        }
+
+        int num_dots = pds->loading_anim_step + 1;
+        char dots[4] = "...";
+        dots[num_dots] = '\0';
+
+        const char* base_text;
+
+        switch (pds->pending_download_type)
+        {
+        case PD_PATCH:
+            base_text = "Downloading patch";
+            break;
+        case PD_TEXTFILE:
+            if (pds->text_file_title && strcasecmp(pds->text_file_title, "Readme") == 0)
+            {
+                base_text = "Downloading Readme";
+            }
+            else if (pds->text_file_title && strcasecmp(pds->text_file_title, "Changelog") == 0)
+            {
+                base_text = "Downloading Changelog";
+            }
+            else
+            {
+                base_text = "Downloading text file";
+            }
+            break;
+        case PD_PROCESSING:
+            base_text = "Processing";
+            break;
+        default:
+            base_text = "Please wait";
+            break;
+        }
+
+        playdate->graphics->setFont(CB_App->bodyFont);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+        int base_text_width = playdate->graphics->getTextWidth(
+            CB_App->bodyFont, base_text, strlen(base_text), kUTF8Encoding, 0
+        );
+        int max_dots_width =
+            playdate->graphics->getTextWidth(CB_App->bodyFont, "...", 3, kUTF8Encoding, 0);
+        int total_text_width = base_text_width + max_dots_width;
+
+        int font_height = playdate->graphics->getFontHeight(CB_App->bodyFont);
+        int text_y = box_y + (box_h - font_height) / 2;
+        int start_x = box_x + (box_w - total_text_width) / 2;
+
+        playdate->graphics->drawText(base_text, strlen(base_text), kUTF8Encoding, start_x, text_y);
+        playdate->graphics->drawText(
+            dots, strlen(dots), kUTF8Encoding, start_x + base_text_width, text_y
+        );
     }
     else
     {
         pds->anim_t = 0;
+        pds->loading_anim_step = 0;
     }
 }
 
