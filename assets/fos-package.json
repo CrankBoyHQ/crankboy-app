@@ -1,8 +1,8 @@
 {
     "path": "https://github.com/CrankBoyHQ/crankboy-app/releases/download/v1.0.2/CrankBoy-Device.zip",
     "installpath": [{
-        "src": "CrankBoy.pdx",
-        "dst": "/System/CrankBoy.pdx"
+        "src": "CrankBoy.pdx/",
+        "dst": "/System/CrankBoy.pdx/"
     }],
     "icon": "./icon.pdi"
 }
