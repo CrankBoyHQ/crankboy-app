@@ -3420,7 +3420,9 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
 
                         if (loaded_timestamp > 0)
                         {
-                            playdate->system->logToConsole("Save state had been created at: %u", loaded_timestamp);
+                            playdate->system->logToConsole(
+                                "Save state had been created at: %u", loaded_timestamp
+                            );
                         }
                         else
                         {
@@ -3488,12 +3490,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         // Re-enable auto-lock when the system menu is open.
         playdate->system->setAutoLockDisabled(0);
 
-        DTCM_VERIFY();
-        if (gameScene->cartridge_has_battery)
-        {
-            call_with_user_stack_1(CB_GameScene_menu, gameScene);
-        }
-        // fallthrough
+        // fall-through
     case kEventTerminate:
         DTCM_VERIFY();
         if (context->gb->direct.sram_dirty && gameScene->save_data_loaded_successfully)
@@ -3507,7 +3504,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     case kEventResume:
         // Re-apply the user's auto-lock preference on resume.
         playdate->system->setAutoLockDisabled(preferences_disable_autolock);
-
         if (gameScene->audioEnabled)
         {
             audioGameScene = gameScene;
