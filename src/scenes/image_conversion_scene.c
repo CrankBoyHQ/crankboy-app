@@ -574,6 +574,7 @@ void CB_ImageConversionScene_free(void* object)
         cb_free(convScene->files[i]);
     }
     cb_free(convScene->files);
+    CB_Scene_free(convScene->scene);
     cb_free(convScene);
 }
 

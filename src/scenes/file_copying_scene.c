@@ -219,6 +219,7 @@ void CB_FileCopyingScene_free(void* object)
     }
     array_free(scene->files_to_copy);
     free_json_data(scene->manifest);
+    CB_Scene_free(scene->scene);
     cb_free(scene);
 }
 

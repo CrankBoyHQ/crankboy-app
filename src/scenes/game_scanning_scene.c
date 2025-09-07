@@ -318,6 +318,7 @@ void CB_GameScanningScene_free(void* object)
     }
 
     free_json_data(scanScene->crc_cache);
+    CB_Scene_free(scanScene->scene);
     cb_free(scanScene);
 }
 
