@@ -340,11 +340,10 @@ static void CB_LibraryScene_deleteCoverConfirmed(void* ud, int option)
                     CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
                     if (strcmp(entry->rom_path, game->fullpath) == 0)
                     {
+                        array_remove_at(CB_App->coverCache, i);
                         cb_free(entry->rom_path);
                         cb_free(entry->compressed_data);
                         cb_free(entry);
-
-                        array_remove_at(CB_App->coverCache, i);
                         break;
                     }
                 }
