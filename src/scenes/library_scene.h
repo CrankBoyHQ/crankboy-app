@@ -83,6 +83,9 @@ typedef struct CB_LibraryScene
     int progress_max_width;
     float bButtonHoldTimer;
     bool deleteCoverModalShown;
+
+    void* decompression_buffer;
+    size_t decompression_buffer_size;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);

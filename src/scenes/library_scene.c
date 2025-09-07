@@ -823,6 +823,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     library_was_initialized_once = true;
     libraryScene->bButtonHoldTimer = 0.0f;
     libraryScene->deleteCoverModalShown = false;
+    libraryScene->decompression_buffer = NULL;
+    libraryScene->decompression_buffer_size = 0;
 
     cb_clear_global_cover_cache();
 
@@ -1201,7 +1203,15 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                         CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
                         if (strcmp(entry->rom_path, selectedGame->fullpath) == 0)
                         {
-                            char* decompressed_buffer = cb_malloc(entry->original_size);
+                            if (libraryScene->decompression_buffer_size < entry->original_size)
+                            {
+                                libraryScene->decompression_buffer = cb_realloc(
+                                    libraryScene->decompression_buffer, entry->original_size
+                                );
+                                libraryScene->decompression_buffer_size = entry->original_size;
+                            }
+
+                            char* decompressed_buffer = libraryScene->decompression_buffer;
                             if (decompressed_buffer)
                             {
                                 int decompressed_size = LZ4_decompress_safe(
@@ -1271,7 +1281,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                         "LZ4 decompression failed for %s", entry->rom_path
                                     );
                                 }
-                                cb_free(decompressed_buffer);
                             }
 
                             if (foundInCache)
@@ -1854,6 +1863,11 @@ static void CB_LibraryScene_free(void* object)
     {
         http_cancel_and_cleanup(libraryScene->activeCoverDownloadConnection);
         libraryScene->activeCoverDownloadConnection = NULL;
+    }
+
+    if (libraryScene->decompression_buffer)
+    {
+        cb_free(libraryScene->decompression_buffer);
     }
 
     cb_free(libraryScene);
