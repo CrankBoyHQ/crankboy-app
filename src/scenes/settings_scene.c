@@ -1266,7 +1266,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL,
     };
 
-    if (!gameScene && !preferences_per_game)
+    if ((!gameScene && !preferences_per_game) || CB_App->bundled_rom)
     {
         // ui sounds
         entries[++i] = (OptionsMenuEntry){
