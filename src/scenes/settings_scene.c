@@ -20,6 +20,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <sys/wait.h>
 
 /*
  * Defines the maximum number of entries that the settings menu can hold.
@@ -634,8 +635,8 @@ static void settings_action_save_state_possibly_warn(
             "save data will irreversibly revert to its current state.",
             options, (void*)settings_action_save_state, settingsScene
         );
-        modal->width = 380;
-        modal->height = 224;
+        modal->width = 390;
+        modal->height = 234;
         modal->margin = 12;
         modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
         CB_presentModal(modal->scene);
@@ -664,8 +665,8 @@ static void settings_action_load_state_possibly_warn(
         {
             text = aprintf(
                 "WARNING! This game has its own save data system, which will be PERMANENTLY reset "
-                "to match that of this state. You will not be able to undo this by resetting. If "
-                "this game has multiple files, all will be affected.\n \nYou have been warned."
+                "to match that of this state.\n\nYou will not be able to undo this by resetting. "
+                "If this game has multiple files, all will be affected. You have been warned."
             );
         }
         else
