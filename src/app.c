@@ -477,6 +477,32 @@ void CB_quit(void)
 
     cb_clear_global_cover_cache();
 
+    if (CB_App->bodyFont)
+    {
+        cb_free(CB_App->bodyFont);
+    }
+    if (CB_App->titleFont)
+    {
+        cb_free(CB_App->titleFont);
+    }
+    if (CB_App->subheadFont)
+    {
+        cb_free(CB_App->subheadFont);
+    }
+    if (CB_App->labelFont)
+    {
+        cb_free(CB_App->labelFont);
+    }
+
+    if (CB_App->startSelectBitmap)
+    {
+        playdate->graphics->freeBitmap(CB_App->startSelectBitmap);
+    }
+    if (CB_App->selectorBitmapTable)
+    {
+        playdate->graphics->freeBitmapTable(CB_App->selectorBitmapTable);
+    }
+
     if (CB_App->logoBitmap)
     {
         playdate->graphics->freeBitmap(CB_App->logoBitmap);
