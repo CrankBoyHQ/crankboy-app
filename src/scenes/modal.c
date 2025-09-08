@@ -144,7 +144,8 @@ void CB_Modal_update(CB_Modal* modal)
 
     if (modal->icon)
     {
-        if (modal->master_timer % 15 < 7 || modal->master_timer >= 4 * 15)
+        if (!modal->icon_flashing ||
+            (modal->master_timer % 15 < 7 || modal->master_timer >= 4 * 15))
         {
             int iw, ih;
             playdate->graphics->getBitmapData(modal->icon, &iw, &ih, NULL, NULL, NULL);

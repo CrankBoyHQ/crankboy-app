@@ -49,6 +49,7 @@ typedef struct CB_Modal
 
     LCDBitmap* dissolveMask;
     LCDBitmap* icon;
+    bool icon_flashing : 1;
 } CB_Modal;
 
 CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback callback, void* ud);
