@@ -2783,7 +2783,8 @@ static void CB_GameScene_menu(void* object)
 
     playdate->system->removeAllMenuItems();
 
-    if (gameScene->state == CB_GameSceneStateError)
+    if (gameScene->state == CB_GameSceneStateError ||
+        gameScene->state == CB_GameSceneStateCGBConfirm)
     {
         if (!CB_App->bundled_rom)
         {
