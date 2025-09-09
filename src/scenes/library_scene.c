@@ -1240,13 +1240,16 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                             new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data,
                                             &new_pixel_data
                                         );
+                                        size_t copy_bytes = (entry->rowbytes < (size_t)new_rowbytes)
+                                                                ? entry->rowbytes
+                                                                : (size_t)new_rowbytes;
 
                                         uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
                                         uint8_t* dst_ptr = new_pixel_data;
 
                                         for (int y = 0; y < entry->height; ++y)
                                         {
-                                            memcpy(dst_ptr, src_ptr, entry->rowbytes);
+                                            memcpy(dst_ptr, src_ptr, copy_bytes);
                                             src_ptr += entry->rowbytes;
                                             dst_ptr += new_rowbytes;
                                         }
@@ -1256,7 +1259,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                             dst_ptr = new_mask_data;
                                             for (int y = 0; y < entry->height; ++y)
                                             {
-                                                memcpy(dst_ptr, src_ptr, entry->rowbytes);
+                                                memcpy(dst_ptr, src_ptr, copy_bytes);
                                                 src_ptr += entry->rowbytes;
                                                 dst_ptr += new_rowbytes;
                                             }
