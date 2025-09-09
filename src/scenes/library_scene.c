@@ -810,8 +810,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
         }
     }
 
-    libraryScene->listView->selectedItem =
-        (preferences_library_remember_selection) ? last_selected_game_index : 0;
+    libraryScene->listView->selectedItem = selected_item;
     libraryScene->tab = CB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
     libraryScene->last_display_name_mode = combined_display_mode();
