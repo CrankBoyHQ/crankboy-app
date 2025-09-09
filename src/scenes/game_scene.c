@@ -801,6 +801,16 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
         audioGameScene = NULL;
     }
 
+    // If the buffered audio sync is NOT the active mode, we MUST ensure
+    // its buffer is cleared. This handles the case where a user disables
+    // the feature mid-game, preventing stale audio from persisting.
+    if (preferences_audio_sync != 1)
+    {
+        CB_reset_audio_sync_state();
+        memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
+        memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
+    }
+
     if (preferences_crank_down_action == 0)
     {
         gameScene->selector.deadAngle = 45;
@@ -3590,12 +3600,6 @@ static void CB_GameScene_free(void* object)
 
     playdate->system->setAutoLockDisabled(0);
 
-    prefs_locked_by_script = 0;
-    preferences_read_from_disk(CB_globalPrefsPath);
-    preferences_per_game = 0;
-    preferences_save_state_slot = 0;
-    gb_save_to_disk(context->gb);
-
     if (audioGameScene == gameScene)
     {
         if (CB_App->soundSource != NULL)
@@ -3616,6 +3620,12 @@ static void CB_GameScene_free(void* object)
         audioGameScene = NULL;
         audio_enabled = 0;
     }
+
+    prefs_locked_by_script = 0;
+    preferences_read_from_disk(CB_globalPrefsPath);
+    preferences_per_game = 0;
+    preferences_save_state_slot = 0;
+    gb_save_to_disk(context->gb);
 
     if (gameScene->menuImage)
     {
