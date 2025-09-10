@@ -91,22 +91,21 @@ void CB_ListView_invalidateLayout(CB_ListView* listView)
     int scrollHeight = listView->frame.height - listView->paddingTop - listView->paddingBottom -
                        CB_ListView_scrollInset * 2;
 
-    bool indicatorVisible = false;
-    if (listView->contentSize > listView->frame.height)
-    {
-        indicatorVisible = true;
-    }
+    bool indicatorVisible = (listView->contentSize > listView->frame.height);
     listView->scroll.indicatorVisible = indicatorVisible;
 
-    float indicatorHeight = 0.0f;
-    if (listView->contentSize > listView->frame.height && listView->frame.height != 0)
+    if (indicatorVisible)
     {
-        indicatorHeight = CB_MAX(
+        float floatHeight = CB_MAX(
             scrollHeight * ((float)listView->frame.height / listView->contentSize),
             CB_ListView_scrollIndicatorMinHeight
         );
+        listView->scroll.indicatorHeight = (int)roundf(floatHeight);
     }
-    listView->scroll.indicatorHeight = indicatorHeight;
+    else
+    {
+        listView->scroll.indicatorHeight = 0;
+    }
 }
 
 void CB_ListView_reload(CB_ListView* listView)
@@ -312,15 +311,16 @@ void CB_ListView_update(CB_ListView* listView)
         }
     }
 
-    float indicatorOffset = listView->paddingTop + CB_ListView_scrollInset;
+    int indicatorOffset = listView->paddingTop + CB_ListView_scrollInset;
     if (listView->contentSize > listView->frame.height)
     {
         int scrollHeight = listView->frame.height - listView->paddingTop - listView->paddingBottom -
                            (CB_ListView_scrollInset * 2 + listView->scroll.indicatorHeight);
-        indicatorOffset =
+        float floatOffset =
             listView->paddingTop + CB_ListView_scrollInset +
             ((float)listView->contentOffset / (listView->contentSize - listView->frame.height)) *
                 scrollHeight;
+        indicatorOffset = (int)roundf(floatOffset);
     }
     listView->scroll.indicatorOffset = indicatorOffset;
 
@@ -445,7 +445,7 @@ void CB_ListView_draw(CB_ListView* listView)
         listView->model.contentOffset != listView->contentOffset ||
         listView->model.scrollIndicatorVisible != listView->scroll.indicatorVisible ||
         listView->model.scrollIndicatorOffset != listView->scroll.indicatorOffset ||
-        listView->scroll.indicatorHeight != listView->scroll.indicatorHeight)
+        listView->model.scrollIndicatorHeight != listView->scroll.indicatorHeight)
     {
         needsDisplay = true;
     }

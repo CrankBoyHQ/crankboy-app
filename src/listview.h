@@ -32,8 +32,8 @@ typedef struct
     float time;
     float duration;
     bool indicatorVisible;
-    float indicatorOffset;
-    float indicatorHeight;
+    int indicatorOffset;
+    int indicatorHeight;
 } CB_ListViewScroll;
 
 typedef enum
