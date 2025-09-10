@@ -157,7 +157,14 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
             json_set_table_value(&new_entry_val, "size", size_val);
             json_set_table_value(&new_entry_val, "m_time", mtime_val);
 
-            json_set_table_value(&scanScene->crc_cache, filename, new_entry_val);
+            json_value* new_file_entry = cb_calloc(1, sizeof(json_value));
+            new_file_entry->type = kJSONTable;
+            JsonObject* file_obj = cb_calloc(1, sizeof(JsonObject));
+            new_file_entry->data.tableval = file_obj;
+
+            json_set_table_value(new_file_entry, filename, new_entry_val);
+
+            array_push(scanScene->new_cache_entries, new_file_entry);
             scanScene->crc_cache_modified = true;
         }
     }
@@ -275,8 +282,26 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
     case kScanningStateDone:
     {
-        if (scanScene->crc_cache_modified)
+        if (scanScene->crc_cache_modified && scanScene->new_cache_entries->length > 0)
         {
+            for (int i = 0; i < scanScene->new_cache_entries->length; i++)
+            {
+                json_value* file_entry = (json_value*)scanScene->new_cache_entries->items[i];
+                JsonObject* file_obj = file_entry->data.tableval;
+
+                const char* filename = file_obj->data[0].key;
+                json_value value = file_obj->data[0].value;
+                json_set_table_value(&scanScene->crc_cache, filename, value);
+
+                file_obj->data[0].value.type = kJSONNull;
+            }
+
+            JsonObject* obj = scanScene->crc_cache.data.tableval;
+            if (obj && obj->n > 1)
+            {
+                qsort(obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs);
+            }
+
             char* path;
             playdate->system->formatString(&path, "%s", CRC_CACHE_FILE);
             if (path)
@@ -317,6 +342,21 @@ void CB_GameScanningScene_free(void* object)
         array_free(scanScene->game_filenames);
     }
 
+    if (scanScene->new_cache_entries)
+    {
+        for (int i = 0; i < scanScene->new_cache_entries->length; i++)
+        {
+            json_value* item_to_free = (json_value*)scanScene->new_cache_entries->items[i];
+
+            if (item_to_free)
+            {
+                free_json_data(*item_to_free);
+                cb_free(item_to_free);
+            }
+        }
+        array_free(scanScene->new_cache_entries);
+    }
+
     free_json_data(scanScene->crc_cache);
     CB_Scene_free(scanScene->scene);
     cb_free(scanScene);
@@ -333,6 +373,7 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
     scanScene->scene->use_user_stack = false;
 
     scanScene->game_filenames = array_new();
+    scanScene->new_cache_entries = array_new();
     scanScene->current_index = 0;
     scanScene->state = kScanningStateInit;
     scanScene->crc_cache_modified = false;

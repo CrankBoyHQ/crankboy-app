@@ -17,6 +17,7 @@ typedef struct CB_GameScanningScene
 {
     CB_Scene* scene;
     CB_Array* game_filenames;
+    CB_Array* new_cache_entries;
     int current_index;
     GameScanningState state;
     json_value crc_cache;
