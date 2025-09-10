@@ -383,7 +383,9 @@ void CB_ListView_update(CB_ListView* listView)
                     float totalCycleDuration = pauseAtStartDuration + dynamicScrollToEndDuration +
                                                pauseAtEndDuration + dynamicScrollToStartDuration;
 
-                    float currentTimeInCycle = fmodf(listView->textScrollTime, totalCycleDuration);
+                    listView->textScrollTime = fmodf(listView->textScrollTime, totalCycleDuration);
+
+                    float currentTimeInCycle = listView->textScrollTime;
 
                     if (currentTimeInCycle < pauseAtStartDuration)
                     {
