@@ -9,13 +9,7 @@
 #define ERRMEM -255
 #define STR_ERRMEM "malloc error"
 #define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
-#define UPDATE_LAST_KNOWN_VERSION "check_update_version.txt"
-
-struct CB_UserData
-{
-    update_result_cb cb;
-    void* ud;
-};
+#define UPDATE_INFO_PATH "update_info.json"
 
 struct VersionInfo
 {
@@ -27,11 +21,6 @@ struct VersionInfo
 static struct VersionInfo* localVersionInfo = NULL;
 static struct VersionInfo* newVersionInfo = NULL;
 
-// previously been alerted to this version update, so dismiss it
-char* ignore_version = NULL;
-
-// returns 0 on success, or
-// returns nonzero failure code
 static int read_version_info(const char* text, bool ispath, struct VersionInfo* oinfo)
 {
     json_value jvinfo;
@@ -95,12 +84,6 @@ static int read_local_version(void)
             return -2;
         }
     }
-
-    if (!ignore_version)
-    {
-        ignore_version = cb_read_entire_file(UPDATE_LAST_KNOWN_VERSION, NULL, kFileReadData);
-    }
-
     return 1;
 }
 
@@ -130,108 +113,89 @@ const char* get_download_url(void)
 
 static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
 {
-    struct CB_UserData* cbud = ud;
-
-    if ((flags & HTTP_ENABLE_DENIED))
+    if ((flags & (HTTP_ENABLE_DENIED | HTTP_WIFI_NOT_AVAILABLE | ~HTTP_ENABLE_ASKED)) != 0)
     {
-        cbud->cb(
-            (flags & HTTP_ENABLE_ASKED) ? ERR_PERMISSION_ASKED_DENIED : ERR_PERMISSION_DENIED,
-            "Permission denied", cbud->ud
-        );
-    }
-    else if (flags & HTTP_WIFI_NOT_AVAILABLE)
-    {
-        cbud->cb(-5306, "Wi-Fi not available", cbud->ud);
+        return;
     }
 
-    else if (flags & ~HTTP_ENABLE_ASKED)
+    char* json_start = strchr(data, '{');
+    if (!json_start)
     {
-        cbud->cb(-9000 - flags, "Update failed", cbud->ud);
+        return;
     }
-    else
-    {
-        // try parsing json. We have to skip to the first `{` because
-        // the playdate HTTP API seems to put some garbage data (the http status code?) at the
-        // beginning.
-        char* json_start = strchr(data, '{');
-        if (!json_start)
-        {
-            cbud->cb(-651, "Invalid JSON response", cbud->ud);
-            cb_free(ud);
-            return;
-        }
 
+    if (!newVersionInfo)
+    {
+        newVersionInfo = cb_malloc(sizeof(struct VersionInfo));
         if (!newVersionInfo)
         {
-            newVersionInfo = cb_malloc(sizeof(struct VersionInfo));
-            if (!newVersionInfo)
-            {
-                cbud->cb(ERRMEM, STR_ERRMEM, cbud->ud);
-                cb_free(ud);
-                return;
-            }
-            memset(newVersionInfo, 0, sizeof(*newVersionInfo));
+            return;
         }
+        memset(newVersionInfo, 0, sizeof(*newVersionInfo));
+    }
 
-        if (read_version_info(json_start, false, newVersionInfo) == 0)
+    if (read_version_info(json_start, false, newVersionInfo) == 0)
+    {
+        if (strcmp(newVersionInfo->name, localVersionInfo->name) != 0)
         {
-            // if this matches the last-seen version, we mention that in the callback
-            if (ignore_version && strcmp(newVersionInfo->name, ignore_version) == 0)
+            // New version available. Check if we already notified the user about this one.
+            char* file_content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
+            bool should_write = true;
+
+            if (file_content)
             {
-                // new version available, but we already knew about it
-                cbud->cb(1, newVersionInfo->name, cbud->ud);
+                json_value jv_root;
+                if (parse_json_string(file_content, &jv_root) == 1 && jv_root.type == kJSONTable)
+                {
+                    json_value jv_version = json_get_table_value(jv_root, "version");
+                    if (jv_version.type == kJSONString &&
+                        strcmp(jv_version.data.stringval, newVersionInfo->name) == 0)
+                    {
+                        should_write = false;
+                    }
+                    free_json_data(jv_root);
+                }
+                cb_free(file_content);
             }
-            else
+
+            if (should_write)
             {
-                if (strcmp(newVersionInfo->name, localVersionInfo->name))
+                char* json_string;
+                playdate->system->formatString(
+                    &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":true}",
+                    newVersionInfo->name, newVersionInfo->download
+                );
+                if (json_string)
                 {
-                    // new version available
-                    cbud->cb(2, newVersionInfo->name, cbud->ud);
-                }
-                else
-                {
-                    cbud->cb(0, "No update available.", cbud->ud);
+                    cb_write_entire_file(UPDATE_INFO_PATH, json_string, strlen(json_string));
+                    cb_free(json_string);
                 }
             }
-        }
-        else
-        {
-            cbud->cb(-650, "Invalid version information receieved", cbud->ud);
         }
     }
-    cb_free(ud);
+
+    if (data)
+    {
+        cb_free(data);
+    }
 }
 
-void check_for_updates(update_result_cb cb, void* ud)
+static void check_for_updates(void)
 {
     switch (read_local_version())
     {
     case -1:
-        cb(ERRMEM, STR_ERRMEM, ud);
-        return;
     case -2:
-        cb(-956, "Error getting current version", ud);
         return;
     default:
         break;
     }
 
-    struct CB_UserData* cbud = cb_malloc(sizeof(struct CB_UserData));
-    if (!cbud)
-    {
-        cb(ERRMEM, STR_ERRMEM, ud);
-        return;
-    }
-
-    memset(cbud, 0, sizeof(*cbud));
-    cbud->cb = cb;
-    cbud->ud = ud;
-
 #define TIMEOUT_MS (10 * 1000)
 
     http_get(
         localVersionInfo->domain, localVersionInfo->path, "to check for a version update", CB_Get,
-        TIMEOUT_MS, cbud, NULL
+        TIMEOUT_MS, NULL, NULL
     );
 }
 
@@ -240,17 +204,18 @@ typedef uint32_t timestamp_t;
 void write_update_timestamp(timestamp_t time)
 {
     SDFile* f = playdate->file->open(UPDATE_CHECK_TIMESTAMP_PATH, kFileWrite);
-
-    playdate->file->write(f, &time, sizeof(time));
-
-    playdate->file->close(f);
+    if (f)
+    {
+        playdate->file->write(f, &time, sizeof(time));
+        playdate->file->close(f);
+    }
 }
 
 #define DAYLEN (60 * 60 * 24)
 #define TIME_BEFORE_CHECK_FIRST_UPDATE (DAYLEN * 2)
 #define TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS (DAYLEN)
 
-void possibly_check_for_updates(update_result_cb cb, void* ud)
+void possibly_check_for_updates(void)
 {
     timestamp_t now = playdate->system->getSecondsSinceEpoch(NULL);
 
@@ -259,42 +224,101 @@ void possibly_check_for_updates(update_result_cb cb, void* ud)
     if (!f)
     {
         write_update_timestamp(now + TIME_BEFORE_CHECK_FIRST_UPDATE);
-        cb(-5303, "no update timestamp -- first-time start", ud);
     }
     else
     {
         timestamp_t timestamp;
-
         int read = playdate->file->read(f, &timestamp, sizeof(timestamp));
         playdate->file->close(f);
         if (read != sizeof(timestamp) || timestamp < (365 * DAYLEN * 20))
         {
             write_update_timestamp(now + TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS / 2);
-            cb(-5304, "failed to read timestamp -- replaced", ud);
         }
         else if (now >= timestamp)
         {
             write_update_timestamp(now + TIME_BETWEEN_SUBSEQUENT_UPDATE_CHECKS);
-
-            // ready to update!
-            check_for_updates(cb, ud);
-        }
-        else
-        {
-            cb(-5305, "it's not yet time to check for an update", ud);
+            check_for_updates();
         }
     }
 }
 
-void version_update_notification_shown(const char* version_name)
+PendingUpdateInfo* get_pending_update(void)
 {
-    if (version_name)
+    char* content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
+    if (!content)
     {
-        cb_write_entire_file(UPDATE_LAST_KNOWN_VERSION, version_name, strlen(version_name));
-        if (ignore_version)
-            cb_free(ignore_version);
-        ignore_version = cb_strdup(version_name);
+        return NULL;
     }
+
+    PendingUpdateInfo* result = NULL;
+    json_value jv_root;
+
+    if (parse_json_string(content, &jv_root) == 1 && jv_root.type == kJSONTable)
+    {
+        json_value jv_show = json_get_table_value(jv_root, "show");
+        if (jv_show.type == kJSONTrue)
+        {
+            json_value jv_version = json_get_table_value(jv_root, "version");
+            json_value jv_url = json_get_table_value(jv_root, "url");
+
+            if (jv_version.type == kJSONString && jv_url.type == kJSONString)
+            {
+                result = cb_malloc(sizeof(PendingUpdateInfo));
+                if (result)
+                {
+                    result->version = cb_strdup(jv_version.data.stringval);
+                    result->url = cb_strdup(jv_url.data.stringval);
+                }
+            }
+        }
+        free_json_data(jv_root);
+    }
+
+    cb_free(content);
+    return result;
+}
+
+void free_pending_update_info(PendingUpdateInfo* info)
+{
+    if (info)
+    {
+        cb_free(info->version);
+        cb_free(info->url);
+        cb_free(info);
+    }
+}
+
+void mark_update_as_seen(void)
+{
+    char* content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
+    if (!content)
+    {
+        return;
+    }
+
+    json_value jv_root;
+    if (parse_json_string(content, &jv_root) == 1 && jv_root.type == kJSONTable)
+    {
+        json_value jv_version = json_get_table_value(jv_root, "version");
+        json_value jv_url = json_get_table_value(jv_root, "url");
+
+        if (jv_version.type == kJSONString && jv_url.type == kJSONString)
+        {
+            char* json_string;
+            playdate->system->formatString(
+                &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":false}",
+                jv_version.data.stringval, jv_url.data.stringval
+            );
+            if (json_string)
+            {
+                cb_write_entire_file(UPDATE_INFO_PATH, json_string, strlen(json_string));
+                cb_free(json_string);
+            }
+        }
+        free_json_data(jv_root);
+    }
+
+    cb_free(content);
 }
 
 void version_quit(void)
@@ -317,10 +341,5 @@ void version_quit(void)
         cb_free(newVersionInfo->download);
         cb_free(newVersionInfo);
         newVersionInfo = NULL;
-    }
-    if (ignore_version)
-    {
-        cb_free(ignore_version);
-        ignore_version = NULL;
     }
 }

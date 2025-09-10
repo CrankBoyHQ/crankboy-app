@@ -558,8 +558,6 @@ void CB_quit(void)
         cb_free(CB_App->bundled_rom);
     }
 
-    CB_LibraryScene_cleanup();
-
     script_quit();
     version_quit();
 

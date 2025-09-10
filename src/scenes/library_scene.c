@@ -25,6 +25,8 @@
 #include "info_scene.h"
 #include "settings_scene.h"
 
+#include <string.h>
+
 #define LAST_SELECTED_PATH "library_last_selected.txt"
 #define HOLD_TIME 1.09f
 #define DELETE_COVER_HOLD_TIME 5.09f
@@ -37,10 +39,6 @@ static int last_selected_game_index = 0;
 static bool has_loaded_initial_index = false;
 static bool has_checked_for_update = false;
 static bool library_was_initialized_once = false;
-
-// Stores the update message if we are not in the library scene.
-static char* pending_update_message = NULL;
-static char* pending_update_version = NULL;
 
 // Animation state for the "Downloading cover..." text
 static float coverDownloadAnimationTimer = 0.0f;
@@ -684,57 +682,10 @@ static void launch_game_prompt_if_script(void* ud, int option)
     }
 }
 
-static void CB_updatecheck(int code, const char* text, void* ud)
+static void on_update_modal_dismiss(void* ud, int option)
 {
-    playdate->system->logToConsole("UPDATE RESULT %d: %s\n", code, text);
-
-    char* modal_result = NULL;
-
-    if (code == ERR_PERMISSION_ASKED_DENIED)
-    {
-        modal_result = aprintf(
-            "You can enable checking for updates at any time by adjusting CrankBoy's permissions "
-            "in your Playdate's settings."
-        );
-    }
-    else if (code == 2)
-    {
-        modal_result = aprintf(
-            "CrankBoy Update!\n\nNew: %s - Installed: %s\n\n%s", text, get_current_version(),
-            get_download_url()
-        );
-    }
-
-    if (modal_result)
-    {
-        // Check if the current scene is the library scene
-        if (CB_App->scene && CB_App->scene->update == CB_LibraryScene_update)
-        {
-            CB_Modal* modal = CB_Modal_new(modal_result, NULL, NULL, NULL);
-            cb_free(modal_result);
-
-            modal->width = 300;
-            modal->height = 180;
-
-            CB_presentModal(modal->scene);
-            version_update_notification_shown(text);
-        }
-        else
-        {
-            // If not in the library, store the message to show later, to avoid interrupting the
-            // users gaming session.
-            if (pending_update_message)
-            {
-                cb_free(pending_update_message);
-            }
-            pending_update_message = modal_result;
-            if (pending_update_version)
-            {
-                cb_free(pending_update_version);
-            }
-            pending_update_version = cb_strdup(text);
-        }
-    }
+    mark_update_as_seen();
+    free_pending_update_info((PendingUpdateInfo*)ud);
 }
 
 static int page_advance = 0;
@@ -821,6 +772,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     library_was_initialized_once = true;
     libraryScene->bButtonHoldTimer = 0.0f;
     libraryScene->deleteCoverModalShown = false;
+    libraryScene->update_modal_shown = false;
     libraryScene->decompression_buffer = NULL;
     libraryScene->decompression_buffer_size = 0;
 
@@ -891,6 +843,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (CB_App->pendingScene)
     {
         return;
+    }
+
+    if (!has_checked_for_update && !CB_App->bundled_rom)
+    {
+        has_checked_for_update = true;
+        possibly_check_for_updates();
     }
 
     CB_LibraryScene* libraryScene = object;
@@ -965,21 +923,38 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Check for a pending update message when the library is active.
-    if (pending_update_message && libraryScene->initialLoadComplete)
+    if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown)
     {
-        CB_Modal* modal = CB_Modal_new(pending_update_message, NULL, NULL, NULL);
-        cb_free(pending_update_message);
-        pending_update_message = NULL;
+        PendingUpdateInfo* update_info = get_pending_update();
+        if (update_info)
+        {
+            libraryScene->update_modal_shown = true;
 
-        version_update_notification_shown(pending_update_version);
-        cb_free(pending_update_version);
-        pending_update_version = NULL;
+            char* modal_result = aprintf(
+                "CrankBoy Update!\n\nNew: %s - Installed: %s\n\n%s", update_info->version,
+                get_current_version(), update_info->url
+            );
 
-        modal->width = 300;
-        modal->height = 180;
+            if (modal_result)
+            {
+                CB_Modal* modal =
+                    CB_Modal_new(modal_result, NULL, on_update_modal_dismiss, update_info);
+                cb_free(modal_result);
 
-        CB_presentModal(modal->scene);
-        return;
+                if (modal)
+                {
+                    modal->width = 300;
+                    modal->height = 180;
+
+                    CB_presentModal(modal->scene);
+                    return;
+                }
+            }
+            else
+            {
+                free_pending_update_info(update_info);
+            }
+        }
     }
 
     if (libraryScene->last_display_name_mode != combined_display_mode())
@@ -1052,12 +1027,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             coverDownloadAnimationStep = (coverDownloadAnimationStep + 1) % 4;
             libraryScene->scene->forceFullRefresh = true;
         }
-    }
-
-    if (!has_checked_for_update && !CB_App->bundled_rom)
-    {
-        has_checked_for_update = true;
-        possibly_check_for_updates(CB_updatecheck, NULL);
     }
 
     CB_Scene_update(libraryScene->scene, dt);
@@ -1872,20 +1841,6 @@ static void CB_LibraryScene_free(void* object)
     }
 
     cb_free(libraryScene);
-}
-
-void CB_LibraryScene_cleanup(void)
-{
-    if (pending_update_message)
-    {
-        cb_free(pending_update_message);
-        pending_update_message = NULL;
-    }
-    if (pending_update_version)
-    {
-        cb_free(pending_update_version);
-        pending_update_version = NULL;
-    }
 }
 
 static void set_display_and_sort_name(CB_Game* game)

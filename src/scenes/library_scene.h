@@ -83,13 +83,13 @@ typedef struct CB_LibraryScene
     int progress_max_width;
     float bButtonHoldTimer;
     bool deleteCoverModalShown;
+    bool update_modal_shown;
 
     void* decompression_buffer;
     size_t decompression_buffer_size;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);
-void CB_LibraryScene_cleanup(void);
 
 CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
 void CB_Game_free(CB_Game* game);
