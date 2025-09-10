@@ -235,27 +235,36 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                                 memcpy(final_buffer, temp_compressed_buffer, compressed_size);
 
                                 CB_CoverCacheEntry* entry = cb_malloc(sizeof(CB_CoverCacheEntry));
-                                entry->rom_path = cb_strdup(game->fullpath);
-                                entry->compressed_data = final_buffer;
-                                entry->compressed_size = compressed_size;
-                                entry->original_size = original_size;
-                                entry->width = width;
-                                entry->height = height;
-                                entry->rowbytes = rowbytes;
-                                entry->has_mask = has_mask;
+                                if (!entry)
+                                {
+                                    cb_free(final_buffer);
+                                }
+                                else
+                                {
+                                    entry->rom_path = cb_strdup(game->fullpath);
+                                    if (!entry->rom_path)
+                                    {
+                                        cb_free(entry);
+                                        cb_free(final_buffer);
+                                    }
+                                    else
+                                    {
+                                        entry->compressed_data = final_buffer;
+                                        entry->compressed_size = compressed_size;
+                                        entry->original_size = original_size;
+                                        entry->width = width;
+                                        entry->height = height;
+                                        entry->rowbytes = rowbytes;
+                                        entry->has_mask = has_mask;
 
-                                array_push(CB_App->coverCache, entry);
-                                cacheScene->cache_size_bytes += compressed_size;
+                                        array_push(CB_App->coverCache, entry);
+                                        cacheScene->cache_size_bytes += compressed_size;
+                                    }
+                                }
                             }
                         }
 
                         cb_free(temp_compressed_buffer);
-
-                        if (compressed_size > 0 &&
-                            (cacheScene->cache_size_bytes >= MAX_CACHE_SIZE_BYTES))
-                        {
-                            cacheScene->state = kCoverCacheStateDone;
-                        }
                     }
                     else
                     {
