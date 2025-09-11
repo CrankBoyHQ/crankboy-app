@@ -328,6 +328,12 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 
     gameScene->is_stereo = use_stereo;
 
+    if (gameScene->audioEnabled)
+    {
+        float volume = use_stereo ? 0.2f : 0.4f;
+        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
+    }
+
     if (CB_App->soundSource != NULL)
     {
         playdate->sound->removeSource(CB_App->soundSource);
