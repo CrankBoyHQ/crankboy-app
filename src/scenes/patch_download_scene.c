@@ -1307,7 +1307,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
                 pop_context(pds);
             }
         }
-        else if (CB_App->buttons_pressed & kButtonB)
+        else if ((CB_App->buttons_pressed & kButtonB) && !pds->http_in_progress)
         {
             if (pds->context_depth == 1)
             {
