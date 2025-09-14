@@ -1207,13 +1207,17 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
     else if (gb_err == GB_INVALID_READ)
     {
+        #if 0
         if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid read: addr %04x", val);
+        #endif
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
+        #if 0
         if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid write: addr %04x", val);
+        #endif
     }
     else
     {

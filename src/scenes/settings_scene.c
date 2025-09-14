@@ -239,9 +239,10 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     preferences_ui_sounds = global_ui_sounds;
 
     CB_Scene_refreshMenu(scene);
+    int t_since = (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
 
     if (last_selected_preference &&
-        playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <=
+        t_since <=
             TIME_FORGET_LAST_PREFERENCE)
     {
         int i = 0;
@@ -249,6 +250,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         {
             if (entry->pref_var == last_selected_preference)
             {
+                playdate->system->logToConsole("Last selected option: %p; t=%d", last_selected_preference, t_since);
                 settingsScene->cursorIndex = i;
                 break;
             }

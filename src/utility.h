@@ -120,6 +120,8 @@ int cb_listfiles(
     int showhidden, FileOptions fopts
 );
 
+char* strstr_i(const char* haystack, const char* needle);
+
 int cb_file_exists(const char* path, FileOptions fopts);
 
 bool cb_directory_exists_and_nonempty_or_file_exists(const char* path);
