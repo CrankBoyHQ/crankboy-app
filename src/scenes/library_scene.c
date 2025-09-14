@@ -931,7 +931,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             libraryScene->update_modal_shown = true;
 
             char* modal_result = aprintf(
-                "CrankBoy Update!\n\nNew: %s - Installed: %s\n\n%s", update_info->version,
+                "CrankBoy Update!\n\nNew: %s\nInstalled: %s\n\n%s", update_info->version,
                 get_current_version(), update_info->url
             );
 
