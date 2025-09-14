@@ -59,19 +59,37 @@ SECTIONS
 		/* code to copy to TCM, seemingly runs faster */
 		. = ALIGN(0x1000);
 		. += 0xDE6;
-        __itcm_start = .;
-		*(.itcm.short)
-		*(.itcm)
-		. = ALIGN(32);
-		*(.itcm.draw)
-		. = ALIGN(32); . += 0x12;
-		*(.itcm.fb)
-		. = ALIGN(32); . += 0x6;
-		*(.itcm.cb)
-		. = ALIGN(32);
-		*(.itcm.micro)
-	    *(.itcm.*)
-        __itcm_end = .;
+        __itcm_dmg_start = .;
+			*(.itcm.dmg.short)
+			*(.itcm.dmg)
+			. = ALIGN(32);
+			*(.itcm.dmg.draw)
+			. = ALIGN(32); . += 0x12;
+			*(.itcm.dmg.fb)
+			. = ALIGN(32); . += 0x6;
+			*(.itcm.dmg.cb)
+			. = ALIGN(32);
+			*(.itcm.dmg.micro)
+			*(.itcm.dmg.hdma)
+			*(.itcm.dmg.*)
+        __itcm_dmg_end = .;
+		
+		. = ALIGN(0x1000);
+		. += 0xDE6;
+        __itcm_cgb_start = .;
+			*(.itcm.cgb.short)
+			*(.itcm.cgb)
+			. = ALIGN(32);
+			*(.itcm.cgb.draw)
+			. = ALIGN(32); . += 0x12;
+			*(.itcm.cgb.fb)
+			. = ALIGN(32); . += 0x6;
+			*(.itcm.cgb.cb)
+			. = ALIGN(32);
+			*(.itcm.cgb.micro)
+			*(.itcm.cgb.hdma)
+			*(.itcm.cgb.*)
+        __itcm_cgb_end = .;
 
 		. = ALIGN(0x1000);
 		__audio_start__ = .;
