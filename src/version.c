@@ -161,6 +161,7 @@ static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
             if (should_write)
             {
                 char* json_string;
+                // FIXME: use json formatting library
                 playdate->system->formatString(
                     &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":true}",
                     newVersionInfo->name, newVersionInfo->download
@@ -305,6 +306,7 @@ void mark_update_as_seen(void)
         if (jv_version.type == kJSONString && jv_url.type == kJSONString)
         {
             char* json_string;
+            // FIXME: should use the existing write-json functionality.
             playdate->system->formatString(
                 &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":false}",
                 jv_version.data.stringval, jv_url.data.stringval
@@ -312,6 +314,7 @@ void mark_update_as_seen(void)
             if (json_string)
             {
                 cb_write_entire_file(UPDATE_INFO_PATH, json_string, strlen(json_string));
+                CB_App->shouldCheckUpdateInfo = true;
                 cb_free(json_string);
             }
         }

@@ -311,6 +311,7 @@ void CB_init(void)
 
     if (!CB_App->bundled_rom)
     {
+        possibly_check_for_updates();
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
         parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
