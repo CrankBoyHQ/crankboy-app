@@ -10,7 +10,7 @@
 #include "utility.h"
 #include "revcheck.h"
 
-typedef unsigned romaddr_t;
+typedef uint32_t romaddr_t;
 typedef u16 addr16_t;
 
 extern gb_s* script_gb;
@@ -226,9 +226,14 @@ static struct ScriptBreakpointDef
         for (struct ScriptBreakpointDef* def = script_breakpoints; def; def = def->next) \
         {                                                                                \
             if (def->rom_addrs[configuration] != (romaddr_t) - 1)                        \
+            { \
+                unsigned bank = def->rom_addrs[configuration] / 0x4000; \
+                unsigned addr = def->rom_addrs[configuration] % 0x4000; \
+                romaddr_t romoffset = ((bank & gb->num_rom_banks_mask) * 0x4000) | addr;  \
                 c_script_add_hw_breakpoint(                                              \
-                    script_gb, def->rom_addrs[configuration], (CS_OnBreakpoint)def->bp   \
+                    script_gb, romoffset, (CS_OnBreakpoint)def->bp                       \
                 );                                                                       \
+            } \
         }                                                                                \
     } while (0)
 

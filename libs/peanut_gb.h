@@ -299,6 +299,9 @@ typedef struct PGB_VERSIONED(chan) chan;
 
 __core unsigned int __gb_step_cpu(gb_s* gb);
 
+void gb_step_cpu(gb_s* gb);
+void gb_run_frame(gb_s* gb);
+
 #ifdef PGB_IMPL
 
 #include "minigb_apu/minigb_apu.h"
@@ -6245,5 +6248,12 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
     }
 }
 
-#endif
+// -----------------------------
+			
+void gb_step_cpu(gb_s* gb)
+{
+    __gb_step_cpu(gb);
+}
+
+#endif  // PGB_IMPL
 #endif  // PEANUT_GB_H
