@@ -355,32 +355,45 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 }
 
 #ifdef ITCM_CORE
+void* core_itcm_reloc = NULL;
+intptr_t core_itcm_offset = 0;
+
 extern char __itcm_dmg_start[];
 extern char __itcm_dmg_end[];
+extern char __itcm_cgb_start[];
+extern char __itcm_cgb_end[];
+
 extern void* core_itcm_reloc;
-#define itcm_core_size ((uintptr_t)&__itcm_dmg_end - (uintptr_t)&__itcm_dmg_start)
 #define ITCM_CORE_FN(fn) \
     ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_dmg_start + core_itcm_reloc))
-void itcm_core_init(void);
 #else
 #define ITCM_CORE_FN(fn) fn
 #endif
 
 #if ITCM_CORE
-void* core_itcm_reloc = NULL;
 
-__section__(".rare") void itcm_core_init()
+__section__(".rare") void itcm_core_init(bool cgb)
 {
+    void* itcm_start = cgb
+        ? __itcm_cgb_start
+        : __itcm_dmg_start;
+    
+    void* itcm_end = cgb
+        ? __itcm_cgb_end
+        : __itcm_dmg_end;
+        
+    unsigned core_size = itcm_end - itcm_start;
+    
     // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
     if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
-        core_itcm_reloc = (void*)&__itcm_dmg_start;
+        core_itcm_reloc = itcm_start;
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
 
-    if (core_itcm_reloc == (void*)&__itcm_dmg_start)
+    if (core_itcm_reloc == itcm_start)
         core_itcm_reloc = NULL;
 
     if (core_itcm_reloc != NULL)
@@ -390,20 +403,20 @@ __section__(".rare") void itcm_core_init()
     int MARGIN = 4;
 
     // make region to copy instructions to; ensure it has same cache alignment
-    core_itcm_reloc = dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_dmg_start);
+    core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, itcm_start);
     DTCM_VERIFY();
-    memcpy(core_itcm_reloc, __itcm_dmg_start, itcm_core_size);
+    memcpy(core_itcm_reloc, itcm_start, core_size);
     DTCM_VERIFY();
     playdate->system->logToConsole(
-        "itcm start: %x, end %x: run_frame: %x", &__itcm_dmg_start, &__itcm_dmg_end, &gb_run_frame
+        "itcm start: %x, end %x: run_frame: %x", itcm_start, itcm_end, &gb_run_frame
     );
     playdate->system->logToConsole(
-        "core is 0x%X bytes, relocated at 0x%X", itcm_core_size, core_itcm_reloc
+        "core is 0x%X bytes, relocated at 0x%X", core_size, core_itcm_reloc
     );
     playdate->system->clearICache();
 }
 #else
-void itcm_core_init(void)
+void itcm_core_init(bool cgb)
 {
 }
 #endif
@@ -663,18 +676,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
     gb_s* gb;
     static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available
-    if (dtcm_enabled())
-    {
-        gb = dtcm_alloc(sizeof(gb_s));
-    }
-    else
-    {
-        gb = &gb_fallback;
-    }
+    gb = &gb_fallback;
 
     DTCM_VERIFY();
-
-    itcm_core_init();
 
     memset(gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
@@ -753,6 +757,15 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
                 "%s:%i: Error initializing gb context", __FILE__, __LINE__
             );
         }
+        
+        if (dtcm_enabled())
+        {
+            gb = dtcm_alloc(sizeof(gb_s));
+            memcpy(gb, &gb_fallback, sizeof(gb_s));
+            context->gb = gb;
+        }
+        
+        itcm_core_init(false);
     }
     else
     {
@@ -1189,13 +1202,17 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
     else if (gb_err == GB_INVALID_READ)
     {
+        #if 0
         if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid read: addr %04x", val);
+        #endif
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
+        #if 0
         if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid write: addr %04x", val);
+        #endif
     }
     else
     {

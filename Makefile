@@ -34,7 +34,7 @@ VPATH += libs
 SRC += $(wildcard src/cscripts/*.c)
 
 # List C source files here
-SRC += src/scenes/patch_download_scene.c
+SRC += src/scenes/game_scene.c
 SRC += src/app.c
 SRC += src/serial.c
 SRC += src/array.c
@@ -46,11 +46,11 @@ SRC += src/pgmusic.c
 SRC += src/preferences.c
 SRC += src/revcheck.c
 SRC += src/scene.c
+SRC += src/scenes/patch_download_scene.c
 SRC += src/scenes/cover_cache_scene.c
 SRC += src/scenes/credits_scene.c
 SRC += src/scenes/file_copying_scene.c
 SRC += src/scenes/game_scanning_scene.c
-SRC += src/scenes/game_scene.c
 SRC += src/scenes/image_conversion_scene.c
 SRC += src/scenes/info_scene.c
 SRC += src/scenes/library_scene.c
