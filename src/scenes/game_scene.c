@@ -355,12 +355,12 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 }
 
 #ifdef ITCM_CORE
-extern char __itcm_start[];
-extern char __itcm_end[];
+extern char __itcm_dmg_start[];
+extern char __itcm_dmg_end[];
 extern void* core_itcm_reloc;
-#define itcm_core_size ((uintptr_t)&__itcm_end - (uintptr_t)&__itcm_start)
+#define itcm_core_size ((uintptr_t)&__itcm_dmg_end - (uintptr_t)&__itcm_dmg_start)
 #define ITCM_CORE_FN(fn) \
-    ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_start + core_itcm_reloc))
+    ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_dmg_start + core_itcm_reloc))
 void itcm_core_init(void);
 #else
 #define ITCM_CORE_FN(fn) fn
@@ -375,12 +375,12 @@ __section__(".rare") void itcm_core_init()
     if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
-        core_itcm_reloc = (void*)&__itcm_start;
+        core_itcm_reloc = (void*)&__itcm_dmg_start;
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
 
-    if (core_itcm_reloc == (void*)&__itcm_start)
+    if (core_itcm_reloc == (void*)&__itcm_dmg_start)
         core_itcm_reloc = NULL;
 
     if (core_itcm_reloc != NULL)
@@ -390,12 +390,12 @@ __section__(".rare") void itcm_core_init()
     int MARGIN = 4;
 
     // make region to copy instructions to; ensure it has same cache alignment
-    core_itcm_reloc = dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_start);
+    core_itcm_reloc = dtcm_alloc_aligned(itcm_core_size + MARGIN, (uintptr_t)&__itcm_dmg_start);
     DTCM_VERIFY();
-    memcpy(core_itcm_reloc, __itcm_start, itcm_core_size);
+    memcpy(core_itcm_reloc, __itcm_dmg_start, itcm_core_size);
     DTCM_VERIFY();
     playdate->system->logToConsole(
-        "itcm start: %x, end %x: run_frame: %x", &__itcm_start, &__itcm_end, &gb_run_frame
+        "itcm start: %x, end %x: run_frame: %x", &__itcm_dmg_start, &__itcm_dmg_end, &gb_run_frame
     );
     playdate->system->logToConsole(
         "core is 0x%X bytes, relocated at 0x%X", itcm_core_size, core_itcm_reloc
