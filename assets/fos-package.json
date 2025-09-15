@@ -1,0 +1,8 @@
+{
+    "path": "./CrankBoy-Device.zip",
+    "installpath": [{
+        "src": "CrankBoy.pdx/",
+        "dst": "/System/CrankBoy.pdx/"
+    }],
+    "icon": "./icon.pdi"
+}
