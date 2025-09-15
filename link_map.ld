@@ -59,20 +59,20 @@ SECTIONS
 		/* code to copy to TCM, seemingly runs faster */
 		. = ALIGN(0x1000);
 		. += 0xDE6;
-        __itcm_dmg_start = .;
-			*(.itcm.dmg.short)
-			*(.itcm.dmg)
+        __itcm_start = .;
+			*(.itcm.short)
+			*(.itcm)
 			. = ALIGN(32);
-			*(.itcm.dmg.draw)
+			*(.itcm.draw)
 			. = ALIGN(32); . += 0x12;
-			*(.itcm.dmg.fb)
+			*(.itcm.fb)
 			. = ALIGN(32); . += 0x6;
-			*(.itcm.dmg.cb)
+			*(.itcm.cb)
 			. = ALIGN(32);
-			*(.itcm.dmg.micro)
-			*(.itcm.dmg.hdma)
-			*(.itcm.dmg.*)
-        __itcm_dmg_end = .;
+			*(.itcm.micro)
+			*(.itcm.hdma)
+			*(.itcm.*)
+        __itcm_end = .;
 		
 		. = ALIGN(0x1000);
 		. += 0xDE6;

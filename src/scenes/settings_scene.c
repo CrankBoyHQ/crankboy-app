@@ -239,9 +239,10 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     preferences_ui_sounds = global_ui_sounds;
 
     CB_Scene_refreshMenu(scene);
+    int t_since = (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
 
     if (last_selected_preference &&
-        playdate->system->getSecondsSinceEpoch(NULL) - last_selected_preference_time <=
+        t_since <=
             TIME_FORGET_LAST_PREFERENCE)
     {
         int i = 0;
@@ -249,6 +250,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         {
             if (entry->pref_var == last_selected_preference)
             {
+                playdate->system->logToConsole("Last selected option: %p; t=%d", last_selected_preference, t_since);
                 settingsScene->cursorIndex = i;
                 break;
             }
@@ -322,37 +324,31 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
         {
             if (game_settings_path)
             {
-                result = (int)(intptr_t)call_with_main_stack_2(
-                    preferences_save_to_disk, game_settings_path,
-                    PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+                result = preferences_save_to_disk(
+                    game_settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
                 );
             }
         }
         else
         {
-            result = (int)(intptr_t)call_with_main_stack_2(
-                preferences_save_to_disk, CB_globalPrefsPath, 0
-            );
+            result = preferences_save_to_disk(CB_globalPrefsPath, 0);
 
             if (result && game_settings_path)
             {
-                result = (int)(intptr_t)call_with_main_stack_2(
-                    preferences_save_to_disk, game_settings_path, ~PREFBIT_per_game
-                );
+                result = preferences_save_to_disk(game_settings_path, ~PREFBIT_per_game);
             }
         }
     }
     else if (game_settings_path)
     {
         if (preferences_per_game)
-            result = (int)(intptr_t)call_with_main_stack_2(
-                preferences_save_to_disk, game_settings_path,
-                prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
+            result = preferences_save_to_disk(
+                game_settings_path, prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
             );
         else
         {
-            result = (int)(intptr_t)call_with_main_stack_2(
-                preferences_save_to_disk, CB_globalPrefsPath,
+            result = preferences_save_to_disk(
+                CB_globalPrefsPath,
 
                 PREFBIT_per_game |
                     PREFBIT_save_state_slot
@@ -364,16 +360,14 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             if (result)
                 // also save that preferences are global in the per-game script,
                 // and also the save slot
-                result = (int)(intptr_t)call_with_main_stack_2(
-                    preferences_save_to_disk, game_settings_path,
-                    ~(PREFBIT_per_game | PREFBIT_save_state_slot)
+                result = preferences_save_to_disk(
+                    game_settings_path, ~(PREFBIT_per_game | PREFBIT_save_state_slot)
                 );
         }
     }
     else
     {
-        result =
-            (int)(intptr_t)call_with_main_stack_2(preferences_save_to_disk, CB_globalPrefsPath, 0);
+        result = preferences_save_to_disk(CB_globalPrefsPath, 0);
     }
 
     if (!result)
@@ -469,6 +463,36 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     update_thumbnail(settingsScene);
 }
 
+static void settings_post_action_lock_button(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
+)
+{
+    static bool has_warned = false;
+    if (prev_val != PREF_BUTTON_NONE)
+        has_warned = true;
+    if (has_warned)
+        return;
+
+    if (preferences_lock_button != PREF_BUTTON_NONE)
+    {
+        has_warned = true;
+
+        CB_Modal* modal = CB_Modal_new(
+            "Note: holding the lock button for 5 seconds will reboot your Playdate.\n \nAlso note: "
+            "with lock button override enabled, you will not be able to lock the Playdate normally "
+            "while in game.\nInstead, press ⊙ to open the menu, then lock as normal.",
+            NULL, NULL, NULL
+        );
+
+        modal->height = 202;
+        modal->width = 380;
+        modal->margin = 12;
+        modal->warning = CB_MODAL_WARNING_TOP;
+
+        CB_presentModal(modal->scene);
+    }
+}
+
 static void settings_post_action_per_game(
     OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
 )
@@ -491,9 +515,7 @@ static void settings_post_action_per_game(
     {
         // write per - game prefs to disk
         preferences_per_game = 1;
-        call_with_main_stack_2(
-            preferences_save_to_disk, game_settings_path, prefs_locked_by_script
-        );
+        preferences_save_to_disk(game_settings_path, prefs_locked_by_script);
 
         preferences_merge_from_disk(CB_globalPrefsPath);
         preferences_per_game = 0;
@@ -501,9 +523,8 @@ static void settings_post_action_per_game(
     else if (preferences_per_game && !prev_val)
     {
         // write global prefs to disk
-        call_with_main_stack_2(
-            preferences_save_to_disk, CB_globalPrefsPath,
-            PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
+        preferences_save_to_disk(
+            CB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
         );
 
         preferences_set_defaults();
@@ -1109,6 +1130,23 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .header = 1
     };
 
+    // lock button override.
+    // Only available if launched with system privileges. (e.g. through FunnyLoader)
+    // Since this is still experimental, do not show this option at all unless system privileges are detected.
+    if (CB_App->hasSystemAccess)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Lock Override",
+            .values = gb_button_labels,
+            .description =
+                "Playdate's lock button\ncan be used for\nstart or select.\n \nRequires system access\n(i.e. launch CrankBoy\nvia FunnyLoader)\n \n"
+                "Only applies input from\nthe moment the lock\nbutton is pressed;\nholding the lock button\nhas no effect.",
+                .pref_var = &preferences_lock_button,
+                .max_value = 3,
+                .on_change = settings_post_action_lock_button
+        };
+    }
+
     // overclocking
     entries[++i] = (OptionsMenuEntry){
         .name = "Overclock",
@@ -1123,17 +1161,22 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    // Disable Auto Lock
+    // CGB support
     entries[++i] = (OptionsMenuEntry){
-        .name = "Disable auto lock",
+        .name = "CGB support",
         .values = off_on_labels,
-        .description = "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This only applies\nwhile a game is running.",
-        .pref_var = &preferences_disable_autolock,
-        .max_value = 2,
-        .on_press = NULL,
-        .rebuild_when_changed = 0,
-        .on_change = NULL,
+        .description =
+            "Experimental mode\nfor emulating\nGame Boy Color.\nExpect glitches.\n \nOnly applies if game\nis CGB-compatible."
+        ,
+        .pref_var = &preferences_experimental_cgb_mode,
+        .max_value = 3,
+        .on_press = NULL
     };
+
+    if (gameScene && !gameScene->cgb_compatible)
+    {
+        entries[i].locked = true;
+    }
 
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
@@ -1278,6 +1321,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
+
+    // Disable Auto Lock
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Disable auto lock",
+        .values = off_on_labels,
+        .description = "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This only applies\nwhile a game is running.",
+        .pref_var = &preferences_disable_autolock,
+        .max_value = 2,
+        .on_press = NULL,
+        .rebuild_when_changed = 0,
+        .on_change = NULL,
+    };
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel

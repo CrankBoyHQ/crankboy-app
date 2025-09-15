@@ -720,6 +720,8 @@ __section__(".rare") static void CB_LibraryScene_event(
 
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
+    CB_App->shouldCheckUpdateInfo = true;
+    
     setCrankSoundsEnabled(true);
 
     if (!has_loaded_initial_index)
@@ -923,9 +925,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Check for a pending update message when the library is active.
-    if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown)
+    if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown && CB_App->shouldCheckUpdateInfo)
     {
         PendingUpdateInfo* update_info = get_pending_update();
+        CB_App->shouldCheckUpdateInfo = false;
         if (update_info)
         {
             libraryScene->update_modal_shown = true;

@@ -76,6 +76,57 @@ const char* get_pdboot_name_and_version()
 }
 #endif
 
+static int setHasSystemPrivileges(lua_State* L)
+{
+    CB_App->hasSystemAccess = true;
+    playdate->system->logToConsole("Launched with system privileges");
+    return 0;
+}
+
+static int onSystemDeviceLock(lua_State* L)
+{
+    bool shouldAbortLock = false;
+    
+    if (!CB_App->currentlyPaused)
+    {
+        // check if scene wants to abort the lock
+        if (CB_App->scene->lock && CB_App->scene->lock(CB_App->scene->managedObject))
+        {
+            shouldAbortLock = true;
+        }
+    }
+    
+    playdate->lua->pushBool(shouldAbortLock);
+    return 1;
+}
+
+static bool useLua(void)
+{
+    if (!cb_file_exists("main.pdz", kFileRead))
+    {
+        playdate->system->logToConsole("main.pdz not found.");
+        return false;
+    }
+    
+    // attempt to access system file to determine if we have system access
+    if (cb_file_exists("/System/Launcher.pdx/pdxinfo", kFileRead | kFileReadData))
+    {
+        return true;
+    }
+    if (cb_file_exists("/System/Data/global.settings", kFileRead | kFileReadData))
+    {
+        return true;
+    }
+    
+    return false;
+}
+
+static void initLua(void)
+{
+    playdate->lua->addFunction(setHasSystemPrivileges, "crankboy.setHasSystemPrivileges", NULL);
+    playdate->lua->addFunction(onSystemDeviceLock, "crankboy.onSystemDeviceLock", NULL);
+}
+
 int eventHandlerShim(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 
 __section__(".text.main") DllExport
@@ -84,6 +135,15 @@ __section__(".text.main") DllExport
     eventHandler_pdnewlib(pd, event, arg);
 
     DTCM_VERIFY_DEBUG();
+    
+    if (event == kEventPause)
+    {
+        CB_App->currentlyPaused = true;
+    }
+    if (event == kEventResume)
+    {
+        CB_App->currentlyPaused = false;
+    }
 
     if (event != kEventInit)
     {
@@ -122,9 +182,17 @@ __section__(".text.main") DllExport
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
-
         CB_init();
-
+        
+        if (!useLua())
+        {
+            pd->system->setUpdateCallback(update, pd);
+        }
+    }
+    else if (event == kEventInitLua)
+    {
+        initLua();
+        
         pd->system->setUpdateCallback(update, pd);
     }
     else if (event == kEventTerminate)

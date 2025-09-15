@@ -127,6 +127,17 @@ typedef struct CB_Application
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
 
+    // can use restricted playdate functionality.
+    bool hasSystemAccess : 1;
+
+    // true when menu is open
+    bool currentlyPaused : 1;
+
+    // should check the latest-update as saved on the disk
+    bool shouldCheckUpdateInfo : 1;
+
+    char* directory;
+
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
     // - library view is omitted

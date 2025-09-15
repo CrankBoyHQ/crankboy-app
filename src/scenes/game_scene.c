@@ -6,6 +6,17 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
+#include <stdbool.h>
+#include "pd_api.h"
+
+unsigned game_picture_x_offset;
+unsigned game_picture_y_top;
+unsigned game_picture_y_bottom;
+unsigned game_picture_scaling;
+LCDColor game_picture_background_color;
+bool game_hide_indicator;
+bool gbScreenRequiresFullRefresh;
+
 #define PGB_IMPL
 #include "game_scene.h"
 
@@ -26,7 +37,6 @@
 #include "settings_scene.h"
 
 #include <stdatomic.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -147,6 +157,7 @@ static void CB_GameScene_menu(void* object);
 static void CB_GameScene_generateBitmask(void);
 static void CB_GameScene_free(void* object);
 static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
+static bool CB_GameScene_lock(void* object);
 
 static uint8_t* read_rom_to_ram(
     const char* filename, CB_GameSceneError* sceneError, size_t* o_rom_size
@@ -164,14 +175,6 @@ static void gb_save_to_disk(gb_s* gb);
 
 static const char* startButtonText = "start";
 static const char* selectButtonText = "select";
-
-unsigned game_picture_x_offset;
-unsigned game_picture_y_top;
-unsigned game_picture_y_bottom;
-unsigned game_picture_scaling;
-LCDColor game_picture_background_color;
-bool game_hide_indicator;
-bool gbScreenRequiresFullRefresh;
 
 static int last_scy = -1;
 static uint8_t CB_dither_lut_row0[256];
@@ -536,6 +539,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     scene->menu = CB_GameScene_menu;
     scene->free = CB_GameScene_free;
     scene->event = CB_GameScene_event;
+    scene->lock = CB_GameScene_lock;
     scene->use_user_stack = 0;  // user stack is slower
 
     scene->preferredRefreshRate = 30;
@@ -1173,12 +1177,12 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
     else if (gb_err == GB_INVALID_READ)
     {
-        if (!preferences_experimental_gbc_mode)
+        if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid read: addr %04x", val);
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
-        if (!preferences_experimental_gbc_mode)
+        if (!preferences_experimental_cgb_mode)
             playdate->system->logToConsole("Invalid write: addr %04x", val);
     }
     else
@@ -1891,6 +1895,26 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.joypad_bits.start = gb_joypad_start_is_active_low;
         context->gb->direct.joypad_bits.select = gb_joypad_select_is_active_low;
+        
+        if (gameScene->lock_button_hold_frames_remaining > 0)
+        {
+            --gameScene->lock_button_hold_frames_remaining;
+            switch (preferences_lock_button)
+            {
+            case PREF_BUTTON_START:
+                context->gb->direct.joypad_bits.start = 0;
+                break;
+            case PREF_BUTTON_SELECT:
+                context->gb->direct.joypad_bits.select = 0;
+                break;
+            case PREF_BUTTON_START_SELECT:
+                context->gb->direct.joypad_bits.start = 0;
+                context->gb->direct.joypad_bits.select = 0;
+                break;
+            default:
+                break;
+            }
+        }
 
         context->gb->direct.joypad_bits.a =
             !((current_pd_buttons & kButtonA) || gameScene->crank_turbo_a_active);
@@ -2532,11 +2556,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             gb_s* gb = context->gb;
 
             gb->direct.ignore_cgb_check = true;
+            
+            // ugh.
+            void* stored_prefs = preferences_store_subset(-1);
+            preferences_skip_cgb_confirm = true;
 
             enum gb_init_error_e gb_ret = gb_init(
                 gb, context->wram, context->vram, gb->lcd, context->rom, context->rom_size,
                 gb_error, context
             );
+            
+            preferences_restore_subset(stored_prefs);
 
             if (gb_ret == GB_INIT_NO_ERROR)
             {
@@ -3062,14 +3092,19 @@ static void CB_GameScene_menu(void* object)
     }
     if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
     {
-        playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
+        // not sure what might happen if some settings are changed in an unusual game scene state.
+        // best not find out.
+        if (gameScene->state == CB_GameSceneStateLoaded)
+        {
+            playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
+        }
     }
     else
     {
         playdate->system->addMenuItem("About", CB_showCredits, gameScene);
     }
 
-    if (game_menu_button_input_enabled)
+    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded)
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
             "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
@@ -3493,6 +3528,21 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     return success;
 }
 
+__section__(".rare") static
+bool CB_GameScene_lock(void* object)
+{
+    CB_GameScene* gameScene = object;
+    CB_GameSceneContext* context = gameScene->context;
+
+    if (preferences_lock_button != PREF_BUTTON_NONE)
+    {
+        gameScene->lock_button_hold_frames_remaining = 8;
+        return true;
+    }
+
+    return false;
+}
+
 __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
     CB_GameScene* gameScene = object;
@@ -3501,11 +3551,15 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     switch (event)
     {
     case kEventLock:
+        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE) return;
+        // fallthrough
     case kEventPause:
         audioGameScene = NULL;
 
         // Re-enable auto-lock when the system menu is open.
         playdate->system->setAutoLockDisabled(0);
+        
+        gameScene->lock_button_hold_frames_remaining = 0;
 
         // fall-through
     case kEventTerminate:
@@ -3672,6 +3726,26 @@ static void CB_GameScene_free(void* object)
     dtcm_deinit();
 
     DTCM_VERIFY();
+}
+
+__section__(".rare") void __gb_dump_vram(gb_s* gb)
+{
+    playdate->system->logToConsole("dumping vram to vram.bin");
+
+    // reverse byte order of appropriate bytes
+    for (int pass = 0; pass <= 1; ++pass)
+    {
+        for (int b = 0; b <= gb->is_cgb_mode; ++b)
+        {
+            for (int i = 0; i < 0x1800; ++i)
+            {
+                gb->vram[i | (0x2000 * b)] = reverse_bits_u8(gb->vram[i | (0x2000 * b)]);
+            }
+        }
+
+        if (pass == 0)
+            call_with_main_stack_3(cb_write_entire_file, "vram.bin", gb->vram, (gb->is_cgb_mode) ? VRAM_SIZE_CGB : VRAM_SIZE);
+    }
 }
 
 __section__(".rare") void __gb_on_breakpoint(gb_s* gb, int breakpoint_number)

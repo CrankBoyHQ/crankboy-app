@@ -107,6 +107,10 @@ typedef struct CB_GameScene
     bool save_state_requires_warning : 1;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
+    
+    // from ROM header
+    bool dmg_compatible : 1;
+    bool cgb_compatible : 1;
 
     unsigned int rtc_time;
     uint16_t rtc_seconds_to_catch_up;
@@ -130,6 +134,8 @@ typedef struct CB_GameScene
     LCDBitmap* menuImage;
     int button_hold_mode;  // 0: Select, 1: None, 2: Start
     int button_hold_frames_remaining;
+    
+    int lock_button_hold_frames_remaining;
 
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;

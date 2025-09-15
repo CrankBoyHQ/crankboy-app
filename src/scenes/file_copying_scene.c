@@ -15,6 +15,12 @@
 void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt);
 void CB_FileCopyingScene_free(void* object);
 
+typedef struct
+{
+    char* full_path;
+    char* filename;
+} FileToCopy;
+
 struct list_files_ud
 {
     CB_FileCopyingScene* scene;

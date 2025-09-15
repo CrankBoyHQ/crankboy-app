@@ -19,15 +19,17 @@ PREF(dither_stable, (pd_rev != PD_REV_A))
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)
 PREF(dynamic_level, 5)
 
-// behaviour
+// input
 PREF(crank_mode, CRANK_MODE_START_SELECT)
 PREF(crank_down_action, 0)
 PREF(crank_undock_button, PREF_BUTTON_NONE)
 PREF(crank_dock_button, PREF_BUTTON_NONE)
+PREF(lock_button, PREF_BUTTON_NONE)
+
+// behaviour
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))
 PREF(disable_autolock, 0)
-PREF(script_has_prompted, false)  // (not a real setting)
 
 // library
 PREF(display_name_mode, 0)  // 0: Short, 1: Detailed, 2: Filename
@@ -41,7 +43,8 @@ PREF(itcm, (pd_rev == PD_REV_A))
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
-PREF(experimental_gbc_mode, 0)
+PREF(experimental_cgb_mode, 0)
 PREF(skip_cgb_confirm, false)
+PREF(script_has_prompted, false)  // (not a real setting)
 
 #undef PREF

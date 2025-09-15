@@ -425,9 +425,24 @@ __section__(".text.cb") static void __gb_update_tac(gb_s* gb)
 
 __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
-    int32_t offset = (gb->selected_rom_bank - 1) * ROM_BANK_SIZE;
+    // swappable cartridge ROM bank
+    int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
 
     gb->selected_bank_addr = gb->gb_rom + offset;
+
+    // swappable cgb wram bank
+    int wram_bank = 1;
+    if (gb->is_cgb_mode && gb->cgb_wram_bank >= 2)
+    {
+        wram_bank = gb->cgb_wram_bank;
+    }
+    gb->wram_base[1] = gb->wram - WRAM_1_ADDR + 0x1000*wram_bank;
+
+    // swappable cgb vram bank
+    int vram_bank = 0;
+    if (gb->is_cgb_mode)
+        vram_bank = gb->cgb_vram_bank;
+    gb->vram_base = gb->vram - VRAM_ADDR + VRAM_SIZE * vram_bank;
 }
 
 __section__(".text.cb") static void __gb_update_zero_bank_addr(gb_s* gb)
@@ -464,7 +479,8 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb
 
 __section__(".text.cb") static void __gb_init_memory_pointers(gb_s* gb)
 {
-    gb->wram_base = gb->wram - WRAM_0_ADDR;
+    gb->wram_base[0] = gb->wram - WRAM_0_ADDR;
+    gb->wram_base[1] = gb->wram - WRAM_0_ADDR + 0x1000;
     gb->echo_ram_base = gb->wram - ECHO_ADDR;
     gb->vram_base = gb->vram - VRAM_ADDR;
 }
@@ -759,10 +775,10 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         return 0xFF;
 
     case 0xC:
-        return gb->wram_base[addr];
+        return gb->wram_base[0][addr];
 
     case 0xD:
-        return gb->wram_base[addr];
+        return gb->wram_base[1][addr];
 
     case 0xE:
         return gb->echo_ram_base[addr];
@@ -1280,11 +1296,11 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         return;
 
     case 0xC:
-        gb->wram_base[addr] = val;
+        gb->wram_base[0][addr] = val;
         return;
 
     case 0xD:
-        gb->wram_base[addr] = val;
+        gb->wram_base[1][addr] = val;
         return;
 
     case 0xE:
@@ -1612,7 +1628,7 @@ __core_section("short") static uint16_t __gb_read16(gb_s* restrict gb, u16 addr)
     // Fast path for WRAM
     if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
     {
-        void* ptr = &gb->wram_base[addr];
+        void* ptr = &gb->wram_base[0][addr];
         return *(uint16_t*)ptr;
     }
     // Fast path for HRAM
@@ -1633,7 +1649,7 @@ __core_section("short") static void __gb_write16(gb_s* restrict gb, u16 addr, u1
     // Fast path for WRAM
     if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
     {
-        void* ptr = &gb->wram_base[addr];
+        void* ptr = &gb->wram_base[0][addr];
         *(uint16_t*)ptr = v;
         return;
     }
@@ -5696,7 +5712,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
 
-    if (preferences_experimental_gbc_mode)
+    if (preferences_experimental_cgb_mode)
     {
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
@@ -5967,7 +5983,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     const uint16_t cgb_flag_location = 0x0143;
     const uint8_t cgb_flag = gb->gb_rom[cgb_flag_location];
 
-    if (!preferences_experimental_gbc_mode && (gb->gb_rom[0x0143] == 0xC0) &&
+    if (!preferences_experimental_cgb_mode && (gb->gb_rom[0x0143] == 0xC0) &&
         !gb->direct.ignore_cgb_check)
     {
         return GB_INIT_CARTRIDGE_UNSUPPORTED;
@@ -5997,7 +6013,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
 
-    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_gbc_mode;
+    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_cgb_mode;
 
     gb->is_mbc1m = __gb_detect_mbc1m(gb);
     if (gb->is_mbc1m)

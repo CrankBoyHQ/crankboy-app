@@ -28,6 +28,7 @@ typedef struct CB_Scene
     void (*menu)(void* object);
     void (*free)(void* object);
     void (*event)(void* object, PDSystemEvent event, uint32_t arg);
+    bool (*lock)(void* object);
 } CB_Scene;
 
 CB_Scene* CB_Scene_new(void);
