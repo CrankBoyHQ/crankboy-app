@@ -402,6 +402,30 @@ float cb_easeInOutQuad(float x)
     return (x < 0.5f) ? 2 * x * x : 1 - powf(-2 * x + 2, 2) * 0.5f;
 }
 
+#include <ctype.h>
+
+char* strstr_i(const char* haystack, const char* needle)
+{
+    if (!*needle) return (char*)haystack;
+
+    for (const char* h = haystack; *h; h++) {
+        const char* h1 = h;
+        const char* n1 = needle;
+
+        while (*h1 && *n1 && tolower((unsigned char)*h1) == tolower((unsigned char)*n1)) {
+            h1++;
+            n1++;
+        }
+
+        if (!*n1) {
+            return (char*)h;
+        }
+    }
+
+    return NULL;
+}
+
+
 int cb_compare_games_by_sort_name(const void* a, const void* b)
 {
     CB_Game* gameA = *(CB_Game**)a;
@@ -459,7 +483,7 @@ char* cb_find_cover_art_path_from_list(
             strcmp(cover_basename, rom_basename_no_ext) == 0)
         {
             char* found_path = NULL;
-            playdate->system->formatString(&found_path, "%s/%s.pdi", CB_coversPath, cover_basename);
+            playdate->system->formatString(&found_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_basename);
             return found_path;
         }
     }

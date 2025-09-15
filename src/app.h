@@ -132,8 +132,6 @@ typedef struct CB_Application
 
     // true when menu is open
     bool currentlyPaused : 1;
-    
-    char* directory;
 
     // should check the latest-update as saved on the disk
     bool shouldCheckUpdateInfo : 1;

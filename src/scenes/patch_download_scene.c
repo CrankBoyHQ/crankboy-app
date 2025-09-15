@@ -10,6 +10,7 @@
 #include "patches_scene.h"
 #include "pd_api.h"
 #include "settings_scene.h"
+#include "utility.h"
 
 #define HEADER_HEIGHT 18
 #define SCROLL_RATE 2.3f
@@ -606,6 +607,31 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
     cb_free(pud);
 }
 
+static bool hash_match(json_value jhack, CB_Game* game)
+{
+    if (!game || !game->names) return false;
+    
+    json_value jrominfo = json_get_table_value(jhack, "rominfo");
+    char* rominfo = (jrominfo.type == kJSONString) ? jrominfo.data.stringval : NULL;
+    if (rominfo)
+        decode_numeric_escapes(rominfo);
+    else
+        return false;
+        
+    char* crc32 = aprintf("%08x", game->names->crc32);
+    
+    if (strstr_i(rominfo, crc32))
+    {
+        cb_free(crc32);
+        return true;
+    }
+    else
+    {
+        cb_free(crc32);
+        return false;
+    }
+}
+
 static void context_patch_choose_interaction_update(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
 )
@@ -623,6 +649,16 @@ static void context_patch_choose_interaction_update(
             {
                 CB_Modal* modal = CB_Modal_new("Failed to open directory", NULL, NULL, NULL);
                 CB_presentModal(modal->scene);
+            }
+            else
+            {
+                if (!hash_match(pds->selected_hack, pds->game))
+                {
+                    CB_Modal* modal = CB_Modal_new("ROM not listed in hack info.\nYou should read the hack info and/or README to verify this ROM's compatability before applying any patches, lest glitches occur.", NULL, NULL, NULL);
+                    modal->width = 320;
+                    modal->height = 190;
+                    CB_presentModal(modal->scene);
+                }
             }
             break;
         case 1:  // Patch Info
@@ -725,7 +761,7 @@ static void context_patch_choose_interaction_update(
 
 char* get_rom_info(CB_PatchDownloadScene* pds)
 {
-    return aprintf("ROM Header title: %s\nCRC32: %X", pds->header_name, pds->game->names->crc32);
+    return aprintf("ROM Header title: %s\n \nCRC32: %X", pds->header_name, pds->game->names->crc32);
 }
 
 static void context_top_level_update(

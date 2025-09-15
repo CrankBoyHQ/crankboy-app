@@ -286,8 +286,7 @@ static void initialize_directory(void)
 
 void CB_init(void)
 {
-    CB_App = cb_calloc(1, sizeof(CB_Application));
-    memset(CB_App, 0, sizeof(*CB_App));
+    CB_App = allocz(CB_Application);
 
     cb_register_all_c_scripts();
 
@@ -312,6 +311,7 @@ void CB_init(void)
 
     if (!CB_App->bundled_rom)
     {
+        possibly_check_for_updates();
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
         parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);

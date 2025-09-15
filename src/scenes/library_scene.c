@@ -37,7 +37,6 @@ static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
 static void CB_LibraryScene_menu(void* object);
 static int last_selected_game_index = 0;
 static bool has_loaded_initial_index = false;
-static bool has_checked_for_update = false;
 static bool library_was_initialized_once = false;
 
 // Animation state for the "Downloading cover..." text
@@ -413,8 +412,8 @@ static void launch_game(void* ud, int option)
                     "switching to per-game prefs (%d/%d/%d)", preferences_script_support,
                     was_per_game, global_scripts_enabled
                 );
-                call_with_main_stack_2(
-                    preferences_save_to_disk, settings_path,
+                preferences_save_to_disk(
+                    settings_path,
                     ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
                 );
             }
@@ -424,8 +423,8 @@ static void launch_game(void* ud, int option)
                 // if global scripts disabled, AND we aren't using per-game prefs for this game, AND
                 // we didn't ask to enable script support, then just mark prompted (and don't enable
                 // per-game + script support.)
-                call_with_main_stack_2(
-                    preferences_save_to_disk, settings_path, ~(PREFBIT_script_has_prompted)
+                preferences_save_to_disk(
+                    settings_path, ~(PREFBIT_script_has_prompted)
                 );
             }
 
@@ -501,8 +500,8 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_itcm = 1;              // On
         preferences_uncap_fps = 0;         // Off
 
-        call_with_main_stack_2(
-            preferences_save_to_disk, settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+        preferences_save_to_disk(
+            settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
         );
 
         preferences_restore_subset(stored_globals);
@@ -845,12 +844,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (CB_App->pendingScene)
     {
         return;
-    }
-
-    if (!has_checked_for_update && !CB_App->bundled_rom)
-    {
-        has_checked_for_update = true;
-        possibly_check_for_updates();
     }
 
     CB_LibraryScene* libraryScene = object;
