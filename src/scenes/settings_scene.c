@@ -780,11 +780,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
     }
 
+
     if (libraryScene && selectedGame)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches",
-            .description = "Manage and download\ngame patches, also known\nas ROM hacks.",
+            .description = "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to verify\nthat a hack is compatible\nwith your ROM before\napplying it.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
