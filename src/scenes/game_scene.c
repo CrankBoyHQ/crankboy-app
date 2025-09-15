@@ -677,17 +677,14 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
     DTCM_VERIFY();
 
     CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
-    gb_s* gb;
     static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available. Also during initialization.
-    gb = &gb_fallback;
+    context->gb = &gb_fallback;
 
     DTCM_VERIFY();
-
-    memset(gb, 0, sizeof(gb_s));
+    memset(context->gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
 
     audio_enabled = 1;
-    context->gb = gb;
     context->scene = gameScene;
     context->rom = NULL;
     context->cart_ram = NULL;
@@ -738,7 +735,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
             {
                 DTCM_VERIFY();
 
-                audio_init(&gb->audio);
+                audio_init(&context->gb->audio);
                 CB_GameScene_apply_settings(gameScene, true);
                 CB_reset_audio_sync_state();
 
@@ -766,8 +763,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         
         if (dtcm_enabled())
         {
-            gb = dtcm_alloc(sizeof(gb_s));
-            memcpy(gb, &gb_fallback, sizeof(gb_s));
+            context->gb = dtcm_alloc(sizeof(gb_s));
+            memcpy(context->gb, &gb_fallback, sizeof(gb_s));
         }
         
         itcm_core_init(context->gb->is_cgb_mode);
