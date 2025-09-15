@@ -49,7 +49,7 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     3. Wait for your Playdate to download and install CrankBoy.
 - **USB sideload**
     1. Connect your Playdate to a computer (or other device) by USB and unlock it.
-    2. Put the Playdate into Data Disk mode (hold ).
+    2. Put the Playdate into Data Disk mode (hold LEFT + MENU + POWER for 10 seconds).
     3. Copy the `pdx`to the `Games` folder.
 - **Simulator sideload**
     1. Download the Simulator build for your OS (Linux or macOS -- Windows is [not yet supported](https://github.com/CrankBoyHQ/crankboy-app/issues/43).)

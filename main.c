@@ -11,6 +11,7 @@
 #include "src/dtcm.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
+#include "global.h"
 
 #if __has_include("pdboot/pdboot.h")
 #include "pdboot/pdboot.h"
@@ -182,6 +183,9 @@ __section__(".text.main") DllExport
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
+        
+        load_global();
+        
         CB_init();
         
         if (!useLua())

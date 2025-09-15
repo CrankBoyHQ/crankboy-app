@@ -84,6 +84,10 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     if (CB_App->pendingScene || infoScene->dismiss)
     {
         CB_dismiss(infoScene->scene);
+        if (infoScene->complete_callback)
+        {
+            infoScene->complete_callback();
+        }
         return;
     }
 
@@ -337,10 +341,15 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
 
     if (buttonsDown & (kButtonB | kButtonA))
     {
-        if (infoScene->canClose)
+        if (infoScene->canClose && infoScene->min_dismiss_time <= 0)
         {
             infoScene->dismiss = true;
         }
+    }
+    
+    if (infoScene->min_dismiss_time > 0)
+    {
+        infoScene->min_dismiss_time -= dt;
     }
 }
 
