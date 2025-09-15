@@ -354,6 +354,18 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
     }
 }
 
+#ifdef ITCM_CORE
+extern char __itcm_start[];
+extern char __itcm_end[];
+extern void* core_itcm_reloc;
+#define itcm_core_size ((uintptr_t)&__itcm_end - (uintptr_t)&__itcm_start)
+#define ITCM_CORE_FN(fn) \
+    ((typeof(fn)*)((uintptr_t)(void*)&fn - (uintptr_t)&__itcm_start + core_itcm_reloc))
+void itcm_core_init(void);
+#else
+#define ITCM_CORE_FN(fn) fn
+#endif
+
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
 

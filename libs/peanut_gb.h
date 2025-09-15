@@ -48,6 +48,11 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
+// color game boy support
+#ifndef PGB_CGB
+#define PGB_CGB 0
+#endif
+
 /**
  * Sound support must be provided by an external library. When audio_read() and
  * audio_write() functions are provided, define ENABLE_SOUND to a non-zero value
@@ -297,14 +302,83 @@ typedef struct PGB_VERSIONED(chan_vol_env) chan_vol_env;
 typedef struct PGB_VERSIONED(chan_freq_sweep) chan_freq_sweep;
 typedef struct PGB_VERSIONED(chan) chan;
 
-__core unsigned int __gb_step_cpu(gb_s* gb);
-
 void gb_step_cpu(gb_s* gb);
 void gb_run_frame(gb_s* gb);
 
 #ifdef PGB_IMPL
 
 #include "minigb_apu/minigb_apu.h"
+
+// relocatable and tightly-packed interpreter code
+#ifdef TARGET_SIMULATOR
+#define __core_dmg
+#define __core_dmg_section(x)
+#define __core_cgb
+#define __core_cgb_section(x)
+#else
+#ifdef ITCM_CORE
+#define __core_dmg \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg"))) __attribute__((short_call))
+#define __core_dmg_section(x) \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg." x))) __attribute__((short_call))
+#define __core_cgb \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb"))) __attribute__((short_call))
+#define __core_cgb_section(x) \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb." x))) __attribute__((short_call))
+#else
+#define __core_dmg __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.dmg")))
+#define __core_dmg_section(x) __core_dmg
+#define __core_cgb __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.cgb")))
+#define __core_cgb_section(x) __core_cgb
+#endif
+#endif
+
+#define __core __core_dmg
+#define __core_section __core_dmg_section
+
+enum {
+    GB_SUPPORT_DMG = 1,
+    GB_SUPPORT_CGB = 2,
+    GB_SUPPORT_DMG_AND_CGB = 3,
+} gb_get_models_supported(uint8_t* gb_rom)
+{
+    uint8_t cgb_byte = gb_rom[0x143];
+    if (cgb_byte == 0x80) return GB_SUPPORT_DMG_AND_CGB;
+    if (cgb_byte == 0xC0) return GB_SUPPORT_CGB;
+
+    return GB_SUPPORT_DMG;
+}
+
+/**
+ * Returns the title of ROM.
+ *
+ * \param gb        Initialised context.
+ * \param title_str Allocated string at least 16 characters.
+ * \returns         Pointer to start of string, null terminated.
+ */
+const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
+{
+    uint_fast16_t title_loc = 0x134;
+    /* End of title may be 0x13E for newer games. */
+    const uint_fast16_t title_end = 0x143;
+    const char* title_start = title_str;
+
+    for (; title_loc <= title_end; title_loc++)
+    {
+        const char title_char = gb_rom[title_loc];
+
+        if (title_char >= ' ' && title_char <= '~')
+        {
+            *title_str = title_char;
+            title_str++;
+        }
+        else
+            break;
+    }
+
+    *title_str = '\0';
+    return title_start;
+}
 
 /**
  * Directly calculates and applies the RTC state after a given
@@ -6011,37 +6085,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb_get_rom_name(gb->gb_rom, title_str);
 
     return GB_INIT_NO_ERROR;
-}
-
-/**
- * Returns the title of ROM.
- *
- * \param gb        Initialised context.
- * \param title_str Allocated string at least 16 characters.
- * \returns         Pointer to start of string, null terminated.
- */
-const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
-{
-    uint_fast16_t title_loc = 0x134;
-    /* End of title may be 0x13E for newer games. */
-    const uint_fast16_t title_end = 0x143;
-    const char* title_start = title_str;
-
-    for (; title_loc <= title_end; title_loc++)
-    {
-        const char title_char = gb_rom[title_loc];
-
-        if (title_char >= ' ' && title_char <= '~')
-        {
-            *title_str = title_char;
-            title_str++;
-        }
-        else
-            break;
-    }
-
-    *title_str = '\0';
-    return title_start;
 }
 
 void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
