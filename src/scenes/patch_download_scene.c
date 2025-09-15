@@ -12,6 +12,7 @@
 #include "settings_scene.h"
 #include "utility.h"
 
+#define HEADER_ANIMATION_RATE 2.8f
 #define HEADER_HEIGHT 18
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
@@ -43,7 +44,7 @@ typedef void (*context_draw_fn)(
 );
 typedef char* (*context_hint_fn)(CB_PatchDownloadScene* pds, PatchDownloadContext* context);
 
-PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
+static PatchDownloadContext* push_context(CB_PatchDownloadScene* pds);
 static bool push_patch_list(CB_PatchDownloadScene* pds);
 static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs);
 static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* ud);
@@ -247,16 +248,16 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
 
     if (pds->pending_download_type == PD_PATCH)
     {
-        http_get(
+        pds->active_http_connection = http_get(
             pds->domain, pds->pending_http_path, "to download this patch file", on_get_patch, 15000,
-            userdata, &pds->active_http_connection
+            userdata
         );
     }
     else if (pds->pending_download_type == PD_TEXTFILE)
     {
-        http_get(
+        pds->active_http_connection = http_get(
             pds->domain, pds->pending_http_path, "to download this text file", on_get_textfile,
-            15000, userdata, &pds->active_http_connection
+            15000, userdata
         );
     }
 
@@ -487,7 +488,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 {
     PatchDownloadUD* pud = ud;
     CB_PatchDownloadScene* pds = pud->pds;
-    pds->active_http_connection = NULL;
+    pds->active_http_connection = 0;
 
     if (!pds->http_in_progress)
     {
@@ -569,7 +570,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
 {
     PatchDownloadUD* pud = ud;
     CB_PatchDownloadScene* pds = pud->pds;
-    pds->active_http_connection = NULL;
+    pds->active_http_connection = 0;
 
     if (!pds->http_in_progress)
     {
@@ -1223,7 +1224,7 @@ static context_draw_fn context_draw[PDSCT_MAX] = {
     NULL
 };
 
-PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
+static PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
 {
     if (pds->context_depth >= CB_PATCHDOWNLOAD_STACK_MAX_DEPTH)
         return NULL;
@@ -1238,7 +1239,7 @@ PatchDownloadContext* push_context(CB_PatchDownloadScene* pds)
     return context;
 }
 
-void pop_context(CB_PatchDownloadScene* pds)
+static void pop_context(CB_PatchDownloadScene* pds)
 {
     playdate->system->logToConsole("Pop context\n");
     PatchDownloadContext* context = &pds->context[--pds->context_depth];
@@ -1263,8 +1264,8 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 {
     if (pds->active_http_connection)
     {
-        http_cancel_and_cleanup(pds->active_http_connection);
-        pds->active_http_connection = NULL;
+        http_cancel(pds->active_http_connection);
+        pds->active_http_connection = 0;
     }
 
     CB_Scene_free(pds->scene);

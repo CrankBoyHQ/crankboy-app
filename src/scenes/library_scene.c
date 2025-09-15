@@ -226,7 +226,7 @@ cleanup:
         cb_free(data);
     }
 
-    libraryScene->activeCoverDownloadConnection = NULL;
+    libraryScene->activeCoverDownloadConnection = 0;
 
     cb_free(userdata);
 }
@@ -307,9 +307,9 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     userdata->libraryScene = libraryScene;
     userdata->game = game;
 
-    http_get(
+    libraryScene->activeCoverDownloadConnection = http_get(
         "github.com", url_path, "to download missing cover art", on_cover_download_finished, 15000,
-        userdata, &libraryScene->activeCoverDownloadConnection
+        userdata
     );
 
     cb_free(url_path);
@@ -1133,8 +1133,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 playdate->system->logToConsole(
                     "Selection changed, closing active cover download connection."
                 );
-                http_cancel_and_cleanup(libraryScene->activeCoverDownloadConnection);
-                libraryScene->activeCoverDownloadConnection = NULL;
+                http_cancel(libraryScene->activeCoverDownloadConnection);
+                libraryScene->activeCoverDownloadConnection = 0;
             }
 
             if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE)
@@ -1827,8 +1827,8 @@ static void CB_LibraryScene_free(void* object)
 
     if (libraryScene->activeCoverDownloadConnection)
     {
-        http_cancel_and_cleanup(libraryScene->activeCoverDownloadConnection);
-        libraryScene->activeCoverDownloadConnection = NULL;
+        http_cancel(libraryScene->activeCoverDownloadConnection);
+        libraryScene->activeCoverDownloadConnection = 0;
     }
 
     if (libraryScene->decompression_buffer)

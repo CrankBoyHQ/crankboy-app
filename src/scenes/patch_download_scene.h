@@ -2,11 +2,11 @@
 
 #include "../listview.h"
 #include "library_scene.h"
+#include "http.h"
 
 #include <stdlib.h>
 
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
-#define HEADER_ANIMATION_RATE 2.8f
 
 struct CB_SettingsScene;
 
@@ -102,7 +102,7 @@ typedef struct CB_PatchDownloadScene
     char* post_download_text_data;
 
     float option_hold_time;
-    HTTPConnection* active_http_connection;
+    http_handle_t active_http_connection;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
 

@@ -196,7 +196,7 @@ static void check_for_updates(void)
 
     http_get(
         localVersionInfo->domain, localVersionInfo->path, "to check for a version update", CB_Get,
-        TIMEOUT_MS, NULL, NULL
+        TIMEOUT_MS, NULL
     );
 }
 
