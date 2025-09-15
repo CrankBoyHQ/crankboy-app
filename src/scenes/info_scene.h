@@ -14,6 +14,9 @@ typedef struct CB_InfoScene
     bool dismiss : 1;
     bool canClose : 1;
     bool textIsStatic : 1;
+    
+    void (*complete_callback)(void);
+    float min_dismiss_time;
 } CB_InfoScene;
 
 CB_InfoScene* CB_InfoScene_new(const char* title, const char* text);

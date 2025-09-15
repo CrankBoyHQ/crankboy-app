@@ -27,7 +27,6 @@
 
 #include <string.h>
 
-#define LAST_SELECTED_PATH "library_last_selected.txt"
 #define HOLD_TIME 1.09f
 #define DELETE_COVER_HOLD_TIME 5.09f
 
@@ -51,13 +50,13 @@ typedef struct
 
 static void save_last_selected_index(const char* rompath)
 {
-    cb_write_entire_file(LAST_SELECTED_PATH, rompath, strlen(rompath));
+    cb_write_entire_file(LAST_SELECTED_FILE, rompath, strlen(rompath));
     return;
 }
 
 static intptr_t load_last_selected_index(CB_Array* games)
 {
-    char* content = cb_read_entire_file(LAST_SELECTED_PATH, NULL, kFileReadData);
+    char* content = cb_read_entire_file(LAST_SELECTED_FILE, NULL, kFileReadData);
 
     // default -- top of list
     if (!content)
@@ -1837,6 +1836,7 @@ static void CB_LibraryScene_showSettings(void* userdata)
 static void CB_LibraryScene_menu(void* object)
 {
     playdate->system->addMenuItem("Credits", CB_showCredits, object);
+    playdate->system->addMenuItem("Help", (void*)CB_showHelp, 0);
     playdate->system->addMenuItem("Settings", CB_LibraryScene_showSettings, object);
 }
 

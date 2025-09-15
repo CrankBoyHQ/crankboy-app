@@ -169,6 +169,7 @@ void CB_goToLibrary(void);
 void CB_presentModal(CB_Scene* scene);
 void CB_dismiss(CB_Scene* scene);
 void CB_headphone_state_changed(int headphone, int mic);
+void CB_showHelp(bool first_time);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.
@@ -216,6 +217,8 @@ const char* get_pdboot_name_and_version(void);
 #define BUNDLE_FILE "bundle.json"
 #define ROMHACK_DB_FILE "rhdb.json"
 #define DIRECTORY_POINTER "directory.txt"
+#define GLOBAL_FILE "global.json"
+#define LAST_SELECTED_FILE "library_last_selected.txt"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"

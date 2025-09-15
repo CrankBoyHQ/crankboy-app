@@ -21,6 +21,7 @@
 #include "serial.h"
 #include "userstack.h"
 #include "version.h"
+#include "global.h"
 
 #include <string.h>
 
@@ -284,6 +285,80 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
 }
 
+static void non_bundle_init(void)
+{
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+    parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
+    
+    global.shown_intro = true;
+    save_global();
+    
+    CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
+    CB_present(copyingScene->scene);
+}
+
+void CB_showHelp(bool first_time)
+{
+    const char* title = first_time
+        ? "Welcome to CrankBoy!"
+        : "CrankBoy Usage";
+        
+    const char* A0 = first_time
+        ? "This is a quick guide to getting started.\n\nIn the future, you can review these instructions from the \"help\" option in CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n"
+        : "";
+    
+    const char* A = first_time
+        ? "To get started, you'll want to add some ROMs to CrankBoy."
+        : "To add ROMs to CrankBoy, do the following:";
+    
+    #if 0
+    const char* B = first_time
+        ? "Alternatively, press Ⓑ now to start playing the included ROMs immediately.\n\n"
+        : "\n\n";
+    #else
+    const char* B = "\n\n";
+    #endif
+    
+    const char* C1 = "1. Connect your Playdate to another device via USB.\n";
+    const char* C2 = "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
+    const char* C3 = "3. From the connected device, copy your ROM files (.gb or .gbc extension) onto your Playdate at the following directory: ";
+    
+    char* s = aprintf(
+        "%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath)
+    );
+    
+    CB_InfoScene* infoScene = CB_InfoScene_new(
+        title,
+        s
+    );
+                
+    if (first_time)
+    {
+        infoScene->complete_callback = non_bundle_init;
+        infoScene->min_dismiss_time = 1.2f;
+    }
+    
+    CB_presentModal(infoScene->scene);
+    
+    cb_free(s);
+}
+
+static void any_file_found(const char* p, bool* any_found)
+{
+    *any_found = true;
+}
+
+static bool games_exist_in_data(void)
+{
+    bool any_found = false;
+    playdate->file->listfiles(
+        cb_gb_directory_path(CB_gamesPath),
+        (void*)any_file_found,
+        &any_found, false
+    );
+    return any_found;
+}
+
 void CB_init(void)
 {
     CB_App = allocz(CB_Application);
@@ -305,7 +380,7 @@ void CB_init(void)
     CB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
     CB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     CB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
-    CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
+    CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo", NULL);
 
     CB_App->migration_modal_needed = false;
 
@@ -313,10 +388,21 @@ void CB_init(void)
 
     if (!CB_App->bundled_rom)
     {
-        possibly_check_for_updates();
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
-        parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
+        
+        possibly_check_for_updates();
+        
+        playdate->system->logToConsole("shown intro: %d", (int)global.shown_intro);
+        
+        if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) || games_exist_in_data())
+        {
+            non_bundle_init();
+        }
+        else
+        {
+            CB_showHelp(true);
+        }
     }
     else
     {
@@ -348,14 +434,8 @@ void CB_init(void)
     playdate->display->setRefreshRate(0);
 
     playdate->system->setSerialMessageCallback(CB_on_serial_message);
-
-    // if not a bundled rom, check for files to copy from the PDX
-    if (!CB_App->bundled_rom)
-    {
-        CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
-        CB_present(copyingScene->scene);
-    }
-    else
+    
+    if (CB_App->bundled_rom)
     {
         CB_GameScene* gameScene = CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM");
         if (gameScene)
