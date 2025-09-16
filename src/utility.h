@@ -111,6 +111,9 @@ char* cb_basename(const char* filename, bool stripExtension);
 char* cb_save_filename(const char* filename, bool isRecovery);
 char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
+const char* get_extension(const char* filename);
+
+bool cb_valid_basename(const char* fname);
 
 float cb_easeInOutQuad(float x);
 

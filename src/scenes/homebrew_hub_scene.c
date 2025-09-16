@@ -30,14 +30,73 @@ typedef void (*context_draw_fn)(
 );
 typedef char* (*context_hint_fn)(CB_HomebrewHubScene* hbs, HomebrewHubContext* context);
 
-static context_free_fn context_free[HBSCT_MAX] = {NULL, NULL, NULL};
-
 static const char* hb_platforms[] = {
     "GB",
     "GBC",
 };
 
 static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform);
+static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry);
+
+// callback when rom is downloaded
+static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
+{
+    hbs->active_http_connection = 0;
+    if (flags & HTTP_CANCELLED) return;
+    else if (flags & ~(HTTP_ENABLE_ASKED))
+    {
+        char* s = aprintf("HTTP Error.\n \nCode: 0x%x", flags);
+        CB_presentModal(
+            CB_Modal_new(s, NULL, NULL, NULL)->scene
+        );
+        cb_free(s);
+    }
+    else if (!data || !data_len)
+    {
+        CB_presentModal(
+            CB_Modal_new("Rom empty", NULL, NULL, NULL)->scene
+        );
+        return;
+    }
+    
+    // save rom
+    if (!cb_write_entire_file(hbs->target_rom_path, data, data_len))
+    {
+        CB_presentModal(
+            CB_Modal_new("Filesystem error, failed to save ROM.", NULL, NULL, NULL)->scene
+        );
+    }
+    else
+    {
+        // try saving the cover art as well.
+        if (hbs->target_cover_art_path && hbs->cover_art_data && hbs->cover_art_len)
+        {
+            if (!cb_write_entire_file(hbs->target_cover_art_path, hbs->cover_art_data, hbs->cover_art_len))
+            {
+                playdate->system->logToConsole("Failed to save cover art.");
+            }
+            else
+            {
+                playdate->system->logToConsole("Saved cover art to: %s", hbs->target_cover_art_path);
+            }
+        }
+        
+        // save as 'last selected' for library view
+        cb_write_entire_file(LAST_SELECTED_FILE, hbs->target_rom_path, strlen(hbs->target_rom_path));
+        
+        CB_Modal* modal = CB_Modal_new("ROM downloaded successfully; you must restart CrankBoy for it to appear.", NULL, NULL, NULL);
+        modal->width = 330;
+        modal->height = 110;
+        CB_presentModal(
+            modal->scene
+        );
+    }
+}
+
+static char* context_list_files_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
+{
+    return aprintf("Press Ⓐ to download this ROM.");
+}
 
 static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
@@ -53,6 +112,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
     default: {
             int index = context->list->selectedItem - 1;
             json_value jentries = json_get_table_value(hbs->jsearch, "entries");
+            
             if (jentries.type == kJSONArray)
             {
                 JsonArray* array = jentries.data.arrayval;
@@ -65,7 +125,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                         const char* developer = json_as_string(json_get_table_value(je, "developer"));
                         const char* platform = json_as_string(json_get_table_value(je, "platform"));
                         const char* date = json_as_string(json_get_table_value(je, "date"));
-                        if (!date) date = json_as_string(json_get_table_value(je, "forstadded_date"));
+                        if (!date) date = json_as_string(json_get_table_value(je, "firstadded_date"));
                         
                         // strip 'T' and onward
                         if (date)
@@ -132,6 +192,80 @@ static void update_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context,
         CB_ListView_update(context->list);
 }
 
+static void confirm_download(CB_HomebrewHubScene* hbs, int option)
+{
+    // download file
+    if (option == 1)
+    {
+        http_cancel(hbs->active_http_connection);
+        hbs->active_http_connection = http_get(CB_App->hbApiDomain, hbs->urlpath, "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs);
+    }
+    cb_free(hbs->urlpath);
+}
+
+static void context_list_files_update(CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt)
+{
+    update_common(hbs, context, dt);
+    
+    bool a_pressed = (CB_App->buttons_pressed & kButtonA);
+    
+    if (a_pressed)
+    {
+        int selected = context->list->selectedItem;
+        if (selected >= context->list->items->length) return;
+        
+        json_value je = *context->j;
+        json_value jfiles = json_get_table_value(je, "files");
+        if (jfiles.type != kJSONArray) return;
+        JsonArray* a = jfiles.data.arrayval;
+        
+        CB_ListItemButton* button = (CB_ListItemButton*)context->list->items->items[selected];
+        int fidx = button->ud.uint;
+        
+        if (fidx >= a->n) return;
+        json_value jf = a->data[fidx];
+        const char* fname = json_as_string(json_get_table_value(jf, "filename"));
+        const char* slug = json_as_string(json_get_table_value(je, "slug"));
+        const char* base = json_as_string(json_get_table_value(je, "basepath"));
+        char* name = (char*)json_as_string(json_get_table_value(je, "title"));
+        if (!cb_valid_basename(name))
+        {
+            name = cb_basename(fname, false);
+        }
+        else
+        {
+            name = aprintf("%s%s", name, get_extension(fname));
+        }
+        
+        hbs->urlpath = aprintf("%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug, fname);
+        
+        cb_free(hbs->target_rom_path);
+        hbs->target_rom_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), name);
+        char* cover_art_name = cb_basename(name, true);
+        cb_free(hbs->target_cover_art_path);
+        hbs->target_cover_art_path = aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_art_name);
+        cb_free(cover_art_name);
+        cb_free(name);
+        
+        // we check kFileRead too because even if the rom is pdx only for some reason,
+        // the user should probably still be informed.
+        if (cb_file_exists(hbs->target_rom_path, kFileReadData | kFileRead))
+        {
+            const char* options[] = {"Cancel", "Overwrite", NULL};
+            CB_Modal* modal = CB_Modal_new("This will replace an existing ROM of the same name. Proceed?", options, (void*)confirm_download, hbs);
+            modal->width = 350;
+            modal->height = 140;
+            CB_presentModal(
+                modal->scene
+            );
+        }
+        else
+        {
+            confirm_download(hbs, 1);
+        }
+    }
+}
+
 static void context_top_level_update(CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt)
 {
     update_common(hbs, context, dt);
@@ -167,7 +301,7 @@ const char* get_best_screenshot(JsonArray* screenshots)
 
 static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
-    hbs->active_http_connection = 0;
+    hbs->active_http_connection_2 = 0;
     if (flags & (~HTTP_ENABLE_ASKED))
     {
         return;
@@ -175,7 +309,9 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
     else
     {
         size_t pdi_size;
-        void* pdi_data = png_to_pdi(hbs->download_image_name, data, data_len, &pdi_size, LCD_COLUMNS - kDividerX, LCD_ROWS/2);
+        void* pdi_data = png_to_pdi(hbs->download_image_name, data, data_len, &pdi_size, LCD_COLUMNS - kDividerX, 160);
+        cb_free(hbs->cover_art_data);
+        hbs->cover_art_data = png_to_pdi(hbs->download_image_name, data, data_len, &hbs->cover_art_len, 240, 240); /* 240 x 240 is the preferred cover art dimensions */
         if (pdi_data && pdi_size)
         {
             if (pdi_size < (1 << 16))
@@ -193,6 +329,9 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
     }
 }
 
+static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context);
+static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* platform);
+
 static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt)
 {
     update_common(hbs, context, dt);
@@ -203,6 +342,9 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
     
     if (context->list->selectedItem <= 0)
     {
+        context->show_image = false;
+        int prev_i = context->i;
+        
         if (l_pressed)
         {
             if (--context->i <= 0) context->i = MAX(1, hbs->max_pages);
@@ -211,12 +353,22 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
         {
             if (++context->i > hbs->max_pages) context->i = 1;
         }
+        
+        if (prev_i != context->i)
+        {
+            clear_page(hbs, context);
+            
+            http_search(
+                hbs, context->i, context->str
+            );
+        }
     }
     else
     {
+        context->show_image = true;
         int selected = context->list->selectedItem - 1;
         unsigned dlii = (context->i << 16) | selected;
-        if ((dlii != hbs->download_image_index || (!hbs->active_http_connection && !hbs->download_image)))
+        if ((dlii != hbs->download_image_index || (!hbs->active_http_connection_2 && !hbs->download_image)))
         {
             hbs->download_image_index = dlii;
             if (hbs->download_image)
@@ -258,9 +410,13 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
                                 );
                                 hbs->download_image_name = screenshot;
                                 
+                                // TODO: associate cover art with slug, to be extra sure it matches when ROM download completes later.
+                                cb_free(hbs->cover_art_data);
+                                hbs->cover_art_data = NULL;
+                                
                                 // get image
-                                http_cancel(hbs->active_http_connection);
-                                hbs->active_http_connection = http_get(
+                                http_cancel(hbs->active_http_connection_2);
+                                hbs->active_http_connection_2 = http_get(
                                     CB_App->hbApiDomain,
                                     urlpath,
                                     "to retrieve cover art",
@@ -279,23 +435,44 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
         
         if (a_pressed)
         {
-            push_list_search(hbs, hb_platforms[context->list->selectedItem]);
+            json_value jentries = json_get_table_value(hbs->jsearch, "entries");
+            if (jentries.type == kJSONArray)
+            {
+                JsonArray* array = jentries.data.arrayval;
+                
+                if (selected < array->n)
+                {
+                    if (!push_list_files(hbs, &array->data[selected]))
+                    {
+                        CB_presentModal(
+                            CB_Modal_new("Failed to list files.", NULL, NULL, NULL)->scene
+                        );
+                    }
+                }
+            }
         }
     }
 }
 
+static void clear_search(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
+{
+    hbs->max_pages = 0;
+    free_json_data(hbs->jsearch);
+    hbs->jsearch.type = kJSONNull;
+}
 
+static context_free_fn context_free[HBSCT_MAX] = {NULL, clear_search, NULL};
 
 static context_hint_fn context_hint[HBSCT_MAX] = {
-    context_top_level_hint, context_list_search_hint, NULL
+    context_top_level_hint, context_list_search_hint, context_list_files_hint
 };
 
 static context_update_fn context_update[HBSCT_MAX] = {
-    context_top_level_update, context_list_search_update, NULL
+    context_top_level_update, context_list_search_update, context_list_files_update
 };
 
 static context_draw_fn context_draw[HBSCT_MAX] = {
-    draw_common, draw_common, NULL
+    draw_common, draw_common, draw_common
 };
 
 static HomebrewHubContext* push_context(CB_HomebrewHubScene* hbs)
@@ -328,12 +505,6 @@ static void pop_context(CB_HomebrewHubScene* hbs)
     }
 }
 
-static void hbs_http_cancel(CB_HomebrewHubScene* hbs)
-{
-    http_cancel(hbs->active_http_connection);
-    hbs->active_http_connection = 0;
-}
-
 static HomebrewHubContext* getFirstMatchingContext(CB_HomebrewHubScene* hbs, HomebrewHubSceneContextType type)
 {
     for (int i = 0; i < CB_HBH_STACK_MAX_DEPTH; ++i)
@@ -355,6 +526,20 @@ static uint32_t get_hint_key(CB_HomebrewHubScene* pds)
     return key + 1;
 }
 
+static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
+{
+    CB_ListView_clear(context->list);
+    
+    char* label = (hbs->max_pages)
+        ? aprintf("< Page %d of %d >", context->i, hbs->max_pages)
+        : aprintf("< Page %d >", context->i);
+    CB_ListItemButton* itemButton = CB_ListItemButton_new(
+        label
+    );
+    cb_free(label);
+    array_push(context->list->items, itemButton);
+}
+
 static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
     json_value jmaxpage = json_get_table_value(hbs->jsearch, "page_total");
@@ -366,17 +551,7 @@ static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext
         context->i = jpage.data.intval;
     }
     
-    
-    CB_ListView_clear(context->list);
-    
-    char* label = (hbs->max_pages)
-        ? aprintf("< Page %d of %d >", context->i, hbs->max_pages)
-        : aprintf("< Page %d >", context->i);
-    CB_ListItemButton* itemButton = CB_ListItemButton_new(
-        label
-    );
-    cb_free(label);
-    array_push(context->list->items, itemButton);
+    clear_page(hbs, context);
 
     json_value jentries = json_get_table_value(hbs->jsearch, "entries");
     if (jentries.type == kJSONArray)
@@ -454,6 +629,61 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
     hbs->active_http_connection = http_get(CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
     
     cb_free(urlpath);
+}
+
+static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
+{
+    json_value v = json_get_table_value(*entry, "files");
+    if (v.type != kJSONArray) return false;
+    
+    bool has_playable = false;
+    
+    JsonArray* a = v.data.arrayval;
+    bool include[a->n];
+    for (int i = 0; i < a->n; ++i)
+    {
+        json_value jf = a->data[i];
+        const char* fname = json_as_string(json_get_table_value(jf, "filename"));
+        bool playable = json_get_table_value(jf, "playable").type == kJSONTrue;
+        if (playable && fname && (endswithi(fname, ".gb") || endswithi(fname, ".gbc")))
+        {
+            has_playable = true;
+            include[i] = true;
+        }
+        else
+        {
+            include[i] = false;
+        }
+    }
+    
+    if (!has_playable) return false;
+    
+    CB_ListItemButton* itemButton;
+    HomebrewHubContext* context = push_context(hbs);
+    if (!context)
+        return false;
+    context->type = HBSCT_LIST_FILES;
+    context->j = entry;
+    
+    int n = 0;
+    for (int i = 0; i < a->n; ++i)
+    {
+        json_value jf = a->data[i];
+        const char* fname = json_as_string(json_get_table_value(jf, "filename"));
+        bool isdefault = json_get_table_value(jf, "default").type == kJSONTrue;
+        
+        if (!include[i]) continue;
+        
+        itemButton = CB_ListItemButton_new(fname);
+        itemButton->ud.uint = i;
+        array_push(context->list->items, itemButton);
+        if (isdefault) context->list->selectedItem = n;
+        ++n;
+    }
+    
+    CB_ListView_reload(context->list);
+    
+    return true;
 }
 
 static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform)
@@ -622,7 +852,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     }
     
     // TODO: only show in some contexts
-    if (hbs->download_image)
+    if (hbs->download_image && hbs->context[hbs->context_depth-1].show_image)
     {
         int w, h;
         playdate->graphics->getBitmapData(
@@ -642,18 +872,17 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
 {
-    if (hbs->active_http_connection)
-    {
-        http_cancel(hbs->active_http_connection);
-        hbs->active_http_connection = 0;
-    }
+    http_cancel(hbs->active_http_connection);
+    http_cancel(hbs->active_http_connection_2);
 
     CB_Scene_free(hbs->scene);
+    cb_free(hbs->cover_art_data);
     while (hbs->context_depth > 0)
     {
         pop_context(hbs);
     }
-    if (hbs->download_image) cb_free(hbs->download_image);
+    cb_free(hbs->target_rom_path);
+    if (hbs->download_image) playdate->graphics->freeBitmap(hbs->download_image);
     cb_free(hbs->cached_hint);
     free_json_data(hbs->jsearch);
     cb_free(hbs);
