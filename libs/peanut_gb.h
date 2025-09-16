@@ -4794,7 +4794,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
             gb->cpu_reg.f_bits.n = 0;
             gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
             gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
-            return 4*4;
+            return 3*4;
         }
         else
         {
