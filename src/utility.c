@@ -284,6 +284,45 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc
     return true;
 }
 
+bool cb_valid_basename(const char* fname)
+{
+    if (!fname || !*fname) return false;
+    
+    int l = strlen(fname);
+    for (int i = 0; i < l; ++i)
+    {
+        char c = fname[i];
+        if (c < 0) return false;
+        if (c == ' ') continue;
+        if (c == '.') continue;
+        if (c == '-') continue;
+        if (c >= '0' && c <= '9') continue;
+        if (c >= 'A' && c <= 'Z') continue;
+        if (c == '_') continue;
+        if (c >= 'a' && c <= 'z') continue;
+        if (c == '(' || c == ')') continue;
+        return false;
+    }
+    
+    return true;
+}
+
+const char* get_extension(const char* filename)
+{
+    char* basename = cb_basename(filename, false);
+    if (!basename) return "";
+    
+    char* dot = strchr(basename, '.');
+    if (!dot)
+    {
+        cb_free(basename);
+        return "";
+    }
+    ptrdiff_t diff = basename + strlen(basename) - dot;
+    cb_free(basename);
+    return filename + strlen(filename) - diff;
+}
+
 char* cb_basename(const char* filename, bool stripExtension)
 {
     if (filename == NULL)
