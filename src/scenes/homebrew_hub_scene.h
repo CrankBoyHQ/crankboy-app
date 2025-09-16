@@ -14,7 +14,7 @@ typedef enum HomebrewHubSceneContextType
 {
     HBSCT_TOP_LEVEL,
     HBSCT_LIST_SEARCH,
-    HBSCT_PATCH_CHOOSE_INTERACTION,
+    HBSCT_LIST_FILES,
     
     HBSCT_MAX
 } HomebrewHubSceneContextType;
@@ -24,8 +24,13 @@ typedef struct HomebrewHubContext
     HomebrewHubSceneContextType type;
     CB_ListView* list;
     
-    const char* str;
+    union
+    {
+        const char* str;
+        const json_value* j;
+    };
     int i;
+    bool show_image;
 } HomebrewHubContext;
 
 typedef struct CB_HomebrewHubScene
@@ -35,8 +40,16 @@ typedef struct CB_HomebrewHubScene
     struct CB_SettingsScene* settingsScene;
 
     http_handle_t active_http_connection;
+    http_handle_t active_http_connection_2;
     
     int max_pages;
+    
+    char* target_rom_path;
+    char* target_cover_art_path;
+    char* urlpath; // temporary; only for callbacks
+    
+    void* cover_art_data;
+    size_t cover_art_len;
     
     LCDBitmap* download_image;
     int download_image_index;
