@@ -1,0 +1,2 @@
+https://hh3.gbdev.io/api
+/static

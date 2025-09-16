@@ -285,9 +285,72 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
 }
 
+static void get_homebrew_hub_api(void)
+{
+    char* hbapi = cb_read_entire_file(HOMEBREW_HUB_API_FILE, NULL, kFileRead | kFileReadData);
+    if (!hbapi) return;
+    
+    char* scheme_end = strstr(hbapi, "://");
+    if (!scheme_end)
+    {
+        cb_free(hbapi);
+        return;
+    };
+    
+    scheme_end[0] = 0;
+    char* domain = scheme_end + 3;
+    bool https = !strcmp(hbapi, "https");
+    char* nl = strchr(domain, '\n');
+    if (!nl)
+    {
+        cb_free(hbapi);
+        return;
+    }
+    nl[0] = 0;
+    char* staticpath = nl+1;
+    char* spnl = strchr(staticpath, '\n');
+    if (spnl) spnl[0] = 0;
+    char* path = strchr(domain, '/');
+    if (!path)
+    {
+        cb_free(hbapi);
+        return;
+    }
+    
+    // strip final slash
+    while (path[0] && path[strlen(path)-1] == '/')
+    {
+        path[strlen(path)-1] = 0;
+    }
+    
+    if (!path[0])
+    {
+        cb_free(hbapi);
+        return;
+    }
+    
+    while (staticpath[0] && staticpath[strlen(path)-1] == '/')
+    {
+        staticpath[strlen(staticpath)-1] = 0;
+    }
+    
+    if (!staticpath[0])
+    {
+        cb_free(hbapi);
+        return;
+    }
+    
+    CB_App->hbApiUseHTTPS = https;
+    CB_App->hbApiPath = cb_strdup(path);
+    CB_App->hbStaticPath = staticpath;
+    path[0] = 0;
+    CB_App->hbApiDomain = domain;
+}
+
 static void non_bundle_init(void)
 {
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+    get_homebrew_hub_api();
     parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
     
     global.shown_intro = true;

@@ -633,19 +633,26 @@ static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bo
     listView->selectedItem = index;
 }
 
-void CB_ListView_free(CB_ListView* listView)
+void CB_ListView_clear(CB_ListView* listView)
 {
-    if (!listView)
-        return;
-
     if (listView->items)
     {
         for (int i = 0; i < listView->items->length; i++)
         {
             CB_ListItemButton_free(listView->items->items[i]);
         }
-        array_free(listView->items);
+        
+        listView->items->length = 0;
     }
+}
+
+void CB_ListView_free(CB_ListView* listView)
+{
+    if (!listView)
+        return;
+
+    CB_ListView_clear(listView);
+    array_free(listView->items);
 
     cb_free(listView);
 }

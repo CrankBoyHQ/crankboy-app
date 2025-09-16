@@ -44,5 +44,8 @@ json_value json_new_string(const char* s);
 json_value json_new_bool(bool v);
 json_value json_new_int(int v);
 
+// returns NULL if not a string.
+const char* json_as_string(json_value j);
+
 // returns true on success
 bool json_set_table_value(json_value* table, const char* key, json_value value);

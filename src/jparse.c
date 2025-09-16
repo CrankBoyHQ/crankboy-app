@@ -365,3 +365,10 @@ __section__(".rare") int parse_json_string(const char* text, json_value* out)
     }
     return 1;
 }
+
+const char* json_as_string(json_value j)
+{
+    return (j.type == kJSONString)
+        ? j.data.stringval
+        : NULL;
+}

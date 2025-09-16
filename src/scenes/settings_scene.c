@@ -16,6 +16,7 @@
 #include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
+#include "homebrew_hub_scene.h"
 #include "patch_download_scene.h"
 
 #include <stdlib.h>
@@ -106,6 +107,14 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
     {
         show_game_script_info(gameScene->rom_filename, gameScene->name_short);
     }
+}
+
+static void open_homebrew_hub(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
+{
+    cb_play_ui_sound(CB_UISound_Confirm);
+    CB_HomebrewHubScene* s =
+        CB_HomebrewHubScene_new();
+    CB_presentModal(s->scene);
 }
 
 static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
@@ -779,7 +788,24 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .ud = gameScene,
         };
     }
-
+    
+    if (libraryScene)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Get ROMs",
+            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub.\n \nRequires internet.",
+            .values = next_scene,
+            .max_value = 0,
+            .on_press = open_homebrew_hub,
+            .ud = NULL
+        };
+        
+        if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
+        {
+            entries[i].locked = true;
+            entries[i].description = "Homebrew Hub API\nnot found. Check\nthis pdx file:\n" HOMEBREW_HUB_API_FILE;
+        }
+    }
 
     if (libraryScene && selectedGame)
     {
