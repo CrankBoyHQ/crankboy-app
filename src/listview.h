@@ -110,6 +110,8 @@ void CB_ListView_reload(CB_ListView* listView);
 
 void CB_ListView_free(CB_ListView* listView);
 
+void CB_ListView_clear(CB_ListView* listView);
+
 CB_ListItemButton* CB_ListItemButton_new(const char* title);
 
 void CB_ListItem_free(CB_ListItem* item);

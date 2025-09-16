@@ -144,7 +144,12 @@ typedef struct CB_Application
     // should check the latest-update as saved on the disk
     bool shouldCheckUpdateInfo : 1;
     
+    bool hbApiUseHTTPS : 1;
+    
     char* directory;
+    char* hbApiDomain;
+    char* hbApiPath;
+    char* hbStaticPath;
 
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
@@ -218,6 +223,7 @@ const char* get_pdboot_name_and_version(void);
 #define DIRECTORY_POINTER "directory.txt"
 #define GLOBAL_FILE "global.json"
 #define LAST_SELECTED_FILE "library_last_selected.txt"
+#define HOMEBREW_HUB_API_FILE "hbapi.txt"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
