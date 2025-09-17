@@ -254,57 +254,67 @@ static void context_list_files_update(CB_HomebrewHubScene* hbs, HomebrewHubConte
     
     if (a_pressed)
     {
-        int selected = context->list->selectedItem;
-        if (selected >= context->list->items->length) return;
-        
-        json_value je = *context->j;
-        json_value jfiles = json_get_table_value(je, "files");
-        if (jfiles.type != kJSONArray) return;
-        JsonArray* a = jfiles.data.arrayval;
-        
-        CB_ListItemButton* button = (CB_ListItemButton*)context->list->items->items[selected];
-        int fidx = button->ud.uint;
-        
-        if (fidx >= a->n) return;
-        json_value jf = a->data[fidx];
-        const char* fname = json_as_string(json_get_table_value(jf, "filename"));
-        const char* slug = json_as_string(json_get_table_value(je, "slug"));
-        const char* base = json_as_string(json_get_table_value(je, "basepath"));
-        char* name = (char*)json_as_string(json_get_table_value(je, "title"));
-        if (!cb_valid_basename(name))
+        if (http_safe_in_progress(&hbs->active_http_connection_2))
         {
-            name = cb_basename(fname, false);
-        }
-        else
-        {
-            name = aprintf("%s%s", name, get_extension(fname));
-        }
-        
-        hbs->urlpath = aprintf("%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug, fname);
-        
-        cb_free(hbs->target_rom_path);
-        hbs->target_rom_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), name);
-        char* cover_art_name = cb_basename(name, true);
-        cb_free(hbs->target_cover_art_path);
-        hbs->target_cover_art_path = aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_art_name);
-        cb_free(cover_art_name);
-        cb_free(name);
-        
-        // we check kFileRead too because even if the rom is pdx only for some reason,
-        // the user should probably still be informed.
-        if (cb_file_exists(hbs->target_rom_path, kFileReadData | kFileRead))
-        {
-            const char* options[] = {"Cancel", "Overwrite", NULL};
-            CB_Modal* modal = CB_Modal_new("This will replace an existing ROM of the same name. Proceed?", options, (void*)confirm_download, hbs);
-            modal->width = 350;
-            modal->height = 140;
+            // this seems to prevent a crash that occurs when two downloads are happening simultaneously
             CB_presentModal(
-                modal->scene
+                CB_Modal_new("Please wait for the current operation to finish.", NULL, NULL, NULL)->scene
             );
         }
         else
         {
-            confirm_download(hbs, 1);
+            int selected = context->list->selectedItem;
+            if (selected >= context->list->items->length) return;
+            
+            json_value je = *context->j;
+            json_value jfiles = json_get_table_value(je, "files");
+            if (jfiles.type != kJSONArray) return;
+            JsonArray* a = jfiles.data.arrayval;
+            
+            CB_ListItemButton* button = (CB_ListItemButton*)context->list->items->items[selected];
+            int fidx = button->ud.uint;
+            
+            if (fidx >= a->n) return;
+            json_value jf = a->data[fidx];
+            const char* fname = json_as_string(json_get_table_value(jf, "filename"));
+            const char* slug = json_as_string(json_get_table_value(je, "slug"));
+            const char* base = json_as_string(json_get_table_value(je, "basepath"));
+            char* name = (char*)json_as_string(json_get_table_value(je, "title"));
+            if (!cb_valid_basename(name))
+            {
+                name = cb_basename(fname, false);
+            }
+            else
+            {
+                name = aprintf("%s%s", name, get_extension(fname));
+            }
+            
+            hbs->urlpath = aprintf("%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug, fname);
+            
+            cb_free(hbs->target_rom_path);
+            hbs->target_rom_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), name);
+            char* cover_art_name = cb_basename(name, true);
+            cb_free(hbs->target_cover_art_path);
+            hbs->target_cover_art_path = aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_art_name);
+            cb_free(cover_art_name);
+            cb_free(name);
+            
+            // we check kFileRead too because even if the rom is pdx only for some reason,
+            // the user should probably still be informed.
+            if (cb_file_exists(hbs->target_rom_path, kFileReadData | kFileRead))
+            {
+                const char* options[] = {"Cancel", "Overwrite", NULL};
+                CB_Modal* modal = CB_Modal_new("This will replace an existing ROM of the same name. Proceed?", options, (void*)confirm_download, hbs);
+                modal->width = 350;
+                modal->height = 140;
+                CB_presentModal(
+                    modal->scene
+                );
+            }
+            else
+            {
+                confirm_download(hbs, 1);
+            }
         }
     }
 }
@@ -354,7 +364,7 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
         void* pdi_data = png_to_pdi(hbs->download_image_name, data, data_len, &pdi_size, LCD_COLUMNS - kDividerX, 160);
         cb_free(hbs->cover_art_data);
         hbs->cover_art_data = png_to_pdi(hbs->download_image_name, data, data_len, &hbs->cover_art_len, 240, 240); /* 240 x 240 is the preferred cover art dimensions */
-        if (pdi_data && pdi_size)
+        if (pdi_data && pdi_size && hbs->context[hbs->context_depth-1].show_image)
         {
             if (pdi_size < (1 << 16))
             {
@@ -363,7 +373,7 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
                 );
                 playdate->system->logToConsole("successfully retrieved image");
             } else {
-                playdate->system->logToConsole("Not saving homebrew.pdi because file size is too big (%u bytes)", (unsigned)pdi_size);
+                playdate->system->logToConsole("Not saving " DISK_IMAGE " because file size is too big (%u bytes)", (unsigned)pdi_size);
             }
         }
         
