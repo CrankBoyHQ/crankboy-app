@@ -104,10 +104,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
     {
     case 0:
         return aprintf(
-            "%sUse LEFT & RIGHT to switch pages.",
-            hbs->active_http_connection
-                ? "Now loading...\n\n"
-                : ""
+            "Use LEFT & RIGHT to switch pages."
         );
     default: {
             int index = context->list->selectedItem - 1;
@@ -625,7 +622,12 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
     
     http_cancel(hbs->active_http_connection);
     
-    hbs->max_pages = 0;
+    if (hbs->download_image)
+    {
+        playdate->graphics->freeBitmap(hbs->download_image);
+        hbs->download_image = 0;
+    }
+    
     hbs->active_http_connection = http_get(CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
     
     cb_free(urlpath);
@@ -865,6 +867,10 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             kDividerX + MAX(0, (LCD_COLUMNS - kDividerX - w)/2), LCD_ROWS - h,
             kBitmapUnflipped
         );
+    }
+    else if (hbs->active_http_connection || (hbs->active_http_connection_2 && hbs->context[hbs->context_depth-1].show_image))
+    {
+        draw_spinny((kDividerX + LCD_COLUMNS)/2, 180, 34);
     }
 
     playdate->graphics->drawLine(kDividerX, header_y, kDividerX, LCD_ROWS, 1, kColorBlack);
