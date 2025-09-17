@@ -30,7 +30,7 @@ typedef struct HomebrewHubContext
         const json_value* j;
     };
     int i;
-    bool show_image;
+    bool show_image : 1;
 } HomebrewHubContext;
 
 typedef struct CB_HomebrewHubScene

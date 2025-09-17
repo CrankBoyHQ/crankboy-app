@@ -238,6 +238,8 @@ static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t 
 #endif
 }
 
+// idle animation during loading with unknown progress
+void draw_spinny(int x, int y, int radius);
 
 CB_FetchedNames cb_get_titles_from_db(const char* fullpath);
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc);
