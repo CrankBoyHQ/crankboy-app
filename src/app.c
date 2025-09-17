@@ -386,8 +386,10 @@ void CB_showHelp(bool first_time)
     const char* C2 = "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
     const char* C3 = "3. From the connected device, copy your ROM files (.gb or .gbc extension) onto your Playdate at the following directory: ";
     
+    const char* D = "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the main menu via ⊙ > settings > Get ROMs.";
+    
     char* s = aprintf(
-        "%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath)
+        "%s%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D
     );
     
     CB_InfoScene* infoScene = CB_InfoScene_new(

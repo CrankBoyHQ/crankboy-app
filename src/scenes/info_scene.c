@@ -242,7 +242,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // --- Draw Text Content ---
-    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
     playdate->graphics->setFont(font);
     float current_y = top_margin - infoScene->scroll;
     text_ptr = infoScene->text;
