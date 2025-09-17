@@ -41,7 +41,6 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry);
 // callback when rom is downloaded
 static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
-    hbs->active_http_connection = 0;
     if (flags & HTTP_CANCELLED) return;
     else if (flags & ~(HTTP_ENABLE_ASKED))
     {
@@ -59,6 +58,33 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         return;
     }
     
+    // doctor header to remove 'requires CGB' flag,
+    // which many homebrew erroneously set.
+    bool did_doctor = false;
+    if (hbs->doctor_header_cgb_flag && data_len >= 0x200 && (uint8_t)data[0x0143] == 0xC0)
+    {
+        data[0x0143] = 0x80;
+        did_doctor = true;
+        playdate->system->logToConsole("Doctored header.");
+        
+        uint8_t checksum = data[0x14D];
+        uint8_t nc = 0;
+        // update header checksum
+        for (unsigned i = 0x134; i <= 0x14C; ++i)
+        {
+            nc = nc - (uint8_t)data[i] - 1;
+        }
+        
+        data[0x14D] = nc;
+        playdate->system->logToConsole("Header checksum: %02X -> %02X", checksum, nc);
+        
+        uint16_t gcheck = ((uint16_t)(uint8_t)data[0x14E] << 8) | ((uint16_t)(uint8_t)data[0x14F] << 0);
+        gcheck -= checksum;
+        gcheck += nc;
+        data[0x14E] = (gcheck >> 8);
+        data[0x14F] = gcheck & 0xFF;
+    }
+    
     // save rom
     if (!cb_write_entire_file(hbs->target_rom_path, data, data_len))
     {
@@ -69,6 +95,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     else
     {
         // try saving the cover art as well.
+        // NOTE: race condition -- if rom downloads first, cover art will not be saved.
         if (hbs->target_cover_art_path && hbs->cover_art_data && hbs->cover_art_len)
         {
             if (!cb_write_entire_file(hbs->target_cover_art_path, hbs->cover_art_data, hbs->cover_art_len))
@@ -84,12 +111,16 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         // save as 'last selected' for library view
         cb_write_entire_file(LAST_SELECTED_FILE, hbs->target_rom_path, strlen(hbs->target_rom_path));
         
-        CB_Modal* modal = CB_Modal_new("ROM downloaded successfully; you must restart CrankBoy for it to appear.", NULL, NULL, NULL);
+        char* s = aprintf("ROM downloaded successfully; you must restart CrankBoy for it to appear.%s", did_doctor ? "\n\nThe ROM header was altered to indicate that it is DMG-compatible." : "");
+        
+        CB_Modal* modal = CB_Modal_new(s, NULL, NULL, NULL);
         modal->width = 330;
-        modal->height = 110;
+        modal->height = did_doctor ? 210 : 110;
         CB_presentModal(
             modal->scene
         );
+        
+        cb_free(s);
     }
 }
 
@@ -133,7 +164,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                         
                         return aprintf(
                             "Title: %s\nDeveloper: %s\nPlatform: %s\nDate: %s",
-                            title, developer, platform, date ? date : "unknown"
+                            title ? title : "unknown", developer ? developer : "unknown", platform ? platform : "unknown", date ? date : "unknown"
                         );
                     }
                 }
@@ -194,8 +225,7 @@ static void confirm_download(CB_HomebrewHubScene* hbs, int option)
     // download file
     if (option == 1)
     {
-        http_cancel(hbs->active_http_connection);
-        hbs->active_http_connection = http_get(CB_App->hbApiDomain, hbs->urlpath, "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs);
+        http_safe_replace_get(&hbs->active_http_connection, CB_App->hbApiDomain, hbs->urlpath, "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs);
     }
     cb_free(hbs->urlpath);
 }
@@ -298,7 +328,6 @@ const char* get_best_screenshot(JsonArray* screenshots)
 
 static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
-    hbs->active_http_connection_2 = 0;
     if (flags & (~HTTP_ENABLE_ASKED))
     {
         return;
@@ -365,7 +394,7 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
         context->show_image = true;
         int selected = context->list->selectedItem - 1;
         unsigned dlii = (context->i << 16) | selected;
-        if ((dlii != hbs->download_image_index || (!hbs->active_http_connection_2 && !hbs->download_image)))
+        if ((dlii != hbs->download_image_index || (!http_safe_in_progress(&hbs->active_http_connection_2) && !hbs->download_image)))
         {
             hbs->download_image_index = dlii;
             if (hbs->download_image)
@@ -412,8 +441,8 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
                                 hbs->cover_art_data = NULL;
                                 
                                 // get image
-                                http_cancel(hbs->active_http_connection_2);
-                                hbs->active_http_connection_2 = http_get(
+                                http_safe_replace_get(
+                                    &hbs->active_http_connection_2,
                                     CB_App->hbApiDomain,
                                     urlpath,
                                     "to retrieve cover art",
@@ -573,7 +602,6 @@ static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext
 
 static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
-    hbs->active_http_connection = 0;
     hbs->cached_hint_key = 0;
     
     if (flags & (HTTP_CANCELLED)) return;
@@ -620,15 +648,13 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
 {
     char* urlpath = aprintf("%s/search?platform=%s&page=%d", CB_App->hbApiPath, platform, MAX(page_index, 1));
     
-    http_cancel(hbs->active_http_connection);
-    
     if (hbs->download_image)
     {
         playdate->graphics->freeBitmap(hbs->download_image);
         hbs->download_image = 0;
     }
     
-    hbs->active_http_connection = http_get(CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
+    http_safe_replace_get(&hbs->active_http_connection, CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
     
     cb_free(urlpath);
 }
@@ -698,6 +724,7 @@ static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform)
     hbs->max_pages = 0;
     context->type = HBSCT_LIST_SEARCH;
     context->str = platform;
+    hbs->doctor_header_cgb_flag = !strcasecmp(platform, "GB");
     context->i = 1; // page
     
     http_search(hbs, context->i, platform);
@@ -755,8 +782,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     else if (CB_App->buttons_pressed & kButtonB)
     {
         --hbs->target_context_depth;
-        http_cancel(hbs->active_http_connection);
-        hbs->active_http_connection = 0;
+        http_safe_cancel(&hbs->active_http_connection);
     }
     
     bool isAnimating = (hbs->context_depth_p != hbs->target_context_depth);
@@ -868,7 +894,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             kBitmapUnflipped
         );
     }
-    else if (hbs->active_http_connection || (hbs->active_http_connection_2 && hbs->context[hbs->context_depth-1].show_image))
+    else if (http_safe_in_progress(&hbs->active_http_connection) || (http_safe_in_progress(&hbs->active_http_connection_2) && hbs->context[hbs->context_depth-1].show_image))
     {
         draw_spinny((kDividerX + LCD_COLUMNS)/2, 180, 34);
     }
@@ -878,8 +904,8 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
 {
-    http_cancel(hbs->active_http_connection);
-    http_cancel(hbs->active_http_connection_2);
+    http_safe_cancel(&hbs->active_http_connection);
+    http_safe_cancel(&hbs->active_http_connection_2);
 
     CB_Scene_free(hbs->scene);
     cb_free(hbs->cover_art_data);

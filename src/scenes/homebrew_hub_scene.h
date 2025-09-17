@@ -2,7 +2,7 @@
 
 #include "../listview.h"
 #include "library_scene.h"
-#include "http.h"
+#include "http_safe.h"
 
 #include <stdlib.h>
 
@@ -39,10 +39,12 @@ typedef struct CB_HomebrewHubScene
     CB_Game* game;
     struct CB_SettingsScene* settingsScene;
 
-    http_handle_t active_http_connection;
-    http_handle_t active_http_connection_2;
+    HTTPSafe active_http_connection;
+    HTTPSafe active_http_connection_2;
     
     int max_pages;
+    
+    bool doctor_header_cgb_flag;
     
     char* target_rom_path;
     char* target_cover_art_path;
