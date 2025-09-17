@@ -38,6 +38,7 @@ SRC += src/app.c
 SRC += src/scenes/game_scene.c
 SRC += src/scenes/settings_scene.c
 SRC += src/scenes/homebrew_hub_scene.c
+SRC += src/http_safe.c
 SRC += src/global.c
 SRC += src/serial.c
 SRC += src/array.c
