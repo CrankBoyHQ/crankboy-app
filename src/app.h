@@ -228,6 +228,8 @@ const char* get_pdboot_name_and_version(void);
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
 
+#define DISK_IMAGE "__homebrew_dl_img.pdi"
+
 // for files which should only appear in data unless we're in bundle mode
 #define kFileReadDataOrBundle (CB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)
 

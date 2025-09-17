@@ -15,8 +15,6 @@
 #define HOLD_TIME 1.09f
 #define HOLD_FADE_RATE 2.9f
 
-#define DISK_IMAGE "homebrew.pdi"
-
 typedef struct
 {
     CB_HomebrewHubScene* hbs;
@@ -364,7 +362,7 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
         void* pdi_data = png_to_pdi(hbs->download_image_name, data, data_len, &pdi_size, LCD_COLUMNS - kDividerX, 160);
         cb_free(hbs->cover_art_data);
         hbs->cover_art_data = png_to_pdi(hbs->download_image_name, data, data_len, &hbs->cover_art_len, 240, 240); /* 240 x 240 is the preferred cover art dimensions */
-        if (pdi_data && pdi_size && hbs->context[hbs->context_depth-1].show_image)
+        if (pdi_data && pdi_size)
         {
             if (pdi_size < (1 << 16))
             {
@@ -920,7 +918,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             kBitmapUnflipped
         );
     }
-    else if (http_safe_in_progress(&hbs->active_http_connection) || (http_safe_in_progress(&hbs->active_http_connection_2) && hbs->context[hbs->context_depth-1].show_image))
+    else if (http_safe_in_progress(&hbs->active_http_connection) || (http_safe_in_progress(&hbs->active_http_connection_2)))
     {
         draw_spinny((kDividerX + LCD_COLUMNS)/2, 180, 34);
     }
