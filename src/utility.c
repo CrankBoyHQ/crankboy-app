@@ -284,6 +284,18 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc
     return true;
 }
 
+void draw_spinny(int x, int y, int r)
+{
+    unsigned t = playdate->system->getCurrentTimeMilliseconds();
+    
+    float theta = (t % 512) / 512.0f * 360.0f;
+    
+    playdate->graphics->drawEllipse(
+        x-r, y-r, r*2, r*2, MIN(4, r/4), theta,
+        theta + 110.0f, kColorBlack
+    );
+}
+
 bool cb_valid_basename(const char* fname)
 {
     if (!fname || !*fname) return false;
