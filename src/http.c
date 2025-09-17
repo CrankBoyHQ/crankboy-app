@@ -9,6 +9,7 @@ static enable_cb_t _cb;
 static void* _ud;
 char* _domain = NULL;
 char* _reason = NULL;
+bool skip_enable_check = false;
 
 enum HttpHandleState
 {
@@ -518,7 +519,8 @@ static void CB_AccessReply(bool result, void* cbud)
     enable_cb_t cb = ((struct CB_UserData_EnableHTTP*)cbud)->cb;
     void* ud = ((struct CB_UserData_EnableHTTP*)cbud)->ud;
     cb_free(cbud);
-
+    
+    if (result) skip_enable_check = true;
     cb(HTTP_ENABLE_ASKED | (result ? 0 : HTTP_ENABLE_DENIED), ud);
 
     cb_free(_domain);
@@ -584,6 +586,7 @@ static void CB_SetEnabled(PDNetErr err)
         _domain = NULL;
         cb_free(_reason);
         _reason = NULL;
+        skip_enable_check = true;
         break;
 
     default:
@@ -600,6 +603,12 @@ static void CB_SetEnabled(PDNetErr err)
 
 void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* ud)
 {
+    if (skip_enable_check)
+    {
+        cb(0, ud);
+        return;
+    }
+    
     if (_cb != NULL)
     {
         cb(HTTP_ENABLE_IN_PROGRESS, ud);
