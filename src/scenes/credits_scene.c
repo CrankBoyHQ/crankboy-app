@@ -204,22 +204,45 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             const char* pdboot_version = get_pdboot_name_and_version();
             const char* version = get_current_version();
 
+            int yr = margin, yl = margin;
+            int yadv = 16;
+            
             if (pdboot_version)
             {
                 playdate->graphics->drawTextInRect(
                     pdboot_version, strlen(pdboot_version), kUTF8Encoding,
-                    margin + creditsScene->scroll * 8, margin, width, 100, kWrapWord,
+                    margin + creditsScene->scroll*8, yr, width, 100, kWrapWord,
                     kAlignTextRight
                 );
+                yr += yadv;
+            }
+            
+            if (CB_App->hasSystemAccess || 1)
+            {
+                playdate->graphics->drawTextInRect(
+                    "System Access", strlen((char*)"System Access"), kUTF8Encoding,
+                    margin + creditsScene->scroll*8, yl, width, 100, kWrapWord,
+                    kAlignTextRight
+                );
+                yr += yadv;
             }
 
             if (version)
             {
                 playdate->graphics->drawTextInRect(
                     version, strlen(version), kUTF8Encoding, margin - creditsScene->scroll * 8,
-                    margin, width, 100, kWrapWord, kAlignTextLeft
+                    yl, width, 100, kWrapWord, kAlignTextLeft
                 );
+                yl += yadv;
             }
+            
+            #ifdef CRANKBOY_NIGHTLY
+            playdate->graphics->drawTextInRect(
+                "Nightly", strlen((char*)"Nightly"), kUTF8Encoding, margin - creditsScene->scroll * 8,
+                yl, width, 100, kWrapWord, kAlignTextLeft
+            );
+            yl += yadv;
+            #endif
 
             if (creditsScene->logo)
             {
