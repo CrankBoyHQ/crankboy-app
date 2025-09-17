@@ -16,6 +16,8 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
     }
     else
     {
+        playdate->system->logToConsole("HTTPSafe: pre-empted");
+        
         struct HTTPQueued q = safe->queued;
         
         safe->enqueued = false;
