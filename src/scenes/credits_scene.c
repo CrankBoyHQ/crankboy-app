@@ -217,7 +217,7 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
                 yr += yadv;
             }
             
-            if (CB_App->hasSystemAccess || 1)
+            if (CB_App->hasSystemAccess)
             {
                 playdate->graphics->drawTextInRect(
                     "System Access", strlen((char*)"System Access"), kUTF8Encoding,
