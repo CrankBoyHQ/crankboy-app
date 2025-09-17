@@ -184,6 +184,8 @@ __section__(".text.main") DllExport
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
         
+        if (cb_file_exists(DISK_IMAGE, kFileReadData)) playdate->file->unlink(DISK_IMAGE, false);
+        
         load_global();
         
         CB_init();
