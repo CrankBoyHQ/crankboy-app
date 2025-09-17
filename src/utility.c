@@ -324,7 +324,7 @@ const char* get_extension(const char* filename)
     char* basename = cb_basename(filename, false);
     if (!basename) return "";
     
-    char* dot = strchr(basename, '.');
+    char* dot = strrchr(basename, '.');
     if (!dot)
     {
         cb_free(basename);
