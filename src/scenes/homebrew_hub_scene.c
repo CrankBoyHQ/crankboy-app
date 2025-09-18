@@ -36,16 +36,11 @@ static const char* hb_platforms[] = {
 static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform);
 static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry);
 
-static void user_quit(void* ud, unsigned selected)
+static void user_quit(void* ud, int selected)
 {
     if (selected == 0)
     {
-        if (playdate->lua->callFunction("playdate.exit", 0, NULL) == 0)
-        {
-            CB_presentModal(
-                CB_Modal_new("Exit failed. Please quit manually.", NULL, NULL, NULL)->scene
-            );
-        }
+        playdate->system->restartGame(playdate->system->getLaunchArgs(NULL));
     }
 }
 
@@ -122,14 +117,14 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         // save as 'last selected' for library view
         cb_write_entire_file(LAST_SELECTED_FILE, hbs->target_rom_path, strlen(hbs->target_rom_path));
         
-        const char* options[] = {"Quit", "Do Not", NULL};
+        const char* options[] = {"Restart", "Do Not", NULL};
         
         char* s = aprintf("ROM downloaded successfully; you must restart CrankBoy for it to appear.%s", did_doctor ? "\n\nThe ROM header was altered to indicate that it is DMG-compatible." : "");
         
-        CB_Modal* modal = CB_Modal_new(s, CB_App->hasSystemAccess ? options : NULL, CB_App->hasSystemAccess ? (void*)user_quit : NULL, NULL);
+        CB_Modal* modal = CB_Modal_new(s, options, user_quit, NULL);
         modal->width = 330;
         modal->height = did_doctor ? 210 : 110;
-        if (CB_App->hasSystemAccess) modal->height += 28;
+        modal->height += 28;
         CB_presentModal(
             modal->scene
         );
