@@ -38,7 +38,50 @@ typedef struct ScriptData
     
     uint8_t* special_base_tiles;
     uint8_t* halftiles;
+    uint8_t* area_explored;
+    uint8_t* map_explored;
 } ScriptData;
+
+// this define is used by SCRIPT_BREAKPOINT
+#define USERDATA ScriptData* data
+
+bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y);
+
+void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by, bool explored)
+{
+    int idx = (bank - MAP_BANK_COUNT)*0x100 + by * 0x10 + bx;
+    if (idx != explored)
+    {
+        data->map_explored[idx] = explored;
+        
+        struct AreaAssociation association = data->area_associations[(bank-MAP_FIRST_BANK)*0x100 + by*0x10 + bx];
+        if (association.area_idx == data->map_area)
+        {
+            unsigned x, y;
+            struct Area* area = &areas[data->map_area];
+            get_coords_in_area(data, association.room_idx, bank, bx, by, &x, &y);
+            data->area_explored[y*area->w + x] = explored;
+        }
+    }
+}
+
+bool get_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by)
+{
+    return data->map_explored[(bank - MAP_BANK_COUNT)*0x100 + by * 0x10 + bx];
+}
+
+
+// new save file
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
+{
+    memset(data->map_explored, 0, 0x100*MAP_BANK_COUNT);
+    
+    // explore starting room
+    set_map_explored(data, 0xF, 0x5, 0x6, true);
+    set_map_explored(data, 0xF, 0x6, 0x6, true);
+    set_map_explored(data, 0xF, 0x5, 0x7, true);
+    set_map_explored(data, 0xF, 0x6, 0x7, true);
+}
 
 unsigned get_room_h(struct Room* room)
 {
@@ -83,6 +126,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     data->map_area = AREA_SECRET_WORLD;
     data->htimg = htimg;
     data->area_associations = mallocz(0x100*MAP_BANK_COUNT*sizeof(struct AreaAssociation));
+    data->map_explored = mallocz(0x100 * MAP_BANK_COUNT);
     
     for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
     {
@@ -144,8 +188,10 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
     struct Area* area = &areas[area_idx];
     cb_free(data->halftiles);
     cb_free(data->special_base_tiles);
+    cb_free(data->area_explored);
     data->halftiles = mallocz(area->w * area->h * 4 * sizeof(data->halftiles[0]));
     data->special_base_tiles = mallocz(area->w * area->h);
+    data->area_explored = mallocz(area->w * area->h);
     
     for (int i = 0; i < area->special_tile_c; ++i)
     {
@@ -198,6 +244,11 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                         else
                         {
                             tile_present[tile_idx] = special_tile;
+                        }
+                        
+                        if (get_map_explored(data, em_bank, em_x + x, em_y + y))
+                        {
+                            data->area_explored[(y + room->area_y)*area->w + x + room->area_x] = 1;
                         }
                     }
                 }
@@ -284,7 +335,9 @@ static void on_end(gb_s* gb, ScriptData* data)
     if (data->htimg) playdate->graphics->freeBitmap(data->htimg);
     cb_free(data->halftiles);
     cb_free(data->special_base_tiles);
+    cb_free(data->area_explored);
     cb_free(data->area_associations);
+    cb_free(data->map_explored);
     
     cb_free(data);
 }
@@ -319,6 +372,94 @@ static void draw_halftile(ScriptData* data, int ht_idx, int dst_x, int dst_y)
     }
 }
 
+static void draw_fulltile(ScriptData* data, int ft_idx, int dst_x, int dst_y)
+{
+    uint8_t ht[4] = {3, 3, 3, 3};
+    switch(ft_idx)
+    {
+    case TILE_HPIPE:
+        ht[0] = 5*k + 0;
+        ht[1] = 5*k + 0;
+        ht[2] = 5*k + 1;
+        ht[3] = 5*k + 1;
+        break;
+    case TILE_VPIPE:
+        ht[0] = 5*k + 2;
+        ht[1] = 5*k + 3;
+        ht[2] = 5*k + 2;
+        ht[3] = 5*k + 3;
+        break;
+    case TILE_DOOR_NORTH:
+        ht[0] = 10*k + 0;
+        ht[1] = 10*k + 1;
+        break;
+    case TILE_DOOR_WEST:
+        ht[0] = 10*k + 3;
+        ht[2] = 11*k + 3;
+        break;
+    case TILE_DOOR_SOUTH:
+        ht[2] = 11*k + 0;
+        ht[3] = 11*k + 1;
+        break;
+    case TILE_DOOR_EAST:
+        ht[1] = 10*k + 2;
+        ht[3] = 11*k + 2;
+        break;
+    case TILE_SHUNT_UL:
+        ht[1] = 16*k + 2;
+        ht[3] = 17*k + 2;
+        break;
+    case TILE_SHUNT_UR:
+        ht[0] = 16*k + 3;
+        ht[2] = 17*k + 3;
+        break;
+    case TILE_SHUNT_BL:
+        ht[0] = 16*k + 0;
+        ht[2] = 17*k + 0;
+        break;
+    case TILE_SHUNT_BR:
+        ht[0] = 16*k + 1;
+        ht[2] = 17*k + 1;
+        break;
+    case TILE_EXIT_NORTH:
+    case TILE_EXIT_WEST:
+    case TILE_EXIT_EAST:
+    case TILE_EXIT_SOUTH: {
+            ft_idx -= TILE_EXIT_NORTH;
+            int a = (ft_idx % 2);
+            int b = (ft_idx / 2);
+            ht[0] = (12 + b*2)*k + 2*a;
+            ht[1] = (12 + b*2)*k + 2*a + 1;
+            ht[2] = (12 + b*2 + 1)*k + 2*a;
+            ht[3] = (12 + b*2 + 1)*k + 2*a + 1;
+        }
+        break;
+    case TILE_HJUMP:
+        ht[0] = 6*k + 0;
+        ht[1] = 6*k + 0;
+        ht[2] = 6*k + 1;
+        ht[3] = 6*k + 1;
+        break;
+    case TILE_ITEM ... TILE_SHIP_RIGHT: {
+            ft_idx -= TILE_ITEM;
+            int a = (ft_idx % 2);
+            int b = (ft_idx / 2);
+            ht[0] = (20 + b*2)*k + 2*a;
+            ht[1] = (20 + b*2)*k + 2*a + 1;
+            ht[2] = (20 + b*2 + 1)*k + 2*a;
+            ht[3] = (20 + b*2 + 1)*k + 2*a + 1;
+        }
+        break;
+    default:
+        break;
+    }
+    
+    draw_halftile(data, ht[0], dst_x, dst_y);
+    draw_halftile(data, ht[1], dst_x+HALFTILE_W, dst_y);
+    draw_halftile(data, ht[2], dst_x, dst_y+HALFTILE_H);
+    draw_halftile(data, ht[3], dst_x+HALFTILE_W, dst_y+HALFTILE_H);
+}
+
 static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, int window_w, int window_h, int window_x, int window_y)
 {
     if (area_idx == AREA_SECRET_WORLD)
@@ -342,12 +483,22 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
             int dst_x_px = dst_x + (x-window_x) * HALFTILE_W * 2;
             int dst_y_px = dst_y + (y-window_y) * HALFTILE_H * 2;
             
+            bool blank = false;
+            if (y < 0 || y >= area->h || x < 0 || x >= area->w)
+            {
+                blank = true;
+            }
+            else if (!data->area_explored[y*area->w + x])
+            {
+                blank = true;
+            }
+            
             for (int yi = 0; yi < 2; ++yi)
             {
                 for (int xi = 0; xi < 2; ++xi)
                 {
                     int halftile = 0;
-                    if (y >= 0 && y < area->h && x >= 0 && x < area->w)
+                    if (!blank)
                     {
                         halftile = data->halftiles[(y*2 + yi)*area->w*2 + x*2 + xi];
                     }
@@ -355,6 +506,54 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
                 }
             }
         }
+    }
+    
+    for (int i = 0; i < area->special_tile_c; ++i)
+    {
+        struct SpecialTile* special_tile = &area->special_tiles[i];
+        if (special_tile->area_x < window_x || special_tile->area_x >= window_x + window_w) continue;
+        if (special_tile->area_y < window_y || special_tile->area_y >= window_y + window_h) continue;
+        
+        if (special_tile->type == TILE_HJUMP)
+        // special behaviour for hjump tiles
+        {
+            int xroot = special_tile->ridx;
+            if (!data->area_explored[special_tile->area_y*area->w + xroot]) continue;
+        }
+        else if (special_tile->type >= TILE_EXIT_NORTH && special_tile->type <= TILE_EXIT_EAST)
+        // special behaviour for exit tiles
+        {
+            int dx = 0;
+            int dy = 0;
+            
+            if (special_tile->type == TILE_EXIT_NORTH) dy = 1;
+            if (special_tile->type == TILE_EXIT_SOUTH) dy = -1;
+            if (special_tile->type == TILE_EXIT_WEST) dx = 1;
+            if (special_tile->type == TILE_EXIT_EAST) dx = -1;
+            if (!data->area_explored[(special_tile->area_y + dy)*area->w + (special_tile->area_x + dx)]) continue;
+        }
+        else if (special_tile->ridx != 0xFF)
+        //  check if tile was explored
+        {
+            if (!data->area_explored[special_tile->area_y*area->w + special_tile->area_x]) continue;
+        }
+        
+        int slot = special_tile->object_slot;
+        if (slot >= 0x40 && slot <= 0x7F)
+        {
+            uint8_t flags = ram_peek(0xC500 + slot);
+            
+            // indicates object dead / destroyed / collected
+            if (flags & 2) continue;
+        }
+        
+        int dst_x_px = dst_x + (special_tile->area_x - window_x) * HALFTILE_W * 2;
+        int dst_y_px = dst_y + (special_tile->area_y - window_y) * HALFTILE_H * 2;
+        
+        draw_fulltile(data, special_tile->type, dst_x_px, dst_y_px);
+        
+        // don't draw anything after this tile
+        if (special_tile->masking) break;
     }
     
     playdate->graphics->markUpdatedRows(dst_y, dst_y + window_h * HALFTILE_H*2 - 1);
@@ -391,7 +590,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     game_picture_y_top = 0;
     game_picture_y_bottom = LCD_HEIGHT;
     
-    if (game_mode == 4 || game_mode == 6 || game_mode == 7 || game_mode == 10)
+    if (game_mode == 4 || game_mode == 5 || game_mode == 6 || game_mode == 7 || game_mode == 8 || game_mode == 9 || game_mode == 10)
     {
         // flush left, expand to hide HUD
         game_picture_x_offset = 0;
@@ -403,7 +602,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         unsigned samus_x = ram_peek(0xFFC3);
         unsigned samus_y = ram_peek(0xFFC1);
         
-        unsigned door_transition = ram_peek(0xD08E);
+        bool door_transition = ram_peek(0xD00E) || ram_peek(0xD08E) || ram_peek(0xD08F);
         
         // reuse previous position if we're in an empty cell, scrolling screen, or reached gunship state
         struct AreaAssociation association = data->area_associations[(samus_bank-MAP_FIRST_BANK)*0x100 + samus_y*0x10 + samus_x];
@@ -414,11 +613,16 @@ static void on_draw(gb_s* gb, ScriptData* data)
             samus_bank = data->samus_bank;
         }
         
-        if (data->samus_x != samus_x || data->samus_y != samus_y || data->samus_bank != samus_bank)
+        if (gbScreenRequiresFullRefresh || data->samus_x != samus_x || data->samus_y != samus_y || data->samus_bank != samus_bank)
         {
             data->samus_bank = samus_bank;
             data->samus_x = samus_x;
             data->samus_y = samus_y;
+            
+            if (samus_bank >= MAP_FIRST_BANK)
+            {
+                set_map_explored(data, samus_bank, samus_x, samus_y, true);
+            }
             
             struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-9)*0x100 + data->samus_y*0x10 + data->samus_x];
             unsigned x, y;
