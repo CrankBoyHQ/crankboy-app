@@ -21,6 +21,8 @@ void rom_poke(romaddr_t addr, u8 v);
 u8 ram_peek(addr16_t addr);
 void ram_poke(addr16_t addr, u8 v);
 
+u16 ram_peek_u16(addr16_t addr);
+
 romaddr_t rom_size(void);
 
 #define force_pref(pref, val)                     \

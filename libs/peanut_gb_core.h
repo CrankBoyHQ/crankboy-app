@@ -1931,7 +1931,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
 )
 {
     framebuffer += game_picture_x_offset / 8;
-    unsigned fb_y_playdate_current_bottom = CB_LCD_Y + CB_LCD_HEIGHT;
+    int fb_y_playdate_current_bottom = CB_LCD_Y + CB_LCD_HEIGHT;
     const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
 
     int scale_index = preferences_dither_line;
@@ -1954,7 +1954,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
             dither_lut1_ptr = temp_ptr;
         }
 
-        unsigned int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
+        int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
 
         if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
         {
@@ -1963,6 +1963,11 @@ __core_section("fb") void $(update_fb_dirty_lines)(
         }
 
         fb_y_playdate_current_bottom = current_line_pd_top_y;
+        
+        if (current_line_pd_top_y < 0)
+        {
+            break;
+        }
 
         uint32_t* restrict gb_line_data32 = (uint32_t*)&lcd[y_gb * LCD_WIDTH_PACKED];
         uint32_t* restrict pd_fb_line_top_ptr32 =

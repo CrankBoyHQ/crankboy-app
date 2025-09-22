@@ -22,6 +22,10 @@ void ram_poke(addr16_t addr, u8 v)
 {
     __gb_write_full(GB, addr, v);
 }
+u16 ram_peek_u16(addr16_t addr)
+{
+    return (u16)__gb_read_full(GB, addr) | ((u16)__gb_read_full(GB, addr) << 8);
+}
 
 romaddr_t rom_size(void)
 {
