@@ -91,7 +91,7 @@ static void on_end(gb_s* gb, ScriptData* data)
     cb_free(data);
 }
 
-static void on_tick(gb_s* gb, ScriptData* data)
+static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     uint32_t vram_checksum = 0;
     for (int y = 0; y < 10; y++)
@@ -139,7 +139,7 @@ static void on_tick(gb_s* gb, ScriptData* data)
 
             if (fabsf(crank_change) > MAX_CRANK_VELOCITY_DEG_PER_FRAME)
             {
-                data->lockout_timer = preferences_frame_skip ? LOCKOUT_DURATION_FRAMES_30FPS
+                data->lockout_timer = (frames_elapsed == 2) ? LOCKOUT_DURATION_FRAMES_30FPS
                                                              : LOCKOUT_DURATION_FRAMES_60FPS;
             }
             else
@@ -174,7 +174,7 @@ static void on_tick(gb_s* gb, ScriptData* data)
 
             if (button_pressed)
             {
-                data->input_cooldown_timer = preferences_frame_skip ? PRESS_COOLDOWN_FRAMES_30FPS
+                data->input_cooldown_timer = (frames_elapsed == 2) ? PRESS_COOLDOWN_FRAMES_30FPS
                                                                     : PRESS_COOLDOWN_FRAMES_60FPS;
             }
         }

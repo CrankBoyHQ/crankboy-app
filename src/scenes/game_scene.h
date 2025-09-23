@@ -128,6 +128,8 @@ typedef struct CB_GameScene
 #endif
 
     float prev_dt;
+    
+    int next_frames_elapsed;
 
     struct ScriptState* script;
 

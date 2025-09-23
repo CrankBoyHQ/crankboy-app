@@ -23,6 +23,7 @@ typedef struct ScriptData
     
     int level_start_timer;
     unsigned is_in_stage_select;
+    int frames_elapsed;
     
     // 12x12 tiles
     uint16_t tiles12[15][12];
@@ -165,8 +166,9 @@ static int get_game_mode(gb_s* gb, ScriptData* data)
     }
 }
 
-static void on_tick(gb_s* gb, ScriptData* data)
+static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
+    data->frames_elapsed = frames_elapsed;
     int game_state = get_game_mode(gb, data);
     int game_stage = ram_peek(0xC8C0);
     int game_substage = ram_peek(0xC8C1);
@@ -253,7 +255,7 @@ static void on_tick(gb_s* gb, ScriptData* data)
     // has level intro timer started
     if (game_state == GAME_STATE_STAGE_SELECT && ram_peek(0xCB81) == 7 && (stages_beaten & 0x0F) != 0x0F)
     {
-        data->level_start_timer += preferences_frame_skip ? 2 : 1;
+        data->level_start_timer += frames_elapsed;
         
         int scroll_offset = (data->level_start_timer - 30) / 4;
         if (scroll_offset > 3) scroll_offset = 3;
@@ -364,7 +366,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         }
         if (data->subweapon_refresh_countdown > 0)
         {
-            data->subweapon_refresh_countdown -= (preferences_frame_skip ? 2 : 1);
+            data->subweapon_refresh_countdown -= data->frames_elapsed;
             if (data->subweapon_refresh_countdown <= 0)
             {
                 refresh_subweapon = true;

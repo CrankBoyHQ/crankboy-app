@@ -37,6 +37,7 @@ typedef struct ScriptData
     uint16_t samus_disp_energy;
     uint16_t samus_disp_missiles;
     uint16_t metroid_disp;
+    uint8_t samus_weapon;
     
     struct AreaAssociation* area_associations;
     
@@ -48,10 +49,16 @@ typedef struct ScriptData
     uint8_t* halftiles;
     uint8_t* area_explored;
     uint8_t* map_explored;
+    uint8_t weapons_collected;
     uint8_t* masked;
     size_t masked_size;
     
     uint8_t door_transition_suppress_map_update;
+    
+    float crank_save_p;
+    float crank_prev;
+    const char* prev_msg;
+    float prev_xorw;
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -88,6 +95,8 @@ bool get_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by)
 SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
 {
     memset(data->map_explored, 0, 0x100*MAP_BANK_COUNT);
+    
+    data->weapons_collected = 0;
     
     // explore starting room
     set_map_explored(data, 0xF, 0x5, 0x6, true);
@@ -146,6 +155,74 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x7B82))
     script_save_to_disk((void*)&buff[0], sizeof(buff), save_slot);
 }
 
+// easy unpause
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x2D08))
+{
+    if ($A & 0xF)
+    {
+        $Fz = false;
+    }
+}
+
+static void set_z_should_missile_toggle(void)
+{
+    bool is_crank_mapped = preferences_crank_dock_button != PREF_BUTTON_NONE || preferences_crank_undock_button != PREF_BUTTON_NONE;
+    bool is_select_mapped = CB_App->hasSystemAccess && preferences_lock_button == PREF_BUTTON_SELECT;
+    if (!is_crank_mapped && !is_select_mapped)
+    {
+        bool isMissiles = !!(ram_peek(0xD04D) & 8);
+        bool should_be_missiles = false;
+        if (!playdate->system->isCrankDocked())
+        {
+            should_be_missiles = true;
+            
+            float crank_angle = playdate->system->getCrankAngle();
+            if (crank_angle >= 90 && crank_angle <= 270)
+            {
+                should_be_missiles = false;
+            }
+        }
+        
+        $Fz = (should_be_missiles == isMissiles);
+    }
+}
+
+// missile toggle (A)
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x2D08))
+{
+    set_z_should_missile_toggle();
+}
+
+// missile toggle (B)
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x220F))
+{
+    set_z_should_missile_toggle();
+}
+
+// clear
+SCRIPT_BREAKPOINT(BANK_ADDR(5, 0x41D6))
+{
+    bool is_crank_mapped = preferences_crank_dock_button == PREF_BUTTON_NONE && preferences_crank_undock_button == PREF_BUTTON_NONE;
+    bool is_select_mapped = CB_App->hasSystemAccess && preferences_lock_button == PREF_BUTTON_SELECT;
+    if (!is_crank_mapped && !is_select_mapped)
+    {
+        bool isClear = !!ram_peek(0xD0A4);
+        bool should_be_clear = !playdate->system->isCrankDocked();
+        
+        $Fz = (should_be_clear == isClear);
+    }
+}
+
+// crank to save
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x5838))
+{
+    if (data->crank_save_p >= 1)
+    {
+        data->crank_save_p = 0;
+        $Fz = 1;
+    }
+}
+
 unsigned get_room_h(struct Room* room)
 {
     if (room->h == 0) return 16;
@@ -180,8 +257,31 @@ void read_embedding_header(const uint8_t* base, size_t* offset, unsigned* _bank,
 
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
+    // press A to resume from game-over.
+    // also a poor-man's rom check.
+    if (rom_peek(0x372A) == 0x8)
+    {
+        rom_poke(0x372A, 1);
+    }
+    else
+    {
+        return NULL;
+    }
+    
+    // press A to start on main menu
+    if (rom_peek(5*0x4000 + 0x0249) == 0x8)
+    {
+        rom_poke(5*0x4000 + 0x0249, 1);
+    }
+    else
+    {
+        return NULL;
+    }
+    
     LCDBitmap* htimg = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "pdimg", NULL);
     if (!htimg) return NULL;
+    
+    force_pref(crank_mode, CRANK_MODE_OFF);
     
     SET_BREAKPOINTS(0);
     
@@ -249,8 +349,8 @@ const int k = 4;
 #define GLYPH_A (272/16)
 #define GLYPH_0 (0)
 #define GLYPH_DASH (240/16)
-#define GLYPH_MISSILES 16
-#define GLYPH_MISSILES_EQUIPPED 16
+#define GLYPH_MISSILES (688/16)
+#define GLYPH_MISSILES_EQUIPPED (GLYPH_MISSILES+1)
 
 static void load_map_halftiles(ScriptData* data, int area_idx)
 {
@@ -417,11 +517,49 @@ static void on_end(gb_s* gb, ScriptData* data)
     cb_free(data);
 }
 
-static void on_tick(gb_s* gb, ScriptData* data)
+static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     if (data->door_transition_suppress_map_update > 0)
     {
-        data->door_transition_suppress_map_update -= preferences_frame_skip ? 2 : 1;
+        data->door_transition_suppress_map_update -= frames_elapsed;
+    }
+    
+    data->weapons_collected |= ram_peek(0xd04D);
+    
+    if (!ram_peek(0xD07D))
+    {
+        // not touching save point
+        data->crank_save_p = 0;
+        data->crank_prev = -1;
+    }
+    else
+    {
+        // touching save point
+        if (data->crank_save_p < 0 || data->crank_save_p > 20) data->crank_save_p = 0;
+        if (playdate->system->isCrankDocked())
+        {
+            data->crank_prev = -1;
+        }
+        else
+        {
+            float crank_angle = playdate->system->getCrankAngle();
+            if (data->crank_prev >= 0)
+            {
+                float crank_amount = fabsf(crank_angle - data->crank_prev) / (float)(frames_elapsed);
+                
+                crank_amount /= 1.7f;
+                
+                if (crank_amount > 1)
+                {
+                    crank_amount = MIN(crank_amount, 6);
+                    data->crank_save_p += crank_amount/60.0f;
+                }
+            }
+            data->crank_prev = crank_angle;
+        }
+        
+        // reduce over time
+        data->crank_save_p = toward(data->crank_save_p, 0, frames_elapsed / 110.0f);
     }
 }
 
@@ -689,6 +827,21 @@ static void draw_glyph(ScriptData* data, size_t glyph_idx, int x, int y, LCDBitm
     playdate->graphics->markUpdatedRows(y, y + 16);
 }
 
+static void draw_msg(ScriptData* data, const char* msg)
+{
+    int len = strlen(msg);
+    int x = MAX(0, 160 - len*8);
+    for (int i = 0; i < len; ++i)
+    {
+        char c = msg[i];
+        if (c >= 'A' && c <= 'Z')
+        {
+            draw_glyph(data, GLYPH_A + c - 'A', x, LCD_ROWS - 16, kBitmapUnflipped);
+        }
+        x += 16;
+    }
+}
+
 static void on_draw(gb_s* gb, ScriptData* data)
 {
     unsigned game_mode = ram_peek(0xFF9B);
@@ -709,12 +862,135 @@ static void on_draw(gb_s* gb, ScriptData* data)
         game_picture_y_top = 2;
         game_picture_y_bottom = 136;
         
+        // cover up top-pixel scaling glitch
+        playdate->graphics->fillRect(
+            0, 0, LCD_COLUMNS - 80, 1, kColorBlack
+        );
+        
         if (game_mode == 7) // game over
         {
             game_picture_x_offset = CB_LCD_X;
         }
         else
         {
+            if (gb->display.WY <= 0x80)
+            {
+                unsigned saveMessageCooldownTimer = ram_peek(0xd088);
+                unsigned saveContact = ram_peek(0xD07D);
+                unsigned itemCollected = ram_peek(0xD093);
+                
+                float xorw = data->prev_xorw;
+                
+                // bottom window
+                playdate->graphics->fillRect(
+                    0, LCD_ROWS - 16, LCD_COLUMNS - 80, 16, kColorBlack
+                );
+                
+                // message
+                const char* msg = data->prev_msg;
+                if (saveContact)
+                {
+                    if (saveMessageCooldownTimer)
+                    {
+                        msg = "GAME SAVED";
+                        
+                        xorw = 1;
+                    }
+                    else
+                    {
+                        if (ram_peek(0xFF97) & 8)
+                        {
+                            msg = "CRANK TO SAVE";
+                        }
+                        
+                        xorw = data->crank_save_p;
+                    }
+                }
+                else 
+                {
+                    switch(itemCollected)
+                    {
+                    case 1:
+                        msg = "PLASMA BEAM";
+                        break;
+                    case 2:
+                        msg = "ICE BEAM";
+                        break;
+                    case 3:
+                        msg = "WAVE BEAM";
+                        break;
+                    case 4:
+                        msg = "SPAZER";
+                        break;
+                    case 5:
+                        msg = "BOMB";
+                        break;
+                    case 6:
+                        msg = "SCREW ATTACK";
+                        break;
+                    case 7:
+                        msg = "VARIA";
+                        break;
+                    case 8:
+                        msg = "HIGH JUMP BOOTS";
+                        break;
+                    case 9:
+                        msg = "SPACE JUMP";
+                        break;
+                    case 10:
+                        msg = "SPIDER BALL";
+                        break;
+                    case 11:
+                        msg = "SPRING BALL";
+                        break;
+                    default:
+                        break;
+                    }
+                    xorw = 0;
+                }
+                
+                data->prev_msg = msg;
+                data->prev_xorw = xorw;
+                
+                if (msg)
+                {
+                    draw_msg(data, msg);
+                }
+                
+                if (xorw > 0)
+                {
+                    playdate->graphics->fillRect(
+                        0, LCD_ROWS - 16, (LCD_COLUMNS - 80)*MIN(1.0f, xorw), 16, kColorXOR
+                    );
+                }
+                
+                playdate->graphics->markUpdatedRows(LCD_ROWS - 16, LCD_ROWS-1);
+            }
+            else
+            {
+                // for screen refresh reasons, the window must linger 1 frame longer than it otherwise would
+                if (data->prev_msg)
+                {
+                    // fixes graphical glitch when window disappears
+                    CB_GameSceneContext* gameSceneContext = gb->direct.priv;
+                    gameSceneContext->scene->scene->forceFullRefresh = true;
+                    
+                    playdate->graphics->fillRect(
+                        0, LCD_ROWS - 16, LCD_COLUMNS - 80, 16, kColorBlack
+                    );
+                    
+                    draw_msg(data, data->prev_msg);
+                    
+                    if (data->prev_xorw > 0)
+                    {
+                        playdate->graphics->fillRect(
+                            0, LCD_ROWS - 16, (LCD_COLUMNS - 80)*MIN(1.0f, data->prev_xorw), 16, kColorXOR
+                        );
+                    }
+                }
+                data->prev_msg = NULL;
+            }
+            
             unsigned samus_bank = ram_peek(0xD058);
             unsigned samus_x = ram_peek(0xFFC3);
             unsigned samus_y = ram_peek(0xFFC1);
@@ -726,8 +1002,13 @@ static void on_draw(gb_s* gb, ScriptData* data)
             unsigned samus_disp_energy = ram_peek_u16(0xd084);
             unsigned samus_disp_missiles = ram_peek_u16(0xd086);
             unsigned metroid_disp = ram_peek(0xD09A) | (flicker_on << 12);
+            unsigned samus_weapon = ram_peek(0xD04D);
             
-            if (ram_peek(0xD096))
+            bool samus_weapon_change = samus_weapon != data->samus_weapon;
+            data->samus_weapon = samus_weapon;
+            
+            unsigned shuffle = ram_peek(0xD096);
+            if (shuffle > 0 && shuffle < 0x80)
             {
                 // shuffle metroid display
                 metroid_disp = (rand() % 0x10) | ((rand()%0x10) << 4);
@@ -783,7 +1064,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 }
             }
             
-            int ui_y = 5*16 + 4;
+            int ui_y = 6*16 + 8;
             int ui_x = LCD_COLUMNS-80;
             
             if (gbScreenRequiresFullRefresh || data->samus_disp_energy != samus_disp_energy || data->samus_max_etanks != samus_max_etanks)
@@ -792,28 +1073,29 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 data->samus_max_etanks = samus_max_etanks;
                 int etanks = data->samus_disp_energy >> 8;
                 
+                int row1y = ui_y + 16 + 4;
+                int row2y = ui_y;
+                
                 for (int i = 0; i < 5 && i < data->samus_max_etanks; ++i)
                 {
                     bool etank_full = i < etanks;
                     int x = LCD_COLUMNS - 16*(i + 1);
-                    draw_glyph(data, 208/16 + etank_full, x, ui_y, kBitmapUnflipped);
+                    draw_glyph(data, 208/16 + etank_full, x, row1y, kBitmapUnflipped);
                 }
-                
-                int row2y = ui_y + 16 + 4;
                 
                 int digitlo = samus_disp_energy & 0xF;
                 int digithi = (samus_disp_energy >> 4) & 0xF;
                 
                 // energy
-                draw_glyph(data, 10, LCD_COLUMNS - 16*4, row2y, kBitmapUnflipped);
-                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3, row2y, kBitmapUnflipped);
+                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1, row2y, kBitmapUnflipped);
+                draw_glyph(data, 10, LCD_COLUMNS - 16*4 + 2, row2y, kBitmapUnflipped);
                 draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2, row2y, kBitmapUnflipped);
                 draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1, row2y, kBitmapUnflipped);
             }
             
-            ui_y += 32 + 8;
+            ui_y = 5*16 + 4;
             
-            if (gbScreenRequiresFullRefresh || data->samus_disp_missiles != samus_disp_missiles)
+            if (gbScreenRequiresFullRefresh || data->samus_disp_missiles != samus_disp_missiles || samus_weapon_change)
             {
                 data->samus_disp_missiles = samus_disp_missiles;
                 
@@ -821,10 +1103,9 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 int digithi = (samus_disp_missiles >> 4) & 0xF;
                 int digithihi = (samus_disp_missiles >> 8) & 0xF;
                 
-                // TODO
-                draw_glyph(data, GLYPH_MISSILES, LCD_COLUMNS - 16*5, ui_y, kBitmapUnflipped);
+                draw_glyph(data, digithihi + GLYPH_0, LCD_COLUMNS - 16*3 + 1, ui_y, kBitmapUnflipped);
+                draw_glyph(data, (samus_weapon & 0x8) ? GLYPH_MISSILES_EQUIPPED : GLYPH_MISSILES, LCD_COLUMNS - 16*5 + 2, ui_y, kBitmapUnflipped);
                 draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*4, ui_y, kBitmapUnflipped);
-                draw_glyph(data, digithihi + GLYPH_0, LCD_COLUMNS - 16*3, ui_y, kBitmapUnflipped);
                 draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2, ui_y, kBitmapUnflipped);
                 draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1, ui_y, kBitmapUnflipped);
             }
@@ -839,19 +1120,23 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 int digitlo = metroid_disp & 0xF;
                 int digithi = (metroid_disp >> 4) & 0xF;
                 
-                draw_glyph(data, metroid_glyph, LCD_COLUMNS - 16*5, ui_y, kBitmapUnflipped);
-                draw_glyph(data, metroid_glyph, LCD_COLUMNS - 16*4, ui_y, kBitmapFlippedX);
-                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3, ui_y, kBitmapUnflipped);
+                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1, ui_y, kBitmapUnflipped);
+                draw_glyph(data, metroid_glyph, LCD_COLUMNS - 16*5 + 2, ui_y, kBitmapUnflipped);
+                draw_glyph(data, metroid_glyph, LCD_COLUMNS - 16*4 + 2, ui_y, kBitmapFlippedX);
                 draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2, ui_y, kBitmapUnflipped);
                 draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1, ui_y, kBitmapUnflipped);
             }
+            
+            // divider
+            playdate->graphics->fillRect(LCD_COLUMNS - 80, 0, 1, LCD_ROWS, (uintptr_t)&lcdp_50);
+            playdate->graphics->fillRect(LCD_COLUMNS - 80, 80-1, 80, 1, (uintptr_t)&lcdp_50);
         }
     }
 }
 
 size_t query_serial_size(ScriptData* data)
 {
-    return 2
+    return 3
         // map exploration
         + MAP_BANK_COUNT*0x100;
 }
@@ -862,9 +1147,10 @@ bool serialize(char* out, ScriptData* data)
 {
     out[0] = SERIAL_VERSION;
     out[1] = data->door_transition_suppress_map_update;
+    out[2] = data->weapons_collected;
     for (int i = 0; i < MAP_BANK_COUNT*0x100; ++i)
     {
-        out[i + 2] = data->map_explored[i];
+        out[i + 3] = data->map_explored[i];
     }
     
     return true;
@@ -880,10 +1166,11 @@ bool deserialize(const char* in, size_t size, ScriptData* data)
     if ((unsigned)in[0] != (unsigned)SERIAL_VERSION) return false;
     
     data->door_transition_suppress_map_update = in[1];
+    data->weapons_collected = in[2];
     
     for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
     {
-        data->map_explored[i] = in[i+2];
+        data->map_explored[i] = in[i+3];
     }
     
     // force reload stuff

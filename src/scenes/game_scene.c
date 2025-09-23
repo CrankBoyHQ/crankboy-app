@@ -558,8 +558,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     CB_Scene* scene = CB_Scene_new();
 
-    CB_GameScene* gameScene = cb_malloc(sizeof(CB_GameScene));
-    memset(gameScene, 0, sizeof(*gameScene));
+    CB_GameScene* gameScene = allocz(CB_GameScene);
     gameScene->scene = scene;
     scene->managedObject = gameScene;
 
@@ -1876,7 +1875,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if (preferences_script_support && context->scene->script)
         {
-            script_tick(context->scene->script, gameScene);
+            script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
         }
 
         CB_ASSERT(context == context->gb->direct.priv);
@@ -1897,6 +1896,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             context->gb = (void*)stack_gb_data;
             gameScene->audioLocked = 0;
         }
+        
+        gameScene->next_frames_elapsed = 0;
 
         gameScene->playtime += 1 + preferences_frame_skip;
         CB_App->avg_dt_mult =
@@ -1925,6 +1926,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
             run_frame_function_pointer(context->gb);
 #endif
+            ++gameScene->next_frames_elapsed;
             tick_audio_sync(gameScene);
             memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
 
@@ -1943,6 +1945,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
             run_frame_function_pointer(context->gb);
 #endif
+            ++gameScene->next_frames_elapsed;
             tick_audio_sync(gameScene);
 
             // 4. Decide whether to blend based on the preference setting
@@ -1982,6 +1985,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                 run_frame_function_pointer(context->gb);
 #endif
+                ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
                 memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
 
@@ -1994,6 +1998,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                 run_frame_function_pointer(context->gb);
 #endif
+                ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
                 context->gb->direct.oam_ghost_buffer = NULL;
             }
@@ -2010,6 +2015,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                     run_frame_function_pointer(context->gb);
 #endif
+                    ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
                 }
             }
