@@ -712,7 +712,7 @@ bool script_load_state(ScriptState* state, const uint8_t* in, size_t size)
     return true;
 }
 
-void script_tick(ScriptState* state, struct CB_GameScene* game_scene)
+void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed)
 {
     script_gb = game_scene->context->gb;
 
@@ -746,7 +746,7 @@ void script_tick(ScriptState* state, struct CB_GameScene* game_scene)
 
     if (state->c && state->c->on_tick)
     {
-        state->c->on_tick(game_scene->context->gb, state->ud);
+        state->c->on_tick(game_scene->context->gb, state->ud, frames_elapsed);
     }
 }
 

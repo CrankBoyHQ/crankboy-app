@@ -24,7 +24,7 @@ struct lua_State;
 // returns user-data; return value of NULL indicates an error.
 typedef void* (*CS_OnBegin)(gb_s* gb, const char* rom_header_name);
 
-typedef void (*CS_OnTick)(gb_s* gb, void* userdata);
+typedef void (*CS_OnTick)(gb_s* gb, void* userdata, int frames_elapsed);
 
 typedef void (*CS_OnDraw)(gb_s* gb, void* userdata);
 
@@ -78,7 +78,7 @@ typedef struct ScriptState
 
 ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene);
 void script_end(ScriptState* state, struct CB_GameScene* game_scene);
-void script_tick(ScriptState* state, struct CB_GameScene* game_scene);
+void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed);
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
 void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
 size_t script_query_savestate_size(ScriptState* state);
