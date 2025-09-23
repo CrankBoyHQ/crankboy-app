@@ -462,6 +462,7 @@ struct PGB_VERSIONED(gb_s)
         int8_t crank_menu_delta;
 
         /* Implementation defined data. Set to NULL if not required. */
+        // (in actual usage, this points to a CB_GameSceneContext*)
         void* priv;
     } direct;
 
