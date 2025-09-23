@@ -330,6 +330,13 @@ static inline float toward(float x, float dst, float step)
 #define CB_ASSERT(x) ((void)0)
 #endif
 
+LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h);
+
+// returns NULL-terminated list of subimages
+LCDBitmap** split_subimages(LCDBitmap* image, int w, int h, size_t* out_size);
+
+void free_subimages(LCDBitmap**);
+
 // compute the next highest power of 2 of 32-bit v,
 // or v if v is a power of 2
 // https://stackoverflow.com/a/466242
