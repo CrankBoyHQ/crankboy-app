@@ -48,6 +48,30 @@ void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val)
     rom_poke(addr32, val);
 }
 
+char* script_disk_fname(unsigned fidx)
+{
+    CB_GameSceneContext* context = script_gb->direct.priv;
+    CB_GameScene* scene = context->scene;
+    return aprintf("%s/%s.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, fidx);
+}
+
+void script_save_to_disk(const char* data, size_t size, unsigned fidx)
+{
+    char* fname = script_disk_fname(fidx);
+    
+    cb_write_entire_file(fname, data, size);
+    
+    cb_free(fname);
+}
+
+char* script_load_from_disk(unsigned fidx, size_t* o_size)
+{
+    char* fname = script_disk_fname(fidx);
+    char* result = cb_read_entire_file(fname, o_size, kFileReadData);
+    cb_free(fname);
+    return result;
+}
+
 void find_code_cave(int bank, romaddr_t* max_start, romaddr_t* max_size)
 {
     uint32_t bank_start = (bank != -1) ? (bank * 0x4000) : 0;
