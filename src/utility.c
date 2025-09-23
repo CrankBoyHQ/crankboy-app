@@ -284,6 +284,77 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc
     return true;
 }
 
+LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h)
+{
+    if (!image || w <= 0 || h <= 0) return NULL;
+
+    int srcW, srcH, srcRowBytes;
+    uint8_t *srcMask;  // we might not use mask in simple case
+    uint8_t *srcData;
+    playdate->graphics->getBitmapData(image, &srcW, &srcH, &srcRowBytes, &srcMask, &srcData);
+    
+    if (w <= 0 || h <= 0) return NULL;
+
+    LCDBitmap *out = playdate->graphics->newBitmap(w, h, kColorClear);
+    if (!out) return NULL;
+
+    playdate->graphics->pushContext(out);
+
+    playdate->graphics->drawBitmap(image, -x, -y, kBitmapUnflipped);
+
+    playdate->graphics->popContext();
+
+    return out;
+}
+
+LCDBitmap** split_subimages(LCDBitmap* image, int w, int h, size_t* out_size)
+{
+    if (out_size) *out_size = 0;
+    if (!image) return NULL;
+    
+    
+    int src_w, src_h;
+    playdate->graphics->getBitmapData(image, &src_w, &src_h, NULL, NULL, NULL);
+    
+    int nx = src_w / w;
+    int ny = src_h / h;
+    
+    int c = nx * ny;
+    
+    if (c == 0) return NULL;
+    
+    LCDBitmap** out = allocza(LCDBitmap*, c+1);
+    if (!out) return NULL;
+    
+    for (int y = 0; y < ny; ++y)
+    {
+        for (int x = 0; x < nx; ++x)
+        {
+            int idx = y*nx + x;
+            out[idx] = subimage(image, x*w, y*h, w, h);
+            
+            if (!out[idx])
+            {
+                if (out_size) *out_size = idx;
+                return out;
+            }
+        }
+    }
+    
+    if (out_size) *out_size = c;
+    return out;
+}
+
+void free_subimages(LCDBitmap** imgs)
+{
+    if (!imgs) return;
+    for (LCDBitmap** img = imgs; *img; ++img)
+    {
+        playdate->graphics->freeBitmap(*img);
+    }
+    cb_free(imgs);
+}
+
 void draw_spinny(int x, int y, int r)
 {
     unsigned t = playdate->system->getCurrentTimeMilliseconds();
