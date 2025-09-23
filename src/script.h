@@ -33,6 +33,10 @@ typedef void (*CS_OnEnd)(gb_s* gb, void* userdata);
 
 typedef void (*CS_OnBreakpoint)(gb_s* gb, uint16_t addr, int breakpoint_idx, void* userdata);
 
+typedef size_t (*CS_QuerySerialSize)(void* userdata);
+typedef bool (*CS_Serialize)(char* out, void* userdata);
+typedef bool (*CS_Deserialize)(const char* in, size_t size, void* userdata);
+
 struct CScriptInfo
 {
     // must match what's in the header
@@ -43,6 +47,10 @@ struct CScriptInfo
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
     CS_OnEnd on_end;
+    
+    CS_QuerySerialSize query_serial_size;
+    CS_Serialize serialize;
+    CS_Deserialize deserialize;
 };
 
 typedef struct ScriptInfo
@@ -73,6 +81,9 @@ void script_end(ScriptState* state, struct CB_GameScene* game_scene);
 void script_tick(ScriptState* state, struct CB_GameScene* game_scene);
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
 void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
+size_t script_query_savestate_size(ScriptState* state);
+bool script_save_state(ScriptState* state, uint8_t* out);
+bool script_load_state(ScriptState* state, const uint8_t* in, size_t size);
 void script_quit(void);
 
 void register_c_script(const struct CScriptInfo* info);

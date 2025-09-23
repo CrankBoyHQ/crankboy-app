@@ -23,6 +23,9 @@ void ram_poke(addr16_t addr, u8 v);
 
 u16 ram_peek_u16(addr16_t addr);
 
+void script_save_to_disk(const char* data, size_t size, unsigned fidx);
+char* script_load_from_disk(unsigned fidx, size_t* o_size);
+
 romaddr_t rom_size(void);
 
 #define force_pref(pref, val)                     \

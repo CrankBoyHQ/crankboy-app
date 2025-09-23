@@ -51,7 +51,7 @@ typedef struct ScriptData
     uint8_t* masked;
     size_t masked_size;
     
-    int door_transition_suppress_map_update;
+    uint8_t door_transition_suppress_map_update;
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -61,7 +61,7 @@ bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, 
 
 void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by, bool explored)
 {
-    int idx = (bank - MAP_BANK_COUNT)*0x100 + by * 0x10 + bx;
+    int idx = (bank - MAP_FIRST_BANK)*0x100 + by * 0x10 + bx;
     if (idx != explored)
     {
         data->map_explored[idx] = explored;
@@ -79,9 +79,10 @@ void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by,
 
 bool get_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by)
 {
-    return data->map_explored[(bank - MAP_BANK_COUNT)*0x100 + by * 0x10 + bx];
+    return data->map_explored[(bank - MAP_FIRST_BANK) * 0x100 + by * 0x10 + bx];
 }
 
+#define AREA_SECRET_WORLD 0xF
 
 // new save file
 SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
@@ -95,10 +96,54 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
     set_map_explored(data, 0xF, 0x6, 0x7, true);
 }
 
+// during door transition
 SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x23A7))
 {
-    // during door transition
     data->door_transition_suppress_map_update = 16;
+}
+
+// loading save file
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
+{
+    unsigned save_slot = ram_peek(0xD0A3);
+    
+    size_t size;
+    char* buff = script_load_from_disk(save_slot, &size);
+    if (!buff || size != 0x100*MAP_BANK_COUNT/8)
+    {
+        playdate->system->logToConsole("no save data for slot %x.", save_slot);
+        memset(data->map_explored, 0, 0x100*MAP_BANK_COUNT);
+    }
+    else
+    {
+        playdate->system->logToConsole("saving script data to slot %x.", save_slot);
+        for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
+        {
+            data->map_explored[i] = bitvec_read_bits((uint8_t*)buff, i, 1);
+        }
+    }
+    
+    cb_free(buff);
+    
+    // force refresh
+    data->map_area = AREA_SECRET_WORLD;
+    data->samus_bank = 0;
+}
+
+// writing save file
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x7B82))
+{
+    unsigned save_slot = ram_peek(0xD0A3);
+    char buff[0x100*MAP_BANK_COUNT/8];
+    
+    for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
+    {
+        bitvec_write_bits((void*)&buff[0], i, 1, data->map_explored[i]);
+    }
+    
+    playdate->system->logToConsole("script: saving to slot %x.", save_slot);
+    
+    script_save_to_disk((void*)&buff[0], sizeof(buff), save_slot);
 }
 
 unsigned get_room_h(struct Room* room)
@@ -132,8 +177,6 @@ void read_embedding_header(const uint8_t* base, size_t* offset, unsigned* _bank,
     *_em_x = em_x;
     *_em_y = em_y;
 }
-
-#define AREA_SECRET_WORLD 0xF
 
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
@@ -274,7 +317,7 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                             tile_present[tile_idx] = special_tile;
                         }
                         
-                        if (get_map_explored(data, em_bank, em_x + x, em_y + y))
+                        if (get_map_explored(data, em_bank, em_x + x, em_y + y) && tile_present[tile_idx])
                         {
                             int area_explore_idx = (y + room->area_y)*area->w + x + room->area_x;
                             CB_ASSERT(area_explore_idx < area->w * area->h);
@@ -562,7 +605,6 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
         
         if (data->masked[mask_idx])
         {
-            playdate->system->logToConsole("was masked: %x,%x (%x)", special_tile->area_x, special_tile->area_y, mask_idx);
             continue;
         }
         
@@ -595,8 +637,11 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
         {
             uint8_t flags = ram_peek(0xC500 + slot);
             
-            // indicates object dead / destroyed / collected
-            if (flags & 2) continue;
+            if (flags != 0xFF) // default state
+            {
+                // indicates object dead / destroyed / collected
+                if (flags & 2) continue;
+            }
         }
         
         int dst_x_px = dst_x + (special_tile->area_x - window_x) * HALFTILE_W * 2;
@@ -804,6 +849,51 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
 }
 
+size_t query_serial_size(ScriptData* data)
+{
+    return 2
+        // map exploration
+        + MAP_BANK_COUNT*0x100;
+}
+
+#define SERIAL_VERSION 0x30
+
+bool serialize(char* out, ScriptData* data)
+{
+    out[0] = SERIAL_VERSION;
+    out[1] = data->door_transition_suppress_map_update;
+    for (int i = 0; i < MAP_BANK_COUNT*0x100; ++i)
+    {
+        out[i + 2] = data->map_explored[i];
+    }
+    
+    return true;
+}
+
+bool deserialize(const char* in, size_t size, ScriptData* data)
+{
+    if (size != query_serial_size(data))
+    {
+        return false;
+    }
+    
+    if ((unsigned)in[0] != (unsigned)SERIAL_VERSION) return false;
+    
+    data->door_transition_suppress_map_update = in[1];
+    
+    for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
+    {
+        data->map_explored[i] = in[i+2];
+    }
+    
+    // force reload stuff
+    data->map_area = AREA_SECRET_WORLD;
+    data->samus_bank = 0;
+    
+    return true;
+}
+
+
 C_SCRIPT{
     .rom_name = "METROID2",
     .description = DESCRIPTION,
@@ -812,4 +902,8 @@ C_SCRIPT{
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
     .on_end = (CS_OnEnd)on_end,
+    
+    .query_serial_size = (CS_QuerySerialSize)query_serial_size,
+    .serialize = (CS_Serialize)serialize,
+    .deserialize = (CS_Deserialize)deserialize,
 };

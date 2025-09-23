@@ -687,6 +687,31 @@ void script_end(ScriptState* state, struct CB_GameScene* game_scene)
     cb_free(state);
 }
 
+size_t script_query_savestate_size(ScriptState* state)
+{
+    if (state->c && state->c->query_serial_size)
+    {
+        return state->c->query_serial_size(state->ud);
+    }
+    return 0;
+}
+bool script_save_state(ScriptState* state, uint8_t* out)
+{
+    if (state->c->query_serial_size && state->c->serialize)
+    {
+        return state->c->serialize(out, state->ud);
+    }
+    return true;
+}
+bool script_load_state(ScriptState* state, const uint8_t* in, size_t size)
+{
+    if (state->c->query_serial_size && state->c->deserialize)
+    {
+        return state->c->deserialize(in, size, state->ud);
+    }
+    return true;
+}
+
 void script_tick(ScriptState* state, struct CB_GameScene* game_scene)
 {
     script_gb = game_scene->context->gb;
