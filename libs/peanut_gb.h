@@ -290,8 +290,11 @@ typedef struct StateHeader
     // Size of the gb_s struct (for verification.)
     uint32_t gb_s_size;
 
+    // amount of data stored for the script
+    uint32_t script_save_data_size;
+    
     // for use in future versions
-    char _reserved[16];
+    char _reserved[12];
 } StateHeader;
 
 #ifdef PGB_IMPL
@@ -4087,6 +4090,7 @@ void gb_reset(gb_s* gb);
 
 // Note: this function can be called on unswizzled structs;
 // therefore, no pointers in the gb struct should be followed.
+// Note: does not include size of script's save-state
 __section__(".rare") uint32_t gb_get_state_size(gb_s* gb)
 {
     return PGB_VERSIONED(gb_get_state_size)(gb);

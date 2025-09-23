@@ -1122,6 +1122,34 @@ bool cb_directory_exists_and_nonempty_or_file_exists(const char* path)
     }
 }
 
+
+uint32_t bitvec_read_bits(const uint8_t* base, size_t bit_offset, unsigned width)
+{
+    uint32_t result = 0;
+    for (unsigned i = 0; i < width; i++) {
+        size_t pos = bit_offset + i;
+        size_t byte = pos >> 3;
+        unsigned bit = pos & 7;
+        uint32_t b = (base[byte] >> bit) & 1;
+        result |= b << i;
+    }
+    return result;
+}
+
+void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_t v)
+{
+    for (unsigned i = 0; i < width; i++) {
+        size_t pos = bit_offset + i;
+        size_t byte = pos >> 3;
+        unsigned bit = pos & 7;
+        uint8_t mask = 1u << bit;
+        if ((v >> i) & 1u)
+            base[byte] |= mask;
+        else
+            base[byte] &= ~mask;
+    }
+}
+
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
 {
     SDFile* file = playdate->file->open(path, flags);

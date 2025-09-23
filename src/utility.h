@@ -203,6 +203,9 @@ static FORCE_INLINE uint8_t reverse_bits_u8(uint8_t b)
 #endif
 }
 
+uint32_t bitvec_read_bits(const uint8_t* base, size_t bit_offset, unsigned width);
+void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_t v);
+
 // base-two logarithm (index of highest bit)
 inline int lg2(uint32_t v)
 {

@@ -485,7 +485,7 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(audio_data) audio;
 };
 
-// Note: used on unswizzled gb struct, so must
+// Note: used on unswizzled gb struct, so must not follow any pointers
 FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONED(gb_s) * gb)
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
@@ -684,6 +684,7 @@ char* savestate_upgrade_to_v2(char** out, size_t* out_size, char* in, size_t in_
     memcpy(v2_header, v1_header, sizeof(StateHeader));
     v2_header->version = PGB_VERSION;
     v2_header->gb_s_size = sizeof(struct PGB_VERSIONED(gb_s));
+    v2_header->script_save_data_size = 0; // paranoia
 
     set_fields(v2_gb, v1_gb, gb_rom, selected_bank_addr);
 
