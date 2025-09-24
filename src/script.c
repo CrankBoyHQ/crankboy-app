@@ -699,7 +699,7 @@ bool script_save_state(ScriptState* state, uint8_t* out)
 {
     if (state->c->query_serial_size && state->c->serialize)
     {
-        return state->c->serialize(out, state->ud);
+        return state->c->serialize((void*)out, state->ud);
     }
     return true;
 }
@@ -707,7 +707,7 @@ bool script_load_state(ScriptState* state, const uint8_t* in, size_t size)
 {
     if (state->c->query_serial_size && state->c->deserialize)
     {
-        return state->c->deserialize(in, size, state->ud);
+        return state->c->deserialize((void*)in, size, state->ud);
     }
     return true;
 }
@@ -765,6 +765,18 @@ void script_draw(ScriptState* state, struct CB_GameScene* game_scene)
     {
         state->c->on_draw(game_scene->context->gb, state->ud);
     }
+}
+
+unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene)
+{
+    if (!state) return 0;
+    
+    if (state->c && state->c->on_menu)
+    {
+        return state->c->on_menu(game_scene->context->gb, state->ud);
+    }
+    
+    return 0;
 }
 
 // for C scripts

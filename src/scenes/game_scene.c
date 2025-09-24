@@ -2772,254 +2772,7 @@ static void CB_GameScene_menu(void* object)
         }
         return;
     }
-
-    if (gameScene->menuImage == NULL)
-    {
-        CB_LoadedCoverArt cover_art = {.bitmap = NULL};
-        char* actual_cover_path = NULL;
-
-        // --- Get Cover Art ---
-
-        bool has_cover_art = false;
-        if (CB_App->coverArtCache.rom_path &&
-            strcmp(CB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
-            CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
-            CB_App->coverArtCache.art.bitmap != NULL)
-        {
-            has_cover_art = true;
-        }
-
-        // --- Get Save Times ---
-
-        unsigned int last_cartridge_save_time = 0;
-        if (gameScene->cartridge_has_battery)
-        {
-            last_cartridge_save_time = gameScene->last_save_time;
-        }
-
-        unsigned int last_state_save_time = 0;
-        for (int i = 0; i < SAVE_STATE_SLOT_COUNT; ++i)
-        {
-            last_state_save_time =
-                MAX(last_state_save_time, get_save_state_timestamp(gameScene, i));
-        }
-
-        bool show_time_info = false;
-        const char* line1_text = NULL;
-        unsigned int final_timestamp = 0;
-
-        if (last_state_save_time > last_cartridge_save_time)
-        {
-            show_time_info = true;
-            final_timestamp = last_state_save_time;
-            line1_text = "Last save state:";
-        }
-        else if (last_cartridge_save_time > 0)
-        {
-            show_time_info = true;
-            final_timestamp = last_cartridge_save_time;
-            line1_text = "Cartridge data stored:";
-        }
-
-        // --- Drawing Logic ---
-        if (has_cover_art || show_time_info)
-        {
-            gameScene->menuImage = playdate->graphics->newBitmap(400, 240, kColorClear);
-            if (gameScene->menuImage != NULL)
-            {
-                playdate->graphics->pushContext(gameScene->menuImage);
-                playdate->graphics->setDrawMode(kDrawModeCopy);
-
-                const int content_top = 40;
-                const int content_height = 160;
-
-                int cover_art_y = 0;
-                int cover_art_height = 0;
-
-                if (has_cover_art)
-                {
-                    playdate->graphics->fillRect(0, 0, 400, 240, kColorBlack);
-
-                    CB_LoadedCoverArt* cached_art = &CB_App->coverArtCache.art;
-
-                    const int max_width = 200;
-                    const int max_height = 200;
-
-                    float scale_x = (float)max_width / cached_art->scaled_width;
-                    float scale_y = (float)max_height / cached_art->scaled_height;
-                    float scale = fminf(scale_x, scale_y);
-
-                    int final_width = (int)(cached_art->scaled_width * scale);
-                    int final_height = (int)(cached_art->scaled_height * scale);
-
-                    int art_x = (200 - final_width) / 2;
-                    if (!show_time_info)
-                    {
-                        cover_art_y = content_top + (content_height - final_height) / 2;
-                    }
-
-                    playdate->graphics->drawScaledBitmap(
-                        cached_art->bitmap, art_x, cover_art_y, scale, scale
-                    );
-
-                    cover_art_height = final_height;
-                }
-                else if (show_time_info)
-                {
-                    LCDBitmap* ditherOverlay = playdate->graphics->newBitmap(400, 240, kColorWhite);
-                    if (ditherOverlay)
-                    {
-                        int width, height, rowbytes;
-                        uint8_t* overlayData;
-                        playdate->graphics->getBitmapData(
-                            ditherOverlay, &width, &height, &rowbytes, NULL, &overlayData
-                        );
-
-                        for (int y = 0; y < height; ++y)
-                        {
-                            uint8_t pattern_byte = (y % 2 == 0) ? 0xAA : 0x55;
-                            uint8_t* row = overlayData + y * rowbytes;
-                            memset(row, pattern_byte, rowbytes);
-                        }
-
-                        playdate->graphics->setDrawMode(kDrawModeWhiteTransparent);
-                        playdate->graphics->drawBitmap(ditherOverlay, 0, 0, kBitmapUnflipped);
-                        playdate->graphics->setDrawMode(kDrawModeCopy);
-                        playdate->graphics->freeBitmap(ditherOverlay);
-                    }
-                }
-
-                // 2. Draw Save Time if it exists
-                if (show_time_info)
-                {
-                    playdate->graphics->setFont(CB_App->labelFont);
-                    const char* line1 = line1_text;
-
-                    unsigned current_time = playdate->system->getSecondsSinceEpoch(NULL);
-
-                    const int max_human_time = 60 * 60 * 24 * 10;
-
-                    unsigned use_absolute_time = (current_time < final_timestamp) ||
-                                                 (final_timestamp + max_human_time < current_time);
-
-                    char line2[40];
-                    if (use_absolute_time)
-                    {
-                        unsigned int utc_epoch = final_timestamp;
-                        int32_t offset = playdate->system->getTimezoneOffset();
-                        unsigned int local_epoch = utc_epoch + offset;
-
-                        struct PDDateTime time_info;
-                        playdate->system->convertEpochToDateTime(local_epoch, &time_info);
-
-                        if (playdate->system->shouldDisplay24HourTime())
-                        {
-                            snprintf(
-                                line2, sizeof(line2), "%02d.%02d.%d - %02d:%02d:%02d",
-                                time_info.day, time_info.month, time_info.year, time_info.hour,
-                                time_info.minute, time_info.second
-                            );
-                        }
-                        else
-                        {
-                            const char* suffix = (time_info.hour < 12) ? " am" : " pm";
-                            int display_hour = time_info.hour;
-                            if (display_hour == 0)
-                            {
-                                display_hour = 12;
-                            }
-                            else if (display_hour > 12)
-                            {
-                                display_hour -= 12;
-                            }
-                            snprintf(
-                                line2, sizeof(line2), "%02d.%02d.%d - %d:%02d:%02d%s",
-                                time_info.day, time_info.month, time_info.year, display_hour,
-                                time_info.minute, time_info.second, suffix
-                            );
-                        }
-                    }
-                    else
-                    {
-                        char* human_time = en_human_time(current_time - final_timestamp);
-                        snprintf(line2, sizeof(line2), "%s ago", human_time);
-                        cb_free(human_time);
-                    }
-
-                    int font_height = playdate->graphics->getFontHeight(CB_App->labelFont);
-                    int line1_width = playdate->graphics->getTextWidth(
-                        CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
-                    );
-                    int line2_width = playdate->graphics->getTextWidth(
-                        CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
-                    );
-                    int text_spacing = 4;
-                    int text_block_height = font_height * 2 + text_spacing;
-
-                    if (has_cover_art)
-                    {
-                        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-                        int text_y = cover_art_y + cover_art_height + 6;
-                        playdate->graphics->drawText(
-                            line1, strlen(line1), kUTF8Encoding, (200 - line1_width) / 2, text_y
-                        );
-                        playdate->graphics->drawText(
-                            line2, strlen(line2), kUTF8Encoding, (200 - line2_width) / 2,
-                            text_y + font_height + text_spacing
-                        );
-                    }
-                    else
-                    {
-                        int padding_x = 10;
-                        int padding_y = 8;
-                        int black_border_size = 2;
-                        int white_border_size = 1;
-
-                        int box_width = CB_MAX(line1_width, line2_width) + (padding_x * 2);
-                        int box_height = text_block_height + (padding_y * 2);
-
-                        int total_border_size = black_border_size + white_border_size;
-                        int total_width = box_width + (total_border_size * 2);
-                        int total_height = box_height + (total_border_size * 2);
-
-                        int final_box_x = (200 - total_width + 1) / 2;
-                        int final_box_y = content_top + (content_height - total_height) / 2;
-
-                        playdate->graphics->fillRect(
-                            final_box_x, final_box_y, total_width, total_height, kColorWhite
-                        );
-
-                        playdate->graphics->fillRect(
-                            final_box_x + white_border_size, final_box_y + white_border_size,
-                            box_width + (black_border_size * 2),
-                            box_height + (black_border_size * 2), kColorBlack
-                        );
-
-                        playdate->graphics->fillRect(
-                            final_box_x + total_border_size, final_box_y + total_border_size,
-                            box_width, box_height, kColorWhite
-                        );
-
-                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-
-                        int text_y = final_box_y + total_border_size + padding_y;
-                        playdate->graphics->drawText(
-                            line1, strlen(line1), kUTF8Encoding,
-                            final_box_x + total_border_size + (box_width - line1_width) / 2, text_y
-                        );
-                        playdate->graphics->drawText(
-                            line2, strlen(line2), kUTF8Encoding,
-                            final_box_x + total_border_size + (box_width - line2_width) / 2,
-                            text_y + font_height + text_spacing
-                        );
-                    }
-                }
-                playdate->graphics->popContext();
-            }
-        }
-    }
-
-    playdate->system->setMenuImage(gameScene->menuImage, 0);
+    
     if (!CB_App->bundled_rom)
     {
         playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
@@ -3037,13 +2790,265 @@ static void CB_GameScene_menu(void* object)
     {
         playdate->system->addMenuItem("About", CB_showCredits, gameScene);
     }
+    
+    unsigned script_menu_flags = script_menu(gameScene->script, gameScene);
 
-    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded)
+    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded && !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
             "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
         );
         playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
+    }
+
+    if (!(script_menu_flags & SCRIPT_MENU_SUPPRESS_IMAGE))
+    {
+        if (gameScene->menuImage == NULL)
+        {
+            CB_LoadedCoverArt cover_art = {.bitmap = NULL};
+            char* actual_cover_path = NULL;
+
+            // --- Get Cover Art ---
+
+            bool has_cover_art = false;
+            if (CB_App->coverArtCache.rom_path &&
+                strcmp(CB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
+                CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+                CB_App->coverArtCache.art.bitmap != NULL)
+            {
+                has_cover_art = true;
+            }
+
+            // --- Get Save Times ---
+
+            unsigned int last_cartridge_save_time = 0;
+            if (gameScene->cartridge_has_battery)
+            {
+                last_cartridge_save_time = gameScene->last_save_time;
+            }
+
+            unsigned int last_state_save_time = 0;
+            for (int i = 0; i < SAVE_STATE_SLOT_COUNT; ++i)
+            {
+                last_state_save_time =
+                    MAX(last_state_save_time, get_save_state_timestamp(gameScene, i));
+            }
+
+            bool show_time_info = false;
+            const char* line1_text = NULL;
+            unsigned int final_timestamp = 0;
+
+            if (last_state_save_time > last_cartridge_save_time)
+            {
+                show_time_info = true;
+                final_timestamp = last_state_save_time;
+                line1_text = "Last save state:";
+            }
+            else if (last_cartridge_save_time > 0)
+            {
+                show_time_info = true;
+                final_timestamp = last_cartridge_save_time;
+                line1_text = "Cartridge data stored:";
+            }
+
+            // --- Drawing Logic ---
+            if (has_cover_art || show_time_info)
+            {
+                gameScene->menuImage = playdate->graphics->newBitmap(400, 240, kColorClear);
+                if (gameScene->menuImage != NULL)
+                {
+                    playdate->graphics->pushContext(gameScene->menuImage);
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+
+                    const int content_top = 40;
+                    const int content_height = 160;
+
+                    int cover_art_y = 0;
+                    int cover_art_height = 0;
+
+                    if (has_cover_art)
+                    {
+                        playdate->graphics->fillRect(0, 0, 400, 240, kColorBlack);
+
+                        CB_LoadedCoverArt* cached_art = &CB_App->coverArtCache.art;
+
+                        const int max_width = 200;
+                        const int max_height = 200;
+
+                        float scale_x = (float)max_width / cached_art->scaled_width;
+                        float scale_y = (float)max_height / cached_art->scaled_height;
+                        float scale = fminf(scale_x, scale_y);
+
+                        int final_width = (int)(cached_art->scaled_width * scale);
+                        int final_height = (int)(cached_art->scaled_height * scale);
+
+                        int art_x = (200 - final_width) / 2;
+                        if (!show_time_info)
+                        {
+                            cover_art_y = content_top + (content_height - final_height) / 2;
+                        }
+
+                        playdate->graphics->drawScaledBitmap(
+                            cached_art->bitmap, art_x, cover_art_y, scale, scale
+                        );
+
+                        cover_art_height = final_height;
+                    }
+                    else if (show_time_info)
+                    {
+                        LCDBitmap* ditherOverlay = playdate->graphics->newBitmap(400, 240, kColorWhite);
+                        if (ditherOverlay)
+                        {
+                            int width, height, rowbytes;
+                            uint8_t* overlayData;
+                            playdate->graphics->getBitmapData(
+                                ditherOverlay, &width, &height, &rowbytes, NULL, &overlayData
+                            );
+
+                            for (int y = 0; y < height; ++y)
+                            {
+                                uint8_t pattern_byte = (y % 2 == 0) ? 0xAA : 0x55;
+                                uint8_t* row = overlayData + y * rowbytes;
+                                memset(row, pattern_byte, rowbytes);
+                            }
+
+                            playdate->graphics->setDrawMode(kDrawModeWhiteTransparent);
+                            playdate->graphics->drawBitmap(ditherOverlay, 0, 0, kBitmapUnflipped);
+                            playdate->graphics->setDrawMode(kDrawModeCopy);
+                            playdate->graphics->freeBitmap(ditherOverlay);
+                        }
+                    }
+
+                    // 2. Draw Save Time if it exists
+                    if (show_time_info)
+                    {
+                        playdate->graphics->setFont(CB_App->labelFont);
+                        const char* line1 = line1_text;
+
+                        unsigned current_time = playdate->system->getSecondsSinceEpoch(NULL);
+
+                        const int max_human_time = 60 * 60 * 24 * 10;
+
+                        unsigned use_absolute_time = (current_time < final_timestamp) ||
+                                                    (final_timestamp + max_human_time < current_time);
+
+                        char line2[40];
+                        if (use_absolute_time)
+                        {
+                            unsigned int utc_epoch = final_timestamp;
+                            int32_t offset = playdate->system->getTimezoneOffset();
+                            unsigned int local_epoch = utc_epoch + offset;
+
+                            struct PDDateTime time_info;
+                            playdate->system->convertEpochToDateTime(local_epoch, &time_info);
+
+                            if (playdate->system->shouldDisplay24HourTime())
+                            {
+                                snprintf(
+                                    line2, sizeof(line2), "%02d.%02d.%d - %02d:%02d:%02d",
+                                    time_info.day, time_info.month, time_info.year, time_info.hour,
+                                    time_info.minute, time_info.second
+                                );
+                            }
+                            else
+                            {
+                                const char* suffix = (time_info.hour < 12) ? " am" : " pm";
+                                int display_hour = time_info.hour;
+                                if (display_hour == 0)
+                                {
+                                    display_hour = 12;
+                                }
+                                else if (display_hour > 12)
+                                {
+                                    display_hour -= 12;
+                                }
+                                snprintf(
+                                    line2, sizeof(line2), "%02d.%02d.%d - %d:%02d:%02d%s",
+                                    time_info.day, time_info.month, time_info.year, display_hour,
+                                    time_info.minute, time_info.second, suffix
+                                );
+                            }
+                        }
+                        else
+                        {
+                            char* human_time = en_human_time(current_time - final_timestamp);
+                            snprintf(line2, sizeof(line2), "%s ago", human_time);
+                            cb_free(human_time);
+                        }
+
+                        int font_height = playdate->graphics->getFontHeight(CB_App->labelFont);
+                        int line1_width = playdate->graphics->getTextWidth(
+                            CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
+                        );
+                        int line2_width = playdate->graphics->getTextWidth(
+                            CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
+                        );
+                        int text_spacing = 4;
+                        int text_block_height = font_height * 2 + text_spacing;
+
+                        if (has_cover_art)
+                        {
+                            playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                            int text_y = cover_art_y + cover_art_height + 6;
+                            playdate->graphics->drawText(
+                                line1, strlen(line1), kUTF8Encoding, (200 - line1_width) / 2, text_y
+                            );
+                            playdate->graphics->drawText(
+                                line2, strlen(line2), kUTF8Encoding, (200 - line2_width) / 2,
+                                text_y + font_height + text_spacing
+                            );
+                        }
+                        else
+                        {
+                            int padding_x = 10;
+                            int padding_y = 8;
+                            int black_border_size = 2;
+                            int white_border_size = 1;
+
+                            int box_width = CB_MAX(line1_width, line2_width) + (padding_x * 2);
+                            int box_height = text_block_height + (padding_y * 2);
+
+                            int total_border_size = black_border_size + white_border_size;
+                            int total_width = box_width + (total_border_size * 2);
+                            int total_height = box_height + (total_border_size * 2);
+
+                            int final_box_x = (200 - total_width + 1) / 2;
+                            int final_box_y = content_top + (content_height - total_height) / 2;
+
+                            playdate->graphics->fillRect(
+                                final_box_x, final_box_y, total_width, total_height, kColorWhite
+                            );
+
+                            playdate->graphics->fillRect(
+                                final_box_x + white_border_size, final_box_y + white_border_size,
+                                box_width + (black_border_size * 2),
+                                box_height + (black_border_size * 2), kColorBlack
+                            );
+
+                            playdate->graphics->fillRect(
+                                final_box_x + total_border_size, final_box_y + total_border_size,
+                                box_width, box_height, kColorWhite
+                            );
+
+                            playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+                            int text_y = final_box_y + total_border_size + padding_y;
+                            playdate->graphics->drawText(
+                                line1, strlen(line1), kUTF8Encoding,
+                                final_box_x + total_border_size + (box_width - line1_width) / 2, text_y
+                            );
+                            playdate->graphics->drawText(
+                                line2, strlen(line2), kUTF8Encoding,
+                                final_box_x + total_border_size + (box_width - line2_width) / 2,
+                                text_y + font_height + text_spacing
+                            );
+                        }
+                    }
+                    playdate->graphics->popContext();
+                }
+            }
+        }
+        playdate->system->setMenuImage(gameScene->menuImage, 0);
     }
 }
 
