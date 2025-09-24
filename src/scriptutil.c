@@ -1,4 +1,5 @@
 #include "scriptutil.h"
+#include "userstack.h"
 
 #define GB script_gb
 
@@ -59,7 +60,7 @@ void script_save_to_disk(const char* data, size_t size, unsigned fidx)
 {
     char* fname = script_disk_fname(fidx);
     
-    cb_write_entire_file(fname, data, size);
+    call_with_main_stack_3(cb_write_entire_file, fname, data, size);
     
     cb_free(fname);
 }
@@ -67,7 +68,7 @@ void script_save_to_disk(const char* data, size_t size, unsigned fidx)
 char* script_load_from_disk(unsigned fidx, size_t* o_size)
 {
     char* fname = script_disk_fname(fidx);
-    char* result = cb_read_entire_file(fname, o_size, kFileReadData);
+    char* result = call_with_main_stack_3(cb_read_entire_file, fname, o_size, kFileReadData);
     cb_free(fname);
     return result;
 }

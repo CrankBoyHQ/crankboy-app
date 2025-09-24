@@ -3,7 +3,12 @@
 #include "met2.inc"
 
 #define DESCRIPTION \
-    "- Adds a map!"
+    "- Adds a map!\n" \
+    "- Widescreen HUD\n" \
+    "- Missiles controlled by crank\n" \
+    "- Start/select not needed anymore\n\n" \
+    "Created by: NaOH (Sodium Hydroxide)\n" \
+    "Special thanks: Metroid Reverse Engineering Team" \
 
 #define HALFTILE_W 8
 #define HALFTILE_H 8
@@ -64,22 +69,30 @@ typedef struct ScriptData
 // this define is used by SCRIPT_BREAKPOINT
 #define USERDATA ScriptData* data
 
+#define AREA_SECRET_WORLD 0xF
+
 bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y);
 
 void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by, bool explored)
 {
+    if (bank < MAP_FIRST_BANK) return;
+    if (bx >= 0x10 || by >= 0x10) return;
+    
     int idx = (bank - MAP_FIRST_BANK)*0x100 + by * 0x10 + bx;
     if (idx != explored)
     {
         data->map_explored[idx] = explored;
         
         struct AreaAssociation association = data->area_associations[(bank-MAP_FIRST_BANK)*0x100 + by*0x10 + bx];
-        if (association.area_idx == data->map_area)
+        if (association.area_idx == data->map_area && data->map_area != AREA_SECRET_WORLD)
         {
             unsigned x, y;
             struct Area* area = &areas[data->map_area];
             get_coords_in_area(data, association.room_idx, bank, bx, by, &x, &y);
-            data->area_explored[y*area->w + x] = explored;
+            if (y < area->h && x < area->w)
+            {
+                data->area_explored[y*area->w + x] = explored;
+            }
         }
     }
 }
@@ -88,8 +101,6 @@ bool get_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by)
 {
     return data->map_explored[(bank - MAP_FIRST_BANK) * 0x100 + by * 0x10 + bx];
 }
-
-#define AREA_SECRET_WORLD 0xF
 
 // new save file
 SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
@@ -106,7 +117,14 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E1C))
 }
 
 // during door transition
-SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x23A7))
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x23A7))
+{
+    data->door_transition_suppress_map_update = 16;
+}
+
+// during warp door transition
+// (may be paranoia)
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x28FB))
 {
     data->door_transition_suppress_map_update = 16;
 }
@@ -168,7 +186,7 @@ static void set_z_should_missile_toggle(void)
 {
     bool is_crank_mapped = preferences_crank_dock_button != PREF_BUTTON_NONE || preferences_crank_undock_button != PREF_BUTTON_NONE;
     bool is_select_mapped = CB_App->hasSystemAccess && preferences_lock_button == PREF_BUTTON_SELECT;
-    if (!is_crank_mapped && !is_select_mapped)
+    if (!is_crank_mapped && !is_select_mapped && !ram_peek(0xD07D) /* not touching save point*/)
     {
         bool isMissiles = !!(ram_peek(0xD04D) & 8);
         bool should_be_missiles = false;
@@ -524,6 +542,11 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->door_transition_suppress_map_update -= frames_elapsed;
     }
     
+    #if 0
+    // hp hack
+    ram_poke(0xD051, 0x99);
+    #endif
+    
     data->weapons_collected |= ram_peek(0xd04D);
     
     if (!ram_peek(0xD07D))
@@ -551,7 +574,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
                 
                 if (crank_amount > 1)
                 {
-                    crank_amount = MIN(crank_amount, 6);
+                    crank_amount = MIN(crank_amount, 4.5f);
                     data->crank_save_p += crank_amount/60.0f;
                 }
             }
@@ -559,16 +582,15 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         }
         
         // reduce over time
-        data->crank_save_p = toward(data->crank_save_p, 0, frames_elapsed / 110.0f);
+        data->crank_save_p = toward(data->crank_save_p, 0, frames_elapsed / 140.0f);
     }
 }
 
-static void draw_halftile(ScriptData* data, int ht_idx, int dst_x, int dst_y)
+static void draw_halftile(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, int ht_idx, int dst_x, int dst_y)
 {
     int w, h, stride;
     uint8_t *mask, *pdata;
     playdate->graphics->getBitmapData(data->htimg, &w, &h, &stride, &mask, &pdata);
-    uint8_t* frame = playdate->graphics->getFrame();
     
     int src_x = (ht_idx % k) * HALFTILE_W;
     int src_y = (ht_idx / k) * HALFTILE_H;
@@ -583,13 +605,13 @@ static void draw_halftile(ScriptData* data, int ht_idx, int dst_x, int dst_y)
         uint8_t pm = mask[(i + src_y) * stride + src_x];
         uint8_t p = pdata[(i + src_y) * stride + src_x] & pm;
         
-        int dst_idx = (i + dst_y)*LCD_ROWSIZE + dst_x;
-        frame[dst_idx] &= ~pm;
-        frame[dst_idx] |= p;
+        int dst_idx = (i + dst_y)*dst_stride + dst_x;
+        dst_buff[dst_idx] &= ~pm;
+        dst_buff[dst_idx] |= p;
     }
 }
 
-static void draw_fulltile(ScriptData* data, int ft_idx, int dst_x, int dst_y)
+static void draw_fulltile(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, int ft_idx, int dst_x, int dst_y)
 {
     uint8_t ht[4] = {3, 3, 3, 3};
     switch(ft_idx)
@@ -671,13 +693,13 @@ static void draw_fulltile(ScriptData* data, int ft_idx, int dst_x, int dst_y)
         break;
     }
     
-    draw_halftile(data, ht[0], dst_x, dst_y);
-    draw_halftile(data, ht[1], dst_x+HALFTILE_W, dst_y);
-    draw_halftile(data, ht[2], dst_x, dst_y+HALFTILE_H);
-    draw_halftile(data, ht[3], dst_x+HALFTILE_W, dst_y+HALFTILE_H);
+    draw_halftile(dst_buff, dst_stride, data, ht[0], dst_x, dst_y);
+    draw_halftile(dst_buff, dst_stride, data, ht[1], dst_x+HALFTILE_W, dst_y);
+    draw_halftile(dst_buff, dst_stride, data, ht[2], dst_x, dst_y+HALFTILE_H);
+    draw_halftile(dst_buff, dst_stride, data, ht[3], dst_x+HALFTILE_W, dst_y+HALFTILE_H);
 }
 
-static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, int window_w, int window_h, int window_x, int window_y)
+static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, unsigned area_idx, int dst_x, int dst_y, int window_w, int window_h, int window_x, int window_y)
 {
     if (area_idx == AREA_SECRET_WORLD)
     {
@@ -719,7 +741,7 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
                     {
                         halftile = data->halftiles[(y*2 + yi)*area->w*2 + x*2 + xi];
                     }
-                    draw_halftile(data, halftile, dst_x_px + HALFTILE_W*xi, dst_y_px + HALFTILE_H*yi);
+                    draw_halftile(dst_buff, dst_stride, data, halftile, dst_x_px + HALFTILE_W*xi, dst_y_px + HALFTILE_H*yi);
                 }
             }
         }
@@ -785,7 +807,7 @@ static void draw_map(ScriptData* data, unsigned area_idx, int dst_x, int dst_y, 
         int dst_x_px = dst_x + (special_tile->area_x - window_x) * HALFTILE_W * 2;
         int dst_y_px = dst_y + (special_tile->area_y - window_y) * HALFTILE_H * 2;
         
-        draw_fulltile(data, special_tile->type, dst_x_px, dst_y_px);
+        draw_fulltile(dst_buff, dst_stride, data, special_tile->type, dst_x_px, dst_y_px);
         
         // don't draw anything after this tile
         if (special_tile->masking)
@@ -842,6 +864,179 @@ static void draw_msg(ScriptData* data, const char* msg)
     }
 }
 
+static bool is_gameplay_mode(unsigned game_mode)
+{
+    return game_mode == 4 || game_mode == 5 || game_mode == 6 || game_mode == 8 || game_mode == 9;
+}
+
+#define MENU_IMG_W 200
+
+static unsigned on_menu(gb_s* gb, ScriptData* data)
+{
+    unsigned game_mode = ram_peek(0xFF9B);
+    
+    if (is_gameplay_mode(game_mode) && data->map_area != AREA_SECRET_WORLD && data->samus_bank >= MAP_FIRST_BANK)
+    {
+        LCDBitmap* img = playdate->graphics->newBitmap(LCD_COLUMNS, LCD_ROWS, kColorBlack);
+        struct Area* area = &areas[data->map_area];
+        
+        struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
+        unsigned x, y;
+        
+        if (get_coords_in_area(data, association.room_idx, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
+        {
+            int samus_area_x = x;
+            int samus_area_y = y;
+        
+            int stride;
+            uint8_t* buff;
+            playdate->graphics->getBitmapData(img, NULL, NULL, &stride, NULL, &buff);
+            
+            // line break
+            int max_glyphs_per_line = MENU_IMG_W / 16;
+            int last_space = -1;
+            int current_line = 0;
+            int j = 0;
+            char* area_name = cb_strdup(area->name);
+            for (int i = 0; i < strlen(area->name); ++i, ++j)
+            {
+                if (area_name[i] == ' ')
+                    last_space = i;
+                
+                if (j >= max_glyphs_per_line && last_space >= 0)
+                {
+                    j = i - last_space;
+                    current_line++;
+                    area_name[last_space] = '\n';
+                    last_space = -1;
+                }
+            }
+            
+            int mapleft = 0;
+            int maptop = 16*(current_line+1);
+            
+            int max_h = (LCD_ROWS - maptop) / HALFTILE_H / 2;
+            int max_w = (MENU_IMG_W) / HALFTILE_W / 2;
+            int full_w = LCD_COLUMNS / HALFTILE_W / 2;
+            
+            int w = MIN(max_w, area->w);
+            int h = MIN(max_h, area->h);
+            
+            // bounds
+            if (max_w >= area->w)
+            {
+                x = 0;
+            }
+            else if (x < max_w/2)
+            {
+                x = 0;
+            }
+            else if (x >= area->w - max_w)
+            {
+                x = area->w - max_w;
+            }
+            else
+            {
+                x -= max_w/2;
+            }
+            
+            if (max_h >= area->h)
+            {
+                y = 0;
+            }
+            else if (y < max_h/2)
+            {
+                y = 0;
+            }
+            else if (y >= area->h - max_h)
+            {
+                y = area->h - max_h;
+            }
+            else
+            {
+                y -= max_h/2;
+            }
+            
+            int dst_x = (MENU_IMG_W - w * HALFTILE_W * 2)/2 + mapleft;
+            dst_x &= ~7;
+            if (area->w >= max_w) dst_x = 0;
+            int dst_y = (LCD_ROWS - h * HALFTILE_H * 2)/2 + maptop;
+            dst_y &= ~7;
+            if (area->h >= max_h) dst_y = maptop;
+            
+            // expand so that the map is visible to the right of the hidden area
+            w = MIN(full_w, area->w - x);
+            
+            draw_map(buff, stride, data, data->map_area, dst_x, dst_y, w, h, x, y);
+            
+            playdate->graphics->pushContext(img);
+            
+            if (samus_area_x >= x && samus_area_y >= y)
+            {
+                playdate->graphics->fillRect(
+                    dst_x + 2*HALFTILE_W*(samus_area_x - x),
+                    dst_y + 2*HALFTILE_W*(samus_area_y - y),
+                    HALFTILE_H*2,
+                    HALFTILE_W*2,
+                    kColorXOR
+                );
+            }
+            
+            // area name
+            const char* msg = area_name;
+            int msg_y = 0;
+            while (msg && *msg)
+            {
+                int len = strlen(msg);
+                if (strchr(msg, '\n'))
+                {
+                    len = strchr(msg, '\n') - msg;
+                }
+                int x = MAX(0, MENU_IMG_W/2 - len*8);
+                for (int i = 0; i < len; ++i)
+                {
+                    char c = msg[i];
+                    if (c >= 'A' && c <= 'Z')
+                    {
+                        draw_glyph(data, GLYPH_A + c - 'A', x, msg_y, kBitmapUnflipped);
+                    }
+                    if (c >= 'a' && c <= 'z')
+                    {
+                        draw_glyph(data, GLYPH_A + c - 'a', x, msg_y, kBitmapUnflipped);
+                    }
+                    x += 16;
+                }
+                if (msg[len] == '\n')
+                {
+                    msg = &msg[len + 1];
+                    msg_y += 16;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            playdate->graphics->fillRect(0, maptop, LCD_COLUMNS, 1, (uintptr_t)&lcdp_50b);
+            cb_free(area_name);
+            
+            // fill right side with black
+            playdate->graphics->fillRect(MENU_IMG_W, 0, LCD_COLUMNS - MENU_IMG_W, LCD_ROWS, kColorBlack);
+            
+            playdate->graphics->popContext();
+            playdate->system->setMenuImage(img, 0);
+            
+            playdate->graphics->freeBitmap(img);
+            
+            
+            return SCRIPT_MENU_SUPPRESS_IMAGE;
+        }
+        
+        playdate->graphics->freeBitmap(img);
+    }
+    
+    return 0;
+}
+
 static void on_draw(gb_s* gb, ScriptData* data)
 {
     unsigned game_mode = ram_peek(0xFF9B);
@@ -852,7 +1047,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     game_picture_y_bottom = LCD_HEIGHT;
     game_hide_indicator = false;
     
-    if (game_mode == 4 || game_mode == 5 || game_mode == 6 || game_mode == 7 || game_mode == 8 || game_mode == 9 || game_mode == 10)
+    if (is_gameplay_mode(game_mode) || game_mode == 10 || game_mode == 7)
     {
         game_hide_indicator = true;
         
@@ -992,8 +1187,14 @@ static void on_draw(gb_s* gb, ScriptData* data)
             }
             
             unsigned samus_bank = ram_peek(0xD058);
-            unsigned samus_x = ram_peek(0xFFC3);
-            unsigned samus_y = ram_peek(0xFFC1);
+            unsigned samus_x = (((unsigned)ram_peek(0xFFC3)<<8) | ram_peek(0xFFC2));
+            samus_x += 8;
+            samus_x >>= 8;
+            samus_x %= 16;
+            unsigned samus_y = (((unsigned)ram_peek(0xFFC1)<<8) | ram_peek(0xFFC0));
+            samus_y += 8;
+            samus_y >>= 8;
+            samus_y %= 16;
             
             unsigned frame_counter = ram_peek(0xFF97);
             bool flicker_on = !!(frame_counter & 0x10);
@@ -1019,7 +1220,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 playdate->graphics->fillRect(LCD_COLUMNS-80, 0, 80, LCD_COLUMNS, kColorBlack);
             }
             
-            bool door_transition = ram_peek(0xD00E) || ram_peek(0xD08E) || ram_peek(0xD08F);
+            bool door_transition = ram_peek(0xD00E) || ram_peek(0xD08E) || ram_peek(0xD08F) || ram_peek(0xC458);
             
             // reuse previous position if we're in an empty cell, scrolling screen, or reached gunship state
             struct AreaAssociation association = data->area_associations[(samus_bank-MAP_FIRST_BANK)*0x100 + samus_y*0x10 + samus_x];
@@ -1042,17 +1243,19 @@ static void on_draw(gb_s* gb, ScriptData* data)
                     set_map_explored(data, samus_bank, samus_x, samus_y, true);
                 }
                 
-                struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-9)*0x100 + data->samus_y*0x10 + data->samus_x];
+                struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
                 unsigned x, y;
+                
+                uint8_t* frame = playdate->graphics->getFrame();
                 
                 if (association.unmapped)
                 {
                 draw_secret_world:;
-                    draw_map(data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
+                    draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
                 }
                 else if (get_coords_in_area(data, association.room_idx, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
                 {
-                    draw_map(data, association.area_idx, LCD_COLUMNS-80, 0, 5, 5, (int)x-2, (int)y-2);
+                    draw_map(frame, LCD_ROWSIZE, data, association.area_idx, LCD_COLUMNS-80, 0, 5, 5, (int)x-2, (int)y-2);
                     if (flicker_on)
                     {
                         playdate->graphics->fillRect(LCD_COLUMNS-80 + 16*2, 0 + 16*2, 16, 16, kColorXOR);
@@ -1060,7 +1263,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 }
                 else
                 {
-                    draw_map(data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
+                    draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
                 }
             }
             
@@ -1087,10 +1290,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 int digithi = (samus_disp_energy >> 4) & 0xF;
                 
                 // energy
-                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1, row2y, kBitmapUnflipped);
-                draw_glyph(data, 10, LCD_COLUMNS - 16*4 + 2, row2y, kBitmapUnflipped);
-                draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2, row2y, kBitmapUnflipped);
-                draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1, row2y, kBitmapUnflipped);
+                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1-8, row2y, kBitmapUnflipped);
+                draw_glyph(data, 10, LCD_COLUMNS - 16*4 + 2-8, row2y, kBitmapUnflipped);
+                draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2-8, row2y, kBitmapUnflipped);
+                draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1-8, row2y, kBitmapUnflipped);
             }
             
             ui_y = 5*16 + 4;
@@ -1103,9 +1306,9 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 int digithi = (samus_disp_missiles >> 4) & 0xF;
                 int digithihi = (samus_disp_missiles >> 8) & 0xF;
                 
-                draw_glyph(data, digithihi + GLYPH_0, LCD_COLUMNS - 16*3 + 1, ui_y, kBitmapUnflipped);
-                draw_glyph(data, (samus_weapon & 0x8) ? GLYPH_MISSILES_EQUIPPED : GLYPH_MISSILES, LCD_COLUMNS - 16*5 + 2, ui_y, kBitmapUnflipped);
                 draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*4, ui_y, kBitmapUnflipped);
+                draw_glyph(data, (samus_weapon & 0x8) ? GLYPH_MISSILES_EQUIPPED : GLYPH_MISSILES, LCD_COLUMNS - 16*5 + 2, ui_y, kBitmapUnflipped);
+                draw_glyph(data, digithihi + GLYPH_0, LCD_COLUMNS - 16*3 + 1, ui_y, kBitmapUnflipped);
                 draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2, ui_y, kBitmapUnflipped);
                 draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1, ui_y, kBitmapUnflipped);
             }
@@ -1128,8 +1331,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
             }
             
             // divider
-            playdate->graphics->fillRect(LCD_COLUMNS - 80, 0, 1, LCD_ROWS, (uintptr_t)&lcdp_50);
-            playdate->graphics->fillRect(LCD_COLUMNS - 80, 80-1, 80, 1, (uintptr_t)&lcdp_50);
+            playdate->graphics->fillRect(LCD_COLUMNS - 80, 0, 1, LCD_ROWS, (uintptr_t)&lcdp_50b);
+            playdate->graphics->fillRect(LCD_COLUMNS - 80, 80-1, 80, 1, (uintptr_t)&lcdp_50b);
         }
     }
 }
@@ -1188,6 +1391,7 @@ C_SCRIPT{
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
+    .on_menu = (CS_OnMenu)on_menu,
     .on_end = (CS_OnEnd)on_end,
     
     .query_serial_size = (CS_QuerySerialSize)query_serial_size,

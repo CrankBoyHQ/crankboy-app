@@ -23,6 +23,7 @@ extern PlaydateAPI* playdate;
 extern const uint8_t lcdp_25[16];
 extern const uint8_t lcdp_25s[16];
 extern const uint8_t lcdp_50[16];
+extern const uint8_t lcdp_50b[16];
 extern const uint8_t lcdp_75[16];
 extern const uint8_t lcdp_75s[16];
 

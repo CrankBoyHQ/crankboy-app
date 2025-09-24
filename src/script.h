@@ -21,12 +21,18 @@ typedef void gb_s;
 #endif
 struct lua_State;
 
+#define SCRIPT_MENU_SUPPRESS_BUTTON 1
+#define SCRIPT_MENU_SUPPRESS_IMAGE 2
+
 // returns user-data; return value of NULL indicates an error.
 typedef void* (*CS_OnBegin)(gb_s* gb, const char* rom_header_name);
 
 typedef void (*CS_OnTick)(gb_s* gb, void* userdata, int frames_elapsed);
 
 typedef void (*CS_OnDraw)(gb_s* gb, void* userdata);
+
+// returns flags SCRIPT_MENU_*
+typedef unsigned (*CS_OnMenu)(gb_s* gb, void* userdata);
 
 // should free userdata
 typedef void (*CS_OnEnd)(gb_s* gb, void* userdata);
@@ -46,6 +52,7 @@ struct CScriptInfo
     CS_OnBegin on_begin;
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
+    CS_OnMenu on_menu;
     CS_OnEnd on_end;
     
     CS_QuerySerialSize query_serial_size;
@@ -80,6 +87,9 @@ ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene
 void script_end(ScriptState* state, struct CB_GameScene* game_scene);
 void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed);
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
+
+// returns flags SCRIPT_MENU_*
+unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene);
 void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
 size_t script_query_savestate_size(ScriptState* state);
 bool script_save_state(ScriptState* state, uint8_t* out);
