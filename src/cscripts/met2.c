@@ -214,7 +214,7 @@ const struct HexMapArea hex_areas[] = {
         .hexes = hex_surface,
         .hexes_c = sizeof(hex_surface)/sizeof(struct AreaHex),
         .area_idx = 0,
-        .area_idx_left = AREA_LINK_0(),
+        .area_idx_left = AREA_LINK_2(10, 11),
         .area_idx_right = AREA_LINK_1(1),
         .area_idx_up = AREA_LINK_0(),
         .area_idx_down = AREA_LINK_3(12, 4, 1),
@@ -960,6 +960,7 @@ static int jump_area_sequence(ScriptData* data, unsigned area_sequence)
 static void tick_map(ScriptData* data)
 {
     ++data->map_mode_timer;
+    audio_enabled = 0;
     
     const struct HexMapArea* hma_selected = get_area_hex_map(data->map_mode_area);
     
@@ -972,6 +973,7 @@ static void tick_map(ScriptData* data)
             if (!hma_selected)
             {
                 data->map_mode = MAP_MODE_NONE;
+                audio_enabled = 1;
             }
             else
             {
@@ -1005,6 +1007,7 @@ static void tick_map(ScriptData* data)
         if (CB_App->buttons_pressed & kButtonB)
         {
             data->map_mode = MAP_MODE_NONE;
+            audio_enabled = 1;
         }
         else if (CB_App->buttons_pressed & kButtonA)
         {
@@ -2045,6 +2048,7 @@ bool deserialize(const char* in, size_t size, ScriptData* data)
     }
     
     data->map_mode = MAP_MODE_NONE;
+    audio_enabled = 1;
     
     if ((unsigned)in[0] != (unsigned)SERIAL_VERSION) return false;
     
