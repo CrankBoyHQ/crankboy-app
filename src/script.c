@@ -712,9 +712,12 @@ bool script_load_state(ScriptState* state, const uint8_t* in, size_t size)
     return true;
 }
 
-void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed)
+bool suppress_gb_frame;
+
+bool script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed)
 {
     script_gb = game_scene->context->gb;
+    suppress_gb_frame = false;
 
 #ifndef NOLUA
     if (state->L)
@@ -724,14 +727,14 @@ void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames
         if (!lua_istable(L, -1))
         {
             lua_pop(L, 1);
-            return;
+            return false;
         }
 
         lua_getfield(L, -1, "update");
         if (!lua_isfunction(L, -1))
         {
             lua_pop(L, 2);  // pop update and cb
-            return;
+            return false;
         }
 
         lua_remove(L, -2);  // remove cb, leave update
@@ -748,6 +751,8 @@ void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames
     {
         state->c->on_tick(game_scene->context->gb, state->ud, frames_elapsed);
     }
+    
+    return suppress_gb_frame;
 }
 
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene)

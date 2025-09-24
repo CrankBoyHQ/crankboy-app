@@ -1873,474 +1873,505 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.sram_updated = 0;
 
+        bool skip_frame = false;
         if (preferences_script_support && context->scene->script)
         {
-            script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
+            skip_frame = script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
         }
-
-        CB_ASSERT(context == context->gb->direct.priv);
-
-        gb_s* tmp_gb = context->gb;
-
-#ifdef TARGET_SIMULATOR
-        pthread_mutex_lock(&audio_mutex);
-#endif
-
-        // Static buffer for the !dtcm_enabled path to prevent stack overflow on the simulator.
-        static char stack_gb_data[sizeof(gb_s)];
-
-        if (!dtcm_enabled())
-        {
-            gameScene->audioLocked = 1;
-            memcpy(stack_gb_data, tmp_gb, sizeof(gb_s));
-            context->gb = (void*)stack_gb_data;
-            gameScene->audioLocked = 0;
-        }
-        
         gameScene->next_frames_elapsed = 0;
 
-        gameScene->playtime += 1 + preferences_frame_skip;
-        CB_App->avg_dt_mult =
-            (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
-
-        void* gb_run_frame_ = (context->gb->is_cgb_mode)
-            ? gb_run_frame__cgb
-            : gb_run_frame__dmg;
-#ifdef DTCM_ALLOC
-        void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
-#else
-        void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
-#endif
-
-        if (preferences_frame_skip && preferences_blend_frames)
+        if (!skip_frame)
         {
-            // --- 30fps Frame Blending ---
-            static clalign uint8_t frame_A_buffer[LCD_BUFFER_BYTES];
+            CB_ASSERT(context == context->gb->direct.priv);
 
-            // 1. Render Frame A (Full Render, frame_skip = 0)
-            context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-            DTCM_VERIFY_DEBUG();
-            run_frame_function_pointer(context->gb);
-            DTCM_VERIFY_DEBUG();
-#else
-            run_frame_function_pointer(context->gb);
-#endif
-            ++gameScene->next_frames_elapsed;
-            tick_audio_sync(gameScene);
-            memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
+            gb_s* tmp_gb = context->gb;
 
-            // 2. Determine if the screen is static and if sprites were rendered.
-            bool screen_is_static =
-                (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
-            bool has_blendable_sprites =
-                context->gb->direct.blend_rect_x_min < context->gb->direct.blend_rect_x_max;
+    #ifdef TARGET_SIMULATOR
+            pthread_mutex_lock(&audio_mutex);
+    #endif
 
-            // 3. Run the emulator for the second frame period.
-            context->gb->direct.frame_skip = screen_is_static;
-#ifdef DTCM_ALLOC
-            DTCM_VERIFY_DEBUG();
-            run_frame_function_pointer(context->gb);
-            DTCM_VERIFY_DEBUG();
-#else
-            run_frame_function_pointer(context->gb);
-#endif
-            ++gameScene->next_frames_elapsed;
-            tick_audio_sync(gameScene);
+            // Static buffer for the !dtcm_enabled path to prevent stack overflow on the simulator.
+            static char stack_gb_data[sizeof(gb_s)];
 
-            // 4. Decide whether to blend based on the preference setting
-            if (preferences_blend_frames == 1)  // "On" mode
+            if (!dtcm_enabled())
             {
-                if (!screen_is_static)
-                {
-                    blend_frames_lut(frame_A_buffer, context->gb->lcd);
-                }
+                gameScene->audioLocked = 1;
+                memcpy(stack_gb_data, tmp_gb, sizeof(gb_s));
+                context->gb = (void*)stack_gb_data;
+                gameScene->audioLocked = 0;
             }
-            else if (preferences_blend_frames == 2)  // "Auto" mode
+
+            gameScene->playtime += 1 + preferences_frame_skip;
+            CB_App->avg_dt_mult =
+                (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
+
+            void* gb_run_frame_ = (context->gb->is_cgb_mode)
+                ? gb_run_frame__cgb
+                : gb_run_frame__dmg;
+    #ifdef DTCM_ALLOC
+            void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
+    #else
+            void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
+    #endif
+
+            if (preferences_frame_skip && preferences_blend_frames)
             {
-                if (!screen_is_static && has_blendable_sprites)
-                {
-                    blend_frames_lut_rect(
-                        frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
-                        context->gb->direct.blend_rect_y_min, context->gb->direct.blend_rect_x_max,
-                        context->gb->direct.blend_rect_y_max
-                    );
-                }
-            }
-        }
-        else
-        {
-            // --- 30fps Ghost frame logic ---
-            if (preferences_frame_skip && preferences_ghost_frame_30fps)
-            {
+                // --- 30fps Frame Blending ---
+                static clalign uint8_t frame_A_buffer[LCD_BUFFER_BYTES];
 
-                static clalign uint8_t oam_ghost_buffer_storage[OAM_SIZE];
-                context->gb->direct.oam_ghost_buffer = NULL;
-
-                context->gb->direct.frame_skip = 1;
-#ifdef DTCM_ALLOC
-                DTCM_VERIFY_DEBUG();
-                run_frame_function_pointer(context->gb);
-                DTCM_VERIFY_DEBUG();
-#else
-                run_frame_function_pointer(context->gb);
-#endif
-                ++gameScene->next_frames_elapsed;
-                tick_audio_sync(gameScene);
-                memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
-
-                context->gb->direct.oam_ghost_buffer = oam_ghost_buffer_storage;
+                // 1. Render Frame A (Full Render, frame_skip = 0)
                 context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
+    #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
                 DTCM_VERIFY_DEBUG();
-#else
+    #else
                 run_frame_function_pointer(context->gb);
-#endif
+    #endif
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
-                context->gb->direct.oam_ghost_buffer = NULL;
+                memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
+
+                // 2. Determine if the screen is static and if sprites were rendered.
+                bool screen_is_static =
+                    (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+                bool has_blendable_sprites =
+                    context->gb->direct.blend_rect_x_min < context->gb->direct.blend_rect_x_max;
+
+                // 3. Run the emulator for the second frame period.
+                context->gb->direct.frame_skip = screen_is_static;
+    #ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+    #else
+                run_frame_function_pointer(context->gb);
+    #endif
+                ++gameScene->next_frames_elapsed;
+                tick_audio_sync(gameScene);
+
+                // 4. Decide whether to blend based on the preference setting
+                if (preferences_blend_frames == 1)  // "On" mode
+                {
+                    if (!screen_is_static)
+                    {
+                        blend_frames_lut(frame_A_buffer, context->gb->lcd);
+                    }
+                }
+                else if (preferences_blend_frames == 2)  // "Auto" mode
+                {
+                    if (!screen_is_static && has_blendable_sprites)
+                    {
+                        blend_frames_lut_rect(
+                            frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
+                            context->gb->direct.blend_rect_y_min, context->gb->direct.blend_rect_x_max,
+                            context->gb->direct.blend_rect_y_max
+                        );
+                    }
+                }
             }
             else
             {
-                // --- 60fps and non-blended 30fps logic ---
-                for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+                // --- 30fps Ghost frame logic ---
+                if (preferences_frame_skip && preferences_ghost_frame_30fps)
                 {
-                    context->gb->direct.frame_skip = (preferences_frame_skip != frame);
-#ifdef DTCM_ALLOC
+
+                    static clalign uint8_t oam_ghost_buffer_storage[OAM_SIZE];
+                    context->gb->direct.oam_ghost_buffer = NULL;
+
+                    context->gb->direct.frame_skip = 1;
+    #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
                     DTCM_VERIFY_DEBUG();
-#else
+    #else
                     run_frame_function_pointer(context->gb);
-#endif
+    #endif
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
-                }
-            }
-        }
+                    memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
 
-        if (!dtcm_enabled())
-        {
-            gameScene->audioLocked = 1;
-            memcpy(tmp_gb, context->gb, sizeof(gb_s));
-            context->gb = tmp_gb;
-            gameScene->audioLocked = 0;
-        }
-
-#ifdef TARGET_SIMULATOR
-        pthread_mutex_unlock(&audio_mutex);
-#endif
-
-        if (gameScene->cartridge_has_battery)
-        {
-            save_check(context->gb);
-        }
-
-        // --- Conditional Screen Update (Drawing) Logic ---
-        uint8_t* current_lcd = context->gb->lcd;
-        uint8_t* previous_lcd = context->previous_lcd;
-        uint16_t line_has_changed[LCD_HEIGHT / 16];
-        memset(line_has_changed, 0, sizeof(line_has_changed));
-
-        unsigned dither_preference = preferences_dither_line;
-        bool stable_scaling_enabled = preferences_dither_stable;
-        int scy = context->gb->gb_reg.SCY;
-
-        const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
-        if (preferences_dither_stable && scy % scaling != last_scy % scaling)
-        {
-            force_all_lines_dirty = true;
-            last_scy = scy;
-        }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-        int updated_playdate_lines = 0;
-        int scale_index_for_calc = dither_preference;
-#endif
-
-        void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len)
-            = context->gb->is_cgb_mode
-                ? gb_fast_memcpy_64__cgb
-                : gb_fast_memcpy_64__dmg;
-        
-        gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
-
-        if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
-        {
-            for (int y = 0; y < LCD_HEIGHT; y++)
-            {
-                uint8_t* cur = &current_lcd[y * LCD_WIDTH_PACKED];
-                uint8_t* prv = &previous_lcd[y * LCD_WIDTH_PACKED];
-
-                if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
-                {
-                    line_has_changed[y / 16] |= (1 << (y % 16));
-
-                    gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                    if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-                    {
-                        int row_height_on_playdate = 2;
-                        if (scale_index_for_calc == 2)
-                        {
-                            row_height_on_playdate = 1;
-                        }
-                        updated_playdate_lines += row_height_on_playdate;
-                    }
-#endif
-                }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                scale_index_for_calc++;
-                if (scale_index_for_calc == 3)
-                {
-                    scale_index_for_calc = 0;
-                }
-#endif
-            }
-        }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-        {
-            int percentage_threshold = 25 + (preferences_dynamic_level * 5);
-            int line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
-
-            if (updated_playdate_lines > line_threshold)
-            {
-                gameScene->interlace_tendency_counter += 2;
-            }
-            else
-            {
-                gameScene->interlace_tendency_counter--;
-            }
-
-            if (gameScene->interlace_tendency_counter < 0)
-                gameScene->interlace_tendency_counter = 0;
-            if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
-                gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
-        }
-#endif
-
-#if LOG_DIRTY_LINES
-        playdate->system->logToConsole("--- Frame Update ---");
-        int range_start = 0;
-        bool is_dirty_range = (line_has_changed[0] & 1);
-
-        for (int y = 1; y < LCD_HEIGHT; y++)
-        {
-            bool is_dirty_current = (line_has_changed[y / 16] >> (y % 16)) & 1;
-
-            if (is_dirty_current != is_dirty_range)
-            {
-                if (range_start == y - 1)
-                {
-                    playdate->system->logToConsole(
-                        "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
-                    );
+                    context->gb->direct.oam_ghost_buffer = oam_ghost_buffer_storage;
+                    context->gb->direct.frame_skip = 0;
+    #ifdef DTCM_ALLOC
+                    DTCM_VERIFY_DEBUG();
+                    run_frame_function_pointer(context->gb);
+                    DTCM_VERIFY_DEBUG();
+    #else
+                    run_frame_function_pointer(context->gb);
+    #endif
+                    ++gameScene->next_frames_elapsed;
+                    tick_audio_sync(gameScene);
+                    context->gb->direct.oam_ghost_buffer = NULL;
                 }
                 else
                 {
-                    playdate->system->logToConsole(
-                        "Lines %d-%d: %s", range_start, y - 1,
-                        is_dirty_range ? "Updated" : "Omitted"
-                    );
+                    // --- 60fps and non-blended 30fps logic ---
+                    for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+                    {
+                        context->gb->direct.frame_skip = (preferences_frame_skip != frame);
+    #ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+    #else
+                        run_frame_function_pointer(context->gb);
+    #endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+                    }
                 }
-                range_start = y;
-                is_dirty_range = is_dirty_current;
             }
-        }
 
-        if (range_start == LCD_HEIGHT - 1)
-        {
-            playdate->system->logToConsole(
-                "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
-            );
-        }
-        else
-        {
-            playdate->system->logToConsole(
-                "Lines %d-%d: %s", range_start, LCD_HEIGHT - 1,
-                is_dirty_range ? "Updated" : "Omitted"
-            );
-        }
-#endif
-
-    void (*update_fb_dirty_lines_)(
-        uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-        const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
-        bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
-    )
-            = context->gb->is_cgb_mode
-                ? update_fb_dirty_lines__cgb
-                : update_fb_dirty_lines__dmg;
-        
-    update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
-
-#if ENABLE_RENDER_PROFILER
-        if (CB_run_profiler_on_next_frame)
-        {
-            CB_run_profiler_on_next_frame = false;
-
-            for (int i = 0; i < LCD_HEIGHT / 16; i++)
+            if (!dtcm_enabled())
             {
-                line_has_changed[i] = 0xFFFF;
+                gameScene->audioLocked = 1;
+                memcpy(tmp_gb, context->gb, sizeof(gb_s));
+                context->gb = tmp_gb;
+                gameScene->audioLocked = 0;
             }
 
-            float startTime = playdate->system->getElapsedTime();
+    #ifdef TARGET_SIMULATOR
+            pthread_mutex_unlock(&audio_mutex);
+    #endif
+
+            if (gameScene->cartridge_has_battery)
+            {
+                save_check(context->gb);
+            }
+
+            // --- Conditional Screen Update (Drawing) Logic ---
+            uint8_t* current_lcd = context->gb->lcd;
+            uint8_t* previous_lcd = context->previous_lcd;
+            uint16_t line_has_changed[LCD_HEIGHT / 16];
+            memset(line_has_changed, 0, sizeof(line_has_changed));
+
+            unsigned dither_preference = preferences_dither_line;
+            bool stable_scaling_enabled = preferences_dither_stable;
+            int scy = context->gb->gb_reg.SCY;
+
+            const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
+            if (preferences_dither_stable && scy % scaling != last_scy % scaling)
+            {
+                force_all_lines_dirty = true;
+                last_scy = scy;
+            }
+
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+            int updated_playdate_lines = 0;
+            int scale_index_for_calc = dither_preference;
+    #endif
+
+            void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len)
+                = context->gb->is_cgb_mode
+                    ? gb_fast_memcpy_64__cgb
+                    : gb_fast_memcpy_64__dmg;
+            
+            gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
+
+            if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
+            {
+                for (int y = 0; y < LCD_HEIGHT; y++)
+                {
+                    uint8_t* cur = &current_lcd[y * LCD_WIDTH_PACKED];
+                    uint8_t* prv = &previous_lcd[y * LCD_WIDTH_PACKED];
+
+                    if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
+                    {
+                        line_has_changed[y / 16] |= (1 << (y % 16));
+
+                        gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
+
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+                        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+                        {
+                            int row_height_on_playdate = 2;
+                            if (scale_index_for_calc == 2)
+                            {
+                                row_height_on_playdate = 1;
+                            }
+                            updated_playdate_lines += row_height_on_playdate;
+                        }
+    #endif
+                    }
+
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+                    scale_index_for_calc++;
+                    if (scale_index_for_calc == 3)
+                    {
+                        scale_index_for_calc = 0;
+                    }
+    #endif
+                }
+            }
+
+    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+            if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+            {
+                int percentage_threshold = 25 + (preferences_dynamic_level * 5);
+                int line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
+
+                if (updated_playdate_lines > line_threshold)
+                {
+                    gameScene->interlace_tendency_counter += 2;
+                }
+                else
+                {
+                    gameScene->interlace_tendency_counter--;
+                }
+
+                if (gameScene->interlace_tendency_counter < 0)
+                    gameScene->interlace_tendency_counter = 0;
+                if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
+                    gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
+            }
+    #endif
+
+    #if LOG_DIRTY_LINES
+            playdate->system->logToConsole("--- Frame Update ---");
+            int range_start = 0;
+            bool is_dirty_range = (line_has_changed[0] & 1);
+
+            for (int y = 1; y < LCD_HEIGHT; y++)
+            {
+                bool is_dirty_current = (line_has_changed[y / 16] >> (y % 16)) & 1;
+
+                if (is_dirty_current != is_dirty_range)
+                {
+                    if (range_start == y - 1)
+                    {
+                        playdate->system->logToConsole(
+                            "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
+                        );
+                    }
+                    else
+                    {
+                        playdate->system->logToConsole(
+                            "Lines %d-%d: %s", range_start, y - 1,
+                            is_dirty_range ? "Updated" : "Omitted"
+                        );
+                    }
+                    range_start = y;
+                    is_dirty_range = is_dirty_current;
+                }
+            }
+
+            if (range_start == LCD_HEIGHT - 1)
+            {
+                playdate->system->logToConsole(
+                    "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
+                );
+            }
+            else
+            {
+                playdate->system->logToConsole(
+                    "Lines %d-%d: %s", range_start, LCD_HEIGHT - 1,
+                    is_dirty_range ? "Updated" : "Omitted"
+                );
+            }
+    #endif
+
+        void (*update_fb_dirty_lines_)(
+            uint8_t* restrict framebuffer, uint8_t* restrict lcd,
+            const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
+            bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
+        )
+                = context->gb->is_cgb_mode
+                    ? update_fb_dirty_lines__cgb
+                    : update_fb_dirty_lines__dmg;
+            
+        update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
+
+    #if ENABLE_RENDER_PROFILER
+            if (CB_run_profiler_on_next_frame)
+            {
+                CB_run_profiler_on_next_frame = false;
+
+                for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                {
+                    line_has_changed[i] = 0xFFFF;
+                }
+
+                float startTime = playdate->system->getElapsedTime();
+
+                update_fb_dirty_lines_(
+                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                    playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
+                    CB_dither_lut_row0, CB_dither_lut_row1
+                );
+
+                float endTime = playdate->system->getElapsedTime();
+                float totalRenderTime = endTime - startTime;
+                float averageLineRenderTime = totalRenderTime / (float)LCD_HEIGHT;
+
+                playdate->system->logToConsole("--- Profiler Result ---");
+                playdate->system->logToConsole(
+                    "Total Render Time for %d lines: %.8f s", LCD_HEIGHT, totalRenderTime
+                );
+                playdate->system->logToConsole(
+                    "Average Line Render Time: %.8f s", averageLineRenderTime
+                );
+                playdate->system->logToConsole(
+                    "New #define value suggestion: %.8ff", averageLineRenderTime
+                );
+
+                return;
+            }
+    #endif
+
+            if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
+            {
+                for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                {
+                    line_has_changed[i] = 0xFFFF;
+                }
+            }
 
             update_fb_dirty_lines_(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
-                CB_dither_lut_row0, CB_dither_lut_row1
+                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, CB_dither_lut_row0,
+                CB_dither_lut_row1
             );
 
-            float endTime = playdate->system->getElapsedTime();
-            float totalRenderTime = endTime - startTime;
-            float averageLineRenderTime = totalRenderTime / (float)LCD_HEIGHT;
-
-            playdate->system->logToConsole("--- Profiler Result ---");
-            playdate->system->logToConsole(
-                "Total Render Time for %d lines: %.8f s", LCD_HEIGHT, totalRenderTime
-            );
-            playdate->system->logToConsole(
-                "Average Line Render Time: %.8f s", averageLineRenderTime
-            );
-            playdate->system->logToConsole(
-                "New #define value suggestion: %.8ff", averageLineRenderTime
-            );
-
-            return;
-        }
-#endif
-
-        if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
-        {
-            for (int i = 0; i < LCD_HEIGHT / 16; i++)
+            if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
-                line_has_changed[i] = 0xFFFF;
-            }
-        }
-
-        update_fb_dirty_lines_(
-            playdate->graphics->getFrame(), current_lcd, line_has_changed,
-            playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, CB_dither_lut_row0,
-            CB_dither_lut_row1
-        );
-
-        if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
-        {
-            gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
-        }
-
-        // Always request the update loop to run at 30 FPS.
-        // (60 game boy frames per second.)
-        // This ensures gb_run_frame() is called at a consistent rate.
-        gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
-
-        if (preferences_uncap_fps)
-            gameScene->scene->preferredRefreshRate = -1;
-
-        if (gameScene->cartridge_has_rtc)
-        {
-            // Get the current time from the system clock.
-            unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-
-            // Check if time has passed since our last check.
-            if (now > gameScene->rtc_time)
-            {
-                unsigned int seconds_passed = now - gameScene->rtc_time;
-                gameScene->rtc_seconds_to_catch_up += seconds_passed;
-                gameScene->rtc_time = now;
+                gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
             }
 
-            if (gameScene->rtc_seconds_to_catch_up > 0)
+            // Always request the update loop to run at 30 FPS.
+            // (60 game boy frames per second.)
+            // This ensures gb_run_frame() is called at a consistent rate.
+            gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
+
+            if (preferences_uncap_fps)
+                gameScene->scene->preferredRefreshRate = -1;
+
+            if (gameScene->cartridge_has_rtc)
             {
-                gb_catch_up_rtc_direct(context->gb, gameScene->rtc_seconds_to_catch_up);
-                gameScene->rtc_seconds_to_catch_up = 0;
-            }
-        }
+                // Get the current time from the system clock.
+                unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
 
-        if (!game_hide_indicator &&
-            (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
-        {
-            // Clear the right sidebar area before redrawing any static UI.
-            const int rightBarX = 40 + 320;
-            const int rightBarWidth = 40;
-            playdate->graphics->fillRect(
-                rightBarX, 0, rightBarWidth, playdate->display->getHeight(),
-                game_picture_background_color
-            );
-        }
+                // Check if time has passed since our last check.
+                if (now > gameScene->rtc_time)
+                {
+                    unsigned int seconds_passed = now - gameScene->rtc_time;
+                    gameScene->rtc_seconds_to_catch_up += seconds_passed;
+                    gameScene->rtc_time = now;
+                }
 
-        if (preferences_script_support && context->scene->script)
-        {
-            script_draw(context->scene->script, gameScene);
-        }
-
-        if (!game_hide_indicator &&
-            (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
-        {
-            // Draw the text labels ("Start/Select") if needed.
-            if (shouldDisplayStartSelectUI)
-            {
-                playdate->graphics->setFont(CB_App->labelFont);
-                playdate->graphics->setDrawMode(kDrawModeFillWhite);
-                playdate->graphics->drawText(
-                    startButtonText, cb_strlen(startButtonText), kUTF8Encoding,
-                    gameScene->selector.startButtonX, gameScene->selector.startButtonY
-                );
-                playdate->graphics->drawText(
-                    selectButtonText, cb_strlen(selectButtonText), kUTF8Encoding,
-                    gameScene->selector.selectButtonX, gameScene->selector.selectButtonY
-                );
+                if (gameScene->rtc_seconds_to_catch_up > 0)
+                {
+                    gb_catch_up_rtc_direct(context->gb, gameScene->rtc_seconds_to_catch_up);
+                    gameScene->rtc_seconds_to_catch_up = 0;
+                }
             }
 
-            // Draw the "Turbo" indicator if needed.
-            if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
-                preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+            if (!game_hide_indicator &&
+                (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
             {
-                playdate->graphics->setFont(CB_App->labelFont);
-                playdate->graphics->setDrawMode(kDrawModeFillWhite);
-
-                const char* line1 = "Turbo";
-                const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
-
-                int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-                int lineSpacing = 2;
-                int paddingBottom = 6;
-
-                int line1Width = playdate->graphics->getTextWidth(
-                    CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
-                );
-                int line2Width = playdate->graphics->getTextWidth(
-                    CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
-                );
-
+                // Clear the right sidebar area before redrawing any static UI.
                 const int rightBarX = 40 + 320;
                 const int rightBarWidth = 40;
-
-                int bottomEdge = playdate->display->getHeight();
-                int y2 = bottomEdge - paddingBottom - fontHeight;
-                int y1 = y2 - fontHeight - lineSpacing;
-
-                int x1 = rightBarX + (rightBarWidth - line1Width) / 2;
-                int x2 = rightBarX + (rightBarWidth - line2Width) / 2;
-
-                playdate->graphics->drawText(line1, strlen(line1), kUTF8Encoding, x1, y1);
-                playdate->graphics->drawText(line2, strlen(line2), kUTF8Encoding, x2, y2);
-
-                playdate->graphics->setDrawMode(kDrawModeCopy);
+                playdate->graphics->fillRect(
+                    rightBarX, 0, rightBarWidth, playdate->display->getHeight(),
+                    game_picture_background_color
+                );
             }
 
-            playdate->graphics->setDrawMode(kDrawModeCopy);
-
-            if (shouldDisplayStartSelectUI)
+            if (preferences_script_support && context->scene->script)
             {
+                script_draw(context->scene->script, gameScene);
+            }
+
+            if (!game_hide_indicator &&
+                (!gameScene->staticSelectorUIDrawn || gbScreenRequiresFullRefresh))
+            {
+                // Draw the text labels ("Start/Select") if needed.
+                if (shouldDisplayStartSelectUI)
+                {
+                    playdate->graphics->setFont(CB_App->labelFont);
+                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                    playdate->graphics->drawText(
+                        startButtonText, cb_strlen(startButtonText), kUTF8Encoding,
+                        gameScene->selector.startButtonX, gameScene->selector.startButtonY
+                    );
+                    playdate->graphics->drawText(
+                        selectButtonText, cb_strlen(selectButtonText), kUTF8Encoding,
+                        gameScene->selector.selectButtonX, gameScene->selector.selectButtonY
+                    );
+                }
+
+                // Draw the "Turbo" indicator if needed.
+                if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
+                    preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+                {
+                    playdate->graphics->setFont(CB_App->labelFont);
+                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+
+                    const char* line1 = "Turbo";
+                    const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
+
+                    int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
+                    int lineSpacing = 2;
+                    int paddingBottom = 6;
+
+                    int line1Width = playdate->graphics->getTextWidth(
+                        CB_App->labelFont, line1, strlen(line1), kUTF8Encoding, 0
+                    );
+                    int line2Width = playdate->graphics->getTextWidth(
+                        CB_App->labelFont, line2, strlen(line2), kUTF8Encoding, 0
+                    );
+
+                    const int rightBarX = 40 + 320;
+                    const int rightBarWidth = 40;
+
+                    int bottomEdge = playdate->display->getHeight();
+                    int y2 = bottomEdge - paddingBottom - fontHeight;
+                    int y1 = y2 - fontHeight - lineSpacing;
+
+                    int x1 = rightBarX + (rightBarWidth - line1Width) / 2;
+                    int x2 = rightBarX + (rightBarWidth - line2Width) / 2;
+
+                    playdate->graphics->drawText(line1, strlen(line1), kUTF8Encoding, x1, y1);
+                    playdate->graphics->drawText(line2, strlen(line2), kUTF8Encoding, x2, y2);
+
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                }
+
+                playdate->graphics->setDrawMode(kDrawModeCopy);
+
+                if (shouldDisplayStartSelectUI)
+                {
+                    LCDBitmap* bitmap;
+                    if (gameScene->selector.index < 0)
+                    {
+                        bitmap = CB_App->startSelectBitmap;
+                    }
+                    else
+                    {
+                        bitmap = playdate->graphics->getTableBitmap(
+                            CB_App->selectorBitmapTable, gameScene->selector.index
+                        );
+                    }
+                    playdate->graphics->drawBitmap(
+                        bitmap, gameScene->selector.x, gameScene->selector.y, kBitmapUnflipped
+                    );
+                }
+
+                playdate->graphics->setDrawMode(kDrawModeCopy);
+                gameScene->staticSelectorUIDrawn = true;
+            }
+            else if (!game_hide_indicator &&
+                    (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
+            {
+                playdate->graphics->fillRect(
+                    gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
+                    gameScene->selector.height, game_picture_background_color
+                );
+
                 LCDBitmap* bitmap;
+                // Use gameScene->selector.index, which is the most current
+                // calculated frame
                 if (gameScene->selector.index < 0)
                 {
                     bitmap = CB_App->startSelectBitmap;
@@ -2354,64 +2385,36 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 playdate->graphics->drawBitmap(
                     bitmap, gameScene->selector.x, gameScene->selector.y, kBitmapUnflipped
                 );
+
+                playdate->graphics->markUpdatedRows(
+                    gameScene->selector.y, gameScene->selector.y + gameScene->selector.height - 1
+                );
             }
 
-            playdate->graphics->setDrawMode(kDrawModeCopy);
-            gameScene->staticSelectorUIDrawn = true;
-        }
-        else if (!game_hide_indicator &&
-                 (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
-        {
+    #if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
+            PDRect highlightFrame = gameScene->debug_highlightFrame;
             playdate->graphics->fillRect(
-                gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
-                gameScene->selector.height, game_picture_background_color
+                highlightFrame.x, highlightFrame.y, highlightFrame.width, highlightFrame.height,
+                kColorBlack
             );
 
-            LCDBitmap* bitmap;
-            // Use gameScene->selector.index, which is the most current
-            // calculated frame
-            if (gameScene->selector.index < 0)
+            for (int y = 0; y < CB_LCD_HEIGHT; y++)
             {
-                bitmap = CB_App->startSelectBitmap;
+                int absoluteY = CB_LCD_Y + y;
+
+                if (gameScene->debug_updatedRows[absoluteY])
+                {
+                    playdate->graphics->fillRect(
+                        highlightFrame.x, absoluteY, highlightFrame.width, 1, kColorWhite
+                    );
+                }
             }
-            else
+    #endif
+
+            if (preferences_display_fps)
             {
-                bitmap = playdate->graphics->getTableBitmap(
-                    CB_App->selectorBitmapTable, gameScene->selector.index
-                );
+                display_fps();
             }
-            playdate->graphics->drawBitmap(
-                bitmap, gameScene->selector.x, gameScene->selector.y, kBitmapUnflipped
-            );
-
-            playdate->graphics->markUpdatedRows(
-                gameScene->selector.y, gameScene->selector.y + gameScene->selector.height - 1
-            );
-        }
-
-#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
-        PDRect highlightFrame = gameScene->debug_highlightFrame;
-        playdate->graphics->fillRect(
-            highlightFrame.x, highlightFrame.y, highlightFrame.width, highlightFrame.height,
-            kColorBlack
-        );
-
-        for (int y = 0; y < CB_LCD_HEIGHT; y++)
-        {
-            int absoluteY = CB_LCD_Y + y;
-
-            if (gameScene->debug_updatedRows[absoluteY])
-            {
-                playdate->graphics->fillRect(
-                    highlightFrame.x, absoluteY, highlightFrame.width, 1, kColorWhite
-                );
-            }
-        }
-#endif
-
-        if (preferences_display_fps)
-        {
-            display_fps();
         }
     }
     else if (gameScene->state == CB_GameSceneStateCGBConfirm)

@@ -14,6 +14,7 @@ typedef uint32_t romaddr_t;
 typedef u16 addr16_t;
 
 extern gb_s* script_gb;
+extern bool suppress_gb_frame;
 
 u8 rom_peek(romaddr_t addr);
 void rom_poke(romaddr_t addr, u8 v);
