@@ -85,7 +85,7 @@ typedef struct ScriptState
 
 ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene);
 void script_end(ScriptState* state, struct CB_GameScene* game_scene);
-void script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed);
+bool script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed);
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
 
 // returns flags SCRIPT_MENU_*
