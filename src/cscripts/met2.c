@@ -29,7 +29,323 @@ struct AreaAssociation
     bool unmapped : 1;
     bool dark : 1;
 };
+
+struct AreaHex
+{
+    unsigned x : 4;
+    unsigned y : 2;
+    unsigned z : 2;
+};
 #pragma pack(pop)
+
+struct AreaHex hex_caves_lower[] = {
+    {
+        8, 0, 2,
+    },
+    {
+        6, 1, 0,
+    },
+    {
+        2, 1, 2,
+    },
+    {
+        4, 2, 0,
+    },
+    {
+        0, 2, 1,
+    },
+    {
+        2, 3, 0,
+    },
+};
+
+struct AreaHex hex_tower[] = {
+    {
+        0, 0, 3,
+    },
+};
+
+struct AreaHex hex_omega_environment[] = {
+    {
+        2, 0, 0
+    },
+    {
+        0, 1, 1
+    },
+    {
+        2, 2, 0
+    },
+};
+
+struct AreaHex hex_caves_west[] = {
+    {
+        0, 0, 1,
+    },
+    {
+        2, 1, 0,
+    },
+};
+
+
+struct AreaHex hex_nest[] = {
+    {
+        2, 0, 0,
+    },
+    {
+        0, 1, 1,
+    },
+};
+
+struct AreaHex hex_surface[] = {
+    {
+        2, 0, 1,
+    },
+    {
+        4, 1, 0,
+    },
+    {
+        0, 1, 0,
+    },
+};
+
+struct AreaHex hex_caves_center[] = {
+    {
+        0, 0, 2,
+    },
+    {
+        2, 1, 0,
+    },
+    {
+        0, 2, 0,
+    },
+};
+
+struct AreaHex hex_temple_lower[] = {
+    {
+        0, 0, 0,
+    },
+    {
+        2, 1, 0,
+    },
+};
+
+struct AreaHex hex_temple_upper[] = {
+    {
+        2, 0, 1,
+    },
+    {
+        0, 1, 1,
+    },
+    {
+        4, 1, 1,
+    },
+    {
+        2, 2, 0,
+    },
+};
+
+struct AreaHex hex_hydro_station[] = {
+    {
+        2, 0, 1,
+    },
+    {
+        0, 1, 0,
+    },
+    {
+        4, 1, 0,
+    },
+    {
+        2, 2, 0,
+    },
+};
+
+struct AreaHex hex_caves_east[] = {
+    {
+        0, 0, 1,
+    },
+    {
+        2, 1, 0,
+    },
+};
+
+struct AreaHex hex_weapons_facility[] = {
+    {
+        2, 0, 1,
+    },
+    {
+        0, 1, 0,
+    },
+    {
+        4, 1, 0,
+    },
+    {
+        2, 2, 0,
+    },
+};
+
+struct AreaHex hex_jungle[] = {
+    {
+        2, 0, 2,
+    },
+    {
+        0, 1, 1,
+    },
+};
+
+struct HexMapArea {
+    uint16_t x, y;
+    const struct AreaHex* hexes;
+    uint8_t hexes_c : 4;
+    uint8_t area_idx : 4;
+    uint16_t area_idx_left;
+    uint16_t area_idx_right;
+    uint16_t area_idx_up;
+    uint16_t area_idx_down;
+};
+
+#define AREA_LINK_0() 0
+#define AREA_LINK_1(a) (a+1)
+#define AREA_LINK_2(a, b) ((a+1) | ((b + 1) << 4))
+#define AREA_LINK_3(a, b, c) ((a+1) | ((b + 1) << 4) | ((c + 1) << 8))
+
+const struct HexMapArea hex_areas[] = {
+    {
+        .x = 161, .y=55,
+        .hexes = hex_surface,
+        .hexes_c = sizeof(hex_surface)/sizeof(struct AreaHex),
+        .area_idx = 0,
+        .area_idx_left = AREA_LINK_0(),
+        .area_idx_right = AREA_LINK_1(1),
+        .area_idx_up = AREA_LINK_0(),
+        .area_idx_down = AREA_LINK_3(12, 4, 1),
+    },
+    {
+        .x = 364, .y=40,
+        .hexes = hex_temple_upper,
+        .hexes_c = sizeof(hex_temple_upper)/sizeof(struct AreaHex),
+        .area_idx = 3,
+        .area_idx_left = AREA_LINK_1(2),
+        .area_idx_right = AREA_LINK_0(),
+        .area_idx_up = AREA_LINK_0(),
+        .area_idx_down = AREA_LINK_1(2),
+    },
+    {
+        .x = 328, .y=84,
+        .hexes = hex_temple_lower,
+        .hexes_c = sizeof(hex_temple_lower)/sizeof(struct AreaHex),
+        .area_idx = 2,
+        .area_idx_left = AREA_LINK_1(1),
+        .area_idx_right = AREA_LINK_1(3),
+        .area_idx_up = AREA_LINK_1(3),
+        .area_idx_down = AREA_LINK_2(7, 5),
+    },
+    {
+        .x = 152, .y=108,
+        .hexes = hex_nest,
+        .hexes_c = sizeof(hex_nest)/sizeof(struct AreaHex),
+        .area_idx = 12,
+        .area_idx_left = AREA_LINK_1(11),
+        .area_idx_right = AREA_LINK_1(1),
+        .area_idx_up = AREA_LINK_1(0),
+        .area_idx_down = AREA_LINK_1(4),
+    },
+    {
+        .x = 272, .y=124,
+        .hexes = hex_caves_center,
+        .hexes_c = sizeof(hex_caves_center)/sizeof(struct AreaHex),
+        .area_idx = 1,
+        .area_idx_left = AREA_LINK_3(4, 12, 0),
+        .area_idx_right = AREA_LINK_1(2),
+        .area_idx_up = AREA_LINK_1(0),
+        .area_idx_down = AREA_LINK_3(5, 8, 4),
+    },
+    {
+        .x = 88, .y=148,
+        .hexes = hex_caves_west,
+        .hexes_c = sizeof(hex_caves_west)/sizeof(struct AreaHex),
+        .area_idx = 11,
+        .area_idx_left = AREA_LINK_1(10),
+        .area_idx_right = AREA_LINK_1(4),
+        .area_idx_up = AREA_LINK_2(12, 0),
+        .area_idx_down = AREA_LINK_1(10),
+    },
+    {
+        .x = 168, .y=164,
+        .hexes = hex_hydro_station,
+        .hexes_c = sizeof(hex_hydro_station)/sizeof(struct AreaHex),
+        .area_idx = 4,
+        .area_idx_left = AREA_LINK_2(11, 10),
+        .area_idx_right = AREA_LINK_1(1),
+        .area_idx_up = AREA_LINK_2(12, 0),
+        .area_idx_down = AREA_LINK_2(9, 8),
+    },
+    {
+        .x = 360, .y=156,
+        .hexes = hex_weapons_facility,
+        .hexes_c = sizeof(hex_weapons_facility)/sizeof(struct AreaHex),
+        .area_idx = 7,
+        .area_idx_left = AREA_LINK_1(5),
+        .area_idx_right = AREA_LINK_1(6),
+        .area_idx_up = AREA_LINK_1(2),
+        .area_idx_down = AREA_LINK_2(6, 5),
+    },
+    {
+        .x = 320, .y=203,
+        .hexes = hex_caves_east,
+        .hexes_c = sizeof(hex_caves_east)/sizeof(struct AreaHex),
+        .area_idx = 5,
+        .area_idx_left = AREA_LINK_2(8, 1),
+        .area_idx_right = AREA_LINK_2(7, 6),
+        .area_idx_up = AREA_LINK_1(1),
+        .area_idx_down = AREA_LINK_1(6),
+    },
+    {
+        .x = 396, .y=246,
+        .hexes = hex_jungle,
+        .hexes_c = sizeof(hex_jungle)/sizeof(struct AreaHex),
+        .area_idx = 6,
+        .area_idx_left = AREA_LINK_1(5),
+        .area_idx_right = AREA_LINK_0(),
+        .area_idx_up = AREA_LINK_2(7, 3),
+        .area_idx_down = AREA_LINK_0(),
+    },
+    {
+        .x = 222, .y=234,
+        .hexes = hex_tower,
+        .hexes_c = sizeof(hex_tower)/sizeof(struct AreaHex),
+        .area_idx = 9,
+        .area_idx_left = AREA_LINK_1(10),
+        .area_idx_right = AREA_LINK_1(1),
+        .area_idx_up = AREA_LINK_2(4, 1),
+        .area_idx_down = AREA_LINK_1(8),
+    },
+    {
+        .x = 56, .y=204,
+        .hexes = hex_omega_environment,
+        .hexes_c = sizeof(hex_omega_environment)/sizeof(struct AreaHex),
+        .area_idx = 10,
+        .area_idx_left = AREA_LINK_0(),
+        .area_idx_right = AREA_LINK_1(9),
+        .area_idx_up = AREA_LINK_2(11, 0),
+        .area_idx_down = AREA_LINK_1(8),
+    },
+    {
+        .x = 138, .y=260,
+        .hexes = hex_caves_lower,
+        .hexes_c = sizeof(hex_caves_lower)/sizeof(struct AreaHex),
+        .area_idx = 8,
+        .area_idx_left = AREA_LINK_1(10),
+        .area_idx_right = AREA_LINK_2(5, 1),
+        .area_idx_up = AREA_LINK_2(9, 4),
+        .area_idx_down = AREA_LINK_0(),
+    },
+};
+
+enum map_mode {
+    MAP_MODE_NONE,
+    MAP_MODE_HEX,
+    MAP_MODE_AREA,
+};
 
 typedef struct ScriptData
 {
@@ -50,6 +366,8 @@ typedef struct ScriptData
     struct AreaAssociation* area_associations;
     
     LCDBitmap* htimg;
+    LCDBitmap* heximg;
+    LCDBitmap* heximg_dark;
     LCDBitmap** glyphs;
     size_t glyph_c;
     
@@ -67,6 +385,13 @@ typedef struct ScriptData
     float crank_prev;
     const char* prev_msg;
     float prev_xorw;
+    
+    uint8_t map_mode_area;
+    enum map_mode map_mode;
+    int8_t map_mode_x;
+    int8_t map_mode_y;
+    uint8_t map_mode_timer;
+    int map_hex_x, map_hex_y;
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -309,6 +634,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     ScriptData* data = allocz(ScriptData);
     data->map_area = AREA_SECRET_WORLD;
     data->htimg = htimg;
+    data->heximg = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "hex", NULL);
+    data->heximg_dark = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "hexdark", NULL);
     data->area_associations = mallocz(0x100*MAP_BANK_COUNT*sizeof(struct AreaAssociation));
     data->map_explored = mallocz(0x100 * MAP_BANK_COUNT);
     
@@ -537,6 +864,8 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
 static void on_end(gb_s* gb, ScriptData* data)
 {
     if (data->htimg) playdate->graphics->freeBitmap(data->htimg);
+    if (data->heximg) playdate->graphics->freeBitmap(data->heximg);
+    if (data->heximg_dark) playdate->graphics->freeBitmap(data->heximg_dark);
     cb_free(data->halftiles);
     cb_free(data->special_base_tiles);
     cb_free(data->area_explored);
@@ -548,14 +877,297 @@ static void on_end(gb_s* gb, ScriptData* data)
     cb_free(data);
 }
 
+static void draw_glyph(ScriptData* data, size_t glyph_idx, int x, int y, LCDBitmapFlip flip);
+static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, unsigned area_idx, int dst_x, int dst_y, int window_w, int window_h, int window_x, int window_y);
+
+static bool area_is_explored(ScriptData* data, int area_idx)
+{
+    if (area_idx == AREA_SECRET_WORLD) return false;
+    
+    for (int ridx = 0; ridx < sizeof(rooms)/sizeof(struct Room); ++ridx)
+    {
+        struct Room* room = &rooms[ridx];
+        if (room->area != area_idx) continue;
+        
+        size_t offset = room->data_offset;
+        for (int i = 0; i < room->embeddings; ++i)
+        {
+            unsigned em_bank; int em_x, em_y;
+            read_embedding_header(room_embeddings, &offset, &em_bank, &em_x, &em_y);
+            
+            for (int y = 0; y < get_room_h(room); ++y)
+            {
+                for (int x = 0; x < room->w; ++x)
+                {
+                    if (read_bits(room_embeddings, &offset, 1))
+                    {
+                        if (get_map_explored(data, em_bank, em_x + x, em_y + y)) return true;
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+static void get_area_center(const struct HexMapArea* hma, int* ox, int* oy)
+{
+    int n = 0;
+    int x = 0;
+    int y = 0;
+    
+    for (int i = 0; i < hma->hexes_c; ++i)
+    {
+        x += hma->hexes[i].x*16;
+        y += hma->hexes[i].y*16 - hma->hexes[i].z*6;
+        n += 1;
+    }
+    
+    *ox = hma->x;
+    *oy = hma->y;
+    
+    if (n > 0)
+    {
+        *ox += x/n;
+        *oy += y/n;
+    }
+}
+
+static const struct HexMapArea* get_area_hex_map(int area_idx)
+{
+    for (int i = 0; i < sizeof(hex_areas)/sizeof(struct HexMapArea); ++i)
+    {
+        if (hex_areas[i].area_idx == area_idx) return &hex_areas[i];
+    }
+    
+    return NULL;
+}
+
+static int jump_area_sequence(ScriptData* data, unsigned area_sequence)
+{
+    for (int i = 0; i < 4; ++i)
+    {
+        int area = (int)((area_sequence >> (4*i)) & 0x0F) - 1;
+        if (area < 0) break;
+        if (!area_is_explored(data, area)) continue;
+        return area;
+    }
+    
+    return AREA_SECRET_WORLD;
+}
+
+static void tick_map(ScriptData* data)
+{
+    ++data->map_mode_timer;
+    
+    const struct HexMapArea* hma_selected = get_area_hex_map(data->map_mode_area);
+    
+    // input
+    switch(data->map_mode)
+    {
+    case MAP_MODE_AREA:
+        if (CB_App->buttons_pressed & kButtonB)
+        {
+            if (!hma_selected)
+            {
+                data->map_mode = MAP_MODE_NONE;
+            }
+            else
+            {
+                data->map_mode = MAP_MODE_HEX;
+                get_area_center(hma_selected, &data->map_hex_x, &data->map_hex_y);
+            }
+        }
+        if (data->map_mode_timer % 2 == 0)
+        {
+            if (CB_App->buttons_down & kButtonLeft)
+            {
+                if (data->map_mode_x > 0)
+                    data->map_mode_x--;
+            }
+            if (CB_App->buttons_down & kButtonRight)
+            {
+                data->map_mode_x++;
+            }
+            if (CB_App->buttons_down & kButtonUp)
+            {
+                if (data->map_mode_y > 0)
+                    data->map_mode_y--;
+            }
+            if (CB_App->buttons_down & kButtonDown)
+            {
+                data->map_mode_y++;
+            }
+        }
+        break;
+    case MAP_MODE_HEX:
+        if (CB_App->buttons_pressed & kButtonB)
+        {
+            data->map_mode = MAP_MODE_NONE;
+        }
+        else if (CB_App->buttons_pressed & kButtonA)
+        {
+            data->map_mode = MAP_MODE_AREA;
+            data->map_mode_x = 0;
+            data->map_mode_y = 0;
+        }
+        
+        if (hma_selected)
+        {
+            int goto_area = AREA_SECRET_WORLD;
+            if (CB_App->buttons_pressed & kButtonLeft)
+            {
+                goto_area = jump_area_sequence(data, hma_selected->area_idx_left);
+            }
+            if (CB_App->buttons_pressed & kButtonRight)
+            {
+                goto_area = jump_area_sequence(data, hma_selected->area_idx_right);
+            }
+            if (CB_App->buttons_pressed & kButtonUp)
+            {
+                goto_area = jump_area_sequence(data, hma_selected->area_idx_up);
+            }
+            if (CB_App->buttons_pressed & kButtonDown)
+            {
+                goto_area = jump_area_sequence(data, hma_selected->area_idx_down);
+            }
+            
+            if (goto_area != AREA_SECRET_WORLD)
+            {
+                data->map_mode_area = goto_area;
+            }
+        }
+        
+        break;
+    default:
+        break;
+    }
+    
+    // draw
+    playdate->graphics->fillRect(
+        0, 0, LCD_COLUMNS, LCD_ROWS,
+        kColorBlack
+    );
+    playdate->graphics->markUpdatedRows(0, LCD_ROWS-1);
+    
+    uint8_t* frame = playdate->graphics->getFrame();
+    
+    if (data->map_mode_area == AREA_SECRET_WORLD)
+    {
+        data->map_mode_area = 0;
+        data->map_mode = MAP_MODE_HEX;
+    }
+    
+    struct Area* area = &areas[data->map_mode_area];
+    
+    if (data->map_mode == MAP_MODE_AREA)
+    {
+        unsigned w = MIN(LCD_COLUMNS/HALFTILE_W/2, area->w);
+        unsigned h = MIN((LCD_ROWS - 16)/HALFTILE_H/2, area->h);
+        
+        if (data->map_mode_x >= area->w - w) data->map_mode_x = area->w - w;
+        if (data->map_mode_y >= area->h - h) data->map_mode_y = area->h - h;
+        if (data->map_mode_x < 0) data->map_mode_x = 0;
+        if (data->map_mode_y < 0) data->map_mode_y = 0;
+        
+        draw_map(
+            frame, LCD_ROWSIZE, data,
+            data->map_mode_area, 0, 16, w, h, data->map_mode_x, data->map_mode_y
+        );
+    }
+    else if (data->map_mode == MAP_MODE_HEX)
+    {
+        #define HEX_OFF_X (-data->map_hex_x + LCD_COLUMNS/2 - 24)
+        #define HEX_OFF_Y (-data->map_hex_y + LCD_ROWS/2 - 38)
+        
+        const struct HexMapArea* hma_selected = get_area_hex_map(data->map_mode_area);
+        if (hma_selected)
+        {
+            int pref_x, pref_y;
+            get_area_center(hma_selected, &pref_x, &pref_y);
+            
+            data->map_hex_x = toward(data->map_hex_x, pref_x, 5);
+            data->map_hex_y = toward(data->map_hex_y, pref_y, 4);
+        }
+        
+        for (int i = 0; i < sizeof(hex_areas)/sizeof(struct HexMapArea); ++i)
+        {
+            const struct HexMapArea* hma = &hex_areas[i];
+            if (!area_is_explored(data, hma->area_idx)) continue;
+            
+            for (int j = 0; j < hma->hexes_c; ++j)
+            {
+                const struct AreaHex* hex = &hma->hexes[j];
+                for (int z = 0; z <= hex->z; ++z)
+                {
+                    int x = hma->x + 16*hex->x + HEX_OFF_X;
+                    int y = hma->y + 16*hex->y - z*16 + HEX_OFF_Y;
+                    if (hma->area_idx == data->map_mode_area)
+                    {
+                        playdate->graphics->drawBitmap(data->heximg, x, y, kBitmapUnflipped);
+                    }
+                    else
+                    {
+                        playdate->graphics->drawBitmap(data->heximg_dark, x, y, kBitmapUnflipped);
+                    }
+                }
+            }
+        }
+    }
+    
+    // area name
+    playdate->graphics->fillRect(
+        0, 0, LCD_COLUMNS, 16,
+        kColorBlack
+    );
+    const char* msg = area->name;
+    int msg_y = 0;
+    if (msg)
+    {
+        int len = strlen(msg);
+        int x = MAX(0, LCD_COLUMNS/2 - len*8);
+        for (int i = 0; i < len; ++i)
+        {
+            char c = msg[i];
+            if (c >= 'A' && c <= 'Z')
+            {
+                draw_glyph(data, GLYPH_A + c - 'A', x, msg_y, kBitmapUnflipped);
+            }
+            if (c >= 'a' && c <= 'z')
+            {
+                draw_glyph(data, GLYPH_A + c - 'a', x, msg_y, kBitmapUnflipped);
+            }
+            x += 16;
+        }
+    }
+    
+    playdate->graphics->fillRect(0, 16, LCD_COLUMNS, 1, (uintptr_t)&lcdp_50b);
+}
+
 static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
+    if (data->map_mode != MAP_MODE_NONE)
+    {
+        tick_map(data);
+        
+        if (data->map_mode != MAP_MODE_NONE)
+        {
+            suppress_gb_frame = true;
+            return;
+        }
+        else
+        {
+            gbScreenRequiresFullRefresh = true;
+        }
+    }
+    
     if (data->door_transition_suppress_map_update > 0)
     {
         data->door_transition_suppress_map_update -= frames_elapsed;
     }
     
-    #if 1
+    #if 0
     // hp hack
     ram_poke(0xD051, 0x99);
     #endif
@@ -909,12 +1521,28 @@ static bool is_gameplay_mode(unsigned game_mode)
 
 #define MENU_IMG_W 200
 
+static void cb_expand_map(ScriptData* data)
+{
+    data->map_mode = MAP_MODE_AREA;
+    data->map_mode_area = data->map_area;
+    
+    // TODO
+    data->map_mode_x = 0;
+    data->map_mode_y = 0;
+}
+
 static unsigned on_menu(gb_s* gb, ScriptData* data)
 {
+    if (data->map_mode != MAP_MODE_NONE)
+    {
+        return 0;
+    }
+    
     unsigned game_mode = ram_peek(0xFF9B);
     
     if (is_gameplay_mode(game_mode) && data->map_area != AREA_SECRET_WORLD && data->samus_bank >= MAP_FIRST_BANK)
     {
+        // menu image
         LCDBitmap* img = playdate->graphics->newBitmap(LCD_COLUMNS, LCD_ROWS, kColorBlack);
         struct Area* area = &areas[data->map_area];
         
@@ -923,6 +1551,8 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
         
         if (get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
         {
+            playdate->system->addMenuItem("Expand Map", (void*)cb_expand_map, data);
+            
             int samus_area_x = x;
             int samus_area_y = y;
         
@@ -1065,8 +1695,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
             
             playdate->graphics->freeBitmap(img);
             
-            
-            return SCRIPT_MENU_SUPPRESS_IMAGE;
+            return SCRIPT_MENU_SUPPRESS_IMAGE | SCRIPT_MENU_SUPPRESS_BUTTON;
         }
         
         playdate->graphics->freeBitmap(img);
@@ -1414,6 +2043,8 @@ bool deserialize(const char* in, size_t size, ScriptData* data)
     {
         return false;
     }
+    
+    data->map_mode = MAP_MODE_NONE;
     
     if ((unsigned)in[0] != (unsigned)SERIAL_VERSION) return false;
     
