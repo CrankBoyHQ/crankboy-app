@@ -22,10 +22,12 @@
 struct AreaAssociation
 {
     uint8_t room_idx;
+    uint8_t embedding : 2;
     uint8_t area_idx : 4;
     uint8_t explored : 1;
     bool empty : 1;
     bool unmapped : 1;
+    bool dark : 1;
 };
 #pragma pack(pop)
 
@@ -36,6 +38,7 @@ typedef struct ScriptData
     uint8_t samus_bank;
     uint8_t samus_x;
     uint8_t samus_y;
+    bool map_dark;
     bool map_flicker;
     
     uint8_t samus_max_etanks;
@@ -71,7 +74,7 @@ typedef struct ScriptData
 
 #define AREA_SECRET_WORLD 0xF
 
-bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y);
+bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned embedding, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y);
 
 void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by, bool explored)
 {
@@ -88,7 +91,7 @@ void set_map_explored(ScriptData* data, unsigned bank, unsigned bx, unsigned by,
         {
             unsigned x, y;
             struct Area* area = &areas[data->map_area];
-            get_coords_in_area(data, association.room_idx, bank, bx, by, &x, &y);
+            get_coords_in_area(data, association.room_idx, association.embedding, bank, bx, by, &x, &y);
             if (y < area->h && x < area->w)
             {
                 data->area_explored[y*area->w + x] = explored;
@@ -337,18 +340,24 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
                         data->area_associations[assoc_idx].unmapped = false;
                         data->area_associations[assoc_idx].empty = false;
                         data->area_associations[assoc_idx].area_idx = room->area;
+                        data->area_associations[assoc_idx].embedding = i;
                         data->area_associations[assoc_idx].room_idx = ridx;
                     }
                     
                     for (int i = 0; i < area->special_tile_c; ++i)
                     {
                         struct SpecialTile* special_tile = &area->special_tiles[i];
-                        if (special_tile->type == TILE_EMPTY)
+                        if (special_tile->area_x == x + room->area_x && special_tile->area_y == y + room->area_y)
                         {
-                            if (special_tile->area_x == x + room->area_x && special_tile->area_y == y + room->area_y)
+                            if (special_tile->type == TILE_EMPTY)
                             {
                                 data->area_associations[assoc_idx].empty = true;
                                 data->area_associations[assoc_idx].unmapped = true;
+                            }
+                            
+                            if (special_tile->dark)
+                            {
+                                data->area_associations[assoc_idx].dark = true;
                             }
                         }
                     }
@@ -363,6 +372,10 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 const int k = 4;
 
 #define TILE_DARK 32
+#define TILE_SHUNT_UL 33
+#define TILE_SHUNT_UR 34
+#define TILE_SHUNT_BL 35
+#define TILE_SHUNT_BR 36
 
 #define GLYPH_A (272/16)
 #define GLYPH_0 (0)
@@ -542,7 +555,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->door_transition_suppress_map_update -= frames_elapsed;
     }
     
-    #if 0
+    #if 1
     // hp hack
     ram_poke(0xD051, 0x99);
     #endif
@@ -653,8 +666,8 @@ static void draw_fulltile(uint8_t* dst_buff, unsigned dst_stride, ScriptData* da
         ht[2] = 17*k + 3;
         break;
     case TILE_SHUNT_BL:
-        ht[0] = 16*k + 0;
-        ht[2] = 17*k + 0;
+        ht[1] = 16*k + 0;
+        ht[3] = 17*k + 0;
         break;
     case TILE_SHUNT_BR:
         ht[0] = 16*k + 1;
@@ -678,6 +691,12 @@ static void draw_fulltile(uint8_t* dst_buff, unsigned dst_stride, ScriptData* da
         ht[1] = 6*k + 0;
         ht[2] = 6*k + 1;
         ht[3] = 6*k + 1;
+        break;
+    case TILE_BEAM:
+        ht[0] = 4*k + 0;
+        ht[1] = 4*k + 1;
+        ht[2] = 4*k + 2;
+        ht[3] = 4*k + 3;
         break;
     case TILE_ITEM ... TILE_SHIP_RIGHT: {
             ft_idx -= TILE_ITEM;
@@ -704,7 +723,13 @@ static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, u
     if (area_idx == AREA_SECRET_WORLD)
     {
     secret_world:
-        // noise?
+        for (int y = dst_y; y < dst_y + window_h*HALFTILE_H*2; ++y)
+        {
+            for (int x = dst_x/8; x < (dst_x + window_w*HALFTILE_W*2)/8; ++x)
+            {
+                dst_buff[y*dst_stride + x] = rand() & rand();
+            }
+        }
         return;
     }
     
@@ -797,6 +822,12 @@ static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, u
         {
             uint8_t flags = ram_peek(0xC500 + slot);
             
+            if (flags == 0xFF && special_tile->ridx != 0xFF)
+            {
+                // load from stored buffer
+                flags = ram_peek(0xC900 + 0x40*(special_tile->bank - MAP_FIRST_BANK) + (slot - 0x40));
+            }
+            
             if (flags != 0xFF) // default state
             {
                 // indicates object dead / destroyed / collected
@@ -807,7 +838,14 @@ static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, u
         int dst_x_px = dst_x + (special_tile->area_x - window_x) * HALFTILE_W * 2;
         int dst_y_px = dst_y + (special_tile->area_y - window_y) * HALFTILE_H * 2;
         
-        draw_fulltile(dst_buff, dst_stride, data, special_tile->type, dst_x_px, dst_y_px);
+        unsigned type = special_tile->type;
+        if (type == TILE_SHUNT)
+        // special encoding for shunt
+        {
+            type = TILE_SHUNT_UL + special_tile->ridx;
+        }
+        
+        draw_fulltile(dst_buff, dst_stride, data, type, dst_x_px, dst_y_px);
         
         // don't draw anything after this tile
         if (special_tile->masking)
@@ -819,7 +857,7 @@ static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, u
     playdate->graphics->markUpdatedRows(dst_y, dst_y + window_h * HALFTILE_H*2 - 1);
 }
 
-bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y)
+bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned embedding, unsigned rom_bank, unsigned rom_x, unsigned rom_y, unsigned* x, unsigned* y)
 {
     struct Room* room = &rooms[room_idx];
     size_t offset = room->data_offset;
@@ -829,7 +867,7 @@ bool get_coords_in_area(ScriptData* data, unsigned room_idx, unsigned rom_bank, 
         read_embedding_header(room_embeddings, &offset, &em_bank, &em_x, &em_y);
         read_bits(room_embeddings, &offset, room->w * get_room_h(room));
         
-        if (em_bank == rom_bank)
+        if (em_bank == rom_bank && i == embedding)
         {
             *x = (rom_x - em_x) + room->area_x;
             *y = (rom_y - em_y) + room->area_y;
@@ -883,7 +921,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
         struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
         unsigned x, y;
         
-        if (get_coords_in_area(data, association.room_idx, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
+        if (get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
         {
             int samus_area_x = x;
             int samus_area_y = y;
@@ -931,7 +969,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
             {
                 x = 0;
             }
-            else if (x >= area->w - max_w)
+            else if (x >= area->w - max_w/2)
             {
                 x = area->w - max_w;
             }
@@ -948,7 +986,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
             {
                 y = 0;
             }
-            else if (y >= area->h - max_h)
+            else if (y >= area->h - max_h/2)
             {
                 y = area->h - max_h;
             }
@@ -1230,6 +1268,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 samus_y = data->samus_y;
                 samus_bank = data->samus_bank;
             }
+            else
+            {
+                data->map_dark = association.dark;
+            }
             
             if (gbScreenRequiresFullRefresh || data->samus_x != samus_x || data->samus_y != samus_y || data->samus_bank != samus_bank || data->map_flicker != flicker_on)
             {
@@ -1243,27 +1285,34 @@ static void on_draw(gb_s* gb, ScriptData* data)
                     set_map_explored(data, samus_bank, samus_x, samus_y, true);
                 }
                 
-                struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
-                unsigned x, y;
-                
                 uint8_t* frame = playdate->graphics->getFrame();
                 
-                if (association.unmapped)
+                if (data->samus_bank == 0 || data->map_dark)
                 {
-                draw_secret_world:;
-                    draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
-                }
-                else if (get_coords_in_area(data, association.room_idx, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
-                {
-                    draw_map(frame, LCD_ROWSIZE, data, association.area_idx, LCD_COLUMNS-80, 0, 5, 5, (int)x-2, (int)y-2);
-                    if (flicker_on)
-                    {
-                        playdate->graphics->fillRect(LCD_COLUMNS-80 + 16*2, 0 + 16*2, 16, 16, kColorXOR);
-                    }
+                    goto draw_secret_world;
                 }
                 else
                 {
-                    draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
+                    struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
+                    unsigned x, y;
+                    
+                    if (association.unmapped)
+                    {
+                    draw_secret_world:;
+                        draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
+                    }
+                    else if (get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
+                    {
+                        draw_map(frame, LCD_ROWSIZE, data, association.area_idx, LCD_COLUMNS-80, 0, 5, 5, (int)x-2, (int)y-2);
+                        if (flicker_on)
+                        {
+                            playdate->graphics->fillRect(LCD_COLUMNS-80 + 16*2, 0 + 16*2, 16, 16, kColorXOR);
+                        }
+                    }
+                    else
+                    {
+                        draw_map(frame, LCD_ROWSIZE, data, AREA_SECRET_WORLD, LCD_COLUMNS-80, 0, 5, 5, 0, 0);
+                    }
                 }
             }
             
