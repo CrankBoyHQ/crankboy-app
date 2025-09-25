@@ -119,6 +119,9 @@ It should be a standard `JSON` file like so (replace the fields marked by `< >` 
 {
     // (required)
     "rom": "<path to rom file>",
+    
+    // (optional -- set to 'CGB' to launch with experimental CGB support)
+    "device": "DMG"
 
     // (optional)
     "default": {

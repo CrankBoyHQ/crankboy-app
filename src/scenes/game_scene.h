@@ -25,7 +25,6 @@ typedef enum
 {
     CB_GameSceneStateLoaded,
     CB_GameSceneStateError,
-    CB_GameSceneStateCGBConfirm
 } CB_GameSceneState;
 
 typedef enum
@@ -80,6 +79,7 @@ typedef struct CB_GameSceneContext
     uint8_t vram[VRAM_SIZE_CGB];
     uint8_t* rom;
     size_t rom_size;
+    bool cgb_mode;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
 } CB_GameSceneContext;
@@ -154,7 +154,7 @@ typedef struct CB_GameScene
     uint8_t previous_joypad_state;
 } CB_GameScene;
 
-CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short);
+CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);
 void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed);
 void CB_GameScene_didSelectLibrary(void* userdata);
 void CB_reset_audio_sync_state(void);
