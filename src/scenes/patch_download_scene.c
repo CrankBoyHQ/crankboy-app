@@ -1195,7 +1195,7 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
                     if (hash)
                     {
                         return aprintf(
-                            PATCH_MANAGE_MSG "\n \nNote: because patches are in use, and this ROM has an internal save system, a separate save file (code: %08x) will be used to avoid conflicts. If necessary, you can transfer your save data between patches by loading a save state.",
+                            PATCH_MANAGE_MSG "\n \nNote: because patches are in use, and this ROM has an internal save system, a separate save file (code: %08x) will be used to avoid conflicts. If necessary, you can transfer your save data between patches by loading a save state, but you may need to restart the game after loading the state.",
                             hash
                         );
                     }
