@@ -34,7 +34,7 @@
  * As of August 2025, the theoretical maximum count is 36 entries.
  * This value provides a safe buffer for future additions.
  */
-#define TOTAL_MENU_ITEMS 40
+#define TOTAL_MENU_ITEMS 45
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -739,6 +739,73 @@ static void settings_action_load_state_possibly_warn(
     }
 }
 
+struct ScriptSettingsInfo
+{
+    preference_t* preference;
+    int maxvalue;
+    
+    char* name;
+    char* description;
+    char** options;
+};
+
+static int script_settings_info_count;
+static struct ScriptSettingsInfo script_settings_info[] = {
+    {
+        .preference = &preferences_script_A
+    },
+    {
+        .preference = &preferences_script_B
+    },
+    {
+        .preference = &preferences_script_C
+    }
+    // can add more here as needed
+};
+
+static void clear_script_settings(void)
+{
+    script_settings_info_count = 0;
+    for (int i = 0; i < CB_ARRAY_SIZE(script_settings_info); ++i)
+    {
+        cb_free(script_settings_info[i].description);
+        script_settings_info[i].description = NULL;
+        
+        cb_free(script_settings_info[i].name);
+        script_settings_info[i].name = NULL;
+        
+        for (char** opt = script_settings_info[i].options; opt && *opt; ++opt)
+        {
+            cb_free(*opt);
+        }
+        cb_free(script_settings_info[i].options);
+        script_settings_info[i].options = NULL;
+    }
+}
+
+bool script_custom_setting_add(const char* name, const char* description, const char** options)
+{
+    if (script_settings_info_count >= CB_ARRAY_SIZE(script_settings_info)) return false;
+    
+    struct ScriptSettingsInfo* info = &script_settings_info[script_settings_info_count];
+    info->name = cb_strdup(name);
+    info->description = cb_strdup(description);
+    info->maxvalue = 0;
+    for (const char** opt = options; *opt; ++opt)
+    {
+        ++info->maxvalue;
+    }
+    
+    info->options = allocza(char*, info->maxvalue+1);
+    for (int i = 0; i < info->maxvalue; ++i)
+    {
+        info->options[i] = cb_strdup(options[i]);
+    }
+    
+    ++script_settings_info_count;
+    return true;
+}
+
 static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 {
     CB_GameScene* gameScene = scene->gameScene;
@@ -848,6 +915,32 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
             .on_change = settings_post_action_per_game,
         };
+    }
+    
+    if (gameScene && gameScene->script)
+    {
+        clear_script_settings();
+        script_add_settings(gameScene->script);
+        if (script_settings_info_count > 0)
+        {
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Script",
+                .header = 1
+            };
+            
+            for (int j = 0; j < script_settings_info_count; ++j)
+            {
+                struct ScriptSettingsInfo* info = &script_settings_info[j];
+                if (*info->preference >= info->maxvalue) *info->preference = 0;
+                entries[++i] = (OptionsMenuEntry){
+                    .name = info->name,
+                    .values = (const char**)info->options,
+                    .description = info->description,
+                    .pref_var = info->preference,
+                    .max_value = info->maxvalue,
+                };
+            }
+        }
     }
 
     entries[++i] = (OptionsMenuEntry){

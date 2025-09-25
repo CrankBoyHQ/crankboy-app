@@ -47,4 +47,10 @@ PREF(experimental_cgb_mode, 0)
 PREF(skip_cgb_confirm, false)
 PREF(script_has_prompted, false)  // (not a real setting)
 
+// scripts can use these arbitrarily (see script_custom_setting_add),
+// but should never assume that the value is within any given bound.
+PREF(script_A, 0)
+PREF(script_B, 0)
+PREF(script_C, 0)
+
 #undef PREF

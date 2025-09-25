@@ -411,6 +411,8 @@ void* mallocz(size_t size);
 // malloc array and memset to zero
 #define allocza(Type, N) ((Type*)mallocz(sizeof(Type) * (N)));
 
+#define CB_ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 // non-negative floating-point modulo
 float nnfmodf(float a, float b);
 
