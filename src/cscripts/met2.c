@@ -2122,6 +2122,11 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 else if (samus_equipment_weapon != 0)
                 {
                     bool equipped = (samus_weapon == samus_equipment_weapon);
+                    playdate->graphics->fillRect(
+                        LCD_COLUMNS - 16*5 + 2, row2y,
+                        16, 16,
+                        kColorBlack
+                    );
                     draw_glyph(data, GLYPH_BEAM + samus_equipment_weapon, LCD_COLUMNS - 16*5 + 2, row2y, kBitmapUnflipped);
                     if (equipped)
                     {

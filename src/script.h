@@ -51,6 +51,7 @@ struct CScriptInfo
     const char* rom_name;
     const char* description;
     bool experimental;
+    bool launch_cgb;
     CS_OnBegin on_begin;
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
@@ -66,6 +67,7 @@ struct CScriptInfo
 typedef struct ScriptInfo
 {
     char rom_name[17];
+    bool launch_cgb;
     bool experimental;
     char* info;  // human-readable description
 

@@ -250,12 +250,19 @@ enum gb_error_e
     GB_INVALID_MAX
 };
 
+enum cgb_support_e {
+    GB_SUPPORT_DMG = 1,
+    GB_SUPPORT_CGB = 2,
+    GB_SUPPORT_DMG_AND_CGB = 3,
+};
+
 /**
  * Errors that may occur during library initialisation.
  */
 enum gb_init_error_e
 {
     GB_INIT_NO_ERROR,
+    GB_INIT_NO_ERROR_BUT_REQUIRES_CGB,
     GB_INIT_CARTRIDGE_UNSUPPORTED,
     GB_INIT_INVALID_CHECKSUM
 };
@@ -283,6 +290,9 @@ typedef struct StateHeader
 
     // indicates if a script is active
     uint8_t script : 1;
+    
+    // indicates if cgb mode is active
+    uint8_t cgb : 1;
 
     // Custom field for CrankBoy timestamp.
     uint32_t timestamp;
@@ -317,6 +327,8 @@ typedef struct PGB_VERSIONED(chan) chan;
 
 void gb_step_cpu(gb_s* gb);
 void gb_run_frame(gb_s* gb);
+
+enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 
 #ifdef PGB_IMPL
 
@@ -376,11 +388,7 @@ static uint8_t __gb_read__dmg(gb_s* gb, const uint16_t addr);
 void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
 void __gb_dump_vram(gb_s* gb);
 
-enum {
-    GB_SUPPORT_DMG = 1,
-    GB_SUPPORT_CGB = 2,
-    GB_SUPPORT_DMG_AND_CGB = 3,
-} gb_get_models_supported(uint8_t* gb_rom)
+enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom)
 {
     uint8_t cgb_byte = gb_rom[0x143];
     if (cgb_byte == 0x80) return GB_SUPPORT_DMG_AND_CGB;
@@ -4086,7 +4094,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 }
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
-void gb_reset(gb_s* gb);
+void gb_reset(gb_s* gb, bool cgb_mode);
 
 // Note: this function can be called on unswizzled structs;
 // therefore, no pointers in the gb struct should be followed.
@@ -4231,7 +4239,7 @@ void gb_init_serial(
 /**
  * Resets the context, and initialises startup values.
  */
-__section__(".rare") void gb_reset(gb_s* gb)
+__section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 {
     gb->gb_halt = 0;
     gb->gb_ime = 1;
@@ -4263,7 +4271,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
 
-    if (preferences_experimental_cgb_mode)
+    if (cgb_mode)
     {
         /*****************************************************************/
         /* --- POST-BOOT ROM STATE (CGB Skip-BIOS) --- */
@@ -4459,7 +4467,7 @@ __section__(".rare") void gb_reset(gb_s* gb)
  */
 __section__(".rare") enum gb_init_error_e gb_init(
     gb_s* gb, uint8_t* wram, uint8_t* vram, uint8_t* lcd, uint8_t* gb_rom, size_t rom_size,
-    void (*gb_error)(gb_s*, const enum gb_error_e, const uint16_t), void* priv
+    void (*gb_error)(gb_s*, const enum gb_error_e, const uint16_t), void* priv, bool cgb_mode
 )
 {
     const uint16_t mbc_location = 0x0147;
@@ -4532,10 +4540,11 @@ __section__(".rare") enum gb_init_error_e gb_init(
 
     const uint16_t cgb_flag_location = 0x0143;
     const uint8_t cgb_flag = gb->gb_rom[cgb_flag_location];
+    bool requires_cgb = true;
 
-    if (!preferences_experimental_cgb_mode && !preferences_skip_cgb_confirm && !(GB_SUPPORT_DMG & gb_get_models_supported(gb_rom)))
+    if (!cgb_mode && !(GB_SUPPORT_DMG & gb_get_models_supported(gb_rom)))
     {
-        return GB_INIT_CARTRIDGE_UNSUPPORTED;
+        requires_cgb = false;
     }
 
 #if 0 /* ignore checksum */
@@ -4564,7 +4573,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
 
-    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && preferences_experimental_cgb_mode;
+    gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && cgb_mode;
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
     gb->cgb_wram_bank = 1;
@@ -4591,7 +4600,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     char title_str[17];
     gb_get_rom_name(gb->gb_rom, title_str);
 
-    return GB_INIT_NO_ERROR;
+    return requires_cgb ? GB_INIT_NO_ERROR_BUT_REQUIRES_CGB : GB_INIT_NO_ERROR;
 }
 
 // returns negative if failure

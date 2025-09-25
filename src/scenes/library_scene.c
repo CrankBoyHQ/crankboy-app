@@ -379,9 +379,99 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     cb_free(stored);
 }
 
+// option 0: launch as dmg
+// option 1: launch as cgb
+static void launch_dmg_or_cgb(CB_Game* game, int option)
+{
+    if (option == 0 || option == 1)
+    {
+        CB_GameScene* gameScene =
+            CB_GameScene_new(game->fullpath, game->names->name_short_leading_article, option == 1);
+        if (gameScene)
+        {
+            CB_present(gameScene->scene);
+        }
+
+        playdate->system->logToConsole("Present gameScene");
+    }
+}
+
+static void _launch_game_prompt_cgb(CB_Game* game)
+{
+    // check if game would use script
+    ScriptInfo* info = get_script_info(game->names->name_header);
+    void* prefs = preferences_store_subset(-1);
+    load_game_prefs(game->fullpath, true);
+    bool will_use_script = preferences_script_support;
+    preferences_restore_subset(prefs);
+    playdate->system->logToConsole("Will use script: %d", (int)will_use_script);
+    
+    if (will_use_script && info)
+    {
+        launch_dmg_or_cgb(game, info->launch_cgb ? 1 : 0);
+    }
+    else
+    {
+        size_t size;
+        char* romhead = cb_read_partial_file(game->fullpath, 0x200, &size, kFileReadData | kFileRead);
+        if (!romhead || size < 0x200)
+        {
+            CB_Modal* modal = CB_Modal_new(
+                "Failed to read ROM header.",
+                NULL, NULL, NULL
+            );
+            
+            CB_presentModal(modal->scene);
+        }
+        else
+        {
+            const char* options[] = {"DMG", "CGB", NULL};
+            
+            switch (gb_get_models_supported((uint8_t*)romhead))
+            {
+            default:
+            case GB_SUPPORT_DMG:
+                launch_dmg_or_cgb(game, 0);
+                break;
+            case GB_SUPPORT_CGB:
+                {
+                    CB_Modal* modal = CB_Modal_new(
+                        "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try experimental CGB mode.",
+                        options, (void*)launch_dmg_or_cgb, game
+                    );
+                    
+                    modal->width = 380;
+                    modal->height = 220;
+                    
+                    CB_presentModal(modal->scene);
+                }
+                break;
+            case GB_SUPPORT_DMG_AND_CGB:
+                {
+                    CB_Modal* modal = CB_Modal_new(
+                        "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
+                        options, (void*)launch_dmg_or_cgb, game
+                    );
+                    
+                    modal->width = 380;
+                    modal->height = 220;
+                    
+                    CB_presentModal(modal->scene);
+                }
+                break;
+            }
+        }
+        
+        cb_free(romhead);
+    }
+    
+    script_info_free(info);
+}
+
 static void launch_game(void* ud, int option)
 {
     CB_Game* game = ud;
+    
     switch (option)
     {
     case 0:  // launch w/ scripts enabled
@@ -445,14 +535,7 @@ static void launch_game(void* ud, int option)
     case 3:  // launch game normally (don't alter settings)
     launch_normal:
     {
-        CB_GameScene* gameScene =
-            CB_GameScene_new(game->fullpath, game->names->name_short_leading_article);
-        if (gameScene)
-        {
-            CB_present(gameScene->scene);
-        }
-
-        playdate->system->logToConsole("Present gameScene");
+        _launch_game_prompt_cgb(game);
     }
     break;
 

@@ -159,6 +159,7 @@ typedef struct CB_Application
     // - some settings become inaccessible
     bool migration_modal_needed;
     char* bundled_rom;  // (path to bundled rom)
+    int bundled_rom_cgb_mode; // 0: unspecified. 1: force dmg. 2: force cgb.
 } CB_Application;
 
 extern CB_Application* CB_App;

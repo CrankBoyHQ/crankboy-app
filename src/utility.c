@@ -1153,7 +1153,7 @@ void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_
     }
 }
 
-char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
+char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags)
 {
     SDFile* file = playdate->file->open(path, flags);
     char* dat;
@@ -1168,6 +1168,9 @@ char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
     size = playdate->file->tell(file);
     if (size < 0)
         goto fail;
+        
+    if (size > size_max && size_max >= 0)
+        size = size_max;
 
     if (o_size)
         *o_size = size;
@@ -1202,6 +1205,11 @@ fail_free_dat:
 fail:
     playdate->file->close(file);
     return NULL;
+}
+
+char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
+{
+    return cb_read_partial_file(path, -1, o_size, flags);
 }
 
 void memswap(void* a, void* b, size_t size)
