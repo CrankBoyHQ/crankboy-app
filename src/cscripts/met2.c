@@ -383,7 +383,7 @@ typedef struct ScriptData
     
     float crank_save_p;
     float crank_prev;
-    float crank_prev2;
+    int weapon_cycle_crank_region;
     int weapon_cycle_state;
     int weapon_cycle_selected;
     const char* prev_msg;
@@ -473,7 +473,7 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
     char* buff = script_load_from_disk(save_slot, &size);
     char* orgbuff = buff;
     
-    if (size > 0x100*MAP_BANK_COUNT/8)
+    if (buff && size > 0x100*MAP_BANK_COUNT/8)
     {
         data->weapons_collected = (uint8_t)buff[0];
         ++buff;
@@ -568,15 +568,14 @@ SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x221C))
 {
     if (!playdate->system->isCrankDocked() && weapon_cycle_enabled)
     {
-        float crank_angle = playdate->system->getCrankAngle();
         int weapon_change = 0;
-        if (crank_angle < 200 && data->weapon_cycle_state == -1)
-        {
-            weapon_change = 1;
-        }
-        else if (crank_angle > 160 && data->weapon_cycle_state == 1)
+        if (data->weapon_cycle_state == -2)
         {
             weapon_change = -1;
+        }
+        else if (data->weapon_cycle_state == 2)
+        {
+            weapon_change = 1;
         }
         data->weapon_cycle_state = 0;
         
@@ -1276,33 +1275,58 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->crank_save_p = 0;
         data->crank_prev = -1;
         
-        float crank_angle = playdate->system->getCrankAngle();
-        if (data->crank_prev2 < 0)
+        // shooting cancels the toggle
+        if (CB_App->buttons_down & kButtonB)
         {
-            data->crank_prev2 = crank_angle;
+            data->weapon_cycle_state = 0;
+        }
+        
+        if (playdate->system->isCrankDocked())
+        {
+            data->weapon_cycle_crank_region = -1;
             data->weapon_cycle_state = 0;
         }
         else
         {
-            if (crank_angle < 70 && data->crank_prev2 >= 70 && data->crank_prev2 < 180 && data->weapon_cycle_state != -1)
-            {
-                data->weapon_cycle_state = 1;
-            }
-            if (crank_angle >= 290 && data->crank_prev2 < 290 && data->crank_prev2 >= 180 && data->weapon_cycle_state != 1)
-            {
-                data->weapon_cycle_state = -1;
-            }
+            float crank_angle = playdate->system->getCrankAngle();
+            int crank_region = 1;
+            if (crank_angle >= 90 && crank_angle < 180) crank_region = 2;
+            if (crank_angle >= 180 && crank_angle <= 270) crank_region = 3;
             
-            if (crank_angle >= 110 && crank_angle <= 230)
+            switch (data->weapon_cycle_crank_region)
             {
+            case 1:
+                if (crank_region == 2 && data->weapon_cycle_state == -1)
+                {
+                    data->weapon_cycle_state = -2;
+                }
+                if (crank_region == 3 && data->weapon_cycle_state == 1)
+                {
+                    data->weapon_cycle_state = 2;
+                }
+                break;
+            case 2:
+                if (crank_region == 1)
+                {
+                    data->weapon_cycle_state = 1;
+                }
+                break;
+            case 3:
+                if (crank_region == 1)
+                {
+                    data->weapon_cycle_state = -1;
+                }
+                break;
+            default:
                 data->weapon_cycle_state = 0;
+                break;
             }
-            data->crank_prev2 = crank_angle;
+            data->weapon_cycle_crank_region = crank_region;
         }
     }
     else
     {
-        data->crank_prev2 = -1;
+        data->weapon_cycle_crank_region = -1;
         // touching save point
         if (data->crank_save_p < 0 || data->crank_save_p > 20) data->crank_save_p = 0;
         if (playdate->system->isCrankDocked())
