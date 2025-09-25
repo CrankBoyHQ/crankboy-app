@@ -3,8 +3,9 @@
 #include <stdlib.h>
 
 #define DESCRIPTION                                        \
-    "- On the start screen, press A to start the game.\\n" \
-    "- In-game, use the crank to move the paddle."
+    "- On the start screen, press A to start the game.\n" \
+    "- In-game, use the crank to move the paddle.\n" \
+    "\nCreated by: stonerl"
 
 /* --- Game-specific RAM Addresses --- */
 #define ADDR_PADDLE_ACTIVE_FLAG 0xC800
