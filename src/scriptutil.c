@@ -53,9 +53,9 @@ char* script_disk_fname(unsigned fidx)
 {
     CB_GameSceneContext* context = script_gb->direct.priv;
     CB_GameScene* scene = context->scene;
-    if (scene->patches_hash)
+    if (preferences_save_slot)
     {
-        return aprintf("%s/%s.patch-%08X.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, scene->patches_hash, fidx);
+        return aprintf("%s/%s.%c.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, 'A' + preferences_save_slot, fidx);
     }
     else
     {

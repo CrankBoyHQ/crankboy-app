@@ -6,8 +6,9 @@
     "- Adds a map!\n" \
     "- Widescreen HUD\n" \
     "- Missiles controlled by crank\n" \
-    "- Start/select not needed anymore\n\n" \
-    "Created by: NaOH (Sodium Hydroxide)\n" \
+    "- Start/select not needed anymore\n" \
+    "- Optional: cycle collected beams with crank\n" \
+    "\nCreated by: NaOH (Sodium Hydroxide)\n\n" \
     "Special thanks: Metroid Reverse Engineering Team" \
 
 #define HALFTILE_W 8

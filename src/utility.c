@@ -471,36 +471,9 @@ char* cb_basename(const char* filename, bool stripExtension)
     return result;
 }
 
-char* cb_save_filename(const char* path, bool isRecovery, uint32_t hash)
+char* cb_save_filename(const char* path, bool isRecovery)
 {
-
-    char* filename;
-
-    char* slash = strrchr(path, '/');
-    if (!slash)
-    {
-        filename = (char*)path;
-    }
-    else
-    {
-        filename = slash + 1;
-    }
-
-    size_t len;
-
-    char* dot = strrchr(filename, '.');
-    if (!dot || dot == filename)
-    {
-        len = strlen(filename);
-    }
-    else
-    {
-        len = strlen(filename) - strlen(dot);
-    }
-
-    char* filenameNoExt = cb_malloc(len + 1);
-    strcpy(filenameNoExt, "");
-    strncat(filenameNoExt, filename, len);
+    char* filenameNoExt = cb_basename(path, true);
 
     char* suffix = "";
     if (isRecovery)
@@ -509,9 +482,9 @@ char* cb_save_filename(const char* path, bool isRecovery, uint32_t hash)
     }
 
     char* buffer;
-    if (hash)
+    if (preferences_save_slot)
     {
-        playdate->system->formatString(&buffer, "%s/%s.patch-%08X%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, hash, suffix);
+        playdate->system->formatString(&buffer, "%s/%s%s.%c.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix, 'A' + preferences_save_slot);
     }
     else
     {

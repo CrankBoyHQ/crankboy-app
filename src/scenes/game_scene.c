@@ -433,7 +433,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
     context->gb->direct.joypad_interrupt_delay = -1;
 
     playdate->system->logToConsole("Initialized gb context.");
-    char* save_filename = cb_save_filename(gameScene->rom_filename, false, gameScene->patches_hash);
+    char* save_filename = cb_save_filename(gameScene->rom_filename, false);
     gameScene->save_filename = save_filename;
 
     gameScene->base_filename = cb_basename(gameScene->rom_filename, true);
@@ -618,13 +618,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         preferences_per_game = 0;
 
         // Store the global UI sound setting so it isn't overwritten by game-specific settings.
-        void* stored_ui_sounds = preferences_store_subset(PREFBIT_ui_sounds);
+        void* stored_ui_sounds = preferences_store_subset(PREFBITS_LIBRARY_ONLY);
 
         // FIXME: shouldn't we be using call_with_main_stack for these?
         call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
 
         // we always use the per-game save slot, even if global settings are enabled
-        void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
+        void* stored_save_slot = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
 
         // If the game-specific settings explicitly says "use Global"
         // (or there is no game-specific settings file),
@@ -634,6 +634,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
             call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
         }
 
+        // re-apply never-global settings
         if (stored_save_slot)
         {
             preferences_restore_subset(stored_save_slot);
@@ -1219,7 +1220,7 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
         // save a recovery file
         if (context->scene->save_data_loaded_successfully)
         {
-            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true, context->scene->patches_hash);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
         }
@@ -3476,7 +3477,7 @@ void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
         if (context->gb->direct.sram_dirty && gameScene->save_data_loaded_successfully)
         {
             // save a recovery file
-            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true, gameScene->patches_hash);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
         }
