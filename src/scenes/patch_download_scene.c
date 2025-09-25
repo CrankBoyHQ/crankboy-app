@@ -1290,6 +1290,8 @@ static void pop_context(CB_PatchDownloadScene* pds)
 
 void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 {
+    playdate->system->setAutoLockDisabled(false);
+    
     if (pds->active_http_connection)
     {
         http_cancel(pds->active_http_connection);
@@ -1345,6 +1347,8 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     {
         return;
     }
+    
+    playdate->system->setAutoLockDisabled(true);
 
     if (pds->is_dismissing)
     {

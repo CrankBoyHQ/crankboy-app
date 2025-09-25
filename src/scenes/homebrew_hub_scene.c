@@ -783,6 +783,9 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     {
         return;
     }
+    
+    // stops some bugs relating to downloading for some reason.
+    playdate->system->setAutoLockDisabled(true);
 
     if (hbs->context_depth_p != hbs->target_context_depth)
     {
@@ -925,6 +928,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
 {
     http_safe_cancel(&hbs->active_http_connection);
     http_safe_cancel(&hbs->active_http_connection_2);
+    playdate->system->setAutoLockDisabled(false);
 
     CB_Scene_free(hbs->scene);
     cb_free(hbs->cover_art_data);
