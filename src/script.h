@@ -34,6 +34,8 @@ typedef void (*CS_OnDraw)(gb_s* gb, void* userdata);
 // returns flags SCRIPT_MENU_*
 typedef unsigned (*CS_OnMenu)(gb_s* gb, void* userdata);
 
+typedef void (*CS_OnSettings)(void* userdata);
+
 // should free userdata
 typedef void (*CS_OnEnd)(gb_s* gb, void* userdata);
 
@@ -53,6 +55,7 @@ struct CScriptInfo
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
     CS_OnMenu on_menu;
+    CS_OnSettings on_settings;
     CS_OnEnd on_end;
     
     CS_QuerySerialSize query_serial_size;
@@ -90,6 +93,7 @@ void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
 
 // returns flags SCRIPT_MENU_*
 unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene);
+void script_add_settings(ScriptState* state);
 void script_on_breakpoint(struct CB_GameScene* game_scene, int index);
 size_t script_query_savestate_size(ScriptState* state);
 bool script_save_state(ScriptState* state, uint8_t* out);
