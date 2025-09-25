@@ -4,7 +4,8 @@
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
     "- Full aspect ratio; no vertical squishing.\n"                              \
     "- Use the crank to flap!\n"                                                 \
-    "- Start/Select buttons are no longer required anywhere."
+    "- Start/Select buttons are no longer required anywhere.\n" \
+    "\nCreated by: NaOH (Sodium Hydroxide)"
 
 #define CRANK_DELTA_SMOOTH_FACTOR 0.8f
 #define MIN_RATE_CRANK_BEGIN_FLAP 0.5f
