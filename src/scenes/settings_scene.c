@@ -157,8 +157,9 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         {
             settingsScene->selected_game_settings_path =
                 cb_game_config_path(selectedGame->fullpath);
-
-            void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
+            
+            void* always_global = preferences_store_subset(PREFBITS_LIBRARY_ONLY);
+            void* stored_globals = preferences_store_subset(~PREFBITS_NEVER_GLOBAL);
 
             if (settingsScene->selected_game_settings_path)
             {
@@ -177,6 +178,11 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             if (stored_globals)
             {
                 cb_free(stored_globals);
+            }
+            if (always_global)
+            {
+                preferences_restore_subset(always_global);
+                cb_free(always_global);
             }
         }
     }
@@ -334,17 +340,19 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             if (game_settings_path)
             {
                 result = preferences_save_to_disk(
-                    game_settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+                    game_settings_path, PREFBITS_LIBRARY_ONLY
                 );
             }
+            
+            result = preferences_save_to_disk(CB_globalPrefsPath, ~PREFBITS_LIBRARY_ONLY | PREFBITS_NEVER_GLOBAL);
         }
         else
         {
-            result = preferences_save_to_disk(CB_globalPrefsPath, 0);
+            result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
 
             if (result && game_settings_path)
             {
-                result = preferences_save_to_disk(game_settings_path, ~PREFBIT_per_game);
+                result = preferences_save_to_disk(game_settings_path, (~PREFBITS_NEVER_GLOBAL));
             }
         }
     }
@@ -359,24 +367,26 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             result = preferences_save_to_disk(
                 CB_globalPrefsPath,
 
-                PREFBIT_per_game |
-                    PREFBIT_save_state_slot
-
-                    // these prefs are locked, so we shouldn't be able to change them
-                    | prefs_locked_by_script
+                PREFBITS_NEVER_GLOBAL
+                | PREFBITS_LIBRARY_ONLY
+                // these prefs are locked, so we shouldn't be able to change them
+                | prefs_locked_by_script
             );
 
             if (result)
-                // also save that preferences are global in the per-game script,
-                // and also the save slot
+            {
+                // also save that preferences are always per-game,
+                // such as the save slot
                 result = preferences_save_to_disk(
-                    game_settings_path, ~(PREFBIT_per_game | PREFBIT_save_state_slot)
+                    game_settings_path, ~(PREFBITS_NEVER_GLOBAL) | PREFBITS_LIBRARY_ONLY
                 );
+            }
         }
     }
     else
     {
-        result = preferences_save_to_disk(CB_globalPrefsPath, 0);
+        // (not sure when this would apply...)
+        result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
     }
 
     if (!result)
@@ -413,6 +423,10 @@ static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
+static const char* save_slot_labels[] = {
+    "Slot A", "Slot B", "Slot C", "Slot D", "Slot E",
+    "Slot F", "Slot G", "Slot H", "Slot I", "Slot K",
+};
 static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
                                               "Grid (L)",  "Staggered (D)", "Grid (D)"};
 static const char* overclock_labels[] = {"Off", "x2", "x4"};
@@ -533,7 +547,7 @@ static void settings_post_action_per_game(
     {
         // write global prefs to disk
         preferences_save_to_disk(
-            CB_globalPrefsPath, PREFBIT_per_game | PREFBIT_save_state_slot | prefs_locked_by_script
+            CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL | prefs_locked_by_script
         );
 
         preferences_set_defaults();
@@ -884,6 +898,40 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = open_patches,
             .ud = selectedGame
         };
+        
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Save Data",
+            .values = save_slot_labels,
+            .description =
+                "Select which save file \nto use for the ROM's internal\n save data.\n \nIf you softpatch overhaul\nhacks, you may wish to\nto use different saves\nfor each one.\n \nNote: \"save states\" are\ndifferent from\n\"save data.\"\n",
+            .pref_var = &preferences_save_slot,
+            .max_value = SAVE_STATE_SLOT_COUNT,
+            .rebuild_when_changed = 1,
+            .ud = gameScene,
+        };
+        
+        if (!selectedGame->names->rom_has_battery)
+        {
+            entries[i].locked = true;
+            entries[i].description = "Because this ROM does\nnot use internal save\ndata, this feature\nis disabled.";
+        }
+        else
+        {
+            static char* save_info = NULL;
+            cb_free(save_info);
+            char* save_file = cb_save_filename(selectedGame->fullpath, false);
+            if (cb_file_exists(save_file, kFileReadData))
+            {
+                save_info = aprintf("Save data exists in %s.\n \n%s", save_slot_labels[preferences_save_slot], entries[i].description);
+                entries[i].description = save_info;
+            }
+            else
+            {
+                save_info = aprintf("%s is empty.\n \n%s", save_slot_labels[preferences_save_slot], entries[i].description);
+                entries[i].description = save_info;
+            }
+            cb_free(save_file);
+        }
     }
 
     if (gameScene || (libraryScene && selectedGame))

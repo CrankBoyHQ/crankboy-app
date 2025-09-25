@@ -160,32 +160,6 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     return (int)(intptr_t)call_with_main_stack_2(_preferences_save_to_disk, filename, &leave_as_is);
 }
 
-static uint8_t preferences_read_uint8(SDFile* file)
-{
-    uint8_t buffer[1];
-    playdate->file->read(file, buffer, sizeof(uint8_t));
-    return buffer[0];
-}
-
-static void preferences_write_uint8(SDFile* file, uint8_t value)
-{
-    playdate->file->write(file, &value, sizeof(uint8_t));
-}
-
-static uint32_t preferences_read_uint32(SDFile* file)
-{
-    unsigned char buffer[sizeof(uint32_t)];
-    playdate->file->read(file, buffer, sizeof(uint32_t));
-    return buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3];
-}
-
-static void preferences_write_uint32(SDFile* file, uint32_t value)
-{
-    unsigned char buffer[sizeof(uint32_t)];
-    cpu_endian_to_big_endian((unsigned char*)&value, buffer, sizeof(uint32_t), 1);
-    playdate->file->write(file, buffer, sizeof(uint32_t));
-}
-
 static void cpu_endian_to_big_endian(
     unsigned char* src, unsigned char* buffer, size_t size, size_t len
 )

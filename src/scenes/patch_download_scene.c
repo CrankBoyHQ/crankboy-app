@@ -1184,18 +1184,23 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         else
         {
             #define PATCH_MANAGE_MSG "Toggle installed patches and and rearrange the order in which they are applied."
-            if (pds->game->names->rom_has_battery)
+            SoftPatch* patches = list_patches(pds->game->fullpath, NULL);
+            if (patches)
             {
-                SoftPatch* patches = list_patches(pds->game->fullpath, NULL);
-                if (patches)
+                uint32_t hash = patch_hash(patches);
+                free_patches(patches);
+                
+                if (hash)
                 {
-                    uint32_t hash = patch_hash(patches);
-                    free_patches(patches);
-                    
-                    if (hash)
+                    if (pds->game->names->rom_has_battery)
                     {
                         return aprintf(
-                            PATCH_MANAGE_MSG "\n \nNote: because patches are in use, and this ROM has an internal save system, a separate save file (code: %08x) will be used to avoid conflicts. If necessary, you can transfer your save data between patches by loading a save state, but you may need to restart the game after loading the state.",
+                            PATCH_MANAGE_MSG "\n \nPatch code: %08X\n \nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust settings > Save Slot.",
+                            hash
+                        );
+                    } else {
+                        return aprintf(
+                            PATCH_MANAGE_MSG "\n \nPatch code: %08X",
                             hash
                         );
                     }

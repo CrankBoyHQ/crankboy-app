@@ -217,6 +217,7 @@ const char* get_pdboot_name_and_version(void);
 #define CAP_FRAME_RATE 1
 
 #define SAVE_STATE_SLOT_COUNT 10
+#define SAVE_SLOT_COUNT 10
 #define SAVE_STATE_THUMBNAIL_W 160
 #define SAVE_STATE_THUMBNAIL_H 144
 
