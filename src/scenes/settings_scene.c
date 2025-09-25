@@ -1370,6 +1370,17 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
+        
+        // remember selection
+        entries[++i] = (OptionsMenuEntry){
+            .name = "CGB Prompt",
+            .values = off_on_labels,
+            .description = "When opening a ROM\nthat is CGB-optional,\n"
+                "prompt to run in\nexperimental CGB mode?\n \n(Note: CGB-only ROMs will\nalways prompt regardless.)",
+            .pref_var = &preferences_prompt_if_cgb_optional,
+            .max_value = 2,
+            .on_press = NULL
+        };
     }
 
     entries[++i] = (OptionsMenuEntry){
