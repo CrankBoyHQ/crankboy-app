@@ -248,6 +248,11 @@ uint32_t crc32_for_buffer(const unsigned char* buf, size_t len)
     return crc ^ 0xffffffffL;
 }
 
+uint32_t crc32_for_string(const char* str)
+{
+    return crc32_for_buffer((const unsigned char*)str, strlen(str));
+}
+
 bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc)
 {
     if (!crc32_table_generated)
@@ -466,7 +471,7 @@ char* cb_basename(const char* filename, bool stripExtension)
     return result;
 }
 
-char* cb_save_filename(const char* path, bool isRecovery)
+char* cb_save_filename(const char* path, bool isRecovery, uint32_t hash)
 {
 
     char* filename;
@@ -504,7 +509,14 @@ char* cb_save_filename(const char* path, bool isRecovery)
     }
 
     char* buffer;
-    playdate->system->formatString(&buffer, "%s/%s%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix);
+    if (hash)
+    {
+        playdate->system->formatString(&buffer, "%s/%s.patch-%08X%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, hash, suffix);
+    }
+    else
+    {
+        playdate->system->formatString(&buffer, "%s/%s%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix);
+    }
 
     cb_free(filenameNoExt);
 

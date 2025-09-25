@@ -5,12 +5,10 @@
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 #include "library_scene.h"
+#include "script.h"
 #include "pd_api.h"
 
 struct ScriptInfo;
-struct ScriptInfo* script_get_info_by_rom_path_and_get_header_name(
-    const char* rom_path, char* header_name
-);
 
 void script_info_free(struct ScriptInfo* info);
 void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt);
@@ -39,8 +37,7 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
 
 static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
 {
-    CB_GameName* newName = cb_malloc(sizeof(CB_GameName));
-    memset(newName, 0, sizeof(CB_GameName));
+    CB_GameName* newName = allocz(CB_GameName);
 
     newName->filename = cb_strdup(filename);
     newName->name_filename = cb_basename(filename, true);
@@ -72,6 +69,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     uint32_t crc = 0;
     bool needs_calculation = true;
     char header_name_buffer[17] = {0};
+    enum cgb_support_e cgb = 0;
+    unsigned battery = false;
 
     json_value cached_entry = {.type = kJSONNull};
     if (scanScene->crc_cache.type == kJSONTable)
@@ -97,9 +96,12 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
         json_value cached_size_val = json_get_table_value(cached_entry, "size");
         json_value cached_mtime_val = json_get_table_value(cached_entry, "m_time");
         json_value cached_header_val = json_get_table_value(cached_entry, "name_header");
+        json_value cached_battery = json_get_table_value(cached_entry, "sram");
+        json_value cached_cgb_val = json_get_table_value(cached_entry, "cgb");
 
         if (cached_crc_val.type == kJSONInteger && cached_size_val.type == kJSONInteger &&
-            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString)
+            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString
+            && cached_battery.type == kJSONInteger && cached_cgb_val.type == kJSONInteger)
         {
             if ((uint32_t)cached_size_val.data.intval == stat.size &&
                 (uint32_t)cached_mtime_val.data.intval == m_time_epoch)
@@ -109,6 +111,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
                     header_name_buffer, cached_header_val.data.stringval,
                     sizeof(header_name_buffer) - 1
                 );
+                battery = cached_battery.data.intval;
+                cgb = cached_cgb_val.data.intval;
                 needs_calculation = false;
             }
         }
@@ -119,7 +123,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     if (needs_calculation)
     {
         struct ScriptInfo* info =
-            script_get_info_by_rom_path_and_get_header_name(fullpath, header_name_buffer);
+            script_get_info_by_rom_path_and_get_header_info(fullpath, header_name_buffer, &cgb, &battery);
         if (info)
         {
             script_info_free(info);
@@ -151,11 +155,19 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
             json_value header_val = {
                 .type = kJSONString, .data.stringval = cb_strdup(header_name_buffer)
             };
+            json_value cgb_val = {
+                .type = kJSONInteger, .data.intval = cgb
+            };
+            json_value bat_val = {
+                .type = kJSONInteger, .data.intval = battery
+            };
 
             json_set_table_value(&new_entry_val, "name_header", header_val);
             json_set_table_value(&new_entry_val, "crc32", crc_val);
             json_set_table_value(&new_entry_val, "size", size_val);
             json_set_table_value(&new_entry_val, "m_time", mtime_val);
+            json_set_table_value(&new_entry_val, "sram", bat_val);
+            json_set_table_value(&new_entry_val, "cgb", cgb_val);
 
             json_value* new_file_entry = cb_calloc(1, sizeof(json_value));
             new_file_entry->type = kJSONTable;
@@ -184,6 +196,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
 
     fetched.crc32 = crc;
     newName->crc32 = fetched.crc32;
+    newName->rom_cgb_support = cgb;
+    newName->rom_has_battery = battery;
     cb_free(fullpath);
 
     newName->name_database = (fetched.detailed_name) ? cb_strdup(fetched.detailed_name) : NULL;
