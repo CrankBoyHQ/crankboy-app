@@ -762,7 +762,7 @@ static void context_patch_choose_interaction_update(
 
 char* get_rom_info(CB_PatchDownloadScene* pds)
 {
-    return aprintf("ROM Header title: %s\n \nCRC32: %X", pds->header_name, pds->game->names->crc32);
+    return aprintf("ROM Header title: %s\n \nCRC32: %X\nInternal save: %s", pds->header_name, pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No");
 }
 
 static void context_top_level_update(
@@ -770,6 +770,9 @@ static void context_top_level_update(
 )
 {
     update_common(pds, context);
+    
+    // force refresh of hint
+    pds->cached_hint_key = -2;
 
     if (context->list->selectedItem == 0 && !pds->has_local_patches)
     {
@@ -1178,10 +1181,30 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
                 "manually."
             );
         }
-
-        return aprintf(
-            "Toggle installed patches and and rearrange the order in which they are applied."
-        );
+        else
+        {
+            #define PATCH_MANAGE_MSG "Toggle installed patches and and rearrange the order in which they are applied."
+            if (pds->game->names->rom_has_battery)
+            {
+                SoftPatch* patches = list_patches(pds->game->fullpath, NULL);
+                if (patches)
+                {
+                    uint32_t hash = patch_hash(patches);
+                    free_patches(patches);
+                    
+                    if (hash)
+                    {
+                        return aprintf(
+                            PATCH_MANAGE_MSG "\n \nNote: because patches are in use, and this ROM has an internal save system, a separate save file (code: %08x) will be used to avoid conflicts. If necessary, you can transfer your save data between patches by loading a save state.",
+                            hash
+                        );
+                    }
+                }
+            }
+            return aprintf(
+                PATCH_MANAGE_MSG
+            );
+        }
         break;
     case 1:
         return aprintf(

@@ -53,7 +53,14 @@ char* script_disk_fname(unsigned fidx)
 {
     CB_GameSceneContext* context = script_gb->direct.priv;
     CB_GameScene* scene = context->scene;
-    return aprintf("%s/%s.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, fidx);
+    if (scene->patches_hash)
+    {
+        return aprintf("%s/%s.patch-%08X.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, scene->patches_hash, fidx);
+    }
+    else
+    {
+        return aprintf("%s/%s.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, fidx);
+    }
 }
 
 void script_save_to_disk(const char* data, size_t size, unsigned fidx)

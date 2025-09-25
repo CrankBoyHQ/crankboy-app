@@ -152,6 +152,7 @@ typedef struct CB_GameScene
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
     uint8_t previous_joypad_state;
+    uint32_t patches_hash;
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);

@@ -109,7 +109,7 @@ typedef enum
 char* cb_strdup(const char* string);
 
 char* cb_basename(const char* filename, bool stripExtension);
-char* cb_save_filename(const char* filename, bool isRecovery);
+char* cb_save_filename(const char* filename, bool isRecovery, uint32_t hash);
 char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
 const char* get_extension(const char* filename);
@@ -175,6 +175,7 @@ int cb_strcmp(const char* s1, const char* s2);
 bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
 
 uint32_t crc32_for_buffer(const unsigned char* buf, size_t len);
+uint32_t crc32_for_string(const char* str);
 
 char* cb_find_cover_art_path_from_list(
     const CB_Array* available_covers, const char* rom_basename_no_ext,

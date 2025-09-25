@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "app.h"
 
 /*
 
@@ -116,7 +117,7 @@ ScriptInfo* script_get_info_by_rom_path(const char* game_path);
 ScriptInfo* get_script_info(const char* game_name);
 
 // o_rom_name must point to a buffer at least length 17
-ScriptInfo* script_get_info_by_rom_path_and_get_header_name(
-    const char* game_path, char* o_rom_name
+ScriptInfo* script_get_info_by_rom_path_and_get_header_info(
+    const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery
 );
 bool script_exists(const char* game_path);

@@ -433,7 +433,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
     context->gb->direct.joypad_interrupt_delay = -1;
 
     playdate->system->logToConsole("Initialized gb context.");
-    char* save_filename = cb_save_filename(gameScene->rom_filename, false);
+    char* save_filename = cb_save_filename(gameScene->rom_filename, false, gameScene->patches_hash);
     gameScene->save_filename = save_filename;
 
     gameScene->base_filename = cb_basename(gameScene->rom_filename, true);
@@ -705,6 +705,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         {
             printf("softpatching ROM...\n");
             bool result = call_with_main_stack_3(patch_rom, (void*)&rom, &rom_size, patches);
+            gameScene->patches_hash = patch_hash(patches);
 
             free_patches(patches);
         }
@@ -1218,7 +1219,7 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
         // save a recovery file
         if (context->scene->save_data_loaded_successfully)
         {
-            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true, context->scene->patches_hash);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
         }
@@ -3475,7 +3476,7 @@ void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
         if (context->gb->direct.sram_dirty && gameScene->save_data_loaded_successfully)
         {
             // save a recovery file
-            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
+            char* recovery_filename = cb_save_filename(context->scene->rom_filename, true, gameScene->patches_hash);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
         }
