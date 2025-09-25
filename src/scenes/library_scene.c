@@ -426,6 +426,7 @@ static void _launch_game_prompt_cgb(CB_Game* game)
         else
         {
             const char* options[] = {"DMG", "CGB", NULL};
+            const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
             
             switch (gb_get_models_supported((uint8_t*)romhead))
             {
@@ -448,15 +449,22 @@ static void _launch_game_prompt_cgb(CB_Game* game)
                 break;
             case GB_SUPPORT_DMG_AND_CGB:
                 {
-                    CB_Modal* modal = CB_Modal_new(
-                        "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
-                        options, (void*)launch_dmg_or_cgb, game
-                    );
-                    
-                    modal->width = 380;
-                    modal->height = 220;
-                    
-                    CB_presentModal(modal->scene);
+                    if (preferences_prompt_if_cgb_optional)
+                    {
+                        CB_Modal* modal = CB_Modal_new(
+                            "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
+                            options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
+                        );
+                        
+                        modal->width = 380;
+                        modal->height = 220;
+                        
+                        CB_presentModal(modal->scene);
+                    }
+                    else
+                    {
+                        launch_dmg_or_cgb(game, 0);
+                    }
                 }
                 break;
             }
