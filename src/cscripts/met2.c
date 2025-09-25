@@ -383,6 +383,9 @@ typedef struct ScriptData
     
     float crank_save_p;
     float crank_prev;
+    float crank_prev2;
+    int weapon_cycle_state;
+    int weapon_cycle_selected;
     const char* prev_msg;
     float prev_xorw;
     
@@ -393,6 +396,10 @@ typedef struct ScriptData
     uint8_t map_mode_timer;
     int map_hex_x, map_hex_y;
 } ScriptData;
+
+#define weapon_cycle_enabled preferences_script_A
+#define HUD_blinking (preferences_script_B == 0)
+#define HUD_Map_blinks (HUD_blinking || (preferences_script_B == 2))
 
 // this define is used by SCRIPT_BREAKPOINT
 #define USERDATA ScriptData* data
@@ -464,6 +471,15 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
     
     size_t size;
     char* buff = script_load_from_disk(save_slot, &size);
+    char* orgbuff = buff;
+    
+    if (size > 0x100*MAP_BANK_COUNT/8)
+    {
+        data->weapons_collected = (uint8_t)buff[0];
+        ++buff;
+        --size;
+    }
+    
     if (!buff || size != 0x100*MAP_BANK_COUNT/8)
     {
         playdate->system->logToConsole("no save data for slot %x.", save_slot);
@@ -471,14 +487,14 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
     }
     else
     {
-        playdate->system->logToConsole("saving script data to slot %x.", save_slot);
+        playdate->system->logToConsole("loading script data from slot %x.", save_slot);
         for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
         {
             data->map_explored[i] = bitvec_read_bits((uint8_t*)buff, i, 1);
         }
     }
     
-    cb_free(buff);
+    cb_free(orgbuff);
     
     // force refresh
     data->map_area = AREA_SECRET_WORLD;
@@ -489,11 +505,13 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
 SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x7B82))
 {
     unsigned save_slot = ram_peek(0xD0A3);
-    char buff[0x100*MAP_BANK_COUNT/8];
+    char buff[0x100*MAP_BANK_COUNT/8 + 1];
+    
+    buff[0] = data->weapons_collected;
     
     for (int i = 0; i < 0x100*MAP_BANK_COUNT; ++i)
     {
-        bitvec_write_bits((void*)&buff[0], i, 1, data->map_explored[i]);
+        bitvec_write_bits((void*)&buff[1], i, 1, data->map_explored[i]);
     }
     
     playdate->system->logToConsole("script: saving to slot %x.", save_slot);
@@ -514,7 +532,7 @@ static void set_z_should_missile_toggle(void)
 {
     bool is_crank_mapped = preferences_crank_dock_button != PREF_BUTTON_NONE || preferences_crank_undock_button != PREF_BUTTON_NONE;
     bool is_select_mapped = CB_App->hasSystemAccess && preferences_lock_button == PREF_BUTTON_SELECT;
-    if (!is_crank_mapped && !is_select_mapped && !ram_peek(0xD07D) /* not touching save point*/)
+    if (!is_crank_mapped && !is_select_mapped && (!ram_peek(0xD07D) || ram_peek(0xD088)) /* not touching save point*/)
     {
         bool isMissiles = !!(ram_peek(0xD04D) & 8);
         bool should_be_missiles = false;
@@ -543,6 +561,67 @@ SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x2D08))
 SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x220F))
 {
     set_z_should_missile_toggle();
+}
+
+// weapon cycling
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x221C))
+{
+    if (!playdate->system->isCrankDocked() && weapon_cycle_enabled)
+    {
+        float crank_angle = playdate->system->getCrankAngle();
+        int weapon_change = 0;
+        if (crank_angle < 200 && data->weapon_cycle_state == -1)
+        {
+            weapon_change = 1;
+        }
+        else if (crank_angle > 160 && data->weapon_cycle_state == 1)
+        {
+            weapon_change = -1;
+        }
+        data->weapon_cycle_state = 0;
+        
+        for (int _ = 0; _ < 10; ++_)
+        {
+            data->weapon_cycle_selected += weapon_change + 5;
+            data->weapon_cycle_selected %= 5;
+            if (data->weapon_cycle_selected == 0)
+            {
+                $A = 0;
+                ram_poke(0xD055, 0);
+                break;
+            }
+            else if ((data->weapons_collected & (1 << (data->weapon_cycle_selected))))
+            {
+                $A = data->weapon_cycle_selected;
+                ram_poke(0xD055, $A);
+                break;
+            }
+            else if (weapon_change == 0)
+            {
+                // rare error condition
+                data->weapon_cycle_selected = 0;
+                ram_poke(0xD055, 0);
+                $A = 0;
+                break;
+            }
+        }
+        
+        // patch in beam gfx
+        unsigned vram_dst = 0x87E0;
+        unsigned vram_beam_src[5] = {
+            0x4000 * 6 + 0x0320 + 0x7E0, // normal
+            0x4000 * 6 + 0x0040, // ice
+            0x4000 * 6 + 0x0060, // wave
+            0x4000 * 6 + 0x0080, // spazer
+            0x4000 * 6 + 0x0080, // plasma
+        };
+        
+        for (int i = 0; i < 0x20; ++i)
+        {
+            uint8_t v = rom_peek(vram_beam_src[data->weapon_cycle_selected] + i);
+            ram_poke(vram_dst + i, v);
+        }
+    }
 }
 
 // clear
@@ -709,6 +788,8 @@ const int k = 4;
 #define GLYPH_DASH (240/16)
 #define GLYPH_MISSILES (688/16)
 #define GLYPH_MISSILES_EQUIPPED (GLYPH_MISSILES+1)
+#define GLYPH_BEAM (GLYPH_MISSILES + 2)
+#define GLYPH_SELECTED (800/16)
 
 static void load_map_halftiles(ScriptData* data, int area_idx)
 {
@@ -911,6 +992,16 @@ static bool area_is_explored(ScriptData* data, int area_idx)
     return false;
 }
 
+static int areas_explored(ScriptData* data)
+{
+    int ex = 0;
+    for (int i = 0; i < sizeof(areas)/sizeof(struct Area); ++i)
+    {
+        ex += area_is_explored(data, i);
+    }
+    return ex;
+}
+
 static void get_area_center(const struct HexMapArea* hma, int* ox, int* oy)
 {
     int n = 0;
@@ -970,9 +1061,10 @@ static void tick_map(ScriptData* data)
     case MAP_MODE_AREA:
         if (CB_App->buttons_pressed & kButtonB)
         {
-            if (!hma_selected)
+            if (!hma_selected || areas_explored(data) <= 1)
             {
                 data->map_mode = MAP_MODE_NONE;
+                CB_App->buttons_suppress |= kButtonB;
                 audio_enabled = 1;
             }
             else
@@ -1007,6 +1099,7 @@ static void tick_map(ScriptData* data)
         if (CB_App->buttons_pressed & kButtonB)
         {
             data->map_mode = MAP_MODE_NONE;
+            CB_App->buttons_suppress |= kButtonB;
             audio_enabled = 1;
         }
         else if (CB_App->buttons_pressed & kButtonA)
@@ -1175,25 +1268,52 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     ram_poke(0xD051, 0x99);
     #endif
     
-    data->weapons_collected |= ram_peek(0xd04D);
+    data->weapons_collected |= 1 << (ram_peek(0xd04D));
     
-    if (!ram_peek(0xD07D))
+    if (!ram_peek(0xD07D) || ram_peek(0xD088))
     {
         // not touching save point
         data->crank_save_p = 0;
         data->crank_prev = -1;
+        
+        float crank_angle = playdate->system->getCrankAngle();
+        if (data->crank_prev2 < 0)
+        {
+            data->crank_prev2 = crank_angle;
+            data->weapon_cycle_state = 0;
+        }
+        else
+        {
+            if (crank_angle < 70 && data->crank_prev2 >= 70 && data->crank_prev2 < 180 && data->weapon_cycle_state != -1)
+            {
+                data->weapon_cycle_state = 1;
+            }
+            if (crank_angle >= 290 && data->crank_prev2 < 290 && data->crank_prev2 >= 180 && data->weapon_cycle_state != 1)
+            {
+                data->weapon_cycle_state = -1;
+            }
+            
+            if (crank_angle >= 110 && crank_angle <= 230)
+            {
+                data->weapon_cycle_state = 0;
+            }
+            data->crank_prev2 = crank_angle;
+        }
     }
     else
     {
+        data->crank_prev2 = -1;
         // touching save point
         if (data->crank_save_p < 0 || data->crank_save_p > 20) data->crank_save_p = 0;
         if (playdate->system->isCrankDocked())
         {
             data->crank_prev = -1;
+            data->weapon_cycle_state = 0;
         }
         else
         {
             float crank_angle = playdate->system->getCrankAngle();
+            
             if (data->crank_prev >= 0)
             {
                 float crank_amount = fabsf(crank_angle - data->crank_prev) / (float)(frames_elapsed);
@@ -1342,7 +1462,7 @@ static void draw_map(uint8_t* dst_buff, unsigned dst_stride, ScriptData* data, u
         {
             for (int x = dst_x/8; x < (dst_x + window_w*HALFTILE_W*2)/8; ++x)
             {
-                dst_buff[y*dst_stride + x] = rand() & rand();
+                dst_buff[y*dst_stride + x] = (HUD_Map_blinks) ? rand() & rand() : ((dst_y % 2) ? 0xAA : 0x55);
             }
         }
         return;
@@ -1534,6 +1654,23 @@ static void cb_expand_map(ScriptData* data)
     data->map_mode_y = 0;
 }
 
+static void on_settings(ScriptData* data)
+{
+    const char* off_on_options[] = {"Off", "On", NULL};
+    const char* map_blink_options[] = {"On", "Off", "Map", NULL};
+    script_custom_setting_add(
+        "Weapon Cycling",
+        "Change beams using\nthe crank.\n \nSamus must have\nobtained an alternate\nbeam first.\n \nNote: this feature not in\noriginal game at all.",
+        off_on_options
+    );
+    
+    script_custom_setting_add(
+        "HUD animation",
+        "Controls periodic\nblinking in HUD.",
+        map_blink_options
+    );
+}
+
 static unsigned on_menu(gb_s* gb, ScriptData* data)
 {
     if (data->map_mode != MAP_MODE_NONE)
@@ -1552,7 +1689,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
         struct AreaAssociation association = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
         unsigned x, y;
         
-        if (get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
+        if (!association.dark && get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
         {
             playdate->system->addMenuItem("Expand Map", (void*)cb_expand_map, data);
             
@@ -1874,6 +2011,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
             unsigned samus_disp_missiles = ram_peek_u16(0xd086);
             unsigned metroid_disp = ram_peek(0xD09A) | (flicker_on << 12);
             unsigned samus_weapon = ram_peek(0xD04D);
+            unsigned samus_equipment_weapon = ram_peek(0xD055);
             
             bool samus_weapon_change = samus_weapon != data->samus_weapon;
             data->samus_weapon = samus_weapon;
@@ -1936,7 +2074,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
                     else if (get_coords_in_area(data, association.room_idx, association.embedding, data->samus_bank, data->samus_x, data->samus_y, &x, &y))
                     {
                         draw_map(frame, LCD_ROWSIZE, data, association.area_idx, LCD_COLUMNS-80, 0, 5, 5, (int)x-2, (int)y-2);
-                        if (flicker_on)
+                        if (flicker_on || !HUD_Map_blinks)
                         {
                             playdate->graphics->fillRect(LCD_COLUMNS-80 + 16*2, 0 + 16*2, 16, 16, kColorXOR);
                         }
@@ -1951,14 +2089,57 @@ static void on_draw(gb_s* gb, ScriptData* data)
             int ui_y = 6*16 + 8;
             int ui_x = LCD_COLUMNS-80;
             
-            if (gbScreenRequiresFullRefresh || data->samus_disp_energy != samus_disp_energy || data->samus_max_etanks != samus_max_etanks)
+            int row1y = ui_y + 16 + 4;
+            int row2y = ui_y;
+            
+            ui_y += 20;
+            
+            if (data->samus_max_etanks > 0) ui_y += 20;
+            
+            if (gbScreenRequiresFullRefresh || samus_weapon_change || data->samus_max_etanks != samus_max_etanks)
+            {
+                playdate->graphics->fillRect(LCD_COLUMNS - 80, ui_y, 80, 16, kColorBlack);
+                
+                if (weapon_cycle_enabled)
+                {
+                    for (int i = 0; i < 5; ++i)
+                    {
+                        if ((data->weapons_collected & (1 << i)) || i == 0)
+                        {
+                            int sx = 5 - i;
+                            draw_glyph(data, GLYPH_BEAM + i, LCD_COLUMNS - 15*(sx), ui_y, kBitmapUnflipped);
+                            if (i == samus_weapon)
+                            {
+                                draw_glyph(data, GLYPH_SELECTED, LCD_COLUMNS - 15*(sx), ui_y, kBitmapUnflipped);
+                            }
+                            else if (i == samus_equipment_weapon)
+                            {
+                                draw_glyph(data, GLYPH_SELECTED + 1, LCD_COLUMNS - 15*(sx), ui_y, kBitmapUnflipped);
+                            }
+                        }
+                    }
+                }
+                else if (samus_equipment_weapon != 0)
+                {
+                    bool equipped = (samus_weapon == samus_equipment_weapon);
+                    draw_glyph(data, GLYPH_BEAM + samus_equipment_weapon, LCD_COLUMNS - 16*5 + 2, row2y, kBitmapUnflipped);
+                    if (equipped)
+                    {
+                        draw_glyph(data, GLYPH_SELECTED, LCD_COLUMNS - 16*5 + 2, row2y, kBitmapUnflipped);
+                    }
+                }
+            }
+            
+            if (gbScreenRequiresFullRefresh || data->samus_disp_energy != samus_disp_energy || data->samus_max_etanks != samus_max_etanks || samus_weapon_change)
             {
                 data->samus_disp_energy = samus_disp_energy;
                 data->samus_max_etanks = samus_max_etanks;
                 int etanks = data->samus_disp_energy >> 8;
                 
-                int row1y = ui_y + 16 + 4;
-                int row2y = ui_y;
+                if (data->samus_max_etanks > 0)
+                {
+                    playdate->graphics->fillRect(LCD_COLUMNS - 80, row1y, 80, 16, kColorBlack);
+                }
                 
                 for (int i = 0; i < 5 && i < data->samus_max_etanks; ++i)
                 {
@@ -1970,11 +2151,14 @@ static void on_draw(gb_s* gb, ScriptData* data)
                 int digitlo = samus_disp_energy & 0xF;
                 int digithi = (samus_disp_energy >> 4) & 0xF;
                 
+                int offx = -8;
+                if (!weapon_cycle_enabled && samus_equipment_weapon != 0) offx = 0;
+                
                 // energy
-                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1-8, row2y, kBitmapUnflipped);
-                draw_glyph(data, 10, LCD_COLUMNS - 16*4 + 2-8, row2y, kBitmapUnflipped);
-                draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2-8, row2y, kBitmapUnflipped);
-                draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1-8, row2y, kBitmapUnflipped);
+                draw_glyph(data, GLYPH_DASH, LCD_COLUMNS - 16*3 + 1 + offx, row2y, kBitmapUnflipped);
+                draw_glyph(data, 10, LCD_COLUMNS - 16*4 + 2 + offx, row2y, kBitmapUnflipped);
+                draw_glyph(data, digithi + GLYPH_0, LCD_COLUMNS - 16*2 + offx, row2y, kBitmapUnflipped);
+                draw_glyph(data, digitlo + GLYPH_0, LCD_COLUMNS - 16*1 + offx, row2y, kBitmapUnflipped);
             }
             
             ui_y = 5*16 + 4;
@@ -1999,7 +2183,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
             if (gbScreenRequiresFullRefresh || data->metroid_disp != metroid_disp)
             {
                 data->metroid_disp = metroid_disp;
-                int metroid_glyph = (176/16) + flicker_on;
+                int metroid_glyph = (176/16) + (flicker_on && HUD_blinking);
                 
                 int digitlo = metroid_disp & 0xF;
                 int digithi = (metroid_disp >> 4) & 0xF;
@@ -2076,6 +2260,7 @@ C_SCRIPT{
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
     .on_menu = (CS_OnMenu)on_menu,
+    .on_settings = (CS_OnSettings)on_settings,
     .on_end = (CS_OnEnd)on_end,
     
     .query_serial_size = (CS_QuerySerialSize)query_serial_size,

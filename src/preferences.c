@@ -214,7 +214,7 @@ void* preferences_store_subset(preferences_bitfield_t subset)
     int count = 0;
     int i = 0;
 #define PREF(x, ...)       \
-    if (subset & (1 << i)) \
+    if (subset & ((preferences_bitfield_t)1 << i)) \
     {                      \
         count++;           \
     }                      \
@@ -232,7 +232,7 @@ void* preferences_store_subset(preferences_bitfield_t subset)
     count = 0;
     i = 0;
 #define PREF(x, ...)                      \
-    if (subset & (1 << i))                \
+    if (subset & (1ll << i))                \
     {                                     \
         prefs[count++] = preferences_##x; \
     }                                     \
@@ -250,7 +250,7 @@ void preferences_restore_subset(void* data)
     int count = 0;
     int i = 0;
 #define PREF(x, ...)                      \
-    if (subset & (1 << i))                \
+    if (subset & ((preferences_bitfield_t)1 << i))                \
     {                                     \
         preferences_##x = prefs[count++]; \
     }                                     \

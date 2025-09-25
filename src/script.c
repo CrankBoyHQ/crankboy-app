@@ -784,6 +784,16 @@ unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene)
     return 0;
 }
 
+void script_add_settings(ScriptState* state)
+{
+    if (!state);
+    
+    if (state->c && state->c->on_menu)
+    {
+        state->c->on_settings(state->ud);
+    }
+}
+
 // for C scripts
 __section__(".rare") int c_script_add_hw_breakpoint(
     gb_s* gb, uint32_t addr, CS_OnBreakpoint callback
