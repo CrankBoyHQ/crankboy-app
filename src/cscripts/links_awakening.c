@@ -5,7 +5,9 @@
     "- Full aspect ratio; no vertical squishing.\n"                              \
     "- Open save menu by docking the Crank.\n"                                   \
     "- In fishing mini-game: CCW Crank = Reel, CW Crank = Cast.\n"               \
-    "- Intro cutscene can be skipped with Ⓐ.\n"
+    "- Intro cutscene can be skipped with Ⓐ.\n" \
+    "\nCreated by: NaOH (Sodium Hydroxide) and stonerl\n"\
+    "Special Thanks: pret (disassembly ref.)"
 
 #define FISHING_SCENE_CHECKSUM 11276
 
