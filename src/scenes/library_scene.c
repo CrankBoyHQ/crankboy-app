@@ -498,7 +498,7 @@ static void launch_game(void* ud, int option)
                 );
                 preferences_save_to_disk(
                     settings_path,
-                    ~(PREFBIT_script_has_prompted | PREFBIT_script_support | PREFBIT_per_game)
+                    ~(PREFBITS_NEVER_GLOBAL)
                 );
             }
             else
@@ -578,7 +578,7 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_uncap_fps = 0;         // Off
 
         preferences_save_to_disk(
-            settings_path, PREFBITS_LIBRARY_ONLY | PREFBIT_ui_sounds
+            settings_path, PREFBITS_LIBRARY_ONLY
         );
 
         preferences_restore_subset(stored_globals);

@@ -1,6 +1,7 @@
 // format: PREF(name, default value)
 
 PREF(per_game, 0)         // (note: never visible in Bundle mode)
+PREF(save_slot, 0)        // (note: never visible in Bundle mode; only visible in library view)
 PREF(save_state_slot, 0)  // (note: has two corresponding settings)
 
 // audio
