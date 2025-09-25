@@ -756,8 +756,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         }
         else
         {
+            playdate->system->logToConsole("Failed to initialize ROM.");
             gameScene->state = CB_GameSceneStateError;
-            gameScene->error = gameScene->error = CB_GameSceneErrorFatal;
+            gameScene->error = CB_GameSceneErrorFatal;
             return gameScene;
         }
     }
