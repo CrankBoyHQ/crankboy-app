@@ -55,6 +55,19 @@ static int check_is_bundle(void)
 
     if (jrom.type == kJSONString)
         CB_App->bundled_rom = cb_strdup(jrom.data.stringval);
+        
+    json_value jdevice = json_get_table_value(jbundle, "device");
+    if (jdevice.type == kJSONString)
+    {
+        if (!strcasecmp(jdevice.data.stringval, "CGB") || !strcasecmp(jdevice.data.stringval, "GBC"))
+        {
+            CB_App->bundled_rom_cgb_mode = 2;
+        }
+        else if (!strcasecmp(jdevice.data.stringval, "DMG"))
+        {
+            CB_App->bundled_rom_cgb_mode = 1;
+        }
+    }
 
     if (CB_App->bundled_rom)
     {
@@ -500,7 +513,7 @@ void CB_init(void)
     
     if (CB_App->bundled_rom)
     {
-        CB_GameScene* gameScene = CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM");
+        CB_GameScene* gameScene = CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM", CB_App->bundled_rom_cgb_mode == 2);
         if (gameScene)
         {
             CB_present(gameScene->scene);
@@ -508,6 +521,7 @@ void CB_init(void)
         else
         {
             playdate->system->error("Failed to launch bundled ROM \"%s\"", CB_App->bundled_rom);
+            return;
         }
     }
 }

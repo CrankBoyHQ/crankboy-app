@@ -428,7 +428,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
 
-    gb_reset(context->gb);
+    gb_reset(context->gb, context->cgb_mode);
 
     context->gb->direct.joypad_interrupt_delay = -1;
 
@@ -531,7 +531,7 @@ static LCDBitmap* numbers_bmp = NULL;
 static uint32_t last_fps_digits;
 static uint8_t fps_draw_timer;
 
-CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
+CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
@@ -675,9 +675,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
     DTCM_VERIFY();
 
-    CB_GameSceneContext* context = cb_malloc(sizeof(CB_GameSceneContext));
+    CB_GameSceneContext* context = allocz(CB_GameSceneContext);
     static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available. Also during initialization.
     context->gb = &gb_fallback;
+    context->cgb_mode = cgb_mode;
 
     DTCM_VERIFY();
     memset(context->gb, 0, sizeof(gb_s));
@@ -718,13 +719,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
         gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
-            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context
+            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context, cgb_mode
         );
 
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
         CB_ASSERT((((uintptr_t)context->previous_lcd) & 7) == 0);
 
-        if (gb_ret == GB_INIT_NO_ERROR)
+        if (gb_ret == GB_INIT_NO_ERROR || gb_ret == GB_INIT_NO_ERROR_BUT_REQUIRES_CGB)
         {
             if (!CB_GameScene_complete_successful_init(gameScene))
             {
@@ -744,29 +745,21 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short)
 
                 playdate->system->logToConsole("gb context initialized.");
             }
-        }
-        else if (gb_ret == GB_INIT_CARTRIDGE_UNSUPPORTED)
-        {
-            gameScene->state = CB_GameSceneStateCGBConfirm;
-            playdate->system->logToConsole("Cartridge is CGB-only, requires user confirmation.");
+        
+            if (dtcm_enabled())
+            {
+                context->gb = dtcm_alloc(sizeof(gb_s));
+                memcpy(context->gb, &gb_fallback, sizeof(gb_s));
+            }
+            
+            itcm_core_init(context->gb->is_cgb_mode);
         }
         else
         {
             gameScene->state = CB_GameSceneStateError;
-            gameScene->error = CB_GameSceneErrorFatal;
-
-            playdate->system->logToConsole(
-                "%s:%i: Error initializing gb context", __FILE__, __LINE__
-            );
+            gameScene->error = gameScene->error = CB_GameSceneErrorFatal;
+            return gameScene;
         }
-        
-        if (dtcm_enabled())
-        {
-            context->gb = dtcm_alloc(sizeof(gb_s));
-            memcpy(context->gb, &gb_fallback, sizeof(gb_s));
-        }
-        
-        itcm_core_init(context->gb->is_cgb_mode);
     }
     else
     {
@@ -1204,15 +1197,13 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     else if (gb_err == GB_INVALID_READ)
     {
         #if 0
-        if (!preferences_experimental_cgb_mode)
-            playdate->system->logToConsole("Invalid read: addr %04x", val);
+        playdate->system->logToConsole("Invalid read: addr %04x", val);
         #endif
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
         #if 0
-        if (!preferences_experimental_cgb_mode)
-            playdate->system->logToConsole("Invalid write: addr %04x", val);
+        playdate->system->logToConsole("Invalid write: addr %04x", val);
         #endif
     }
     else
@@ -2417,125 +2408,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
     }
-    else if (gameScene->state == CB_GameSceneStateCGBConfirm)
-    {
-        bool should_boot_cgb = false;
-
-        if (preferences_skip_cgb_confirm)
-        {
-            should_boot_cgb = true;
-        }
-        else
-        {
-            gameScene->scene->preferredRefreshRate = 30;
-
-            if (gbScreenRequiresFullRefresh)
-            {
-                char* title = "Game Boy Color Required";
-                const char* messages[] = {
-                    "This game may not work correctly.", "", "Press Ⓐ to continue booting,",
-                    "or Ⓑ to return to the Library."
-                };
-                int msg_count = sizeof(messages) / sizeof(char*);
-
-                playdate->graphics->clear(kColorWhite);
-                int titleHeight = playdate->graphics->getFontHeight(CB_App->titleFont);
-                int messageHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
-                int lineSpacing = 2;
-                int titleToMessageSpacing = 12;
-                int messagesHeight = messageHeight * msg_count + lineSpacing * (msg_count - 1);
-                int containerHeight = titleHeight + titleToMessageSpacing + messagesHeight;
-                int titleX = (playdate->display->getWidth() -
-                              playdate->graphics->getTextWidth(
-                                  CB_App->titleFont, title, strlen(title), kUTF8Encoding, 0
-                              )) /
-                             2;
-                int titleY = (playdate->display->getHeight() - containerHeight) / 2;
-
-                playdate->graphics->setFont(CB_App->titleFont);
-                playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
-
-                int messageY = titleY + titleHeight + titleToMessageSpacing;
-                playdate->graphics->setFont(CB_App->bodyFont);
-                for (int i = 0; i < msg_count; i++)
-                {
-                    const char* msg = messages[i];
-                    int messageX = (playdate->display->getWidth() -
-                                    playdate->graphics->getTextWidth(
-                                        CB_App->bodyFont, msg, strlen(msg), kUTF8Encoding, 0
-                                    )) /
-                                   2;
-                    playdate->graphics->drawText(
-                        msg, strlen(msg), kUTF8Encoding, messageX, messageY
-                    );
-                    messageY += messageHeight + lineSpacing;
-                }
-            }
-
-            PDButtons pushed;
-            playdate->system->getButtonState(NULL, &pushed, NULL);
-
-            if (pushed & kButtonA)
-            {
-                should_boot_cgb = true;
-            }
-            else if (pushed & kButtonB)
-            {
-                CB_GameScene_didSelectLibrary(gameScene);
-                return;
-            }
-        }
-
-        // --- Perform In-Place Re-initialization if Required ---
-        if (should_boot_cgb)
-        {
-            CB_GameSceneContext* context = gameScene->context;
-            gb_s* gb = context->gb;
-
-            gb->direct.ignore_cgb_check = true;
-            
-            // ugh.
-            void* stored_prefs = preferences_store_subset(-1);
-            preferences_skip_cgb_confirm = true;
-
-            enum gb_init_error_e gb_ret = gb_init(
-                gb, context->wram, context->vram, gb->lcd, context->rom, context->rom_size,
-                gb_error, context
-            );
-            
-            preferences_restore_subset(stored_prefs);
-
-            if (gb_ret == GB_INIT_NO_ERROR)
-            {
-                if (!CB_GameScene_complete_successful_init(gameScene))
-                {
-                    gameScene->state = CB_GameSceneStateError;
-                    gameScene->error = CB_GameSceneErrorFatal;
-                }
-                else
-                {
-                    DTCM_VERIFY();
-                    audio_init(&gb->audio);
-                    CB_GameScene_apply_settings(gameScene, true);
-                    CB_reset_audio_sync_state();
-                    gb_init_lcd(gb);
-                    memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-
-                    gameScene->state = CB_GameSceneStateLoaded;
-                    playdate->system->logToConsole(
-                        "gb context re-initialized for CGB successfully."
-                    );
-                }
-            }
-            else
-            {
-                gameScene->state = CB_GameSceneStateError;
-                gameScene->error = CB_GameSceneErrorFatal;
-                playdate->system->logToConsole("Error re-initializing gb context for CGB.");
-            }
-            return;
-        }
-    }
     else if (gameScene->state == CB_GameSceneStateError)
     {
         // Check for pushed A or B button to return to the library
@@ -2766,8 +2638,7 @@ static void CB_GameScene_menu(void* object)
 
     playdate->system->removeAllMenuItems();
 
-    if (gameScene->state == CB_GameSceneStateError ||
-        gameScene->state == CB_GameSceneStateCGBConfirm)
+    if (gameScene->state == CB_GameSceneStateError)
     {
         if (!CB_App->bundled_rom)
         {
@@ -3204,6 +3075,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     struct StateHeader* header = (struct StateHeader*)buff;
     header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
     header->script = (preferences_script_support && context->scene->script);
+    header->cgb = context->gb->is_cgb_mode;
     header->script_save_data_size = script_size;
 
     // Write the state to the temporary file
@@ -3709,7 +3581,7 @@ static void CB_GameScene_free(void* object)
 
     CB_Scene_free(gameScene->scene);
 
-    gb_reset(context->gb);
+    gb_reset(context->gb, context->cgb_mode);
 
     cb_free(gameScene->rom_filename);
     cb_free(gameScene->save_filename);

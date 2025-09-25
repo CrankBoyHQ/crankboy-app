@@ -668,7 +668,7 @@ static void settings_action_save_state_possibly_warn(
         modal->width = 390;
         modal->height = 234;
         modal->margin = 12;
-        modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
+        //modal->warning = CB_MODAL_WARNING_BOTTOM_LR; // perhaps a little overzealous.
         CB_presentModal(modal->scene);
     }
     else
@@ -1281,23 +1281,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    // CGB support
-    entries[++i] = (OptionsMenuEntry){
-        .name = "CGB support",
-        .values = off_on_labels,
-        .description =
-            "Experimental mode\nfor emulating\nGame Boy Color.\nExpect glitches.\n \nOnly applies if game\nis CGB-compatible."
-        ,
-        .pref_var = &preferences_experimental_cgb_mode,
-        .max_value = 3,
-        .on_press = NULL
-    };
-
-    if (gameScene && !gameScene->cgb_compatible)
-    {
-        entries[i].locked = true;
-    }
-
     #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. Enabling\nmay impact performance."
 
     #ifndef NOLUA
@@ -1417,16 +1400,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_uncap_fps,
         .max_value = 2,
         .on_press = NULL
-    };
-
-    // skip cgb confirm
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Skip CGB warning",
-        .values = off_on_labels,
-        .description = "Directly launches Game\nBoy Color-only games,\nskipping the warning.\n \nNote:\nSome games may not work\ncorrectly, or run at all.",
-        .pref_var = &preferences_skip_cgb_confirm,
-        .max_value = 2,
-        .on_press = NULL,
     };
 
     if ((!gameScene && !preferences_per_game) || CB_App->bundled_rom)
