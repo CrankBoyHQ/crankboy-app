@@ -250,12 +250,6 @@ enum gb_error_e
     GB_INVALID_MAX
 };
 
-enum cgb_support_e {
-    GB_SUPPORT_DMG = 1,
-    GB_SUPPORT_CGB = 2,
-    GB_SUPPORT_DMG_AND_CGB = 3,
-};
-
 /**
  * Errors that may occur during library initialisation.
  */
@@ -329,6 +323,7 @@ void gb_step_cpu(gb_s* gb);
 void gb_run_frame(gb_s* gb);
 
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
+bool gb_get_rom_uses_battery(uint8_t* gb_rom);
 
 #ifdef PGB_IMPL
 
@@ -395,6 +390,20 @@ enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom)
     if (cgb_byte == 0xC0) return GB_SUPPORT_CGB;
     
     return GB_SUPPORT_DMG;
+}
+
+
+__section__(".rare")
+bool gb_get_rom_uses_battery(uint8_t* gb_rom)
+{
+    const uint8_t cart_battery[] =
+    {
+        0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, /* 00-0F */
+        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, /* 10-1F */
+        1, 0, 1                                         /* 20-2F */
+    };
+    
+    return cart_battery[gb_rom[0x0147]];
 }
 
 /**
@@ -4495,12 +4504,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
         1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, /* 10-1F */
         1, 0, 1                                         /* 20-2F */
     };
-    const uint8_t cart_battery[] =
-    {
-        0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, /* 00-0F */
-        1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, /* 10-1F */
-        1, 0, 1                                         /* 20-2F */
-    };
     const uint16_t num_rom_banks_mask[] =
     {
         2, 4, 8, 16, 32, 64, 128, 256, 512
@@ -4569,7 +4572,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     }
 
     gb->cart_ram = cart_ram[gb->gb_rom[mbc_location]];
-    gb->cart_battery = cart_battery[gb->gb_rom[mbc_location]];
+    gb->cart_battery = gb_get_rom_uses_battery(gb->gb_rom);
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
 

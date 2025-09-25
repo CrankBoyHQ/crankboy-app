@@ -880,14 +880,24 @@ __section__(".rare") void script_on_breakpoint(struct CB_GameScene* gameScene, i
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
 
-ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name)
+struct ScriptInfoArgs
 {
-    if (o_rom_name)
-        o_rom_name[0] = 0;
+    const char* game_path;
+    char* o_rom_name;
+    unsigned* o_battery;
+    enum cgb_support_e* o_cgb;
+};
+
+ScriptInfo* script_get_info_by_rom_path_(struct ScriptInfoArgs* args)
+{
+    if (!args) return NULL;
+    
+    if (args->o_rom_name)
+        args->o_rom_name[0] = 0;
 
     // first, open the ROM to read the game name
     size_t len;
-    SDFile* file = playdate->file->open(game_path, kFileReadDataOrBundle);
+    SDFile* file = playdate->file->open(args->game_path, kFileReadDataOrBundle);
     if (!file)
         return NULL;
 
@@ -903,9 +913,19 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name
     char title[17];
     gb_get_rom_name(buff, title);
 
-    if (o_rom_name)
+    if (args->o_rom_name)
     {
-        memcpy(o_rom_name, title, sizeof(title));
+        memcpy(args->o_rom_name, title, sizeof(title));
+    }
+    
+    if (args->o_cgb)
+    {
+        *args->o_cgb = gb_get_models_supported(buff);
+    }
+    
+    if (args->o_battery)
+    {
+        *args->o_battery = gb_get_rom_uses_battery(buff);
     }
 
     ScriptInfo* info = get_script_info(title);
@@ -915,12 +935,24 @@ ScriptInfo* script_get_info_by_rom_path_(const char* game_path, char* o_rom_name
 
 ScriptInfo* script_get_info_by_rom_path(const char* game_path)
 {
-    return (ScriptInfo*)call_with_main_stack_2(script_get_info_by_rom_path_, game_path, NULL);
+    struct ScriptInfoArgs args = {
+        .game_path=game_path,
+        .o_rom_name=NULL,
+        .o_battery=NULL,
+        .o_cgb=NULL,
+    };
+    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, &args);
 }
 
-ScriptInfo* script_get_info_by_rom_path_and_get_header_name(const char* game_path, char* o_rom_name)
+ScriptInfo* script_get_info_by_rom_path_and_get_header_info(const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery)
 {
-    return (ScriptInfo*)call_with_main_stack_2(script_get_info_by_rom_path_, game_path, o_rom_name);
+    struct ScriptInfoArgs args = {
+        .game_path=game_path,
+        .o_rom_name=o_rom_name,
+        .o_battery=o_battery,
+        .o_cgb=o_cgb,
+    };
+    return (ScriptInfo*)call_with_main_stack_1(script_get_info_by_rom_path_, &args);
 }
 
 bool script_exists(const char* game_path)

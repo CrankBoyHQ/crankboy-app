@@ -768,6 +768,25 @@ cleanup:
     return success;
 }
 
+uint32_t patch_hash(SoftPatch* patchlist)
+{
+    uint32_t out = 0;
+    unsigned npatches = 0;
+    for (const SoftPatch* patch = patchlist; patch && patch->fullpath; patch++)
+    {
+        if (patch->state != PATCH_ENABLED)
+            continue;
+        
+        ++npatches;
+        if (patch->basename)
+        {
+            out ^= crc32_for_string(patch->basename);
+        }
+    }
+    
+    return out + npatches;
+}
+
 bool patch_rom(void** rom, size_t* romsize, const SoftPatch* patchlist)
 {
     bool success = true;

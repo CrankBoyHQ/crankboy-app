@@ -48,6 +48,14 @@ typedef struct
     atomic_uint read_pos;
 } AudioSyncBuffer;
 
+enum cgb_support_e {
+    // these enum values are cached to disk,
+    // so don't modify existing ones.
+    GB_SUPPORT_DMG = 1,
+    GB_SUPPORT_CGB = 2,
+    GB_SUPPORT_DMG_AND_CGB = 3,
+};
+
 // Defines the main stack size. This value provides a necessary safety
 // margin to prevent intermittent crashes. It was increased to 0x2700
 // specifically to ensure stability in games like Pokemon Gold/Silver,
@@ -65,6 +73,10 @@ typedef struct
 
     // CRC32 of rom's contents
     uint32_t crc32;
+    
+    // TODO: add these
+    bool rom_has_battery;
+    enum cgb_support_e rom_cgb_support;
 
     // common database name, for thumbnail matching etc.
     char* name_database;

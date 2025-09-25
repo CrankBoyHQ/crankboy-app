@@ -412,33 +412,38 @@ static void _launch_game_prompt_cgb(CB_Game* game)
     }
     else
     {
-        size_t size;
-        char* romhead = cb_read_partial_file(game->fullpath, 0x200, &size, kFileReadData | kFileRead);
-        if (!romhead || size < 0x200)
+        const char* options[] = {"DMG", "CGB", NULL};
+        const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
+        
+        switch (game->names->rom_cgb_support)
         {
-            CB_Modal* modal = CB_Modal_new(
-                "Failed to read ROM header.",
-                NULL, NULL, NULL
-            );
-            
-            CB_presentModal(modal->scene);
-        }
-        else
-        {
-            const char* options[] = {"DMG", "CGB", NULL};
-            const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
-            
-            switch (gb_get_models_supported((uint8_t*)romhead))
+        default:
+            playdate->system->logToConsole("WARNING: unexpected game platform (0x%x); launching as DMG", game->names->rom_cgb_support);
+            launch_dmg_or_cgb(game, 0);
+            break;
+        case GB_SUPPORT_DMG:
+            launch_dmg_or_cgb(game, 0);
+            break;
+        case GB_SUPPORT_CGB:
             {
-            default:
-            case GB_SUPPORT_DMG:
-                launch_dmg_or_cgb(game, 0);
-                break;
-            case GB_SUPPORT_CGB:
+                CB_Modal* modal = CB_Modal_new(
+                    "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try experimental CGB mode.",
+                    options, (void*)launch_dmg_or_cgb, game
+                );
+                
+                modal->width = 380;
+                modal->height = 220;
+                
+                CB_presentModal(modal->scene);
+            }
+            break;
+        case GB_SUPPORT_DMG_AND_CGB:
+            {
+                if (preferences_prompt_if_cgb_optional)
                 {
                     CB_Modal* modal = CB_Modal_new(
-                        "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try experimental CGB mode.",
-                        options, (void*)launch_dmg_or_cgb, game
+                        "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
+                        options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
                     );
                     
                     modal->width = 380;
@@ -446,31 +451,13 @@ static void _launch_game_prompt_cgb(CB_Game* game)
                     
                     CB_presentModal(modal->scene);
                 }
-                break;
-            case GB_SUPPORT_DMG_AND_CGB:
+                else
                 {
-                    if (preferences_prompt_if_cgb_optional)
-                    {
-                        CB_Modal* modal = CB_Modal_new(
-                            "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
-                            options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
-                        );
-                        
-                        modal->width = 380;
-                        modal->height = 220;
-                        
-                        CB_presentModal(modal->scene);
-                    }
-                    else
-                    {
-                        launch_dmg_or_cgb(game, 0);
-                    }
+                    launch_dmg_or_cgb(game, 0);
                 }
-                break;
             }
+            break;
         }
-        
-        cb_free(romhead);
     }
     
     script_info_free(info);
