@@ -157,7 +157,7 @@ int full_mkdir(const char* path);
 
 // result must be user-free'd. returns NULL on error.
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
-char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags);
+char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail);
 
 // returns false on error
 bool cb_write_entire_file(const char* path, const void* data, size_t size);
