@@ -224,8 +224,7 @@ const char* get_pdboot_name_and_version(void);
 // indicates sram file version.
 // If not present at end of file, it's an old version or from another emulator.
 // Can adjust the second-to-last byte to indicate version, perhaps.
-#define SRAM_MAGIC_NUMBER 0x4352414E4B420059
-
+#define SRAM_MAGIC_NUMBER 0x5900424B4E415243
 // for playdate extension crank menu IO register;
 // how far one has to turn the crank before getting to the next menu item
 #define CRANK_MENU_DELTA_BINANGLE 0x2800

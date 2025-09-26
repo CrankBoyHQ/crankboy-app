@@ -234,7 +234,7 @@ static void confirm_download(CB_HomebrewHubScene* hbs, int option)
     // download file
     if (option == 1)
     {
-        http_safe_replace_get(&hbs->active_http_connection, CB_App->hbApiDomain, hbs->urlpath, "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs);
+        http_safe_replace_get(hbs->active_http_connection, CB_App->hbApiDomain, hbs->urlpath, "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs);
     }
     cb_free(hbs->urlpath);
 }
@@ -247,7 +247,7 @@ static void context_list_files_update(CB_HomebrewHubScene* hbs, HomebrewHubConte
     
     if (a_pressed)
     {
-        if (http_safe_in_progress(&hbs->active_http_connection_2))
+        if (http_safe_in_progress(hbs->active_http_connection_2))
         {
             // this seems to prevent a crash that occurs when two downloads are happening simultaneously
             CB_presentModal(
@@ -413,7 +413,7 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
         context->show_image = true;
         int selected = context->list->selectedItem - 1;
         unsigned dlii = (context->i << 16) | selected;
-        if ((dlii != hbs->download_image_index || (!http_safe_in_progress(&hbs->active_http_connection_2) && !hbs->download_image)))
+        if ((dlii != hbs->download_image_index || (!http_safe_in_progress(hbs->active_http_connection_2) && !hbs->download_image)))
         {
             hbs->download_image_index = dlii;
             if (hbs->download_image)
@@ -461,7 +461,7 @@ static void context_list_search_update(CB_HomebrewHubScene* hbs, HomebrewHubCont
                                 
                                 // get image
                                 http_safe_replace_get(
-                                    &hbs->active_http_connection_2,
+                                    hbs->active_http_connection_2,
                                     CB_App->hbApiDomain,
                                     urlpath,
                                     "to retrieve cover art",
@@ -673,7 +673,7 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
         hbs->download_image = 0;
     }
     
-    http_safe_replace_get(&hbs->active_http_connection, CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
+    http_safe_replace_get(hbs->active_http_connection, CB_App->hbApiDomain, urlpath, "to browse homebrew", (void*)http_search_cb, 15 * 1000, hbs);
     
     cb_free(urlpath);
 }
@@ -804,7 +804,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     else if (CB_App->buttons_pressed & kButtonB)
     {
         --hbs->target_context_depth;
-        http_safe_cancel(&hbs->active_http_connection);
+        http_safe_cancel(hbs->active_http_connection);
     }
     
     bool isAnimating = (hbs->context_depth_p != hbs->target_context_depth);
@@ -916,7 +916,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             kBitmapUnflipped
         );
     }
-    else if (http_safe_in_progress(&hbs->active_http_connection) || (http_safe_in_progress(&hbs->active_http_connection_2)))
+    else if (http_safe_in_progress(hbs->active_http_connection) || (http_safe_in_progress(hbs->active_http_connection_2)))
     {
         draw_spinny((kDividerX + LCD_COLUMNS)/2, 180, 34);
     }
@@ -926,8 +926,8 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
 {
-    http_safe_cancel(&hbs->active_http_connection);
-    http_safe_cancel(&hbs->active_http_connection_2);
+    http_safe_free(hbs->active_http_connection);
+    http_safe_free(hbs->active_http_connection_2);
     playdate->system->setAutoLockDisabled(false);
 
     CB_Scene_free(hbs->scene);
@@ -952,6 +952,9 @@ CB_HomebrewHubScene* CB_HomebrewHubScene_new(
     hbs->scene = scene;
     hbs->option_hold_time = 0.0f;
     scene->managedObject = hbs;
+    
+    hbs->active_http_connection = http_safe_new();
+    hbs->active_http_connection_2 = http_safe_new();
 
     hbs->cached_hint_key = -2;
 

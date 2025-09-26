@@ -1,6 +1,22 @@
 #include "http_safe.h"
 #include "utility.h"
 
+HTTPSafe* http_safe_new(void)
+{
+    return allocz(HTTPSafe);
+}
+void http_safe_free(HTTPSafe* safe)
+{
+    if (safe->handle == 0)
+    {
+        free(safe);
+    }
+    else
+    {
+        safe->tombstone = true;
+    }
+}
+
 void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
 {
     http_result_cb cb = safe->cb;
@@ -10,7 +26,7 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
     safe->cb = NULL;
     safe->ud = NULL;
     
-    if (!safe->enqueued)
+    if (!safe->enqueued && !safe->tombstone)
     {
         cb(flags, data, data_len, ud);
     }
@@ -23,13 +39,21 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
         safe->enqueued = false;
         memset(&safe->queued, 0, sizeof(safe->queued));
         
-        http_safe_replace_get(safe, q.domain, q.path, q.reason, q.cb, q.timeout_ms, q.ud);
+        if (!safe->tombstone)
+        {
+            http_safe_replace_get(safe, q.domain, q.path, q.reason, q.cb, q.timeout_ms, q.ud);
+        }
         
         cb(HTTP_CANCELLED, NULL, 0, ud);
         
         cb_free(q.domain);
         cb_free(q.path);
         cb_free(q.reason);
+        
+        if (safe->tombstone)
+        {
+            cb_free(safe);
+        }
     }
 }
 
