@@ -1195,7 +1195,7 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
                     if (pds->game->names->rom_has_battery)
                     {
                         return aprintf(
-                            PATCH_MANAGE_MSG "\n \nPatch code: %08X\n \nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust settings > Save Slot.",
+                            PATCH_MANAGE_MSG "\n \nPatch code: %08X\n \nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust Save Slot in settings.",
                             hash
                         );
                     } else {
