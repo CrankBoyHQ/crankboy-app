@@ -787,9 +787,7 @@ unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene)
 
 void script_add_settings(ScriptState* state)
 {
-    if (!state);
-    
-    if (state->c && state->c->on_menu)
+    if (state && state->c && state->c->on_menu)
     {
         state->c->on_settings(state->ud);
     }
