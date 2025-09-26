@@ -24,6 +24,7 @@
 #include "game_scene.h"
 #include "info_scene.h"
 #include "settings_scene.h"
+#include "softpatch.h"
 
 #include <string.h>
 
@@ -396,8 +397,10 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
     }
 }
 
-static void _launch_game_prompt_cgb(CB_Game* game)
+static void launch_game_prompt_cgb(CB_Game* game, int launch)
 {
+    if (launch != 1) return;
+    
     // check if game would use script
     ScriptInfo* info = get_script_info(game->names->name_header);
     void* prefs = preferences_store_subset(-1);
@@ -461,6 +464,99 @@ static void _launch_game_prompt_cgb(CB_Game* game)
     }
     
     script_info_free(info);
+}
+
+static void _launch_game_check_sram(CB_Game* game)
+{
+    if (game->names->rom_has_battery)
+    {
+        uint32_t hash = 0;
+        SoftPatch* patches = list_patches(game->fullpath, NULL);
+        if (patches)
+        {
+            hash = patch_hash(patches);
+            free_patches(patches);
+        }
+        
+        // warn if potential save hazard
+        void* prefs = preferences_store_subset(~(PREFBIT_save_slot | PREFBIT_script_support));
+        load_game_prefs(game->fullpath, false);
+        preferences_restore_subset(prefs);
+        
+        char* save_fname = cb_save_filename(game->fullpath, false);
+        
+        const char* options[] = {
+            "Cancel",
+            "Launch",
+            NULL
+        };
+        
+        size_t size;
+        char* data = call_with_main_stack_5(cb_read_partial_file, save_fname, 0x20, &size, kFileReadData, true);
+        cb_free(save_fname);
+        if (!data || size != 0x20)
+        {
+            launch_game_prompt_cgb(game, 1);
+        }
+        else
+        {
+            uint64_t magic = *(uint64_t*)(void*)&data[0x18];
+            if (magic != SRAM_MAGIC_NUMBER)
+            {
+                launch_game_prompt_cgb(game, 1);
+            }
+            else
+            {
+                uint32_t stored_hash = *(uint32_t*)(void*)&data[14];
+                uint32_t flags = *(uint32_t*)(void*)&data[0x10];
+                bool script = flags & 1;
+                
+                if (stored_hash != hash)
+                {
+                    CB_Modal* modal;
+                    if (!stored_hash)
+                    {
+                        modal = CB_Modal_new(
+                            "You have softpatches enabled, but this game's save data comes from an unpatched ROM. To keep the save data separate, you may wish to change the save slot in settings before launching.",
+                            options, (void*)launch_game_prompt_cgb, game
+                        );
+                    }
+                    else if (!hash)
+                    {
+                        char* msg = aprintf("You have no softpatches on, but this game's save data comes from a patched ROM (code: %08X.) To keep the save data separate, you may wish to change the save slot in settings before launching.", stored_hash);
+                        modal = CB_Modal_new(
+                            msg,
+                            options, (void*)launch_game_prompt_cgb, game
+                        );
+                        cb_free(msg);
+                    }
+                    else
+                    {
+                        char* msg = aprintf("This game's save data comes from a ROM with different softpatches applied (saved code: %08X; your patches: %08X) Consider changing the save slot in settings to keep your save data separate.", stored_hash, hash);
+                        modal = CB_Modal_new(
+                            msg,
+                            options, (void*)launch_game_prompt_cgb, game
+                        );
+                        cb_free(msg);
+                    }
+                    modal->width = 390;
+                    modal->height = 210;
+                    modal->icon_flashing = true;
+                    modal->warning = CB_MODAL_WARNING_TOP;
+                    CB_presentModal(modal->scene);
+                }
+                // TODO: script enabled disparity
+                else
+                {
+                    launch_game_prompt_cgb(game, 1);
+                }
+            }
+        }
+    }
+    else
+    {
+        launch_game_prompt_cgb(game, 1);
+    }
 }
 
 static void launch_game(void* ud, int option)
@@ -530,7 +626,7 @@ static void launch_game(void* ud, int option)
     case 3:  // launch game normally (don't alter settings)
     launch_normal:
     {
-        _launch_game_prompt_cgb(game);
+        _launch_game_check_sram(game);
     }
     break;
 

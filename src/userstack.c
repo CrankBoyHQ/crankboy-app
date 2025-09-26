@@ -179,6 +179,18 @@ void* call_with_main_stack_4_impl(user_stack_fn ufn, void* a, void* b, void* c, 
     return call_with_main_stack_2(call_with_main_stack_4_helper, ufn, &args[0]);
 }
 
+static void* call_with_main_stack_5_helper(void* ufn, void** args)
+{
+    void* (*fn)(void*, void*, void*, void*, void*) = ufn;
+    return fn(args[0], args[1], args[2], args[3], args[4]);
+}
+
+void* call_with_main_stack_5_impl(user_stack_fn ufn, void* a, void* b, void* c, void* d, void* e)
+{
+    void* args[] = {a, b, c, d, e};
+    return call_with_main_stack_2(call_with_main_stack_5_helper, ufn, &args[0]);
+}
+
 #else
 
 void init_user_stack(void)

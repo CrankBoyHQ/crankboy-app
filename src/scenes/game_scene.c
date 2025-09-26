@@ -1085,13 +1085,24 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
         playdate->file->write(f, gb->gb_cart_ram, (unsigned int)sram_len);
     }
 
-    if (gameScene->cartridge_has_battery)
-    {
-        playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
-        unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
-        gameScene->last_save_time = now;
-        playdate->file->write(f, &now, sizeof(now));
-    }
+    // write rtc
+    playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
+    
+    // write timestamp
+    unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+    gameScene->last_save_time = now;
+    playdate->file->write(f, &now, sizeof(now));
+    
+    // write flags
+    uint32_t flags = !!gameScene->script;
+    playdate->file->write(f, &flags, 1);
+    
+    // write patch hash
+    playdate->file->write(f, &gameScene->patches_hash, sizeof(gameScene->patches_hash));
+    
+    // write magic number (must be at end of file)
+    uint64_t magic = SRAM_MAGIC_NUMBER;
+    playdate->file->write(f, &magic, sizeof(magic));
 
     playdate->file->close(f);
 
