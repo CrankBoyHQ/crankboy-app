@@ -12,6 +12,7 @@ typedef struct HTTPSafe
     void* ud;
     
     bool enqueued;
+    bool tombstone; // slate for deletion
     // bool queued_https;
     
     struct HTTPQueued
@@ -24,6 +25,9 @@ typedef struct HTTPSafe
         unsigned timeout_ms;
     } queued;
 } HTTPSafe;
+
+HTTPSafe* http_safe_new(void);
+void http_safe_free(HTTPSafe* safe);
 
 void http_safe_replace_get(
     HTTPSafe* safe, const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms, void* ud
