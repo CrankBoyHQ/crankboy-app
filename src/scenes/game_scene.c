@@ -1095,7 +1095,7 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
     
     // write flags
     uint32_t flags = !!gameScene->script;
-    playdate->file->write(f, &flags, 1);
+    playdate->file->write(f, &flags, sizeof(flags));
     
     // write patch hash
     playdate->file->write(f, &gameScene->patches_hash, sizeof(gameScene->patches_hash));

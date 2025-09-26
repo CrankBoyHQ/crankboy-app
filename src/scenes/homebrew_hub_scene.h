@@ -39,8 +39,8 @@ typedef struct CB_HomebrewHubScene
     CB_Game* game;
     struct CB_SettingsScene* settingsScene;
 
-    HTTPSafe active_http_connection;
-    HTTPSafe active_http_connection_2;
+    HTTPSafe* active_http_connection;
+    HTTPSafe* active_http_connection_2;
     
     int max_pages;
     

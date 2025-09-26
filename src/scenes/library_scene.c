@@ -507,7 +507,7 @@ static void _launch_game_check_sram(CB_Game* game)
             }
             else
             {
-                uint32_t stored_hash = *(uint32_t*)(void*)&data[14];
+                uint32_t stored_hash = *(uint32_t*)(void*)&data[0x14];
                 uint32_t flags = *(uint32_t*)(void*)&data[0x10];
                 bool script = flags & 1;
                 
