@@ -8,6 +8,7 @@
     "- Missiles controlled by crank\n" \
     "- Start/select not needed anymore\n" \
     "- Optional: cycle collected beams with crank\n" \
+    "\nNot likely to be compatible with extensive ROMhacks.\n" \
     "\nCreated by: NaOH (Sodium Hydroxide)\n\n" \
     "Special thanks: Metroid Reverse Engineering Team" \
 
