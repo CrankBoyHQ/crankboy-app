@@ -811,7 +811,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (audio_settings_changed)
     {
-        int headphones;
+        int headphones = 0;
         playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
         reconfigure_audio_source(gameScene, headphones);
     }
