@@ -1,3 +1,5 @@
+#ifndef __APPLE__ /* compiler struggles with this file for some reason */
+
 #include "../scriptutil.h"
 
 #include "met2.inc"
@@ -2307,3 +2309,4 @@ C_SCRIPT{
     .serialize = (CS_Serialize)serialize,
     .deserialize = (CS_Deserialize)deserialize,
 };
+#endif
