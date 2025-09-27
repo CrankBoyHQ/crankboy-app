@@ -373,7 +373,7 @@ typedef struct ScriptData
     LCDBitmap** glyphs;
     size_t glyph_c;
     
-    uint8_t* special_base_tiles;
+    uint16_t* special_base_tiles;
     uint8_t* halftiles;
     uint8_t* area_explored;
     uint8_t* map_explored;
@@ -801,7 +801,7 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
     cb_free(data->special_base_tiles);
     cb_free(data->area_explored);
     data->halftiles = mallocz(area->w * area->h * 4 * sizeof(data->halftiles[0]));
-    data->special_base_tiles = mallocz(area->w * area->h);
+    data->special_base_tiles = mallocz(area->w * area->h * sizeof(uint16_t));
     data->area_explored = mallocz(area->w * area->h);
     
     for (int i = 0; i < area->special_tile_c; ++i)
@@ -812,10 +812,10 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
         
         if (special_tile->type < TILE_REPLACEMENTS)
         {
-            data->special_base_tiles[y*area->w + x] = special_tile->type;
+            data->special_base_tiles[y*area->w + x] = special_tile->type | ((unsigned)special_tile->ridx << 8);
             if (special_tile->dark)
             {
-                data->special_base_tiles[y*area->w + x] = TILE_DARK;
+                data->special_base_tiles[y*area->w + x] = TILE_DARK | ((unsigned)special_tile->ridx << 8);
             }
         }
     }
@@ -843,7 +843,9 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                     if (read_bits(room_embeddings, &offset, 1))
                     {
                         int tile_idx = (y + 1)*(room->w+2) + (x+1);
-                        int special_tile = data->special_base_tiles[(y + room->area_y)*area->w + (x + room->area_x)];
+                        uint16_t special_tile_tr = data->special_base_tiles[(y + room->area_y)*area->w + (x + room->area_x)];
+                        uint8_t special_tile = special_tile_tr & 0xFF;
+                        uint8_t special_tile_ridx = special_tile_tr >> 8;
                         if (special_tile == TILE_EMPTY)
                         {
                             tile_present[tile_idx] = 0;
@@ -852,9 +854,13 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                         {
                             tile_present[tile_idx] = 1;
                         }
-                        else
+                        else if (special_tile_ridx == ridx)
                         {
                             tile_present[tile_idx] = special_tile;
+                        }
+                        else
+                        {
+                            tile_present[tile_idx] = 1;
                         }
                         
                         if (get_map_explored(data, em_bank, em_x + x, em_y + y) && tile_present[tile_idx])
@@ -1264,7 +1270,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->door_transition_suppress_map_update -= frames_elapsed;
     }
     
-    #if 0
+    #if 1
     // hp hack
     ram_poke(0xD051, 0x99);
     #endif
@@ -1800,6 +1806,9 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
             
             // expand so that the map is visible to the right of the hidden area
             w = MIN(full_w, area->w - x);
+            
+            w = MIN(w, (LCD_COLUMNS-dst_x)/2/HALFTILE_W);
+            h = MIN(w, (LCD_ROWS-dst_y)/2/HALFTILE_H);
             
             draw_map(buff, stride, data, data->map_area, dst_x, dst_y, w, h, x, y);
             
