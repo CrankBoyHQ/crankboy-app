@@ -3585,6 +3585,7 @@ static void CB_GameScene_free(void* object)
     preferences_per_game = 0;
     preferences_save_state_slot = 0;
     gb_save_to_disk(context->gb);
+    preferences_save_slot = 0;
 
     if (gameScene->menuImage)
     {
