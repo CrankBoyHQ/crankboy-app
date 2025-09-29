@@ -904,7 +904,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "Save Data",
             .values = save_slot_labels,
             .description =
-                "Select which save file \nto use for the ROM's internal\n save data.\n \nIf you softpatch overhaul\nhacks, you may wish to\nto use different saves\nfor each one.\n \nNote: \"save states\" are\na different concept.\n",
+                "Select which save file \nto use for the ROM's\ninternal save data.\n \nIf you apply softpatches,\nyou may wish to use\ndifferent saves for each.\n \nNote: \"save states\" are\na different concept.\n",
             .pref_var = &preferences_save_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .rebuild_when_changed = 1,
