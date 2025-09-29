@@ -77,8 +77,8 @@ extern preferences_bitfield_t prefs_locked_by_script;
 // all the preferences that need the game to restart to apply
 #define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support | PREFBIT_save_slot)
 
-// TODO: change this to 'always global'? requires some code change to enforce these semantics.
-#define PREFBITS_LIBRARY_ONLY                                                  \
+// these preferences are always saved globally, regardless of if global/per-game selected
+#define PREFBITS_ALWAYS_GLOBAL                                                  \
     (PREFBIT_ui_sounds | PREFBIT_display_name_mode | PREFBIT_display_article | \
      PREFBIT_display_sort | PREFBIT_library_remember_selection | \
      PREFBIT_prompt_if_cgb_optional)
