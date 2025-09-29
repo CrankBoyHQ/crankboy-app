@@ -710,6 +710,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     if (!htimg) return NULL;
     
     force_pref(crank_mode, CRANK_MODE_OFF);
+    force_pref(crank_undock_button, PREF_BUTTON_NONE);
+    force_pref(crank_dock_button, PREF_BUTTON_NONE);
     
     SET_BREAKPOINTS(0);
     
