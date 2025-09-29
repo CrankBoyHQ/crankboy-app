@@ -144,8 +144,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->repeatIncrementTime = 0.0f;
     settingsScene->repeatTime = 0.0f;
 
-    // Store the true global value for UI sounds before any potential changes.
-    int global_ui_sounds = preferences_ui_sounds;
+    void* always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
 
     if (libraryScene)
     {
@@ -158,7 +157,6 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             settingsScene->selected_game_settings_path =
                 cb_game_config_path(selectedGame->fullpath);
             
-            void* always_global = preferences_store_subset(PREFBITS_LIBRARY_ONLY);
             void* stored_globals = preferences_store_subset(~PREFBITS_NEVER_GLOBAL);
 
             if (settingsScene->selected_game_settings_path)
@@ -182,7 +180,6 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             if (always_global)
             {
                 preferences_restore_subset(always_global);
-                cb_free(always_global);
             }
         }
     }
@@ -251,7 +248,11 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
 
     settingsScene->header_animation_p = preferences_per_game;
 
-    preferences_ui_sounds = global_ui_sounds;
+    if (always_global)
+    {
+        preferences_restore_subset(always_global);
+        cb_free(always_global);
+    }
 
     CB_Scene_refreshMenu(scene);
     int t_since = (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
@@ -340,11 +341,11 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             if (game_settings_path)
             {
                 result = preferences_save_to_disk(
-                    game_settings_path, PREFBITS_LIBRARY_ONLY
+                    game_settings_path, PREFBITS_ALWAYS_GLOBAL
                 );
             }
             
-            result = preferences_save_to_disk(CB_globalPrefsPath, ~PREFBITS_LIBRARY_ONLY | PREFBITS_NEVER_GLOBAL);
+            result = preferences_save_to_disk(CB_globalPrefsPath, ~PREFBITS_ALWAYS_GLOBAL | PREFBITS_NEVER_GLOBAL);
         }
         else
         {
@@ -360,7 +361,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
     {
         if (preferences_per_game)
             result = preferences_save_to_disk(
-                game_settings_path, prefs_locked_by_script | PREFBITS_LIBRARY_ONLY
+                game_settings_path, prefs_locked_by_script | PREFBITS_ALWAYS_GLOBAL
             );
         else
         {
@@ -368,7 +369,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
                 CB_globalPrefsPath,
 
                 PREFBITS_NEVER_GLOBAL
-                | PREFBITS_LIBRARY_ONLY
+                | PREFBITS_ALWAYS_GLOBAL
                 // these prefs are locked, so we shouldn't be able to change them
                 | prefs_locked_by_script
             );
@@ -378,7 +379,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
                 // also save that preferences are always per-game,
                 // such as the save slot
                 result = preferences_save_to_disk(
-                    game_settings_path, ~(PREFBITS_NEVER_GLOBAL) | PREFBITS_LIBRARY_ONLY
+                    game_settings_path, ~(PREFBITS_NEVER_GLOBAL) | PREFBITS_ALWAYS_GLOBAL
                 );
             }
         }
