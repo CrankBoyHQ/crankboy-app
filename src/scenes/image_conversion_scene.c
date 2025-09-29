@@ -35,9 +35,9 @@ static void on_list_file(const char* fname, void* ud);
 
 static const int matrix_floyd_steinberg_divisor = 16;
 static const int matrix_floyd_steinberg_width = 3;
-static const int matrix_floyd_steinberg_height = 2;
 static const int matrix_floyd_steinberg_x = 1;
 
+#define MATRIX_FLOYD_STEINBERG_HEIGHT 2
 #define FW_BITS 10
 #define FW_ONE (1 << FW_BITS)
 #define FW_HALF (FW_ONE / 2)
@@ -89,7 +89,7 @@ __space bool errdiff_dither(
     const int* const matrix = matrix_floyd_steinberg;
     const int mdiv = matrix_floyd_steinberg_divisor;
     const int mw = matrix_floyd_steinberg_width;
-    const int mh = matrix_floyd_steinberg_height;
+    const int mh = MATRIX_FLOYD_STEINBERG_HEIGHT;
     const int mx = matrix_floyd_steinberg_x;
 
     fw_t lo, hi, avg;
@@ -155,7 +155,7 @@ __space bool errdiff_dither(
 
     for (unsigned y = 0; y < out_height; ++y)
     {
-        int err_row_idx[mh];
+        int err_row_idx[MATRIX_FLOYD_STEINBERG_HEIGHT];
         for (int i = 0; i < mh; ++i)
             err_row_idx[i] = (error_row = i) % mh;
         error_row = (error_row + 1) % mh;
@@ -488,14 +488,17 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
     {
         cb_draw_logo_screen_to_buffer(CB_App->subheadFont, "Scanning for new images...");
 
-        playdate->file->listfiles(cb_gb_directory_path(CB_coversPath), on_list_file, convScene, false);
+        playdate->file->listfiles(
+            cb_gb_directory_path(CB_coversPath), on_list_file, convScene, false
+        );
 
         convScene->state = kStateDone;
 
         // check if any files are in the data directory.
         for (int i = 0; i < convScene->files_count; ++i)
         {
-            char* fpath = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), convScene->files[i]);
+            char* fpath =
+                aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), convScene->files[i]);
             if (fpath)
             {
                 if (cb_file_exists(fpath, kFileReadData))
