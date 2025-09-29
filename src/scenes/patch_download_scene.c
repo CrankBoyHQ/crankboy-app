@@ -1213,7 +1213,7 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         break;
     case 1:
         return aprintf(
-            "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)",
+            "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n \nRequires internet.",
             pds->game->names->name_short_leading_article
         );
         break;
