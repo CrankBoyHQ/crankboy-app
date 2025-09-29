@@ -375,7 +375,7 @@ typedef struct ScriptData
     LCDBitmap** glyphs;
     size_t glyph_c;
     
-    uint16_t* special_base_tiles;
+    uint32_t* special_base_tiles;
     uint8_t* halftiles;
     uint8_t* area_explored;
     uint8_t* map_explored;
@@ -803,7 +803,7 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
     cb_free(data->special_base_tiles);
     cb_free(data->area_explored);
     data->halftiles = mallocz(area->w * area->h * 4 * sizeof(data->halftiles[0]));
-    data->special_base_tiles = mallocz(area->w * area->h * sizeof(uint16_t));
+    data->special_base_tiles = mallocz(area->w * area->h * sizeof(uint32_t));
     data->area_explored = mallocz(area->w * area->h);
     
     for (int i = 0; i < area->special_tile_c; ++i)
@@ -814,10 +814,19 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
         
         if (special_tile->type < TILE_REPLACEMENTS)
         {
-            data->special_base_tiles[y*area->w + x] = special_tile->type | ((unsigned)special_tile->ridx << 8);
+            unsigned stv = special_tile->type | ((unsigned)special_tile->ridx << 8);
             if (special_tile->dark)
             {
-                data->special_base_tiles[y*area->w + x] = TILE_DARK | ((unsigned)special_tile->ridx << 8);
+                stv = TILE_DARK | ((unsigned)special_tile->ridx << 8);
+            }
+            
+            if (data->special_base_tiles[y*area->w + x] == 0)
+            {
+                data->special_base_tiles[y*area->w + x] = stv;
+            }
+            else
+            {
+                data->special_base_tiles[y*area->w + x] |= stv << 16;
             }
         }
     }
@@ -845,9 +854,11 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                     if (read_bits(room_embeddings, &offset, 1))
                     {
                         int tile_idx = (y + 1)*(room->w+2) + (x+1);
-                        uint16_t special_tile_tr = data->special_base_tiles[(y + room->area_y)*area->w + (x + room->area_x)];
+                        uint32_t special_tile_tr = data->special_base_tiles[(y + room->area_y)*area->w + (x + room->area_x)];
                         uint8_t special_tile = special_tile_tr & 0xFF;
-                        uint8_t special_tile_ridx = special_tile_tr >> 8;
+                        uint8_t special_tile_b = (special_tile_tr >> 16) & 0xFF;
+                        uint8_t special_tile_ridx = (special_tile_tr >> 8) & 0xFF;
+                        uint8_t special_tile_ridx_b = special_tile_tr >> 24;
                         if (special_tile == TILE_EMPTY)
                         {
                             tile_present[tile_idx] = 0;
@@ -859,6 +870,10 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
                         else if (special_tile_ridx == ridx)
                         {
                             tile_present[tile_idx] = special_tile;
+                        }
+                        else if (special_tile_ridx_b == ridx)
+                        {
+                            tile_present[tile_idx] = special_tile_b;
                         }
                         else
                         {
