@@ -158,7 +158,6 @@ typedef struct CB_Application
     
     bool hbApiUseHTTPS : 1;
     
-    char* directory;
     char* hbApiDomain;
     char* hbApiPath;
     char* hbStaticPath;
