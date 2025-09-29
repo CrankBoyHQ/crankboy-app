@@ -158,6 +158,8 @@ typedef struct CB_Application
     
     bool hbApiUseHTTPS : 1;
     
+    bool parentalLockEngaged : 1;
+    
     char* hbApiDomain;
     char* hbApiPath;
     char* hbStaticPath;
@@ -241,6 +243,7 @@ const char* get_pdboot_name_and_version(void);
 #define GLOBAL_FILE "global.json"
 #define LAST_SELECTED_FILE "library_last_selected.txt"
 #define HOMEBREW_HUB_API_FILE "hbapi.txt"
+#define PARENTAL_LOCK_FILE "parental_lock.bin"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_BUNDLE_ID "app.crankboyhq.crankboy"

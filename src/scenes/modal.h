@@ -43,6 +43,7 @@ typedef struct CB_Modal
     bool exit : 1;
     bool setup : 1;
     bool accept_on_dock : 1;
+    bool cannot_dismiss : 1; // can't press B to cancel
     int result;
 
     CB_ModalWarningPosition warning;
