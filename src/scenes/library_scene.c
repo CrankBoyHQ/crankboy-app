@@ -674,7 +674,7 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_uncap_fps = 0;         // Off
 
         preferences_save_to_disk(
-            settings_path, PREFBITS_LIBRARY_ONLY
+            settings_path, PREFBITS_ALWAYS_GLOBAL
         );
 
         preferences_restore_subset(stored_globals);
