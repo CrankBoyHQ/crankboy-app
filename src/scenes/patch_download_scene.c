@@ -1,4 +1,5 @@
 #include "patch_download_scene.h"
+#include "parental_lock_scene.h"
 
 #include "../http.h"
 #include "../jparse.h"
@@ -846,6 +847,13 @@ static void context_top_level_update(
         break;
         case 1:  // download
             cb_play_ui_sound(CB_UISound_Confirm);
+            if (CB_App->parentalLockEngaged)
+            {
+                CB_presentModal(
+                    CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene
+                );
+            }
+            else
             {
                 pds->prefix = NULL;
                 json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
@@ -882,6 +890,12 @@ static void context_top_level_update(
                 CB_InfoScene_new(pds->game->names->name_short_leading_article, text);
             cb_free(text);
             CB_presentModal(infoScene->scene);
+        }
+        break;
+        case 3: // parental lock
+        {
+            CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
+            CB_presentModal(plScene->scene);
         }
         break;
         }
@@ -1219,6 +1233,11 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         break;
     case 2:
         return get_rom_info(pds);
+    case 3:
+        return aprintf(
+            "This feature allows restricting homebrew ROM and ROM hack downloads behind a password."
+        );
+        break;
     default:
         return NULL;
     }
@@ -1952,6 +1971,9 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     array_push(context->list->items, itemButton);
 
     itemButton = CB_ListItemButton_new("ROM Info\t>");
+    array_push(context->list->items, itemButton);
+    
+    itemButton = CB_ListItemButton_new("Parental Lock\t>");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);

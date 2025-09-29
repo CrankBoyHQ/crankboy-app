@@ -17,6 +17,7 @@
 #include "scenes/game_scene.h"
 #include "scenes/info_scene.h"
 #include "scenes/library_scene.h"
+#include "scenes/parental_lock_scene.h"
 #include "script.h"
 #include "serial.h"
 #include "userstack.h"
@@ -468,6 +469,8 @@ void CB_init(void)
         initialize_directory();
         
         possibly_check_for_updates();
+        
+        check_for_parental_lock();
         
         playdate->system->logToConsole("shown intro: %d", (int)global.shown_intro);
         

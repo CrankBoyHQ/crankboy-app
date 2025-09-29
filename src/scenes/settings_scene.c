@@ -875,7 +875,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Get ROMs",
-            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub.\n \nThis feature is still\nexperimental and could\ncrash, or downloads\ncould silently fail.\n \nRequires internet.",
+            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub.\n \nThis feature is still\nexperimental and could\ncrash, or downloads\ncould silently fail.\n \nRequires internet.\n \nParental lock is available.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_homebrew_hub,
@@ -893,7 +893,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches",
-            .description = "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to verify\nthat a hack is compatible\nwith your ROM before\napplying it.",
+            .description = "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to verify\nthat a hack is compatible\nwith your ROM before\napplying it.\n \nParental lock is available.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,

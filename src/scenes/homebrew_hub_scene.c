@@ -4,6 +4,8 @@
 #include "jparse.h"
 #include "scenes/image_conversion_scene.h"
 #include "userstack.h"
+#include "scenes/parental_lock_scene.h"
+#include "app.h"
 
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
@@ -199,6 +201,11 @@ static char* context_top_level_hint(CB_HomebrewHubScene* pds, HomebrewHubContext
             "Browse GB Color homebrew from Homebrew Hub.\n \nNote: CGB support in CrankBoy is still experimental."
         );
         break;
+    case 2:
+        return aprintf(
+            "This feature allows restricting homebrew ROM and ROM hack downloads behind a password."
+        );
+        break;
     default:
         return NULL;
     }
@@ -320,7 +327,26 @@ static void context_top_level_update(CB_HomebrewHubScene* hbs, HomebrewHubContex
     
     if (a_pressed)
     {
-        push_list_search(hbs, hb_platforms[context->list->selectedItem]);
+        if (context->list->selectedItem == 2)
+        {
+            http_safe_cancel(hbs->active_http_connection);
+            http_safe_cancel(hbs->active_http_connection_2);
+            CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
+            CB_presentModal(plScene->scene);
+        }
+        else
+        {
+            if (CB_App->parentalLockEngaged)
+            {
+                CB_presentModal(
+                    CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene
+                );
+            }
+            else
+            {
+                push_list_search(hbs, hb_platforms[context->list->selectedItem]);
+            }
+        }
     }
 }
 
@@ -769,6 +795,9 @@ static bool push_top_level(CB_HomebrewHubScene* hbs)
     array_push(context->list->items, itemButton);
     
     itemButton = CB_ListItemButton_new("Browse CGB games…");
+    array_push(context->list->items, itemButton);
+    
+    itemButton = CB_ListItemButton_new("Parental Lock…");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);

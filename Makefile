@@ -35,6 +35,7 @@ SRC += $(wildcard src/cscripts/*.c)
 
 # List C source files here
 SRC += src/app.c
+SRC += src/scenes/parental_lock_scene.c
 SRC += src/scenes/game_scene.c
 SRC += src/scenes/settings_scene.c
 SRC += src/scenes/homebrew_hub_scene.c

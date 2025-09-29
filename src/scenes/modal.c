@@ -200,9 +200,12 @@ void CB_Modal_update(CB_Modal* modal)
 
     if ((pushed & kButtonB) || (modal->options_count == 0 && (pushed & kButtonA)))
     {
-        modal->exit = 1;
-        modal->result = -1;
-        cb_play_ui_sound(CB_UISound_Navigate);
+        if (!modal->cannot_dismiss)
+        {
+            modal->exit = 1;
+            modal->result = -1;
+            cb_play_ui_sound(CB_UISound_Navigate);
+        }
     }
     else if (pushed & kButtonA)
     {
