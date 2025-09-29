@@ -130,7 +130,7 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
     int pairs_count = 0;
 
 #define PREF(x, ...)                                            \
-    if (!((final_leave_as_is_mask) & (1 << i)))                 \
+    if (!((final_leave_as_is_mask) & ((preferences_bitfield_t)1 << i))) \
     {                                                           \
         pairs[pairs_count].key = #x;                            \
         pairs[pairs_count].value.type = kJSONInteger;           \
