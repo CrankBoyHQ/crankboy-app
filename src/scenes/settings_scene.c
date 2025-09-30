@@ -21,7 +21,9 @@
 
 #include <stdlib.h>
 #include <string.h>
+#ifndef _WIN32
 #include <sys/wait.h>
+#endif
 
 /*
  * Defines the maximum number of entries that the settings menu can hold.
