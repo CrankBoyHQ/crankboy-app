@@ -1289,7 +1289,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->door_transition_suppress_map_update -= frames_elapsed;
     }
     
-    #if 1
+    #if 0
     // hp hack
     ram_poke(0xD051, 0x99);
     #endif
