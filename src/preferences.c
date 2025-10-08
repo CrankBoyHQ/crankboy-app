@@ -17,10 +17,14 @@ static const int pref_version = 1;
 #define PREF(x, ...) preference_t preferences_##x;
 #include "prefs.x"
 
-#define PREF(x, ...) 1 +
-const int pref_count =
+typedef enum
+{
+#define PREF(x, ...) PREF_DUMMY_##x,
 #include "prefs.x"
-    0;
+    PREF_COUNT
+} pref_count_enum;
+
+const int pref_count = PREF_COUNT;
 
 void* preferences_bundle_default = NULL;
 preferences_bitfield_t preferences_bundle_hidden = 0;
@@ -118,7 +122,7 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
     union
     {
         JsonObject obj;
-        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * pref_count];
+        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * PREF_COUNT];
     } data;
     json_value j;
     j.type = kJSONTable;
