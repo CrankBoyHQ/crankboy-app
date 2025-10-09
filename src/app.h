@@ -43,10 +43,10 @@ typedef struct
 } AudioSyncBuffer;
 
 // Defines the main stack size. This value provides a necessary safety
-// margin to prevent intermittent crashes. It was increased to 0x2640
+// margin to prevent intermittent crashes. It was increased to 0x2700
 // specifically to ensure stability in games like Pokemon Gold/Silver,
 // which have a higher runtime stack requirement.
-#define PLAYDATE_STACK_SIZE 0x2640
+#define PLAYDATE_STACK_SIZE 0x2700
 
 #define FPS_AVG_DECAY 0.8f
 
