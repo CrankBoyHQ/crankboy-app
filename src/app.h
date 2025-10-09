@@ -43,10 +43,10 @@ typedef struct
 } AudioSyncBuffer;
 
 // Defines the main stack size. This value provides a necessary safety
-// margin to prevent intermittent crashes. It was increased to 0x2380
+// margin to prevent intermittent crashes. It was increased to 0x2640
 // specifically to ensure stability in games like Pokemon Gold/Silver,
 // which have a higher runtime stack requirement.
-#define PLAYDATE_STACK_SIZE 0x2600
+#define PLAYDATE_STACK_SIZE 0x2640
 
 #define FPS_AVG_DECAY 0.8f
 
@@ -126,7 +126,7 @@ typedef struct CB_Application
     PDButtons buttons_released;
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
-    
+
     char* directory;
 
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
