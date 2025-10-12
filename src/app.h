@@ -135,6 +135,7 @@ typedef struct CB_Application
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
+    bool migration_modal_needed;
     char* bundled_rom;  // (path to bundled rom)
 } CB_Application;
 

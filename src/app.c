@@ -192,60 +192,57 @@ static void initialize_directory(void)
     {
         shared_directory = aprintf(DEFAULT_SHARED_DIRECTORY);
     }
-    
+
     // check for 'nocopy' tag
     char* newline = strchr(shared_directory, '\n');
     bool no_copy = false;
     if (newline)
     {
         *newline = '\0';
-        no_copy = (newline[1] == 'n'); // nocopy
+        no_copy = (newline[1] == 'n');  // nocopy
     }
-    
+
     // remove trailing `/`
     while (shared_directory && *shared_directory)
     {
         size_t len = strlen(shared_directory);
-        if (shared_directory[len-1] == '/')
+        if (shared_directory[len - 1] == '/')
         {
-            shared_directory[len-1] = '\0';
+            shared_directory[len - 1] = '\0';
         }
         else
         {
             break;
         }
     }
-    
+
     playdate->system->logToConsole("Directory: %s", shared_directory);
-    
+
     CB_App->directory = shared_directory;
     CB_ASSERT(!!CB_App->directory);
-    
+
     full_mkdir(shared_directory);
-    
+
     // copy files in from data/ if needed
     // (Previous versions of CrankBoy used the data/ folder for
     // storing ROMs.)
     if (!no_copy)
-    {   
+    {
         playdate->system->logToConsole("Moving files from data/ to new directory...");
-        
+
         bool err = false;
-        const char* sources[] = {
-            CB_settingsPath,
-            CB_coversPath,
-            CB_patchesPath,
-            CB_gamesPath,
-            CB_statesPath,
-            CB_savesPath
-        };
-        
-        for (size_t i = 0; i < sizeof(sources)/sizeof(char*); ++i)
+        bool did_move_files = false;
+        const char* sources[] = {CB_settingsPath, CB_coversPath, CB_patchesPath,
+                                 CB_gamesPath,    CB_statesPath, CB_savesPath};
+
+        for (size_t i = 0; i < sizeof(sources) / sizeof(char*); ++i)
         {
             const char* dst = cb_gb_directory_path(sources[i]);
             // move files from data/ but don't replace existing directory
-            if (cb_directory_exists_and_nonempty_or_file_exists(sources[i]) && !cb_directory_exists_and_nonempty_or_file_exists(dst))
+            if (cb_directory_exists_and_nonempty_or_file_exists(sources[i]) &&
+                !cb_directory_exists_and_nonempty_or_file_exists(dst))
             {
+                did_move_files = true;
                 int result = playdate->file->rename(sources[i], dst);
                 if (result == 0)
                 {
@@ -259,23 +256,26 @@ static void initialize_directory(void)
                 }
             }
         }
-        
+
+        if (did_move_files)
+        {
+            CB_App->migration_modal_needed = true;
+        }
+
         if (!err)
         {
             playdate->system->logToConsole("Done moving files.");
             shared_directory = aprintf("%s\nnocopy", shared_directory);
         }
     }
-    
-    cb_write_entire_file(
-        DIRECTORY_POINTER, shared_directory, strlen(shared_directory)
-    );
-    
+
+    cb_write_entire_file(DIRECTORY_POINTER, shared_directory, strlen(shared_directory));
+
     if (shared_directory != CB_App->directory)
     {
         cb_free(shared_directory);
     }
-    
+
     full_mkdir(cb_gb_directory_path(CB_savesPath));
     full_mkdir(cb_gb_directory_path(CB_gamesPath));
     full_mkdir(cb_gb_directory_path(CB_coversPath));
@@ -307,6 +307,8 @@ void CB_init(void)
     CB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
     CB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
     CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo.pdi", NULL);
+
+    CB_App->migration_modal_needed = false;
 
     check_is_bundle();
 

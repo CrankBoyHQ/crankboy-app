@@ -773,6 +773,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->bButtonHoldTimer = 0.0f;
     libraryScene->deleteCoverModalShown = false;
     libraryScene->update_modal_shown = false;
+    libraryScene->migration_modal_shown = false;
     libraryScene->decompression_buffer = NULL;
     libraryScene->decompression_buffer_size = 0;
 
@@ -953,6 +954,33 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             else
             {
                 free_pending_update_info(update_info);
+            }
+        }
+    }
+
+    // Check if we need to show the file migration notification.
+    if (libraryScene->initialLoadComplete && !libraryScene->migration_modal_shown &&
+        CB_App->migration_modal_needed)
+    {
+        libraryScene->migration_modal_shown = true;
+        CB_App->migration_modal_needed = false;
+
+        char* modal_text = aprintf(
+            "To improve compatibility, your CrankBoy library has been moved to the shared "
+            "folder:\n\n%s",
+            CB_App->directory
+        );
+        if (modal_text)
+        {
+            CB_Modal* modal = CB_Modal_new(modal_text, NULL, NULL, NULL);
+            cb_free(modal_text);
+
+            if (modal)
+            {
+                modal->width = 350;
+                modal->height = 180;
+                CB_presentModal(modal->scene);
+                return;
             }
         }
     }
@@ -1890,7 +1918,9 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     memset(game, 0, sizeof(CB_Game));
 
     char* fullpath_str;
-    playdate->system->formatString(&fullpath_str, "%s/%s", cb_gb_directory_path(CB_gamesPath), cachedName->filename);
+    playdate->system->formatString(
+        &fullpath_str, "%s/%s", cb_gb_directory_path(CB_gamesPath), cachedName->filename
+    );
     game->fullpath = fullpath_str;
 
     game->names = cachedName;

@@ -84,6 +84,7 @@ typedef struct CB_LibraryScene
     float bButtonHoldTimer;
     bool deleteCoverModalShown;
     bool update_modal_shown;
+    bool migration_modal_shown;
 
     void* decompression_buffer;
     size_t decompression_buffer_size;
