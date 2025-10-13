@@ -296,6 +296,7 @@ jobs:
             - name: Build Universal Project (Device & Simulator) for Windows
               run: |
                   export PLAYDATE_SDK_PATH="$(pwd)/PlaydateSDK"
+                  export PATH="$(pwd)/gcc-arm-toolchain/bin:$PATH"
                   # Create build directory
                   mkdir -p build
                   
