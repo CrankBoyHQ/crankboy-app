@@ -307,8 +307,8 @@ typedef struct StateHeader
 
 // ---------------------
 // On struct version update, please change these two lines
-#include "pgb/pgb_v2.h"
-#define PGB_VERSION 2
+#include "pgb/pgb_v3.h"
+#define PGB_VERSION 3
 // ---------------------
 
 typedef struct PGB_VERSIONED(gb_s) gb_s;
