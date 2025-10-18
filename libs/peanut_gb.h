@@ -170,8 +170,8 @@ typedef int16_t s16;
 
 /* Simplified PPU timing model for performance */
 #define PPU_MODE_2_OAM_CYCLES 80
-#define PPU_MODE_3_VRAM_CYCLES 200
-#define PPU_MODE_0_HBLANK_CYCLES 176 /* 456 - 80 - 200 */
+#define PPU_MODE_3_VRAM_MIN_CYCLES 172
+#define PPU_MODE_3_VRAM_MAX_CYCLES 289
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -284,7 +284,7 @@ typedef struct StateHeader
 
     // indicates if a script is active
     uint8_t script : 1;
-    
+
     // indicates if cgb mode is active
     uint8_t cgb : 1;
 
@@ -296,7 +296,7 @@ typedef struct StateHeader
 
     // amount of data stored for the script
     uint32_t script_save_data_size;
-    
+
     // for use in future versions
     char _reserved[12];
 } StateHeader;
@@ -337,14 +337,18 @@ bool gb_get_rom_uses_battery(uint8_t* gb_rom);
 #define __core_cgb_section(x)
 #else
 #ifdef ITCM_CORE
-#define __core_dmg \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg"))) __attribute__((short_call))
-#define __core_dmg_section(x) \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg." x))) __attribute__((short_call))
-#define __core_cgb \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb"))) __attribute__((short_call))
-#define __core_cgb_section(x) \
-    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb." x))) __attribute__((short_call))
+#define __core_dmg                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg"))) \
+    __attribute__((short_call))
+#define __core_dmg_section(x)                                                \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg." x))) \
+    __attribute__((short_call))
+#define __core_cgb                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb"))) \
+    __attribute__((short_call))
+#define __core_cgb_section(x)                                                \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb." x))) \
+    __attribute__((short_call))
 #else
 #define __core_dmg __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.dmg")))
 #define __core_dmg_section(x) __core_dmg
@@ -386,23 +390,22 @@ void __gb_dump_vram(gb_s* gb);
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom)
 {
     uint8_t cgb_byte = gb_rom[0x143];
-    if (cgb_byte == 0x80) return GB_SUPPORT_DMG_AND_CGB;
-    if (cgb_byte == 0xC0) return GB_SUPPORT_CGB;
-    
+    if (cgb_byte == 0x80)
+        return GB_SUPPORT_DMG_AND_CGB;
+    if (cgb_byte == 0xC0)
+        return GB_SUPPORT_CGB;
+
     return GB_SUPPORT_DMG;
 }
 
-
-__section__(".rare")
-bool gb_get_rom_uses_battery(uint8_t* gb_rom)
+__section__(".rare") bool gb_get_rom_uses_battery(uint8_t* gb_rom)
 {
-    const uint8_t cart_battery[] =
-    {
+    const uint8_t cart_battery[] = {
         0, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 1, /* 00-0F */
         1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, /* 10-1F */
         1, 0, 1                                         /* 20-2F */
     };
-    
+
     return cart_battery[gb_rom[0x0147]];
 }
 
@@ -564,15 +567,15 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
     // swappable cartridge ROM bank
     int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
     gb->selected_bank_addr = gb->gb_rom + offset;
-    
+
     // swappable cgb wram bank
     int wram_bank = 1;
     if (gb->is_cgb_mode && gb->cgb_wram_bank >= 2)
     {
         wram_bank = gb->cgb_wram_bank;
     }
-    gb->wram_base[1] = gb->wram - WRAM_1_ADDR + 0x1000*wram_bank;
-    
+    gb->wram_base[1] = gb->wram - WRAM_1_ADDR + 0x1000 * wram_bank;
+
     // swappable cgb vram bank
     int vram_bank = 0;
     if (gb->is_cgb_mode)
@@ -651,13 +654,12 @@ __section__(".rare") static uint8_t __gb_detect_mbc1m(const gb_s* gb)
     return 0;
 }
 
-__shell static
-void __gb_do_hdma(gb_s* gb)
+__shell static void __gb_do_hdma(gb_s* gb)
 {
     int hdma_remaning = ((int8_t)gb->cgb_hdma_len);
-    
+
     uint16_t src = gb->cgb_hdma_src;
-    uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE) ;
+    uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE);
     // OPTIMIZE: common sources
     for (int i = 0; i < 0x10; ++i)
     {
@@ -672,10 +674,10 @@ void __gb_do_hdma(gb_s* gb)
         src++;
         dst++;
     }
-    
+
     gb->cgb_hdma_len = hdma_remaning - 1;
     gb->cgb_hdma_active = hdma_remaning > 0;
-    
+
     // TODO: verify
     gb->cgb_hdma_src += 0x10;
     gb->cgb_hdma_dst += 0x10;
@@ -704,7 +706,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         case 0x4C:  // KEY0 (CGB Undocumented)
             return;
         case 0x4D:  // KEY1 (CGB Speed Switch)
-            
+
         case 0x4F:  // VBK (CGB VRAM Bank)
             if (gb->is_cgb_mode)
             {
@@ -747,29 +749,41 @@ __section__(".rare.cb") static void __gb_rare_write(
                 gb->cgb_hdma_len = val & 0x7F;
                 bool was_active = gb->cgb_hdma_active;
                 gb->cgb_hdma_active = (val >> 7);
-                
+
                 if (!gb->cgb_hdma_active && was_active)
                 {
-                    playdate->system->logToConsole("active HDMA stopped, pc=%x, len was %d", gb->cpu_reg.pc, was_len);
+                    playdate->system->logToConsole(
+                        "active HDMA stopped, pc=%x, len was %d", gb->cpu_reg.pc, was_len
+                    );
                 }
                 else
                 {
                     if (gb->cgb_hdma_active)
                     {
-                        playdate->system->logToConsole("HDMA (async) 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc);
+                        playdate->system->logToConsole(
+                            "HDMA (async) 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
+                            gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
+                        );
                     }
                     else
                     {
-                        if (gb->cgb_hdma_len != -1) // TODO: double-check this condition
+                        if (gb->cgb_hdma_len != -1)  // TODO: double-check this condition
                         {
-                            playdate->system->logToConsole("HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc);
+                            playdate->system->logToConsole(
+                                "HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
+                                gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
+                            );
                             gb->cgb_hdma_active = true;
-                            while (gb->cgb_hdma_active) __gb_do_hdma(gb);
+                            while (gb->cgb_hdma_active)
+                                __gb_do_hdma(gb);
                         }
                         else
                         {
                             // TODO: is this real behaviour?
-                            playdate->system->logToConsole("HDMA (null) 0x%x -> 0x%x, pc=%x", gb->cgb_hdma_src, gb->cgb_hdma_dst, gb->cpu_reg.pc);
+                            playdate->system->logToConsole(
+                                "HDMA (null) 0x%x -> 0x%x, pc=%x", gb->cgb_hdma_src,
+                                gb->cgb_hdma_dst, gb->cpu_reg.pc
+                            );
                         }
                     }
                 }
@@ -807,7 +821,7 @@ __section__(".rare.cb") static void __gb_rare_write(
                 gb->cgb_ff75 = val >> 4;
             }
             return;
-            
+
         case 0x70:  // SVBK (CGB WRAM Bank)
             gb->cgb_wram_bank = val & 7;
             __gb_update_selected_bank_addr(gb);
@@ -868,9 +882,8 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
     {
         switch (addr & 0xFF)
         {
-        // unimplemented CGB-only registers. On a DMG, reading these returns 0xFF.
+            // unimplemented CGB-only registers. On a DMG, reading these returns 0xFF.
 
-            
         case 0x56:  // RP (CGB Infrared Port)
         case 0x68:  // BCPS (CGB BG Palette Spec)
         case 0x69:  // BCPD (CGB BG Palette Data)
@@ -879,39 +892,39 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x76:  // PCM12 (CGB Audio)
         case 0x77:  // PCM34 (CGB Audio)
             return 0xFF;
-        
-        // CGB registers
-        
-        case 0x4C:  // KEY0 (CGB Undocumented)
-            return 0xFF; // TODO: (?) should differ if running as cgb in compatability mode
-            
+
+            // CGB registers
+
+        case 0x4C:        // KEY0 (CGB Undocumented)
+            return 0xFF;  // TODO: (?) should differ if running as cgb in compatability mode
+
         case 0x4D:  // KEY1 (CGB Speed Switch)
             if (gb->is_cgb_mode)
             {
                 return 0x7E | (gb->cgb_fast_mode << 7) | (gb->cgb_fast_mode_armed);
             }
             return 0xFF;
-            
+
         case 0x4F:  // VBK (CGB VRAM Bank)
             if (gb->is_cgb_mode)
             {
                 return 0xFE | gb->cgb_vram_bank;
             }
             return 0xFF;
-        
-        case 0x51:  // HDMA1
-        case 0x52:  // HDMA2
-        case 0x53:  // HDMA3
-        case 0x54:  // HDMA4
-            return 0xFF; // (confirmed)
-        
+
+        case 0x51:        // HDMA1
+        case 0x52:        // HDMA2
+        case 0x53:        // HDMA3
+        case 0x54:        // HDMA4
+            return 0xFF;  // (confirmed)
+
         case 0x55:  // HDMA5 (VRAM DMA)
             if (gb->is_cgb_mode)
             {
                 return ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80);
             }
             return 0xFF;
-            
+
         case 0x6C:
             if (gb->is_cgb_mode)
             {
@@ -923,8 +936,9 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
             {
                 return (~7) | MAX(1, gb->cgb_wram_bank);
             }
-            else return 0xFF;
-            
+            else
+                return 0xFF;
+
         // Undocumented CGB registers
         case 0x72:
         case 0x73:
@@ -932,7 +946,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
             if (gb->is_cgb_mode)
             {
                 // TODO: the cgb can access '72 and '73,
-                // even when in DMG mode. 
+                // even when in DMG mode.
                 // (Do we need to emulate that?)
                 return gb->cgb_ff7x[(addr & 0xFF) - 0x72];
             }
@@ -1973,7 +1987,8 @@ _0x10:
 
     gb->cpu_reg.pc++;
 
-    if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR /* FIXME: why can't we assume (IF & ~ANY_INTR) is 0?*/)
+    if (gb->gb_reg.IF & gb->gb_reg.IE &
+        ANY_INTR /* FIXME: why can't we assume (IF & ~ANY_INTR) is 0?*/)
     {
         if (gb->gb_ime == 0)
         {
@@ -4067,30 +4082,76 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
         gb->gb_stop = 0;
         return 16;
     }
-    
-    int src[] = {512, 512, 512};
-    int ppu_timing_by_mode[4] = {
-        PPU_MODE_0_HBLANK_CYCLES,
-        LCD_LINE_CYCLES,
-        PPU_MODE_2_OAM_CYCLES,
-        PPU_MODE_3_VRAM_CYCLES,
-    };
 
 #if 0
     // TODO: optimize serial
     if(gb->gb_reg.SC & SERIAL_SC_TX_START) return 16;
 #endif
 
+    uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+
     if (gb->gb_reg.tac_enable)
     {
-        src[1] = gb->gb_reg.tac_cycles + 1 - gb->counter.tima_count +
-                 ((0x100 - gb->gb_reg.TIMA) << gb->gb_reg.tac_cycles_shift);
+#if PGB_IS_CGB
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode;
+#else
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+#endif
+
+        if (tima_threshold == 0)
+            tima_threshold = 1;
+
+        uint16_t cycles_until_next_tick =
+            tima_threshold - (gb->counter.tima_count % tima_threshold);
+        if (cycles_until_next_tick == 0)
+            cycles_until_next_tick = tima_threshold;
+        uint16_t ticks_until_overflow = 0x100 - gb->gb_reg.TIMA;
+
+        src[1] =
+            ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
+
+        if (gb->gb_reg.tima_overflow_delay)
+        {
+            src[1] = 1;
+        }
     }
 
-    src[2] = ppu_timing_by_mode[gb->lcd_mode] - gb->counter.lcd_count;
+    // PPU event calculation
+    uint16_t ppu_cycles_remaining;
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+    {
+        ppu_cycles_remaining = LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
+    }
+    else
+    {
+        switch (gb->lcd_mode)
+        {
+        case LCD_HBLANK:  // Mode 0
+            ppu_cycles_remaining = gb->display.current_mode0_cycles - gb->counter.lcd_count;
+            break;
+        case LCD_VBLANK:  // Mode 1
+            ppu_cycles_remaining = LCD_LINE_CYCLES - gb->counter.lcd_count;
+            break;
+        case LCD_SEARCH_OAM:  // Mode 2
+            ppu_cycles_remaining = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+            break;
+        case LCD_TRANSFER:  // Mode 3
+            ppu_cycles_remaining = gb->display.current_mode3_cycles - gb->counter.lcd_count;
+            break;
+        default:  // Should not happen
+            ppu_cycles_remaining = 1;
+            break;
+        }
+    }
 
-    // return max{16, min(src...)}
-    int cycles = src[0];
+    if ((int16_t)ppu_cycles_remaining <= 0)
+    {
+        ppu_cycles_remaining = 1;
+    }
+    src[2] = (uint32_t)ppu_cycles_remaining;
+
+    // Find the minimum cycles until the next event
+    uint32_t cycles = src[0];
     if (src[1] < cycles)
         cycles = src[1];
     if (src[2] < cycles)
@@ -4099,7 +4160,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
     // ensure positive
     cycles = (cycles < 16) ? 16 : cycles;
 
-    return cycles;
+    return (uint16_t)cycles;
 }
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);
@@ -4778,8 +4839,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         return 1 * 4;
     case 0x76:
         // The HALT bug is only present on the DMG.
-        if (!gb->is_cgb_mode && gb->gb_ime == 0 &&
-            (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+        if (!gb->is_cgb_mode && gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
         {
             gb->cpu_reg.pc--;  // HALT bug
         }
@@ -4800,7 +4860,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         {
             offset = (int8_t)__gb_read__dmg(gb, gb->cpu_reg.pc++);
         }
-        
+
         if (opcode == 0xF8)
         {
             uint16_t sp = gb->cpu_reg.sp;
@@ -4810,7 +4870,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
             gb->cpu_reg.f_bits.n = 0;
             gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
             gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
-            return 3*4;
+            return 3 * 4;
         }
         else
         {
@@ -4883,14 +4943,18 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 
 void gb_step_cpu(gb_s* gb)
 {
-    if (gb->is_cgb_mode) __gb_step_cpu__cgb(gb);
-    else __gb_step_cpu__dmg(gb);
+    if (gb->is_cgb_mode)
+        __gb_step_cpu__cgb(gb);
+    else
+        __gb_step_cpu__dmg(gb);
 }
 
 void gb_run_frame(gb_s* gb)
 {
-    if (gb->is_cgb_mode) gb_run_frame__cgb(gb);
-    else gb_run_frame__dmg(gb);
+    if (gb->is_cgb_mode)
+        gb_run_frame__cgb(gb);
+    else
+        gb_run_frame__dmg(gb);
 }
 
 #endif  // PGB_IMPL

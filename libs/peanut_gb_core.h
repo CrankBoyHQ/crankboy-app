@@ -1,16 +1,16 @@
 /*
  * This file is templated between multiple systems (__dmg and __cgb).
  * This allows cgb behavior to be implemented with ~zero cost to dmg.
- * 
+ *
  * These functions are known as "core" functions, and will be copied to ITCM
  * if ITCM acceleration is enabled. __core functions can only
  * safely call __core, __shell, or FORCE_INLINE functions.
- * 
+ *
  * ITCM is a small, fast region of memory. Small functions that are
  * called very frequently -- many times per frame -- should be placed
  * in ITCM (i.e. __core). Functions which are not called often, but are
  * called from a __core function, should be desginated as __shell functions.
- * 
+ *
  * Although it's not good practice, some of these functions are
  * called from outside of the core. If the __dmg and __cgb
  * implementations are the same, or the __cgb implementation is a
@@ -442,6 +442,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 )
 {
     uint8_t number_of_sprites = 0;
+    uint8_t processed_sprite_count = 0;
     struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
 
     /* Find up to 10 sprites on this line, sorted by priority.
@@ -490,13 +491,15 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
 
+        processed_sprite_count++;
+
         if (is_ghost)
         {
             // To prevent thickening, check if the ghost sprite is within 4 pixel of the
             // real sprite. If so, skip rendering the ghost.
-            
+
             // FIXME: this doesn't work if sprites are re-ordered, as they likely are in many games.
-            
+
             const uint8_t* ghost_oam = &oam_src[s_4];
             const uint8_t* visible_oam = &gb->oam[s_4];
             if (abs(ghost_oam[1] - visible_oam[1]) <= 4 && abs(ghost_oam[0] - visible_oam[0]) <= 4)
@@ -509,7 +512,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         uint8_t OX = oam_src[s_4 + 1];
         uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
         uint8_t OF = oam_src[s_4 + 3]; // flags
-        
+
         unsigned bank = 0;
         #if PGB_IS_CGB
         if (OF & OBJ_CGB_BANK)
@@ -596,6 +599,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             t2 <<= 1;
         }
     }
+    gb->display.visible_sprite_count = processed_sprite_count;
 }
 
 // renders one scanline
@@ -620,12 +624,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
     uint8_t* pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
-    
+
     #if PGB_IS_CGB
     // allows bg to overrule obj priority
     uint32_t line_cgb_priority[((LCD_WIDTH + 31) / 32)];
     #endif
-    
+
     const uint32_t line_priority_len = PEANUT_GB_ARRAYSIZE(line_priority);
 
     __builtin_prefetch(pixels, 1);
@@ -646,7 +650,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     master_priority = !!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY);
     #endif
 
-    if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && 
+    if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
     #if PGB_IS_DMG
         // non-CGB mode: window is also disabled if BG is disabled
         (gb->gb_reg.LCDC & LCDC_BG_ENABLE) &&
@@ -711,10 +715,10 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         // OPTIMIZE: we could store vram tile data interleaved, e.g.
         // row 0 of all tiles, then row 1, etc...
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
-        
+
         #if PGB_IS_CGB
         uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
-        
+
         // points to line data for flipped-y offset
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
         #endif
@@ -728,7 +732,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t tile = vram_line_tiles[(bg_x / 8 + x) % 32];
             unsigned bank_offset = 0;
             uint16_t* tile_data = vram_tile_data;
-            
+
             #if PGB_IS_CGB
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
@@ -740,7 +744,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 tile_data = vram_tile_data_flipped_y;
             }
             #endif
-            
+
             __builtin_prefetch(
                 &tile_data
                     [bank_offset | (tile < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile)],
@@ -750,7 +754,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         #endif
 
         uint8_t tile_hi = vram_line_tiles[(bg_x / 8) % 32];
-            
+
         unsigned bank_offset = 0;
         #if PGB_IS_CGB
         uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
@@ -759,7 +763,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             bank_offset = VRAM_SIZE / sizeof(uint16_t);
         }
         #endif
-        
+
         uint16_t vram_tile_data_hi =
         #if PGB_IS_CGB
             // cgb can flip tiles
@@ -768,7 +772,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             vram_tile_data
         #endif
             [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
-            
+
         #if PGB_IS_CGB
         vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP));
         #endif
@@ -778,7 +782,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t* out = pixels + (x % 2) + (x / 2) * 4;
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
             uint16_t tile_hi = vram_line_tiles[(bg_x / 8 + x + 1) % 32];
-            
+
             unsigned bank_offset = 0;
             #if PGB_IS_CGB
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
@@ -787,7 +791,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             #endif
-            
+
             vram_tile_data_hi =
             #if PGB_IS_CGB
                 // cgb can flip tiles
@@ -796,7 +800,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 vram_tile_data
             #endif
                 [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
-            
+
             #if PGB_IS_CGB
             vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP));
             #endif
@@ -826,10 +830,10 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
         // points to line data for pixel offset
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
-        
+
         #if PGB_IS_CGB
         uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
-        
+
         // points to line data for flipped-y offset
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
         #endif
@@ -839,10 +843,10 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         for (int x = wx / 8; x <= LCD_WIDTH / 8; ++x)
         {
             uint8_t tile = vram_line_tiles[(bg_x / 8 + x) % 32];
-            
+
             unsigned bank_offset = 0;
             uint16_t* tile_data = vram_tile_data;
-            
+
             #if PGB_IS_CGB
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x) % 32];
             if (tile_attributes & BG_MAP_ATTR_BANK)
@@ -854,7 +858,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 tile_data = vram_tile_data_flipped_y;
             }
             #endif
-            
+
             __builtin_prefetch(
                 &vram_tile_data
                     [bank_offset | (tile < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile)],
@@ -864,7 +868,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         #endif
 
         uint8_t tile_hi = vram_line_tiles[(bg_x / 8 + wx / 8) % 32];
-            
+
         unsigned bank_offset = 0;
         #if PGB_IS_CGB
         uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
@@ -873,8 +877,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             bank_offset = VRAM_SIZE / sizeof(uint16_t);
         }
         #endif
-        
-        uint16_t vram_tile_data_hi = 
+
+        uint16_t vram_tile_data_hi =
         #if PGB_IS_CGB
             // cgb can flip tiles
             ((tile_attributes & BG_MAP_ATTR_Y_FLIP) ? vram_tile_data_flipped_y : vram_tile_data)
@@ -882,7 +886,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             vram_tile_data
         #endif
             [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
-            
+
         #if PGB_IS_CGB
         vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP));
         #endif
@@ -901,7 +905,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t* out = pixels + (x % 2) + (x / 2) * 4;
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
             uint16_t tile_hi = vram_line_tiles[(bg_x / 8 + x + 1) % 32];
-            
+
             unsigned bank_offset = 0;
             #if PGB_IS_CGB
             uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
@@ -910,7 +914,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 bank_offset = VRAM_SIZE / sizeof(uint16_t);
             }
             #endif
-            
+
             vram_tile_data_hi =
             #if PGB_IS_CGB
                 // cgb can flip tiles
@@ -919,7 +923,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 vram_tile_data
             #endif
                 [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile_hi)];
-            
+
             #if PGB_IS_CGB
             vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP));
             #endif
@@ -957,9 +961,9 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         *(uint32_t*)p = rm;
         ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
-    
+
     uint32_t* used_line_priority = line_priority;
-    
+
     #if IS_CGB_MODE
     if (!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY))
     {
@@ -1507,11 +1511,10 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     if unlikely (gb->gb_halt || gb->gb_stop)
     {
         inst_cycles = __gb_calc_halt_cycles(gb);
-        goto done_instr;
+        goto done_instr_timing;
     }
 
 #if CPU_VALIDATE == 0
-
     inst_cycles = $(__gb_run_instruction_micro)(gb);
 #else
     // run once as each, verify
@@ -1660,16 +1663,16 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     {
         inst_cycles >>= gb->cgb_fast_mode;
     }
-    
+
     #if PGB_IS_CGB
     inst_cycles >>= gb->cgb_fast_mode;
-    
+
     // FIXME: we can avoid having to do this if we change the cycle units
     // to allow more fixed-point precision here.
     inst_cycles = MAX(1, inst_cycles);
     #endif
 
-done_instr:
+done_instr_timing:
 {
 #if 0
         /* Check serial transmission. */
@@ -1733,7 +1736,22 @@ done_instr:
     /* TIMA register timing */
     if (gb->gb_reg.tac_enable)
     {
-        gb->counter.tima_count += inst_cycles << gb->cgb_fast_mode;
+        #if PGB_IS_CGB
+        gb->counter.tima_count += (inst_cycles >> gb->cgb_fast_mode);
+        gb->counter.tima_count += inst_cycles;
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode;
+        while(gb->counter.tima_count >= tima_threshold)
+        {
+            gb->counter.tima_count -= tima_threshold;
+            gb->gb_reg.TIMA++;
+
+            if (gb->gb_reg.TIMA == 0x00)
+            {
+                gb->gb_reg.tima_overflow_delay = 1;
+            }
+         }
+        #else
+        gb->counter.tima_count += inst_cycles;
         while (gb->counter.tima_count >= gb->gb_reg.tac_cycles)
         {
             gb->counter.tima_count -= gb->gb_reg.tac_cycles;
@@ -1744,13 +1762,27 @@ done_instr:
                 gb->gb_reg.tima_overflow_delay = 1;
             }
         }
+        #endif
     }
 
     /* DIV register timing */
     // update DIV timer
-    gb->counter.div_count += inst_cycles << gb->cgb_fast_mode;
-    gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
-    gb->counter.div_count %= DIV_CYCLES;
+    #if PGB_IS_CGB
+    uint16_t div_threshold = DIV_CYCLES >> gb->cgb_fast_mode;
+    gb->counter.div_count += inst_cycles;
+    if(gb->counter.div_count >= div_threshold)
+    {
+        gb->gb_reg.DIV += gb->counter.div_count / div_threshold;
+        gb->counter.div_count %= div_threshold;
+    }
+    #else
+    gb->counter.div_count += inst_cycles;
+    if (gb->counter.div_count >= DIV_CYCLES)
+    {
+        gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
+        gb->counter.div_count %= DIV_CYCLES;
+    }
+    #endif
 
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
     {
@@ -1776,15 +1808,40 @@ done_instr:
                 gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
+
+                uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
+                mode3_cycles += (gb->gb_reg.SCX % 8); // SCX penalty
+
+                // Window penalty approximation
+                bool window_potentially_active = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
+                                                 (gb->gb_reg.LY >= gb->display.WY) &&
+                                                 (gb->gb_reg.WX < 167);
+
+                #if PGB_IS_DMG
+                window_potentially_active &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
+                #endif
+
+                if (window_potentially_active) {
+                    mode3_cycles += 6;
+                }
+
+                // Object penalty using count from previous line's draw result.
+                // We approximate 8 cycles per sprite (variable,6-11 cycles on hardware)
+                mode3_cycles += gb->display.visible_sprite_count * 8;
+
+
+                gb->display.current_mode3_cycles = MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
+                gb->display.current_mode0_cycles = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
+
+                $(__gb_update_stat_irq)(gb);
             }
             break;
 
         // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
-        //         Using a fixed 172 for performance.
         case LCD_TRANSFER:
-            if (gb->counter.lcd_count >= PPU_MODE_3_VRAM_CYCLES)
+            if (gb->counter.lcd_count >= gb->display.current_mode3_cycles)
             {
-                gb->counter.lcd_count -= PPU_MODE_3_VRAM_CYCLES;
+                gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
 #if ENABLE_LCD
                 if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip)
@@ -1803,9 +1860,9 @@ done_instr:
         // Mode 0: H-Blank (remaining cycles of the 456 total)
         // The PPU is idle until the end of the scanline.
         case LCD_HBLANK:
-            if (gb->counter.lcd_count >= PPU_MODE_0_HBLANK_CYCLES)
+            if (gb->counter.lcd_count >= gb->display.current_mode0_cycles)
             {
-                gb->counter.lcd_count -= PPU_MODE_0_HBLANK_CYCLES;
+                gb->counter.lcd_count -= gb->display.current_mode0_cycles;
                 gb->gb_reg.LY++;
 
                 $(__gb_check_lyc)(gb);
@@ -1814,12 +1871,12 @@ done_instr:
                 if (gb->gb_reg.LY == LCD_HEIGHT)
                 {
                     gb->lcd_mode = LCD_VBLANK;
-                    
+
                     #if PGB_IS_CGB
                     // FIXME: is this correct?
                     while (gb->cgb_hdma_active) __gb_do_hdma(gb);
                     #endif
-                    
+
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
                     gb->gb_frame = 1;
                     gb->gb_reg.IF |= VBLANK_INTR;
@@ -1897,7 +1954,7 @@ __core void $(gb_run_frame)(gb_s* gb)
     gb->direct.blend_rect_y_max = 0;
 
     unsigned int total_cycles = 0;
-    
+
     static bool latch_log = true;
 
     while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
@@ -1963,7 +2020,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
         }
 
         fb_y_playdate_current_bottom = current_line_pd_top_y;
-        
+
         if (current_line_pd_top_y < 0)
         {
             break;

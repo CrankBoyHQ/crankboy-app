@@ -209,7 +209,7 @@ struct PGB_VERSIONED(audio_data)
     int vol_r : 4;
     uint8_t* audio_mem;
     struct PGB_VERSIONED(chan) chans[4];
-    
+
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
     int32_t capacitor_r;
@@ -288,7 +288,7 @@ struct PGB_VERSIONED(gb_s)
     uint8_t overclock : 2;
 
     uint8_t is_mbc1m : 1;
-    
+
     // 1-7, cgb only
     bool cgb_fast_mode_armed : 1;
     uint8_t cgb_wram_bank : 3;
@@ -296,14 +296,14 @@ struct PGB_VERSIONED(gb_s)
     bool cgb_fast_mode : 1;
     uint8_t cgb_ff6c : 1;
     uint8_t cgb_vram_bank : 1;
-    
-    
+
+
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
     uint16_t cgb_hdma_dst;
     int16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
-    
+
     uint8_t* selected_cart_bank_addr;
 
     /* Number of ROM banks in cartridge. */
@@ -390,6 +390,10 @@ struct PGB_VERSIONED(gb_s)
 
         uint8_t* bg_map_base;
         uint8_t* window_map_base;
+
+        uint8_t visible_sprite_count;
+        uint16_t current_mode3_cycles;
+        uint16_t current_mode0_cycles;
     } display;
 
     /**
@@ -474,7 +478,7 @@ struct PGB_VERSIONED(gb_s)
 
     // extended ram feature offered by crankboy
     uint8_t* xram;
-    
+
     // always 32 zero bytes. Useful hack to implement CGB LCDC priority
     // bit, but can be used for other things
     // (so long as nothing writes anything non-zero here.)
@@ -699,7 +703,7 @@ char* savestate_upgrade_to_v3(char** out, size_t* out_size, char* in, size_t in_
         return aprintf("Out of memory");
     }
     v3_org = v3_realloc;
-    
+
     // copy remaining data
     memcpy(
         v3_org + sizeof(StateHeader) + sizeof(struct gb_s_v3),
