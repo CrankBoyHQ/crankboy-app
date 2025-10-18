@@ -50,10 +50,10 @@ BreakStringLiterals: true # Generally fine
 DerivePointerAlignment: false
 DisableFormat: false
 IncludeCategories:
-  - Regex:           '^<.*\.h>'
-    Priority:        2 # C system headers
-  - Regex:           '.*'
-    Priority:        1
+  - Regex: '^<.*\.h>'
+    Priority: 2 # C system headers
+  - Regex: '.*'
+    Priority: 1
 IndentCaseLabels: false
 IndentPPDirectives: None
 KeepEmptyLinesAtTheStartOfBlocks: true
