@@ -442,7 +442,6 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 )
 {
     uint8_t number_of_sprites = 0;
-    uint8_t processed_sprite_count = 0;
     struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
 
     /* Find up to 10 sprites on this line, sorted by priority.
@@ -490,8 +489,6 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
     {
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
-
-        processed_sprite_count++;
 
         if (is_ghost)
         {
@@ -599,7 +596,6 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             t2 <<= 1;
         }
     }
-    gb->display.visible_sprite_count = processed_sprite_count;
 }
 
 // renders one scanline
@@ -1786,6 +1782,26 @@ done_instr_timing:
                 gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
+
+                gb->display.visible_sprite_count = 0;
+                uint8_t current_ly = gb->gb_reg.LY;
+                uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+
+                for (uint8_t s = 0; s < NUM_SPRITES; s++)
+                {
+                    const uint8_t* oam = &gb->oam[s * 4];
+                    uint8_t oam_y = oam[0];
+
+                    if ((current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
+                    {
+                        gb->display.visible_sprite_count++;
+
+                        if (gb->display.visible_sprite_count >= MAX_SPRITES_LINE)
+                        {
+                            break;
+                        }
+                    }
+                }
 
                 uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
                 mode3_cycles += (gb->gb_reg.SCX % 8);  // SCX penalty
