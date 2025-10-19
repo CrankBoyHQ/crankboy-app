@@ -391,7 +391,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t* bg_map_base;
         uint8_t* window_map_base;
 
-        uint8_t visible_sprite_count;
         uint16_t current_mode3_cycles;
         uint16_t current_mode0_cycles;
     } display;

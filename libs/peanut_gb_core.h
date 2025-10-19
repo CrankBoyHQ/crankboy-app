@@ -1783,7 +1783,9 @@ done_instr_timing:
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
-                gb->display.visible_sprite_count = 0;
+                uint16_t accumulated_sprite_penalty = 0;
+                uint8_t sprites_found_on_line = 0;
+
                 uint8_t current_ly = gb->gb_reg.LY;
                 uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
 
@@ -1791,12 +1793,22 @@ done_instr_timing:
                 {
                     const uint8_t* oam = &gb->oam[s * 4];
                     uint8_t oam_y = oam[0];
+                    uint8_t oam_x = oam[1];
 
                     if ((current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
                     {
-                        gb->display.visible_sprite_count++;
+                        sprites_found_on_line++;
 
-                        if (gb->display.visible_sprite_count >= MAX_SPRITES_LINE)
+                        if (oam_x == 0)
+                        {
+                            accumulated_sprite_penalty += 11;
+                        }
+                        else
+                        {
+                            accumulated_sprite_penalty += 6;
+                        }
+
+                        if (sprites_found_on_line >= MAX_SPRITES_LINE)
                         {
                             break;
                         }
@@ -1820,9 +1832,7 @@ done_instr_timing:
                     mode3_cycles += 6;
                 }
 
-                // Object penalty using count from previous line's draw result.
-                // We approximate 8 cycles per sprite (variable,6-11 cycles on hardware)
-                mode3_cycles += gb->display.visible_sprite_count * 8;
+                mode3_cycles += accumulated_sprite_penalty;
 
                 gb->display.current_mode3_cycles = MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
                 gb->display.current_mode0_cycles =
