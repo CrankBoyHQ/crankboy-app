@@ -1793,7 +1793,7 @@ done_instr_timing:
                 // Window penalty approximation
                 bool window_potentially_active = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
                                                  (gb->gb_reg.LY >= gb->display.WY) &&
-                                                 (gb->gb_reg.WX < 167);
+                                                 (gb->gb_reg.WX >= 7) && (gb->gb_reg.WX < 167);
 
 #if PGB_IS_DMG
                 window_potentially_active &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
