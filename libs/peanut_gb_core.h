@@ -1685,56 +1685,23 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 done_instr_timing:
 {
-#if 0
-        /* Check serial transmission. */
-        if(gb->gb_reg.SC & SERIAL_SC_TX_START)
+    if (gb->counter.serial_count > 0)
+    {
+        gb->counter.serial_count -= inst_cycles;
+        if (gb->counter.serial_count <= 0)
         {
-            /* If new transfer, call TX function. */
-            if(gb->counter.serial_count == 0 && gb->gb_serial_tx != NULL)
-                (gb->gb_serial_tx)(gb, gb->gb_reg.SB);
-
-            gb->counter.serial_count += inst_cycles;
-
-            /* If it's time to receive byte, call RX function. */
-            if(gb->counter.serial_count >= SERIAL_CYCLES)
+            if ((gb->gb_reg.SC & SERIAL_SC_TX_START) && (gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC))
             {
-                /* If RX can be done, do it. */
-                /* If RX failed, do not change SB if using external
-                 * clock, or set to 0xFF if using internal clock. */
-                uint8_t rx;
-
-                if(gb->gb_serial_rx != NULL &&
-                   (gb->gb_serial_rx(gb, &rx) ==
-                    GB_SERIAL_RX_SUCCESS))
-                {
-                    gb->gb_reg.SB = rx;
-
-                    /* Inform game of serial TX/RX completion. */
-                    gb->gb_reg.SC &= 0x01;
-                    gb->gb_reg.IF |= SERIAL_INTR;
-                }
-                else if(gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC)
-                {
-                    /* If using internal clock, and console is not
-                     * attached to any external peripheral, shifted
-                     * bits are replaced with logic 1. */
-                    gb->gb_reg.SB = 0xFF;
-
-                    /* Inform game of serial TX/RX completion. */
-                    gb->gb_reg.SC &= 0x01;
-                    gb->gb_reg.IF |= SERIAL_INTR;
-                }
-                else
-                {
-                    /* If using external clock, and console is not
-                     * attached to any external peripheral, bits are
-                     * not shifted, so SB is not modified. */
-                }
-
-                gb->counter.serial_count = 0;
+                // Simulate disconnected cable input
+                gb->gb_reg.SB = 0xFF;
+                // Request Serial interrupt
+                gb->gb_reg.IF |= SERIAL_INTR;
+                // Clear transfer start flag
+                gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
             }
+            gb->counter.serial_count = 0;
         }
-#endif
+    }
 
     /* Handle delayed TIMA overflow from the previous cycle. */
     if (gb->gb_reg.tima_overflow_delay)
