@@ -6,8 +6,9 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include <stdbool.h>
 #include "pd_api.h"
+
+#include <stdbool.h>
 
 unsigned game_picture_x_offset;
 unsigned game_picture_y_top;
@@ -18,7 +19,9 @@ bool game_hide_indicator;
 bool gbScreenRequiresFullRefresh;
 
 #define PGB_IMPL
+/* clang-format off */
 #include "game_scene.h"
+/* clang-format on */
 
 #include "../../libs/minigb_apu/minigb_apu.h"
 #include "../../libs/peanut_gb.h"
@@ -363,35 +366,30 @@ extern char __itcm_dmg_end[];
 extern char __itcm_cgb_start[];
 extern char __itcm_cgb_end[];
 
-#define ITCM_CORE_FN(fn) \
-    ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
+#define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 
 __section__(".rare") void itcm_core_init(bool cgb)
 {
-    void* itcm_start = cgb
-        ? &__itcm_cgb_start
-        : &__itcm_dmg_start;
-        
-    void* itcm_end = cgb
-        ? &__itcm_cgb_end
-        : &__itcm_dmg_end;
-        
+    void* itcm_start = cgb ? &__itcm_cgb_start : &__itcm_dmg_start;
+
+    void* itcm_end = cgb ? &__itcm_cgb_end : &__itcm_dmg_end;
+
     uintptr_t core_size = itcm_end - itcm_start;
-    
+
     // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
     if (!dtcm_enabled() || !preferences_itcm)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
         core_itcm_offset = 0;
-        
+
         playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
         return;
     }
 
     if (core_itcm_reloc == (void*)&__itcm_dmg_start)
         core_itcm_reloc = NULL;
-    
+
     if (core_itcm_reloc == (void*)&__itcm_cgb_start)
         core_itcm_reloc = NULL;
 
@@ -522,7 +520,9 @@ char* cb_game_config_path(const char* rom_filename)
 {
     char* basename = cb_basename(rom_filename, true);
     char* path;
-    playdate->system->formatString(&path, "%s/%s.json", cb_gb_directory_path(CB_settingsPath), basename);
+    playdate->system->formatString(
+        &path, "%s/%s.json", cb_gb_directory_path(CB_settingsPath), basename
+    );
     cb_free(basename);
     return path;
 }
@@ -677,7 +677,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     DTCM_VERIFY();
 
     CB_GameSceneContext* context = allocz(CB_GameSceneContext);
-    static gb_s gb_fallback;  // use this gb struct if dtcm alloc not available. Also during initialization.
+    static gb_s
+        gb_fallback;  // use this gb struct if dtcm alloc not available. Also during initialization.
     context->gb = &gb_fallback;
     context->cgb_mode = cgb_mode;
 
@@ -716,12 +717,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, sizeof(lcd));
-        
+
         gameScene->cgb_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_CGB);
         gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
-            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context, cgb_mode
+            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context,
+            cgb_mode
         );
 
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
@@ -747,13 +749,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 playdate->system->logToConsole("gb context initialized.");
             }
-        
+
             if (dtcm_enabled())
             {
                 context->gb = dtcm_alloc(sizeof(gb_s));
                 memcpy(context->gb, &gb_fallback, sizeof(gb_s));
             }
-            
+
             itcm_core_init(context->gb->is_cgb_mode);
         }
         else
@@ -774,7 +776,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     gameScene->script_available = false;
     gameScene->script_info_available = false;
-#ifndef NOLUA
+
     ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
     if (scriptInfo)
     {
@@ -793,7 +795,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         }
     }
     script_info_free(scriptInfo);
-#endif
+
     DTCM_VERIFY();
 
     CB_ASSERT(gameScene->context == context);
@@ -1087,19 +1089,19 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
 
     // write rtc
     playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
-    
+
     // write timestamp
     unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
     gameScene->last_save_time = now;
     playdate->file->write(f, &now, sizeof(now));
-    
+
     // write flags
     uint32_t flags = !!gameScene->script;
     playdate->file->write(f, &flags, sizeof(flags));
-    
+
     // write patch hash
     playdate->file->write(f, &gameScene->patches_hash, sizeof(gameScene->patches_hash));
-    
+
     // write magic number (must be at end of file)
     uint64_t magic = SRAM_MAGIC_NUMBER;
     playdate->file->write(f, &magic, sizeof(magic));
@@ -1210,15 +1212,15 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     }
     else if (gb_err == GB_INVALID_READ)
     {
-        #if 0
+#if 0
         playdate->system->logToConsole("Invalid read: addr %04x", val);
-        #endif
+#endif
     }
     else if (gb_err == GB_INVALID_WRITE)
     {
-        #if 0
+#if 0
         playdate->system->logToConsole("Invalid write: addr %04x", val);
-        #endif
+#endif
     }
     else
     {
@@ -1806,7 +1808,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.joypad_bits.start = gb_joypad_start_is_active_low;
         context->gb->direct.joypad_bits.select = gb_joypad_select_is_active_low;
-        
+
         if (gameScene->lock_button_hold_frames_remaining > 0)
         {
             --gameScene->lock_button_hold_frames_remaining;
@@ -1881,7 +1883,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         bool skip_frame = false;
         if (preferences_script_support && context->scene->script)
         {
-            skip_frame = script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
+            skip_frame =
+                script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
         }
         gameScene->next_frames_elapsed = 0;
 
@@ -1891,9 +1894,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             gb_s* tmp_gb = context->gb;
 
-    #ifdef TARGET_SIMULATOR
+#ifdef TARGET_SIMULATOR
             pthread_mutex_lock(&audio_mutex);
-    #endif
+#endif
 
             // Static buffer for the !dtcm_enabled path to prevent stack overflow on the simulator.
             static char stack_gb_data[sizeof(gb_s)];
@@ -1910,14 +1913,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             CB_App->avg_dt_mult =
                 (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
 
-            void* gb_run_frame_ = (context->gb->is_cgb_mode)
-                ? gb_run_frame__cgb
-                : gb_run_frame__dmg;
-    #ifdef DTCM_ALLOC
+            void* gb_run_frame_ =
+                (context->gb->is_cgb_mode) ? gb_run_frame__cgb : gb_run_frame__dmg;
+#ifdef DTCM_ALLOC
             void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
-    #else
+#else
             void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
-    #endif
+#endif
 
             if (preferences_frame_skip && preferences_blend_frames)
             {
@@ -1926,13 +1928,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 // 1. Render Frame A (Full Render, frame_skip = 0)
                 context->gb->direct.frame_skip = 0;
-    #ifdef DTCM_ALLOC
+#ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
                 DTCM_VERIFY_DEBUG();
-    #else
+#else
                 run_frame_function_pointer(context->gb);
-    #endif
+#endif
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
                 memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
@@ -1945,13 +1947,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 // 3. Run the emulator for the second frame period.
                 context->gb->direct.frame_skip = screen_is_static;
-    #ifdef DTCM_ALLOC
+#ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
                 DTCM_VERIFY_DEBUG();
-    #else
+#else
                 run_frame_function_pointer(context->gb);
-    #endif
+#endif
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
@@ -1969,7 +1971,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     {
                         blend_frames_lut_rect(
                             frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
-                            context->gb->direct.blend_rect_y_min, context->gb->direct.blend_rect_x_max,
+                            context->gb->direct.blend_rect_y_min,
+                            context->gb->direct.blend_rect_x_max,
                             context->gb->direct.blend_rect_y_max
                         );
                     }
@@ -1985,26 +1988,26 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     context->gb->direct.oam_ghost_buffer = NULL;
 
                     context->gb->direct.frame_skip = 1;
-    #ifdef DTCM_ALLOC
+#ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
                     DTCM_VERIFY_DEBUG();
-    #else
+#else
                     run_frame_function_pointer(context->gb);
-    #endif
+#endif
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
                     memcpy(oam_ghost_buffer_storage, context->gb->oam, OAM_SIZE);
 
                     context->gb->direct.oam_ghost_buffer = oam_ghost_buffer_storage;
                     context->gb->direct.frame_skip = 0;
-    #ifdef DTCM_ALLOC
+#ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
                     DTCM_VERIFY_DEBUG();
-    #else
+#else
                     run_frame_function_pointer(context->gb);
-    #endif
+#endif
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
                     context->gb->direct.oam_ghost_buffer = NULL;
@@ -2015,13 +2018,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     for (int frame = 0; frame <= preferences_frame_skip; ++frame)
                     {
                         context->gb->direct.frame_skip = (preferences_frame_skip != frame);
-    #ifdef DTCM_ALLOC
+#ifdef DTCM_ALLOC
                         DTCM_VERIFY_DEBUG();
                         run_frame_function_pointer(context->gb);
                         DTCM_VERIFY_DEBUG();
-    #else
+#else
                         run_frame_function_pointer(context->gb);
-    #endif
+#endif
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
                     }
@@ -2036,9 +2039,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->audioLocked = 0;
             }
 
-    #ifdef TARGET_SIMULATOR
+#ifdef TARGET_SIMULATOR
             pthread_mutex_unlock(&audio_mutex);
-    #endif
+#endif
 
             if (gameScene->cartridge_has_battery)
             {
@@ -2062,16 +2065,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 last_scy = scy;
             }
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
             int updated_playdate_lines = 0;
             int scale_index_for_calc = dither_preference;
-    #endif
+#endif
 
-            void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len)
-                = context->gb->is_cgb_mode
-                    ? gb_fast_memcpy_64__cgb
-                    : gb_fast_memcpy_64__dmg;
-            
+            void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len) =
+                context->gb->is_cgb_mode ? gb_fast_memcpy_64__cgb : gb_fast_memcpy_64__dmg;
+
             gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
 
             if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
@@ -2087,8 +2088,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                         gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                        if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+                        if (!preferences_frame_skip &&
+                            preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
                         {
                             int row_height_on_playdate = 2;
                             if (scale_index_for_calc == 2)
@@ -2097,20 +2099,20 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             }
                             updated_playdate_lines += row_height_on_playdate;
                         }
-    #endif
+#endif
                     }
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
                     scale_index_for_calc++;
                     if (scale_index_for_calc == 3)
                     {
                         scale_index_for_calc = 0;
                     }
-    #endif
+#endif
                 }
             }
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
             if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
             {
                 int percentage_threshold = 25 + (preferences_dynamic_level * 5);
@@ -2130,9 +2132,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
                     gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
             }
-    #endif
+#endif
 
-    #if LOG_DIRTY_LINES
+#if LOG_DIRTY_LINES
             playdate->system->logToConsole("--- Frame Update ---");
             int range_start = 0;
             bool is_dirty_range = (line_has_changed[0] & 1);
@@ -2174,20 +2176,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     is_dirty_range ? "Updated" : "Omitted"
                 );
             }
-    #endif
+#endif
 
-        void (*update_fb_dirty_lines_)(
-            uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-            const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
-            bool stable_scaling_enabled, uint8_t* restrict dither_lut0, uint8_t* restrict dither_lut1
-        )
-                = context->gb->is_cgb_mode
-                    ? update_fb_dirty_lines__cgb
-                    : update_fb_dirty_lines__dmg;
-            
-        update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
+            void (*update_fb_dirty_lines_)(
+                uint8_t* restrict framebuffer, uint8_t* restrict lcd,
+                const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
+                int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
+                uint8_t* restrict dither_lut1
+            ) = context->gb->is_cgb_mode ? update_fb_dirty_lines__cgb : update_fb_dirty_lines__dmg;
 
-    #if ENABLE_RENDER_PROFILER
+            update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
+
+#if ENABLE_RENDER_PROFILER
             if (CB_run_profiler_on_next_frame)
             {
                 CB_run_profiler_on_next_frame = false;
@@ -2222,7 +2222,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 return;
             }
-    #endif
+#endif
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
@@ -2234,8 +2234,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             update_fb_dirty_lines_(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, CB_dither_lut_row0,
-                CB_dither_lut_row1
+                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
+                CB_dither_lut_row0, CB_dither_lut_row1
             );
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
@@ -2314,7 +2314,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
                     const char* line1 = "Turbo";
-                    const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
+                    const char* line2 =
+                        (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
 
                     int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
                     int lineSpacing = 2;
@@ -2367,7 +2368,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->staticSelectorUIDrawn = true;
             }
             else if (!game_hide_indicator &&
-                    (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
+                     (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
             {
                 playdate->graphics->fillRect(
                     gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
@@ -2396,7 +2397,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 );
             }
 
-    #if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
+#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
             PDRect highlightFrame = gameScene->debug_highlightFrame;
             playdate->graphics->fillRect(
                 highlightFrame.x, highlightFrame.y, highlightFrame.width, highlightFrame.height,
@@ -2414,7 +2415,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     );
                 }
             }
-    #endif
+#endif
 
             if (preferences_display_fps)
             {
@@ -2660,7 +2661,7 @@ static void CB_GameScene_menu(void* object)
         }
         return;
     }
-    
+
     if (!CB_App->bundled_rom)
     {
         playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
@@ -2678,10 +2679,11 @@ static void CB_GameScene_menu(void* object)
     {
         playdate->system->addMenuItem("About", CB_showCredits, gameScene);
     }
-    
+
     unsigned script_menu_flags = script_menu(gameScene->script, gameScene);
 
-    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded && !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
+    if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded &&
+        !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
             "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
@@ -2784,7 +2786,8 @@ static void CB_GameScene_menu(void* object)
                     }
                     else if (show_time_info)
                     {
-                        LCDBitmap* ditherOverlay = playdate->graphics->newBitmap(400, 240, kColorWhite);
+                        LCDBitmap* ditherOverlay =
+                            playdate->graphics->newBitmap(400, 240, kColorWhite);
                         if (ditherOverlay)
                         {
                             int width, height, rowbytes;
@@ -2817,8 +2820,9 @@ static void CB_GameScene_menu(void* object)
 
                         const int max_human_time = 60 * 60 * 24 * 10;
 
-                        unsigned use_absolute_time = (current_time < final_timestamp) ||
-                                                    (final_timestamp + max_human_time < current_time);
+                        unsigned use_absolute_time =
+                            (current_time < final_timestamp) ||
+                            (final_timestamp + max_human_time < current_time);
 
                         char line2[40];
                         if (use_absolute_time)
@@ -2923,7 +2927,8 @@ static void CB_GameScene_menu(void* object)
                             int text_y = final_box_y + total_border_size + padding_y;
                             playdate->graphics->drawText(
                                 line1, strlen(line1), kUTF8Encoding,
-                                final_box_x + total_border_size + (box_width - line1_width) / 2, text_y
+                                final_box_x + total_border_size + (box_width - line1_width) / 2,
+                                text_y
                             );
                             playdate->graphics->drawText(
                                 line2, strlen(line2), kUTF8Encoding,
@@ -3016,8 +3021,9 @@ static size_t get_save_state_size_including_script(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
     int save_size = gb_get_state_size(context->gb);
-    if (save_size <= 0) return 0;
-    
+    if (save_size <= 0)
+        return 0;
+
     if (gameScene->script)
     {
         save_size += script_query_savestate_size(gameScene->script);
@@ -3048,7 +3054,8 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     char* buff = NULL;
 
     playdate->system->formatString(
-        &path_prefix, "%s/%s.%u", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
+        &path_prefix, "%s/%s.%u", cb_gb_directory_path(CB_statesPath), gameScene->base_filename,
+        slot
     );
 
     playdate->system->formatString(&state_name, "%s.state", path_prefix);
@@ -3065,7 +3072,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
         playdate->system->logToConsole("Save state failed: invalid save size.");
         goto cleanup;
     }
-    
+
     int script_size = 0;
     if (gameScene->script)
     {
@@ -3103,7 +3110,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     else
     {
         save_size += script_size;
-        
+
         int written = playdate->file->write(file, buff, save_size);
         playdate->file->close(file);
 
@@ -3267,7 +3274,8 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     CB_GameSceneContext* context = gameScene->context;
     char* state_name;
     playdate->system->formatString(
-        &state_name, "%s/%s.%u.state", cb_gb_directory_path(CB_statesPath), gameScene->base_filename, slot
+        &state_name, "%s/%s.%u.state", cb_gb_directory_path(CB_statesPath),
+        gameScene->base_filename, slot
     );
     bool success = false;
 
@@ -3331,13 +3339,15 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                     if (success)
                     {
                         struct StateHeader* header = (struct StateHeader*)buff;
-                        
+
                         if (header->script_save_data_size > file_size)
                         {
                             success = false;
-                            CB_presentModal(
-                                CB_Modal_new("Invalid script custom data size in file", NULL, NULL, NULL)->scene
-                            );
+                            CB_presentModal(CB_Modal_new(
+                                                "Invalid script custom data size in file", NULL,
+                                                NULL, NULL
+                            )
+                                                ->scene);
                         }
                         else
                         {
@@ -3357,7 +3367,9 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                 );
                             }
 
-                            const char* res = gb_state_load(context->gb, buff, file_size - header->script_save_data_size);
+                            const char* res = gb_state_load(
+                                context->gb, buff, file_size - header->script_save_data_size
+                            );
                             if (res)
                             {
                                 success = false;
@@ -3370,7 +3382,8 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                 {
                                     // First modal: generic message + OK/Details
                                     CB_presentModal(CB_Modal_new(
-                                                        "Failed to load state.", loadStateErrorOptions,
+                                                        "Failed to load state.",
+                                                        loadStateErrorOptions,
                                                         CB_LoadStateErrorModalCallback, details
                                     )
                                                         ->scene);
@@ -3379,7 +3392,8 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                 {
                                     // Fallback: 1-button modal
                                     CB_presentModal(
-                                        CB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene
+                                        CB_Modal_new("Failed to load state.", NULL, NULL, NULL)
+                                            ->scene
                                     );
                                 }
                             }
@@ -3389,18 +3403,27 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                 if (file_size - save_state_size != header->script_save_data_size)
                                 {
                                     success = false;
-                                    
+
                                     CB_presentModal(
-                                        CB_Modal_new("Script custom state missing from state file.", NULL, NULL, NULL)->scene
+                                        CB_Modal_new(
+                                            "Script custom state missing from state file.", NULL,
+                                            NULL, NULL
+                                        )
+                                            ->scene
                                     );
                                 }
-                                else if (!script_load_state(gameScene->script, (void*)scriptbuff, header->script_save_data_size))
+                                else if (!script_load_state(
+                                             gameScene->script, (void*)scriptbuff,
+                                             header->script_save_data_size
+                                         ))
                                 {
                                     success = false;
-                                    
-                                    CB_presentModal(
-                                        CB_Modal_new("Failed to load script's custom state.", NULL, NULL, NULL)->scene
-                                    );
+
+                                    CB_presentModal(CB_Modal_new(
+                                                        "Failed to load script's custom state.",
+                                                        NULL, NULL, NULL
+                                    )
+                                                        ->scene);
                                 }
                             }
                         }
@@ -3422,23 +3445,21 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     return success;
 }
 
-__section__(".rare") static
-bool CB_GameScene_lock(void* object)
+__section__(".rare") static bool CB_GameScene_lock(void* object)
 {
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
-    
+
     if (preferences_lock_button != PREF_BUTTON_NONE)
     {
         gameScene->lock_button_hold_frames_remaining = 8;
         return true;
     }
-    
+
     return false;
 }
 
-__section__(".rare") static
-void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
+__section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
@@ -3446,14 +3467,15 @@ void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
     switch (event)
     {
     case kEventLock:
-        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE) return;
+        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE)
+            return;
         // fallthrough
     case kEventPause:
         audioGameScene = NULL;
 
         // Re-enable auto-lock when the system menu is open.
         playdate->system->setAutoLockDisabled(0);
-        
+
         gameScene->lock_button_hold_frames_remaining = 0;
 
         // fall-through
@@ -3535,10 +3557,10 @@ void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg)
                 playdate->system->logToConsole("Load state %d failed", 0);
             }
             break;
-        case 0x76: // V
-            {
-                __gb_dump_vram(context->gb);
-            }
+        case 0x76:  // V
+        {
+            __gb_dump_vram(context->gb);
+        }
 #if ENABLE_RENDER_PROFILER
         case 0x39:  // 9
             playdate->system->logToConsole("Profiler triggered. Will run on next frame.");
@@ -3631,7 +3653,7 @@ static void CB_GameScene_free(void* object)
 __section__(".rare") void __gb_dump_vram(gb_s* gb)
 {
     playdate->system->logToConsole("dumping vram to vram.bin");
-    
+
     // reverse byte order of appropriate bytes
     for (int pass = 0; pass <= 1; ++pass)
     {
@@ -3642,9 +3664,12 @@ __section__(".rare") void __gb_dump_vram(gb_s* gb)
                 gb->vram[i | (0x2000 * b)] = reverse_bits_u8(gb->vram[i | (0x2000 * b)]);
             }
         }
-        
+
         if (pass == 0)
-            call_with_main_stack_3(cb_write_entire_file, "vram.bin", gb->vram, (gb->is_cgb_mode) ? VRAM_SIZE_CGB : VRAM_SIZE);
+            call_with_main_stack_3(
+                cb_write_entire_file, "vram.bin", gb->vram,
+                (gb->is_cgb_mode) ? VRAM_SIZE_CGB : VRAM_SIZE
+            );
     }
 }
 

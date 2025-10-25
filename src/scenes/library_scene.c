@@ -399,8 +399,9 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
 
 static void launch_game_prompt_cgb(CB_Game* game, int launch)
 {
-    if (launch != 1) return;
-    
+    if (launch != 1)
+        return;
+
     // check if game would use script
     ScriptInfo* info = get_script_info(game->names->name_header);
     void* prefs = preferences_store_subset(-1);
@@ -408,7 +409,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     bool will_use_script = preferences_script_support;
     preferences_restore_subset(prefs);
     playdate->system->logToConsole("Will use script: %d", (int)will_use_script);
-    
+
     if (will_use_script && info)
     {
         launch_dmg_or_cgb(game, info->launch_cgb ? 1 : 0);
@@ -417,52 +418,59 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     {
         const char* options[] = {"DMG", "CGB", NULL};
         const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
-        
+
         switch (game->names->rom_cgb_support)
         {
         default:
-            playdate->system->logToConsole("WARNING: unexpected game platform (0x%x); launching as DMG", game->names->rom_cgb_support);
+            playdate->system->logToConsole(
+                "WARNING: unexpected game platform (0x%x); launching as DMG",
+                game->names->rom_cgb_support
+            );
             launch_dmg_or_cgb(game, 0);
             break;
         case GB_SUPPORT_DMG:
             launch_dmg_or_cgb(game, 0);
             break;
         case GB_SUPPORT_CGB:
+        {
+            CB_Modal* modal = CB_Modal_new(
+                "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. "
+                "Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try "
+                "experimental CGB mode.",
+                options, (void*)launch_dmg_or_cgb, game
+            );
+
+            modal->width = 380;
+            modal->height = 220;
+
+            CB_presentModal(modal->scene);
+        }
+        break;
+        case GB_SUPPORT_DMG_AND_CGB:
+        {
+            if (preferences_prompt_if_cgb_optional)
             {
                 CB_Modal* modal = CB_Modal_new(
-                    "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try experimental CGB mode.",
-                    options, (void*)launch_dmg_or_cgb, game
+                    "This ROM optionally supports CGB mode (\"Color\"). You can launch in "
+                    "standard, non-Color DMG mode (recommended), or try using CrankBoy's "
+                    "experimental CGB emulation (likely to fail).",
+                    options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
                 );
-                
+
                 modal->width = 380;
                 modal->height = 220;
-                
+
                 CB_presentModal(modal->scene);
             }
-            break;
-        case GB_SUPPORT_DMG_AND_CGB:
+            else
             {
-                if (preferences_prompt_if_cgb_optional)
-                {
-                    CB_Modal* modal = CB_Modal_new(
-                        "This ROM optionally supports CGB mode (\"Color\"). You can launch in standard, non-Color DMG mode (recommended), or try using CrankBoy's experimental CGB emulation (likely to fail).",
-                        options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
-                    );
-                    
-                    modal->width = 380;
-                    modal->height = 220;
-                    
-                    CB_presentModal(modal->scene);
-                }
-                else
-                {
-                    launch_dmg_or_cgb(game, 0);
-                }
+                launch_dmg_or_cgb(game, 0);
             }
-            break;
+        }
+        break;
         }
     }
-    
+
     script_info_free(info);
 }
 
@@ -477,22 +485,20 @@ static void _launch_game_check_sram(CB_Game* game)
             hash = patch_hash(patches);
             free_patches(patches);
         }
-        
+
         // warn if potential save hazard
         void* prefs = preferences_store_subset(~(PREFBIT_save_slot | PREFBIT_script_support));
         load_game_prefs(game->fullpath, false);
         preferences_restore_subset(prefs);
-        
+
         char* save_fname = cb_save_filename(game->fullpath, false);
-        
-        const char* options[] = {
-            "Cancel",
-            "Launch",
-            NULL
-        };
-        
+
+        const char* options[] = {"Cancel", "Launch", NULL};
+
         size_t size;
-        char* data = call_with_main_stack_5(cb_read_partial_file, save_fname, 0x20, &size, kFileReadData, true);
+        char* data = call_with_main_stack_5(
+            cb_read_partial_file, save_fname, 0x20, &size, kFileReadData, true
+        );
         cb_free(save_fname);
         if (!data || size != 0x20)
         {
@@ -510,33 +516,39 @@ static void _launch_game_check_sram(CB_Game* game)
                 uint32_t stored_hash = *(uint32_t*)(void*)&data[0x14];
                 uint32_t flags = *(uint32_t*)(void*)&data[0x10];
                 bool script = flags & 1;
-                
+
                 if (stored_hash != hash)
                 {
                     CB_Modal* modal;
                     if (!stored_hash)
                     {
                         modal = CB_Modal_new(
-                            "You have softpatches enabled, but this game's save data comes from an unpatched ROM. To keep the save data separate, you may wish to change the save slot in settings before launching.",
+                            "You have softpatches enabled, but this game's save data comes from an "
+                            "unpatched ROM. To keep the save data separate, you may wish to change "
+                            "the save slot in settings before launching.",
                             options, (void*)launch_game_prompt_cgb, game
                         );
                     }
                     else if (!hash)
                     {
-                        char* msg = aprintf("You have no softpatches on, but this game's save data comes from a patched ROM (code: %08X.) To keep the save data separate, you may wish to change the save slot in settings before launching.", stored_hash);
-                        modal = CB_Modal_new(
-                            msg,
-                            options, (void*)launch_game_prompt_cgb, game
+                        char* msg = aprintf(
+                            "You have no softpatches on, but this game's save data comes from a "
+                            "patched ROM (code: %08X.) To keep the save data separate, you may "
+                            "wish to change the save slot in settings before launching.",
+                            stored_hash
                         );
+                        modal = CB_Modal_new(msg, options, (void*)launch_game_prompt_cgb, game);
                         cb_free(msg);
                     }
                     else
                     {
-                        char* msg = aprintf("This game's save data comes from a ROM with different softpatches applied (saved code: %08X; your patches: %08X) Consider changing the save slot in settings to keep your save data separate.", stored_hash, hash);
-                        modal = CB_Modal_new(
-                            msg,
-                            options, (void*)launch_game_prompt_cgb, game
+                        char* msg = aprintf(
+                            "This game's save data comes from a ROM with different softpatches "
+                            "applied (saved code: %08X; your patches: %08X) Consider changing the "
+                            "save slot in settings to keep your save data separate.",
+                            stored_hash, hash
                         );
+                        modal = CB_Modal_new(msg, options, (void*)launch_game_prompt_cgb, game);
                         cb_free(msg);
                     }
                     modal->width = 390;
@@ -562,7 +574,7 @@ static void _launch_game_check_sram(CB_Game* game)
 static void launch_game(void* ud, int option)
 {
     CB_Game* game = ud;
-    
+
     switch (option)
     {
     case 0:  // launch w/ scripts enabled
@@ -592,10 +604,7 @@ static void launch_game(void* ud, int option)
                     "switching to per-game prefs (%d/%d/%d)", preferences_script_support,
                     was_per_game, global_scripts_enabled
                 );
-                preferences_save_to_disk(
-                    settings_path,
-                    ~(PREFBITS_NEVER_GLOBAL)
-                );
+                preferences_save_to_disk(settings_path, ~(PREFBITS_NEVER_GLOBAL));
             }
             else
             {
@@ -603,9 +612,7 @@ static void launch_game(void* ud, int option)
                 // if global scripts disabled, AND we aren't using per-game prefs for this game, AND
                 // we didn't ask to enable script support, then just mark prompted (and don't enable
                 // per-game + script support.)
-                preferences_save_to_disk(
-                    settings_path, ~(PREFBIT_script_has_prompted)
-                );
+                preferences_save_to_disk(settings_path, ~(PREFBIT_script_has_prompted));
             }
 
             preferences_restore_subset(prefs);
@@ -673,9 +680,7 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_itcm = 1;              // On
         preferences_uncap_fps = 0;         // Off
 
-        preferences_save_to_disk(
-            settings_path, PREFBITS_ALWAYS_GLOBAL
-        );
+        preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
 
         preferences_restore_subset(stored_globals);
         cb_free(stored_globals);
@@ -751,7 +756,6 @@ static void launch_game_prompt_if_script(void* ud, int option)
 
     bool launch = true;
 
-#ifndef NOLUA
     // Prompt for use game script
 
     // check if user has already accepted/rejected script prompt for this game before
@@ -846,7 +850,6 @@ static void launch_game_prompt_if_script(void* ud, int option)
             launch = false;
         }
     }
-#endif
 
     if (launch)
     {
@@ -893,7 +896,7 @@ __section__(".rare") static void CB_LibraryScene_event(
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_App->shouldCheckUpdateInfo = true;
-    
+
     setCrankSoundsEnabled(true);
 
     if (!has_loaded_initial_index)
@@ -1092,7 +1095,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Check for a pending update message when the library is active.
-    if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown && CB_App->shouldCheckUpdateInfo)
+    if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown &&
+        CB_App->shouldCheckUpdateInfo)
     {
         PendingUpdateInfo* update_info = get_pending_update();
         CB_App->shouldCheckUpdateInfo = false;

@@ -21,8 +21,8 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Multiple save state slots per game.
 - Settings to fine-tune performance, visual appearance, and crank controls
 - Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
-  - Conveniently browse and download ROM hacks directly from within CrankBoy.
-- ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with Lua](./lua-docs.md) or [with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
+    - Conveniently browse and download ROM hacks directly from within CrankBoy.
+- ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
 
 ## Limitations
@@ -30,7 +30,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - CrankBoy is not 100% stable. A responsible gamer makes back-ups of their save files now and then.
 - Currently, **Game Boy Color games are not supported** in general. However, many Game Boy Color games are able to run on the DMG (original Game Boy) -- CrankBoy should be able to play those games fine. (There is now limited support for running CGB games, but it still works with only very few games.)
 - Some games don't work correctly. Please report any broken games.
-- Audio is not accurate to sub-frame precision, so audio clips (like in *Pokémon Yellow* or *The Chessmaster*) will often be unrecognizable or silent.
+- Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.
 - Link Cable (and other peripherals) are not supported.
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options. 60 fps interlaced is also possible.
 - Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
@@ -62,6 +62,7 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
 There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
 
 #### USB
+
 - Connect your Playdate to a computer (or another device) by USB, press and hold `LEFT` + `MENU` + `LOCK` at the same time for 5 seconds. Or from the app launcher, go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in this directory: `/Shared/Emulation/gb/games/`
 - ROM filenames must end with `.gb` or `.gbc`
@@ -98,7 +99,7 @@ Then, you can enable, disable, and reorder your patches by going to `⊙ > setti
 ## Tips
 
 - You can delete cover art from the library view by holding Ⓑ for 5 seconds.
-- Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or, if the *Crank* preference is set to `Start/Select`, by rotating the crank to 6 o'clock (i.e. straight down).
+- Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or, if the _Crank_ preference is set to `Start/Select`, by rotating the crank to 6 o'clock (i.e. straight down).
     - Be careful -- many games use Start+Select+A+B as a shortcut to reset the game. Try not to keep the crank in this position long term.
 
 ## Bundle Mode
@@ -119,7 +120,7 @@ It should be a standard `JSON` file like so (replace the fields marked by `< >` 
 {
     // (required)
     "rom": "<path to rom file>",
-    
+
     // (optional -- set to 'CGB' to launch with experimental CGB support)
     "device": "DMG"
 
@@ -142,7 +143,7 @@ The value for each preference under `"default"` must be a non-negative integer, 
 
 As an alternative to marking preferences as hidden, you can instead whitelist preferences that you wish to be exposed to the user by using `"visible"` instead of `"hidden"`. If you wish for the preferences menu to be hidden _entirely_, simply use `"visible": []`. A list of preferences and their names can be found [here](./src/prefs.x).
 
-Additionally, it's also strongly recommended that you add a [C script](src/cscripts/kirby_dreamland.c) (or, compiling C code is troublesome, a [Lua script](./lua-docs.md), which may greatly impact performance and also supports fewer features) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness. Note that Lua scripts are very slow because an unoptimized local version of Lua is used; you can likely increase the speed if you switch to using the Lua core provided by the Playdate firmware, but there is not currently support for this in CrankBoy. (Or just write the script in C instead.)
+Additionally, it's also strongly recommended that you add a [C script](src/cscripts/kirby_dreamland.c) and/or [native crank support](./gb-extensions.md) to your ROM in order to maximize playdate-friendliness.
 
 For developers new to Playdate, please be aware that you will need to [compile CrankBoy](https://sdk.play.date/2.7.6/Inside%20Playdate%20with%20C.html#_prerequisites) (§2, §4.2) yourself if you want to run it with the Simulator, as the simulator cannot run a device-only build.
 

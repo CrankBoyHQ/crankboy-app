@@ -276,16 +276,6 @@ jobs:
                   7z x toolchain/win/PlaydateSDK-3.0.0.exe -oPlaydateSDK -y
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
-            - name: Prepare Lua Scripts
-              run: |
-                  mkdir -p Source/scripts
-                  for file in src/scripts/*.lua; do
-                      if [ -e "$file" ]; then
-                          base=$(basename "$file" .lua)
-                          cp "$file" "Source/scripts/${base}.l"
-                      fi
-                  done
-
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
@@ -309,11 +299,11 @@ jobs:
                   echo "Building simulator DLL..."
                   gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 \
                       -I . -I "$PLAYDATE_SDK_PATH/C_API" -I src -I libs \
-                      -I libs/minigb_apu -I libs/lz4 -I libs/lua-5.4.7 -I libs/pdnewlib \
+                      -I libs/minigb_apu -I libs/lz4 -I libs/pdnewlib \
                       -o build/pdex.dll \
                       src/cscripts/*.c src/*.c src/scenes/*.c \
                       libs/minigb_apu/minigb_apu.c libs/pdnewlib/pdnewlib.c main.c \
-                      libs/lua-5.4.7/onelua.c libs/lz4/lz4.c \
+                      libs/lz4/lz4.c \
                       "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
 
                   # Copy DLL to existing .pdx folder (which now contains device binary)

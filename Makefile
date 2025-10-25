@@ -12,21 +12,10 @@ ifeq ($(SDK),)
 	$(error SDK path not found; set ENV value PLAYDATE_SDK_PATH)
 endif
 
-# --- COPY LUA SCRIPTS ---
-COPY_LUA_SCRIPTS := $(shell \
-	mkdir -p Source/scripts; \
-	for file in src/scripts/*.lua; do \
-		if [ -e "$$file" ]; then \
-			base=$$(basename "$$file" .lua); \
-			cp "$$file" "Source/scripts/$${base}.l"; \
-		fi; \
-	done; \
-)
 
 VPATH += src
 VPATH += libs/minigb_apu
 VPATH += libs/lz4
-VPATH += libs/lua-5.4.7
 VPATH += libs/pdnewlib
 VPATH += libs
 
@@ -72,7 +61,6 @@ SRC += libs/minigb_apu/minigb_apu.c
 SRC += libs/pdnewlib/pdnewlib.c
 SRC += main.c
 
-SRC += libs/lua-5.4.7/onelua.c
 SRC += libs/lz4/lz4.c
 
 ASRC = setup.s
@@ -82,25 +70,22 @@ UINCDIR += src
 UINCDIR += libs
 UINCDIR += libs/minigb_apu
 UINCDIR += libs/lz4
-UINCDIR += libs/lua-5.4.7
 UINCDIR += libs/pdnewlib
 
 # (device-only flags)
 
 # Note: if there are unexplained crashes, try disabling these.
-# LUA: enable lua scripting (uses embedded lua engine)
 # DTCM_ALLOC: allow allocating variables in DTCM at the low-address end of the region reserved for the stack.
 # ITCM_CORE (requires DTCM_ALLOC, and special link_map.ld): run core interpreter from ITCM.
-# NOLUA: disable lua support
 # Note: DTCM only active on Rev A regardless.
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
 UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
 
 # flags applied to simulator only
-SIMULATOR_FLAGS += 
+SIMULATOR_FLAGS +=
 
 # flags applied to both simulator and device
-COMMON_FLAGS += 
+COMMON_FLAGS +=
 
 # Define ASM defines here
 UADEFS =
@@ -133,11 +118,3 @@ PDCFLAGS += --quiet
 # flags for simulator
 DYLIB_FLAGS += $(COMMON_FLAGS) $(SIMULATOR_FLAGS)
 UDEFS += $(COMMON_FLAGS)
-
-# --- CUSTOM CLEANUP ---
-.PHONY: clean-scripts
-clean-scripts:
-	@echo "Cleaning up Lua scripts..."
-	@rm -rf Source/scripts
-
-clean: clean-scripts

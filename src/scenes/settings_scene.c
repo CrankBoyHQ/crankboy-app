@@ -114,8 +114,7 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
 static void open_homebrew_hub(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
-    CB_HomebrewHubScene* s =
-        CB_HomebrewHubScene_new();
+    CB_HomebrewHubScene* s = CB_HomebrewHubScene_new();
     CB_presentModal(s->scene);
 }
 
@@ -158,7 +157,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         {
             settingsScene->selected_game_settings_path =
                 cb_game_config_path(selectedGame->fullpath);
-            
+
             void* stored_globals = preferences_store_subset(~PREFBITS_NEVER_GLOBAL);
 
             if (settingsScene->selected_game_settings_path)
@@ -257,18 +256,19 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     }
 
     CB_Scene_refreshMenu(scene);
-    int t_since = (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
+    int t_since =
+        (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
 
-    if (last_selected_preference &&
-        t_since <=
-            TIME_FORGET_LAST_PREFERENCE)
+    if (last_selected_preference && t_since <= TIME_FORGET_LAST_PREFERENCE)
     {
         int i = 0;
         for (OptionsMenuEntry* entry = settingsScene->entries; entry->name; ++entry, ++i)
         {
             if (entry->pref_var == last_selected_preference)
             {
-                playdate->system->logToConsole("Last selected option: %p; t=%d", last_selected_preference, t_since);
+                playdate->system->logToConsole(
+                    "Last selected option: %p; t=%d", last_selected_preference, t_since
+                );
                 settingsScene->cursorIndex = i;
                 break;
             }
@@ -342,12 +342,12 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
         {
             if (game_settings_path)
             {
-                result = preferences_save_to_disk(
-                    game_settings_path, PREFBITS_ALWAYS_GLOBAL
-                );
+                result = preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
             }
-            
-            result = preferences_save_to_disk(CB_globalPrefsPath, ~PREFBITS_ALWAYS_GLOBAL | PREFBITS_NEVER_GLOBAL);
+
+            result = preferences_save_to_disk(
+                CB_globalPrefsPath, ~PREFBITS_ALWAYS_GLOBAL | PREFBITS_NEVER_GLOBAL
+            );
         }
         else
         {
@@ -370,10 +370,10 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
             result = preferences_save_to_disk(
                 CB_globalPrefsPath,
 
-                PREFBITS_NEVER_GLOBAL
-                | PREFBITS_ALWAYS_GLOBAL
-                // these prefs are locked, so we shouldn't be able to change them
-                | prefs_locked_by_script
+                PREFBITS_NEVER_GLOBAL |
+                    PREFBITS_ALWAYS_GLOBAL
+                    // these prefs are locked, so we shouldn't be able to change them
+                    | prefs_locked_by_script
             );
 
             if (result)
@@ -685,7 +685,7 @@ static void settings_action_save_state_possibly_warn(
         modal->width = 390;
         modal->height = 234;
         modal->margin = 12;
-        //modal->warning = CB_MODAL_WARNING_BOTTOM_LR; // perhaps a little overzealous.
+        // modal->warning = CB_MODAL_WARNING_BOTTOM_LR; // perhaps a little overzealous.
         CB_presentModal(modal->scene);
     }
     else
@@ -760,7 +760,7 @@ struct ScriptSettingsInfo
 {
     preference_t* preference;
     int maxvalue;
-    
+
     char* name;
     char* description;
     char** options;
@@ -768,15 +768,9 @@ struct ScriptSettingsInfo
 
 static int script_settings_info_count;
 static struct ScriptSettingsInfo script_settings_info[] = {
-    {
-        .preference = &preferences_script_A
-    },
-    {
-        .preference = &preferences_script_B
-    },
-    {
-        .preference = &preferences_script_C
-    }
+    {.preference = &preferences_script_A},
+    {.preference = &preferences_script_B},
+    {.preference = &preferences_script_C}
     // can add more here as needed
 };
 
@@ -787,10 +781,10 @@ static void clear_script_settings(void)
     {
         cb_free(script_settings_info[i].description);
         script_settings_info[i].description = NULL;
-        
+
         cb_free(script_settings_info[i].name);
         script_settings_info[i].name = NULL;
-        
+
         for (char** opt = script_settings_info[i].options; opt && *opt; ++opt)
         {
             cb_free(*opt);
@@ -802,8 +796,9 @@ static void clear_script_settings(void)
 
 bool script_custom_setting_add(const char* name, const char* description, const char** options)
 {
-    if (script_settings_info_count >= CB_ARRAY_SIZE(script_settings_info)) return false;
-    
+    if (script_settings_info_count >= CB_ARRAY_SIZE(script_settings_info))
+        return false;
+
     struct ScriptSettingsInfo* info = &script_settings_info[script_settings_info_count];
     info->name = cb_strdup(name);
     info->description = cb_strdup(description);
@@ -812,13 +807,13 @@ bool script_custom_setting_add(const char* name, const char* description, const 
     {
         ++info->maxvalue;
     }
-    
-    info->options = allocza(char*, info->maxvalue+1);
+
+    info->options = allocza(char*, info->maxvalue + 1);
     for (int i = 0; i < info->maxvalue; ++i)
     {
         info->options[i] = cb_strdup(options[i]);
     }
-    
+
     ++script_settings_info_count;
     return true;
 }
@@ -872,7 +867,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .ud = gameScene,
         };
     }
-    
+
     if (libraryScene)
     {
         entries[++i] = (OptionsMenuEntry){
@@ -883,7 +878,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = open_homebrew_hub,
             .ud = NULL
         };
-        
+
         if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
         {
             entries[i].locked = true;
@@ -901,7 +896,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = open_patches,
             .ud = selectedGame
         };
-        
+
         entries[++i] = (OptionsMenuEntry){
             .name = "Save Data",
             .values = save_slot_labels,
@@ -912,7 +907,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .rebuild_when_changed = 1,
             .ud = gameScene,
         };
-        
+
         if (!selectedGame->names->rom_has_battery)
         {
             entries[i].locked = true;
@@ -967,7 +962,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_change = settings_post_action_per_game,
         };
     }
-    
+
     if (gameScene && gameScene->script)
     {
         clear_script_settings();
@@ -978,7 +973,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .name = "Script",
                 .header = 1
             };
-            
+
             for (int j = 0; j < script_settings_info_count; ++j)
             {
                 struct ScriptSettingsInfo* info = &script_settings_info[j];
@@ -1332,15 +1327,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    #define BASE_LUA_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. This\nsetting is always per-game."
+    #define BASE_SCRIPT_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. This\nsetting is always per-game."
 
-    #ifndef NOLUA
-    // lua/C scripts
+    // C scripts
     entries[++i] = (OptionsMenuEntry){
         .name = "Game scripts",
         .values = off_on_labels,
         .description =
-            BASE_LUA_STRING,
+            BASE_SCRIPT_STRING,
         .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
@@ -1351,20 +1345,19 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         if (gameScene->script_available)
         {
-            entries[i].description = BASE_LUA_STRING "\n \nYou must restart the\nROM for this setting\nto take effect.";
+            entries[i].description = BASE_SCRIPT_STRING "\n \nYou must restart the\nROM for this setting\nto take effect.";
             if (gameScene->script_info_available)
             {
-                entries[i].description = BASE_LUA_STRING "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
+                entries[i].description = BASE_SCRIPT_STRING "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
                 entries[i].on_hold = display_script_info;
             }
         }
         else
         {
-            entries[i].description = BASE_LUA_STRING "\n \nThere is no script\navailable for this ROM.";
+            entries[i].description = BASE_SCRIPT_STRING "\n \nThere is no script\navailable for this ROM.";
             entries[i].locked = 1;
         }
     }
-    #endif
 
     if (!gameScene)
     {
@@ -1421,7 +1414,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
-        
+
         // remember selection
         entries[++i] = (OptionsMenuEntry){
             .name = "CGB Prompt",

@@ -1,15 +1,11 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
 #include "app.h"
 
+#include <stdbool.h>
+#include <stdint.h>
+
 /*
-
-There are two kinds of scripts. Lua scripts and C scripts.
-Both are supported via script.c
-
-Lua scripts must be listed in scripts.json
 
 C scripts are .c files which must be included in the makefile
 at build time, and they must contain a C_SCRIPT { ... } declaration.
@@ -20,7 +16,6 @@ struct CB_GameScene;
 #ifndef PEANUT_GB_H
 typedef void gb_s;
 #endif
-struct lua_State;
 
 #define SCRIPT_MENU_SUPPRESS_BUTTON 1
 #define SCRIPT_MENU_SUPPRESS_IMAGE 2
@@ -59,7 +54,7 @@ struct CScriptInfo
     CS_OnMenu on_menu;
     CS_OnSettings on_settings;
     CS_OnEnd on_end;
-    
+
     CS_QuerySerialSize query_serial_size;
     CS_Serialize serialize;
     CS_Deserialize deserialize;
@@ -72,16 +67,12 @@ typedef struct ScriptInfo
     bool experimental;
     char* info;  // human-readable description
 
-    // one of the following will be non-null
-    char* lua_script_path;
     const struct CScriptInfo* c_script_info;
 } ScriptInfo;
 
 typedef struct ScriptState
 {
-    // one of the following will be non-null
     const struct CScriptInfo* c;
-    struct lua_State* L;
 
     // C script state
     void* ud;

@@ -30,10 +30,6 @@ SECTIONS
 		build/libs/pdnewlib/pdnewlib.o(.text)
 
 		. = ALIGN(32);
-		build/libs/lua-5.4.7/*(.text)
-		build/libs/lua-5.4.7/*(.text.*)
-
-		. = ALIGN(32);
 		build/src/script.o(.text)
 		build/src/script.o(.text.*)
 
@@ -73,7 +69,7 @@ SECTIONS
 			*(.itcm.dmg.hdma)
 			*(.itcm.dmg.*)
         __itcm_dmg_end = .;
-		
+
 		. = ALIGN(0x1000);
 		. += 0xDE6;
         __itcm_cgb_start = .;
