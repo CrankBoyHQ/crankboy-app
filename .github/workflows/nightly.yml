@@ -62,7 +62,7 @@ jobs:
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
                   echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
+                  tar -xf toolchain/linux/PlaydateSDK-3.0.0.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -130,7 +130,7 @@ jobs:
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
                   echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-2.7.6.tar
+                  tar -xf toolchain/linux/PlaydateSDK-3.0.0.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -187,7 +187,7 @@ jobs:
             - name: Unzip and Install Playdate SDK from Submodule
               run: |
                   echo "Unzipping SDK archive from toolchain/mac/..."
-                  unzip toolchain/mac/PlaydateSDK-2.7.6.zip
+                  unzip toolchain/mac/PlaydateSDK-3.0.0.zip
 
                   PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
                   if [[ -z "$PKG_PATH" ]]; then
@@ -273,7 +273,7 @@ jobs:
                   TOOLCHAIN_PATH="$(pwd)/gcc-arm-toolchain/bin"
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
                   echo "Extracting SDK from toolchain/win/..."
-                  7z x toolchain/win/PlaydateSDK-2.7.6.exe -oPlaydateSDK -y
+                  7z x toolchain/win/PlaydateSDK-3.0.0.exe -oPlaydateSDK -y
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Prepare Lua Scripts
@@ -299,12 +299,12 @@ jobs:
                   export PATH="$(pwd)/gcc-arm-toolchain/bin:$PATH"
                   # Create build directory
                   mkdir -p build
-                  
+
                   # Build device binary using ARM GCC
                   echo "Building device binary..."
                   arm-none-eabi-gcc --version
                   make -j$(nproc) device
-                  
+
                   # Build simulator extension DLL
                   echo "Building simulator DLL..."
                   gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 \
@@ -315,7 +315,7 @@ jobs:
                       libs/minigb_apu/minigb_apu.c libs/pdnewlib/pdnewlib.c main.c \
                       libs/lua-5.4.7/onelua.c libs/lz4/lz4.c \
                       "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
-                  
+
                   # Copy DLL to existing .pdx folder (which now contains device binary)
                   cp build/pdex.dll CrankBoy.pdx/
 
