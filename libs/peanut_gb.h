@@ -1608,17 +1608,118 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             gb->gb_reg.SB = val;
             return;
 
-        case 0x02:
+        case 0x02:  // SC - Serial Control
         {
             bool internal_transfer_start =
                 (val & SERIAL_SC_TX_START) && (val & SERIAL_SC_CLOCK_SRC);
 
-            // Only keep the user-writable bits + the start bit if initiating transfer
+            // Keep user-writable bits (0x7E) + the start/clock bits from the game
             gb->gb_reg.SC = (val & (SERIAL_SC_CLOCK_SRC | SERIAL_SC_TX_START)) | 0x7E;
 
             if (internal_transfer_start && gb->gb_serial_tx == NULL)
             {
-                gb->counter.serial_count = SERIAL_CYCLES;
+                uint8_t sb = gb->gb_reg.SB;
+
+                // A printer sequence starts with $88 OR $00 (for status)
+                // OR we are already in a sequence.
+                bool is_printer = (gb->printer_stub_state > 0) || (sb == 0x88) || (sb == 0x00);
+
+                if (is_printer)
+                {
+                    // Default reply is ACK
+                    gb->gb_reg.SB = 0x00;
+
+                    switch (gb->printer_stub_state)
+                    {
+                    case 0:  // Idle, waiting for Magic 1 or $00
+                        if (sb == 0x88)
+                        {
+                            gb->printer_stub_state = 1;  // -> Magic 2
+                        }
+                        else if (sb == 0x00)
+                        {
+                            // Game is just asking for status
+                            gb->gb_reg.SB = 0x81;         // Reply "Printer OK"
+                            gb->printer_stub_state = 10;  // -> Final $00
+                        }
+                        break;
+                    case 1:  // Waiting for Magic 2
+                        if (sb == 0x33)
+                            gb->printer_stub_state = 2;  // -> Command
+                        else
+                            gb->printer_stub_state = 0;  // Bad sequence
+                        break;
+                    case 2:  // Waiting for Command
+                        gb->printer_last_cmd = sb;
+                        gb->printer_data_len = 0;
+                        gb->printer_stub_state = 3;  // -> Compression
+                        break;
+                    case 3:                          // Waiting for Compression Flag
+                        gb->printer_stub_state = 4;  // -> Length LSB
+                        break;
+                    case 4:  // Waiting for Length LSB
+                        gb->printer_data_len = sb;
+                        gb->printer_stub_state = 5;  // -> Length MSB
+                        break;
+                    case 5:  // Waiting for Length MSB
+                        gb->printer_data_len |= (sb << 8);
+                        if (gb->printer_data_len == 0)
+                        {
+                            gb->printer_stub_state = 7;  // No data, -> Checksum LSB
+                        }
+                        else
+                        {
+                            gb->printer_stub_state = 6;  // -> Data
+                        }
+                        break;
+                    case 6:  // In Data Transfer
+                        if (--gb->printer_data_len == 0)
+                        {
+                            gb->printer_stub_state = 7;  // -> Checksum LSB
+                        }
+                        break;
+                    case 7:                          // Waiting for Checksum LSB
+                        gb->printer_stub_state = 8;  // -> Checksum MSB
+                        break;
+                    case 8:                          // Waiting for Checksum MSB
+                        gb->printer_stub_state = 9;  // -> Alive Indicator
+                        break;
+                    case 9:  // Waiting for Alive Indicator ($00)
+                        if (sb == 0x00)
+                        {
+                            // This is the 9th byte, where we send status
+                            gb->gb_reg.SB = 0x81;         // Reply "Printer OK"
+                            gb->printer_stub_state = 10;  // -> Final $00
+                        }
+                        else
+                        {
+                            gb->printer_stub_state = 0;  // Bad sequence
+                        }
+                        break;
+                    case 10:  // Waiting for Final $00
+                    default:
+                        gb->printer_stub_state = 0;
+                        break;
+                    }
+
+                    // Instantly trigger the interrupt and clear the start flag
+                    gb->gb_reg.IF |= SERIAL_INTR;
+                    gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
+                }
+                else
+                {
+                    gb->counter.serial_count = SERIAL_CYCLES;
+                    gb->printer_stub_state = 0;
+                    gb->printer_data_len = 0;
+                    gb->printer_last_cmd = 0;
+                }
+            }
+            else if (!(val & SERIAL_SC_TX_START))
+            {
+                // The game manually stopped a transfer.
+                gb->printer_stub_state = 0;
+                gb->printer_data_len = 0;
+                gb->printer_last_cmd = 0;
             }
             return;
         }
@@ -4517,6 +4618,10 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->counter.tima_count = 0;
     gb->counter.serial_count = 0;
     gb->counter.lcd_off_count = 0;
+
+    gb->printer_stub_state = 0;
+    gb->printer_data_len = 0;
+    gb->printer_last_cmd = 0;
 
     __gb_update_tac(gb);
     __gb_update_map_pointers(gb);

@@ -304,6 +304,10 @@ struct PGB_VERSIONED(gb_s)
     int16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
+    uint8_t printer_stub_state;
+    uint16_t printer_data_len;
+    uint8_t printer_last_cmd;
+
     uint8_t* selected_cart_bank_addr;
 
     /* Number of ROM banks in cartridge. */
