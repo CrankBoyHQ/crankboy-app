@@ -10,10 +10,10 @@
 
 #include "../app.h"
 #include "../array.h"
+#include "../http_safe.h"
 #include "../listview.h"
 #include "../scene.h"
 #include "game_scene.h"
-#include "http.h"
 
 #include <stdio.h>
 
@@ -77,7 +77,7 @@ typedef struct CB_LibraryScene
 
     CoverDownloadState coverDownloadState;
     char* coverDownloadMessage;
-    http_handle_t activeCoverDownloadConnection;
+    HTTPSafe activeCoverDownloadConnection;
 
     bool showCrc;
     bool isReloading;
