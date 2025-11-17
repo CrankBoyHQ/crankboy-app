@@ -38,10 +38,10 @@ struct HttpHandleInfo
 {
     http_handle_t handle;
     enum HttpHandleState state;
-    
+
     // valid only when state != Complete
     struct HTTPUD* httpud;
-    
+
     // valid only when state == Complete
     unsigned flags;
 };
@@ -53,20 +53,22 @@ static void CB_Permission(unsigned flags, void* ud);
 
 struct HttpHandleInfo* get_handle_info(http_handle_t handle)
 {
-    if (handle == 0) return NULL;
-    
+    if (handle == 0)
+        return NULL;
+
     for (int i = 0; i < MAX_HTTP; ++i)
     {
-        if (handle_info[i].handle == handle) return &handle_info[i];
+        if (handle_info[i].handle == handle)
+            return &handle_info[i];
     }
-    
+
     return NULL;
 }
 
 struct HttpHandleInfo* push_handle(void)
 {
     int best_idx = 0;
-    
+
     // try to find earliest completed handle
     for (int i = 1; i < MAX_HTTP; ++i)
     {
@@ -74,24 +76,29 @@ struct HttpHandleInfo* push_handle(void)
         {
             best_idx = i;
         }
-        
-        if (handle_info[i].state == handle_info[best_idx].state && handle_info[i].handle < handle_info[best_idx].handle)
+
+        if (handle_info[i].state == handle_info[best_idx].state &&
+            handle_info[i].handle < handle_info[best_idx].handle)
         {
             best_idx = i;
         }
     }
-    
+
     http_cancel(handle_info[best_idx].handle);
     handle_info[best_idx].handle = next_handle;
-    
+
     // increment, and ensure never 0.
     ++next_handle;
-    if (next_handle == 0) ++next_handle;
-    
+    if (next_handle == 0)
+        ++next_handle;
+
     return &handle_info[best_idx];
 }
 
-static void http_get_(struct HTTPUD* httpud, struct HttpHandleInfo* info, const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout, void* ud)
+static void http_get_(
+    struct HTTPUD* httpud, struct HttpHandleInfo* info, const char* domain, const char* path,
+    const char* reason, http_result_cb cb, int timeout, void* ud
+)
 {
     info->state = Permission;
     info->httpud = httpud;
@@ -120,14 +127,14 @@ static void http_cleanup(HTTPConnection* connection)
         {
             httpud->flags |= HTTP_ERROR;
         }
-        
+
         struct HttpHandleInfo* info = get_handle_info(httpud->handle);
         if (info)
         {
             info->state = Complete;
             info->flags = httpud->flags;
         }
-        
+
         if (httpud->cb)
         {
             // resort to error if cleanup and cb not yet called
@@ -200,13 +207,12 @@ static void CB_HeadersRead(HTTPConnection* connection)
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud == NULL)
         return;
-        
+
     struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
     int status = playdate->network->http->getResponseStatus(connection);
 
-    // Check for redirect status codes (301, 302, 307, etc.)
-    if (status >= 300 && status < 400 && httpud->location && info)
+    if (httpud->location && info)
     {
         playdate->system->logToConsole("Handling redirect to: %s\n", httpud->location);
 
@@ -221,14 +227,15 @@ static void CB_HeadersRead(HTTPConnection* connection)
                 // Store original request data before cleaning up
                 http_result_cb orig_cb = httpud->cb;
                 http_handle_t orig_handle = httpud->handle;
-                
+
                 // prevent callback on this http request
                 httpud->handle = 0;
                 httpud->cb = NULL;
 
                 // Start a brand new request with the new URL and original userdata and info
                 http_get_(
-                    new_httpud, info, new_domain, new_path, "to follow redirect", orig_cb, httpud->timeout, httpud->ud
+                    new_httpud, info, new_domain, new_path, "to follow redirect", orig_cb,
+                    httpud->timeout, httpud->ud
                 );
 
                 cb_free(new_domain);
@@ -254,7 +261,7 @@ static void readAllData(HTTPConnection* connection)
     if (httpud != NULL)
     {
         struct HttpHandleInfo* info = get_handle_info(httpud->handle);
-        
+
         // Only check status and fire the error callback ONCE.
         // httpud->cb is used as a flag to see if we've already processed an error.
         if (httpud->cb)
@@ -265,17 +272,19 @@ static void readAllData(HTTPConnection* connection)
                 if (response == 404)
                 {
                     httpud->flags |= HTTP_NOT_FOUND;
-                } else {
+                }
+                else
+                {
                     httpud->flags |= HTTP_NON_SUCCESS_STATUS;
                 }
-                
+
                 if (info)
                 {
                     info->state = Complete;
                     info->flags = httpud->flags;
                 }
                 httpud->cb(httpud->flags, NULL, 0, httpud->ud);
-                    
+
                 // Mark the callback as handled so we don't fire it again.
                 httpud->cb = NULL;
             }
@@ -291,7 +300,7 @@ static void readAllData(HTTPConnection* connection)
         if (httpud && httpud->cb)
         {
             struct HttpHandleInfo* info = get_handle_info(httpud->handle);
-            
+
             httpud->data = cb_realloc(httpud->data, httpud->data_len + available + 1);
             if (httpud->data == NULL)
             {
@@ -347,9 +356,9 @@ static void CB_RequestComplete(HTTPConnection* connection)
     {
         return;
     }
-    
+
     struct HttpHandleInfo* info = get_handle_info(httpud->handle);
-    
+
     playdate->system->logToConsole("Request complete; contentType: %s", httpud->contentType);
 
     // This is the final check before we decide to succeed or fail.
@@ -377,7 +386,7 @@ static void CB_RequestComplete(HTTPConnection* connection)
             info->state = Complete;
             info->flags = httpud->flags;
         }
-        
+
         httpud->cb(httpud->flags, httpud->data, httpud->data_len, httpud->ud);
         httpud->cb = NULL;
         httpud->data = NULL;
@@ -390,7 +399,7 @@ static void CB_Permission(unsigned flags, void* ud)
 {
     struct HTTPUD* httpud = ud;
     struct HttpHandleInfo* info = get_handle_info(httpud->handle);
-    
+
     httpud->flags = flags;
     bool allowed = (flags & ~HTTP_ENABLE_ASKED) == 0;
 
@@ -405,7 +414,7 @@ static void CB_Permission(unsigned flags, void* ud)
         playdate->system->logToConsole("http GET: %s%s", httpud->domain, httpud->path);
         httpud->connection = playdate->network->http->newConnection(httpud->domain, 0, USE_SSL);
         HTTPConnection* connection = httpud->connection;
-        
+
         if (!connection)
             goto fail;
 
@@ -469,12 +478,12 @@ http_handle_t http_get(
         cb(HTTP_MEM_ERROR, NULL, 0, ud);
         return 0;
     }
-    
+
     struct HttpHandleInfo* info = push_handle();
     CB_ASSERT(info);
-    
+
     http_get_(httpud, info, domain, path, reason, cb, timeout, ud);
-    
+
     return info->handle;
 }
 
@@ -519,8 +528,9 @@ static void CB_AccessReply(bool result, void* cbud)
     enable_cb_t cb = ((struct CB_UserData_EnableHTTP*)cbud)->cb;
     void* ud = ((struct CB_UserData_EnableHTTP*)cbud)->ud;
     cb_free(cbud);
-    
-    if (result) skip_enable_check = true;
+
+    if (result)
+        skip_enable_check = true;
     cb(HTTP_ENABLE_ASKED | (result ? 0 : HTTP_ENABLE_DENIED), ud);
 
     cb_free(_domain);
@@ -608,7 +618,7 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
         cb(0, ud);
         return;
     }
-    
+
     if (_cb != NULL)
     {
         cb(HTTP_ENABLE_IN_PROGRESS, ud);
@@ -626,11 +636,12 @@ void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* u
 void http_cancel(http_handle_t handle)
 {
     struct HttpHandleInfo* info = get_handle_info(handle);
-    if (!info) return;
-    
+    if (!info)
+        return;
+
     // TODO
-    
-    switch(info->state)
+
+    switch (info->state)
     {
     case Permission:
         info->state = Complete;
