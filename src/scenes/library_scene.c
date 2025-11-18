@@ -233,8 +233,6 @@ cleanup:
         cb_free(data);
     }
 
-    memset(&libraryScene->activeCoverDownloadConnection, 0, sizeof(HTTPSafe));
-
     cb_free(userdata);
 }
 
@@ -314,8 +312,15 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     userdata->libraryScene = libraryScene;
     userdata->game = game;
 
+    if (libraryScene->activeCoverDownloadConnection)
+    {
+        http_safe_free(libraryScene->activeCoverDownloadConnection);
+    }
+
+    libraryScene->activeCoverDownloadConnection = http_safe_new();
+
     http_safe_replace_get(
-        &libraryScene->activeCoverDownloadConnection, "github.com", url_path,
+        libraryScene->activeCoverDownloadConnection, "github.com", url_path,
         "to download missing cover art", on_cover_download_finished, 15000, userdata
     );
 
@@ -950,6 +955,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->last_display_name_mode = combined_display_mode();
     libraryScene->initialLoadComplete = false;
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
+    libraryScene->activeCoverDownloadConnection = NULL;
     libraryScene->showCrc = false;
     libraryScene->isReloading = library_was_initialized_once;
     library_was_initialized_once = true;
@@ -1340,12 +1346,13 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             libraryScene->showCrc = false;
 
             // Reset download state when user navigates away
-            if (http_safe_in_progress(&libraryScene->activeCoverDownloadConnection))
+            if (libraryScene->activeCoverDownloadConnection)
             {
+                http_safe_free(libraryScene->activeCoverDownloadConnection);
+                libraryScene->activeCoverDownloadConnection = NULL;
                 playdate->system->logToConsole(
                     "Selection changed, closing active cover download connection."
                 );
-                http_safe_cancel(&libraryScene->activeCoverDownloadConnection);
             }
 
             if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE)
@@ -2036,10 +2043,10 @@ static void CB_LibraryScene_free(void* object)
         cb_free(libraryScene->coverDownloadMessage);
     }
 
-    if (http_safe_in_progress(&libraryScene->activeCoverDownloadConnection))
+    if (libraryScene->activeCoverDownloadConnection)
     {
-        http_safe_cancel(&libraryScene->activeCoverDownloadConnection);
-        memset(&libraryScene->activeCoverDownloadConnection, 0, sizeof(HTTPSafe));
+        http_safe_free(libraryScene->activeCoverDownloadConnection);
+        libraryScene->activeCoverDownloadConnection = NULL;
     }
 
     if (libraryScene->decompression_buffer)

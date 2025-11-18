@@ -77,7 +77,7 @@ typedef struct CB_LibraryScene
 
     CoverDownloadState coverDownloadState;
     char* coverDownloadMessage;
-    HTTPSafe activeCoverDownloadConnection;
+    HTTPSafe* activeCoverDownloadConnection;
 
     bool showCrc;
     bool isReloading;
