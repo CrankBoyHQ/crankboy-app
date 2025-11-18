@@ -183,16 +183,11 @@ static void CB_Header(HTTPConnection* connection, const char* key, const char* v
 
 static void CB_HeadersRead(HTTPConnection* connection)
 {
-    playdate->system->logToConsole("Headers read");
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud == NULL)
         return;
 
     int status = playdate->network->http->getResponseStatus(connection);
-
-    playdate->system->logToConsole(
-        "DEBUG: Status=%d, Location=%s", status, httpud->location ? httpud->location : "NULL"
-    );
 
     if (httpud->location)
     {
