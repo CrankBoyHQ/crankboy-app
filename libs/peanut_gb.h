@@ -1708,10 +1708,20 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 }
                 else
                 {
+                    // playdate->system->logToConsole("Serial anomaly: PC=%x, SB=%x",
+                    // gb->cpu_reg.pc, gb->gb_reg.SB);
+
                     gb->counter.serial_count = SERIAL_CYCLES;
                     gb->printer_stub_state = 0;
                     gb->printer_data_len = 0;
                     gb->printer_last_cmd = 0;
+
+                    // Apply instant interrupt hack only if it's the specific early-game polling
+                    // loop (SB=0xFF at low PC).
+                    if (gb->gb_reg.SB == 0xFF && gb->cpu_reg.pc < 0x300)
+                    {
+                        gb->gb_reg.IF |= SERIAL_INTR;
+                    }
                 }
             }
             else if (!(val & SERIAL_SC_TX_START))
