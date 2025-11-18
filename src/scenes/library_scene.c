@@ -153,6 +153,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         goto cleanup;
     }
 
+    // Verify valid PDI header
     const char* pdi_header = "Playdate IMG";
     char* actual_data_start = strstr(data, pdi_header);
 
@@ -165,6 +166,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         goto cleanup;
     }
 
+    // Calculate length from the found header to the end of the buffer
     size_t new_data_len = data_len - (actual_data_start - data);
 
     rom_basename_no_ext = cb_basename(game->names->filename, true);
@@ -185,6 +187,9 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
         goto cleanup;
     }
+
+    // Safety: Ensure previous file is gone before writing
+    playdate->file->unlink(cover_dest_path, 0);
 
     if (cb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
     {
@@ -1341,7 +1346,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     "Selection changed, closing active cover download connection."
                 );
                 http_safe_cancel(&libraryScene->activeCoverDownloadConnection);
-                // No need to set to 0, http_safe_cancel handles the logic
             }
 
             if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE)

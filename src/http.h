@@ -6,7 +6,8 @@
 
 #define USE_SSL true
 
-// all of these indicate failure except for HTTP_ENABLE_ASKED and possibly HTTP_UNEXPECTED_CONTENT_TYPE.
+// all of these indicate failure except for HTTP_ENABLE_ASKED and possibly
+// HTTP_UNEXPECTED_CONTENT_TYPE.
 #define HTTP_ENABLE_DENIED 1
 #define HTTP_ENABLE_ASKED 2 /* does not indicate failure */
 #define HTTP_ENABLE_IN_PROGRESS 4
@@ -18,6 +19,7 @@
 #define HTTP_NOT_FOUND 256
 #define HTTP_WIFI_NOT_AVAILABLE 512
 #define HTTP_CANCELLED 1024
+#define HTTP_REDIRECT 2048
 
 typedef void (*enable_cb_t)(unsigned flags, void* ud);
 
@@ -34,7 +36,8 @@ typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void
 // (unless the entire program terminates first.)
 // return result will never be 0, except in the case of a memory error.
 http_handle_t http_get(
-    const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms, void* ud
+    const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
+    void* ud
 );
 
 // Manually cancels the given HTTP connection, if it has not already completed.

@@ -2,10 +2,44 @@
 
 #include "utility.h"
 
+#include <string.h>
+
+// Helper to parse the redirect URL
+static bool parse_url_safe(const char* url, char** domain, char** path)
+{
+    const char* domain_start = strstr(url, "://");
+    if (!domain_start)
+        return false;
+    domain_start += 3;
+
+    const char* path_start = strchr(domain_start, '/');
+    if (!path_start)
+        return false;
+
+    size_t domain_len = path_start - domain_start;
+    *domain = cb_malloc(domain_len + 1);
+    strncpy(*domain, domain_start, domain_len);
+    (*domain)[domain_len] = '\0';
+
+    *path = cb_strdup(path_start);
+    return true;
+}
+
+// Busy wait helper to allow network stack to flush
+static void busy_wait(float seconds)
+{
+    int ms = (int)(seconds * 1000.0f);
+    int start = playdate->system->getCurrentTimeMilliseconds();
+    while (playdate->system->getCurrentTimeMilliseconds() - start < ms)
+    {
+    }
+}
+
 HTTPSafe* http_safe_new(void)
 {
     return allocz(HTTPSafe);
 }
+
 void http_safe_free(HTTPSafe* safe)
 {
     if (safe->handle == 0)
@@ -22,6 +56,34 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
 {
     http_result_cb cb = safe->cb;
     void* ud = safe->ud;
+
+    if (flags & HTTP_REDIRECT)
+    {
+        playdate->system->logToConsole("HTTPSafe: Catching redirect to %s", data ? data : "(null)");
+
+        char* new_domain = NULL;
+        char* new_path = NULL;
+
+        if (data && parse_url_safe(data, &new_domain, &new_path))
+        {
+            safe->handle = 0;
+
+            const char* reason = safe->queued.reason ? safe->queued.reason : "following redirect";
+
+            playdate->system->logToConsole("HTTPSafe: Waiting 200ms to flush network stack...");
+            busy_wait(0.2f);
+
+            http_safe_replace_get(safe, new_domain, new_path, reason, cb, 15000, ud);
+
+            cb_free(new_domain);
+            cb_free(new_path);
+            return;
+        }
+        else
+        {
+            playdate->system->logToConsole("HTTPSafe: Failed to parse redirect URL");
+        }
+    }
 
     if (cb == NULL)
     {

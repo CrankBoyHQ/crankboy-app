@@ -3,6 +3,8 @@
 #include "pd_api.h"
 #include "utility.h"
 
+#include <string.h>
+
 #define MAX_HTTP 16
 
 static enable_cb_t _cb;
@@ -119,6 +121,8 @@ static void http_get_(
 static void http_cleanup(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
+
+    // Immediately unlink to prevent recursion or double-freeing
     playdate->network->http->setUserdata(connection, NULL);
 
     if (httpud)
@@ -147,40 +151,16 @@ static void http_cleanup(HTTPConnection* connection)
             cb_free(httpud->location);
         if (httpud->contentType)
             cb_free(httpud->contentType);
-        cb_free(httpud->domain);
-        cb_free(httpud->path);
+        if (httpud->domain)
+            cb_free(httpud->domain);
+        if (httpud->path)
+            cb_free(httpud->path);
+
         cb_free(httpud);
     }
 
     playdate->network->http->release(connection);
     playdate->network->http->close(connection);
-}
-
-// Helper function to parse a full URL into domain and path
-static bool parse_url(const char* url, char** domain, char** path)
-{
-    const char* domain_start = strstr(url, "://");
-    if (!domain_start)
-    {
-        return false;  // Not a full URL
-    }
-    domain_start += 3;  // Move past "://"
-
-    const char* path_start = strchr(domain_start, '/');
-    if (!path_start)
-    {
-        // URL has no path (e.g., "https://github.com") - unlikely for us
-        return false;
-    }
-
-    size_t domain_len = path_start - domain_start;
-    *domain = cb_malloc(domain_len + 1);
-    strncpy(*domain, domain_start, domain_len);
-    (*domain)[domain_len] = '\0';
-
-    *path = cb_strdup(path_start);
-
-    return true;
 }
 
 static void CB_Header(HTTPConnection* connection, const char* key, const char* value)
@@ -203,45 +183,21 @@ static void CB_Header(HTTPConnection* connection, const char* key, const char* v
 
 static void CB_HeadersRead(HTTPConnection* connection)
 {
-    playdate->system->logToConsole("Headers read\n");
+    playdate->system->logToConsole("Headers read");
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
     if (httpud == NULL)
         return;
 
-    struct HttpHandleInfo* info = get_handle_info(httpud->handle);
-
     int status = playdate->network->http->getResponseStatus(connection);
 
-    if (httpud->location && info)
+    playdate->system->logToConsole(
+        "DEBUG: Status=%d, Location=%s", status, httpud->location ? httpud->location : "NULL"
+    );
+
+    if (httpud->location)
     {
-        playdate->system->logToConsole("Handling redirect to: %s\n", httpud->location);
-
-        char* new_domain = NULL;
-        char* new_path = NULL;
-
-        if (parse_url(httpud->location, &new_domain, &new_path))
-        {
-            struct HTTPUD* new_httpud = allocz(struct HTTPUD);
-            if (new_httpud)
-            {
-                // Store original request data before cleaning up
-                http_result_cb orig_cb = httpud->cb;
-                http_handle_t orig_handle = httpud->handle;
-
-                // prevent callback on this http request
-                httpud->handle = 0;
-                httpud->cb = NULL;
-
-                // Start a brand new request with the new URL and original userdata and info
-                http_get_(
-                    new_httpud, info, new_domain, new_path, "to follow redirect", orig_cb,
-                    httpud->timeout, httpud->ud
-                );
-
-                cb_free(new_domain);
-                cb_free(new_path);
-            }
-        }
+        playdate->system->logToConsole("Redirect detected to: %s", httpud->location);
+        httpud->flags |= HTTP_REDIRECT;
     }
 }
 
@@ -250,20 +206,15 @@ static void CB_Closed(HTTPConnection* connection)
     http_cleanup(connection);
 }
 
-// reads available data, or if status is not 200 then
-// reports an error
 static void readAllData(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
 
-    // If httpud is null, the connection is being cancelled, but we may still need to drain the
-    // buffer.
-    if (httpud != NULL)
+    // Handle error callbacks
+    if (httpud != NULL && httpud->cb)
     {
         struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
-        // Only check status and fire the error callback ONCE.
-        // httpud->cb is used as a flag to see if we've already processed an error.
         if (httpud->cb)
         {
             int response = playdate->network->http->getResponseStatus(connection);
@@ -284,20 +235,24 @@ static void readAllData(HTTPConnection* connection)
                     info->flags = httpud->flags;
                 }
                 httpud->cb(httpud->flags, NULL, 0, httpud->ud);
-
-                // Mark the callback as handled so we don't fire it again.
                 httpud->cb = NULL;
             }
         }
     }
 
-    // Unconditionally drain the receive buffer.
     size_t available;
     while ((available = playdate->network->http->getBytesAvailable(connection)))
     {
-        // If we are in a success case (httpud and its callback are still valid),
-        // read the data into the buffer.
-        if (httpud && httpud->cb)
+        // If redirecting, discard body data to prevent buffer pollution
+        if (httpud && (httpud->flags & HTTP_REDIRECT))
+        {
+            char dummy_buffer[256];
+            playdate->network->http->read(
+                connection, dummy_buffer,
+                (available > sizeof(dummy_buffer)) ? sizeof(dummy_buffer) : available
+            );
+        }
+        else if (httpud && httpud->cb)
         {
             struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
@@ -318,7 +273,12 @@ static void readAllData(HTTPConnection* connection)
                 connection, httpud->data + httpud->data_len, available
             );
 
-            if (read <= 0)
+            if (read > 0)
+            {
+                httpud->data_len += read;
+                httpud->data[httpud->data_len] = 0;
+            }
+            else if (read <= 0)
             {
                 httpud->flags |= HTTP_ERROR;
                 if (info)
@@ -330,14 +290,9 @@ static void readAllData(HTTPConnection* connection)
                 httpud->cb = NULL;
                 return;
             }
-
-            httpud->data_len += read;
-            httpud->data[httpud->data_len] = 0;
         }
         else
         {
-            // We are in an error case or are cancelling. Drain the buffer by reading
-            // into a temporary sink and discarding the data.
             char dummy_buffer[256];
             playdate->network->http->read(
                 connection, dummy_buffer,
@@ -351,48 +306,79 @@ static void CB_RequestComplete(HTTPConnection* connection)
 {
     struct HTTPUD* httpud = playdate->network->http->getUserdata(connection);
 
-    // If httpud is NULL, it was already cleaned up.
     if (httpud == NULL)
-    {
         return;
-    }
 
     struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
-    playdate->system->logToConsole("Request complete; contentType: %s", httpud->contentType);
+    playdate->system->logToConsole(
+        "Request complete. Flags: %x, DataLen: %d, ContentType: %s", httpud->flags,
+        (int)httpud->data_len, httpud->contentType ? httpud->contentType : "NULL"
+    );
 
-    // This is the final check before we decide to succeed or fail.
-    // Check for the HTML error case first.
-    // FIXME: why is text/html considered an error?
-    if (httpud->contentType && strstr(httpud->contentType, "text/html"))
-    {
-        if (httpud->cb)
-        {
-            httpud->flags |= HTTP_UNEXPECTED_CONTENT_TYPE;
-            if (info)
-            {
-                info->state = Complete;
-                info->flags = httpud->flags;
-            }
-            httpud->cb(httpud->flags, NULL, 0, httpud->ud);
-            httpud->cb = NULL;
-        }
-    }
-    // If the contentType was okay, check for a successful data download.
-    else if (httpud->cb && httpud->data_len > 0 && httpud->data)
-    {
-        if (info)
-        {
-            info->state = Complete;
-            info->flags = httpud->flags;
-        }
+    http_result_cb saved_cb = httpud->cb;
+    void* saved_ud = httpud->ud;
+    unsigned saved_flags = httpud->flags;
 
-        httpud->cb(httpud->flags, httpud->data, httpud->data_len, httpud->ud);
-        httpud->cb = NULL;
+    char* location_copy = NULL;
+    if (httpud->location)
+        location_copy = cb_strdup(httpud->location);
+
+    char* data_stolen = NULL;
+    size_t data_len = 0;
+
+    bool is_redirect = (saved_flags & HTTP_REDIRECT) && location_copy;
+    bool is_html_error = httpud->contentType && strstr(httpud->contentType, "text/html");
+    bool is_success = !is_redirect && !is_html_error && httpud->data && httpud->data_len > 0;
+
+    if (is_success)
+    {
+        data_stolen = httpud->data;
+        data_len = httpud->data_len;
         httpud->data = NULL;
     }
 
+    if (info)
+    {
+        info->state = Complete;
+        info->flags = saved_flags;
+        if (is_html_error)
+            info->flags |= HTTP_UNEXPECTED_CONTENT_TYPE;
+    }
+
+    httpud->cb = NULL;
+
     http_cleanup(connection);
+
+    if (saved_cb)
+    {
+        if (is_redirect)
+        {
+            saved_cb(saved_flags, location_copy, strlen(location_copy), saved_ud);
+        }
+        else if (is_html_error)
+        {
+            saved_cb(saved_flags | HTTP_UNEXPECTED_CONTENT_TYPE, NULL, 0, saved_ud);
+        }
+        else if (is_success)
+        {
+            saved_cb(saved_flags, data_stolen, data_len, saved_ud);
+        }
+        else
+        {
+            unsigned err_flags = saved_flags;
+            if (!(err_flags & (HTTP_ERROR | HTTP_NOT_FOUND | HTTP_CANCELLED)))
+            {
+                err_flags |= HTTP_ERROR;
+            }
+            saved_cb(err_flags, NULL, 0, saved_ud);
+        }
+    }
+
+    if (location_copy)
+    {
+        cb_free(location_copy);
+    }
 }
 
 static void CB_Permission(unsigned flags, void* ud)
@@ -405,7 +391,6 @@ static void CB_Permission(unsigned flags, void* ud)
 
     if (!info || info->state == Complete)
     {
-        // it's already been cancelled or pre-empted.
         goto fail_no_cb;
     }
 
