@@ -4197,9 +4197,10 @@ __shell static unsigned int __gb_interrupt(gb_s* gb)
             {
                 gb->gb_reg.LY = 145;
             }
+            return 20;
         }
 
-        return 20;
+        return 0;
     }
     return 0;
 }
