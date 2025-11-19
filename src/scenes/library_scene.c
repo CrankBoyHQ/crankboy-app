@@ -1477,6 +1477,22 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
                         selectedGame->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
                     );
+
+                    if (CB_App->coverArtCache.art.status == CB_COVER_ART_ERROR_LOADING)
+                    {
+                        playdate->system->logToConsole(
+                            "Error loading cover image, unlinking corrupt file: %s",
+                            selectedGame->coverPath
+                        );
+
+                        playdate->file->unlink(selectedGame->coverPath, 0);
+
+                        cb_free(selectedGame->coverPath);
+                        selectedGame->coverPath = NULL;
+
+                        CB_App->coverArtCache.art.status = CB_COVER_ART_FILE_NOT_FOUND;
+                    }
+
                     CB_App->coverArtCache.rom_path = cb_strdup(selectedGame->fullpath);
                 }
             }
@@ -1594,11 +1610,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     if (had_error_loading)
                     {
                         const char* message = "Error";
-                        if (CB_App->coverArtCache.art.status == CB_COVER_ART_ERROR_LOADING)
-                        {
-                            message = "Error loading image";
-                        }
-                        else if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
+
+                        if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
                         {
                             message = "Invalid image";
                         }
