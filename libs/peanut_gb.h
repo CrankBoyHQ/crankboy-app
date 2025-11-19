@@ -2089,30 +2089,39 @@ _0x0F:
 
 _0x10:
 { /* STOP */
-    /* We check for button-press glitch on DMG. */
+
+    // 1. Advance PC over the operand (0x00). PC is now at (PC_0x10 + 2).
+    // The instruction is fetched (PC+1) and the handler needs to advance it past the operand
+    // (PC+2).
+    gb->cpu_reg.pc++;
+
+    // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
     if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
     {
-        /* STOP becomes a 1-byte NOP. The PC was advanced by the main
-           loop's fetch, but we do NOT advance it further. The byte
-           at the original PC+1 (the STOP operand) will be executed next. */
+        /* STOP Glitch: STOP acts as a 1-byte NOP.
+           PC is currently at (PC_0x10 + 2). We must rewind to (PC_0x10 + 1). */
+        gb->cpu_reg.pc--;
         goto exit;
     }
 
-    gb->cpu_reg.pc++;
-
-    if (gb->gb_reg.IF & gb->gb_reg.IE &
-        ANY_INTR /* FIXME: why can't we assume (IF & ~ANY_INTR) is 0?*/)
+    // 3. Check for Pending Interrupts
+    if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
     {
         if (gb->gb_ime == 0)
         {
-            /* HALT Bug: PC fails to increment correctly.
-               Rewind PC to re-execute the operand as an instruction. */
+            /* STOP/HALT Bug Triggered: CPU does not stop.
+               PC must be set to the operand address (PC_0x10 + 1) to repeat it. */
+
+            // PC is currently at PC_0x10 + 2. Decrement to PC_0x10 + 1.
             gb->cpu_reg.pc--;
         }
+
+        // If IME=1, the interrupt will wake the CPU before it stops.
+        // The PC remains at PC_0x10 + 2, and the interrupt handler is called next.
     }
     else
     {
-        /* NORMAL OPERATION: Enter low-power STOP mode. */
+        /* 4. Normal STOP Operation: Enter low-power STOP mode. */
         gb->gb_stop = 1;
         gb->gb_reg.DIV = 0;
     }
@@ -2850,17 +2859,10 @@ _0x75:
 
 _0x76:
 { /* HALT */
-    // The HALT bug is only present on the DMG.
-    if (!gb->is_cgb_mode && gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-    {
-        // HALT bug
-        gb->cpu_reg.pc--;
-    }
-    else
+    if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
     {
         gb->gb_halt = 1;
     }
-    goto exit;
     goto exit;
 }
 
@@ -4921,10 +4923,45 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         }
         return 5 * 4;
     case 0x10:  // stop
+    {
+        unsigned cycles = 1 * 4;
+
+        // 1. Advance PC over the required operand byte (0x00).
+        gb->cpu_reg.pc++;  // PC is now at (PC_0x10 + 2)
+
+        // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
+        if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
+        {
+            /* STOP Glitch: STOP acts as a 1-byte NOP.
+               PC must rewind to (PC_0x10 + 1) to point to the instruction *after* STOP. */
+            gb->cpu_reg.pc--;
+            // No STOP, no HALT, no DIV reset. Cycles remain 4.
+            return cycles;
+        }
+
+        // 3. Check for Pending Interrupts / STOP Bug
+        if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+        {
+            if (gb->gb_ime == 0)
+            {
+                /* STOP/HALT Bug Triggered: CPU does not stop.
+                   PC must be set to the operand address (PC_0x10 + 1) to repeat it. */
+
+                // PC is currently at PC_0x10 + 2. Decrement to PC_0x10 + 1.
+                gb->cpu_reg.pc--;
+            }
+        }
+        else
+        {
+            /* 4. Normal STOP Operation: Enter low-power STOP mode. */
+            gb->gb_stop = 1;
+            gb->gb_reg.DIV = 0;
+        }
+
         gb->gb_ime = 0;
-        gb->gb_halt = 1;
-        playdate->system->logToConsole("'stop' instr");
-        return 1 * 4;
+
+        return cycles;
+    }
     case 0x27:  // daa
     {
         uint16_t a = gb->cpu_reg.a;
@@ -4955,12 +4992,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
     }
         return 1 * 4;
     case 0x76:
-        // The HALT bug is only present on the DMG.
-        if (!gb->is_cgb_mode && gb->gb_ime == 0 && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-        {
-            gb->cpu_reg.pc--;  // HALT bug
-        }
-        else
+        if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
         {
             gb->gb_halt = 1;
         }
