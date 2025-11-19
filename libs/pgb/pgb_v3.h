@@ -273,6 +273,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t lcd_master_enable : 1;
     };
 
+    uint8_t interrupt_setup_cycles;
     uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
 
     /* Cartridge information:
@@ -288,6 +289,9 @@ struct PGB_VERSIONED(gb_s)
     uint8_t overclock : 2;
 
     uint8_t is_mbc1m : 1;
+
+    // Quirk flag for Wizards & Warriors
+    uint8_t fix_ly_timing : 1;
 
     // 1-7, cgb only
     bool cgb_fast_mode_armed : 1;

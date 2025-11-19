@@ -4144,7 +4144,7 @@ exit:
     return inst_cycles;
 }
 
-__shell static void __gb_interrupt(gb_s* gb)
+__shell static unsigned int __gb_interrupt(gb_s* gb)
 {
     gb->gb_halt = 0;
 
@@ -4186,7 +4186,22 @@ __shell static void __gb_interrupt(gb_s* gb)
             gb->cpu_reg.pc = CONTROL_INTR_ADDR;
             gb->gb_reg.IF ^= CONTROL_INTR;
         }
+
+        if (gb->fix_ly_timing)
+        {
+            if (gb->gb_reg.LY == LCD_HEIGHT)
+            {
+                gb->gb_reg.LY = 0;
+            }
+            else if (gb->gb_reg.LY == 144)
+            {
+                gb->gb_reg.LY = 145;
+            }
+        }
+
+        return 20;
     }
+    return 0;
 }
 
 __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
@@ -4771,6 +4786,14 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->is_mbc1m = __gb_detect_mbc1m(gb);
     if (gb->is_mbc1m)
         gb->cart_mode_select = 0;
+
+    // Check for "Wizards & Warriors X" (Title: "WIZARDS WARRIORS")
+    gb->fix_ly_timing = 0;
+    if (memcmp(&gb_rom[0x134], "WIZARDS WARRIORS", 16) == 0)
+    {
+        gb->fix_ly_timing = 1;
+    }
+
     // Initialize cached base (0 for non-MBC1M)
     gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
 

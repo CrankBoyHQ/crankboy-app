@@ -1508,11 +1508,18 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 {
     unsigned inst_cycles = 16;
+    unsigned int interrupt_cycles = 0;
 
     /* Handle interrupts */
     if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
     {
-        __gb_interrupt(gb);
+        interrupt_cycles = __gb_interrupt(gb);
+    }
+
+    if (interrupt_cycles > 0)
+    {
+        inst_cycles = interrupt_cycles;
+        goto done_instr_timing;
     }
 
     if unlikely (gb->gb_halt || gb->gb_stop)
