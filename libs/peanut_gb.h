@@ -1813,11 +1813,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
             if (was_enabled && !is_enabled)
             {
-                gb->counter.lcd_off_count += gb->counter.lcd_count;
+                gb->counter.lcd_off_count = 0;
                 gb->gb_reg.LY = 0;
                 gb->counter.lcd_count = 0;
                 gb->lcd_mode = LCD_HBLANK;
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
+                gb->gb_reg.STAT &= ~(STAT_MODE | STAT_LYC_COINC);
+                gb->direct.stat_line = 0;
                 __gb_check_lyc__cgb(gb);
             }
             else if (!was_enabled && is_enabled)
@@ -1826,7 +1827,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->gb_reg.LY = 0;
                 gb->lcd_mode = LCD_SEARCH_OAM;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
+                gb->direct.stat_line = 0;
                 __gb_check_lyc__cgb(gb);
+                __gb_update_stat_irq__cgb(gb);
             }
             return;
         }
