@@ -115,6 +115,9 @@ typedef int16_t s16;
  * 4194304 / (8192 / 8) = 4096 clock cycles for sending 1 byte. */
 #define SERIAL_CYCLES 4096
 
+/* Timer input bits for TAC clock select 00,01,10,11 (falling-edge source). */
+static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
+
 /* Calculating VSYNC. */
 #ifndef DMG_CLOCK_FREQ
 #define DMG_CLOCK_FREQ 4194304.0f
@@ -560,6 +563,16 @@ __section__(".text.cb") static void __gb_update_tac(gb_s* gb)
     // subtract 1 so it can be used as a mask for quick modulo.
     gb->gb_reg.tac_cycles_shift = TAC_CYCLES[gb->gb_reg.tac_rate];
     gb->gb_reg.tac_cycles = (1 << (int)TAC_CYCLES[gb->gb_reg.tac_rate]) - 1;
+    gb->gb_reg.tac_input_bit = TIMER_INPUT_BITS[gb->gb_reg.tac_rate];
+}
+
+__section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
+{
+    gb->gb_reg.TIMA++;
+    if (gb->gb_reg.TIMA == 0x00)
+    {
+        gb->gb_reg.tima_overflow_delay = 1;
+    }
 }
 
 __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
@@ -1739,8 +1752,18 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         /* Timer Registers */
         case 0x04:
+        {
+            uint16_t divider = ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
+            bool old_input =
+                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
             gb->gb_reg.DIV = 0x00;
+            gb->counter.div_count = 0;
+            if (old_input)
+            {
+                __gb_timer_edge_tick(gb);
+            }
             return;
+        }
 
         case 0x05:
             gb->gb_reg.TIMA = val;
@@ -1751,9 +1774,22 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             return;
 
         case 0x07:
+        {
+            uint16_t divider = ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
+            bool old_input =
+                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+
             gb->gb_reg.TAC = val;
             __gb_update_tac(gb);
+
+            bool new_input =
+                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+            if (old_input && !new_input)
+            {
+                __gb_timer_edge_tick(gb);
+            }
             return;
+        }
 
         /* Interrupt Flag Register */
         case 0x0F:

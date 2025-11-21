@@ -133,6 +133,7 @@ struct PGB_VERSIONED(gb_registers_s)
     /* Internal emulator state for timer implementation. */
     uint16_t tac_cycles;
     uint8_t tac_cycles_shift;
+    uint8_t tac_input_bit;
 
     uint8_t tima_overflow_delay : 1;
 };
