@@ -1998,7 +1998,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
     int scale_index = preferences_dither_line;
     if (preferences_dither_stable)
         scale_index += 256 - scy;
-    scale_index %= scaling;
+    scale_index &= (scaling - 1);
     uint8_t* restrict dither_lut0_ptr = dither_lut0;
     uint8_t* restrict dither_lut1_ptr = dither_lut1;
 
@@ -2017,7 +2017,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
 
         int current_line_pd_top_y = fb_y_playdate_current_bottom - row_height_on_playdate;
 
-        if (((line_changed_flags[y_gb / 16] >> (y_gb % 16)) & 1) == 0)
+        if (!((line_changed_flags[y_gb >> 4] >> (y_gb & 0xF)) & 1))
         {
             fb_y_playdate_current_bottom = current_line_pd_top_y;
             continue;
@@ -2064,18 +2064,6 @@ __core_section("fb") void $(update_fb_dirty_lines)(
                     dither_lut1_ptr[p4] | (dither_lut1_ptr[p5] << 8) | (dither_lut1_ptr[p6] << 16) |
                     (dither_lut1_ptr[p7] << 24);
             }
-
-            // Process final 4-byte remainder
-            uint32_t org_pixels_rem = gb_line_data32[4];
-            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
-            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
-
-            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
-                                      (dither_lut0_ptr[p2_rem] << 16) |
-                                      (dither_lut0_ptr[p3_rem] << 24);
-            pd_fb_line_bottom_ptr32[4] = dither_lut1_ptr[p0_rem] | (dither_lut1_ptr[p1_rem] << 8) |
-                                         (dither_lut1_ptr[p2_rem] << 16) |
-                                         (dither_lut1_ptr[p3_rem] << 24);
         }
         else
         {
@@ -2098,14 +2086,6 @@ __core_section("fb") void $(update_fb_dirty_lines)(
                                                   (dither_lut0_ptr[p6] << 16) |
                                                   (dither_lut0_ptr[p7] << 24);
             }
-
-            uint32_t org_pixels_rem = gb_line_data32[4];
-            uint8_t p0_rem = org_pixels_rem & 0xFF, p1_rem = (org_pixels_rem >> 8) & 0xFF;
-            uint8_t p2_rem = (org_pixels_rem >> 16) & 0xFF, p3_rem = (org_pixels_rem >> 24) & 0xFF;
-
-            pd_fb_line_top_ptr32[4] = dither_lut0_ptr[p0_rem] | (dither_lut0_ptr[p1_rem] << 8) |
-                                      (dither_lut0_ptr[p2_rem] << 16) |
-                                      (dither_lut0_ptr[p3_rem] << 24);
         }
 
         markUpdatedRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
