@@ -3596,11 +3596,12 @@ static void CB_GameScene_free(void* object)
             memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
         }
 
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
-
         audioGameScene = NULL;
         audio_enabled = 0;
     }
+
+    // Ensure UI/library sounds are audible after leaving the game, even if game audio was off.
+    playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
 
     prefs_locked_by_script = 0;
     preferences_read_from_disk(CB_globalPrefsPath);
