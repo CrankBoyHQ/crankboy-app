@@ -1300,7 +1300,7 @@ static void blend_frames_lut_rect(
 
         int x = start_x_byte;
 
-        while ((x < end_x_byte) && ((uintptr_t)(row_a + x) % 4 != 0))
+        while ((x < end_x_byte) && (((uintptr_t)(row_a + x) & 3) != 0))
         {
             row_b[x] = lut_row[row_a[x]][row_b[x]];
             x++;
@@ -1339,7 +1339,7 @@ static __section__(".text.tick") void display_fps(void)
     if (!numbers_bmp)
         return;
 
-    if (++fps_draw_timer % 4 != 0)
+    if ((++fps_draw_timer & 3) != 0)
         return;
 
     float fps;
@@ -1639,7 +1639,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         static int frame_i;
         frame_i++;
 
-        context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i % 2);
+        context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i & 1);
     }
     else
     {
@@ -2084,7 +2084,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                     if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
                     {
-                        line_has_changed[y / 16] |= (1 << (y % 16));
+                        line_has_changed[y >> 4] |= (1 << (y & 0xF));
 
                         gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
 
@@ -2141,7 +2141,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             for (int y = 1; y < LCD_HEIGHT; y++)
             {
-                bool is_dirty_current = (line_has_changed[y / 16] >> (y % 16)) & 1;
+                bool is_dirty_current = (line_has_changed[y >> 4] >> (y & 0xF)) & 1;
 
                 if (is_dirty_current != is_dirty_range)
                 {
