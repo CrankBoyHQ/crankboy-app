@@ -3,7 +3,7 @@
 #include <stdlib.h>
 
 #define DESCRIPTION                                        \
-    "- On the start screen, press A to start the game.\n" \
+    "- On the start screen, press Ⓐ to start the game.\n" \
     "- In-game, use the crank to move the paddle.\n" \
     "\nCreated by: stonerl"
 
