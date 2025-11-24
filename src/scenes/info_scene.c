@@ -24,6 +24,9 @@
 // Height of the header bar
 #define HEADER_HEIGHT 18
 
+// Buffer for one line of text when calculating bullet points
+#define LINE_BUF_SIZE 2048
+
 // Helper to detect if a line is a list item and return its prefix length
 static bool get_list_item_prefix_len(const char* text, int text_len, int* out_prefix_len)
 {
@@ -114,6 +117,10 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     int scrollDir = !!(buttonsDown & kButtonDown) - !!(buttonsDown & kButtonUp);
     infoScene->scroll += scrollDir * dt * SCROLL_RATE;
 
+    // A temporary buffer to isolate lines.
+    // This creates a hard null-terminator that the renderer cannot ignore.
+    char line_buf[LINE_BUF_SIZE];
+
     // --- Find the widest list prefix to align all list items ---
     int max_prefix_width = 0;
     const char* text_ptr = infoScene->text;
@@ -121,13 +128,17 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     {
         const char* next_newline = strchr(text_ptr, '\n');
         int line_len = next_newline ? (next_newline - text_ptr) : strlen(text_ptr);
-
         int prefix_len = 0;
+
         if (get_list_item_prefix_len(text_ptr, line_len, &prefix_len))
         {
-            int prefix_width = playdate->graphics->getTextWidth(
-                font, text_ptr, prefix_len, kUTF8Encoding, tracking
-            );
+            // Isolate prefix to ensure accurate measurement
+            int safe_len = (prefix_len < LINE_BUF_SIZE - 1) ? prefix_len : LINE_BUF_SIZE - 1;
+            memcpy(line_buf, text_ptr, safe_len);
+            line_buf[safe_len] = '\0';
+
+            int prefix_width =
+                playdate->graphics->getTextWidth(font, line_buf, safe_len, kUTF8Encoding, tracking);
             if (prefix_width > max_prefix_width)
             {
                 max_prefix_width = prefix_width;
@@ -159,23 +170,33 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            int current_indent = 0;
-            const char* text_to_measure = text_ptr;
-            int len_to_measure = line_len;
+            int safe_len = (line_len < LINE_BUF_SIZE - 1) ? line_len : LINE_BUF_SIZE - 1;
+            memcpy(line_buf, text_ptr, safe_len);
+            line_buf[safe_len] = '\0';
 
+            const char* buf_ptr = line_buf;
+            int buf_len = safe_len;
+            int current_indent = 0;
             int prefix_len = 0;
             bool is_list = get_list_item_prefix_len(text_ptr, line_len, &prefix_len);
 
             if (is_list)
             {
                 current_indent = max_prefix_width;  // Use max width for consistent indent
-                text_to_measure += prefix_len;
-                len_to_measure -= prefix_len;
+                if (prefix_len < buf_len)
+                {
+                    buf_ptr += prefix_len;
+                    buf_len -= prefix_len;
+                }
+                else
+                {
+                    buf_len = 0;
+                }
             }
 
             float line_height = playdate->graphics->getTextHeightForMaxWidth(
-                font, text_to_measure, len_to_measure, width - current_indent, kUTF8Encoding,
-                kWrapWord, tracking, extraLeading
+                font, buf_ptr, buf_len, width - current_indent, kUTF8Encoding, kWrapWord, tracking,
+                extraLeading
             );
             total_text_height += line_height;
 
@@ -258,32 +279,44 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            const char* text_to_draw = text_ptr;
-            int current_indent = 0;
+            int safe_len = (line_len < LINE_BUF_SIZE - 1) ? line_len : LINE_BUF_SIZE - 1;
+            memcpy(line_buf, text_ptr, safe_len);
+            line_buf[safe_len] = '\0';
 
+            const char* buf_ptr = line_buf;
+            int buf_len = safe_len;
+            int current_indent = 0;
             int prefix_len = 0;
             bool is_list = get_list_item_prefix_len(text_ptr, line_len, &prefix_len);
 
             if (is_list)
             {
-                // Draw the list prefix (e.g., "1. ") at the start
+                // Draw the list prefix (e.g., "1. ") from buffer
                 playdate->graphics->drawText(
-                    text_ptr, prefix_len, kUTF8Encoding, (int)margin, (int)current_y
+                    line_buf, prefix_len, kUTF8Encoding, margin, (int)current_y
                 );
 
                 // Set the uniform indent for the text block
                 current_indent = max_prefix_width;
-                text_to_draw += prefix_len;
-                line_len -= prefix_len;
+                if (prefix_len < buf_len)
+                {
+                    buf_ptr += prefix_len;
+                    buf_len -= prefix_len;
+                }
+                else
+                {
+                    buf_len = 0;
+                }
             }
 
             int line_height = playdate->graphics->getTextHeightForMaxWidth(
-                font, text_to_draw, line_len, width - current_indent, kUTF8Encoding, kWrapWord,
-                tracking, extraLeading
+                font, buf_ptr, buf_len, width - current_indent, kUTF8Encoding, kWrapWord, tracking,
+                extraLeading
             );
 
+            // Draw body from buffer
             playdate->graphics->drawTextInRect(
-                text_to_draw, line_len, kUTF8Encoding, margin + current_indent, (int)current_y,
+                buf_ptr, buf_len, kUTF8Encoding, margin + current_indent, (int)current_y,
                 width - current_indent, line_height, kWrapWord, kAlignTextLeft
             );
 
@@ -346,7 +379,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
             infoScene->dismiss = true;
         }
     }
-    
+
     if (infoScene->min_dismiss_time > 0)
     {
         infoScene->min_dismiss_time -= dt;
