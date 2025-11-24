@@ -112,7 +112,7 @@ static void on_tick(gb_s* gb, TraxState* state, int frames_elapsed)
 
         if (state->autofire_enabled)
         {
-            const uint8_t HOLD_FRAMES = 10;
+            const uint8_t HOLD_FRAMES = 15;
             const uint8_t GAP_FRAMES = 5;
             uint8_t phase = state->autofire_counter % (HOLD_FRAMES + GAP_FRAMES);
             script_gb->direct.joypad_bits.b = (phase < HOLD_FRAMES) ? 0 : 1;
