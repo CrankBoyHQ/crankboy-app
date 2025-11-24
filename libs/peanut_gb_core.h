@@ -1772,6 +1772,18 @@ done_instr_timing:
         /* LCD Timing */
         gb->counter.lcd_count += inst_cycles;
 
+        // "Short Line 153" Fix:
+        // On real hardware, during Line 153 (end of VBlank), LY wraps to 0 very early
+        // (after just a few cycles), but the PPU remains in VBlank (Mode 1) for the
+        // rest of the scanline duration (456 cycles).
+        // This allows LY=LYC interrupts for Line 0 to fire *before* the new frame starts.
+        if (gb->lcd_mode == LCD_VBLANK && gb->gb_reg.LY == 153)
+        {
+            gb->gb_reg.LY = 0;
+            $(__gb_check_lyc)(gb);
+            $(__gb_update_stat_irq)(gb);
+        }
+
         switch (gb->lcd_mode)
         {
         // Mode 2: OAM Search (80 cycles)
@@ -1783,56 +1795,36 @@ done_instr_timing:
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
-                uint16_t accumulated_sprite_penalty = 0;
-                uint8_t sprites_found_on_line = 0;
-
-                uint8_t current_ly = gb->gb_reg.LY;
-                uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-
-                for (uint8_t s = 0; s < NUM_SPRITES; s++)
-                {
-                    const uint8_t* oam = &gb->oam[s * 4];
-                    uint8_t oam_y = oam[0];
-                    uint8_t oam_x = oam[1];
-
-                    if ((current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
-                    {
-                        sprites_found_on_line++;
-
-                        if (oam_x == 0)
-                        {
-                            accumulated_sprite_penalty += 11;
-                        }
-                        else
-                        {
-                            accumulated_sprite_penalty += 6;
-                        }
-
-                        if (sprites_found_on_line >= MAX_SPRITES_LINE)
-                        {
-                            break;
-                        }
-                    }
-                }
-
                 uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
-                mode3_cycles += (gb->gb_reg.SCX % 8);  // SCX penalty
 
-                // Window penalty approximation
-                bool window_potentially_active = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
-                                                 (gb->gb_reg.LY >= gb->display.WY) &&
-                                                 (gb->gb_reg.WX >= 7) && (gb->gb_reg.WX < 167);
+                mode3_cycles += (gb->gb_reg.SCX % 8);
 
+                bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
+                                   (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->display.WY);
 #if PGB_IS_DMG
-                window_potentially_active &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
+                win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
 #endif
-
-                if (window_potentially_active)
+                if (win_visible)
                 {
                     mode3_cycles += 6;
                 }
 
-                mode3_cycles += accumulated_sprite_penalty;
+                uint8_t sprites_found = 0;
+                const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+
+                for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
+                {
+                    const uint8_t y = gb->oam[s * 4];
+                    const uint8_t x = gb->oam[s * 4 + 1];
+
+                    // Check if sprite Y intersects current line
+                    if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
+                    {
+                        // Approximate penalty: ~11 cycles per sprite + X adjustment
+                        mode3_cycles += 11;
+                        sprites_found++;
+                    }
+                }
 
                 gb->display.current_mode3_cycles = MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
                 gb->display.current_mode0_cycles =
@@ -1871,24 +1863,22 @@ done_instr_timing:
                 gb->counter.lcd_count -= gb->display.current_mode0_cycles;
                 gb->gb_reg.LY++;
 
-                $(__gb_check_lyc)(gb);
-                $(__gb_update_stat_irq)(gb);
-
                 if (gb->gb_reg.LY == LCD_HEIGHT)
                 {
                     gb->lcd_mode = LCD_VBLANK;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
+                    gb->gb_frame = 1;
+                    gb->gb_reg.IF |= VBLANK_INTR;
+                    gb->lcd_blank = 0;
 
 #if PGB_IS_CGB
                     // FIXME: is this correct?
                     while (gb->cgb_hdma_active)
                         __gb_do_hdma(gb);
 #endif
+                    $(__gb_update_stat_irq)(gb);
 
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
-                    gb->gb_frame = 1;
-                    gb->gb_reg.IF |= VBLANK_INTR;
-                    gb->lcd_blank = 0;
-
+                    $(__gb_check_lyc)(gb);
                     $(__gb_update_stat_irq)(gb);
                 }
                 else
@@ -1896,6 +1886,7 @@ done_instr_timing:
                     gb->lcd_mode = LCD_SEARCH_OAM;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
+                    $(__gb_check_lyc)(gb);
                     $(__gb_update_stat_irq)(gb);
                 }
             }
@@ -1908,28 +1899,22 @@ done_instr_timing:
             {
                 gb->counter.lcd_count -= LCD_LINE_CYCLES;
 
-                // LY continues to increment during V-Blank from 144 up to 153.
-                if (gb->gb_reg.LY == (LCD_VERT_LINES - 1))
-                {
-                    gb->gb_reg.LY = 0;
-                }
-                else
-                {
-                    gb->gb_reg.LY++;
-                }
-
-                $(__gb_check_lyc)(gb);
-                $(__gb_update_stat_irq)(gb);
-
                 if (gb->gb_reg.LY == 0)
                 {
                     gb->lcd_mode = LCD_SEARCH_OAM;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
-                    $(__gb_update_stat_irq)(gb);
-
                     gb->display.window_clear = 0;
                     gb->display.WY = gb->gb_reg.WY;
+
+                    $(__gb_check_lyc)(gb);
+                    $(__gb_update_stat_irq)(gb);
+                }
+                else
+                {
+                    gb->gb_reg.LY++;
+                    $(__gb_check_lyc)(gb);
+                    $(__gb_update_stat_irq)(gb);
                 }
             }
             break;
