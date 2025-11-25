@@ -1820,8 +1820,23 @@ done_instr_timing:
                     // Check if sprite Y intersects current line
                     if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
                     {
-                        // Approximate penalty: ~11 cycles per sprite + X adjustment
-                        mode3_cycles += 11;
+                        // Exception: OAM X=0 always incurs the max 11-dot penalty
+                        if (x == 0)
+                        {
+                            mode3_cycles += 11;
+                        }
+                        else
+                        {
+                            int penalty = 6;
+                            int alignment = (gb->gb_reg.SCX + x) & 7;
+                            int extra = 5 - alignment;
+
+                            if (extra > 0)
+                            {
+                                penalty += extra;
+                            }
+                            mode3_cycles += penalty;
+                        }
                         sprites_found++;
                     }
                 }
