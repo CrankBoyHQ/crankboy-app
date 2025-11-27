@@ -3,7 +3,7 @@
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
     "- Full aspect ratio; no vertical squishing.\n"                              \
-    "- Open save menu by docking the Crank.\n"                                   \
+    "- Open save menu with Start + Select only.\n"                                   \
     "- In fishing mini-game: CCW Crank = Reel, CW Crank = Cast.\n"               \
     "- Intro cutscene can be skipped with Ⓐ.\n" \
     "\nCreated by: NaOH (Sodium Hydroxide) and stonerl\n"\
@@ -37,6 +37,10 @@ typedef struct ScriptData
     float crank_ccw_accumulator;
     int input_cooldown_timer;
     int lockout_timer;
+    preference_t dock_button_pref;
+    preference_t undock_button_pref;
+    preference_t crank_mode_pref;
+    bool crank_actions_suppressed;
 
     uint32_t tilemap_checksum;
     uint32_t tiledata_checksum;
@@ -46,11 +50,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
 
-    force_pref(crank_mode, CRANK_MODE_START_SELECT);
-    force_pref(crank_down_action, 0);
-    force_pref(crank_dock_button, PREF_BUTTON_START_SELECT);
-    force_pref(crank_undock_button, PREF_BUTTON_NONE);
-
     force_pref(dither_stable, false);
     force_pref(dither_line, 0);
 
@@ -59,6 +58,10 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     data->crank_ccw_accumulator = 0.0f;
     data->input_cooldown_timer = 0;
     data->lockout_timer = 0;
+    data->dock_button_pref = preferences_crank_dock_button;
+    data->undock_button_pref = preferences_crank_undock_button;
+    data->crank_mode_pref = preferences_crank_mode;
+    data->crank_actions_suppressed = false;
 
     data->is_ladx = (rom_peek(0xE64) == 0xF0);
 
@@ -110,11 +113,26 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     {
         if (is_fishing_now)
         {
-            force_pref(crank_mode, CRANK_MODE_OFF);
+            if (!data->crank_actions_suppressed)
+            {
+                data->dock_button_pref = preferences_crank_dock_button;
+                data->undock_button_pref = preferences_crank_undock_button;
+                data->crank_mode_pref = preferences_crank_mode;
+                preferences_crank_mode = CRANK_MODE_OFF;
+                preferences_crank_dock_button = PREF_BUTTON_NONE;
+                preferences_crank_undock_button = PREF_BUTTON_NONE;
+                data->crank_actions_suppressed = true;
+            }
         }
         else
         {
-            force_pref(crank_mode, CRANK_MODE_START_SELECT);
+            if (data->crank_actions_suppressed)
+            {
+                preferences_crank_mode = data->crank_mode_pref;
+                preferences_crank_dock_button = data->dock_button_pref;
+                preferences_crank_undock_button = data->undock_button_pref;
+                data->crank_actions_suppressed = false;
+            }
         }
         data->is_in_fishing_scene = is_fishing_now;
     }
@@ -198,6 +216,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     {
     case 0:  // intro
     case 2:  // file select
+    case 3:  // your name
     case 6:  // save
         game_picture_background_color = kColorBlack;
         break;
