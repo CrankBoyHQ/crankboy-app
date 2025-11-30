@@ -1881,7 +1881,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->direct.sram_updated = 0;
 
         bool skip_frame = false;
-        if (preferences_script_support && context->scene->script)
+        if (context->scene->script)
         {
             skip_frame =
                 script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
@@ -2283,7 +2283,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 );
             }
 
-            if (preferences_script_support && context->scene->script)
+            if (context->scene->script)
             {
                 script_draw(context->scene->script, gameScene);
             }
@@ -3095,7 +3095,7 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
 
     struct StateHeader* header = (struct StateHeader*)buff;
     header->timestamp = playdate->system->getSecondsSinceEpoch(NULL);
-    header->script = (preferences_script_support && context->scene->script);
+    header->script = (context->scene->script != NULL);
     header->cgb = context->gb->is_cgb_mode;
     header->script_save_data_size = script_size;
 
@@ -3637,7 +3637,7 @@ static void CB_GameScene_free(void* object)
         cb_free(context->cart_ram);
     }
 
-    if (preferences_script_support && gameScene->script)
+    if (gameScene->script)
     {
         script_end(gameScene->script, gameScene);
         gameScene->script = NULL;
@@ -3684,7 +3684,7 @@ __section__(".rare") void __gb_on_breakpoint(gb_s* gb, int breakpoint_number)
     CB_ASSERT(gameScene->context->gb->direct.priv == context);
     CB_ASSERT(gameScene->context->gb == gb);
 
-    if (preferences_script_support && gameScene->script)
+    if (gameScene->script)
     {
         call_with_user_stack_2(script_on_breakpoint, gameScene, breakpoint_number);
     }
