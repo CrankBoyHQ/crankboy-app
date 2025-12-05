@@ -2905,19 +2905,6 @@ _0x76:
     {
         gb->gb_halt = 1;
     }
-    else
-    {
-        // HALT BUG TRIGGERED
-        uint8_t next_opcode = __gb_read__dmg(gb, gb->cpu_reg.pc);
-
-        if (next_opcode == 0x00)
-        {
-            uint16_t pc_next = gb->cpu_reg.pc;
-            inst_cycles += __gb_run_instruction_micro__dmg(gb);
-
-            gb->cpu_reg.pc = pc_next;
-        }
-    }
     goto exit;
 }
 
@@ -5047,34 +5034,11 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
     }
         return 1 * 4;
     case 0x76:
-    {
         if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
         {
             gb->gb_halt = 1;
-            return 1 * 4;
         }
-        else
-        {
-            // HALT BUG TRIGGERED (DMG, IME=0, Pending Interrupt)
-            uint8_t next_opcode = __gb_read__dmg(gb, gb->cpu_reg.pc);
-
-            // Only emulate Double Execution for NOP.
-            // (This fixes game freezes e.g. in Kirby 2)
-            if (next_opcode == 0x00)
-            {
-                uint16_t pc_next = gb->cpu_reg.pc;
-                u8 cycles = (u8)__gb_run_instruction_micro__dmg(gb);
-
-                gb->cpu_reg.pc = pc_next;
-
-                return cycles;
-            }
-            else
-            {
-                return 1 * 4;
-            }
-        }
-    }
+        return 1 * 4;
     case 0xE8:
     case 0xF8:
     {
