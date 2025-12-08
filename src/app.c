@@ -11,6 +11,7 @@
 #include "../libs/minigb_apu/minigb_apu.h"
 #include "../libs/pdnewlib/pdnewlib.h"
 #include "dtcm.h"
+#include "global.h"
 #include "jparse.h"
 #include "preferences.h"
 #include "scenes/file_copying_scene.h"
@@ -22,7 +23,6 @@
 #include "serial.h"
 #include "userstack.h"
 #include "version.h"
-#include "global.h"
 
 #include <string.h>
 
@@ -56,11 +56,12 @@ static int check_is_bundle(void)
 
     if (jrom.type == kJSONString)
         CB_App->bundled_rom = cb_strdup(jrom.data.stringval);
-        
+
     json_value jdevice = json_get_table_value(jbundle, "device");
     if (jdevice.type == kJSONString)
     {
-        if (!strcasecmp(jdevice.data.stringval, "CGB") || !strcasecmp(jdevice.data.stringval, "GBC"))
+        if (!strcasecmp(jdevice.data.stringval, "CGB") ||
+            !strcasecmp(jdevice.data.stringval, "GBC"))
         {
             CB_App->bundled_rom_cgb_mode = 2;
         }
@@ -302,15 +303,16 @@ static void initialize_directory(void)
 static void get_homebrew_hub_api(void)
 {
     char* hbapi = cb_read_entire_file(HOMEBREW_HUB_API_FILE, NULL, kFileRead | kFileReadData);
-    if (!hbapi) return;
-    
+    if (!hbapi)
+        return;
+
     char* scheme_end = strstr(hbapi, "://");
     if (!scheme_end)
     {
         cb_free(hbapi);
         return;
     };
-    
+
     scheme_end[0] = 0;
     char* domain = scheme_end + 3;
     bool https = !strcmp(hbapi, "https");
@@ -321,39 +323,40 @@ static void get_homebrew_hub_api(void)
         return;
     }
     nl[0] = 0;
-    char* staticpath = nl+1;
+    char* staticpath = nl + 1;
     char* spnl = strchr(staticpath, '\n');
-    if (spnl) spnl[0] = 0;
+    if (spnl)
+        spnl[0] = 0;
     char* path = strchr(domain, '/');
     if (!path)
     {
         cb_free(hbapi);
         return;
     }
-    
+
     // strip final slash
-    while (path[0] && path[strlen(path)-1] == '/')
+    while (path[0] && path[strlen(path) - 1] == '/')
     {
-        path[strlen(path)-1] = 0;
+        path[strlen(path) - 1] = 0;
     }
-    
+
     if (!path[0])
     {
         cb_free(hbapi);
         return;
     }
-    
-    while (staticpath[0] && staticpath[strlen(path)-1] == '/')
+
+    while (staticpath[0] && staticpath[strlen(path) - 1] == '/')
     {
-        staticpath[strlen(staticpath)-1] = 0;
+        staticpath[strlen(staticpath) - 1] = 0;
     }
-    
+
     if (!staticpath[0])
     {
         cb_free(hbapi);
         return;
     }
-    
+
     CB_App->hbApiUseHTTPS = https;
     CB_App->hbApiPath = cb_strdup(path);
     CB_App->hbStaticPath = staticpath;
@@ -366,59 +369,58 @@ static void non_bundle_init(void)
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
     get_homebrew_hub_api();
     parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
-    
+
     global.shown_intro = true;
     save_global();
-    
+
     CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
     CB_present(copyingScene->scene);
 }
 
 void CB_showHelp(bool first_time)
 {
-    const char* title = first_time
-        ? "Welcome to CrankBoy!"
-        : "CrankBoy Usage";
-        
-    const char* A0 = first_time
-        ? "This is a quick guide to getting started.\n\nIn the future, you can review these instructions from the \"help\" option in CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n"
-        : "";
-    
-    const char* A = first_time
-        ? "To get started, you'll want to add some ROMs to CrankBoy."
-        : "To add ROMs to CrankBoy, do the following:";
-    
-    #if 0
+    const char* title = first_time ? "Welcome to CrankBoy!" : "CrankBoy Usage";
+
+    const char* A0 = first_time ? "This is a quick guide to getting started.\n\nIn the future, you "
+                                  "can review these instructions from the \"help\" option in "
+                                  "CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n"
+                                : "";
+
+    const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy."
+                               : "To add ROMs to CrankBoy, do the following:";
+
+#if 0
     const char* B = first_time
         ? "Alternatively, press Ⓑ now to start playing the included ROMs immediately.\n\n"
         : "\n\n";
-    #else
+#else
     const char* B = "\n\n";
-    #endif
-    
+#endif
+
     const char* C1 = "1. Connect your Playdate to another device via USB.\n";
-    const char* C2 = "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
-    const char* C3 = "3. From the connected device, copy your ROM files (.gb or .gbc extension) onto your Playdate at the following directory: ";
-    
-    const char* D = "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the main menu via ⊙ > settings > Get ROMs.";
-    
-    char* s = aprintf(
-        "%s%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D
-    );
-    
-    CB_InfoScene* infoScene = CB_InfoScene_new(
-        title,
-        s
-    );
-                
+    const char* C2 =
+        "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
+    const char* C3 =
+        "3. From the connected device, copy your ROM files (.gb or .gbc extension) onto your "
+        "Playdate at the following directory: ";
+
+    const char* D =
+        "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the "
+        "main menu via ⊙ > settings > Get ROMs.";
+
+    char* s =
+        aprintf("%s%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D);
+
+    CB_InfoScene* infoScene = CB_InfoScene_new(title, s);
+
     if (first_time)
     {
         infoScene->complete_callback = non_bundle_init;
         infoScene->min_dismiss_time = 1.2f;
     }
-    
+
     CB_presentModal(infoScene->scene);
-    
+
     cb_free(s);
 }
 
@@ -431,9 +433,7 @@ static bool games_exist_in_data(void)
 {
     bool any_found = false;
     playdate->file->listfiles(
-        cb_gb_directory_path(CB_gamesPath),
-        (void*)any_file_found,
-        &any_found, false
+        cb_gb_directory_path(CB_gamesPath), (void*)any_file_found, &any_found, false
     );
     return any_found;
 }
@@ -469,14 +469,15 @@ void CB_init(void)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
-        
+#if GITHUB_RELEASE
         possibly_check_for_updates();
-        
+#endif
         check_for_parental_lock();
-        
+
         playdate->system->logToConsole("shown intro: %d", (int)global.shown_intro);
-        
-        if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) || games_exist_in_data())
+
+        if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) ||
+            games_exist_in_data())
         {
             non_bundle_init();
         }
@@ -515,10 +516,11 @@ void CB_init(void)
     playdate->display->setRefreshRate(0);
 
     playdate->system->setSerialMessageCallback(CB_on_serial_message);
-    
+
     if (CB_App->bundled_rom)
     {
-        CB_GameScene* gameScene = CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM", CB_App->bundled_rom_cgb_mode == 2);
+        CB_GameScene* gameScene =
+            CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM", CB_App->bundled_rom_cgb_mode == 2);
         if (gameScene)
         {
             CB_present(gameScene->scene);

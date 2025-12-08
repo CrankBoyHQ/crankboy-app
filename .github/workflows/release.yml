@@ -35,7 +35,7 @@ jobs:
             # Step 4: Build the Project for Device
             - name: Build Project for Device
               env:
-                  COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0"
+                  COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0 -DGITHUB_RELEASE=1"
               run: make -j$(nproc) device
 
             # Step 5: Package the device build as a zip file
@@ -75,7 +75,7 @@ jobs:
             # Step 4: Build a universal .pdx for both Device and Simulator
             - name: Build Universal Project (Device & Simulator)
               env:
-                  COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0"
+                  COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0 -DGITHUB_RELEASE=1"
               run: make -j$(nproc)
 
             # Step 5: Package the simulator build as a zip file
@@ -111,6 +111,8 @@ jobs:
                   echo "PLAYDATE_SDK_PATH=$HOME/Developer/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Build Universal Project (Device & Simulator)
+              env:
+                  COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0 -DGITHUB_RELEASE=1"
               run: make -j$(sysctl -n hw.ncpu)
 
             - name: Package macOS Simulator Build
@@ -168,6 +170,7 @@ jobs:
               run: |
                   export PLAYDATE_SDK_PATH="$(pwd)/PlaydateSDK"
                   export PATH="$(pwd)/gcc-arm-toolchain/bin:$PATH"
+                  export COMMON_FLAGS="-DENABLE_CPU_VALIDATION=0 -DGITHUB_RELEASE=1"
                   # Create build directory
                   mkdir -p build
 
@@ -178,7 +181,7 @@ jobs:
 
                   # Build simulator extension DLL
                   echo "Building simulator DLL..."
-                  gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 \
+                  gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 $COMMON_FLAGS \
                       -I . -I "$PLAYDATE_SDK_PATH/C_API" -I src -I libs \
                       -I libs/minigb_apu -I libs/lz4 -I libs/pdnewlib \
                       -o build/pdex.dll \

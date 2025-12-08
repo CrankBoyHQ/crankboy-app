@@ -868,11 +868,13 @@ static void launch_game_prompt_if_script(void* ud, int option)
     }
 }
 
+#if GITHUB_RELEASE
 static void on_update_modal_dismiss(void* ud, int option)
 {
     mark_update_as_seen();
     free_pending_update_info((PendingUpdateInfo*)ud);
 }
+#endif
 
 static int page_advance = 0;
 
@@ -906,7 +908,11 @@ __section__(".rare") static void CB_LibraryScene_event(
 
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
+#if GITHUB_RELEASE
     CB_App->shouldCheckUpdateInfo = true;
+#else
+    CB_App->shouldCheckUpdateInfo = false;
+#endif
 
     setCrankSoundsEnabled(true);
 
@@ -1106,6 +1112,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
+#if GITHUB_RELEASE
     // Check for a pending update message when the library is active.
     if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown &&
         CB_App->shouldCheckUpdateInfo)
@@ -1142,6 +1149,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
         }
     }
+#endif
 
     // Check if we need to show the file migration notification.
     if (libraryScene->initialLoadComplete && !libraryScene->migration_modal_shown &&

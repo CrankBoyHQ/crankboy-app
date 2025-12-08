@@ -2,6 +2,10 @@
 
 #include "http.h"
 
+#ifndef GITHUB_RELEASE
+#define GITHUB_RELEASE 0
+#endif
+
 #define ERR_PERMISSION_ASKED_DENIED (-253)
 #define ERR_PERMISSION_DENIED (-254)
 
