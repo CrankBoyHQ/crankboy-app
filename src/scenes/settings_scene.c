@@ -872,7 +872,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Get ROMs",
-            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub.\n \nThis feature is still\nexperimental and could\ncrash, or downloads\ncould silently fail.\n \nRequires internet.\n \nParental lock is available.",
+            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub\n(hh.gbdev.io).\n \nThis feature is still\nexperimental and could\ncrash, or downloads\ncould silently fail.\n \nRequires internet.\n \nParental lock is available.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_homebrew_hub,
