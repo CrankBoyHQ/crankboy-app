@@ -47,6 +47,9 @@ bool gbScreenRequiresFullRefresh;
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208
 
+// Upper bound on the number of audio samples we generate per frame.
+#define MAX_AUDIO_SAMPLES_PER_CHUNK ((44100 / 60) * 4)
+
 // --- Parameters for the "Tendency Counter" Auto-Interlace System ---
 
 // The tendency counter's ceiling. Higher values add more inertia.
@@ -83,15 +86,25 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
     if (samples_to_generate <= 0)
         return;
 
+    if (samples_to_generate > (int)gameScene->audio_temp_capacity)
+    {
+        playdate->system->logToConsole(
+            "Audio chunk request %d exceeds buffer capacity %zu; clamping.", samples_to_generate,
+            gameScene->audio_temp_capacity
+        );
+        samples_to_generate = (int)gameScene->audio_temp_capacity;
+    }
+
     audio_data* audio = &gameScene->context->gb->audio;
 
-    int16_t* temp_left = cb_malloc(samples_to_generate * sizeof(int16_t));
+    int16_t* temp_left = gameScene->audio_temp_left;
     int16_t* temp_right =
-        gameScene->is_stereo ? cb_malloc(samples_to_generate * sizeof(int16_t)) : temp_left;
+        gameScene->is_stereo ? gameScene->audio_temp_right : gameScene->audio_temp_left;
 
-    memset(temp_left, 0, samples_to_generate * sizeof(int16_t));
+    size_t bytes_to_zero = (size_t)samples_to_generate * sizeof(int16_t);
+    memset(temp_left, 0, bytes_to_zero);
     if (gameScene->is_stereo)
-        memset(temp_right, 0, samples_to_generate * sizeof(int16_t));
+        memset(temp_right, 0, bytes_to_zero);
 
     audio_update_wave(audio, temp_left, temp_right, samples_to_generate);
     audio_update_square(audio, temp_left, temp_right, 0, samples_to_generate);
@@ -108,9 +121,6 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
     }
 
     atomic_fetch_add(&g_audio_sync_buffer.write_pos, samples_to_generate);
-    cb_free(temp_left);
-    if (gameScene->is_stereo)
-        cb_free(temp_right);
 }
 
 static void tick_audio_sync(CB_GameScene* gameScene)
@@ -134,7 +144,7 @@ static void tick_audio_sync(CB_GameScene* gameScene)
         samples_to_generate = target_sample_count - samples_generated;
     }
 
-    int max_gen_this_frame = (44100 / 60) * 4;
+    int max_gen_this_frame = MAX_AUDIO_SAMPLES_PER_CHUNK;
     if (samples_to_generate > max_gen_this_frame)
     {
         samples_to_generate = max_gen_this_frame;
@@ -587,6 +597,15 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
+
+    gameScene->audio_temp_capacity = MAX_AUDIO_SAMPLES_PER_CHUNK;
+    gameScene->audio_temp_left = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
+    gameScene->audio_temp_right = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
+    if (!gameScene->audio_temp_left || !gameScene->audio_temp_right)
+    {
+        playdate->system->logToConsole("Failed to allocate audio scratch buffers.");
+        gameScene->audio_temp_capacity = 0;
+    }
 
     gameScene->previous_joypad_state = 0xFF;
 
@@ -3642,6 +3661,9 @@ static void CB_GameScene_free(void* object)
         script_end(gameScene->script, gameScene);
         gameScene->script = NULL;
     }
+
+    cb_free(gameScene->audio_temp_left);
+    cb_free(gameScene->audio_temp_right);
 
     cb_free(context);
     cb_free(gameScene);
