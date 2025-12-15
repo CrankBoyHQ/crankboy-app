@@ -1796,8 +1796,9 @@ done_instr_timing:
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
                 uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
+                const uint8_t scx_mod8 = gb->gb_reg.SCX & 7;
 
-                mode3_cycles += (gb->gb_reg.SCX % 8);
+                mode3_cycles += scx_mod8;
 
                 bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
                                    (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->display.WY);
@@ -1811,6 +1812,7 @@ done_instr_timing:
 
                 uint8_t sprites_found = 0;
                 const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+                static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
 
                 for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
                 {
@@ -1827,15 +1829,8 @@ done_instr_timing:
                         }
                         else
                         {
-                            int penalty = 6;
-                            int alignment = (gb->gb_reg.SCX + x) & 7;
-                            int extra = 5 - alignment;
-
-                            if (extra > 0)
-                            {
-                                penalty += extra;
-                            }
-                            mode3_cycles += penalty;
+                            const uint8_t alignment = (scx_mod8 + x) & 7;
+                            mode3_cycles += sprite_penalty_lut[alignment];
                         }
                         sprites_found++;
                     }
