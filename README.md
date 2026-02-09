@@ -2,6 +2,7 @@
 
 [![Nightly Build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml/badge.svg)](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
+[![Matrix](https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(matrix%2Felement))](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
 [![Discord](https://img.shields.io/discord/675983554655551509?logo=discord&logoColor=white&color=7289DA)](https://discord.com/channels/675983554655551509/1378119815641694278)
 
 A full-speed Game Boy emulator for Playdate. CrankBoy is a fork of [PlayGB](https://github.com/risolvipro/PlayGB)
