@@ -29,6 +29,11 @@ u16 ram_peek_u16(addr16_t addr);
 void script_save_to_disk(const char* data, size_t size, unsigned fidx);
 char* script_load_from_disk(unsigned fidx, size_t* o_size);
 
+// returns number of tiles loaded
+int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles);
+void script_draw_tiles12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int idx, int x, int y);
+void script_draw_string12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x, int y);
+
 romaddr_t rom_size(void);
 
 #define force_pref(pref, val)                     \

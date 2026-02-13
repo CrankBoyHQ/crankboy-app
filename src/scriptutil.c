@@ -80,6 +80,68 @@ char* script_load_from_disk(unsigned fidx, size_t* o_size)
     return result;
 }
 
+int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles)
+{
+    LCDBitmap* src = playdate->graphics->loadBitmap(path, NULL);
+    if (!src) return 0;
+    int width, height, stride, n=0;
+    playdate->graphics->getBitmapData(src, &width, &height, &stride, NULL, NULL);
+    
+    for (int ty = 0; ty < (height/12); ++ty)
+    {
+        for (int tx = 0; tx < (width/12); ++tx)
+        {
+            int i = ty*(width/12) + tx;
+            if (++n > max_tiles) goto done;
+            for (int j = 0; j < 12; ++j)
+            {
+                out[i][j] = 0;
+                for (int k = 0; k < 12; ++k)
+                {
+                    int x = (tx) * 12 + k;
+                    int y = ty * 12 + j;
+                    out[i][j] |= playdate->graphics->getBitmapPixel(src, x, y) << (15 - k);
+                }
+            }
+        }
+    }
+    
+done:
+    playdate->graphics->freeBitmap(src);
+    
+    return n;
+}
+
+void script_draw_tiles12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int idx, int x, int y)
+{
+    uint16_t* tile12 = &tiles12[idx][0];
+
+    for (int i = 0; i < 12; ++i)
+    {
+        uint16_t v = tile12[i];
+        for (int j = 0; j < 12; ++j)
+        {
+            int _y = (i + y);
+            int _x = (x + j);
+            int x8 = 7 - (_x % 8);
+            lcd[rowbytes * _y + _x / 8] &= ~(1 << x8);
+            if (v & (1 << (15 - j)))
+            {
+                lcd[rowbytes * _y + _x / 8] |= (1 << x8);
+            }
+        }
+    }
+}
+
+void script_draw_string12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x, int y)
+{
+    for (int i = 0; s[i]; ++i)
+    {
+        int c = s[i] - char_offset;
+        script_draw_tiles12(tiles12, lcd, rowbytes, c, x + i*12, y);
+    }
+}
+
 void find_code_cave(int bank, romaddr_t* max_start, romaddr_t* max_size)
 {
     uint32_t bank_start = (bank != -1) ? (bank * 0x4000) : 0;
