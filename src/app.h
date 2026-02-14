@@ -162,6 +162,7 @@ typedef struct CB_Application
     
     char* hbApiDomain;
     char* hbApiPath;
+    char* hbSearchExtraFlags;
     char* hbStaticPath;
 
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence

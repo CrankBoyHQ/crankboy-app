@@ -692,7 +692,9 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
 static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* platform)
 {
     /* Fetch Open Source games from Homebrew Hub */
-    char* urlpath = aprintf("%s/search?tags=Open%%20Source&platform=%s&page=%d", CB_App->hbApiPath, platform, MAX(page_index, 1));
+    char* extra_flags = CB_App->hbSearchExtraFlags ? aprintf("&%s", CB_App->hbSearchExtraFlags) : aprintf("");
+    char* urlpath = aprintf("%s/search?&platform=%s&page=%d%s", CB_App->hbApiPath, platform, MAX(page_index, 1), extra_flags);
+    cb_free(extra_flags);
     
     if (hbs->download_image)
     {

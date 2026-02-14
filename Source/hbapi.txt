@@ -1,2 +1,3 @@
 https://hh3.gbdev.io/api
 /static
+tags=Open%20Source

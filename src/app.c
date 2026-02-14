@@ -333,6 +333,24 @@ static void get_homebrew_hub_api(void)
         cb_free(hbapi);
         return;
     }
+    
+    // check for another newline
+    nl = spnl;
+    CB_App->hbSearchExtraFlags = NULL;
+    if (nl)
+    {
+        nl[0] = 0;
+        CB_App->hbSearchExtraFlags = nl + 1;
+        nl = strchr(CB_App->hbSearchExtraFlags, '\n');
+        if (nl)
+        {
+            nl[0] = 0;
+        }
+        if (strlen(CB_App->hbSearchExtraFlags) == 0)
+        {
+            CB_App->hbSearchExtraFlags = NULL;
+        }
+    }
 
     // strip final slash
     while (path[0] && path[strlen(path) - 1] == '/')
@@ -362,6 +380,8 @@ static void get_homebrew_hub_api(void)
     CB_App->hbStaticPath = staticpath;
     path[0] = 0;
     CB_App->hbApiDomain = domain;
+    
+    // playdate->system->logToConsole("%s\n%s\n%s", CB_App->hbApiDomain, CB_App->hbApiPath, CB_App->hbSearchExtraFlags);
 }
 
 static void non_bundle_init(void)
