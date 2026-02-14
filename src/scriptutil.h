@@ -39,7 +39,7 @@ romaddr_t rom_size(void);
 #define force_pref(pref, val)                     \
     do                                            \
     {                                             \
-        preferences_##pref = val;                 \
+        preferences_##pref = (val);               \
         prefs_locked_by_script |= PREFBIT_##pref; \
     } while (0)
 
