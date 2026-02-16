@@ -489,7 +489,7 @@ void CB_init(void)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
-#if GITHUB_RELEASE
+#if GITHUB_RELEASE && !defined(CRANKBOY_OFFICIAL_CATALOG)
         possibly_check_for_updates();
 #endif
         check_for_parental_lock();

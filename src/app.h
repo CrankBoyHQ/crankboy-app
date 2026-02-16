@@ -40,6 +40,8 @@ extern pthread_mutex_t audio_mutex;
 
 #define AUDIO_RING_BUFFER_SIZE 4096  // ~90ms of audio at 44.1kHz.
 
+//#define CRANKBOY_OFFICIAL_CATALOG // For the official catalog release from the crankboy team. Not for third-party catalog releases.
+
 typedef struct
 {
     int16_t left[AUDIO_RING_BUFFER_SIZE];

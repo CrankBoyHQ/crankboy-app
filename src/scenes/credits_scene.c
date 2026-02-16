@@ -243,6 +243,15 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             );
             yl += yadv;
             #endif
+            
+            #ifdef CRANKBOY_OFFICIAL_CATALOG
+            playdate->graphics->drawTextInRect(
+                "Catalog", strlen((char*)"Catalog"), kUTF8Encoding,
+                margin + creditsScene->scroll*8, yr, width, 100, kWrapWord,
+                kAlignTextRight
+            );
+            yr += yadv;
+            #endif
 
             if (creditsScene->logo)
             {

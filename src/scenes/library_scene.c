@@ -868,7 +868,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
     }
 }
 
-#if GITHUB_RELEASE
+#if GITHUB_RELEASE && !defined(CRANKBOY_OFFICIAL_CATALOG)
 static void on_update_modal_dismiss(void* ud, int option)
 {
     mark_update_as_seen();
@@ -908,7 +908,7 @@ __section__(".rare") static void CB_LibraryScene_event(
 
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
-#if GITHUB_RELEASE
+#if GITHUB_RELEASE && !defined(CRANKBOY_OFFICIAL_CATALOG)
     CB_App->shouldCheckUpdateInfo = true;
 #else
     CB_App->shouldCheckUpdateInfo = false;
@@ -1112,7 +1112,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-#if GITHUB_RELEASE
+#if GITHUB_RELEASE &&! defined(CRANKBOY_OFFICIAL_CATALOG)
     // Check for a pending update message when the library is active.
     if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown &&
         CB_App->shouldCheckUpdateInfo)
