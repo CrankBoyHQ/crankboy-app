@@ -16,6 +16,7 @@ unsigned game_picture_y_bottom;
 unsigned game_picture_scaling;
 LCDColor game_picture_background_color;
 bool game_hide_indicator;
+bool game_invert_indicator;
 bool gbScreenRequiresFullRefresh;
 
 #define PGB_IMPL
@@ -564,6 +565,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     game_picture_y_bottom = LCD_HEIGHT;
     game_picture_background_color = kColorBlack;
     game_hide_indicator = false;
+    game_invert_indicator = false;
     game_menu_button_input_enabled = 1;
 
     CB_Scene* scene = CB_Scene_new();
@@ -2314,7 +2316,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (shouldDisplayStartSelectUI)
                 {
                     playdate->graphics->setFont(CB_App->labelFont);
-                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                    playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite);
                     playdate->graphics->drawText(
                         startButtonText, cb_strlen(startButtonText), kUTF8Encoding,
                         gameScene->selector.startButtonX, gameScene->selector.startButtonY
@@ -2330,7 +2332,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     preferences_crank_mode == CRANK_MODE_TURBO_CCW)
                 {
                     playdate->graphics->setFont(CB_App->labelFont);
-                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                    playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite);
 
                     const char* line1 = "Turbo";
                     const char* line2 =
@@ -2363,8 +2365,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     playdate->graphics->setDrawMode(kDrawModeCopy);
                 }
 
-                playdate->graphics->setDrawMode(kDrawModeCopy);
-
+                playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeInverted : kDrawModeCopy);
+                
                 if (shouldDisplayStartSelectUI)
                 {
                     LCDBitmap* bitmap;
@@ -2383,12 +2385,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     );
                 }
 
-                playdate->graphics->setDrawMode(kDrawModeCopy);
                 gameScene->staticSelectorUIDrawn = true;
             }
             else if (!game_hide_indicator &&
                      (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
             {
+                playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeInverted : kDrawModeCopy);
                 playdate->graphics->fillRect(
                     gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
                     gameScene->selector.height, game_picture_background_color
@@ -2415,6 +2417,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gameScene->selector.y, gameScene->selector.y + gameScene->selector.height - 1
                 );
             }
+            
+            playdate->graphics->setDrawMode(kDrawModeCopy);
 
 #if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
             PDRect highlightFrame = gameScene->debug_highlightFrame;

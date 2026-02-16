@@ -373,3 +373,44 @@ void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y)
         }
     }
 }
+
+void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags)
+{
+    uint16_t tile_addr = 0x8000 | (16 * (uint16_t)tile_idx);
+    if (tile_idx < 0x80 && mode9000)
+        tile_addr += 0x1000;
+
+    uint16_t* tile_data = (void*)&script_gb->vram[tile_addr % 0x2000];
+
+    for (int i = 0; i < 8; ++i)
+    {
+        for (int j = 0; j < 8; ++j)
+        {
+            int c0 = (tile_data[i] >> j) & 1;
+            int c1 = (tile_data[i] >> (j + 8)) & 1;
+            
+            int c = c0 | (c1 << 1);
+
+            LCDColor col = get_palette_color((palette >> (c*2)) & 3);
+            
+            int _i = i;
+            int _j = j;
+            if (flags & DRAW_VRAM_TILE_FLAG_TRANSPOSE)
+            {
+                int _t = _i;
+                _i = _j;
+                _j = _t;
+            }
+            if (flags & DRAW_VRAM_TILE_FLAG_FLIPX)
+            {
+                _j = 7 - _j;
+            }
+            if (flags & DRAW_VRAM_TILE_FLAG_FLIPY)
+            {
+                _i = 7 - _i;
+            }
+            
+            playdate->graphics->fillRect(x + _j * scale, y + _i * scale, scale + 1, scale + 1, col);
+        }
+    }
+}

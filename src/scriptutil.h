@@ -290,6 +290,11 @@ void code_replacement_free(CodeReplacement* r);
 
 void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y);
 
+#define DRAW_VRAM_TILE_FLAG_FLIPX 1
+#define DRAW_VRAM_TILE_FLAG_FLIPY 2
+#define DRAW_VRAM_TILE_FLAG_TRANSPOSE 4
+void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags);
+
 // only valid from within on_settings
 // returns false if failed
 bool script_custom_setting_add(const char* name, const char* description, const char** options);

@@ -65,8 +65,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
     
-    force_pref(dither_stable, false);
-    force_pref(dither_line, 0);
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
@@ -139,6 +137,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_x_offset = CB_LCD_X;
         game_picture_scaling = 3;
         game_picture_y_top = 0;
+        game_picture_y_bottom = LCD_HEIGHT;
     }
 }
 
@@ -159,7 +158,6 @@ static void on_draw(gb_s* gb, ScriptData* data)
     
     if (show_sidebar)
     {
-    
         if (show_sidebar && (!data->prev_show_sidebar || gbScreenRequiresFullRefresh))
         {
             refresh_lives = true;
@@ -169,7 +167,6 @@ static void on_draw(gb_s* gb, ScriptData* data)
             playdate->graphics->fillRect(320, 0, 80, 240, kColorWhite);
             playdate->graphics->fillRect(320, 0, 1, 240, kColorBlack);
             playdate->graphics->fillRect(321, 0, 2, 240, (uintptr_t)&lcdp_50);
-            
             
             script_draw_string12(data->glyphs12, lcd, rowbytes, "LIFE", ' ', 328, 50);
             script_draw_string12(data->glyphs12, lcd, rowbytes, "SCORE", ' ', 325, 240-16-12-2);

@@ -185,6 +185,7 @@ extern unsigned game_picture_y_bottom;
 extern LCDColor game_picture_background_color;
 extern bool game_menu_button_input_enabled;
 extern bool game_hide_indicator;
+extern bool game_invert_indicator;
 
 extern bool gbScreenRequiresFullRefresh;
 
