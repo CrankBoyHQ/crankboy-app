@@ -61,7 +61,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     else if (!data || !data_len)
     {
         CB_presentModal(
-            CB_Modal_new("Rom empty", NULL, NULL, NULL)->scene
+            CB_Modal_new("ROM empty", NULL, NULL, NULL)->scene
         );
         return;
     }
@@ -126,7 +126,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         CB_Modal* modal = CB_Modal_new(s, options, user_quit, NULL);
         modal->width = 330;
         modal->height = did_doctor ? 210 : 110;
-        modal->height += 28;
+        modal->height += 34;
         CB_presentModal(
             modal->scene
         );

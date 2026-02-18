@@ -159,7 +159,6 @@ static void http_cleanup(HTTPConnection* connection)
         cb_free(httpud);
     }
 
-    playdate->network->http->release(connection);
     playdate->network->http->close(connection);
 }
 
@@ -368,6 +367,8 @@ static void CB_RequestComplete(HTTPConnection* connection)
             }
             saved_cb(err_flags, NULL, 0, saved_ud);
         }
+        
+        cb_free(data_stolen);
     }
 
     if (location_copy)
@@ -400,7 +401,6 @@ static void CB_Permission(unsigned flags, void* ud)
 
         info->state = Get;
         playdate->network->http->setUserdata(connection, httpud);
-        playdate->network->http->retain(connection);
 
         playdate->network->http->setHeaderReceivedCallback(connection, CB_Header);
         playdate->network->http->setHeadersReadCallback(connection, CB_HeadersRead);

@@ -25,7 +25,7 @@ static bool parse_url_safe(const char* url, char** domain, char** path)
     return true;
 }
 
-// Busy wait helper to allow network stack to flush
+// allow network stack to flush
 static void busy_wait(float seconds)
 {
     int ms = (int)(seconds * 1000.0f);
