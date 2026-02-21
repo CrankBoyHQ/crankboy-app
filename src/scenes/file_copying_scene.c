@@ -142,7 +142,7 @@ void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
 
-        const char* sources[] = {"."};
+        const char* sources[] = {".", "packed"};
         struct list_files_ud ud = {.scene = scene};
 
         for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)

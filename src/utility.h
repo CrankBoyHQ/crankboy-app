@@ -107,6 +107,7 @@ typedef enum
 } CB_ProgressStyle;
 
 char* cb_strdup(const char* string);
+char* cb_memdup(const char* buff, int len);
 
 char* cb_basename(const char* filename, bool stripExtension);
 char* cb_save_filename(const char* filename, bool isRecovery);
@@ -150,6 +151,9 @@ void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 // games/ -> /Shared/Emulation/gb/Games
 // needn't be caller-freed; but only valid until next call to cb_gb_directory_path
 const char* cb_gb_directory_path(const char* path);
+
+// games/ -> /Data/<...>/games/
+const char* cb_data_directory_path(const char* path);
 
 // mkdir with intermediate directories too.
 // returns 0 if success, negative if error.

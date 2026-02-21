@@ -35,6 +35,32 @@ atomic_uint g_samples_generated_total = 0;
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
+static void read_pdx(void)
+{
+    // verify pdxinfo has different bundle ID
+    size_t pdxlen;
+    char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
+    CB_App->pdxBundleID = NULL;
+    if (pdxinfo && pdxlen > 0)
+    {
+        pdxinfo[pdxlen - 1] = 0;
+        char* bundleIDEq = "bundleID=";
+        char* bundleID = strstr(pdxinfo, bundleIDEq);
+        if (bundleID)
+        {
+            bundleID += strlen(bundleIDEq);
+            char* nl = strchr(bundleID, '\n');
+            int len = strlen(bundleID);
+            if (nl) len = nl - bundleID;
+            CB_App->pdxBundleID = cb_memdup(bundleID, len + 1);
+            CB_App->pdxBundleID[len] = 0;
+            playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
+        }
+
+        cb_free(pdxinfo);
+    }
+}
+
 static int check_is_bundle(void)
 {
     // check for CLI arg
@@ -73,24 +99,29 @@ static int check_is_bundle(void)
 
     if (CB_App->bundled_rom)
     {
-        // verify pdxinfo has different bundle ID
-        size_t pdxlen;
-        char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
-        if (pdxinfo)
+        if (CB_App->pdxBundleID)
         {
-            pdxinfo[pdxlen - 1] = 0;
-            if (strstr(pdxinfo, "bundleID=" PDX_BUNDLE_ID))
+            if (strstr(CB_App->pdxBundleID, PDX_STANDARD_BUNDLE_ID))
             {
                 CB_InfoScene* infoScene = CB_InfoScene_new(
                     NULL,
-                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_BUNDLE_ID
+                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_STANDARD_BUNDLE_ID
                     "\".\n"
                 );
                 CB_presentModal(infoScene->scene);
                 return -1;
             }
-
-            cb_free(pdxinfo);
+            
+            if (strstr(CB_App->pdxBundleID, PDX_CATALOG_BUNDLE_ID))
+            {
+                CB_InfoScene* infoScene = CB_InfoScene_new(
+                    NULL,
+                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_CATALOG_BUNDLE_ID
+                    "\".\n"
+                );
+                CB_presentModal(infoScene->scene);
+                return -1;
+            }
         }
 
         // check for default/visible/hidden preferences
@@ -254,19 +285,20 @@ static void initialize_directory(void)
         for (size_t i = 0; i < sizeof(sources) / sizeof(char*); ++i)
         {
             const char* dst = cb_gb_directory_path(sources[i]);
+            const char* src = cb_data_directory_path(sources[i]);
             // move files from data/ but don't replace existing directory
-            if (cb_directory_exists_and_nonempty_or_file_exists(sources[i]) &&
+            if (cb_directory_exists_and_nonempty_or_file_exists(src) &&
                 !cb_directory_exists_and_nonempty_or_file_exists(dst))
             {
                 did_move_files = true;
-                int result = playdate->file->rename(sources[i], dst);
+                int result = playdate->file->rename(src, dst);
                 if (result == 0)
                 {
-                    playdate->system->logToConsole("Moved %s -> %s", sources[i], dst);
+                    playdate->system->logToConsole("Moved %s -> %s", src, dst);
                 }
                 else
                 {
-                    playdate->system->logToConsole("Failed to move %s -> %s", sources[i], dst);
+                    playdate->system->logToConsole("Failed to move %s -> %s", src, dst);
                     err = true;
                     break;
                 }
@@ -409,14 +441,6 @@ void CB_showHelp(bool first_time)
     const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy."
                                : "To add ROMs to CrankBoy, do the following:";
 
-#if 0
-    const char* B = first_time
-        ? "Alternatively, press Ⓑ now to start playing the included ROMs immediately.\n\n"
-        : "\n\n";
-#else
-    const char* B = "\n\n";
-#endif
-
     const char* C1 = "1. Connect your Playdate to another device via USB.\n";
     const char* C2 =
         "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
@@ -427,9 +451,17 @@ void CB_showHelp(bool first_time)
     const char* D =
         "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the "
         "main menu via ⊙ > settings > Get ROMs.";
+        
+    #ifdef CRANKBOY_OFFICIAL_CATALOG
+        const char* E = first_time
+            ? " You can also press Ⓑ now to start playing the included ROMs immediately."
+            : "";
+    #else
+        const char* E = "";
+    #endif
 
     char* s =
-        aprintf("%s%s%s%s%s%s%s%s", A0, A, B, C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D);
+        aprintf("%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D, E);
 
     CB_InfoScene* infoScene = CB_InfoScene_new(title, s);
 
@@ -482,6 +514,8 @@ void CB_init(void)
     CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo", NULL);
 
     CB_App->migration_modal_needed = false;
+    
+    read_pdx();
 
     check_is_bundle();
 

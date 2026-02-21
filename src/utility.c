@@ -82,6 +82,18 @@ const clalign uint8_t CB_patterns[4][4][4] = {
 };
 /* clang-format on */
 
+char* cb_memdup(const char* buff, int len)
+{
+    if (!buff) return NULL;
+    
+    char* copied = cb_malloc(len);
+    if (!copied)
+        return NULL;
+    
+    memcpy(copied, buff, len);
+    return copied;
+}
+
 char* cb_strdup(const char* string)
 {
     if (!string)
@@ -1028,6 +1040,15 @@ void cb_play_ui_sound(CB_UISound sound)
         );
         break;
     }
+}
+
+const char* cb_data_directory_path(const char* path)
+{
+    static char* s = NULL;
+    if (!CB_App->pdxBundleID) return NULL;
+    cb_free(s);
+    s = aprintf("/Data/%s/%s", CB_App->pdxBundleID, path);
+    return s;
 }
 
 const char* cb_gb_directory_path(const char* path)

@@ -162,6 +162,9 @@ typedef struct CB_Application
     
     bool parentalLockEngaged : 1;
     
+    // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
+    char* pdxBundleID;
+    
     char* hbApiDomain;
     char* hbApiPath;
     char* hbSearchExtraFlags;
@@ -250,7 +253,8 @@ const char* get_pdboot_name_and_version(void);
 #define PARENTAL_LOCK_FILE "parental_lock.bin"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
-#define PDX_BUNDLE_ID "app.crankboyhq.crankboy"
+#define PDX_STANDARD_BUNDLE_ID "app.crankboyhq.crankboy"
+#define PDX_CATALOG_BUNDLE_ID "catalog.crankboyhq.crankboy"
 
 #define DISK_IMAGE "__homebrew_dl_img.pdi"
 

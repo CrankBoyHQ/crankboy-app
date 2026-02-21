@@ -330,6 +330,7 @@ static void CB_RequestComplete(HTTPConnection* connection)
         data_stolen = httpud->data;
         data_len = httpud->data_len;
         httpud->data = NULL;
+        // FIXME: when is this freed?
     }
 
     if (info)
@@ -367,8 +368,6 @@ static void CB_RequestComplete(HTTPConnection* connection)
             }
             saved_cb(err_flags, NULL, 0, saved_ud);
         }
-        
-        cb_free(data_stolen);
     }
 
     if (location_copy)

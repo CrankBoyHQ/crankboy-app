@@ -1159,8 +1159,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         CB_App->migration_modal_needed = false;
 
         char* modal_text = aprintf(
-            "To improve compatibility, your CrankBoy library has been moved to the shared "
-            "folder:\n\n%s",
+            "To improve compatability, your CrankBoy library has been moved to the shared folder:\n\n%s",
             CB_App->directory
         );
         if (modal_text)
