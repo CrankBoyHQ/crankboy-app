@@ -26,6 +26,7 @@
 #include "info_scene.h"
 #include "settings_scene.h"
 #include "softpatch.h"
+#include "revcheck.h"
 
 #include <string.h>
 
@@ -688,7 +689,8 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_dither_stable = 0;     // Off
         preferences_disable_autolock = 1;  // On
         preferences_overclock = 0;         // Off
-        preferences_itcm = 1;              // On
+        if (pd_rev == PD_REV_A)
+            preferences_itcm = 1;          // On
         preferences_uncap_fps = 0;         // Off
 
         preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
@@ -819,7 +821,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
-    else if (game->names->name_header && !memcmp(game->names->name_header, "LSDj", 4))
+    else if (game->names->name_header && (!memcmp(game->names->name_header, "LSDj", 4) || !strcmp(game->names->name_header, "LOFI")))
     {
         bool settings_are_optimal = false;
         char* settings_path = cb_game_config_path(game->fullpath);
@@ -833,7 +835,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
                 preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
                 preferences_headphone_audio == 1 && preferences_frame_skip == 1 &&
                 preferences_dither_stable == 0 && preferences_overclock == 0 &&
-                preferences_itcm == 1 && preferences_disable_autolock == 1 &&
+                preferences_disable_autolock == 1 &&
                 preferences_uncap_fps == 0)
             {
                 settings_are_optimal = true;
@@ -849,7 +851,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
         {
             const char* options[] = {"OK", NULL, NULL};
             CB_Modal* modal = CB_Modal_new(
-                "LSDj requires accurate timing.\n\nTo ensure it runs "
+                "Audio apps require accurate timing.\n\nTo ensure this app runs "
                 "correctly, CrankBoy will apply the recommended settings.",
                 options, apply_lsdj_settings_and_launch, game
             );
