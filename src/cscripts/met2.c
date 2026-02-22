@@ -484,7 +484,7 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4E39))
         --size;
     }
     
-    if (!buff || size != 0x100*MAP_BANK_COUNT/8)
+    if (!buff || size < 0x100*MAP_BANK_COUNT/8)
     {
         playdate->system->logToConsole("no save data for slot %x.", save_slot);
         memset(data->map_explored, 0, 0x100*MAP_BANK_COUNT);
@@ -1185,18 +1185,68 @@ static void tick_map(ScriptData* data)
     
     if (data->map_mode == MAP_MODE_AREA)
     {
-        unsigned w = MIN(LCD_COLUMNS/HALFTILE_W/2, area->w);
-        unsigned h = MIN((LCD_ROWS - 16)/HALFTILE_H/2, area->h);
+        int screen_w = LCD_COLUMNS/HALFTILE_W/2;
+        int screen_h = (LCD_ROWS - 16)/HALFTILE_H/2;
         
-        if (data->map_mode_x >= area->w - w) data->map_mode_x = area->w - w;
-        if (data->map_mode_y >= area->h - h) data->map_mode_y = area->h - h;
-        if (data->map_mode_x < 0) data->map_mode_x = 0;
-        if (data->map_mode_y < 0) data->map_mode_y = 0;
+        unsigned w = MIN(screen_w, area->w);
+        unsigned h = MIN(screen_h, area->h);
+        
+        
+        // center & bounds
+        if (area->w < screen_w) {data->map_mode_x = -(screen_w - area->w)/2;}
+        else 
+        {
+            if (data->map_mode_x >= (int)area->w - (int)w) data->map_mode_x = (int)area->w - (int)w;
+            if (data->map_mode_x < 0) data->map_mode_x = 0;
+        }
+        if (area->h < screen_h) {data->map_mode_y = -(screen_h - area->h)/2;}
+        else
+        {
+            if (data->map_mode_y >= (int)area->h - (int)h) data->map_mode_y = (int)area->h - (int)h;
+            if (data->map_mode_y < 0) data->map_mode_y = 0;
+        }
+        
+        int offx = 0;
+        int offy = 0;
+        
+        if (data->map_mode_x < 0)
+        {
+            offx = -data->map_mode_x;
+        }
+        if (data->map_mode_y < 0)
+        {
+            offy = -data->map_mode_y;
+        }
         
         draw_map(
             frame, LCD_ROWSIZE, data,
-            data->map_mode_area, 0, 16, w, h, data->map_mode_x, data->map_mode_y
+            data->map_mode_area, 16*offx, 16*(offy + 1), w, h, data->map_mode_x + offx, data->map_mode_y + offy
         );
+
+        // draw samus position indicator
+        if (data->samus_bank >= MAP_FIRST_BANK)
+        {
+            struct AreaAssociation samus_assoc = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
+            unsigned sx, sy;
+            if (samus_assoc.area_idx == data->map_mode_area && !samus_assoc.dark &&
+                get_coords_in_area(data, samus_assoc.room_idx, samus_assoc.embedding, data->samus_bank, data->samus_x, data->samus_y, &sx, &sy))
+            {
+                if ((int)sy >= data->map_mode_y)
+                {
+                    bool flicker_on = (data->map_mode_timer % 16) >= 8;
+                    if (flicker_on)
+                    {
+                        playdate->graphics->fillRect(
+                            2*HALFTILE_W*(sx - data->map_mode_x),
+                            16 + 2*HALFTILE_H*(sy - data->map_mode_y),
+                            HALFTILE_W*2,
+                            HALFTILE_H*2,
+                            kColorXOR
+                        );
+                    }
+                }
+            }
+        }
     }
     else if (data->map_mode == MAP_MODE_HEX)
     {
@@ -1699,10 +1749,23 @@ static void cb_expand_map(ScriptData* data)
 {
     data->map_mode = MAP_MODE_AREA;
     data->map_mode_area = data->map_area;
-    
-    // TODO
+
     data->map_mode_x = 0;
     data->map_mode_y = 0;
+
+    if (data->samus_bank >= MAP_FIRST_BANK)
+    {
+        struct AreaAssociation assoc = data->area_associations[((unsigned)data->samus_bank-MAP_FIRST_BANK)*0x100 + data->samus_y*0x10 + data->samus_x];
+        unsigned sx, sy;
+        if (assoc.area_idx == data->map_mode_area && !assoc.dark &&
+            get_coords_in_area(data, assoc.room_idx, assoc.embedding, data->samus_bank, data->samus_x, data->samus_y, &sx, &sy))
+        {
+            int screen_w = LCD_COLUMNS/HALFTILE_W/2;
+            int screen_h = (LCD_ROWS - 16)/HALFTILE_H/2;
+            data->map_mode_x = (int)sx - screen_w/2;
+            data->map_mode_y = (int)sy - screen_h/2;
+        }
+    }
 }
 
 static void on_settings(ScriptData* data)
@@ -1827,7 +1890,7 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
             w = MIN(full_w, area->w - x);
             
             w = MIN(w, (LCD_COLUMNS-dst_x)/2/HALFTILE_W);
-            h = MIN(w, (LCD_ROWS-dst_y)/2/HALFTILE_H);
+            h = MIN(h, (LCD_ROWS-dst_y)/2/HALFTILE_H);
             
             draw_map(buff, stride, data, data->map_area, dst_x, dst_y, w, h, x, y);
             
