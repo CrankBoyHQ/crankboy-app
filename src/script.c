@@ -8,10 +8,10 @@
 /* clang-format off */
 #include "script.h"
 /* clang-format on */
+#include "gbz.h"
 #include "scriptutil.h"
 #include "userstack.h"
 #include "utility.h"
-#include "gbz.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -174,7 +174,7 @@ unsigned script_menu(ScriptState* state, struct CB_GameScene* game_scene)
 
 void script_add_settings(ScriptState* state)
 {
-    if (state && state->c && state->c->on_menu)
+    if (state && state->c && state->c->on_settings)
     {
         state->c->on_settings(state->ud);
     }
@@ -259,16 +259,18 @@ ScriptInfo* script_get_info_by_rom_path_(struct ScriptInfoArgs* args)
     {
         return NULL;
     }
-    
+
     // handle compressed roms
     GBZ_Header gbz;
     if (gbz_parse_header(&gbz, buff, sizeof(buff)))
     {
         // replace header
         memcpy(buff + GBZ_ROM_HDR_START, gbz.gb_header, GBZ_ROM_HDR_SIZE);
-        
-        if (args->o_is_gbz) *args->o_is_gbz = 1;
-        if (args->o_gbz_checksum) *args->o_gbz_checksum = gbz.crc32;
+
+        if (args->o_is_gbz)
+            *args->o_is_gbz = 1;
+        if (args->o_gbz_checksum)
+            *args->o_gbz_checksum = gbz.crc32;
     }
 
     char title[17];
@@ -308,7 +310,8 @@ ScriptInfo* script_get_info_by_rom_path(const char* game_path)
 }
 
 ScriptInfo* script_get_info_by_rom_path_and_get_header_info(
-    const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery, int* o_is_gbz, uint32_t* o_gbz_checksum
+    const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery,
+    int* o_is_gbz, uint32_t* o_gbz_checksum
 )
 {
     struct ScriptInfoArgs args = {
