@@ -3,6 +3,8 @@ STACK_SIZE     = 61800
 
 PRODUCT = CrankBoy.pdx
 
+# Note: to rebuild db/*.json database, run python3 scripts/create_rom_list.py
+
 SDK = ${PLAYDATE_SDK_PATH}
 ifeq ($(SDK),)
 	SDK = $(shell egrep '^\s*SDKRoot' ~/.Playdate/config | head -n 1 | cut -c9-)
@@ -16,6 +18,7 @@ endif
 VPATH += src
 VPATH += libs/minigb_apu
 VPATH += libs/lz4
+VPATH += libs/miniz
 VPATH += libs/pdnewlib
 VPATH += libs
 
@@ -62,6 +65,8 @@ SRC += libs/pdnewlib/pdnewlib.c
 SRC += main.c
 
 SRC += libs/lz4/lz4.c
+SRC += libs/miniz/miniz.c
+SRC += libs/miniz/mini_gzip.c
 
 ASRC = setup.s
 
@@ -70,6 +75,7 @@ UINCDIR += src
 UINCDIR += libs
 UINCDIR += libs/minigb_apu
 UINCDIR += libs/lz4
+UINCDIR += libs/miniz
 UINCDIR += libs/pdnewlib
 
 # (device-only flags)

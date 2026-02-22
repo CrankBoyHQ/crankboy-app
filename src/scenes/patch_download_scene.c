@@ -853,8 +853,31 @@ static void context_top_level_update(
                     CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene
                 );
             }
+            else if (!CB_App->rhdb_present)
+            {
+                CB_presentModal(
+                    CB_Modal_new("Unable to download patches:\nrhdb.json missing.", NULL, NULL, NULL)->scene
+                );
+            }
             else
             {
+                if (pds->rhdb.type == kJSONNull)
+                {
+                    // rhdb takes a while to parse, so we put a message here
+                    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading...");
+                    parse_json(ROMHACK_DB_FILE, &pds->rhdb, kFileRead | kFileReadData);
+                    
+                    // load entry for game
+                    json_value lookup = json_get_table_value(pds->rhdb, "lookup");
+                    json_value gamekey = json_get_table_value(lookup, pds->header_name);
+                    if (gamekey.type == kJSONString)
+                    {
+                        pds->gamekey = gamekey.data.stringval;
+                        json_value g2h = json_get_table_value(pds->rhdb, "g2h");
+                        pds->game_hacks = json_get_table_value(g2h, pds->gamekey);
+                    }
+                }
+                
                 pds->prefix = NULL;
                 json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
                 if (jprefix.type == kJSONString)
@@ -1179,8 +1202,13 @@ static char* context_hack_list_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     const char* date = NULL;
     if (jdate.type == kJSONString)
         date = jdate.data.stringval;
+        
+    json_value jtitle = json_get_table_value(hack, "title");
+    const char* title = NULL;
+    if (jtitle.type == kJSONString)
+        title = jtitle.data.stringval;
 
-    return aprintf("Author: %s\nRelease Date: %s\n", author ? author : "?", date ? date : "?");
+    return aprintf("Author: %s\n\nRelease Date: %s\n\nTitle: %s", author ? author : "?", date ? date : "?", title ? title : "?");
 }
 
 static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
@@ -1336,6 +1364,8 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
         cb_free(pds->local_files->files);
         cb_free(pds->local_files);
     }
+    
+    free_json_data(pds->rhdb);
 
     cb_free(pds);
 }
@@ -1688,6 +1718,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
             "ROM lacks a title in its header, so CrankBoy cannot match it to any patch database",
             NULL, NULL, NULL
         );
+        modal->height = 200;
         CB_presentModal(modal->scene);
         return false;
     }
@@ -1964,10 +1995,11 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
     context->type = PDSCT_TOP_LEVEL;
 
     itemButton = CB_ListItemButton_new("Manage patches\t>");
-    itemButton->ud.uint = pds->has_local_patches ? 0 : 1;
+    itemButton->ud.uint = !pds->has_local_patches;
     array_push(context->list->items, itemButton);
 
     itemButton = CB_ListItemButton_new("Download patches\t>");
+    itemButton->ud.uint = !CB_App->rhdb_present;
     array_push(context->list->items, itemButton);
 
     itemButton = CB_ListItemButton_new("ROM Info\t>");
@@ -1994,6 +2026,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     pds->started_without_header = (initial_header_p < 1.0f);
     pds->option_hold_time = 0.0f;
     pds->is_dismissing = false;
+    pds->rhdb.type = kJSONNull;
     scene->managedObject = pds;
 
     pds->post_download_command = PDC_NONE;
@@ -2019,8 +2052,6 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
 
     pds->has_local_patches = (pds->local_files->count > 0);
 
-    pds->rhdb = CB_App->rhdb_cache;
-
     if (game->names->name_header)
     {
         strncpy(pds->header_name, game->names->name_header, sizeof(pds->header_name) - 1);
@@ -2029,15 +2060,6 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     else
     {
         pds->header_name[0] = '\0';
-    }
-
-    json_value lookup = json_get_table_value(pds->rhdb, "lookup");
-    json_value gamekey = json_get_table_value(lookup, pds->header_name);
-    if (gamekey.type == kJSONString)
-    {
-        pds->gamekey = gamekey.data.stringval;
-        json_value g2h = json_get_table_value(pds->rhdb, "g2h");
-        pds->game_hacks = json_get_table_value(g2h, pds->gamekey);
     }
 
     scene->update = (void*)CB_PatchDownloadScene_update;

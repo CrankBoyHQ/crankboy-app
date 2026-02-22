@@ -5,10 +5,13 @@ import urllib.error
 import re
 import json
 import os
+import subprocess
+import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-
+COMPRESS = True
+MASK = 0xFC
 
 def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
     """
@@ -49,10 +52,10 @@ def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
         print(f"  -> '{file_basename}' not found. Skipping integration.")
 
 
-def create_split_game_json_256():
+def create_split_game_json(mask):
     """
     Downloads and processes game DAT files, integrates local homebrew and romhack JSON files,
-    and then splits the final data into 256 separate JSON files (00-FF)
+    and then splits the final data into n separate JSON files (00-FF)
     based on the first two characters of the ROM CRC. Files are saved in
     the 'Source/db/' directory.
     """
@@ -138,13 +141,26 @@ def create_split_game_json_256():
     split_data = {prefix: {} for prefix in prefixes}
 
     for crc, game_data in all_games_dict.items():
-        prefix = crc[0:2].upper()
+        prefix = f"{(int(crc, 16) >> 24) & mask:02X}"
         if prefix in split_data:
             split_data[prefix][crc] = game_data
 
     print(f"\nTotal unique games found: {len(all_games_dict)}")
-    print(f"Splitting data into up to 256 files in '{output_dir}/'...")
+    print(f"Splitting data into up to n files in '{output_dir}/'...")
 
+    # remove pre-existing
+    try:
+        for name in os.listdir(output_dir):
+            _path = os.path.join(output_dir, name)
+            if os.path.isfile(_path) or os.path.islink(_path):
+                os.remove(_path)
+            else:
+                raise RuntimeError(f"Subdirectory found: {_path}")
+        os.rmdir(output_dir)
+    except Exception as e:
+        print(f"Error: could not remove directory {output_dir}. Details: {e}")
+
+    # create directory
     try:
         os.makedirs(output_dir, exist_ok=True)
     except OSError as e:
@@ -158,6 +174,14 @@ def create_split_game_json_256():
             try:
                 with open(file_path, 'w', encoding='utf-8') as json_file:
                     json.dump(games, json_file, indent=4, ensure_ascii=False)
+                if COMPRESS:
+                    try:
+                        subprocess.run(["gzip", file_path], check=True)
+                    except Exception as e:
+                        print("ERROR: Failed to compress")
+                        sys.exit(17)
+                    if os.path.exists(file_path):
+                        os.remove(file_path)
                 files_written += 1
             except IOError as e:
                 print(f"Error: Could not write to file '{file_path}'. Details: {e}")
@@ -166,4 +190,4 @@ def create_split_game_json_256():
     print("\nScript finished successfully.")
 
 if __name__ == "__main__":
-    create_split_game_json_256()
+    create_split_game_json(MASK)

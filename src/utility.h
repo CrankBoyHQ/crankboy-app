@@ -128,6 +128,7 @@ int cb_listfiles(
 char* strstr_i(const char* haystack, const char* needle);
 
 int cb_file_exists(const char* path, FileOptions fopts);
+int cb_file_exists_maybe_compressed(const char* path, FileOptions fopts);
 
 bool cb_directory_exists_and_nonempty_or_file_exists(const char* path);
 
@@ -160,8 +161,12 @@ const char* cb_data_directory_path(const char* path);
 int full_mkdir(const char* path);
 
 // result must be user-free'd. returns NULL on error.
+#define CB_FILE_FLAG_BINARY 0x800
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
 char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail);
+
+// as above, but also checks if <path>.gz is present and if so decompresses it
+char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, unsigned flags);
 
 // returns false on error
 bool cb_write_entire_file(const char* path, const void* data, size_t size);

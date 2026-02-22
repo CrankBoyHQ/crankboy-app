@@ -420,7 +420,8 @@ static void non_bundle_init(void)
 {
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
     get_homebrew_hub_api();
-    parse_json(ROMHACK_DB_FILE, &CB_App->rhdb_cache, kFileRead | kFileReadData);
+    
+    CB_App->rhdb_present = cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
 
     global.shown_intro = true;
     save_global();
@@ -868,11 +869,6 @@ void CB_quit(void)
         }
         array_free(CB_App->coverCache);
         CB_App->coverCache = NULL;
-    }
-
-    if (!CB_App->bundled_rom)
-    {
-        free_json_data(CB_App->rhdb_cache);
     }
 
     if (CB_App->bundled_rom)

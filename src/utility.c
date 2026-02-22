@@ -12,6 +12,8 @@
 #include "jparse.h"
 #include "preferences.h"
 #include "scenes/library_scene.h"
+#include "miniz.h"
+#include "mini_gzip.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -1161,6 +1163,8 @@ void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_
 
 char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail)
 {
+    bool binary = flags & CB_FILE_FLAG_BINARY;
+    flags &= ~CB_FILE_FLAG_BINARY;
     SDFile* file = playdate->file->open(path, flags);
     char* dat;
     char* out;
@@ -1192,7 +1196,7 @@ char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size
             goto fail;
     }
 
-    dat = cb_malloc(size + 1);
+    dat = cb_malloc(size + !binary);
     if (!dat)
         goto fail;
 
@@ -1208,7 +1212,10 @@ char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size
     }
 
     // ensure terminal 0
-    *out = 0;
+    if (!binary)
+    {
+        *out = 0;
+    }
 
     playdate->file->close(file);
     return dat;
@@ -1224,6 +1231,65 @@ fail:
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags)
 {
     return cb_read_partial_file(path, -1, o_size, flags, false);
+}
+
+char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, unsigned flags)
+{
+    // Try uncompressed file first
+    char* dat = cb_read_partial_file(path, -1, o_size, flags, false);
+    if (dat) return dat;
+
+    // Try .gz version
+    char* pathgz = aprintf("%s.gz", path);
+    size_t size;
+    dat = cb_read_partial_file(pathgz, -1, &size, flags, false);
+    cb_free(pathgz);
+
+    if (!dat) return NULL;
+
+    // read decompressed size from header
+    char* dat_end = dat + size;
+    uint8_t *isz = (uint8_t*)(dat_end - 4);
+    size_t decompressed_size = (size_t)isz[0] | ((size_t)isz[1] << 8) |
+                ((size_t)isz[2] << 16) | ((size_t)isz[3] << 24);
+    uint16_t magic = *(uint16_t*)dat;
+    if (magic != 0x8B1F && magic != 0x1F8B)
+    {
+        playdate->system->logToConsole("Failed to decompress %s: invalid magic number", path);
+        cb_free(dat);
+        return NULL;
+    }
+
+    char* decompressed = cb_malloc(decompressed_size + 1);
+    if (!decompressed)
+    {
+        playdate->system->logToConsole("Failed to decompress %s: insufficient memory to hold decompressed file", path);
+        cb_free(dat);
+        return NULL;
+    }
+
+    struct mini_gzip gz;
+    int status = mini_gz_start(&gz, dat, size);
+    if (status != 0)
+    {
+        cb_free(dat);
+        cb_free(decompressed);
+        playdate->system->logToConsole("Failed to decompress %s: mini_gz_start: %d", path, status);
+        return NULL;
+    }
+    status = mini_gz_unpack(&gz, decompressed, decompressed_size);
+    if (status != decompressed_size)
+    {
+        cb_free(dat);
+        cb_free(decompressed);
+        playdate->system->logToConsole("Failed to decompress %s: mini_gz_unpack: %d", path, status);
+        return NULL;
+    }
+
+    decompressed[decompressed_size] = 0;
+    if (o_size) *o_size = decompressed_size;
+
+    return (char*)decompressed;
 }
 
 void memswap(void* a, void* b, size_t size)
@@ -1328,6 +1394,15 @@ int cb_file_exists(const char* path, FileOptions fopts)
     return true;
 }
 
+int cb_file_exists_maybe_compressed(const char* path, FileOptions fopts)
+{
+    if (cb_file_exists(path, fopts)) return true;
+    char* compressed = aprintf("%s.gz", path);
+    bool result = cb_file_exists(compressed, fopts);
+    cb_free(compressed);
+    return result;
+}
+
 struct listfiles_ud
 {
     void* ud;
@@ -1416,20 +1491,23 @@ char* cb_url_encode_for_github_raw(const char* str)
     return encoded;
 }
 
+#define DB_CRC_MASK 0xFC /* should match what's in create_rom_list.py */
+
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
 {
     CB_FetchedNames names = {NULL, NULL, 0, false};
 
     char crc_string_upper[9];
-    char crc_string_lower[9];
-
     snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
-    snprintf(crc_string_lower, sizeof(crc_string_lower), "%08lx", (unsigned long)crc);
 
     char db_filename[32];
-    snprintf(db_filename, sizeof(db_filename), "db/%.2s.json", crc_string_lower);
+    snprintf(db_filename, sizeof(db_filename), "db/%02lx.json", (unsigned long)((crc >> 24) & DB_CRC_MASK));
+    char db_filename_compressed[36];
+    snprintf(db_filename_compressed, sizeof(db_filename_compressed), "%s.lz4", db_filename);
 
-    char* json_string = cb_read_entire_file(db_filename, NULL, kFileRead | kFileReadData);
+    char* json_string = NULL;
+    json_string = cb_read_entire_file_maybe_compressed(db_filename, NULL, kFileRead | kFileReadData);
+    
     if (!json_string)
     {
         return names;
