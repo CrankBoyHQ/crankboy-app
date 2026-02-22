@@ -7,6 +7,7 @@
 //
 
 #include "pd_api.h"
+#include "gbz.h"
 
 #include <stdbool.h>
 
@@ -976,7 +977,7 @@ static uint8_t* read_rom_to_ram(
 
     uint8_t* rom = cb_malloc(rom_size);
 
-    if (playdate->file->read(rom_file, rom, rom_size) != rom_size)
+    if (!rom || playdate->file->read(rom_file, rom, rom_size) != rom_size)
     {
         playdate->system->logToConsole(
             "%s:%i: Can't read rom file %s", __FILE__, __LINE__, filename
@@ -987,9 +988,45 @@ static uint8_t* read_rom_to_ram(
         *sceneError = CB_GameSceneErrorLoadingRom;
         return NULL;
     }
-
+    
     playdate->file->close(rom_file);
-    return rom;
+    
+    GBZ_Header gbz;
+    if (gbz_parse_header(&gbz, (char*)rom, rom_size))
+    {
+        uint8_t* decompressed_rom = cb_malloc(gbz.original_size);
+        if (!decompressed_rom)
+        {
+            playdate->system->logToConsole(
+                "%s:%i: Can't decompress %s, out of memory", __FILE__, __LINE__, filename
+            );
+
+            cb_free(rom);
+            playdate->file->close(rom_file);
+            *sceneError = CB_GameSceneErrorLoadingRom;
+        }
+        
+        int status = gbz_decompress((const char*)rom, rom_size, (char*)decompressed_rom, gbz.original_size);
+        cb_free(rom);
+        if (status != gbz.original_size)
+        {
+            playdate->system->logToConsole(
+                "%s:%i: Failed to decompress %s: %d", __FILE__, __LINE__, filename, status
+            );
+            cb_free(decompressed_rom);
+            return NULL;
+        }
+        else
+        {
+            playdate->system->logToConsole("Decompressed ROM: %s", filename);
+        }
+        
+        return decompressed_rom;
+    }
+    else
+    {
+        return rom;
+    }
 }
 
 static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int* last_save_time)

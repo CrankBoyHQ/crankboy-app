@@ -14,26 +14,7 @@ void script_info_free(struct ScriptInfo* info);
 void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt);
 void CB_GameScanningScene_free(void* object);
 
-static void collect_game_filenames_callback(const char* filename, void* userdata)
-{
-    CB_Array* filenames_array = userdata;
-    char* extension;
-    char* dot = cb_strrchr(filename, '.');
-
-    if (!dot || dot == filename)
-    {
-        extension = "";
-    }
-    else
-    {
-        extension = dot + 1;
-    }
-
-    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0))
-    {
-        array_push(filenames_array, cb_strdup(filename));
-    }
-}
+void collect_game_filenames_callback(const char* filename, void* userdata);
 
 static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
 {
@@ -122,8 +103,10 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
 
     if (needs_calculation)
     {
+        int is_gbz = 0;
+        uint32_t gbz_checksum = 0;
         struct ScriptInfo* info =
-            script_get_info_by_rom_path_and_get_header_info(fullpath, header_name_buffer, &cgb, &battery);
+            script_get_info_by_rom_path_and_get_header_info(fullpath, header_name_buffer, &cgb, &battery, &is_gbz, &gbz_checksum);
         if (info)
         {
             script_info_free(info);
@@ -139,9 +122,19 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
                 break;
             }
         }
-
-        if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
+        
+        bool valid = false;
+        if (is_gbz)
         {
+            valid = true;
+            crc = gbz_checksum;
+        }
+        else if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
+        {
+            valid = true;
+        }
+        
+        if (valid) {
             fetched.failedToOpenROM = false;
 
             json_value new_entry_val;

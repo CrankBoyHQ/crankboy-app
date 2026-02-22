@@ -412,16 +412,20 @@ bool cb_valid_basename(const char* fname)
     return true;
 }
 
+// extracts final (.) and thereafter
+// does not correctly identify .a.b style extensions
+// (some code may rely on this behaviour!)
 const char* get_extension(const char* filename)
 {
     char* basename = cb_basename(filename, false);
     if (!basename) return "";
     
+    // do not change to strchr
     char* dot = strrchr(basename, '.');
     if (!dot)
     {
         cb_free(basename);
-        return "";
+        return filename + strlen(filename);
     }
     ptrdiff_t diff = basename + strlen(basename) - dot;
     cb_free(basename);
@@ -1544,27 +1548,8 @@ CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
     return names;
 }
 
-CB_FetchedNames cb_get_titles_from_db(const char* fullpath)
-{
-    CB_FetchedNames names = {NULL, NULL, 0, true};
-
-    uint32_t crc;
-    names.failedToOpenROM = !cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc);
-
-    if (names.failedToOpenROM)
-    {
-        return names;
-    }
-
-    CB_FetchedNames names_from_db = cb_get_titles_from_db_by_crc(crc);
-    names_from_db.crc32 = crc;
-    names_from_db.failedToOpenROM = false;
-
-    return names_from_db;
-}
-
 static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",
-                           ", Les", ", Der", ", Die", ", Das", ", Un", NULL};
+                           ", Les", ", Der", ", Die", ", Das", ", Un", ", Une", NULL};
 
 // arranges names like `Black Onyx, The (Japan)` -> `The Black Onyx (Japan)`
 char* common_article_form(const char* input)

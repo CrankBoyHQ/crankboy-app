@@ -763,7 +763,7 @@ static void context_patch_choose_interaction_update(
 
 char* get_rom_info(CB_PatchDownloadScene* pds)
 {
-    return aprintf("ROM Header title: %s\n \nCRC32: %X\nInternal save: %s", pds->header_name, pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No");
+    return aprintf("ROM Header title: %s\n \nCRC32: %X\nInternal save: %s\n \nFilename: %s", pds->header_name, pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No", pds->game->names->filename);
 }
 
 static void context_top_level_update(

@@ -113,6 +113,8 @@ char* cb_basename(const char* filename, bool stripExtension);
 char* cb_save_filename(const char* filename, bool isRecovery);
 char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
+
+// extracts final '.' and what follows it
 const char* get_extension(const char* filename);
 
 bool cb_valid_basename(const char* fname);
@@ -256,7 +258,6 @@ static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t 
 // idle animation during loading with unknown progress
 void draw_spinny(int x, int y, int radius);
 
-CB_FetchedNames cb_get_titles_from_db(const char* fullpath);
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc);
 char* cb_url_encode_for_github_raw(const char* str);
 

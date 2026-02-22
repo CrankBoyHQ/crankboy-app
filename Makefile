@@ -59,6 +59,7 @@ SRC += src/softpatch.c
 SRC += src/userstack.c
 SRC += src/utility.c
 SRC += src/version.c
+SRC += src/gbz.c
 
 SRC += libs/minigb_apu/minigb_apu.c
 SRC += libs/pdnewlib/pdnewlib.c

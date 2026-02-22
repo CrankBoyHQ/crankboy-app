@@ -446,7 +446,7 @@ void CB_showHelp(bool first_time)
     const char* C2 =
         "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
     const char* C3 =
-        "3. From the connected device, copy your ROM files (.gb or .gbc extension) onto your "
+        "3. From the connected device, copy your ROM files (.gb, .gbc, or .gbz) onto your "
         "Playdate at the following directory: ";
 
     const char* D =
@@ -596,7 +596,8 @@ void CB_headphone_state_changed(int headphone, int mic)
     }
 }
 
-static void collect_game_filenames_callback(const char* filename, void* userdata)
+// note: used in other files too
+void collect_game_filenames_callback(const char* filename, void* userdata)
 {
     CB_Array* filenames_array = userdata;
     char* extension;
@@ -611,7 +612,7 @@ static void collect_game_filenames_callback(const char* filename, void* userdata
         extension = dot + 1;
     }
 
-    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0))
+    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0 || cb_strcmp(extension, "gbz") == 0))
     {
         array_push(filenames_array, cb_strdup(filename));
     }
@@ -796,6 +797,7 @@ void CB_quit(void)
     {
         void* managedObject = CB_App->scene->managedObject;
         CB_App->scene->free(managedObject);
+        CB_App->scene = NULL;
     }
 
     cb_clear_global_cover_cache();

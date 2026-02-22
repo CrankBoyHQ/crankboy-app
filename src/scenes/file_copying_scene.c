@@ -29,7 +29,7 @@ struct list_files_ud
 
 static bool copy_one_file(const char* full_path, const char* filename)
 {
-    const char* extension = strrchr((char*)filename, '.');
+    const char* extension = get_extension(filename);
 
     char* dst_path = NULL;
 
@@ -40,6 +40,10 @@ static bool copy_one_file(const char* full_path, const char* filename)
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), filename);
     }
     else if (!strcasecmp(extension, ".gb") || !strcasecmp(extension, ".gbc"))
+    {
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
+    }
+    else if (!strcasecmp(extension, ".gbz"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
     }
@@ -95,7 +99,7 @@ static void collect_files_callback(const char* filename, void* userdata)
         return;
     }
 
-    const char* extension = strrchr((char*)filename, '.');
+    const char* extension = get_extension(filename);
     bool should_copy = false;
 
     if (!strcmp(filename, "dmg_boot.bin"))
@@ -107,8 +111,8 @@ static void collect_files_callback(const char* filename, void* userdata)
         if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
             !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
             !strcasecmp(extension, ".pdi") || !strcasecmp(extension, ".gb") ||
-            !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".sav") ||
-            !strcasecmp(extension, ".state"))
+            !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".gbz") ||
+            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state"))
         {
             should_copy = true;
         }

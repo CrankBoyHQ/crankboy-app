@@ -1886,7 +1886,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             static const char* message4_text1 = "Copy games to ";
             const char* message4_text2 = cb_gb_directory_path(CB_gamesPath);
 
-            static const char* message5_text = "(Filenames must end with .gb or .gbc)";
+            static const char* message5_text = "(Filenames must end with .gb, .gbc, or .gbz)";
 
             playdate->graphics->clear(kColorWhite);
 

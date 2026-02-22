@@ -66,7 +66,7 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 
 - Connect your Playdate to a computer (or another device) by USB, press and hold `LEFT` + `MENU` + `LOCK` at the same time for 5 seconds. Or from the app launcher, go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in this directory: `/Shared/Emulation/gb/games/`
-- ROM filenames must end with `.gb` or `.gbc`
+- ROM filenames must end with `.gb`, `.gbc`, or (if [compressed](#tips)) `.gbz`
 - Cover art can be placed manually in `/Shared/Emulation/gb/covers/`. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, `.bmp`, or `.pdi`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
 #### PDX
@@ -102,6 +102,7 @@ Then, you can enable, disable, and reorder your patches by going to `⊙ > setti
 - You can delete cover art from the library view by holding Ⓑ for 5 seconds.
 - Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or, if the _Crank_ preference is set to `Start/Select`, by rotating the crank to 6 o'clock (i.e. straight down).
     - Be careful -- many games use Start+Select+A+B as a shortcut to reset the game. Try not to keep the crank in this position long term.
+- You can compress ROMs to a special ".gbz format" by using [this python script](./scripts/compress_rom.py). Note that [gzip](https://en.wikipedia.org/wiki/Gzip) must be available from the command line to run the script. (Currently, there is no way to compress roms from within CrankBoy.)
 
 ## Bundle Mode
 
