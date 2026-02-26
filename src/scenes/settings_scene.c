@@ -524,7 +524,7 @@ static void settings_post_action_per_game(
 )
 {
     // Special behavior for switching between per-game and global settings
-    int global_ui_sounds = preferences_ui_sounds;
+    void* stored_always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
     void* stored_save_slot = preferences_store_subset(PREFBIT_save_state_slot);
 
     const char* game_settings_path;
@@ -564,7 +564,11 @@ static void settings_post_action_per_game(
         cb_free(stored_save_slot);
     }
 
-    preferences_ui_sounds = global_ui_sounds;
+    if (stored_always_global)
+    {
+        preferences_restore_subset(stored_always_global);
+        cb_free(stored_always_global);
+    }
 }
 
 static void settings_post_action_script(
@@ -816,6 +820,18 @@ bool script_custom_setting_add(const char* name, const char* description, const 
 
     ++script_settings_info_count;
     return true;
+}
+
+static void addUISoundOption(CB_SettingsScene* scene, OptionsMenuEntry* entries, int* i)
+{
+    entries[++*i] = (OptionsMenuEntry){
+        .name = "UI sounds",
+        .values = off_on_labels,
+        .description = "Enable or disable\ninterface sound effects.\n",
+        .pref_var = &preferences_ui_sounds,
+        .max_value = 2,
+        .on_press = NULL,
+    };
 }
 
 static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
@@ -1359,6 +1375,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         }
     }
 
+    // Library settings
     if (!gameScene)
     {
         entries[++i] = (OptionsMenuEntry){
@@ -1426,6 +1443,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
+        
+        addUISoundOption(scene, entries, &i);
     }
 
     entries[++i] = (OptionsMenuEntry){
@@ -1458,17 +1477,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    if ((!gameScene) || CB_App->bundled_rom)
+    if (CB_App->bundled_rom)
     {
-        // ui sounds
-        entries[++i] = (OptionsMenuEntry){
-            .name = "UI sounds",
-            .values = off_on_labels,
-            .description = "Enable or disable\ninterface sound effects.",
-            .pref_var = &preferences_ui_sounds,
-            .max_value = 2,
-            .on_press = NULL,
-        };
+        // ui sounds (for non-bundled, part of library settings only)
+        addUISoundOption(scene, entries, &i);
     }
 
     // Disable Auto Lock

@@ -51,7 +51,7 @@ void preferences_set_defaults(void)
 
 void preferences_init(void)
 {
-    // if this fails, increase bitfield to uint64_t
+    // if this fails, re-engineer this to be based on a struct instead of bitfield size
     CB_ASSERT(pref_count <= 8 * sizeof(preferences_bitfield_t));
 
     preferences_set_defaults();
