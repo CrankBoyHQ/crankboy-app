@@ -1,0 +1,65 @@
+name: Cleanup Empty Workflow Runs
+
+on:
+    schedule:
+        # Run twice a day at 06:00 and 18:00 UTC
+        - cron: "0 6,18 * * *"
+    workflow_dispatch:
+
+jobs:
+    cleanup-empty-runs:
+        name: Delete Workflow Runs Without Artifacts
+        runs-on: ubuntu-latest
+        permissions:
+            actions: write
+            contents: read
+        steps:
+            - name: Delete workflow runs without artifacts
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -e
+
+                  REPO="${{ github.repository }}"
+
+                  echo "Fetching workflow runs for $REPO..."
+
+                  # Get all workflow runs across all workflows, sorted by creation date
+                  # Filter for completed runs only
+                  runs=$(gh api "/repos/$REPO/actions/runs?per_page=100&status=completed" --jq '.workflow_runs[] | {id: .id, workflow_name: .name, run_number: .run_number, created_at: .created_at, run_attempt: .run_attempt}')
+
+                  if [ -z "$runs" ]; then
+                      echo "No workflow runs found."
+                      exit 0
+                  fi
+
+                  # Convert to array
+                  runs_json=$(echo "$runs" | jq -s '.')
+
+                  deleted_count=0
+
+                  # Iterate through each run
+                  echo "$runs_json" | jq -c '.[]' | while read -r run; do
+                      run_id=$(echo "$run" | jq -r '.id')
+                      workflow_name=$(echo "$run" | jq -r '.workflow_name')
+                      run_number=$(echo "$run" | jq -r '.run_number')
+                      created_at=$(echo "$run" | jq -r '.created_at')
+
+                      echo "Checking run #$run_number of '$workflow_name' (ID: $run_id, created: $created_at)..."
+
+                      # Get artifact count for this run
+                      artifact_count=$(gh api "/repos/$REPO/actions/runs/$run_id/artifacts" --jq '.total_count' 2>/dev/null || echo "0")
+
+                      if [ "$artifact_count" -eq 0 ]; then
+                          echo "  -> No artifacts found. Deleting run #$run_number of '$workflow_name'..."
+                          gh api --method DELETE "/repos/$REPO/actions/runs/$run_id" 2>/dev/null && echo "  -> Deleted successfully" || echo "  -> Failed to delete or already deleted"
+                          deleted_count=$((deleted_count + 1))
+                      else
+                          echo "  -> Found $artifact_count artifact(s). Keeping run."
+                      fi
+
+                      # Rate limiting - small delay to avoid hitting API limits
+                      sleep 0.5
+                  done
+
+                  echo "Cleanup complete. Deleted $deleted_count runs without artifacts."
