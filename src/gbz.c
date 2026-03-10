@@ -4,16 +4,17 @@
 //
 
 #include "gbz.h"
-#include "mini_gzip.h"
+
+#include "../libs/miniz/mini_gzip.h"
 
 #include <string.h>
 
-bool gbz_parse_header(GBZ_Header *out_header, const char *data, size_t size)
+bool gbz_parse_header(GBZ_Header* out_header, const uint8_t* data, size_t size)
 {
     if (size < GBZ_GZ_OFFSET)
         return false;
 
-    const uint8_t *p = (const uint8_t *)data;
+    const uint8_t* p = data;
 
     if (memcmp(p, GBZ_MAGIC, GBZ_MAGIC_LEN) != 0)
         return false;
@@ -28,16 +29,14 @@ bool gbz_parse_header(GBZ_Header *out_header, const char *data, size_t size)
             return false;
     }
 
-    out_header->version  = version;
-    out_header->is_gbc   = p[9] != 0;
-    out_header->crc32    = ((uint32_t)p[10] << 24) | ((uint32_t)p[11] << 16)
-                         | ((uint32_t)p[12] <<  8) |  (uint32_t)p[13];
+    out_header->version = version;
+    out_header->is_gbc = p[9] != 0;
+    out_header->crc32 = ((uint32_t)p[10] << 24) | ((uint32_t)p[11] << 16) | ((uint32_t)p[12] << 8) |
+                        (uint32_t)p[13];
 
     // Decompressed size (little-endian uint32 at offset 14)
-    out_header->original_size = (size_t)p[14]
-                              | ((size_t)p[15] << 8)
-                              | ((size_t)p[16] << 16)
-                              | ((size_t)p[17] << 24);
+    out_header->original_size =
+        (size_t)p[14] | ((size_t)p[15] << 8) | ((size_t)p[16] << 16) | ((size_t)p[17] << 24);
 
     memcpy(out_header->gb_header, p + 18, GBZ_ROM_HDR_SIZE);
 
@@ -56,11 +55,9 @@ bool gbz_parse_header(GBZ_Header *out_header, const char *data, size_t size)
         if (out_header->gz_size < 4)
             return false;
 
-        const uint8_t *isize = out_header->gz_data + out_header->gz_size - 4;
-        size_t gz_reported = (size_t)isize[0]
-                           | ((size_t)isize[1] << 8)
-                           | ((size_t)isize[2] << 16)
-                           | ((size_t)isize[3] << 24);
+        const uint8_t* isize = out_header->gz_data + out_header->gz_size - 4;
+        size_t gz_reported = (size_t)isize[0] | ((size_t)isize[1] << 8) | ((size_t)isize[2] << 16) |
+                             ((size_t)isize[3] << 24);
         if (gz_reported != out_header->original_size)
             return false;
     }
@@ -68,14 +65,14 @@ bool gbz_parse_header(GBZ_Header *out_header, const char *data, size_t size)
     return true;
 }
 
-uint8_t gbz_read_header_byte(const GBZ_Header *header, uint16_t rom_address)
+uint8_t gbz_read_header_byte(const GBZ_Header* header, uint16_t rom_address)
 {
     if (rom_address < GBZ_ROM_HDR_START || rom_address > GBZ_ROM_HDR_END)
         return 0;
     return header->gb_header[rom_address - GBZ_ROM_HDR_START];
 }
 
-int gbz_decompress(const char *data, size_t size, char *out_buf, size_t out_max)
+int gbz_decompress(const uint8_t* data, size_t size, uint8_t* out_buf, size_t out_max)
 {
     GBZ_Header header;
     if (!gbz_parse_header(&header, data, size))
@@ -85,7 +82,7 @@ int gbz_decompress(const char *data, size_t size, char *out_buf, size_t out_max)
         return -2;
 
     struct mini_gzip gz;
-    int status = mini_gz_start(&gz, (void *)header.gz_data, header.gz_size);
+    int status = mini_gz_start(&gz, (void*)header.gz_data, header.gz_size);
     if (status != 0)
         return -3;
 

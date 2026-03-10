@@ -8,12 +8,11 @@
 
 #include "utility.h"
 
+#include "../libs/miniz/mini_gzip.h"
 #include "app.h"
 #include "jparse.h"
 #include "preferences.h"
 #include "scenes/library_scene.h"
-#include "miniz.h"
-#include "mini_gzip.h"
 
 #include <ctype.h>
 #include <stdint.h>
@@ -86,12 +85,13 @@ const clalign uint8_t CB_patterns[4][4][4] = {
 
 char* cb_memdup(const char* buff, int len)
 {
-    if (!buff) return NULL;
-    
+    if (!buff)
+        return NULL;
+
     char* copied = cb_malloc(len);
     if (!copied)
         return NULL;
-    
+
     memcpy(copied, buff, len);
     return copied;
 }
@@ -308,17 +308,20 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc
 
 LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h)
 {
-    if (!image || w <= 0 || h <= 0) return NULL;
+    if (!image || w <= 0 || h <= 0)
+        return NULL;
 
     int srcW, srcH, srcRowBytes;
-    uint8_t *srcMask;  // we might not use mask in simple case
-    uint8_t *srcData;
+    uint8_t* srcMask;  // we might not use mask in simple case
+    uint8_t* srcData;
     playdate->graphics->getBitmapData(image, &srcW, &srcH, &srcRowBytes, &srcMask, &srcData);
-    
-    if (w <= 0 || h <= 0) return NULL;
 
-    LCDBitmap *out = playdate->graphics->newBitmap(w, h, kColorClear);
-    if (!out) return NULL;
+    if (w <= 0 || h <= 0)
+        return NULL;
+
+    LCDBitmap* out = playdate->graphics->newBitmap(w, h, kColorClear);
+    if (!out)
+        return NULL;
 
     playdate->graphics->pushContext(out);
 
@@ -331,45 +334,51 @@ LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h)
 
 LCDBitmap** split_subimages(LCDBitmap* image, int w, int h, size_t* out_size)
 {
-    if (out_size) *out_size = 0;
-    if (!image) return NULL;
-    
-    
+    if (out_size)
+        *out_size = 0;
+    if (!image)
+        return NULL;
+
     int src_w, src_h;
     playdate->graphics->getBitmapData(image, &src_w, &src_h, NULL, NULL, NULL);
-    
+
     int nx = src_w / w;
     int ny = src_h / h;
-    
+
     int c = nx * ny;
-    
-    if (c == 0) return NULL;
-    
-    LCDBitmap** out = allocza(LCDBitmap*, c+1);
-    if (!out) return NULL;
-    
+
+    if (c == 0)
+        return NULL;
+
+    LCDBitmap** out = allocza(LCDBitmap*, c + 1);
+    if (!out)
+        return NULL;
+
     for (int y = 0; y < ny; ++y)
     {
         for (int x = 0; x < nx; ++x)
         {
-            int idx = y*nx + x;
-            out[idx] = subimage(image, x*w, y*h, w, h);
-            
+            int idx = y * nx + x;
+            out[idx] = subimage(image, x * w, y * h, w, h);
+
             if (!out[idx])
             {
-                if (out_size) *out_size = idx;
+                if (out_size)
+                    *out_size = idx;
                 return out;
             }
         }
     }
-    
-    if (out_size) *out_size = c;
+
+    if (out_size)
+        *out_size = c;
     return out;
 }
 
 void free_subimages(LCDBitmap** imgs)
 {
-    if (!imgs) return;
+    if (!imgs)
+        return;
     for (LCDBitmap** img = imgs; *img; ++img)
     {
         playdate->graphics->freeBitmap(*img);
@@ -380,35 +389,44 @@ void free_subimages(LCDBitmap** imgs)
 void draw_spinny(int x, int y, int r)
 {
     unsigned t = playdate->system->getCurrentTimeMilliseconds();
-    
+
     float theta = (t % 512) / 512.0f * 360.0f;
-    
+
     playdate->graphics->drawEllipse(
-        x-r, y-r, r*2, r*2, MIN(4, r/4), theta,
-        theta + 110.0f, kColorBlack
+        x - r, y - r, r * 2, r * 2, MIN(4, r / 4), theta, theta + 110.0f, kColorBlack
     );
 }
 
 bool cb_valid_basename(const char* fname)
 {
-    if (!fname || !*fname) return false;
-    
+    if (!fname || !*fname)
+        return false;
+
     int l = strlen(fname);
     for (int i = 0; i < l; ++i)
     {
         char c = fname[i];
-        if (c < 0) return false;
-        if (c == ' ') continue;
-        if (c == '.') continue;
-        if (c == '-') continue;
-        if (c >= '0' && c <= '9') continue;
-        if (c >= 'A' && c <= 'Z') continue;
-        if (c == '_') continue;
-        if (c >= 'a' && c <= 'z') continue;
-        if (c == '(' || c == ')') continue;
+        if (c < 0)
+            return false;
+        if (c == ' ')
+            continue;
+        if (c == '.')
+            continue;
+        if (c == '-')
+            continue;
+        if (c >= '0' && c <= '9')
+            continue;
+        if (c >= 'A' && c <= 'Z')
+            continue;
+        if (c == '_')
+            continue;
+        if (c >= 'a' && c <= 'z')
+            continue;
+        if (c == '(' || c == ')')
+            continue;
         return false;
     }
-    
+
     return true;
 }
 
@@ -418,8 +436,9 @@ bool cb_valid_basename(const char* fname)
 const char* get_extension(const char* filename)
 {
     char* basename = cb_basename(filename, false);
-    if (!basename) return "";
-    
+    if (!basename)
+        return "";
+
     // do not change to strchr
     char* dot = strrchr(basename, '.');
     if (!dot)
@@ -502,11 +521,16 @@ char* cb_save_filename(const char* path, bool isRecovery)
     char* buffer;
     if (preferences_save_slot)
     {
-        playdate->system->formatString(&buffer, "%s/%s%s.%c.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix, 'A' + preferences_save_slot);
+        playdate->system->formatString(
+            &buffer, "%s/%s%s.%c.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix,
+            'A' + preferences_save_slot
+        );
     }
     else
     {
-        playdate->system->formatString(&buffer, "%s/%s%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix);
+        playdate->system->formatString(
+            &buffer, "%s/%s%s.sav", cb_gb_directory_path(CB_savesPath), filenameNoExt, suffix
+        );
     }
 
     cb_free(filenameNoExt);
@@ -534,25 +558,28 @@ float cb_easeInOutQuad(float x)
 
 char* strstr_i(const char* haystack, const char* needle)
 {
-    if (!*needle) return (char*)haystack;
+    if (!*needle)
+        return (char*)haystack;
 
-    for (const char* h = haystack; *h; h++) {
+    for (const char* h = haystack; *h; h++)
+    {
         const char* h1 = h;
         const char* n1 = needle;
 
-        while (*h1 && *n1 && tolower((unsigned char)*h1) == tolower((unsigned char)*n1)) {
+        while (*h1 && *n1 && tolower((unsigned char)*h1) == tolower((unsigned char)*n1))
+        {
             h1++;
             n1++;
         }
 
-        if (!*n1) {
+        if (!*n1)
+        {
             return (char*)h;
         }
     }
 
     return NULL;
 }
-
 
 int cb_compare_games_by_sort_name(const void* a, const void* b)
 {
@@ -611,7 +638,9 @@ char* cb_find_cover_art_path_from_list(
             strcmp(cover_basename, rom_basename_no_ext) == 0)
         {
             char* found_path = NULL;
-            playdate->system->formatString(&found_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_basename);
+            playdate->system->formatString(
+                &found_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_basename
+            );
             return found_path;
         }
     }
@@ -1051,7 +1080,8 @@ void cb_play_ui_sound(CB_UISound sound)
 const char* cb_data_directory_path(const char* path)
 {
     static char* s = NULL;
-    if (!CB_App->pdxBundleID) return NULL;
+    if (!CB_App->pdxBundleID)
+        return NULL;
     cb_free(s);
     s = aprintf("/Data/%s/%s", CB_App->pdxBundleID, path);
     return s;
@@ -1067,40 +1097,49 @@ const char* cb_gb_directory_path(const char* path)
 
 int full_mkdir(const char* path)
 {
-    if (!path || !*path) return -3;
-    
+    if (!path || !*path)
+        return -3;
+
     char* path_copy = aprintf("%s", path);
-    if (!path_copy) return -2;
-    
+    if (!path_copy)
+        return -2;
+
     char* current = path_copy;
     int result = 0;
-    
+
     // Handle absolute paths starting with '/'
-    if (*current == '/') {
+    if (*current == '/')
+    {
         current++;
     }
-    
-    while (*current != '\0') {
+
+    while (*current != '\0')
+    {
         // Find the next slash
         char* slash = strchr(current, '/');
-        
-        if (slash) {
+
+        if (slash)
+        {
             *slash = '\0';
         }
-        
+
         int mkdir_result = playdate->file->mkdir(path_copy);
-        if (mkdir_result != 0) {
+        if (mkdir_result != 0)
+        {
             result = mkdir_result;
         }
-        
-        if (slash) {
+
+        if (slash)
+        {
             *slash = '/';
             current = slash + 1;
-        } else {
+        }
+        else
+        {
             break;
         }
     }
-    
+
     cb_free(path_copy);
     return result;
 }
@@ -1114,21 +1153,21 @@ void cb_directory_exists_and_nonempty_or_file_exists_helper(const char* filename
 bool cb_directory_exists_and_nonempty_or_file_exists(const char* path)
 {
     FileStat fs;
-    
+
     int result = playdate->file->stat(path, &fs);
-    if (result != 0) return false;
-    
+    if (result != 0)
+        return false;
+
     if (fs.isdir)
     {
         bool exists = false;
         // check non-empty
         result = playdate->file->listfiles(
-            path,
-            cb_directory_exists_and_nonempty_or_file_exists_helper,
-            &exists, true
+            path, cb_directory_exists_and_nonempty_or_file_exists_helper, &exists, true
         );
-        if (result != 0) return false;
-        
+        if (result != 0)
+            return false;
+
         return exists;
     }
     else
@@ -1137,11 +1176,11 @@ bool cb_directory_exists_and_nonempty_or_file_exists(const char* path)
     }
 }
 
-
 uint32_t bitvec_read_bits(const uint8_t* base, size_t bit_offset, unsigned width)
 {
     uint32_t result = 0;
-    for (unsigned i = 0; i < width; i++) {
+    for (unsigned i = 0; i < width; i++)
+    {
         size_t pos = bit_offset + i;
         size_t byte = pos >> 3;
         unsigned bit = pos & 7;
@@ -1153,7 +1192,8 @@ uint32_t bitvec_read_bits(const uint8_t* base, size_t bit_offset, unsigned width
 
 void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_t v)
 {
-    for (unsigned i = 0; i < width; i++) {
+    for (unsigned i = 0; i < width; i++)
+    {
         size_t pos = bit_offset + i;
         size_t byte = pos >> 3;
         unsigned bit = pos & 7;
@@ -1165,7 +1205,9 @@ void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_
     }
 }
 
-char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail)
+char* cb_read_partial_file(
+    const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail
+)
 {
     bool binary = flags & CB_FILE_FLAG_BINARY;
     flags &= ~CB_FILE_FLAG_BINARY;
@@ -1182,7 +1224,7 @@ char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size
     size = playdate->file->tell(file);
     if (size < 0)
         goto fail;
-        
+
     if (size > size_max && size_max >= 0)
         size = size_max;
 
@@ -1241,7 +1283,8 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
 {
     // Try uncompressed file first
     char* dat = cb_read_partial_file(path, -1, o_size, flags, false);
-    if (dat) return dat;
+    if (dat)
+        return dat;
 
     // Try .gz version
     char* pathgz = aprintf("%s.gz", path);
@@ -1249,13 +1292,14 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     dat = cb_read_partial_file(pathgz, -1, &size, flags, false);
     cb_free(pathgz);
 
-    if (!dat) return NULL;
+    if (!dat)
+        return NULL;
 
     // read decompressed size from header
     char* dat_end = dat + size;
-    uint8_t *isz = (uint8_t*)(dat_end - 4);
-    size_t decompressed_size = (size_t)isz[0] | ((size_t)isz[1] << 8) |
-                ((size_t)isz[2] << 16) | ((size_t)isz[3] << 24);
+    uint8_t* isz = (uint8_t*)(dat_end - 4);
+    size_t decompressed_size =
+        (size_t)isz[0] | ((size_t)isz[1] << 8) | ((size_t)isz[2] << 16) | ((size_t)isz[3] << 24);
     uint16_t magic = *(uint16_t*)dat;
     if (magic != 0x8B1F && magic != 0x1F8B)
     {
@@ -1267,7 +1311,9 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     char* decompressed = cb_malloc(decompressed_size + 1);
     if (!decompressed)
     {
-        playdate->system->logToConsole("Failed to decompress %s: insufficient memory to hold decompressed file", path);
+        playdate->system->logToConsole(
+            "Failed to decompress %s: insufficient memory to hold decompressed file", path
+        );
         cb_free(dat);
         return NULL;
     }
@@ -1291,7 +1337,8 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     }
 
     decompressed[decompressed_size] = 0;
-    if (o_size) *o_size = decompressed_size;
+    if (o_size)
+        *o_size = decompressed_size;
 
     return (char*)decompressed;
 }
@@ -1400,7 +1447,8 @@ int cb_file_exists(const char* path, FileOptions fopts)
 
 int cb_file_exists_maybe_compressed(const char* path, FileOptions fopts)
 {
-    if (cb_file_exists(path, fopts)) return true;
+    if (cb_file_exists(path, fopts))
+        return true;
     char* compressed = aprintf("%s.gz", path);
     bool result = cb_file_exists(compressed, fopts);
     cb_free(compressed);
@@ -1505,13 +1553,17 @@ CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
     snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
 
     char db_filename[32];
-    snprintf(db_filename, sizeof(db_filename), "db/%02lx.json", (unsigned long)((crc >> 24) & DB_CRC_MASK));
+    snprintf(
+        db_filename, sizeof(db_filename), "db/%02lx.json",
+        (unsigned long)((crc >> 24) & DB_CRC_MASK)
+    );
     char db_filename_compressed[36];
     snprintf(db_filename_compressed, sizeof(db_filename_compressed), "%s.lz4", db_filename);
 
     char* json_string = NULL;
-    json_string = cb_read_entire_file_maybe_compressed(db_filename, NULL, kFileRead | kFileReadData);
-    
+    json_string =
+        cb_read_entire_file_maybe_compressed(db_filename, NULL, kFileRead | kFileReadData);
+
     if (!json_string)
     {
         return names;

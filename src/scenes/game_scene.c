@@ -6,8 +6,8 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include "pd_api.h"
 #include "gbz.h"
+#include "pd_api.h"
 
 #include <stdbool.h>
 
@@ -591,10 +591,12 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->state = CB_GameSceneStateError;
     gameScene->error = CB_GameSceneErrorUndefined;
 
-    gameScene->model = (CB_GameSceneModel){.state = CB_GameSceneStateError,
-                                           .error = CB_GameSceneErrorUndefined,
-                                           .selectorIndex = 0,
-                                           .empty = true};
+    gameScene->model = (CB_GameSceneModel){
+        .state = CB_GameSceneStateError,
+        .error = CB_GameSceneErrorUndefined,
+        .selectorIndex = 0,
+        .empty = true
+    };
 
     gameScene->audioEnabled = (preferences_sound_mode > 0);
     gameScene->audioLocked = false;
@@ -988,11 +990,11 @@ static uint8_t* read_rom_to_ram(
         *sceneError = CB_GameSceneErrorLoadingRom;
         return NULL;
     }
-    
+
     playdate->file->close(rom_file);
-    
+
     GBZ_Header gbz;
-    if (gbz_parse_header(&gbz, (char*)rom, rom_size))
+    if (gbz_parse_header(&gbz, rom, rom_size))
     {
         uint8_t* decompressed_rom = cb_malloc(gbz.original_size);
         if (!decompressed_rom)
@@ -1005,8 +1007,8 @@ static uint8_t* read_rom_to_ram(
             playdate->file->close(rom_file);
             *sceneError = CB_GameSceneErrorLoadingRom;
         }
-        
-        int status = gbz_decompress((const char*)rom, rom_size, (char*)decompressed_rom, gbz.original_size);
+
+        int status = gbz_decompress(rom, rom_size, decompressed_rom, gbz.original_size);
         cb_free(rom);
         if (status != gbz.original_size)
         {
@@ -1020,7 +1022,7 @@ static uint8_t* read_rom_to_ram(
         {
             playdate->system->logToConsole("Decompressed ROM: %s", filename);
         }
-        
+
         return decompressed_rom;
     }
     else
@@ -1524,8 +1526,10 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
             }
         }
     }
-    else if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
-             preferences_crank_mode == CRANK_MODE_TURBO_CCW)  // Turbo mode
+    else if (
+        preferences_crank_mode == CRANK_MODE_TURBO_CW ||
+        preferences_crank_mode == CRANK_MODE_TURBO_CCW
+    )  // Turbo mode
     {
         float crank_change = playdate->system->getCrankChange();
         gameScene->crank_turbo_accumulator += crank_change;
@@ -1664,8 +1668,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 {
                     activate_dynamic_rate = true;
                 }
-                else if (was_interlaced_last_frame &&
-                         gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_OFF)
+                else if (
+                    was_interlaced_last_frame &&
+                    gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_OFF
+                )
                 {
                     activate_dynamic_rate = true;
                 }
@@ -2353,7 +2359,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (shouldDisplayStartSelectUI)
                 {
                     playdate->graphics->setFont(CB_App->labelFont);
-                    playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite);
+                    playdate->graphics->setDrawMode(
+                        game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite
+                    );
                     playdate->graphics->drawText(
                         startButtonText, cb_strlen(startButtonText), kUTF8Encoding,
                         gameScene->selector.startButtonX, gameScene->selector.startButtonY
@@ -2369,7 +2377,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     preferences_crank_mode == CRANK_MODE_TURBO_CCW)
                 {
                     playdate->graphics->setFont(CB_App->labelFont);
-                    playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite);
+                    playdate->graphics->setDrawMode(
+                        game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite
+                    );
 
                     const char* line1 = "Turbo";
                     const char* line2 =
@@ -2402,8 +2412,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     playdate->graphics->setDrawMode(kDrawModeCopy);
                 }
 
-                playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeInverted : kDrawModeCopy);
-                
+                playdate->graphics->setDrawMode(
+                    game_invert_indicator ? kDrawModeInverted : kDrawModeCopy
+                );
+
                 if (shouldDisplayStartSelectUI)
                 {
                     LCDBitmap* bitmap;
@@ -2424,10 +2436,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 gameScene->staticSelectorUIDrawn = true;
             }
-            else if (!game_hide_indicator &&
-                     (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI))
+            else if (
+                !game_hide_indicator &&
+                (animatedSelectorBitmapNeedsRedraw && shouldDisplayStartSelectUI)
+            )
             {
-                playdate->graphics->setDrawMode(game_invert_indicator ? kDrawModeInverted : kDrawModeCopy);
+                playdate->graphics->setDrawMode(
+                    game_invert_indicator ? kDrawModeInverted : kDrawModeCopy
+                );
                 playdate->graphics->fillRect(
                     gameScene->selector.x, gameScene->selector.y, gameScene->selector.width,
                     gameScene->selector.height, game_picture_background_color
@@ -2454,7 +2470,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gameScene->selector.y, gameScene->selector.y + gameScene->selector.height - 1
                 );
             }
-            
+
             playdate->graphics->setDrawMode(kDrawModeCopy);
 
 #if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
