@@ -187,7 +187,7 @@ jobs:
                       -o build/pdex.dll \
                       src/cscripts/*.c src/*.c src/scenes/*.c \
                       libs/minigb_apu/minigb_apu.c libs/pdnewlib/pdnewlib.c main.c \
-                      libs/lz4/lz4.c \
+                      libs/lz4/lz4.c libs/miniz/miniz.c libs/miniz/mini_gzip.c \
                       "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
 
                   # Copy DLL to existing .pdx folder (which now contains device binary)
