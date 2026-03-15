@@ -1834,29 +1834,41 @@ done_instr_timing:
                     mode3_cycles += 6;
                 }
 
-                uint8_t sprites_found = 0;
-                const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-                static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
-
-                for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
+                // PPU Timing: Fast (fixed) vs Accurate (dynamic)
+                // Fast mode uses average penalty, accurate checks each sprite
+                if (preferences_ppu_timing == 0)
                 {
-                    const uint8_t y = gb->oam[s * 4];
-                    const uint8_t x = gb->oam[s * 4 + 1];
+                    // Fast mode: fixed penalty assuming max sprites
+                    // Average penalty per sprite is ~8 cycles
+                    mode3_cycles += 8 * MAX_SPRITES_LINE;
+                }
+                else
+                {
+                    // Accurate mode: dynamic calculation per sprite
+                    uint8_t sprites_found = 0;
+                    const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+                    static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
 
-                    // Check if sprite Y intersects current line
-                    if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
+                    for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
                     {
-                        // Exception: OAM X=0 always incurs the max 11-dot penalty
-                        if (x == 0)
+                        const uint8_t y = gb->oam[s * 4];
+                        const uint8_t x = gb->oam[s * 4 + 1];
+
+                        // Check if sprite Y intersects current line
+                        if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
                         {
-                            mode3_cycles += 11;
+                            // Exception: OAM X=0 always incurs the max 11-dot penalty
+                            if (x == 0)
+                            {
+                                mode3_cycles += 11;
+                            }
+                            else
+                            {
+                                const uint8_t alignment = (scx_mod8 + x) & 7;
+                                mode3_cycles += sprite_penalty_lut[alignment];
+                            }
+                            sprites_found++;
                         }
-                        else
-                        {
-                            const uint8_t alignment = (scx_mod8 + x) & 7;
-                            mode3_cycles += sprite_penalty_lut[alignment];
-                        }
-                        sprites_found++;
                     }
                 }
 

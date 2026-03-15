@@ -234,6 +234,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
     settingsScene->initial_audio_sync = preferences_audio_sync;
+    settingsScene->initial_ppu_timing = preferences_ppu_timing;
 
     if (gameScene)
     {
@@ -1327,6 +1328,20 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .on_change = settings_post_action_lock_button
         };
     }
+
+    // PPU Timing
+    static const char* ppu_timing_labels[] = {"Fast", "Accurate"};
+    entries[++i] = (OptionsMenuEntry){
+        .name = "PPU Timing",
+        .values = ppu_timing_labels,
+        .description = "Controls PPU sprite timing\naccuracy.\n \n"
+                       "Fast:\nFixed penalty per line.\nBest performance. Some\n"
+                       "games may have glitches.\n \n"
+                       "Accurate:\nDynamic calculation.\nMost faithful to hardware.\n"
+                       "May impact performance in\nsprite-heavy scenes.",
+        .pref_var = &preferences_ppu_timing,
+        .max_value = 2,
+    };
 
     // overclocking
     entries[++i] = (OptionsMenuEntry){
