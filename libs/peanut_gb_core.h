@@ -676,17 +676,41 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         ((uint32_t*)pixels)[i] = 0;
 
 // remaps 16-bit lo (t1) and hi (t2) colours to 2bbp 32-bit v
-#define BG_REMAP(pal, t1, t2, v)                          \
-    do                                                    \
-    {                                                     \
-        uint32_t t2_ = ((uint32_t)t2) << 1;               \
-        for (int _q = 0; _q < 16; _q++)                   \
-        {                                                 \
-            int p = ((t1 >> _q) & 1) | ((t2_ >> _q) & 2); \
-            int c = (pal >> (2 * p)) & 3;                 \
-            v >>= 2;                                      \
-            v |= c << 30;                                 \
-        }                                                 \
+// Optimized version: processes 4 pixels at a time instead of 1
+// Reduces loop iterations from 16 to 4 for better performance
+#define BG_REMAP(pal, t1, t2, v)                                                       \
+    do                                                                                 \
+    {                                                                                  \
+        uint32_t _t1 = (uint16_t)(t1);                                                 \
+        uint32_t _t2 = (uint16_t)(t2);                                                 \
+        uint32_t _v = 0;                                                               \
+                                                                                       \
+        /* Process 4 pixels at a time in reverse order to match original output */     \
+        /* Original builds result from MSB to LSB, so we go from high nibble to low */ \
+        for (int _q = 3; _q >= 0; _q--)                                                \
+        {                                                                              \
+            int _shift = _q * 4;                                                       \
+            uint8_t _nib1 = (_t1 >> _shift) & 0x0F;                                    \
+            uint8_t _nib2 = (_t2 >> _shift) & 0x0F;                                    \
+                                                                                       \
+            /* Extract 4 pixels from the nibbles */                                    \
+            /* Pixel 0: bit 0 of nib1 and nib2 */                                      \
+            /* Pixel 1: bit 1 of nib1 and nib2, etc. */                                \
+            uint8_t _pix0 = ((_nib1 >> 0) & 1) | (((_nib2 >> 0) & 1) << 1);            \
+            uint8_t _pix1 = ((_nib1 >> 1) & 1) | (((_nib2 >> 1) & 1) << 1);            \
+            uint8_t _pix2 = ((_nib1 >> 2) & 1) | (((_nib2 >> 2) & 1) << 1);            \
+            uint8_t _pix3 = ((_nib1 >> 3) & 1) | (((_nib2 >> 3) & 1) << 1);            \
+                                                                                       \
+            /* Lookup colors from palette */                                           \
+            uint8_t _c0 = ((pal) >> (2 * _pix3)) & 3; /* Reverse order within byte */  \
+            uint8_t _c1 = ((pal) >> (2 * _pix2)) & 3;                                  \
+            uint8_t _c2 = ((pal) >> (2 * _pix1)) & 3;                                  \
+            uint8_t _c3 = ((pal) >> (2 * _pix0)) & 3;                                  \
+                                                                                       \
+            _v <<= 8;                                                                  \
+            _v |= (_c0 << 6) | (_c1 << 4) | (_c2 << 2) | _c3;                          \
+        }                                                                              \
+        (v) = _v;                                                                      \
     } while (0)
 
     /* If background is enabled, draw it. */
