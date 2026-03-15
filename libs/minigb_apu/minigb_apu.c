@@ -1149,6 +1149,43 @@ __attribute__((always_inline)) static inline void high_pass_filter_fixed_asm(
 }
 #endif
 
+#if TARGET_PLAYDATE
+/**
+ * Optimized memset for audio buffers using SIMD stores.
+ * Clears buffer 8 samples at a time using STM.
+ */
+__attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
+    int16_t* buf, int len
+)
+{
+    int batch_count = len / 8;
+    int remaining = len % 8;
+
+    asm volatile(
+        "mov r0, #0 \n\t"
+        "mov r1, #0 \n\t"
+        "mov r2, #0 \n\t"
+        "mov r3, #0 \n\t"
+        "1: \n\t"
+        "cmp %[count], #0 \n\t"
+        "beq 2f \n\t"
+        "stmia %[buf]!, {r0-r3} \n\t"
+        "subs %[count], %[count], #1 \n\t"
+        "bne 1b \n\t"
+        "2: \n\t"
+        : [buf] "+r"(buf), [count] "+r"(batch_count)
+        :
+        : "r0", "r1", "r2", "r3", "memory", "cc"
+    );
+
+    // Clear remaining samples
+    for (int i = 0; i < remaining; i++)
+    {
+        buf[i] = 0;
+    }
+}
+#endif  // TARGET_PLAYDATE
+
 /**
  * Playdate audio callback function.
  */
@@ -1164,11 +1201,19 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
     if (!gameScene)
     {
+#if TARGET_PLAYDATE
+        audio_buffer_clear_optimized(left, len);
+        if (left != right)
+        {
+            audio_buffer_clear_optimized(right, len);
+        }
+#else
         memset(left, 0, len * sizeof(int16_t));
         if (left != right)
         {
             memset(right, 0, len * sizeof(int16_t));
         }
+#endif
         return 1;
     }
 
@@ -1176,11 +1221,19 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
     if (gameScene->audioLocked)
     {
+#if TARGET_PLAYDATE
+        audio_buffer_clear_optimized(left, len);
+        if (left != right)
+        {
+            audio_buffer_clear_optimized(right, len);
+        }
+#else
         memset(left, 0, len * sizeof(int16_t));
         if (left != right)
         {
             memset(right, 0, len * sizeof(int16_t));
         }
+#endif
 #if TARGET_PLAYDATE
         audio->capacitor_l = 0;
         audio->capacitor_r = 0;
@@ -1206,11 +1259,19 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             playdate->system->logToConsole(
                 "AUDIO UNDERRUN! available: %d, needed: %d", samples_available, len
             );
+#if TARGET_PLAYDATE
+            audio_buffer_clear_optimized(left, len);
+            if (left != right)
+            {
+                audio_buffer_clear_optimized(right, len);
+            }
+#else
             memset(left, 0, len * sizeof(int16_t));
             if (left != right)
             {
                 memset(right, 0, len * sizeof(int16_t));
             }
+#endif
         }
         else
         {
@@ -1241,9 +1302,15 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         {
             int chunksize = remaining_len >= max_chunk ? max_chunk : remaining_len;
 
+#if TARGET_PLAYDATE
+            audio_buffer_clear_optimized(left_ptr, chunksize);
+            if (gameScene->is_stereo)
+                audio_buffer_clear_optimized(right_ptr, chunksize);
+#else
             memset(left_ptr, 0, chunksize * sizeof(int16_t));
             if (gameScene->is_stereo)
                 memset(right_ptr, 0, chunksize * sizeof(int16_t));
+#endif
 
             update_wave(audio, left_ptr, right_ptr, chunksize);
             update_square(audio, left_ptr, right_ptr, 0, chunksize);
