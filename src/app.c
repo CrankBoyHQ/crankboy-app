@@ -8,7 +8,6 @@
 
 #include "app.h"
 
-#include "../libs/minigb_apu/minigb_apu.h"
 #include "../libs/pdnewlib/pdnewlib.h"
 #include "dtcm.h"
 #include "global.h"
@@ -51,7 +50,8 @@ static void read_pdx(void)
             bundleID += strlen(bundleIDEq);
             char* nl = strchr(bundleID, '\n');
             int len = strlen(bundleID);
-            if (nl) len = nl - bundleID;
+            if (nl)
+                len = nl - bundleID;
             CB_App->pdxBundleID = cb_memdup(bundleID, len + 1);
             CB_App->pdxBundleID[len] = 0;
             playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
@@ -105,19 +105,19 @@ static int check_is_bundle(void)
             {
                 CB_InfoScene* infoScene = CB_InfoScene_new(
                     NULL,
-                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_STANDARD_BUNDLE_ID
-                    "\".\n"
+                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from "
+                    "\"" PDX_STANDARD_BUNDLE_ID "\".\n"
                 );
                 CB_presentModal(infoScene->scene);
                 return -1;
             }
-            
+
             if (strstr(CB_App->pdxBundleID, PDX_CATALOG_BUNDLE_ID))
             {
                 CB_InfoScene* infoScene = CB_InfoScene_new(
                     NULL,
-                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from \"" PDX_CATALOG_BUNDLE_ID
-                    "\".\n"
+                    "ERROR: For bundled ROMs, bundleID in pdxinfo must differ from "
+                    "\"" PDX_CATALOG_BUNDLE_ID "\".\n"
                 );
                 CB_presentModal(infoScene->scene);
                 return -1;
@@ -365,7 +365,7 @@ static void get_homebrew_hub_api(void)
         cb_free(hbapi);
         return;
     }
-    
+
     // check for another newline
     nl = spnl;
     CB_App->hbSearchExtraFlags = NULL;
@@ -412,16 +412,18 @@ static void get_homebrew_hub_api(void)
     CB_App->hbStaticPath = staticpath;
     path[0] = 0;
     CB_App->hbApiDomain = domain;
-    
-    // playdate->system->logToConsole("%s\n%s\n%s", CB_App->hbApiDomain, CB_App->hbApiPath, CB_App->hbSearchExtraFlags);
+
+    // playdate->system->logToConsole("%s\n%s\n%s", CB_App->hbApiDomain, CB_App->hbApiPath,
+    // CB_App->hbSearchExtraFlags);
 }
 
 static void non_bundle_init(void)
 {
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
     get_homebrew_hub_api();
-    
-    CB_App->rhdb_present = cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
+
+    CB_App->rhdb_present =
+        cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
 
     global.shown_intro = true;
     save_global();
@@ -452,17 +454,18 @@ void CB_showHelp(bool first_time)
     const char* D =
         "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the "
         "main menu via ⊙ > settings > Get ROMs.";
-        
-    #ifdef CRANKBOY_OFFICIAL_CATALOG
-        const char* E = first_time
-            ? " You can also press Ⓑ now to start playing the included ROMs immediately."
-            : "";
-    #else
-        const char* E = "";
-    #endif
 
-    char* s =
-        aprintf("%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D, E);
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    const char* E =
+        first_time ? " You can also press Ⓑ now to start playing the included ROMs immediately."
+                   : "";
+#else
+    const char* E = "";
+#endif
+
+    char* s = aprintf(
+        "%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D, E
+    );
 
     CB_InfoScene* infoScene = CB_InfoScene_new(title, s);
 
@@ -515,7 +518,7 @@ void CB_init(void)
     CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo", NULL);
 
     CB_App->migration_modal_needed = false;
-    
+
     read_pdx();
 
     check_is_bundle();
@@ -612,7 +615,8 @@ void collect_game_filenames_callback(const char* filename, void* userdata)
         extension = dot + 1;
     }
 
-    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0 || cb_strcmp(extension, "gbz") == 0))
+    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0 ||
+         cb_strcmp(extension, "gbz") == 0))
     {
         array_push(filenames_array, cb_strdup(filename));
     }

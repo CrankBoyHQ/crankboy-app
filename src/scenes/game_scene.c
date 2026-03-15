@@ -25,7 +25,6 @@ bool gbScreenRequiresFullRefresh;
 #include "game_scene.h"
 /* clang-format on */
 
-#include "../../libs/minigb_apu/minigb_apu.h"
 #include "../../libs/peanut_gb.h"
 #include "../app.h"
 #include "../dtcm.h"

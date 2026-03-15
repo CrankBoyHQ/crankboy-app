@@ -5,8 +5,6 @@
  * project is based on MiniGBS by Alex Baines: https://github.com/baines/MiniGBS
  */
 
-#include "minigb_apu.h"
-
 #include "../peanut_gb.h"
 #include "../src/app.h"
 #include "../src/dtcm.h"

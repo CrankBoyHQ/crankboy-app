@@ -1,4 +1,3 @@
-#include "../libs/minigb_apu/minigb_apu.h"
 #include "../libs/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"

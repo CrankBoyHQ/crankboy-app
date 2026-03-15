@@ -9,7 +9,6 @@
 #include "library_scene.h"
 
 #include "../../libs/lz4/lz4.h"
-#include "../../libs/minigb_apu/minigb_apu.h"
 #include "../app.h"
 #include "../dtcm.h"
 #include "../http.h"
@@ -24,9 +23,9 @@
 #include "credits_scene.h"
 #include "game_scene.h"
 #include "info_scene.h"
+#include "revcheck.h"
 #include "settings_scene.h"
 #include "softpatch.h"
-#include "revcheck.h"
 
 #include <string.h>
 
@@ -690,8 +689,8 @@ static void apply_lsdj_settings_and_launch(void* ud, int option)
         preferences_disable_autolock = 1;  // On
         preferences_overclock = 0;         // Off
         if (pd_rev == PD_REV_A)
-            preferences_itcm = 1;          // On
-        preferences_uncap_fps = 0;         // Off
+            preferences_itcm = 1;   // On
+        preferences_uncap_fps = 0;  // Off
 
         preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
 
@@ -821,7 +820,10 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
-    else if (game->names->name_header && (!memcmp(game->names->name_header, "LSDj", 4) || !strcmp(game->names->name_header, "LOFI")))
+    else if (
+        game->names->name_header &&
+        (!memcmp(game->names->name_header, "LSDj", 4) || !strcmp(game->names->name_header, "LOFI"))
+    )
     {
         bool settings_are_optimal = false;
         char* settings_path = cb_game_config_path(game->fullpath);
@@ -835,8 +837,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
                 preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
                 preferences_headphone_audio == 1 && preferences_frame_skip == 1 &&
                 preferences_dither_stable == 0 && preferences_overclock == 0 &&
-                preferences_disable_autolock == 1 &&
-                preferences_uncap_fps == 0)
+                preferences_disable_autolock == 1 && preferences_uncap_fps == 0)
             {
                 settings_are_optimal = true;
             }
@@ -1114,7 +1115,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-#if GITHUB_RELEASE &&! defined(CRANKBOY_OFFICIAL_CATALOG)
+#if GITHUB_RELEASE && !defined(CRANKBOY_OFFICIAL_CATALOG)
     // Check for a pending update message when the library is active.
     if (libraryScene->initialLoadComplete && !libraryScene->update_modal_shown &&
         CB_App->shouldCheckUpdateInfo)
@@ -1161,7 +1162,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         CB_App->migration_modal_needed = false;
 
         char* modal_text = aprintf(
-            "To improve compatability, your CrankBoy library has been moved to the shared folder:\n\n%s",
+            "To improve compatability, your CrankBoy library has been moved to the shared "
+            "folder:\n\n%s",
             CB_App->directory
         );
         if (modal_text)
@@ -1305,15 +1307,18 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 cb_play_ui_sound(CB_UISound_Navigate);
             }
             // A cover is missing, but we can download it.
-            else if (!hasCover && hasDBMatch &&
-                     libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE)
+            else if (
+                !hasCover && hasDBMatch && libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE
+            )
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
                 CB_LibraryScene_startCoverDownload(libraryScene);
             }
             // No cover and no DB match. Toggle CRC display.
-            else if ((!hasCover && !hasDBMatch) ||
-                     libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB)
+            else if (
+                (!hasCover && !hasDBMatch) ||
+                libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB
+            )
             {
                 libraryScene->showCrc = !libraryScene->showCrc;
                 libraryScene->scene->forceFullRefresh = true;
@@ -1663,9 +1668,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                                 // Use the full string for width calculation to prevent jitter
                                 width_calc_string = "Downloading cover...";
                             }
-                            else if (libraryScene->coverDownloadState ==
-                                         COVER_DOWNLOAD_NO_GAME_IN_DB &&
-                                     libraryScene->showCrc)
+                            else if (
+                                libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
+                                libraryScene->showCrc
+                            )
                             {
                                 CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                                 if (selectedGame->names->crc32 != 0)

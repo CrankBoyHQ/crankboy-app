@@ -10,7 +10,15 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "peanut_gb.h"
+/* Note: This header is included by peanut_gb.h when PGB_IMPL is defined.
+ * It should not be included directly - always include peanut_gb.h instead.
+ * The audio_data type is defined in peanut_gb.h.
+ */
+
+/* If peanut_gb.h hasn't been included yet, declare audio_data as opaque */
+#ifndef PEANUT_GB_H
+typedef struct audio_data audio_data;
+#endif
 
 /* Calculating VSYNC. */
 #ifndef DMG_CLOCK_FREQ
