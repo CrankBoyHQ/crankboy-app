@@ -1983,10 +1983,15 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_frame_skip && preferences_blend_frames)
             {
-                // --- 30fps Frame Blending ---
-                static clalign uint8_t frame_A_buffer[LCD_BUFFER_BYTES];
+                // --- 30fps Frame Blending with Double Buffering ---
+                // Two buffers to avoid memcpy - swap lcd pointer instead
+                static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
 
-                // 1. Render Frame A (Full Render, frame_skip = 0)
+                // Save original lcd pointer
+                uint8_t* original_lcd = context->gb->lcd;
+
+                // 1. Render Frame A into frame_buffer[0]
+                context->gb->lcd = frame_buffer[0];
                 context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
@@ -1997,15 +2002,15 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
-                memcpy(frame_A_buffer, context->gb->lcd, LCD_BUFFER_BYTES);
 
                 // 2. Determine if the screen is static and if sprites were rendered.
                 bool screen_is_static =
-                    (memcmp(frame_A_buffer, context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+                    (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
                 bool has_blendable_sprites =
                     context->gb->direct.blend_rect_x_min < context->gb->direct.blend_rect_x_max;
 
-                // 3. Run the emulator for the second frame period.
+                // 3. Render Frame B into frame_buffer[1]
+                context->gb->lcd = frame_buffer[1];
                 context->gb->direct.frame_skip = screen_is_static;
 #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
@@ -2017,12 +2022,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
-                // 4. Decide whether to blend based on the preference setting
+                // 4. Blend and copy result back to original lcd buffer
                 if (preferences_blend_frames == 1)  // "On" mode
                 {
                     if (!screen_is_static)
                     {
-                        blend_frames_lut(frame_A_buffer, context->gb->lcd);
+                        blend_frames_lut(frame_buffer[0], frame_buffer[1]);
                     }
                 }
                 else if (preferences_blend_frames == 2)  // "Auto" mode
@@ -2030,13 +2035,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     if (!screen_is_static && has_blendable_sprites)
                     {
                         blend_frames_lut_rect(
-                            frame_A_buffer, context->gb->lcd, context->gb->direct.blend_rect_x_min,
+                            frame_buffer[0], frame_buffer[1], context->gb->direct.blend_rect_x_min,
                             context->gb->direct.blend_rect_y_min,
                             context->gb->direct.blend_rect_x_max,
                             context->gb->direct.blend_rect_y_max
                         );
                     }
                 }
+
+                // Copy result from frame_buffer[1] to original lcd
+                memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                context->gb->lcd = original_lcd;
             }
             else
             {
