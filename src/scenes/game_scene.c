@@ -260,50 +260,35 @@ __section__(".rare") static void generate_dither_luts(void)
     }
 }
 
-static uint8_t g_blend_lut[2][256][256];
-static bool g_blend_lut_generated = false;
+static const uint8_t g_blend_dither[2][4][7] = {
+    // Even rows (y & 1 == 0)
+    {
+        {0, 0, 1, 1, 2, 2, 3},  // pos 0
+        {0, 1, 1, 2, 2, 3, 3},  // pos 1
+        {0, 0, 1, 1, 2, 2, 3},  // pos 2
+        {0, 1, 1, 2, 2, 3, 3},  // pos 3
+    },
+    // Odd rows (y & 1 == 1)
+    {
+        {0, 1, 1, 2, 2, 3, 3},  // pos 0
+        {0, 0, 1, 1, 2, 2, 3},  // pos 1
+        {0, 1, 1, 2, 2, 3, 3},  // pos 2
+        {0, 0, 1, 1, 2, 2, 3},  // pos 3
+    }
+};
 
-__section__(".rare") static void generate_blend_lut(void)
+static inline uint8_t blend_byte(uint8_t a, uint8_t b, int y_parity)
 {
-    if (g_blend_lut_generated)
-    {
-        return;
-    }
+    const uint8_t (*dt)[7] = g_blend_dither[y_parity];
 
-    static const uint8_t dither_patterns[7][2] = {{0, 0}, {0, 1}, {1, 1}, {1, 2},
-                                                  {2, 2}, {2, 3}, {3, 3}};
+    // Process all 4 pixel pairs in parallel using bit manipulation
+    uint8_t pa0 = (a >> 0) & 3, pb0 = (b >> 0) & 3;
+    uint8_t pa1 = (a >> 2) & 3, pb1 = (b >> 2) & 3;
+    uint8_t pa2 = (a >> 4) & 3, pb2 = (b >> 4) & 3;
+    uint8_t pa3 = (a >> 6) & 3, pb3 = (b >> 6) & 3;
 
-    for (int y_is_odd = 0; y_is_odd < 2; y_is_odd++)
-    {
-        for (int a_byte_int = 0; a_byte_int < 256; a_byte_int++)
-        {
-            for (int b_byte_int = 0; b_byte_int < 256; b_byte_int++)
-            {
-                uint8_t a_byte = (uint8_t)a_byte_int;
-                uint8_t b_byte = (uint8_t)b_byte_int;
-                uint8_t blended_byte = 0;
-
-                uint8_t pa0 = (a_byte >> 0) & 3;
-                uint8_t pb0 = (b_byte >> 0) & 3;
-                blended_byte |= dither_patterns[pa0 + pb0][(y_is_odd + 0) & 1] << 0;
-
-                uint8_t pa1 = (a_byte >> 2) & 3;
-                uint8_t pb1 = (b_byte >> 2) & 3;
-                blended_byte |= dither_patterns[pa1 + pb1][(y_is_odd + 1) & 1] << 2;
-
-                uint8_t pa2 = (a_byte >> 4) & 3;
-                uint8_t pb2 = (b_byte >> 4) & 3;
-                blended_byte |= dither_patterns[pa2 + pb2][(y_is_odd + 2) & 1] << 4;
-
-                uint8_t pa3 = (a_byte >> 6) & 3;
-                uint8_t pb3 = (b_byte >> 6) & 3;
-                blended_byte |= dither_patterns[pa3 + pb3][(y_is_odd + 3) & 1] << 6;
-
-                g_blend_lut[y_is_odd][a_byte_int][b_byte_int] = blended_byte;
-            }
-        }
-    }
-    g_blend_lut_generated = true;
+    return (dt[0][pa0 + pb0] << 0) | (dt[1][pa1 + pb1] << 2) | (dt[2][pa2 + pb2] << 4) |
+           (dt[3][pa3 + pb3] << 6);
 }
 
 // forces screen refresh
@@ -680,7 +665,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     CB_GameScene_generateBitmask();
 
     generate_dither_luts();
-    generate_blend_lut();
 
     CB_GameScene_selector_init(gameScene);
 
@@ -1308,12 +1292,11 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     return;
 }
 
-static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
+static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
 {
     for (int y = 0; y < LCD_HEIGHT; y++)
     {
-        uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
-
+        int y_parity = y & 1;
         uint32_t* frame_a_32 = (uint32_t*)frame_a;
         uint32_t* frame_b_32 = (uint32_t*)frame_b_and_dest;
 
@@ -1322,10 +1305,11 @@ static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
             uint32_t a_word = frame_a_32[x];
             uint32_t b_word = frame_b_32[x];
 
-            uint8_t b0 = lut_row[(a_word >> 0) & 0xFF][(b_word >> 0) & 0xFF];
-            uint8_t b1 = lut_row[(a_word >> 8) & 0xFF][(b_word >> 8) & 0xFF];
-            uint8_t b2 = lut_row[(a_word >> 16) & 0xFF][(b_word >> 16) & 0xFF];
-            uint8_t b3 = lut_row[(a_word >> 24) & 0xFF][(b_word >> 24) & 0xFF];
+            // Blend 4 bytes using compact dither table
+            uint8_t b0 = blend_byte((a_word >> 0) & 0xFF, (b_word >> 0) & 0xFF, y_parity);
+            uint8_t b1 = blend_byte((a_word >> 8) & 0xFF, (b_word >> 8) & 0xFF, y_parity);
+            uint8_t b2 = blend_byte((a_word >> 16) & 0xFF, (b_word >> 16) & 0xFF, y_parity);
+            uint8_t b3 = blend_byte((a_word >> 24) & 0xFF, (b_word >> 24) & 0xFF, y_parity);
 
             uint32_t blended_word = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
 
@@ -1337,7 +1321,7 @@ static void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
     }
 }
 
-static void blend_frames_lut_rect(
+static __section__(".text.tick") void blend_frames_lut_rect(
     uint8_t* frame_a, uint8_t* frame_b_and_dest, uint8_t x_min, uint8_t y_min, uint8_t x_max,
     uint8_t y_max
 )
@@ -1352,8 +1336,7 @@ static void blend_frames_lut_rect(
 
     for (int y = y_min; y < y_max; y++)
     {
-        uint8_t (*lut_row)[256] = g_blend_lut[y & 1];
-
+        int y_parity = y & 1;
         uint8_t* row_a = frame_a + (y * LCD_WIDTH_PACKED);
         uint8_t* row_b = frame_b_and_dest + (y * LCD_WIDTH_PACKED);
 
@@ -1361,7 +1344,7 @@ static void blend_frames_lut_rect(
 
         while ((x < end_x_byte) && (((uintptr_t)(row_a + x) & 3) != 0))
         {
-            row_b[x] = lut_row[row_a[x]][row_b[x]];
+            row_b[x] = blend_byte(row_a[x], row_b[x], y_parity);
             x++;
         }
 
@@ -1374,10 +1357,10 @@ static void blend_frames_lut_rect(
             uint32_t a_word = row_a_32[i];
             uint32_t b_word = row_b_32[i];
 
-            uint8_t b0 = lut_row[(a_word >> 0) & 0xFF][(b_word >> 0) & 0xFF];
-            uint8_t b1 = lut_row[(a_word >> 8) & 0xFF][(b_word >> 8) & 0xFF];
-            uint8_t b2 = lut_row[(a_word >> 16) & 0xFF][(b_word >> 16) & 0xFF];
-            uint8_t b3 = lut_row[(a_word >> 24) & 0xFF][(b_word >> 24) & 0xFF];
+            uint8_t b0 = blend_byte((a_word >> 0) & 0xFF, (b_word >> 0) & 0xFF, y_parity);
+            uint8_t b1 = blend_byte((a_word >> 8) & 0xFF, (b_word >> 8) & 0xFF, y_parity);
+            uint8_t b2 = blend_byte((a_word >> 16) & 0xFF, (b_word >> 16) & 0xFF, y_parity);
+            uint8_t b3 = blend_byte((a_word >> 24) & 0xFF, (b_word >> 24) & 0xFF, y_parity);
 
             row_b_32[i] = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
         }
@@ -1385,7 +1368,7 @@ static void blend_frames_lut_rect(
         x += end_x_word * 4;
         while (x < end_x_byte)
         {
-            row_b[x] = lut_row[row_a[x]][row_b[x]];
+            row_b[x] = blend_byte(row_a[x], row_b[x], y_parity);
             x++;
         }
     }
