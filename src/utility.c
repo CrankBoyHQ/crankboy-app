@@ -1319,7 +1319,8 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     }
 
     struct mini_gzip gz;
-    int status = mini_gz_start(&gz, dat, size);
+    // Subtract 8 bytes for gzip trailer (CRC32 + ISIZE) before calling mini_gz_start
+    int status = mini_gz_start(&gz, dat, size - 8);
     if (status != 0)
     {
         cb_free(dat);
@@ -1340,6 +1341,7 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     if (o_size)
         *o_size = decompressed_size;
 
+    cb_free(dat);
     return (char*)decompressed;
 }
 
