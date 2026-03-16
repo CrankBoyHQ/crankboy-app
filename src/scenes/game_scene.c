@@ -2340,21 +2340,30 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (gameScene->cartridge_has_rtc)
             {
-                // Get the current time from the system clock.
-                unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+                // Check RTC once per second (60 frames at 60fps, 30 frames at 30fps)
+                static int rtc_frame_counter = 0;
+                int rtc_check_interval = preferences_frame_skip ? 30 : 60;
 
-                // Check if time has passed since our last check.
-                if (now > gameScene->rtc_time)
+                if (++rtc_frame_counter >= rtc_check_interval)
                 {
-                    unsigned int seconds_passed = now - gameScene->rtc_time;
-                    gameScene->rtc_seconds_to_catch_up += seconds_passed;
-                    gameScene->rtc_time = now;
-                }
+                    rtc_frame_counter = 0;
 
-                if (gameScene->rtc_seconds_to_catch_up > 0)
-                {
-                    gb_catch_up_rtc_direct(context->gb, gameScene->rtc_seconds_to_catch_up);
-                    gameScene->rtc_seconds_to_catch_up = 0;
+                    // Get the current time from the system clock.
+                    unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+
+                    // Check if time has passed since our last check.
+                    if (now > gameScene->rtc_time)
+                    {
+                        unsigned int seconds_passed = now - gameScene->rtc_time;
+                        gameScene->rtc_seconds_to_catch_up += seconds_passed;
+                        gameScene->rtc_time = now;
+                    }
+
+                    if (gameScene->rtc_seconds_to_catch_up > 0)
+                    {
+                        gb_catch_up_rtc_direct(context->gb, gameScene->rtc_seconds_to_catch_up);
+                        gameScene->rtc_seconds_to_catch_up = 0;
+                    }
                 }
             }
 
