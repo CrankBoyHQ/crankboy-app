@@ -1,9 +1,11 @@
+#include "../preferences.h"
 #include "../scriptutil.h"
 
-#define DESCRIPTION                                                              \
-    "- Widescreen display\n" \
-    "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n" \
-    "- Automatically enables frame blending in certain rooms where flicker is used to imitate transparency\n" \
+#define DESCRIPTION                                                                             \
+    "- Widescreen display\n"                                                                    \
+    "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n"               \
+    "- Automatically enables frame blending in certain rooms where flicker is used to imitate " \
+    "transparency\n"                                                                            \
     "\nCreated by: NaOH (Sodium Hydroxide)"
 
 #define ASSETS_DIR SCRIPT_ASSETS_DIR "cv2br/"
@@ -50,15 +52,15 @@ static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, in
     }
 }
 
-static void drawBCD12(ScriptData* data, uint8_t* lcd, int rowbytes, int bcd, int digits, int x, int y)
+static void drawBCD12(
+    ScriptData* data, uint8_t* lcd, int rowbytes, int bcd, int digits, int x, int y
+)
 {
     while (digits > 0)
     {
         --digits;
         int v = (bcd >> (digits * 4)) & 0xF;
-        drawTile12(
-            data, lcd, rowbytes, v, x, y
-        );
+        drawTile12(data, lcd, rowbytes, v, x, y);
         x += 12;
     }
 }
@@ -131,7 +133,7 @@ static int get_game_mode(gb_s* gb, ScriptData* data)
 
     if (pd_rev == PD_REV_B)
     {
-        force_pref(overclock, 2); // means overclock ×4
+        force_pref(overclock, 2);  // means overclock ×4
     }
 
     // just to make QA easier, reduce variables
@@ -139,28 +141,34 @@ static int get_game_mode(gb_s* gb, ScriptData* data)
 
     switch (game_state)
     {
-    case 0: return GAME_STATE_LOGO;
+    case 0:
+        return GAME_STATE_LOGO;
     case 1:
     case 2:
         return GAME_STATE_TITLE;
     case 3:
-        {
-            int test_tile = gb->vram[0x9989 - VRAM_ADDR];
-            if (test_tile == 0x6F) return GAME_STATE_STAGE_SELECT;
-            return GAME_STATE_TITLE;
-        }
-        break;
-    case 4: return GAME_STATE_STAGE_LOADING;
+    {
+        int test_tile = gb->vram[0x9989 - VRAM_ADDR];
+        if (test_tile == 0x6F)
+            return GAME_STATE_STAGE_SELECT;
+        return GAME_STATE_TITLE;
+    }
+    break;
+    case 4:
+        return GAME_STATE_STAGE_LOADING;
 
     case 5:
-    case 6: return GAME_STATE_IN_GAME;
-    case 7: return GAME_STATE_GAME_OVER;
+    case 6:
+        return GAME_STATE_IN_GAME;
+    case 7:
+        return GAME_STATE_GAME_OVER;
     case 0xA:
         return GAME_STATE_SOUND_TEST;
     case 0xD:
         return GAME_STATE_PASSWORD;
     case 0xE:
-        if (gb->gb_reg.SCX == 0) return GAME_STATE_TITLE;
+        if (gb->gb_reg.SCX == 0)
+            return GAME_STATE_TITLE;
         return GAME_STATE_REEL;
     default:
         return GAME_STATE_UNKNOWN;
@@ -186,31 +194,35 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     {
     case GAME_STATE_LOGO:
         force_pref(blend_frames, true);
+        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
         force_pref(dither_stable, false);
         game_picture_scaling = 0;
-        game_picture_y_top = 6; // eyeballed
+        game_picture_y_top = 6;  // eyeballed
         break;
     case GAME_STATE_TITLE:
     case GAME_STATE_REEL:
         force_pref(blend_frames, true);
+        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
         force_pref(dither_stable, false);
         game_picture_scaling = 4;
-        game_picture_y_top = 4; // eyeballed
+        game_picture_y_top = 4;  // eyeballed
         if (game_state == GAME_STATE_TITLE)
-            game_picture_y_top = 8; // eyeballed
+            game_picture_y_top = 8;  // eyeballed
         break;
     case GAME_STATE_PASSWORD:
     case GAME_STATE_SOUND_TEST:
         force_pref(blend_frames, false);
+        force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
         force_pref(dither_stable, false);
         game_picture_background_color = kColorBlack;
         break;
     case GAME_STATE_STAGE_SELECT:
         force_pref(blend_frames, false);
+        force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
         force_pref(dither_stable, false);
         // 4 scanlines : 7 rows
         game_picture_scaling = 4;
-        game_picture_y_top = 4; // eyeballed
+        game_picture_y_top = 4;  // eyeballed
         break;
     case GAME_STATE_STAGE_LOADING:
     case GAME_STATE_IN_GAME:
@@ -233,11 +245,13 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
                 blend = true;
             }
             force_pref(blend_frames, blend);
+            force_pref(dynamic_rate, blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
             force_pref(dither_stable, !blend);
         }
         break;
     case GAME_STATE_GAME_OVER:
         force_pref(blend_frames, true);
+        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
         force_pref(dither_stable, false);
         break;
     default:
@@ -254,12 +268,14 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     }
 
     // has level intro timer started
-    if (game_state == GAME_STATE_STAGE_SELECT && ram_peek(0xCB81) == 7 && (stages_beaten & 0x0F) != 0x0F)
+    if (game_state == GAME_STATE_STAGE_SELECT && ram_peek(0xCB81) == 7 &&
+        (stages_beaten & 0x0F) != 0x0F)
     {
         data->level_start_timer += frames_elapsed;
 
         int scroll_offset = (data->level_start_timer - 30) / 4;
-        if (scroll_offset > 3) scroll_offset = 3;
+        if (scroll_offset > 3)
+            scroll_offset = 3;
 
         if (scroll_offset > 0)
         {
@@ -274,8 +290,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     // calculate bounds correctly
     if (game_picture_scaling > 0)
     {
-        game_picture_y_bottom =
-            (LCD_ROWS * game_picture_scaling) / (2 * game_picture_scaling - 1);
+        game_picture_y_bottom = (LCD_ROWS * game_picture_scaling) / (2 * game_picture_scaling - 1);
     }
     else
     {
@@ -292,7 +307,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     int rowbytes = PLAYDATE_ROW_STRIDE;
 
     int screen_x0 = game_picture_x_offset;
-    int screen_x1 = game_picture_x_offset + LCD_WIDTH*2;
+    int screen_x1 = game_picture_x_offset + LCD_WIDTH * 2;
 
     bool show_sidebar = (game_state == GAME_STATE_IN_GAME);
     bool refresh = show_sidebar != data->prev_show_sidebar || gbScreenRequiresFullRefresh;
@@ -318,24 +333,21 @@ static void on_draw(gb_s* gb, ScriptData* data)
         int score = (ram_peek(0xC8C4) << 16) | (ram_peek(0xC8C3) << 8) | ram_peek(0xC8C2);
         int hearts = ram_peek(0xCC86);
         int rest = ram_peek(0xC8C5);
-        int hp[2] = {
-            ram_peek(0xCC89),
-            ram_peek(0xCC90)
-        };
+        int hp[2] = {ram_peek(0xCC89), ram_peek(0xCC90)};
         int subweapon = ram_peek(0xC8D0);
 
-        #define DRAW_BCD(field, digits, x, y) \
-            if (field != data->field || refresh) \
-            { \
-                data->field = field; \
-                drawBCD12(data, lcd, rowbytes, field, digits, x, y); \
-                playdate->graphics->markUpdatedRows(y, y+11); \
-            }
+#define DRAW_BCD(field, digits, x, y)                        \
+    if (field != data->field || refresh)                     \
+    {                                                        \
+        data->field = field;                                 \
+        drawBCD12(data, lcd, rowbytes, field, digits, x, y); \
+        playdate->graphics->markUpdatedRows(y, y + 11);      \
+    }
 
-        DRAW_BCD(time, 3, LCD_COLUMNS - 12*3, 2);
-        DRAW_BCD(score, 6, LCD_COLUMNS - 12*6, LCD_ROWS - 12);
+        DRAW_BCD(time, 3, LCD_COLUMNS - 12 * 3, 2);
+        DRAW_BCD(score, 6, LCD_COLUMNS - 12 * 6, LCD_ROWS - 12);
         DRAW_BCD(hearts, 2, screen_x1 + 42, 66);
-        DRAW_BCD(rest, 2, LCD_COLUMNS - 12*2, 202);
+        DRAW_BCD(rest, 2, LCD_COLUMNS - 12 * 2, 202);
 
         for (int k = 0; k <= 1; ++k)
         {
@@ -343,18 +355,20 @@ static void on_draw(gb_s* gb, ScriptData* data)
             {
                 data->hp[k] = hp[k];
 
-                int x = 25 + screen_x1 + (41-25)*k;
+                int x = 25 + screen_x1 + (41 - 25) * k;
                 int y = 98;
 
                 for (int i = 0; i < 6; ++i)
                 {
                     int tidx = 12;
-                    if (data->hp[k] > i*2) tidx = 11;
-                    if (data->hp[k] > i*2+1) tidx = 10;
+                    if (data->hp[k] > i * 2)
+                        tidx = 11;
+                    if (data->hp[k] > i * 2 + 1)
+                        tidx = 10;
 
-                    drawTile12(data, lcd, rowbytes, tidx, x, y + (5 - i)*12);
+                    drawTile12(data, lcd, rowbytes, tidx, x, y + (5 - i) * 12);
                 }
-                playdate->graphics->markUpdatedRows(y, y + 6*12 - 1);
+                playdate->graphics->markUpdatedRows(y, y + 6 * 12 - 1);
             }
         }
 
@@ -384,75 +398,60 @@ static void on_draw(gb_s* gb, ScriptData* data)
             int sw_t2 = gb->vram_base[0x9E29];
             int sw_t3 = gb->vram_base[0x9E2A];
             draw_vram_tile(sw_t0, true, 2, x, y);
-            draw_vram_tile(sw_t1, true, 2, x+16, y);
-            draw_vram_tile(sw_t2, true, 2, x, y+16);
-            draw_vram_tile(sw_t3, true, 2, x+16, y+16);
+            draw_vram_tile(sw_t1, true, 2, x + 16, y);
+            draw_vram_tile(sw_t2, true, 2, x, y + 16);
+            draw_vram_tile(sw_t3, true, 2, x + 16, y + 16);
 
-            playdate->graphics->markUpdatedRows(y, y+31);
+            playdate->graphics->markUpdatedRows(y, y + 31);
         }
     }
 
-    switch(game_state)
+    switch (game_state)
     {
     case GAME_STATE_TITLE:
         // cover up mysterious playdate-only glitch
-        playdate->graphics->fillRect(
-            0, LCD_ROWS - 2, LCD_COLUMNS, 2, kColorWhite
-        );
+        playdate->graphics->fillRect(0, LCD_ROWS - 2, LCD_COLUMNS, 2, kColorWhite);
         break;
     case GAME_STATE_PASSWORD:
     case GAME_STATE_SOUND_TEST:
         // mysterious
-        playdate->graphics->fillRect(
-            0, 0, screen_x0, LCD_ROWS, kColorBlack
-        );
-        playdate->graphics->fillRect(
-            screen_x1, 0, LCD_COLUMNS - screen_x1, LCD_ROWS, kColorBlack
-        );
+        playdate->graphics->fillRect(0, 0, screen_x0, LCD_ROWS, kColorBlack);
+        playdate->graphics->fillRect(screen_x1, 0, LCD_COLUMNS - screen_x1, LCD_ROWS, kColorBlack);
         break;
     case GAME_STATE_STAGE_SELECT:
+    {
+        // don't draw bar in castle-appear cutscene
+        if ((stages_beaten & 0x0F) == 0x0F)
+            break;
+
+        int y0 = get_game_scanline_row(
+            game_picture_scaling, preferences_dither_line, 8 - game_picture_y_top
+        );
+        int y1 = get_game_scanline_row(
+            game_picture_scaling, preferences_dither_line, 17 - game_picture_y_top
+        );
+
+        // not sure why this is needed
+
+        if (y1 - y0 >= 12 && y1 - y0 <= 18 && data->is_in_stage_select >= 2)
         {
-            // don't draw bar in castle-appear cutscene
-            if ((stages_beaten & 0x0F) == 0x0F) break;
-
-            int y0 = get_game_scanline_row(
-                game_picture_scaling, preferences_dither_line,
-                8 - game_picture_y_top
-            );
-            int y1 = get_game_scanline_row(
-                game_picture_scaling, preferences_dither_line,
-                17 - game_picture_y_top
+            // bar
+            playdate->graphics->fillRect(0, y0, screen_x0, y1 - y0, kColorBlack);
+            playdate->graphics->fillRect(
+                screen_x1, y0, LCD_COLUMNS - screen_x1, y1 - y0, kColorBlack
             );
 
-            // not sure why this is needed
+            playdate->graphics->fillRect(0, y0, LCD_COLUMNS, 1, kColorBlack);
 
-            if (y1 - y0 >= 12 && y1 - y0 <= 18 && data->is_in_stage_select >= 2)
-            {
-                // bar
-                playdate->graphics->fillRect(
-                    0, y0, screen_x0, y1 - y0, kColorBlack
-                );
-                playdate->graphics->fillRect(
-                    screen_x1, y0, LCD_COLUMNS - screen_x1, y1 - y0, kColorBlack
-                );
-
-                playdate->graphics->fillRect(
-                    0, y0, LCD_COLUMNS, 1, kColorBlack
-                );
-
-                playdate->graphics->fillRect(
-                    0, y1-1, LCD_COLUMNS, 2, kColorBlack
-                );
-            }
-            if (y0 <= 3 && y0 > 0)
-            {
-                // top bar
-                playdate->graphics->fillRect(
-                    0, 0, LCD_COLUMNS, y0+1, kColorBlack
-                );
-            }
+            playdate->graphics->fillRect(0, y1 - 1, LCD_COLUMNS, 2, kColorBlack);
         }
-        break;
+        if (y0 <= 3 && y0 > 0)
+        {
+            // top bar
+            playdate->graphics->fillRect(0, 0, LCD_COLUMNS, y0 + 1, kColorBlack);
+        }
+    }
+    break;
 
     default:
         break;
