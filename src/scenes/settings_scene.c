@@ -1141,14 +1141,31 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     // dynamic rate adjustment
-    if (preferences_frame_skip)
+    if (preferences_frame_skip && !preferences_blend_frames)
     {
+        // Interlacing disabled in 30fps mode without frame blending
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
             .values = dynamic_rate_labels,
-            .description = "Only available when\n30 FPS mode is disabled.",
+            .description = "Only available when\n30 FPS mode is disabled,\nor when frame blending\nis enabled.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 0,
+            .rebuild_when_changed = 1,
+            .on_press = NULL,
+        };
+    }
+    else if (preferences_frame_skip && preferences_blend_frames)
+    {
+        // In 30fps mode with frame blending, only Off/On are available (no Auto)
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing",
+            .values = dynamic_rate_labels,
+            .description =
+                "Skips lines to keep the\nframerate smooth.\n \n"
+                "Off:\nFull quality, no skipping.\n \n"
+                "On:\nAlways on for a reliable\nspeed boost.",
+            .pref_var = &preferences_dynamic_rate,
+            .max_value = 2,  // Only Off and On (0 and 1), no Auto
             .rebuild_when_changed = 1,
             .on_press = NULL,
         };
@@ -1171,8 +1188,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-    // dynamic level
-    if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO && !preferences_frame_skip)
+    // dynamic level - only available in AUTO mode (not in 30fps+blending mode)
+    bool interlace_level_enabled = (preferences_dynamic_rate == DYNAMIC_RATE_AUTO) &&
+                                   !preferences_frame_skip;
+    if (interlace_level_enabled)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing level",

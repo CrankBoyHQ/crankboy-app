@@ -1332,6 +1332,27 @@ static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t
     }
 }
 
+// Composite interlaced frames: take even lines from frame_a, odd lines from frame_b
+static __section__(".text.tick") void composite_interlaced_frames(
+    uint8_t* frame_a, uint8_t* frame_b, uint8_t* dest
+)
+{
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        // Even lines (0, 2, 4...) come from frame_a at position y
+        // Odd lines (1, 3, 5...) come from frame_b at position y
+        uint8_t* src_ptr =
+            ((y & 1) == 0) ? &frame_a[y * LCD_WIDTH_PACKED] : &frame_b[y * LCD_WIDTH_PACKED];
+        uint32_t* src_32 = (uint32_t*)src_ptr;
+        uint32_t* dest_32 = (uint32_t*)&dest[y * LCD_WIDTH_PACKED];
+
+        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
+        {
+            dest_32[x] = src_32[x];
+        }
+    }
+}
+
 static __section__(".text.tick") void blend_frames_lut_rect(
     uint8_t* frame_a, uint8_t* frame_b_and_dest, uint8_t x_min, uint8_t y_min, uint8_t x_max,
     uint8_t y_max
@@ -1642,14 +1663,21 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
      * This dual approach provides stability during high-motion sequences while
      * remaining highly responsive to brief bursts of activity.
      *
-     * This entire feature is DISABLED in 30 FPS mode (`preferences_frame_skip`),
-     * as the visual disturbance is more pronounced at a lower framerate.
+     * In 30 FPS mode with frame blending, interlacing uses synchronized masks:
+     * Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
+     * When composited together, they form a complete, artifact-free image.
      */
 
     bool activate_dynamic_rate = false;
     bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
-    if (!preferences_frame_skip)
+    // Allow interlacing in 60fps mode, or in 30fps mode when frame blending is active.
+    // When frame blending with interlacing, Frame A and Frame B use complementary
+    // interlace masks so they combine to form a complete image when blended.
+    bool allow_interlace =
+        !preferences_frame_skip || (preferences_frame_skip && preferences_blend_frames);
+
+    if (allow_interlace)
     {
         if (preferences_dynamic_rate == DYNAMIC_RATE_ON)
         {
@@ -1692,7 +1720,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->interlace_lock_frames_remaining = adaptive_lock_duration;
     }
 
-    if (preferences_dynamic_rate != DYNAMIC_RATE_AUTO || preferences_frame_skip)
+    // Reset tendency counter when auto mode is off, or when frame skipping without blending
+    if (preferences_dynamic_rate != DYNAMIC_RATE_AUTO ||
+        (preferences_frame_skip && !preferences_blend_frames))
     {
         gameScene->interlace_tendency_counter = 0;
     }
@@ -1995,9 +2025,21 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 // Save original lcd pointer
                 uint8_t* original_lcd = context->gb->lcd;
 
+                // When interlacing is active in 30fps mode, use synchronized masks:
+                // Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
+                // When composited, they combine into a full-resolution image.
+                uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
+                bool use_synced_interlace = activate_dynamic_rate;
+
                 // 1. Render Frame A into frame_buffer[0]
                 context->gb->lcd = frame_buffer[0];
                 context->gb->direct.frame_skip = 0;
+                if (use_synced_interlace)
+                {
+                    context->gb->direct.interlace_mask = 0x55;  // Even lines: 01010101
+                    // Clear buffer to ensure skipped lines don't contain garbage
+                    memset(frame_buffer[0], 0, LCD_BUFFER_BYTES);
+                }
 #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
@@ -2017,6 +2059,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 // 3. Render Frame B into frame_buffer[1]
                 context->gb->lcd = frame_buffer[1];
                 context->gb->direct.frame_skip = screen_is_static;
+                if (use_synced_interlace)
+                {
+                    context->gb->direct.interlace_mask = 0xAA;  // Odd lines: 10101010
+                    // Clear buffer to ensure skipped lines don't contain garbage
+                    memset(frame_buffer[1], 0, LCD_BUFFER_BYTES);
+                }
 #ifdef DTCM_ALLOC
                 DTCM_VERIFY_DEBUG();
                 run_frame_function_pointer(context->gb);
@@ -2027,29 +2075,66 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
-                // 4. Blend and copy result back to original lcd buffer
+                // Restore original interlace mask for other rendering modes
+                context->gb->direct.interlace_mask = saved_interlace_mask;
+
+                // 4. Blend/composite and copy result back to original lcd buffer
                 if (preferences_blend_frames == 1)  // "On" mode
                 {
                     if (!screen_is_static)
                     {
-                        blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                        if (use_synced_interlace)
+                        {
+                            // Composite interlaced frames instead of blending
+                            composite_interlaced_frames(
+                                frame_buffer[0], frame_buffer[1], original_lcd
+                            );
+                        }
+                        else
+                        {
+                            blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                        }
+                    }
+                    else
+                    {
+                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }
                 }
                 else if (preferences_blend_frames == 2)  // "Auto" mode
                 {
                     if (!screen_is_static && has_blendable_sprites)
                     {
-                        blend_frames_lut_rect(
-                            frame_buffer[0], frame_buffer[1], context->gb->direct.blend_rect_x_min,
-                            context->gb->direct.blend_rect_y_min,
-                            context->gb->direct.blend_rect_x_max,
-                            context->gb->direct.blend_rect_y_max
-                        );
+                        if (use_synced_interlace)
+                        {
+                            // For auto mode with interlacing, composite the full frames
+                            // (sprites will be in both frames anyway)
+                            composite_interlaced_frames(
+                                frame_buffer[0], frame_buffer[1], original_lcd
+                            );
+                        }
+                        else
+                        {
+                            blend_frames_lut_rect(
+                                frame_buffer[0], frame_buffer[1],
+                                context->gb->direct.blend_rect_x_min,
+                                context->gb->direct.blend_rect_y_min,
+                                context->gb->direct.blend_rect_x_max,
+                                context->gb->direct.blend_rect_y_max
+                            );
+                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                        }
+                    }
+                    else
+                    {
+                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }
                 }
+                else
+                {
+                    memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                }
 
-                // Copy result from frame_buffer[1] to original lcd
-                memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                 context->gb->lcd = original_lcd;
             }
             else
