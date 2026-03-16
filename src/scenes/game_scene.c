@@ -606,6 +606,11 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->interlace_tendency_counter = 0;
     gameScene->interlace_lock_frames_remaining = 0;
 
+    // Initialize cached interlacing threshold
+    gameScene->cached_dynamic_level = preferences_dynamic_level;
+    int percentage_threshold = 25 + (preferences_dynamic_level * 5);
+    gameScene->cached_line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
+
     gameScene->isCurrentlySaving = false;
     gameScene->is_mirroring = false;
 
@@ -2191,10 +2196,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
             if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
             {
-                int percentage_threshold = 25 + (preferences_dynamic_level * 5);
-                int line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
+                // Recalculate threshold only when preference changes
+                if (preferences_dynamic_level != gameScene->cached_dynamic_level)
+                {
+                    gameScene->cached_dynamic_level = preferences_dynamic_level;
+                    int percentage_threshold = 25 + (preferences_dynamic_level * 5);
+                    gameScene->cached_line_threshold =
+                        (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
+                }
 
-                if (updated_playdate_lines > line_threshold)
+                if (updated_playdate_lines > gameScene->cached_line_threshold)
                 {
                     gameScene->interlace_tendency_counter += 2;
                 }
