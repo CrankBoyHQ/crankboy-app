@@ -1268,7 +1268,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         {
             for (int i = 0; i < len; ++i)
             {
-                uint32_t current_pos = (read_pos + i) % AUDIO_RING_BUFFER_SIZE;
+                uint32_t current_pos = (read_pos + i) & AUDIO_RING_BUFFER_MASK;
                 left[i] = g_audio_sync_buffer.left[current_pos];
                 if (left != right)
                 {

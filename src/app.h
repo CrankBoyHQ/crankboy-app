@@ -38,9 +38,11 @@ extern pthread_mutex_t audio_mutex;
 #define __space __attribute__((optimize("Os")))
 #endif
 
-#define AUDIO_RING_BUFFER_SIZE 4096  // ~90ms of audio at 44.1kHz.
+#define AUDIO_RING_BUFFER_SIZE 4096                          // ~90ms of audio at 44.1kHz.
+#define AUDIO_RING_BUFFER_MASK (AUDIO_RING_BUFFER_SIZE - 1)  // For fast bitwise modulo
 
-//#define CRANKBOY_OFFICIAL_CATALOG // For the official catalog release from the crankboy team. Not for third-party catalog releases.
+// #define CRANKBOY_OFFICIAL_CATALOG // For the official catalog release from the crankboy team. Not
+// for third-party catalog releases.
 
 typedef struct
 {
@@ -50,7 +52,8 @@ typedef struct
     atomic_uint read_pos;
 } AudioSyncBuffer;
 
-enum cgb_support_e {
+enum cgb_support_e
+{
     // these enum values are cached to disk,
     // so don't modify existing ones.
     GB_SUPPORT_DMG = 1,
@@ -75,7 +78,7 @@ typedef struct
 
     // CRC32 of rom's contents
     uint32_t crc32;
-    
+
     // TODO: add these
     bool rom_has_battery;
     enum cgb_support_e rom_cgb_support;
@@ -151,20 +154,20 @@ typedef struct CB_Application
 
     // can use restricted playdate functionality.
     bool hasSystemAccess : 1;
-    
+
     // true when menu is open
     bool currentlyPaused : 1;
-    
+
     // should check the latest-update as saved on the disk
     bool shouldCheckUpdateInfo : 1;
-    
+
     bool hbApiUseHTTPS : 1;
-    
+
     bool parentalLockEngaged : 1;
-    
+
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;
-    
+
     char* hbApiDomain;
     char* hbApiPath;
     char* hbSearchExtraFlags;
@@ -177,8 +180,8 @@ typedef struct CB_Application
     // - no per-game/global settings distinction
     // - some settings become inaccessible
     bool migration_modal_needed;
-    char* bundled_rom;  // (path to bundled rom)
-    int bundled_rom_cgb_mode; // 0: unspecified. 1: force dmg. 2: force cgb.
+    char* bundled_rom;         // (path to bundled rom)
+    int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
 } CB_Application;
 
 extern CB_Application* CB_App;

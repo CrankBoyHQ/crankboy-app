@@ -115,7 +115,7 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
     uint32_t write_pos_local = atomic_load(&g_audio_sync_buffer.write_pos);
     for (int i = 0; i < samples_to_generate; ++i)
     {
-        uint32_t current_pos = (write_pos_local + i) % AUDIO_RING_BUFFER_SIZE;
+        uint32_t current_pos = (write_pos_local + i) & AUDIO_RING_BUFFER_MASK;
         g_audio_sync_buffer.left[current_pos] = temp_left[i];
         if (gameScene->is_stereo)
             g_audio_sync_buffer.right[current_pos] = temp_right[i];
