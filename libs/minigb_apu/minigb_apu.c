@@ -1187,6 +1187,33 @@ __attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
 #endif  // TARGET_PLAYDATE
 
 /**
+ * Helper to clear both audio buffers (mono or stereo).
+ */
+#if TARGET_PLAYDATE
+__attribute__((always_inline)) static inline void clear_audio_buffers(
+    int16_t* left, int16_t* right, int len
+)
+{
+    audio_buffer_clear_optimized(left, len);
+    if (left != right)
+    {
+        audio_buffer_clear_optimized(right, len);
+    }
+}
+#else
+__attribute__((always_inline)) static inline void clear_audio_buffers(
+    int16_t* left, int16_t* right, int len
+)
+{
+    memset(left, 0, len * sizeof(int16_t));
+    if (left != right)
+    {
+        memset(right, 0, len * sizeof(int16_t));
+    }
+}
+#endif
+
+/**
  * Playdate audio callback function.
  */
 __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len)
@@ -1201,19 +1228,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
     if (!gameScene)
     {
-#if TARGET_PLAYDATE
-        audio_buffer_clear_optimized(left, len);
-        if (left != right)
-        {
-            audio_buffer_clear_optimized(right, len);
-        }
-#else
-        memset(left, 0, len * sizeof(int16_t));
-        if (left != right)
-        {
-            memset(right, 0, len * sizeof(int16_t));
-        }
-#endif
+        clear_audio_buffers(left, right, len);
         return 1;
     }
 
@@ -1221,19 +1236,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
     if (gameScene->audioLocked)
     {
-#if TARGET_PLAYDATE
-        audio_buffer_clear_optimized(left, len);
-        if (left != right)
-        {
-            audio_buffer_clear_optimized(right, len);
-        }
-#else
-        memset(left, 0, len * sizeof(int16_t));
-        if (left != right)
-        {
-            memset(right, 0, len * sizeof(int16_t));
-        }
-#endif
+        clear_audio_buffers(left, right, len);
 #if TARGET_PLAYDATE
         audio->capacitor_l = 0;
         audio->capacitor_r = 0;
@@ -1259,19 +1262,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             playdate->system->logToConsole(
                 "AUDIO UNDERRUN! available: %d, needed: %d", samples_available, len
             );
-#if TARGET_PLAYDATE
-            audio_buffer_clear_optimized(left, len);
-            if (left != right)
-            {
-                audio_buffer_clear_optimized(right, len);
-            }
-#else
-            memset(left, 0, len * sizeof(int16_t));
-            if (left != right)
-            {
-                memset(right, 0, len * sizeof(int16_t));
-            }
-#endif
+            clear_audio_buffers(left, right, len);
         }
         else
         {
