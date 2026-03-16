@@ -2151,6 +2151,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     uint8_t* cur = &current_lcd[y * LCD_WIDTH_PACKED];
                     uint8_t* prv = &previous_lcd[y * LCD_WIDTH_PACKED];
 
+                    // Prefetch next row while comparing current
+                    if (y < LCD_HEIGHT - 1)
+                    {
+                        __builtin_prefetch(&current_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
+                        __builtin_prefetch(&previous_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
+                    }
+
                     if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
                     {
                         line_has_changed[y >> 4] |= (1 << (y & 0xF));
