@@ -1296,6 +1296,12 @@ static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t
 {
     for (int y = 0; y < LCD_HEIGHT; y++)
     {
+        if (y < LCD_HEIGHT - 1)
+        {
+            __builtin_prefetch(frame_a + LCD_WIDTH_PACKED, 0, 0);
+            __builtin_prefetch(frame_b_and_dest + LCD_WIDTH_PACKED, 1, 0);
+        }
+
         int y_parity = y & 1;
         uint32_t* frame_a_32 = (uint32_t*)frame_a;
         uint32_t* frame_b_32 = (uint32_t*)frame_b_and_dest;
@@ -1336,6 +1342,14 @@ static __section__(".text.tick") void blend_frames_lut_rect(
 
     for (int y = y_min; y < y_max; y++)
     {
+        if (y < y_max - 1)
+        {
+            uint8_t* next_row_a = frame_a + ((y + 1) * LCD_WIDTH_PACKED) + start_x_byte;
+            uint8_t* next_row_b = frame_b_and_dest + ((y + 1) * LCD_WIDTH_PACKED) + start_x_byte;
+            __builtin_prefetch(next_row_a, 0, 0);
+            __builtin_prefetch(next_row_b, 1, 0);
+        }
+
         int y_parity = y & 1;
         uint8_t* row_a = frame_a + (y * LCD_WIDTH_PACKED);
         uint8_t* row_b = frame_b_and_dest + (y * LCD_WIDTH_PACKED);
