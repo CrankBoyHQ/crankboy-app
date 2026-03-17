@@ -16,6 +16,7 @@ typedef struct ScriptData
     int prev_lives, prev_hp, prev_score;
 
     int flags_changing;
+    bool prev_blend;
 
     uint16_t glyphs12[0x60][12];
 } ScriptData;
@@ -115,8 +116,13 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     bool show_sidebar = gb->gb_reg.WY == 0x80;
 
-    force_pref(blend_frames, data->flags_changing > 0);
-    force_pref(dynamic_rate, data->flags_changing > 0 ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
+    bool should_blend = data->flags_changing > 0;
+    if (should_blend != data->prev_blend)
+    {
+        force_pref(blend_frames, should_blend);
+        force_pref(dynamic_rate, should_blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
+        data->prev_blend = should_blend;
+    }
 
     if (data->flags_changing > 0)
     {
@@ -145,75 +151,103 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 
 static void on_draw(gb_s* gb, ScriptData* data)
 {
-    uint8_t* lcd = playdate->graphics->getFrame();
-    int rowbytes = PLAYDATE_ROW_STRIDE;
-
     bool show_sidebar = gb->gb_reg.WY == 0x80;
 
-    int lives = ram_peek(0xC0E1);
-    int hp = ram_peek(0xFFA0);
-    int score = get_score(gb);
-
-    bool refresh_lives = lives != data->prev_lives;
-    bool refresh_hp = hp != data->prev_hp;
-    bool refresh_score = score != data->prev_score;
-
-    if (show_sidebar)
+    if (!show_sidebar)
     {
-        if (show_sidebar && (!data->prev_show_sidebar || gbScreenRequiresFullRefresh))
+        data->prev_show_sidebar = false;
+        return;
+    }
+
+    // Only read RAM values if sidebar was already showing (to detect changes)
+    // or if we need a full refresh
+    bool full_refresh = !data->prev_show_sidebar || gbScreenRequiresFullRefresh;
+
+    int lives = 0, hp = 0, score = 0;
+    bool refresh_lives = false, refresh_hp = false, refresh_score = false;
+
+    if (full_refresh)
+    {
+        refresh_lives = true;
+        refresh_hp = true;
+        refresh_score = true;
+    }
+    else
+    {
+        // Only read values to check if they changed
+        lives = ram_peek(0xC0E1);
+        hp = ram_peek(0xFFA0);
+        score = get_score(gb);
+
+        refresh_lives = lives != data->prev_lives;
+        refresh_hp = hp != data->prev_hp;
+        refresh_score = score != data->prev_score;
+
+        // Early exit if nothing changed
+        if (!refresh_lives && !refresh_hp && !refresh_score)
         {
-            refresh_lives = true;
-            refresh_hp = true;
-            refresh_score = true;
-
-            playdate->graphics->fillRect(320, 0, 80, 240, kColorWhite);
-            playdate->graphics->fillRect(320, 0, 1, 240, kColorBlack);
-            playdate->graphics->fillRect(321, 0, 2, 240, (uintptr_t)&lcdp_50);
-
-            script_draw_string12(data->glyphs12, lcd, rowbytes, "LIFE", ' ', 328, 50);
-            script_draw_string12(
-                data->glyphs12, lcd, rowbytes, "SCORE", ' ', 325, 240 - 16 - 12 - 2
-            );
-
-            playdate->graphics->markUpdatedRows(0, 240);
-        }
-
-        if (refresh_score)
-        {
-            int s = score;
-            for (int i = 0; i < 6; ++i)
-            {
-                int d = s % 10;
-                s /= 10;
-                script_draw_tiles12(
-                    data->glyphs12, lcd, rowbytes, '0' - ' ' + d, 325 + (5 - i) * 12, 240 - 14
-                );
-            }
-
-            playdate->graphics->markUpdatedRows(240 - 15, 240);
-        }
-
-        if (refresh_lives)
-        {
-            for (int i = 0; i < 4; ++i)
-            {
-                int t = ram_peek(0x9C0E + i);
-                draw_vram_tile(t, true, 2, 320 + 16 * i + 8, 4);
-            }
-            playdate->graphics->markUpdatedRows(0, 32);
-        }
-
-        if (refresh_hp)
-        {
-            for (int i = 0; i < 4; ++i)
-            {
-                int t = ram_peek(0x9C06 + i);
-                draw_vram_tile(t, true, 2, 320 + 16 * i + 8, 50 + 12 + 4);
-            }
-            playdate->graphics->markUpdatedRows(50 + 12, 50 + 12 + 32);
+            return;
         }
     }
 
+    uint8_t* lcd = playdate->graphics->getFrame();
+    int rowbytes = PLAYDATE_ROW_STRIDE;
+
+    if (full_refresh)
+    {
+        // Need to read values for initial draw
+        lives = ram_peek(0xC0E1);
+        hp = ram_peek(0xFFA0);
+        score = get_score(gb);
+
+        playdate->graphics->fillRect(320, 0, 80, 240, kColorWhite);
+        playdate->graphics->fillRect(320, 0, 1, 240, kColorBlack);
+        playdate->graphics->fillRect(321, 0, 2, 240, (uintptr_t)&lcdp_50);
+
+        script_draw_string12(data->glyphs12, lcd, rowbytes, "LIFE", ' ', 328, 50);
+        script_draw_string12(data->glyphs12, lcd, rowbytes, "SCORE", ' ', 325, 240 - 16 - 12 - 2);
+
+        playdate->graphics->markUpdatedRows(0, 240);
+    }
+
+    if (refresh_score)
+    {
+        int s = score;
+        for (int i = 0; i < 6; ++i)
+        {
+            int d = s % 10;
+            s /= 10;
+            script_draw_tiles12(
+                data->glyphs12, lcd, rowbytes, '0' - ' ' + d, 325 + (5 - i) * 12, 240 - 14
+            );
+        }
+
+        playdate->graphics->markUpdatedRows(240 - 15, 240);
+    }
+
+    if (refresh_lives)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            int t = ram_peek(0x9C0E + i);
+            draw_vram_tile(t, true, 2, 320 + 16 * i + 8, 4);
+        }
+        playdate->graphics->markUpdatedRows(0, 32);
+    }
+
+    if (refresh_hp)
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            int t = ram_peek(0x9C06 + i);
+            draw_vram_tile(t, true, 2, 320 + 16 * i + 8, 50 + 12 + 4);
+        }
+        playdate->graphics->markUpdatedRows(50 + 12, 50 + 12 + 32);
+    }
+
+    data->prev_lives = lives;
+    data->prev_hp = hp;
+    data->prev_score = score;
     data->prev_show_sidebar = show_sidebar;
 }
 
