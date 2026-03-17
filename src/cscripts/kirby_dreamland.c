@@ -4,7 +4,7 @@
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
     "- Full aspect ratio; no vertical squishing.\n"                              \
     "- Use the crank to flap!\n"                                                 \
-    "- Start/Select buttons are no longer required anywhere.\n" \
+    "- Start/Select buttons are no longer required anywhere.\n"                  \
     "\nCreated by: NaOH (Sodium Hydroxide)"
 
 #define CRANK_DELTA_SMOOTH_FACTOR 0.8f
@@ -444,8 +444,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
         int y = 0;
         int x = 376;
-        drawTile12(data, lcd, rowbytes, newlives / 10, x, y);
-        drawTile12(data, lcd, rowbytes, newlives % 10, x + 12, y);
+        drawTile12(data, lcd, rowbytes, (newlives / 10) % 20, x, y);
+        drawTile12(data, lcd, rowbytes, (newlives % 10) % 20, x + 12, y);
 
         playdate->graphics->markUpdatedRows(y, y + 11);
     }
@@ -524,7 +524,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
             if (digit > 0 || isDrawing || i == 4)
             {
                 isDrawing = 1;
-                drawTile12(data, lcd, rowbytes, digit, x, y);
+                drawTile12(data, lcd, rowbytes, digit % 20, x, y);
             }
             else
             {
