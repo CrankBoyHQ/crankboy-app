@@ -49,6 +49,13 @@ typedef struct ScriptData
     int fly_thrust;
     bool continue_flying;
 
+    // Previous values for dirty tracking
+    uint8_t prev_lives;
+    uint8_t prev_health;
+    uint8_t prev_boss;
+    uint32_t prev_score;
+    bool prev_in_game;
+
 } ScriptData;
 
 // this define is used by SCRIPT_BREAKPOINT
@@ -425,6 +432,73 @@ static void on_draw(gb_s* gb, ScriptData* data)
 {
     if (game_picture_x_offset != 0)
     {
+        data->prev_in_game = false;
+        return;
+    }
+
+    bool full_refresh = !data->prev_in_game || gbScreenRequiresFullRefresh;
+
+    // Read all RAM values first to check if anything changed
+    uint8_t newlives = 0, newhealth = 0, boss = 0, boss_visible = 0;
+    uint32_t newscore = 0;
+
+    if (full_refresh)
+    {
+        newlives = ram_peek(0xD089);
+        newhealth = ram_peek(0xD086);
+        boss = ram_peek(0xD093);
+        boss_visible = ram_peek(0xFF8F);
+        newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
+                   (ram_peek(0xD073) << 24);
+    }
+    else
+    {
+        // Quick check if anything changed before reading all values
+        newlives = ram_peek(0xD089);
+        if (newlives == data->prev_lives)
+        {
+            newhealth = ram_peek(0xD086);
+            if (newhealth == data->prev_health)
+            {
+                boss = ram_peek(0xD093);
+                boss_visible = ram_peek(0xFF8F);
+                uint8_t effective_boss = (boss_visible & 0x80) ? boss : 0xFF;
+                if (effective_boss == data->prev_boss)
+                {
+                    newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) |
+                               (ram_peek(0xD072) << 16) | (ram_peek(0xD073) << 24);
+                    if (newscore == data->prev_score)
+                    {
+                        // Nothing changed, skip drawing
+                        return;
+                    }
+                }
+            }
+        }
+        // Something changed, read remaining values
+        if (newhealth == 0)
+            newhealth = ram_peek(0xD086);
+        if (boss == 0)
+        {
+            boss = ram_peek(0xD093);
+            boss_visible = ram_peek(0xFF8F);
+        }
+        if (newscore == 0)
+            newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
+                       (ram_peek(0xD073) << 24);
+    }
+
+    // Determine effective boss value
+    uint8_t effective_boss = (boss_visible & 0x80) ? boss : 0xFF;
+
+    // Determine what needs to be redrawn
+    bool refresh_lives = full_refresh || newlives != data->prev_lives;
+    bool refresh_health = full_refresh || newhealth != data->prev_health;
+    bool refresh_boss = full_refresh || effective_boss != data->prev_boss;
+    bool refresh_score = full_refresh || newscore != data->prev_score;
+
+    if (!refresh_lives && !refresh_health && !refresh_boss && !refresh_score)
+    {
         return;
     }
 
@@ -437,10 +511,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
 
     // lives
-    uint8_t newlives = ram_peek(0xD089);
-    if (newlives != data->lives || gbScreenRequiresFullRefresh)
+    if (refresh_lives)
     {
         data->lives = newlives;
+        data->prev_lives = newlives;
 
         int y = 0;
         int x = 376;
@@ -451,10 +525,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
 
     // health
-    uint8_t newhealth = ram_peek(0xD086);
-    if (newhealth != data->health || gbScreenRequiresFullRefresh)
+    if (refresh_health)
     {
         data->health = newhealth;
+        data->prev_health = newhealth;
 
         for (int i = 0; i < 6; ++i)
         {
@@ -469,19 +543,12 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
 
     // boss
-    uint8_t boss = ram_peek(0xD093);
-
-    // visible, but empty
-    if ((ram_peek(0xFF8F) & 0x80) == 0)
+    if (refresh_boss)
     {
-        boss = 0xFF;
-    }
+        data->boss = effective_boss;
+        data->prev_boss = effective_boss;
 
-    if (boss != data->boss || gbScreenRequiresFullRefresh)
-    {
-        data->boss = boss;
-
-        const bool show = boss != 0xFF;
+        const bool show = effective_boss != 0xFF;
 
         // boss display
         int x = 370;
@@ -497,7 +564,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
         for (int i = 0; i < 6; ++i)
         {
-            const bool disp = (i < boss && show);
+            const bool disp = (i < effective_boss && show);
 
             drawTile12(data, lcd, rowbytes, disp ? 11 : 19, x, y);
             drawTile12(data, lcd, rowbytes, disp ? 16 : 19, x, y + 12);
@@ -508,11 +575,11 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
 
     // score
-    uint32_t newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
-                        (ram_peek(0xD073) << 24);
-
-    if (newscore != data->score || gbScreenRequiresFullRefresh)
+    if (refresh_score)
     {
+        data->score = newscore;
+        data->prev_score = newscore;
+
         int y = 240 - 13;
         bool isDrawing = 0;
         for (int i = 0; i < 5; ++i)
@@ -534,9 +601,9 @@ static void on_draw(gb_s* gb, ScriptData* data)
         }
 
         playdate->graphics->markUpdatedRows(y, y + 11);
-
-        data->score = newscore;
     }
+
+    data->prev_in_game = true;
 }
 
 C_SCRIPT{
