@@ -1781,7 +1781,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     {
         context->gb->direct.crank_docked = 1;
         if (preferences_crank_mode == CRANK_MODE_TURBO_CCW ||
-            preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+            preferences_crank_mode == CRANK_MODE_TURBO_CW)
         {
             gameScene->crank_turbo_accumulator = 0.0f;
         }
