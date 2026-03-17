@@ -1748,8 +1748,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     gameScene->crank_turbo_a_active = false;
     gameScene->crank_turbo_b_active = false;
 
-    if (preferences_crank_undock_button && gameScene->crank_was_docked &&
-        !playdate->system->isCrankDocked())
+    bool crank_docked = playdate->system->isCrankDocked();
+
+    if (preferences_crank_undock_button && gameScene->crank_was_docked && !crank_docked)
     {
         if (preferences_crank_undock_button == PREF_BUTTON_START)
             gameScene->button_hold_mode = 2;
@@ -1759,8 +1760,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             gameScene->button_hold_mode = 3;
         gameScene->button_hold_frames_remaining = 10;
     }
-    if (preferences_crank_dock_button && !gameScene->crank_was_docked &&
-        playdate->system->isCrankDocked())
+    if (preferences_crank_dock_button && !gameScene->crank_was_docked && crank_docked)
     {
         if (preferences_crank_dock_button == PREF_BUTTON_START)
             gameScene->button_hold_mode = 2;
@@ -1771,9 +1771,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->button_hold_frames_remaining = 10;
     }
 
-    gameScene->crank_was_docked = playdate->system->isCrankDocked();
+    gameScene->crank_was_docked = crank_docked;
 
-    if (!playdate->system->isCrankDocked())
+    if (!crank_docked)
     {
         crank_update(gameScene, &progress);
     }
