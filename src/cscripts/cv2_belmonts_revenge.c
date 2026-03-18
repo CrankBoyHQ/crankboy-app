@@ -30,6 +30,19 @@ typedef struct ScriptData
 
     // 12x12 tiles
     uint16_t tiles12[15][12];
+
+    // Previous values to avoid redundant force_pref calls
+    int prev_game_state;
+    int prev_game_stage;
+    int prev_game_substage;
+    bool prev_blend;
+    int prev_blend_stage;
+    int prev_blend_substage;
+    uint8_t prev_blend_room;
+
+    // Cached game state for on_draw (avoid recalculating)
+    int cached_game_state;
+    int cached_stages_beaten;
 } ScriptData;
 
 static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
@@ -183,6 +196,11 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     int game_substage = ram_peek(0xC8C1);
     int stages_beaten = ram_peek(0xC8A0);
 
+    // Only update prefs when game state changes
+    bool state_changed = (game_state != data->prev_game_state);
+    bool stage_changed =
+        (game_stage != data->prev_game_stage) || (game_substage != data->prev_game_substage);
+
     game_picture_background_color = kColorWhite;
 
     // standard 5:6 compression
@@ -193,17 +211,25 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     switch (game_state)
     {
     case GAME_STATE_LOGO:
-        force_pref(blend_frames, true);
-        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
-        force_pref(dither_stable, false);
+        if (state_changed || data->prev_blend != true)
+        {
+            force_pref(blend_frames, true);
+            force_pref(dynamic_rate, DYNAMIC_RATE_ON);
+            force_pref(dither_stable, false);
+            data->prev_blend = true;
+        }
         game_picture_scaling = 0;
         game_picture_y_top = 6;  // eyeballed
         break;
     case GAME_STATE_TITLE:
     case GAME_STATE_REEL:
-        force_pref(blend_frames, true);
-        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
-        force_pref(dither_stable, false);
+        if (state_changed || data->prev_blend != true)
+        {
+            force_pref(blend_frames, true);
+            force_pref(dynamic_rate, DYNAMIC_RATE_ON);
+            force_pref(dither_stable, false);
+            data->prev_blend = true;
+        }
         game_picture_scaling = 4;
         game_picture_y_top = 4;  // eyeballed
         if (game_state == GAME_STATE_TITLE)
@@ -211,15 +237,23 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         break;
     case GAME_STATE_PASSWORD:
     case GAME_STATE_SOUND_TEST:
-        force_pref(blend_frames, false);
-        force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
-        force_pref(dither_stable, false);
+        if (state_changed || data->prev_blend != false)
+        {
+            force_pref(blend_frames, false);
+            force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
+            force_pref(dither_stable, false);
+            data->prev_blend = false;
+        }
         game_picture_background_color = kColorBlack;
         break;
     case GAME_STATE_STAGE_SELECT:
-        force_pref(blend_frames, false);
-        force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
-        force_pref(dither_stable, false);
+        if (state_changed || data->prev_blend != false)
+        {
+            force_pref(blend_frames, false);
+            force_pref(dynamic_rate, DYNAMIC_RATE_OFF);
+            force_pref(dither_stable, false);
+            data->prev_blend = false;
+        }
         // 4 scanlines : 7 rows
         game_picture_scaling = 4;
         game_picture_y_top = 4;  // eyeballed
@@ -231,32 +265,58 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_y_top = 4;
         {
             // enable blending only in certain rooms
-            bool blend = false;
-            if (game_stage == 3 && game_substage == 0)
+            // Cache blend calculation to avoid redundant checks
+            bool blend = data->prev_blend;
+            if (state_changed || stage_changed || game_stage != data->prev_blend_stage ||
+                game_substage != data->prev_blend_substage)
             {
-                blend = true;
+                blend = false;
+                if (game_stage == 3 && game_substage == 0)
+                {
+                    blend = true;
+                }
+                else if (game_stage == 3 && game_substage == 3)
+                {
+                    uint8_t room = ram_peek(0xCA8D);
+                    if (room != data->prev_blend_room || state_changed || stage_changed)
+                    {
+                        data->prev_blend_room = room;
+                    }
+                    blend = (data->prev_blend_room == 2);
+                }
+                else if (game_stage == 3 && game_substage == 4)
+                {
+                    blend = true;
+                }
+                data->prev_blend_stage = game_stage;
+                data->prev_blend_substage = game_substage;
             }
-            if (game_stage == 3 && game_substage == 3 && ram_peek(0xCA8D) == 2)
+
+            if (blend != data->prev_blend)
             {
-                blend = true;
+                force_pref(blend_frames, blend);
+                force_pref(dynamic_rate, blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
+                force_pref(dither_stable, !blend);
+                data->prev_blend = blend;
             }
-            if (game_stage == 3 && game_substage == 4)
-            {
-                blend = true;
-            }
-            force_pref(blend_frames, blend);
-            force_pref(dynamic_rate, blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
-            force_pref(dither_stable, !blend);
         }
         break;
     case GAME_STATE_GAME_OVER:
-        force_pref(blend_frames, true);
-        force_pref(dynamic_rate, DYNAMIC_RATE_ON);
-        force_pref(dither_stable, false);
+        if (state_changed || data->prev_blend != true)
+        {
+            force_pref(blend_frames, true);
+            force_pref(dynamic_rate, DYNAMIC_RATE_ON);
+            force_pref(dither_stable, false);
+            data->prev_blend = true;
+        }
         break;
     default:
         break;
     }
+
+    data->prev_game_state = game_state;
+    data->prev_game_stage = game_stage;
+    data->prev_game_substage = game_substage;
 
     if (game_state == GAME_STATE_STAGE_SELECT)
     {
@@ -297,14 +357,17 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_y_bottom = 120;
     }
     game_picture_y_bottom += game_picture_y_top;
+
+    // Cache values for on_draw to avoid recalculating
+    data->cached_game_state = game_state;
+    data->cached_stages_beaten = stages_beaten;
 }
 
 static void on_draw(gb_s* gb, ScriptData* data)
 {
-    int game_state = get_game_mode(gb, data);
-    int stages_beaten = ram_peek(0xC8A0);
-    uint8_t* lcd = playdate->graphics->getFrame();
-    int rowbytes = PLAYDATE_ROW_STRIDE;
+    // Use cached values from on_tick instead of recalculating
+    int game_state = data->cached_game_state;
+    int stages_beaten = data->cached_stages_beaten;
 
     int screen_x0 = game_picture_x_offset;
     int screen_x1 = game_picture_x_offset + LCD_WIDTH * 2;
@@ -327,8 +390,18 @@ static void on_draw(gb_s* gb, ScriptData* data)
         }
     }
 
+    // Early exit if not showing sidebar and not refreshing
+    if (!show_sidebar && !refresh)
+    {
+        goto draw_state_specific;
+    }
+
     if (show_sidebar)
     {
+        // Defer getFrame() until we actually need to draw
+        uint8_t* lcd = playdate->graphics->getFrame();
+        int rowbytes = PLAYDATE_ROW_STRIDE;
+
         int time = (ram_peek(0xCC81) << 8) | ram_peek(0xCC80);
         int score = (ram_peek(0xC8C4) << 16) | (ram_peek(0xC8C3) << 8) | ram_peek(0xC8C2);
         int hearts = ram_peek(0xCC86);
@@ -406,6 +479,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         }
     }
 
+draw_state_specific:
     switch (game_state)
     {
     case GAME_STATE_TITLE:
