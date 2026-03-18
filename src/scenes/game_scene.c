@@ -2234,48 +2234,55 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
 
-            if (memcmp(current_lcd, previous_lcd, LCD_BUFFER_BYTES) != 0)
+            for (int y = 0; y < LCD_HEIGHT; y++)
             {
-                for (int y = 0; y < LCD_HEIGHT; y++)
+                uint64_t* cur = (uint64_t*)&current_lcd[y * LCD_WIDTH_PACKED];
+                uint64_t* prv = (uint64_t*)&previous_lcd[y * LCD_WIDTH_PACKED];
+
+                // Prefetch next row while comparing current
+                if (y < LCD_HEIGHT - 1)
                 {
-                    uint8_t* cur = &current_lcd[y * LCD_WIDTH_PACKED];
-                    uint8_t* prv = &previous_lcd[y * LCD_WIDTH_PACKED];
+                    __builtin_prefetch(&current_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
+                    __builtin_prefetch(&previous_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
+                }
 
-                    // Prefetch next row while comparing current
-                    if (y < LCD_HEIGHT - 1)
+                // Early-out comparison: check 64-bit chunks, break on first difference
+                bool line_changed = false;
+                for (int x = 0; x < LCD_WIDTH_PACKED / 8; x++)
+                {
+                    if (cur[x] != prv[x])
                     {
-                        __builtin_prefetch(&current_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
-                        __builtin_prefetch(&previous_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
+                        line_changed = true;
+                        break;
                     }
+                }
 
-                    if (memcmp(cur, prv, LCD_WIDTH_PACKED) != 0)
-                    {
-                        line_has_changed[y >> 4] |= (1 << (y & 0xF));
+                if (line_changed)
+                {
+                    line_has_changed[y >> 4] |= (1 << (y & 0xF));
 
-                        gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
+                    gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                        if (!preferences_frame_skip &&
-                            preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+                    if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
+                    {
+                        int row_height_on_playdate = 2;
+                        if (scale_index_for_calc == 2)
                         {
-                            int row_height_on_playdate = 2;
-                            if (scale_index_for_calc == 2)
-                            {
-                                row_height_on_playdate = 1;
-                            }
-                            updated_playdate_lines += row_height_on_playdate;
+                            row_height_on_playdate = 1;
                         }
-#endif
-                    }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                    scale_index_for_calc++;
-                    if (scale_index_for_calc == 3)
-                    {
-                        scale_index_for_calc = 0;
+                        updated_playdate_lines += row_height_on_playdate;
                     }
 #endif
                 }
+
+#if TENDENCY_BASED_ADAPTIVE_INTERLACING
+                scale_index_for_calc++;
+                if (scale_index_for_calc == 3)
+                {
+                    scale_index_for_calc = 0;
+                }
+#endif
             }
 
 #if TENDENCY_BASED_ADAPTIVE_INTERLACING
