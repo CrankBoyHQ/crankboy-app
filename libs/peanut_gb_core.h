@@ -1838,9 +1838,9 @@ done_instr_timing:
                 // Fast mode uses average penalty, accurate checks each sprite
                 if (preferences_ppu_timing == 0)
                 {
-                    // Fast mode: fixed penalty assuming max sprites
+                    // Fast mode: fixed penalty assuming ~3 sprites per line
                     // Average penalty per sprite is ~8 cycles
-                    mode3_cycles += 8 * MAX_SPRITES_LINE;
+                    mode3_cycles += 8 * 3;
                 }
                 else
                 {
