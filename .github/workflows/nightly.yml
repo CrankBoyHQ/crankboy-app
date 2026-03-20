@@ -62,7 +62,7 @@ jobs:
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
                   echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-3.0.2.tar.gz
+                  tar -xf toolchain/linux/PlaydateSDK-3.0.3.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -130,7 +130,7 @@ jobs:
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
                   echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-3.0.2.tar.gz
+                  tar -xf toolchain/linux/PlaydateSDK-3.0.3.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -187,7 +187,7 @@ jobs:
             - name: Unzip and Install Playdate SDK from Submodule
               run: |
                   echo "Unzipping SDK archive from toolchain/mac/..."
-                  unzip toolchain/mac/PlaydateSDK-3.0.2.zip
+                  unzip toolchain/mac/PlaydateSDK-3.0.3.zip
 
                   PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
                   if [[ -z "$PKG_PATH" ]]; then
@@ -273,7 +273,7 @@ jobs:
                   TOOLCHAIN_PATH="$(pwd)/gcc-arm-toolchain/bin"
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
                   echo "Extracting SDK from toolchain/win/..."
-                  7z x toolchain/win/PlaydateSDK-3.0.2.exe -oPlaydateSDK -y
+                  7z x toolchain/win/PlaydateSDK-3.0.3.exe -oPlaydateSDK -y
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Update Version and Build Number
