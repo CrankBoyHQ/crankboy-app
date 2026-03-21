@@ -1147,9 +1147,7 @@ __attribute__((always_inline)) static inline void high_pass_filter_fixed_asm(
     audio->capacitor_l = cap_l;
     audio->capacitor_r = cap_r;
 }
-#endif
 
-#if TARGET_PLAYDATE
 /**
  * Optimized memset for audio buffers using SIMD stores.
  * Clears buffer 8 samples at a time using STM.
@@ -1184,7 +1182,7 @@ __attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
         buf[i] = 0;
     }
 }
-#endif  // TARGET_PLAYDATE
+#endif
 
 /**
  * Helper to clear both audio buffers (mono or stereo).
