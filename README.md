@@ -2,10 +2,10 @@
 
 [![Nightly Build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml/badge.svg)](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
-[![Matrix](https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(Matrix%2FElement))](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
+[![Matrix](<https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(Matrix%2FElement)>)](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
 [![Discord](https://img.shields.io/discord/675983554655551509?logo=discord&logoColor=white&color=7289DA)](https://discord.com/channels/675983554655551509/1378119815641694278)
 
-A full-speed Game Boy emulator for Playdate. CrankBoy is a fork of [PlayGB](https://github.com/risolvipro/PlayGB)
+A full-speed Game Boy® emulator for Playdate™. CrankBoy is a fork of [PlayGB](https://github.com/risolvipro/PlayGB)
 and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only C Game Boy emulator by
 [deltabeard](https://github.com/deltabeard).
 
@@ -170,3 +170,12 @@ git config core.hooksPath githooks
 ```
 
 For convenience, you can use the CLI arg `rom=<path/to/rom>` (where path is relative to the game's data directory) to launch a rom in bundled mode directly.
+
+## Legal
+
+**CrankBoy** is an independent, community-led project and is not affiliated with, authorized, sponsored, or endorsed by Nintendo Co., Ltd. or Panic Inc.
+
+- **Game Boy®** is a registered trademark of Nintendo Co., Ltd.
+- **Playdate™** is a trademark of Panic Inc.
+
+This software is an emulator designed for the playback of legally acquired ROM files and homebrew software. The developers of CrankBoy do not provide, host, or distribute copyrighted ROM files. All other trademarks are the property of their respective owners.
