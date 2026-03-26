@@ -12,7 +12,7 @@ typedef struct SoftPatch
 {
     // if NULL, indicates end to list of SoftPatch
     char* fullpath;
-    
+
     // extension-stripped basename
     char* basename;
     int state : 2;  // PATCH_ENABLED, _DISABLED, or _UNKNOWN

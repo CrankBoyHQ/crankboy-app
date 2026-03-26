@@ -206,23 +206,21 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
             int yr = margin, yl = margin;
             int yadv = 16;
-            
+
             if (pdboot_version)
             {
                 playdate->graphics->drawTextInRect(
                     pdboot_version, strlen(pdboot_version), kUTF8Encoding,
-                    margin + creditsScene->scroll*8, yr, width, 100, kWrapWord,
-                    kAlignTextRight
+                    margin + creditsScene->scroll * 8, yr, width, 100, kWrapWord, kAlignTextRight
                 );
                 yr += yadv;
             }
-            
+
             if (CB_App->hasSystemAccess)
             {
                 playdate->graphics->drawTextInRect(
                     "System Access", strlen((char*)"System Access"), kUTF8Encoding,
-                    margin + creditsScene->scroll*8, yl, width, 100, kWrapWord,
-                    kAlignTextRight
+                    margin + creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextRight
                 );
                 yr += yadv;
             }
@@ -230,28 +228,27 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             if (version)
             {
                 playdate->graphics->drawTextInRect(
-                    version, strlen(version), kUTF8Encoding, margin - creditsScene->scroll * 8,
-                    yl, width, 100, kWrapWord, kAlignTextLeft
+                    version, strlen(version), kUTF8Encoding, margin - creditsScene->scroll * 8, yl,
+                    width, 100, kWrapWord, kAlignTextLeft
                 );
                 yl += yadv;
             }
-            
-            #ifdef CRANKBOY_NIGHTLY
+
+#ifdef CRANKBOY_NIGHTLY
             playdate->graphics->drawTextInRect(
-                "Nightly", strlen((char*)"Nightly"), kUTF8Encoding, margin - creditsScene->scroll * 8,
-                yl, width, 100, kWrapWord, kAlignTextLeft
+                "Nightly", strlen((char*)"Nightly"), kUTF8Encoding,
+                margin - creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextLeft
             );
             yl += yadv;
-            #endif
-            
-            #ifdef CRANKBOY_OFFICIAL_CATALOG
+#endif
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
             playdate->graphics->drawTextInRect(
                 "Catalog", strlen((char*)"Catalog"), kUTF8Encoding,
-                margin + creditsScene->scroll*8, yr, width, 100, kWrapWord,
-                kAlignTextRight
+                margin + creditsScene->scroll * 8, yr, width, 100, kWrapWord, kAlignTextRight
             );
             yr += yadv;
-            #endif
+#endif
 
             if (creditsScene->logo)
             {

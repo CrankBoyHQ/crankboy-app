@@ -35,14 +35,16 @@ CB_ListView* CB_ListView_new(void)
     listView->contentSize = 0;
     listView->contentOffset = 0;
 
-    listView->scroll = (CB_ListViewScroll){.active = false,
-                                           .start = 0,
-                                           .end = 0,
-                                           .time = 0,
-                                           .duration = 0.15,
-                                           .indicatorVisible = false,
-                                           .indicatorOffset = 0,
-                                           .indicatorHeight = 0};
+    listView->scroll = (CB_ListViewScroll){
+        .active = false,
+        .start = 0,
+        .end = 0,
+        .time = 0,
+        .duration = 0.15,
+        .indicatorVisible = false,
+        .indicatorOffset = 0,
+        .indicatorHeight = 0
+    };
 
     listView->selectedItem = -1;
 
@@ -55,12 +57,14 @@ CB_ListView* CB_ListView_new(void)
     listView->crankChange = 0;
     listView->crankResetTime = 0;
 
-    listView->model = (CB_ListViewModel){.selectedItem = -1,
-                                         .contentOffset = 0,
-                                         .empty = true,
-                                         .scrollIndicatorHeight = 0,
-                                         .scrollIndicatorOffset = 0,
-                                         .scrollIndicatorVisible = false};
+    listView->model = (CB_ListViewModel){
+        .selectedItem = -1,
+        .contentOffset = 0,
+        .empty = true,
+        .scrollIndicatorHeight = 0,
+        .scrollIndicatorOffset = 0,
+        .scrollIndicatorVisible = false
+    };
 
     listView->textScrollTime = 0;
     listView->textScrollPause = 0;
@@ -391,8 +395,9 @@ void CB_ListView_update(CB_ListView* listView)
                     {
                         button->textScrollOffset = 0.0f;
                     }
-                    else if (currentTimeInCycle <
-                             (pauseAtStartDuration + dynamicScrollToEndDuration))
+                    else if (
+                        currentTimeInCycle < (pauseAtStartDuration + dynamicScrollToEndDuration)
+                    )
                     {
                         float timeIntoScrollToEnd = currentTimeInCycle - pauseAtStartDuration;
                         float normalizedScrollProgress = 0.0f;
@@ -405,8 +410,10 @@ void CB_ListView_update(CB_ListView* listView)
                         button->textScrollOffset =
                             cb_easeInOutQuad(normalizedScrollProgress) * maxOffset;
                     }
-                    else if (currentTimeInCycle < (pauseAtStartDuration +
-                                                   dynamicScrollToEndDuration + pauseAtEndDuration))
+                    else if (
+                        currentTimeInCycle <
+                        (pauseAtStartDuration + dynamicScrollToEndDuration + pauseAtEndDuration)
+                    )
                     {
                         button->textScrollOffset = maxOffset;
                     }
@@ -641,7 +648,7 @@ void CB_ListView_clear(CB_ListView* listView)
         {
             CB_ListItemButton_free(listView->items->items[i]);
         }
-        
+
         listView->items->length = 0;
     }
 }

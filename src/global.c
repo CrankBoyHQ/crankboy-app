@@ -1,16 +1,17 @@
 #include "global.h"
+
+#include "app.h"
 #include "jparse.h"
 #include "userstack.h"
-#include "app.h"
 
 struct global_t global;
 
 static json_value global_to_json(void)
 {
     json_value jv = json_new_table();
-    
+
     json_set_table_value(&jv, "intro", json_new_bool(global.shown_intro));
-    
+
     return jv;
 }
 
@@ -18,14 +19,15 @@ static bool global_from_json(json_value jv)
 {
     json_value jshown_intro = json_get_table_value(jv, "intro");
     global.shown_intro = jshown_intro.type == kJSONTrue;
-    
+
     return true;
 }
 
 static bool _save_global(void)
 {
     json_value jv = global_to_json();
-    if (jv.type == kJSONNull) return false;
+    if (jv.type == kJSONNull)
+        return false;
     write_json_to_disk(GLOBAL_FILE, jv);
     free_json_data(jv);
     return true;

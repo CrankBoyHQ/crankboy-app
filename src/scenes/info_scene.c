@@ -513,15 +513,19 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                             counter_stack[list_level] = 1;
                         }
                     }
-                    else if (strncasecmp(tag_name, "/ul", 3) == 0 ||
-                             strncasecmp(tag_name, "/ol", 3) == 0 ||
-                             strncasecmp(tag_name, "/list", 5) == 0)
+                    else if (
+                        strncasecmp(tag_name, "/ul", 3) == 0 ||
+                        strncasecmp(tag_name, "/ol", 3) == 0 ||
+                        strncasecmp(tag_name, "/list", 5) == 0
+                    )
                     {
                         if (list_level > 0)
                             list_level--;
                     }
-                    else if (strncasecmp(tag_name, "li", 2) == 0 ||
-                             (end_bracket - tag_name == 1 && *tag_name == '*'))
+                    else if (
+                        strncasecmp(tag_name, "li", 2) == 0 ||
+                        (end_bracket - tag_name == 1 && *tag_name == '*')
+                    )
                     {
                         if (list_level > 0)
                         {
@@ -574,15 +578,19 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                                 counter_stack[list_level] = 1;
                             }
                         }
-                        else if (strncasecmp(tag_name, "/ul", 3) == 0 ||
-                                 strncasecmp(tag_name, "/ol", 3) == 0 ||
-                                 strncasecmp(tag_name, "/list", 5) == 0)
+                        else if (
+                            strncasecmp(tag_name, "/ul", 3) == 0 ||
+                            strncasecmp(tag_name, "/ol", 3) == 0 ||
+                            strncasecmp(tag_name, "/list", 5) == 0
+                        )
                         {
                             if (list_level > 0)
                                 list_level--;
                         }
-                        else if (strncasecmp(tag_name, "li", 2) == 0 ||
-                                 (end_bracket - tag_name == 1 && *tag_name == '*'))
+                        else if (
+                            strncasecmp(tag_name, "li", 2) == 0 ||
+                            (end_bracket - tag_name == 1 && *tag_name == '*')
+                        )
                         {
                             if (list_level > 0)
                             {

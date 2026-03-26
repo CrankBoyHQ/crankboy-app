@@ -776,14 +776,14 @@ uint32_t patch_hash(SoftPatch* patchlist)
     {
         if (patch->state != PATCH_ENABLED)
             continue;
-        
+
         ++npatches;
         if (patch->basename)
         {
             out ^= crc32_for_string(patch->basename);
         }
     }
-    
+
     return out + npatches;
 }
 

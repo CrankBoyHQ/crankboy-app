@@ -165,7 +165,9 @@ int full_mkdir(const char* path);
 // result must be user-free'd. returns NULL on error.
 #define CB_FILE_FLAG_BINARY 0x800
 char* cb_read_entire_file(const char* path, size_t* o_size, unsigned flags);
-char* cb_read_partial_file(const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail);
+char* cb_read_partial_file(
+    const char* path, signed int size_max, size_t* o_size, unsigned flags, bool tail
+);
 
 // as above, but also checks if <path>.gz is present and if so decompresses it
 char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, unsigned flags);
@@ -223,7 +225,8 @@ void bitvec_write_bits(uint8_t* base, size_t bit_offset, unsigned width, uint32_
 // base-two logarithm (index of highest bit)
 inline int lg2(uint32_t v)
 {
-    if (v == 0) return -1;
+    if (v == 0)
+        return -1;
     return 31 - __builtin_clz(v);
 }
 
@@ -233,14 +236,14 @@ static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t 
     asm volatile(
         "cmp    %[cond], #0\n"
         "itt ne\n"
-            // reverse bits
-            "rbitne %[val], %[val]\n"
-            
-            // reverse byte
-            "revne  %[val], %[val]\n"
+        // reverse bits
+        "rbitne %[val], %[val]\n"
+
+        // reverse byte
+        "revne  %[val], %[val]\n"
         : [val] "+r"(b)
         : [cond] "r"(condition)
-        : "cc" // condition codes are clobbered
+        : "cc"  // condition codes are clobbered
     );
     return b;
 #else

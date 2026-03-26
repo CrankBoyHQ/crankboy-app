@@ -109,6 +109,7 @@ ScriptInfo* get_script_info(const char* game_name);
 
 // o_rom_name must point to a buffer at least length 17
 ScriptInfo* script_get_info_by_rom_path_and_get_header_info(
-    const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery, int* o_is_gbz, uint32_t* o_gbz_checksum
+    const char* game_path, char* o_rom_name, enum cgb_support_e* o_cgb, unsigned* o_battery,
+    int* o_is_gbz, uint32_t* o_gbz_checksum
 );
 bool script_exists(const char* game_path);

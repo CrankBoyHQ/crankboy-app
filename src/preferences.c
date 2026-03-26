@@ -133,14 +133,14 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
     int i = 0;
     int pairs_count = 0;
 
-#define PREF(x, ...)                                            \
+#define PREF(x, ...)                                                    \
     if (!((final_leave_as_is_mask) & ((preferences_bitfield_t)1 << i))) \
-    {                                                           \
-        pairs[pairs_count].key = #x;                            \
-        pairs[pairs_count].value.type = kJSONInteger;           \
-        pairs[pairs_count].value.data.intval = preferences_##x; \
-        ++pairs_count;                                          \
-    }                                                           \
+    {                                                                   \
+        pairs[pairs_count].key = #x;                                    \
+        pairs[pairs_count].value.type = kJSONInteger;                   \
+        pairs[pairs_count].value.data.intval = preferences_##x;         \
+        ++pairs_count;                                                  \
+    }                                                                   \
     ++i;
 #include "prefs.x"
 
@@ -191,11 +191,11 @@ void* preferences_store_subset(preferences_bitfield_t subset)
 {
     int count = 0;
     int i = 0;
-#define PREF(x, ...)       \
+#define PREF(x, ...)                               \
     if (subset & ((preferences_bitfield_t)1 << i)) \
-    {                      \
-        count++;           \
-    }                      \
+    {                                              \
+        count++;                                   \
+    }                                              \
     ++i;
 #include "prefs.x"
 
@@ -210,7 +210,7 @@ void* preferences_store_subset(preferences_bitfield_t subset)
     count = 0;
     i = 0;
 #define PREF(x, ...)                      \
-    if (subset & (1ll << i))                \
+    if (subset & (1ll << i))              \
     {                                     \
         prefs[count++] = preferences_##x; \
     }                                     \
@@ -227,11 +227,11 @@ void preferences_restore_subset(void* data)
 
     int count = 0;
     int i = 0;
-#define PREF(x, ...)                      \
-    if (subset & ((preferences_bitfield_t)1 << i))                \
-    {                                     \
-        preferences_##x = prefs[count++]; \
-    }                                     \
+#define PREF(x, ...)                               \
+    if (subset & ((preferences_bitfield_t)1 << i)) \
+    {                                              \
+        preferences_##x = prefs[count++];          \
+    }                                              \
     ++i;
 #include "prefs.x"
 }

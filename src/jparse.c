@@ -184,23 +184,26 @@ done:
     return true;
 }
 
-static __section__(".rare") int parse_json_compressed(const char* path, json_value* out, FileOptions opts)
+static __section__(".rare") int parse_json_compressed(
+    const char* path, json_value* out, FileOptions opts
+)
 {
     size_t size;
     char* s = cb_read_entire_file_maybe_compressed(path, &size, opts);
-    if (!s) return 0;
-    
+    if (!s)
+        return 0;
+
     if (s[size] != 0)
     {
         cb_free(s);
         playdate->system->logToConsole("Error parsing compressed json: missing null-terminator");
         return 0;
     }
-    
+
     int result = parse_json_string(s, out);
-    
+
     cb_free(s);
-    
+
     return result;
 }
 
@@ -388,7 +391,5 @@ __section__(".rare") int parse_json_string(const char* text, json_value* out)
 
 const char* json_as_string(json_value j)
 {
-    return (j.type == kJSONString)
-        ? j.data.stringval
-        : NULL;
+    return (j.type == kJSONString) ? j.data.stringval : NULL;
 }

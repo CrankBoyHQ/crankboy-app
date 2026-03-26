@@ -1,8 +1,8 @@
 #include "../scriptutil.h"
 
-#define DESCRIPTION \
-    "- Crank aims the turret in 8 directions.\n" \
-    "- Press Ⓐ in-game to toggle autofire.\n" \
+#define DESCRIPTION                                    \
+    "- Crank aims the turret in 8 directions.\n"       \
+    "- Press Ⓐ in-game to toggle autofire.\n"          \
     "- Crank docked falls back to default controls.\n" \
     "\nCreated by: stonerl"
 

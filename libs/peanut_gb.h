@@ -1067,8 +1067,9 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             {
                 return gb->latched_rtc[gb->cart_ram_bank - 0x08];
             }
-            else if ((gb->cart_mode_select || gb->mbc != 1) &&
-                     gb->cart_ram_bank < gb->num_ram_banks)
+            else if (
+                (gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks
+            )
             {
                 return gb->gb_cart_ram[addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE)];
             }
@@ -1537,8 +1538,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                     }
                 }
             }
-            else if ((gb->cart_mode_select || gb->mbc != 1) &&
-                     gb->cart_ram_bank < gb->num_ram_banks)
+            else if (
+                (gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks
+            )
             {
                 size_t idx = addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE);
                 CB_ASSERT(idx < gb->gb_cart_ram_size);

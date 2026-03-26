@@ -1,11 +1,12 @@
 #include "../scriptutil.h"
+
 #include <string.h>
 
-#define DESCRIPTION                                                              \
-    "- Lifebars are moved to the sidebars for clean 2x scaling.\n"               \
+#define DESCRIPTION                                                                        \
+    "- Lifebars are moved to the sidebars for clean 2x scaling.\n"                         \
     "- Set the round timer position in Settings (permanent) or the menu (session only).\n" \
-    "- Press Ⓐ on the Title and Continue screen instead of Start.\n"             \
-    "- Press Ⓑ on the Options screen instead of Start to return.\n"             \
+    "- Press Ⓐ on the Title and Continue screen instead of Start.\n"                       \
+    "- Press Ⓑ on the Options screen instead of Start to return.\n"                        \
     "\nCreated by: stonerl"
 
 typedef struct ScriptData
@@ -61,10 +62,14 @@ static LCDColor tile_pixel_to_color(uint8_t lo, uint8_t hi, int bit)
     const uint8_t color = (((hi >> bit) & 1) << 1) | ((lo >> bit) & 1);
     switch (color)
     {
-    case 0: return kColorWhite;
-    case 1: return (LCDColor)&lcdp_75;  // light gray
-    case 2: return (LCDColor)&lcdp_50;  // dark gray
-    default: return kColorBlack;
+    case 0:
+        return kColorWhite;
+    case 1:
+        return (LCDColor)&lcdp_75;  // light gray
+    case 2:
+        return (LCDColor)&lcdp_50;  // dark gray
+    default:
+        return kColorBlack;
     }
 }
 
@@ -109,9 +114,8 @@ static bool tile_is_transient_black(uint8_t tile_idx)
 static bool is_title_screen(gb_s* gb)
 {
     // Title tilemap signature in VRAM (0x996A, 0x996B, 0x996C, 0x995D, 0x996E).
-    return gb->vram[0x196A] == 0x9D && gb->vram[0x196B] == 0x9E &&
-        gb->vram[0x196C] == 0x8B && gb->vram[0x196D] == 0x9C &&
-        gb->vram[0x196E] == 0x9E;
+    return gb->vram[0x196A] == 0x9D && gb->vram[0x196B] == 0x9E && gb->vram[0x196C] == 0x8B &&
+           gb->vram[0x196D] == 0x9C && gb->vram[0x196E] == 0x9E;
 }
 
 static bool name_tile_is_blank(gb_s* gb, int tile_idx)
@@ -275,7 +279,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     if (screen_flag == 0x2D)
     {
         uint8_t title_state_0 = ram_peek(0xC43E);
-        uint8_t title_state_1 = ram_peek(0xC43A); // also used for continue screen
+        uint8_t title_state_1 = ram_peek(0xC43A);  // also used for continue screen
         PDButtons current, pushed, released;
         playdate->system->getButtonState(&current, &pushed, &released);
         if ((is_title_screen(gb) || title_state_1 == 0x00) && (pushed & kButtonA))
@@ -311,9 +315,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
             script_gb->direct.joypad_bits.b = 1;
             script_gb->direct.joypad_bits.start = 0;
         }
-
     }
-
 }
 
 static void on_settings(ScriptData* data)
@@ -344,9 +346,8 @@ static unsigned on_menu(gb_s* gb, ScriptData* data)
     (void)gb;
     (void)data;
 
-    time_pos_menu_item = playdate->system->addOptionsMenuItem(
-        "Timer", time_pos_options, 3, on_time_pos_menu, NULL
-    );
+    time_pos_menu_item =
+        playdate->system->addOptionsMenuItem("Timer", time_pos_options, 3, on_time_pos_menu, NULL);
     if (time_pos_menu_item)
     {
         playdate->system->setMenuItemValue(time_pos_menu_item, TIME_POS);
@@ -405,7 +406,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
             break;
         case 0x7F:
             // Force black/white stripes (black on first row).
-            game_picture_background_color = (screen_trans != 0x00) ? (LCDColor)&lcdp_stripe_bw :  kColorWhite;
+            game_picture_background_color =
+                (screen_trans != 0x00) ? (LCDColor)&lcdp_stripe_bw : kColorWhite;
             game_hide_indicator = true;
             break;
         default:
@@ -442,10 +444,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
         if (left_w > 0 || right_w > 0)
         {
-            const bool refresh_sidebar =
-                gbScreenRequiresFullRefresh || entering_game || !data->sidebar_drawn ||
-                (screen_flag != prev_screen_flag) || data->refresh_frames > 0 ||
-                data->sidebar_dirty_frames > 0;
+            const bool refresh_sidebar = gbScreenRequiresFullRefresh || entering_game ||
+                                         !data->sidebar_drawn ||
+                                         (screen_flag != prev_screen_flag) ||
+                                         data->refresh_frames > 0 || data->sidebar_dirty_frames > 0;
 
             if (refresh_sidebar)
             {
@@ -489,14 +491,12 @@ static void on_draw(gb_s* gb, ScriptData* data)
             // Lifebar tiles for player 1: map entries 0x9A82..0x9A88 (VRAM offset 0x1A82..0x1A88).
             {
                 const int map_base = 0x1A82;
-                const int bar_x =
-                    left_x + left_w - sidebar_pad - (8 * bar_scale_x);  // right side
-                const int rounds_x = left_x + sidebar_pad;  // bottom left
+                const int bar_x = left_x + left_w - sidebar_pad - (8 * bar_scale_x);  // right side
+                const int rounds_x = left_x + sidebar_pad;                            // bottom left
 
                 bool bar_changed =
                     update_tile_block(gb, map_base, bar_segments, data->p1_bar_tiles);
-                bool rounds_changed =
-                    update_tile_block(gb, 0x1A80, rounds, data->p1_round_tiles);
+                bool rounds_changed = update_tile_block(gb, 0x1A80, rounds, data->p1_round_tiles);
 
                 if (bar_changed || refresh_sidebar)
                 {
@@ -561,9 +561,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
                     if (!time_unlimited)
                     {
-                        int time_y = (time_mode == TIME_POS_TOP)
-                            ? 2
-                            : (LCD_ROWS - (8 * scale_y) - 2);  // bottom aligned with 2px border
+                        int time_y =
+                            (time_mode == TIME_POS_TOP)
+                                ? 2
+                                : (LCD_ROWS - (8 * scale_y) - 2);  // bottom aligned with 2px border
 
                         const int inner_w = max_w;
                         const int inner_h = 8 * scale_y;

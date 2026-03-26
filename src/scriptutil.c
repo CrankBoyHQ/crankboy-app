@@ -1,4 +1,5 @@
 #include "scriptutil.h"
+
 #include "userstack.h"
 
 #define GB script_gb
@@ -25,7 +26,7 @@ void ram_poke(addr16_t addr, u8 v)
 }
 u16 ram_peek_u16(addr16_t addr)
 {
-    return (u16)__gb_read_full(GB, addr) | ((u16)__gb_read_full(GB, addr+1) << 8);
+    return (u16)__gb_read_full(GB, addr) | ((u16)__gb_read_full(GB, addr + 1) << 8);
 }
 
 romaddr_t rom_size(void)
@@ -40,8 +41,8 @@ void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val)
     if (actual != prev)
     {
         playdate->system->error(
-            "SCRIPT ERROR -- is this the right ROM? Poke_verify failed at %x:%04x (%04x); expected %02x, but "
-            "was %02x (should replace with %02x)",
+            "SCRIPT ERROR -- is this the right ROM? Poke_verify failed at %x:%04x (%04x); expected "
+            "%02x, but was %02x (should replace with %02x)",
             bank, addr, addr32, prev, actual, val
         );
     }
@@ -55,20 +56,25 @@ char* script_disk_fname(unsigned fidx)
     CB_GameScene* scene = context->scene;
     if (preferences_save_slot)
     {
-        return aprintf("%s/%s.%c.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, 'A' + preferences_save_slot, fidx);
+        return aprintf(
+            "%s/%s.%c.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename,
+            'A' + preferences_save_slot, fidx
+        );
     }
     else
     {
-        return aprintf("%s/%s.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, fidx);
+        return aprintf(
+            "%s/%s.script.%u.bin", cb_gb_directory_path(CB_savesPath), scene->base_filename, fidx
+        );
     }
 }
 
 void script_save_to_disk(const char* data, size_t size, unsigned fidx)
 {
     char* fname = script_disk_fname(fidx);
-    
+
     call_with_main_stack_3(cb_write_entire_file, fname, data, size);
-    
+
     cb_free(fname);
 }
 
@@ -83,16 +89,18 @@ char* script_load_from_disk(unsigned fidx, size_t* o_size)
 int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles)
 {
     LCDBitmap* src = playdate->graphics->loadBitmap(path, NULL);
-    if (!src) return 0;
-    int width, height, stride, n=0;
+    if (!src)
+        return 0;
+    int width, height, stride, n = 0;
     playdate->graphics->getBitmapData(src, &width, &height, &stride, NULL, NULL);
-    
-    for (int ty = 0; ty < (height/12); ++ty)
+
+    for (int ty = 0; ty < (height / 12); ++ty)
     {
-        for (int tx = 0; tx < (width/12); ++tx)
+        for (int tx = 0; tx < (width / 12); ++tx)
         {
-            int i = ty*(width/12) + tx;
-            if (++n > max_tiles) goto done;
+            int i = ty * (width / 12) + tx;
+            if (++n > max_tiles)
+                goto done;
             for (int j = 0; j < 12; ++j)
             {
                 out[i][j] = 0;
@@ -105,10 +113,10 @@ int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles)
             }
         }
     }
-    
+
 done:
     playdate->graphics->freeBitmap(src);
-    
+
     return n;
 }
 
@@ -133,12 +141,15 @@ void script_draw_tiles12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, in
     }
 }
 
-void script_draw_string12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x, int y)
+void script_draw_string12(
+    uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x,
+    int y
+)
 {
     for (int i = 0; s[i]; ++i)
     {
         int c = s[i] - char_offset;
-        script_draw_tiles12(tiles12, lcd, rowbytes, c, x + i*12, y);
+        script_draw_tiles12(tiles12, lcd, rowbytes, c, x + i * 12, y);
     }
 }
 
@@ -374,7 +385,9 @@ void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y)
     }
 }
 
-void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags)
+void draw_vram_tile_ext(
+    uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags
+)
 {
     uint16_t tile_addr = 0x8000 | (16 * (uint16_t)tile_idx);
     if (tile_idx < 0x80 && mode9000)
@@ -388,11 +401,11 @@ void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y
         {
             int c0 = (tile_data[i] >> j) & 1;
             int c1 = (tile_data[i] >> (j + 8)) & 1;
-            
+
             int c = c0 | (c1 << 1);
 
-            LCDColor col = get_palette_color((palette >> (c*2)) & 3);
-            
+            LCDColor col = get_palette_color((palette >> (c * 2)) & 3);
+
             int _i = i;
             int _j = j;
             if (flags & DRAW_VRAM_TILE_FLAG_TRANSPOSE)
@@ -409,7 +422,7 @@ void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y
             {
                 _i = 7 - _i;
             }
-            
+
             playdate->graphics->fillRect(x + _j * scale, y + _i * scale, scale + 1, scale + 1, col);
         }
     }

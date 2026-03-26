@@ -1,5 +1,4 @@
 #include "patch_download_scene.h"
-#include "parental_lock_scene.h"
 
 #include "../http.h"
 #include "../jparse.h"
@@ -8,6 +7,7 @@
 #include "../utility.h"
 #include "info_scene.h"
 #include "modal.h"
+#include "parental_lock_scene.h"
 #include "patches_scene.h"
 #include "pd_api.h"
 #include "settings_scene.h"
@@ -611,17 +611,18 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
 
 static bool hash_match(json_value jhack, CB_Game* game)
 {
-    if (!game || !game->names) return false;
-    
+    if (!game || !game->names)
+        return false;
+
     json_value jrominfo = json_get_table_value(jhack, "rominfo");
     char* rominfo = (jrominfo.type == kJSONString) ? jrominfo.data.stringval : NULL;
     if (rominfo)
         decode_numeric_escapes(rominfo);
     else
         return false;
-        
+
     char* crc32 = aprintf("%08x", game->names->crc32);
-    
+
     if (strstr_i(rominfo, crc32))
     {
         cb_free(crc32);
@@ -656,7 +657,12 @@ static void context_patch_choose_interaction_update(
             {
                 if (!hash_match(pds->selected_hack, pds->game))
                 {
-                    CB_Modal* modal = CB_Modal_new("ROM not listed in hack info.\nYou should read the hack info and/or README to verify this ROM's compatability before applying any patches, lest glitches occur.", NULL, NULL, NULL);
+                    CB_Modal* modal = CB_Modal_new(
+                        "ROM not listed in hack info.\nYou should read the hack info and/or README "
+                        "to verify this ROM's compatability before applying any patches, lest "
+                        "glitches occur.",
+                        NULL, NULL, NULL
+                    );
                     modal->width = 320;
                     modal->height = 190;
                     CB_presentModal(modal->scene);
@@ -763,7 +769,11 @@ static void context_patch_choose_interaction_update(
 
 char* get_rom_info(CB_PatchDownloadScene* pds)
 {
-    return aprintf("ROM Header title: %s\n \nCRC32: %X\nInternal save: %s\n \nFilename: %s", pds->header_name, pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No", pds->game->names->filename);
+    return aprintf(
+        "ROM Header title: %s\n \nCRC32: %X\nInternal save: %s\n \nFilename: %s", pds->header_name,
+        pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No",
+        pds->game->names->filename
+    );
 }
 
 static void context_top_level_update(
@@ -771,7 +781,7 @@ static void context_top_level_update(
 )
 {
     update_common(pds, context);
-    
+
     // force refresh of hint
     pds->cached_hint_key = -2;
 
@@ -797,8 +807,7 @@ static void context_top_level_update(
                 "3. Finally, enable them from this screen (settings > Patches > Manage "
                 "patches).\n\n"
                 "You may find patches on romhacking.net or romhack.ing",
-                cb_gb_directory_path(CB_patchesPath),
-                rom_basename
+                cb_gb_directory_path(CB_patchesPath), rom_basename
             );
             cb_free(rom_basename);
 
@@ -849,15 +858,15 @@ static void context_top_level_update(
             cb_play_ui_sound(CB_UISound_Confirm);
             if (CB_App->parentalLockEngaged)
             {
-                CB_presentModal(
-                    CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene
-                );
+                CB_presentModal(CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene);
             }
             else if (!CB_App->rhdb_present)
             {
-                CB_presentModal(
-                    CB_Modal_new("Unable to download patches:\nrhdb.json missing.", NULL, NULL, NULL)->scene
-                );
+                CB_presentModal(CB_Modal_new(
+                                    "Unable to download patches:\nrhdb.json missing.", NULL, NULL,
+                                    NULL
+                )
+                                    ->scene);
             }
             else
             {
@@ -866,7 +875,7 @@ static void context_top_level_update(
                     // rhdb takes a while to parse, so we put a message here
                     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading...");
                     parse_json(ROMHACK_DB_FILE, &pds->rhdb, kFileRead | kFileReadData);
-                    
+
                     // load entry for game
                     json_value lookup = json_get_table_value(pds->rhdb, "lookup");
                     json_value gamekey = json_get_table_value(lookup, pds->header_name);
@@ -877,7 +886,7 @@ static void context_top_level_update(
                         pds->game_hacks = json_get_table_value(g2h, pds->gamekey);
                     }
                 }
-                
+
                 pds->prefix = NULL;
                 json_value jprefix = json_get_table_value(pds->rhdb, "prefix");
                 if (jprefix.type == kJSONString)
@@ -915,7 +924,7 @@ static void context_top_level_update(
             CB_presentModal(infoScene->scene);
         }
         break;
-        case 3: // parental lock
+        case 3:  // parental lock
         {
             CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
             CB_presentModal(plScene->scene);
@@ -1202,13 +1211,16 @@ static char* context_hack_list_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     const char* date = NULL;
     if (jdate.type == kJSONString)
         date = jdate.data.stringval;
-        
+
     json_value jtitle = json_get_table_value(hack, "title");
     const char* title = NULL;
     if (jtitle.type == kJSONString)
         title = jtitle.data.stringval;
 
-    return aprintf("Author: %s\n\nRelease Date: %s\n\nTitle: %s", author ? author : "?", date ? date : "?", title ? title : "?");
+    return aprintf(
+        "Author: %s\n\nRelease Date: %s\n\nTitle: %s", author ? author : "?", date ? date : "?",
+        title ? title : "?"
+    );
 }
 
 static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadContext* context)
@@ -1225,37 +1237,39 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         }
         else
         {
-            #define PATCH_MANAGE_MSG "Toggle installed patches and and rearrange the order in which they are applied."
+#define PATCH_MANAGE_MSG \
+    "Toggle installed patches and and rearrange the order in which they are applied."
             SoftPatch* patches = list_patches(pds->game->fullpath, NULL);
             if (patches)
             {
                 uint32_t hash = patch_hash(patches);
                 free_patches(patches);
-                
+
                 if (hash)
                 {
                     if (pds->game->names->rom_has_battery)
                     {
                         return aprintf(
-                            PATCH_MANAGE_MSG "\n \nPatch code: %08X\n \nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust Save Slot in settings.",
-                            hash
-                        );
-                    } else {
-                        return aprintf(
-                            PATCH_MANAGE_MSG "\n \nPatch code: %08X",
+                            PATCH_MANAGE_MSG
+                            "\n \nPatch code: %08X\n \nNote: because patches are in use, and this "
+                            "ROM has an internal save system, you may wish to use a separate save "
+                            "file. Before launching the game, please adjust Save Slot in settings.",
                             hash
                         );
                     }
+                    else
+                    {
+                        return aprintf(PATCH_MANAGE_MSG "\n \nPatch code: %08X", hash);
+                    }
                 }
             }
-            return aprintf(
-                PATCH_MANAGE_MSG
-            );
+            return aprintf(PATCH_MANAGE_MSG);
         }
         break;
     case 1:
         return aprintf(
-            "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n \nRequires internet.",
+            "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n "
+            "\nRequires internet.",
             pds->game->names->name_short_leading_article
         );
         break;
@@ -1338,7 +1352,7 @@ static void pop_context(CB_PatchDownloadScene* pds)
 void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 {
     playdate->system->setAutoLockDisabled(false);
-    
+
     if (pds->active_http_connection)
     {
         http_cancel(pds->active_http_connection);
@@ -1364,7 +1378,7 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
         cb_free(pds->local_files->files);
         cb_free(pds->local_files);
     }
-    
+
     free_json_data(pds->rhdb);
 
     cb_free(pds);
@@ -1396,7 +1410,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     {
         return;
     }
-    
+
     playdate->system->setAutoLockDisabled(true);
 
     if (pds->is_dismissing)
@@ -1862,8 +1876,10 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
             {
                 ft = FT_PATCH_UNSUPPORTED;
             }
-            else if (!strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
-                     !strcasecmp(key, "readme") || !strcasecmp(key, "license"))
+            else if (
+                !strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
+                !strcasecmp(key, "readme") || !strcasecmp(key, "license")
+            )
             {
                 ft = FT_TEXT;
             }
@@ -2004,7 +2020,7 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
 
     itemButton = CB_ListItemButton_new("ROM Info\t>");
     array_push(context->list->items, itemButton);
-    
+
     itemButton = CB_ListItemButton_new("Parental Lock\t>");
     array_push(context->list->items, itemButton);
 

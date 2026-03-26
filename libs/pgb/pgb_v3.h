@@ -220,7 +220,6 @@ struct PGB_VERSIONED(audio_data)
 #endif
 };
 
-
 /**
  * Emulator context.
  *
@@ -298,7 +297,6 @@ struct PGB_VERSIONED(gb_s)
     uint8_t cgb_ff6c : 1;
     uint8_t cgb_vram_bank : 1;
 
-
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
     uint16_t cgb_hdma_dst;
@@ -375,11 +373,12 @@ struct PGB_VERSIONED(gb_s)
     uint8_t* wram_base[2];
     uint8_t* wram_hi_base;
     uint8_t* echo_ram_base;
-    uint8_t* vram_base; // see note about vram
+    uint8_t* vram_base;  // see note about vram
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
-    uint8_t* wram;            // wram[WRAM_SIZE_CGB];
-    uint8_t* vram;            // vram[VRAM_SIZE_CGB]; /* NOTE: tile data (0-0x1800) is stored in reverse bit order. */
+    uint8_t* wram;  // wram[WRAM_SIZE_CGB];
+    uint8_t* vram;  // vram[VRAM_SIZE_CGB]; /* NOTE: tile data (0-0x1800) is stored in reverse bit
+                    // order. */
     uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
@@ -577,12 +576,27 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
-    void* preserved_fields[] = {&gb->gb_rom,        &gb->wram,         &gb->vram,
-                                &gb->gb_cart_ram,   &gb->breakpoints,  &gb->direct.oam_ghost_buffer,
-                                &gb->lcd,           &gb->direct.priv,  &gb->gb_error,
-                                &gb->gb_serial_tx,  &gb->gb_serial_rx, &gb->wram_base[0], &gb->wram_base[1],
-                                &gb->echo_ram_base, &gb->vram_base,    &gb->gb_zero_bank,
-                                &gb->xram, &gb->display.bg_map_base, &gb->display.window_map_base};
+    void* preserved_fields[] = {
+        &gb->gb_rom,
+        &gb->wram,
+        &gb->vram,
+        &gb->gb_cart_ram,
+        &gb->breakpoints,
+        &gb->direct.oam_ghost_buffer,
+        &gb->lcd,
+        &gb->direct.priv,
+        &gb->gb_error,
+        &gb->gb_serial_tx,
+        &gb->gb_serial_rx,
+        &gb->wram_base[0],
+        &gb->wram_base[1],
+        &gb->echo_ram_base,
+        &gb->vram_base,
+        &gb->gb_zero_bank,
+        &gb->xram,
+        &gb->display.bg_map_base,
+        &gb->display.window_map_base
+    };
 
     void* preserved_data[sizeof(preserved_fields)];
     for (int i = 0; i < PEANUT_GB_ARRAYSIZE(preserved_fields); ++i)
@@ -713,8 +727,8 @@ char* savestate_upgrade_to_v3(char** out, size_t* out_size, char* in, size_t in_
         v3_org + sizeof(StateHeader) + sizeof(struct gb_s_v3),
         org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
         ROM_HEADER_SIZE  // for safe-keeping
-           + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + v2_gb->gb_cart_ram_size +
-           MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint))
+            + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + v2_gb->gb_cart_ram_size +
+            MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint))
     );
 
     *out = v3_org;

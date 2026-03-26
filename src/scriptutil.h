@@ -5,10 +5,10 @@
 #include "../libs/peanut_gb.h"
 #include "app.h"
 #include "preferences.h"
+#include "revcheck.h"
 #include "scenes/game_scene.h"
 #include "script.h"
 #include "utility.h"
-#include "revcheck.h"
 
 typedef uint32_t romaddr_t;
 typedef u16 addr16_t;
@@ -31,8 +31,13 @@ char* script_load_from_disk(unsigned fidx, size_t* o_size);
 
 // returns number of tiles loaded
 int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles);
-void script_draw_tiles12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int idx, int x, int y);
-void script_draw_string12(uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x, int y);
+void script_draw_tiles12(
+    uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int idx, int x, int y
+);
+void script_draw_string12(
+    uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, const char* s, int char_offset, int x,
+    int y
+);
 
 romaddr_t rom_size(void);
 
@@ -232,22 +237,20 @@ static struct ScriptBreakpointDef
 #define SCRIPT_BREAKPOINT_(x, ...) SCRIPT_BREAKPOINT__(x, __VA_ARGS__)
 #define SCRIPT_BREAKPOINT(...) SCRIPT_BREAKPOINT_(__COUNTER__, __VA_ARGS__)
 
-#define SET_BREAKPOINTS(CONF)                                                            \
-    do                                                                                   \
-    {                                                                                    \
-        unsigned configuration = CONF;                                                   \
-        for (struct ScriptBreakpointDef* def = script_breakpoints; def; def = def->next) \
-        {                                                                                \
-            if (def->rom_addrs[configuration] != (romaddr_t) - 1)                        \
-            { \
-                unsigned bank = def->rom_addrs[configuration] / 0x4000; \
-                unsigned addr = def->rom_addrs[configuration] % 0x4000; \
-                romaddr_t romoffset = ((bank & gb->num_rom_banks_mask) * 0x4000) | addr;  \
-                c_script_add_hw_breakpoint(                                              \
-                    script_gb, romoffset, (CS_OnBreakpoint)def->bp                       \
-                );                                                                       \
-            } \
-        }                                                                                \
+#define SET_BREAKPOINTS(CONF)                                                               \
+    do                                                                                      \
+    {                                                                                       \
+        unsigned configuration = CONF;                                                      \
+        for (struct ScriptBreakpointDef* def = script_breakpoints; def; def = def->next)    \
+        {                                                                                   \
+            if (def->rom_addrs[configuration] != (romaddr_t) - 1)                           \
+            {                                                                               \
+                unsigned bank = def->rom_addrs[configuration] / 0x4000;                     \
+                unsigned addr = def->rom_addrs[configuration] % 0x4000;                     \
+                romaddr_t romoffset = ((bank & gb->num_rom_banks_mask) * 0x4000) | addr;    \
+                c_script_add_hw_breakpoint(script_gb, romoffset, (CS_OnBreakpoint)def->bp); \
+            }                                                                               \
+        }                                                                                   \
     } while (0)
 
 // rom address given bank and ram address
@@ -293,7 +296,9 @@ void draw_vram_tile(uint8_t tile_idx, bool mode9000, int scale, int x, int y);
 #define DRAW_VRAM_TILE_FLAG_FLIPX 1
 #define DRAW_VRAM_TILE_FLAG_FLIPY 2
 #define DRAW_VRAM_TILE_FLAG_TRANSPOSE 4
-void draw_vram_tile_ext(uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags);
+void draw_vram_tile_ext(
+    uint8_t tile_idx, bool mode9000, int scale, int x, int y, uint8_t palette, int flags
+);
 
 // only valid from within on_settings
 // returns false if failed

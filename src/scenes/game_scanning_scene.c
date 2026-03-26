@@ -5,8 +5,8 @@
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 #include "library_scene.h"
-#include "script.h"
 #include "pd_api.h"
+#include "script.h"
 
 struct ScriptInfo;
 
@@ -25,7 +25,9 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
 
     char* fullpath;
-    playdate->system->formatString(&fullpath, "%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
+    playdate->system->formatString(
+        &fullpath, "%s/%s", cb_gb_directory_path(CB_gamesPath), filename
+    );
 
     FileStat stat;
     if (playdate->file->stat(fullpath, &stat) != 0)
@@ -81,8 +83,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
         json_value cached_cgb_val = json_get_table_value(cached_entry, "cgb");
 
         if (cached_crc_val.type == kJSONInteger && cached_size_val.type == kJSONInteger &&
-            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString
-            && cached_battery.type == kJSONInteger && cached_cgb_val.type == kJSONInteger)
+            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString &&
+            cached_battery.type == kJSONInteger && cached_cgb_val.type == kJSONInteger)
         {
             if ((uint32_t)cached_size_val.data.intval == stat.size &&
                 (uint32_t)cached_mtime_val.data.intval == m_time_epoch)
@@ -105,8 +107,9 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     {
         int is_gbz = 0;
         uint32_t gbz_checksum = 0;
-        struct ScriptInfo* info =
-            script_get_info_by_rom_path_and_get_header_info(fullpath, header_name_buffer, &cgb, &battery, &is_gbz, &gbz_checksum);
+        struct ScriptInfo* info = script_get_info_by_rom_path_and_get_header_info(
+            fullpath, header_name_buffer, &cgb, &battery, &is_gbz, &gbz_checksum
+        );
         if (info)
         {
             script_info_free(info);
@@ -122,7 +125,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
                 break;
             }
         }
-        
+
         bool valid = false;
         if (is_gbz)
         {
@@ -133,8 +136,9 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
         {
             valid = true;
         }
-        
-        if (valid) {
+
+        if (valid)
+        {
             fetched.failedToOpenROM = false;
 
             json_value new_entry_val;
@@ -148,12 +152,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
             json_value header_val = {
                 .type = kJSONString, .data.stringval = cb_strdup(header_name_buffer)
             };
-            json_value cgb_val = {
-                .type = kJSONInteger, .data.intval = cgb
-            };
-            json_value bat_val = {
-                .type = kJSONInteger, .data.intval = battery
-            };
+            json_value cgb_val = {.type = kJSONInteger, .data.intval = cgb};
+            json_value bat_val = {.type = kJSONInteger, .data.intval = battery};
 
             json_set_table_value(&new_entry_val, "name_header", header_val);
             json_set_table_value(&new_entry_val, "crc32", crc_val);
@@ -240,7 +240,8 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     case kScanningStateInit:
     {
         playdate->file->listfiles(
-            cb_gb_directory_path(CB_gamesPath), collect_game_filenames_callback, scanScene->game_filenames, 0
+            cb_gb_directory_path(CB_gamesPath), collect_game_filenames_callback,
+            scanScene->game_filenames, 0
         );
 
         array_reserve(CB_App->gameNameCache, scanScene->game_filenames->length);
@@ -319,7 +320,9 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
 
         bool png_found = false;
-        playdate->file->listfiles(cb_gb_directory_path(CB_coversPath), checkForPngCallback, &png_found, false);
+        playdate->file->listfiles(
+            cb_gb_directory_path(CB_coversPath), checkForPngCallback, &png_found, false
+        );
 
         if (png_found)
         {
