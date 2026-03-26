@@ -345,9 +345,8 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
                 result = preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
             }
 
-            result = preferences_save_to_disk(
-                CB_globalPrefsPath, ~PREFBITS_ALWAYS_GLOBAL | PREFBITS_NEVER_GLOBAL
-            );
+            // Save to global preferences (everything except never-global, including always-global)
+            result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
         }
         else
         {
@@ -362,24 +361,28 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
     else if (game_settings_path)
     {
         if (preferences_per_game)
+        {
+            // Save per-game settings (excluding always-global)
             result = preferences_save_to_disk(
                 game_settings_path, prefs_locked_by_script | PREFBITS_ALWAYS_GLOBAL
-            );
-        else
-        {
-            result = preferences_save_to_disk(
-                CB_globalPrefsPath,
-
-                PREFBITS_NEVER_GLOBAL |
-                    PREFBITS_ALWAYS_GLOBAL
-                    // these prefs are locked, so we shouldn't be able to change them
-                    | prefs_locked_by_script
             );
 
             if (result)
             {
-                // also save that preferences are always per-game,
-                // such as the save slot
+                // Also save always-global settings to global preferences file
+                result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
+            }
+        }
+        else
+        {
+            // Global mode - save all settings to global preferences
+            result = preferences_save_to_disk(
+                CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL | prefs_locked_by_script
+            );
+
+            if (result)
+            {
+                // also save per-game-only settings to game file
                 result = preferences_save_to_disk(
                     game_settings_path, ~(PREFBITS_NEVER_GLOBAL) | PREFBITS_ALWAYS_GLOBAL
                 );
