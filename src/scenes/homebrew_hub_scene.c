@@ -893,6 +893,7 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
         return false;
     context->type = HBSCT_LIST_FILES;
     context->j = entry;
+    context->show_image = true;
 
     int n = 0;
     for (int i = 0; i < a->n; ++i)
