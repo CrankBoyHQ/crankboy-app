@@ -46,6 +46,10 @@ typedef struct CB_HomebrewHubScene
     CB_Game* game;
     struct CB_SettingsScene* settingsScene;
 
+    float header_animation_p;
+    bool started_without_header;
+    bool is_dismissing;
+
     HTTPSafe* active_http_connection;
     HTTPSafe* active_http_connection_2;
     HomebrewHubDownloadType active_download_type;
@@ -79,6 +83,9 @@ typedef struct CB_HomebrewHubScene
 
     float anim_t;
     int loading_anim_step;
+
+    char header_name[64];
+
 } CB_HomebrewHubScene;
 
-CB_HomebrewHubScene* CB_HomebrewHubScene_new(void);
+CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name);

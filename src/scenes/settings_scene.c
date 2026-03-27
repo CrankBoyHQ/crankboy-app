@@ -113,7 +113,28 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
 static void open_homebrew_hub(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
-    CB_HomebrewHubScene* s = CB_HomebrewHubScene_new();
+
+    // In Game scope: header starts visible (1.0) and fades out in hub
+    // In Global scope: no header (0.0), direct switch
+    float initial_header_p = preferences_per_game ? 1.0f : 0.0f;
+
+    const char* header_name = NULL;
+    if (preferences_per_game && settingsScene->libraryScene)
+    {
+        CB_Game* selectedGame =
+            (settingsScene->libraryScene->listView->selectedItem <
+             settingsScene->libraryScene->games->length)
+                ? settingsScene->libraryScene->games
+                      ->items[settingsScene->libraryScene->listView->selectedItem]
+                : NULL;
+        if (selectedGame)
+        {
+            header_name = selectedGame->names->name_short_leading_article;
+        }
+    }
+
+    CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(initial_header_p, header_name);
+    s->settingsScene = settingsScene;
     CB_presentModal(s->scene);
 }
 

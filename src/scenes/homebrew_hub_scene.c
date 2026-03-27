@@ -9,6 +9,8 @@
 #include "modal.h"
 #include "parental_lock_scene.h"
 
+#include <string.h>
+
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
 #define kRightPanePadding 10
@@ -18,6 +20,8 @@
 #define HOLD_TIME_MARGIN 0.15f
 #define HOLD_TIME 1.09f
 #define HOLD_FADE_RATE 2.9f
+#define HEADER_ANIMATION_RATE 2.8f
+#define HEADER_HEIGHT 18
 
 typedef struct
 {
@@ -237,7 +241,7 @@ static void draw_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, i
     int left_margin = 4;
     int right_margin = 0;
 
-    int header_y = 0;
+    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
 
     PDRect frame = {
         x + left_margin, header_y, kDividerX - left_margin - right_margin, LCD_ROWS - header_y
@@ -255,7 +259,7 @@ static void draw_top_level(
 {
     int left_margin = 20;
     int right_margin = 20;
-    int header_y = 0;
+    int header_y = hbs->header_animation_p * HEADER_HEIGHT + 0.5f;
 
     int listX = x;
     int listY = header_y;
@@ -970,32 +974,69 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     // stops some bugs relating to downloading for some reason.
     playdate->system->setAutoLockDisabled(true);
 
-    if (hbs->context_depth_p != hbs->target_context_depth)
+    if (hbs->is_dismissing)
     {
-        hbs->context_depth_p =
-            toward(hbs->context_depth_p, hbs->target_context_depth, dt * SCROLL_RATE);
-        if (hbs->context_depth_p < 0)
+        // When dismissing from game scope, fade header back IN to match settings scene
+        TOWARD(hbs->header_animation_p, 1.0f, dt * HEADER_ANIMATION_RATE);
+        if (hbs->header_animation_p == 1.0f)
         {
             CB_dismiss(hbs->scene);
             return;
         }
-        else if (hbs->context_depth_p <= hbs->context_depth - 2 && hbs->context_depth > 0)
+    }
+    else
+    {
+        // Hub scene fades header OUT (opposite of patch download which fades IN)
+        TOWARD(hbs->header_animation_p, 0.0f, dt * HEADER_ANIMATION_RATE);
+
+        if (hbs->context_depth_p != hbs->target_context_depth)
         {
-            pop_context(hbs);
+            hbs->context_depth_p =
+                toward(hbs->context_depth_p, hbs->target_context_depth, dt * SCROLL_RATE);
+            if (hbs->context_depth_p < 0)
+            {
+                CB_dismiss(hbs->scene);
+                return;
+            }
+            else if (hbs->context_depth_p <= hbs->context_depth - 2 && hbs->context_depth > 0)
+            {
+                pop_context(hbs);
+            }
+        }
+        else if (CB_App->buttons_pressed & kButtonB)
+        {
+            if (hbs->context_depth == 1)
+            {
+                // At the top level panel
+                // Opposite logic: if started with header (game scope), fade it back in
+                if (hbs->started_without_header)
+                {
+                    --hbs->target_context_depth;
+                }
+                else
+                {
+                    hbs->is_dismissing = true;
+                }
+            }
+            else
+            {
+                --hbs->target_context_depth;
+            }
+            http_safe_cancel(hbs->active_http_connection);
+            hbs->active_download_type = HB_DL_NONE;
         }
     }
-    else if (CB_App->buttons_pressed & kButtonB)
-    {
-        --hbs->target_context_depth;
-        http_safe_cancel(hbs->active_http_connection);
-        hbs->active_download_type = HB_DL_NONE;
-    }
 
+    int header_y = hbs->header_animation_p * HEADER_HEIGHT + 0.5f;
     bool isAnimating = (hbs->context_depth_p != hbs->target_context_depth);
     playdate->graphics->clear(kColorWhite);
-    int list_padding_top = 24;
+    int list_padding_top = 24 - (int)(9.0f * hbs->header_animation_p);
 
     int n = (hbs->context_depth_p >= 1) ? 2 : 1;
+    if (hbs->is_dismissing)
+    {
+        n = 1;
+    }
 
     for (int i = 0; i < n; ++i)
     {
@@ -1039,12 +1080,10 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         float x = d * kDividerX;
         context_draw_fn fn = context_draw[context->type];
         if (context->list)
-            context->list->hideScrollIndicator = isAnimating;
+            context->list->hideScrollIndicator = isAnimating || hbs->is_dismissing;
         if (fn)
-            fn(hbs, context, x, i == 0);
+            fn(hbs, context, x, i == 0 && !hbs->is_dismissing);
     }
-
-    int header_y = 0;
 
     playdate->graphics->fillRect(
         kDividerX, header_y, LCD_COLUMNS - kDividerX, LCD_ROWS - header_y, kColorWhite
@@ -1074,7 +1113,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         int rightPaneX = kDividerX + kRightPanePadding;
 
         // Calculate dynamic top padding for the RIGHT hint pane (29px -> 20px)
-        int hint_padding_top = 29;
+        int hint_padding_top = 29 - (int)(9.0f * hbs->header_animation_p);
         int rightPaneY = header_y + hint_padding_top;
 
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
@@ -1107,6 +1146,25 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     }
 
     playdate->graphics->drawLine(kDividerX, header_y, kDividerX, LCD_ROWS, 1, kColorBlack);
+
+    // Draw header with game name if header is visible
+    if (header_y > 0 && hbs->header_name[0])
+    {
+        const char* name = hbs->header_name;
+        playdate->graphics->setFont(CB_App->labelFont);
+        int nameWidth = playdate->graphics->getTextWidth(
+            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
+        );
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
+        int vertical_offset = string_has_descenders(name) ? 1 : 2;
+        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    }
 
     // Show loading modal when downloading ROM or refreshing list (blocking UI)
     if ((hbs->active_download_type == HB_DL_ROM || hbs->active_download_type == HB_DL_LIST) &&
@@ -1181,12 +1239,38 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
     cb_free(hbs);
 }
 
-CB_HomebrewHubScene* CB_HomebrewHubScene_new(void)
+static void CB_HomebrewHubScene_didSelectSettings(void* userdata)
+{
+    CB_HomebrewHubScene* hbs = userdata;
+
+    // Opposite of patch download: if we started WITH header (game scope),
+    // we need to fade it back IN before dismissing
+    if (hbs->started_without_header)
+    {
+        hbs->target_context_depth = -1;
+    }
+    else
+    {
+        hbs->is_dismissing = true;
+    }
+}
+
+static void CB_HomebrewHubScene_menu(void* object)
+{
+    CB_HomebrewHubScene* hbs = object;
+    playdate->system->removeAllMenuItems();
+    playdate->system->addMenuItem("settings", CB_HomebrewHubScene_didSelectSettings, hbs);
+}
+
+CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name)
 {
     CB_Scene* scene = CB_Scene_new();
     CB_HomebrewHubScene* hbs = allocz(CB_HomebrewHubScene);
     hbs->scene = scene;
     hbs->option_hold_time = 0.0f;
+    hbs->header_animation_p = initial_header_p;
+    hbs->started_without_header = (initial_header_p < 1.0f);
+    hbs->is_dismissing = false;
     scene->managedObject = hbs;
 
     hbs->active_http_connection = http_safe_new();
@@ -1196,8 +1280,19 @@ CB_HomebrewHubScene* CB_HomebrewHubScene_new(void)
     hbs->cached_hint_key = -2;
     hbs->loading_anim_step = 0;
 
+    if (header_name)
+    {
+        strncpy(hbs->header_name, header_name, sizeof(hbs->header_name) - 1);
+        hbs->header_name[sizeof(hbs->header_name) - 1] = '\0';
+    }
+    else
+    {
+        hbs->header_name[0] = '\0';
+    }
+
     scene->update = (void*)CB_HomebrewHubScene_update;
     scene->free = (void*)CB_HomebrewHubScene_free;
+    scene->menu = (void*)CB_HomebrewHubScene_menu;
 
     push_top_level(hbs);
 
