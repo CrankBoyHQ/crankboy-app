@@ -934,6 +934,7 @@ void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message)
  */
 void cb_draw_logo_screen_and_display(LCDFont* font, const char* message)
 {
+    playdate->graphics->setDrawMode(kDrawModeCopy);
     cb_draw_logo_screen_to_buffer(font, message);
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
     playdate->graphics->display();
