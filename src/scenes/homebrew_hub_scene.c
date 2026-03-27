@@ -52,9 +52,21 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         return;
     else if (flags & ~(HTTP_ENABLE_ASKED))
     {
-        char* s = aprintf("HTTP Error.\n \nCode: 0x%x", flags);
-        CB_presentModal(CB_Modal_new(s, NULL, NULL, NULL)->scene);
-        cb_free(s);
+        char* msg;
+        if (flags & HTTP_WIFI_NOT_AVAILABLE)
+        {
+            msg = cb_strdup("Wi-Fi not available.");
+        }
+        else if (flags & HTTP_ENABLE_DENIED)
+        {
+            msg = cb_strdup("Network permission was denied.");
+        }
+        else
+        {
+            msg = aprintf("A network error occurred. (0x%03x)", flags);
+        }
+        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        cb_free(msg);
     }
     else if (!data || !data_len)
     {
@@ -682,10 +694,21 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
     if (flags & (~HTTP_ENABLE_ASKED))
     {
         hbs->target_context_depth = 0;
-        char* s = aprintf("HTTP Error.\n \nCode: 0x%x", flags);
-        CB_presentModal(CB_Modal_new(s, NULL, NULL, NULL)->scene);
-
-        cb_free(s);
+        char* msg;
+        if (flags & HTTP_WIFI_NOT_AVAILABLE)
+        {
+            msg = cb_strdup("Wi-Fi not available.");
+        }
+        else if (flags & HTTP_ENABLE_DENIED)
+        {
+            msg = cb_strdup("Network permission was denied.");
+        }
+        else
+        {
+            msg = aprintf("A network error occurred. (0x%03x)", flags);
+        }
+        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        cb_free(msg);
     }
     else
     {
