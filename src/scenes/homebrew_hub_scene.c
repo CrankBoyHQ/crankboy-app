@@ -249,6 +249,94 @@ static void draw_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, i
     CB_ListView_draw(context->list);
 }
 
+static void draw_top_level(
+    CB_HomebrewHubScene* hbs, HomebrewHubContext* context, int x, bool active
+)
+{
+    int left_margin = 20;
+    int right_margin = 20;
+    int header_y = 0;
+
+    int listX = x;
+    int listY = header_y;
+    int listWidth = kDividerX;
+    int listHeight = LCD_ROWS - header_y;
+
+    LCDFont* font = context->list->font;
+    int fontHeight = playdate->graphics->getFontHeight(font);
+
+    // Draw list items manually with tab handling for right-aligned chevrons
+    int rowY = listY + context->list->paddingTop - context->list->contentOffset;
+
+    for (int i = 0; i < context->list->items->length; i++)
+    {
+        CB_ListItem* item = context->list->items->items[i];
+        if (item->type != CB_ListViewItemTypeButton)
+            continue;
+
+        CB_ListItemButton* button = (CB_ListItemButton*)item;
+
+        // Skip items outside the visible area
+        if (rowY + item->height < listY || rowY > listY + listHeight)
+        {
+            rowY += item->height;
+            continue;
+        }
+
+        bool selected = (i == context->list->selectedItem);
+
+        if (selected)
+        {
+            playdate->graphics->fillRect(listX, rowY, listWidth, item->height, kColorBlack);
+            playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        }
+        else
+        {
+            playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        }
+
+        // Split text at tab character
+        char* fullText = cb_strdup(button->title);
+        char* rightText = strchr(fullText, '\t');
+        char* leftText = fullText;
+
+        if (rightText != NULL)
+        {
+            *rightText = '\0';
+            rightText++;
+        }
+        else
+        {
+            rightText = "";
+        }
+
+        int textY = rowY + (item->height - fontHeight) / 2;
+
+        // Draw left text
+        playdate->graphics->setFont(font);
+        playdate->graphics->drawText(
+            leftText, strlen(leftText), kUTF8Encoding, listX + left_margin, textY
+        );
+
+        // Draw right text (chevron) aligned to right
+        if (strlen(rightText) > 0)
+        {
+            int rightWidth = playdate->graphics->getTextWidth(
+                font, rightText, strlen(rightText), kUTF8Encoding, 0
+            );
+            playdate->graphics->drawText(
+                rightText, strlen(rightText), kUTF8Encoding,
+                listX + listWidth - rightWidth - right_margin, textY
+            );
+        }
+
+        cb_free(fullText);
+        rowY += item->height;
+    }
+
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+}
+
 static void update_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, float dt)
 {
     if (context->list)
@@ -585,7 +673,7 @@ static context_update_fn context_update[HBSCT_MAX] = {
     context_top_level_update, context_list_search_update, context_list_files_update
 };
 
-static context_draw_fn context_draw[HBSCT_MAX] = {draw_common, draw_common, draw_common};
+static context_draw_fn context_draw[HBSCT_MAX] = {draw_top_level, draw_common, draw_common};
 
 static HomebrewHubContext* push_context(CB_HomebrewHubScene* hbs)
 {
@@ -857,13 +945,13 @@ static bool push_top_level(CB_HomebrewHubScene* hbs)
 
     context->type = HBSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Browse GB games…");
+    itemButton = CB_ListItemButton_new("Browse GB games\t>");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Browse CGB games…");
+    itemButton = CB_ListItemButton_new("Browse CGB games\t>");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Parental Lock…");
+    itemButton = CB_ListItemButton_new("Parental Lock\t>");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);
