@@ -165,7 +165,33 @@ void http_safe_replace_get(
 
 void http_safe_cancel(HTTPSafe* safe)
 {
-    safe->enqueued = true;
+    if (safe->handle)
+    {
+        http_cancel(safe->handle);
+        safe->handle = 0;
+    }
+    safe->enqueued = false;
+    safe->cb = NULL;
+    safe->ud = NULL;
+
+    // Clear any queued request
+    if (safe->queued.domain)
+    {
+        cb_free(safe->queued.domain);
+        safe->queued.domain = NULL;
+    }
+    if (safe->queued.path)
+    {
+        cb_free(safe->queued.path);
+        safe->queued.path = NULL;
+    }
+    if (safe->queued.reason)
+    {
+        cb_free(safe->queued.reason);
+        safe->queued.reason = NULL;
+    }
+    safe->queued.cb = NULL;
+    safe->queued.ud = NULL;
 }
 
 bool http_safe_in_progress(HTTPSafe* safe)
