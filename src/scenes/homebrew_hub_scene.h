@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../http_safe.h"
 #include "../listview.h"
-#include "http_safe.h"
 #include "library_scene.h"
 
 #include <stdlib.h>
@@ -18,6 +18,13 @@ typedef enum HomebrewHubSceneContextType
 
     HBSCT_MAX
 } HomebrewHubSceneContextType;
+
+typedef enum HomebrewHubDownloadType
+{
+    HB_DL_NONE,
+    HB_DL_ROM,
+    HB_DL_LIST,
+} HomebrewHubDownloadType;
 
 typedef struct HomebrewHubContext
 {
@@ -41,6 +48,7 @@ typedef struct CB_HomebrewHubScene
 
     HTTPSafe* active_http_connection;
     HTTPSafe* active_http_connection_2;
+    HomebrewHubDownloadType active_download_type;
 
     int max_pages;
 
@@ -70,7 +78,7 @@ typedef struct CB_HomebrewHubScene
     HomebrewHubContext context[CB_HBH_STACK_MAX_DEPTH];
 
     float anim_t;
-
+    int loading_anim_step;
 } CB_HomebrewHubScene;
 
 CB_HomebrewHubScene* CB_HomebrewHubScene_new(void);

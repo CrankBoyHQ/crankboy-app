@@ -1,12 +1,13 @@
 #include "homebrew_hub_scene.h"
 
-#include "app.h"
-#include "http.h"
-#include "jparse.h"
+#include "../app.h"
+#include "../http.h"
+#include "../jparse.h"
+#include "../userstack.h"
+#include "../utility.h"
+#include "image_conversion_scene.h"
 #include "modal.h"
-#include "scenes/image_conversion_scene.h"
-#include "scenes/parental_lock_scene.h"
-#include "userstack.h"
+#include "parental_lock_scene.h"
 
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
@@ -48,6 +49,8 @@ static void user_quit(void* ud, int selected)
 // callback when rom is downloaded
 static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
+    hbs->active_download_type = HB_DL_NONE;
+
     if (flags & HTTP_CANCELLED)
         return;
     else if (flags & ~(HTTP_ENABLE_ASKED))
@@ -257,6 +260,7 @@ static void confirm_download(CB_HomebrewHubScene* hbs, int option)
     // download file
     if (option == 1)
     {
+        hbs->active_download_type = HB_DL_ROM;
         http_safe_replace_get(
             hbs->active_http_connection, CB_App->hbApiDomain, hbs->urlpath,
             "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs
@@ -684,6 +688,7 @@ static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext
 
 static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
+    hbs->active_download_type = HB_DL_NONE;
     hbs->cached_hint_key = 0;
 
     if (flags & (HTTP_CANCELLED))
@@ -752,6 +757,7 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
         hbs->download_image = 0;
     }
 
+    hbs->active_download_type = HB_DL_LIST;
     http_safe_replace_get(
         hbs->active_http_connection, CB_App->hbApiDomain, urlpath, "to browse homebrew",
         (void*)http_search_cb, 15 * 1000, hbs
@@ -894,6 +900,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     {
         --hbs->target_context_depth;
         http_safe_cancel(hbs->active_http_connection);
+        hbs->active_download_type = HB_DL_NONE;
     }
 
     bool isAnimating = (hbs->context_depth_p != hbs->target_context_depth);
@@ -1001,15 +1008,69 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             LCD_ROWS - h, kBitmapUnflipped
         );
     }
-    else if (
-        http_safe_in_progress(hbs->active_http_connection) ||
-        (http_safe_in_progress(hbs->active_http_connection_2))
-    )
+    else if (http_safe_in_progress(hbs->active_http_connection_2))
     {
-        draw_spinny((kDividerX + LCD_COLUMNS) / 2, 180, 34);
+        // Cover art loading - show spinner in lower right only if not on page entry
+        HomebrewHubContext* current_context = &hbs->context[hbs->context_depth - 1];
+        if (current_context->list && current_context->list->selectedItem > 0)
+        {
+            draw_spinny((kDividerX + LCD_COLUMNS) / 2, 180, 34);
+        }
     }
 
     playdate->graphics->drawLine(kDividerX, header_y, kDividerX, LCD_ROWS, 1, kColorBlack);
+
+    // Show loading modal when downloading ROM or refreshing list (blocking UI)
+    if ((hbs->active_download_type == HB_DL_ROM || hbs->active_download_type == HB_DL_LIST) &&
+        http_safe_in_progress(hbs->active_http_connection))
+    {
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)&lcdp_t_50[0]);
+
+        int box_w = 260;
+        int box_h = 70;
+        int box_x = (LCD_COLUMNS - box_w) / 2;
+        int box_y = (LCD_ROWS - box_h) / 2;
+        playdate->graphics->fillRect(box_x, box_y, box_w, box_h, kColorWhite);
+        playdate->graphics->drawRect(box_x, box_y, box_w, box_h, kColorBlack);
+
+        hbs->anim_t += dt;
+        if (hbs->anim_t >= 0.5f)
+        {
+            hbs->anim_t -= 0.5f;
+            hbs->loading_anim_step = (hbs->loading_anim_step + 1) % 3;
+        }
+
+        int num_dots = hbs->loading_anim_step + 1;
+        char dots[4] = "...";
+        dots[num_dots] = '\0';
+
+        const char* base_text =
+            (hbs->active_download_type == HB_DL_ROM) ? "Downloading ROM" : "Refreshing List";
+
+        playdate->graphics->setFont(CB_App->bodyFont);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+        int base_text_width = playdate->graphics->getTextWidth(
+            CB_App->bodyFont, base_text, strlen(base_text), kUTF8Encoding, 0
+        );
+        int max_dots_width =
+            playdate->graphics->getTextWidth(CB_App->bodyFont, "...", 3, kUTF8Encoding, 0);
+        int total_text_width = base_text_width + max_dots_width;
+
+        int font_height = playdate->graphics->getFontHeight(CB_App->bodyFont);
+        int text_y = box_y + (box_h - font_height) / 2;
+        int start_x = box_x + (box_w - total_text_width) / 2;
+
+        playdate->graphics->drawText(base_text, strlen(base_text), kUTF8Encoding, start_x, text_y);
+        playdate->graphics->drawText(
+            dots, strlen(dots), kUTF8Encoding, start_x + base_text_width, text_y
+        );
+    }
+    else
+    {
+        hbs->anim_t = 0;
+        hbs->loading_anim_step = 0;
+    }
 }
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
@@ -1042,8 +1103,10 @@ CB_HomebrewHubScene* CB_HomebrewHubScene_new(void)
 
     hbs->active_http_connection = http_safe_new();
     hbs->active_http_connection_2 = http_safe_new();
+    hbs->active_download_type = HB_DL_NONE;
 
     hbs->cached_hint_key = -2;
+    hbs->loading_anim_step = 0;
 
     scene->update = (void*)CB_HomebrewHubScene_update;
     scene->free = (void*)CB_HomebrewHubScene_free;
