@@ -17,7 +17,7 @@ jobs:
         steps:
             # Step 1: Checkout repository history without LFS files
             - name: Checkout for commit history check
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   lfs: false
                   fetch-depth: 0
@@ -42,7 +42,7 @@ jobs:
         steps:
             # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -97,7 +97,7 @@ jobs:
 
             # Step 8: Upload the .pdx Directory
             - name: Upload Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/
@@ -110,7 +110,7 @@ jobs:
         steps:
             # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -165,7 +165,7 @@ jobs:
 
             # Step 8: Upload Simulator Artifact
             - name: Upload Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/
@@ -178,7 +178,7 @@ jobs:
         steps:
             # Step 1: Check out the repository's code, submodules, and LFS files.
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -228,7 +228,7 @@ jobs:
 
             # Step 7: Upload Simulator Artifact
             - name: Upload Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/
@@ -243,7 +243,7 @@ jobs:
                 shell: msys2 {0}
         steps:
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -323,7 +323,7 @@ jobs:
                   mv CrankBoy.pdx artifact_root/
 
             - name: Upload Windows Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: ${{ steps.artifact_details.outputs.artifact_name }}
                   path: artifact_root/

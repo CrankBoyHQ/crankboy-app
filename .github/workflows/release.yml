@@ -12,7 +12,7 @@ jobs:
         steps:
             # Step 1: Check out the repository's code and its submodules.
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -44,7 +44,7 @@ jobs:
 
             # Step 6: Upload the zipped artifact to be used in the release job
             - name: Upload Device Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: device-build
                   path: CrankBoy-Device.zip
@@ -54,7 +54,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -84,7 +84,7 @@ jobs:
 
             # Step 6: Upload the zipped artifact
             - name: Upload Linux Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: simulator-linux-build
                   path: CrankBoy-Simulator-Linux.zip
@@ -94,7 +94,7 @@ jobs:
         runs-on: macos-latest
         steps:
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -119,7 +119,7 @@ jobs:
               run: zip -r CrankBoy-Simulator-macOS.zip CrankBoy.pdx
 
             - name: Upload macOS Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: simulator-macos-build
                   path: CrankBoy-Simulator-macOS.zip
@@ -132,7 +132,7 @@ jobs:
                 shell: msys2 {0}
         steps:
             - name: Checkout Repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   submodules: "recursive"
                   lfs: true
@@ -198,7 +198,7 @@ jobs:
                   zip -r CrankBoy-Simulator-Windows.zip CrankBoy.pdx
 
             - name: Upload Windows Simulator Artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v6
               with:
                   name: simulator-windows-build
                   path: CrankBoy-Simulator-Windows.zip
@@ -213,13 +213,13 @@ jobs:
         steps:
             # Step 1: Check out the repository's code with full history
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0
 
             # Step 2: Download all artifacts from the build jobs
             - name: Download all build artifacts
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v7
               with:
                   path: artifacts
 
