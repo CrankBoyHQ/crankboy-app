@@ -181,6 +181,7 @@ CB_ParentalLockScene* CB_ParentalLockScene_new(void)
         return NULL;
 
     CB_Scene* scene = CB_Scene_new();
+    scene->type = CB_SCENE_TYPE_PARENTAL_LOCK;
     parentalLockScene->scene = scene;
     scene->managedObject = parentalLockScene;
 

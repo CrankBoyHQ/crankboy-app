@@ -2034,6 +2034,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
 )
 {
     CB_Scene* scene = CB_Scene_new();
+    scene->type = CB_SCENE_TYPE_PATCH_DOWNLOAD;
     CB_PatchDownloadScene* pds = allocz(CB_PatchDownloadScene);
     pds->scene = scene;
     pds->settingsScene = settingsScene;

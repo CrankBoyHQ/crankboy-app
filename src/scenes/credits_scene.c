@@ -355,6 +355,7 @@ CB_CreditsScene* CB_CreditsScene_new(void)
         cb_free(creditsScene);
         return NULL;
     }
+    scene->type = CB_SCENE_TYPE_CREDITS;
 
     scene->managedObject = creditsScene;
     scene->update = CB_CreditsScene_update;

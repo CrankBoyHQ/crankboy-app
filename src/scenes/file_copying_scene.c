@@ -238,6 +238,7 @@ CB_FileCopyingScene* CB_FileCopyingScene_new(void)
     CB_FileCopyingScene* scene = cb_calloc(1, sizeof(CB_FileCopyingScene));
 
     scene->scene = CB_Scene_new();
+    scene->scene->type = CB_SCENE_TYPE_FILE_COPYING;
     scene->scene->managedObject = scene;
     scene->scene->update = CB_FileCopyingScene_update;
     scene->scene->free = CB_FileCopyingScene_free;

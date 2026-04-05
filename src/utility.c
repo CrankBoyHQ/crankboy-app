@@ -15,6 +15,7 @@
 #include "scenes/library_scene.h"
 
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -1837,4 +1838,111 @@ char* sanitize_url_path(const char* original)
     sanitized[sanitized_index] = '\0';
 
     return sanitized;
+}
+
+// ============================================================================
+// Base64 and URL decoding (used by ft protocol)
+// ============================================================================
+
+// Base64 decoding table
+static const uint8_t base64_decode_table[256] = {
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 62, 64, 64, 64, 63,
+    52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 64, 64, 64, 64, 64, 64, 64, 0,  1,  2,  3,  4,  5,  6,
+    7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 64, 64, 64, 64, 64,
+    64, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+    49, 50, 51, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64,
+    64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64, 64
+};
+
+// Base64 decode: returns decoded length or -1 on error
+int base64_decode(const char* in, size_t in_len, uint8_t* out, size_t out_max)
+{
+    if (in_len % 4 != 0 && in[in_len - 1] != '=')
+    {
+        return -1;  // Invalid length
+    }
+
+    size_t out_len = 0;
+    uint32_t buf = 0;
+    int buf_bits = 0;
+
+    for (size_t i = 0; i < in_len; i++)
+    {
+        char c = in[i];
+        if (c == '=')
+        {
+            break;  // Padding
+        }
+
+        uint8_t val = base64_decode_table[(uint8_t)c];
+        if (val >= 64)
+        {
+            continue;  // Skip invalid characters (whitespace, etc.)
+        }
+
+        buf = (buf << 6) | val;
+        buf_bits += 6;
+
+        if (buf_bits >= 8)
+        {
+            if (out_len >= out_max)
+            {
+                return -1;  // Output buffer overflow
+            }
+            buf_bits -= 8;
+            out[out_len++] = (buf >> buf_bits) & 0xFF;
+        }
+    }
+
+    return (int)out_len;
+}
+
+// URL decode: convert %XX to character, returns decoded length or -1 on error
+int url_decode(const char* in, char* out, size_t out_size)
+{
+    size_t j = 0;
+    for (size_t i = 0; in[i] && j < out_size - 1; i++)
+    {
+        char c = in[i];
+        if (c == '%' && in[i + 1] && in[i + 2])
+        {
+            // Parse hex value
+            char hex[3] = {in[i + 1], in[i + 2], '\0'};
+            char* endptr;
+            unsigned long val = strtoul(hex, &endptr, 16);
+            if (*endptr == '\0' && val <= 255)
+            {
+                out[j++] = (char)val;
+                i += 2;
+                continue;
+            }
+            // Invalid hex, treat % as literal
+        }
+        else if (c == '+')
+        {
+            out[j++] = ' ';
+            continue;
+        }
+        out[j++] = c;
+    }
+    out[j] = '\0';
+    return (int)j;
+}
+
+// Generic serial response function - used by all protocols
+void serial_send_response(const char* format, ...)
+{
+    char buffer[256];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    // Send response to host via serial
+    playdate->system->logToConsole("%s", buffer);
 }

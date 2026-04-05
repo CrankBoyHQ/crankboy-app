@@ -277,6 +277,7 @@ CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback 
         modal->text = cb_strdup(text);
 
     CB_Scene* scene = CB_Scene_new();
+    scene->type = CB_SCENE_TYPE_MODAL;
     modal->scene = scene;
     scene->managedObject = modal;
     scene->update = (void*)CB_Modal_update;

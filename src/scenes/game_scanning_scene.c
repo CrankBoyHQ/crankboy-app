@@ -377,6 +377,7 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
     CB_GameScanningScene* scanScene = cb_calloc(1, sizeof(CB_GameScanningScene));
 
     scanScene->scene = CB_Scene_new();
+    scanScene->scene->type = CB_SCENE_TYPE_GAME_SCANNING;
     scanScene->scene->managedObject = scanScene;
     scanScene->scene->update = CB_GameScanningScene_update;
     scanScene->scene->free = CB_GameScanningScene_free;

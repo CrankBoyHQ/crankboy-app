@@ -14,10 +14,31 @@
 
 #include <stdio.h>
 
+typedef enum
+{
+    CB_SCENE_TYPE_UNKNOWN = 0,
+    CB_SCENE_TYPE_LIBRARY,
+    CB_SCENE_TYPE_GAME,
+    CB_SCENE_TYPE_SETTINGS,
+    CB_SCENE_TYPE_INFO,
+    CB_SCENE_TYPE_FILE_COPYING,
+    CB_SCENE_TYPE_PATCH_DOWNLOAD,
+    CB_SCENE_TYPE_HOMEBREW_HUB,
+    CB_SCENE_TYPE_MODAL,
+    CB_SCENE_TYPE_PARENTAL_LOCK,
+    CB_SCENE_TYPE_SFT_MODAL,
+    CB_SCENE_TYPE_COVER_CACHE,
+    CB_SCENE_TYPE_GAME_SCANNING,
+    CB_SCENE_TYPE_CREDITS,
+    CB_SCENE_TYPE_IMAGE_CONVERSION,
+    CB_SCENE_TYPE_PATCHES
+} CB_SceneType;
+
 typedef struct CB_Scene
 {
     void* managedObject;
     struct CB_Scene* parentScene;
+    CB_SceneType type;
 
     float preferredRefreshRate;
 

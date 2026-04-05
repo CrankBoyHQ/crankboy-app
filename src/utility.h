@@ -190,6 +190,13 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* crc);
 uint32_t crc32_for_buffer(const unsigned char* buf, size_t len);
 uint32_t crc32_for_string(const char* str);
 
+// Base64 and URL decoding (used by ft protocol)
+int base64_decode(const char* in, size_t in_len, uint8_t* out, size_t out_max);
+int url_decode(const char* in, char* out, size_t out_size);
+
+// Serial response helper (shared by serial.c and ft.c)
+void serial_send_response(const char* format, ...);
+
 char* cb_find_cover_art_path_from_list(
     const CB_Array* available_covers, const char* rom_basename_no_ext,
     const char* rom_clean_basename_no_ext
