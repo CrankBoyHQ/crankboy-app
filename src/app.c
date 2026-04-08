@@ -441,9 +441,11 @@ void CB_showHelp(bool first_time)
                                   "CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n"
                                 : "";
 
-    const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy."
-                               : "To add ROMs to CrankBoy, do the following:";
+    const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy.\n\n"
+                                 "We recommend using CrankBoy Manager."
+                               : "Use CrankBoy Manager (rec) to add ROMs.";
 
+    const char* B = "                                        - OR -";
     const char* C1 = "1. Connect your Playdate to another device via USB.\n";
     const char* C2 =
         "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
@@ -456,15 +458,16 @@ void CB_showHelp(bool first_time)
         "main menu via ⊙ > settings > Get ROMs.";
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-    const char* E =
-        first_time ? " You can also press Ⓑ now to start playing the included ROMs immediately."
-                   : "";
+    const char* E = first_time
+                        ? "You can also press Ⓑ now to start playing the included ROMs immediately."
+                        : "";
 #else
-    const char* E = "";
+    const char* E = first_time ? "Press Ⓑ to continue." : "";
 #endif
 
     char* s = aprintf(
-        "%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", C1, C2, C3, cb_gb_directory_path(CB_gamesPath), D, E
+        "%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", B, "\n\n", C1, C2, C3,
+        cb_gb_directory_path(CB_gamesPath), D, E
     );
 
     CB_InfoScene* infoScene = CB_InfoScene_new(title, s);

@@ -1881,8 +1881,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     {
         if (needsDisplay)
         {
-            static const char* title = "CrankBoy";
-            static const char* message1 = "To add games:";
+            static const char* title = "Use CrankBoy Manager";
+            static const char* message1 = "- OR -";
 
             static const char* message2_num = "1.";
             static const char* message2_text = "Connect to a computer via USB";
@@ -1958,8 +1958,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, titleY);
 
             playdate->graphics->setFont(CB_App->bodyFont);
+            int message1Width = playdate->graphics->getTextWidth(
+                CB_App->bodyFont, message1, strlen(message1), kUTF8Encoding, 0
+            );
+            int message1X = (playdate->display->getWidth() - message1Width) / 2;
             playdate->graphics->drawText(
-                message1, strlen(message1), kUTF8Encoding, blockAnchorX, message1_Y
+                message1, strlen(message1), kUTF8Encoding, message1X, message1_Y
             );
 
             playdate->graphics->drawText(
