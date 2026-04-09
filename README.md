@@ -13,7 +13,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 <img src="Source/launcher/card.png?raw=true">
 </p>
 
-## Features
+## Features <!--userguide-->
 
 - Stable, full-speed Game Boy emulation (on both Rev A and Rev B devices)
 - You can download cover art for your library from within CrankBoy.
@@ -24,9 +24,9 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
     - Conveniently browse and download ROM hacks directly from within CrankBoy.
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
-- Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
+- <!--no-userguide--> Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
 
-## Limitations
+## Limitations <!--userguide-->
 
 - CrankBoy is not 100% stable. A responsible gamer makes back-ups of their save files now and then.
 - Currently, **Game Boy Color games are not supported** in general. However, many Game Boy Color games are able to run on the DMG (original Game Boy) -- CrankBoy should be able to play those games fine. (There is now limited support for running CGB games, but it still works with only very few games.)
@@ -34,7 +34,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.
 - Link Cable (and other peripherals) are not supported.
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options. 60 fps interlaced is also possible.
-- Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
+- <!--no-userguide--> Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
 
 ## Installing
 
@@ -58,7 +58,7 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     3. Open the `pdx` in the Simulator.
     4. Press `Alt+U` on Linux or `⌘+U` on macOS.
 
-### Installing ROMs
+### Installing ROMs <!--userguide:##-->
 
 There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
 
@@ -83,21 +83,21 @@ Please note that the copy of the files in the PDX will not be deleted, so this c
 
 Also note that ROMs and cover art cannot be _replaced_ or _deleted_ through this method, as it will not overwrite a previously-copied ROM from the PDX.
 
-## Softpatching
+## Softpatching <!--userguide-->
 
 CrankBoy can apply patches (i.e. ROM hacks) to your games for you, and you can select which patches to apply before launching the game. This means you don't need to make multiple copies of a ROM for each combination of hacks to apply.
 
 You can download hacks mirrored from [romhacking.net](https://www.romhacking.net/) directly through CrankBoy, for convenience.
 
 Alternatively, using the USB method described above, create a folder in the game's data directory, in the `patches/`
-subdirectory, matching the associated ROM name without extension. For instance, given a ROM `Squid Game Boy.gb`,
+subdirectory, matching the associated ROM name without extension. For instance, given a ROM called `Squid Game Boy.gb`,
 create the directory `patches/Squid Game Boy/`, and place your various `.ips` patch files in this directory.
 (If you go to `⊙ > settings > Patch` from the main library within CrankBoy, this directory will be
 automatically created for you.)
 
 Then, you can enable, disable, and reorder your patches by going to `⊙ > settings > Patch` while the appropriate game is selected on main game library screen. Please note that the patches are applied in the order given; this matters if different patches conflict. In the case of a conflict, no warning message will be displayed.
 
-## Tips
+## Tips <!--userguide-->
 
 - You can delete cover art from the library view by holding Ⓑ for 5 seconds.
 - Some games require a simultanious press of `Start + Select`, this can be done by either selecting `button->Both` from the Playdate's menu or, if the _Crank_ preference is set to `Start/Select`, by rotating the crank to 6 o'clock (i.e. straight down).
@@ -171,11 +171,13 @@ git config core.hooksPath githooks
 
 For convenience, you can use the CLI arg `rom=<path/to/rom>` (where path is relative to the game's data directory) to launch a rom in bundled mode directly.
 
-## Legal
+## Legal <!--userguide-->
 
-**CrankBoy** is an independent, community-led project and is not affiliated with, authorized, sponsored, or endorsed by Nintendo Co., Ltd. or Panic Inc.
+**CrankBoy** is an independent, community-led project and is not affiliated with, authorized, sponsored, or endorsed by Nintendo Co., Ltd.
 
 - **Game Boy®** is a registered trademark of Nintendo Co., Ltd.
 - **Playdate™** is a trademark of Panic Inc.
 
-This software is an emulator designed for the playback of legally acquired ROM files and homebrew software. The developers of CrankBoy do not provide, host, or distribute copyrighted ROM files. All other trademarks are the property of their respective owners.
+This software is an emulator designed for the playback of legally acquired ROM files and homebrew software. The developers of CrankBoy do not provide, host, or distribute unlicensed ROM files. All other trademarks are the property of their respective owners.
+
+CrankBoy relies on certain open source 3rd-party libraries. The credits and legal information regarding these can be viewed in-app or [here](./Source/credits.json).

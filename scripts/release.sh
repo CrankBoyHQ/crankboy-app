@@ -1,24 +1,18 @@
 #!/bin/bash
 
-# --- Configuration --
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 PROJECT_ROOT=$(dirname "$SCRIPT_DIR")
 
-# All subsequent commands will run from the correct location.
 cd "$PROJECT_ROOT"
 
 PDX_DIR="./CrankBoy.pdx"
 ZIP_FILE="${PDX_DIR%.pdx}.zip"
 
-# --- Helper Function ---
-# A function that prints a command and then executes it.
 run() {
     echo "$@"
     "$@"
 }
 
-# --- Script Execution ---
-# Exit immediately if a command exits with a non-zero status.
 set -e
 
 # --- Cleanup ---
@@ -30,12 +24,12 @@ if [ -f "$ZIP_FILE" ]; then
     run rm "$ZIP_FILE"
 fi
 
-# --- Build Step ---
+# --- Build ---
 echo "--- Building project for device ---"
 run make clean
 run make device
 
-# --- Archiving Step ---
+# --- Archive ---
 echo "--- Archiving the .pdx directory ---"
 
 if command -v zip >/dev/null 2>&1; then
