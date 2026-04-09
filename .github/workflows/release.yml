@@ -5,6 +5,9 @@ on:
         tags:
             - "v*.*.*"
 
+env:
+    PLAYDATE_SDK_VERSION: "3.0.5"
+
 jobs:
     build_device:
         name: Create Release Device Build
@@ -28,7 +31,7 @@ jobs:
             - name: Setup Playdate SDK
               run: |
                   arm-none-eabi-gcc --version
-                  tar -xf toolchain/linux/PlaydateSDK-3.0.3.tar.gz
+                  tar -xf toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -68,7 +71,7 @@ jobs:
             - name: Setup Playdate SDK
               run: |
                   arm-none-eabi-gcc --version
-                  tar -xf toolchain/linux/PlaydateSDK-3.0.3.tar.gz
+                  tar -xf toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
@@ -101,7 +104,7 @@ jobs:
 
             - name: Unzip and Install Playdate SDK
               run: |
-                  unzip toolchain/mac/PlaydateSDK-3.0.3.zip
+                  unzip toolchain/mac/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.zip
                   PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
                   if [[ -z "$PKG_PATH" ]]; then
                       echo "PlaydateSDK.pkg not found after unzipping!"
@@ -163,7 +166,7 @@ jobs:
                   TOOLCHAIN_PATH="$(pwd)/gcc-arm-toolchain/bin"
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
                   echo "Extracting SDK from toolchain/win/..."
-                  7z x toolchain/win/PlaydateSDK-3.0.3.exe -oPlaydateSDK -y
+                  7z x toolchain/win/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.exe -oPlaydateSDK -y
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Build Universal Project (Device & Simulator) for Windows
