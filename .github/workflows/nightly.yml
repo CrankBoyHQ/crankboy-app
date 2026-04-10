@@ -311,7 +311,44 @@ jobs:
             - name: Build Universal Project (Device & Simulator)
               run: make -j$(sysctl -n hw.ncpu)
 
-            # Step 6: Get Simulator Artifact Name
+            # Step 6: Import Code Signing Certificates
+            - name: Import Code Signing Certificates
+              uses: apple-actions/import-codesign-certs@v3
+              with:
+                  p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+                  p12-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+                  keychain-password: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+
+            # Step 7: Sign pdex.dylib
+            - name: Sign pdex.dylib
+              run: |
+                  CERT_SHA1="${{ secrets.MACOS_CERTIFICATE_SHA1 }}"
+                  DYLIB_PATH="CrankBoy.pdx/pdex.dylib"
+
+                  # Remove any existing signature first
+                  codesign --remove-signature "$DYLIB_PATH" 2>/dev/null || true
+
+                  # Sign the dylib with hardened runtime
+                  codesign --force --timestamp --options runtime --sign "$CERT_SHA1" "$DYLIB_PATH"
+
+                  # Verify signature
+                  codesign --verify --verbose "$DYLIB_PATH"
+
+            # Step 8: Create Signed ZIP
+            - name: Create Signed ZIP
+              run: |
+                  /usr/bin/ditto -c -k --sequesterRsrc --keepParent CrankBoy.pdx CrankBoy-Simulator-macos.zip
+
+            # Step 9: Notarize ZIP
+            - name: Notarize ZIP
+              run: |
+                  xcrun notarytool submit CrankBoy-Simulator-macos.zip \
+                    --apple-id "${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}" \
+                    --team-id "${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}" \
+                    --password "${{ secrets.MACOS_NOTARIZATION_PASSWORD }}" \
+                    --wait
+
+            # Step 10: Get Simulator Artifact Name
             - name: Get Simulator Artifact Name
               id: artifact_details
               run: |
@@ -319,13 +356,13 @@ jobs:
                   ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-macos"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-            # Step 7: Prepare Artifact for Upload
+            # Step 11: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
                   mkdir artifact_root
-                  mv CrankBoy.pdx artifact_root/
+                  unzip CrankBoy-Simulator-macos.zip -d artifact_root/
 
-            # Step 8: Upload Simulator Artifact
+            # Step 12: Upload Simulator Artifact
             - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v6
               with:
