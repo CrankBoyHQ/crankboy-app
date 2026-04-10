@@ -43,33 +43,71 @@ jobs:
         if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: ubuntu-latest
         steps:
-            # Step 1: Check out the repository's code, submodules, and LFS files.
+            # Step 1: Check out the repository's code and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v6
               with:
-                  submodules: "recursive"
                   lfs: true
 
-            # Step 2: Setup ARM GCC Toolchain from Submodule
-            - name: Setup ARM GCC Toolchain from Submodule
+            # Step 2: Download or fallback to submodule for toolchain
+            - name: Download Toolchain or Fallback to Submodule
               run: |
-                  echo "Extracting toolchain from toolchain/linux/..."
-                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  mkdir -p downloads
+
+                  # Try downloading from crankboy.app first
+                  echo "Attempting to download toolchain from crankboy.app..."
+
+                  GCC_URL="https://crankboy.app/toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2"
+                  SDK_URL="https://crankboy.app/toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz"
+
+                  GCC_DOWNLOADED=false
+                  SDK_DOWNLOADED=false
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2 "$GCC_URL"; then
+                      echo "GCC toolchain downloaded successfully"
+                      GCC_DOWNLOADED=true
+                  else
+                      echo "Failed to download GCC toolchain"
+                  fi
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz "$SDK_URL"; then
+                      echo "Playdate SDK downloaded successfully"
+                      SDK_DOWNLOADED=true
+                  else
+                      echo "Failed to download Playdate SDK"
+                  fi
+
+                  # If either download failed, fallback to submodule
+                  if [ "$GCC_DOWNLOADED" != "true" ] || [ "$SDK_DOWNLOADED" != "true" ]; then
+                      echo "Falling back to toolchain submodule..."
+                      git submodule update --init --depth 1 toolchain
+                      TOOLCHAIN_DIR="toolchain/linux"
+                  else
+                      TOOLCHAIN_DIR="downloads"
+                  fi
+
+                  echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> $GITHUB_ENV
+
+            # Step 3: Setup ARM GCC Toolchain
+            - name: Setup ARM GCC Toolchain
+              run: |
+                  echo "Extracting toolchain from $TOOLCHAIN_DIR/..."
+                  tar -xjf "$TOOLCHAIN_DIR/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2"
                   TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
                   echo "Adding $TOOLCHAIN_PATH to the system PATH..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
-            # Step 3: Setup Playdate SDK from Submodule and Verify Toolchain
-            - name: Setup Playdate SDK from Submodule and Verify Toolchain
+            # Step 4: Setup Playdate SDK and Verify Toolchain
+            - name: Setup Playdate SDK and Verify Toolchain
               run: |
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
-                  echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz
+                  echo "Extracting Playdate SDK from $TOOLCHAIN_DIR/..."
+                  tar -xf "$TOOLCHAIN_DIR/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz"
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
-            # Step 4: Update Version and Build Number in pdxinfo
+            # Step 5: Update Version and Build Number in pdxinfo
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
@@ -80,11 +118,11 @@ jobs:
                   echo "Contents of pdxinfo after update:"
                   cat Source/pdxinfo
 
-            # Step 5: Build the Project for Device
+            # Step 6: Build the Project for Device
             - name: Build Project for Device
               run: make -j$(nproc) device
 
-            # Step 6: Get Device Artifact Name
+            # Step 7: Get Device Artifact Name
             - name: Get Device Artifact Name
               id: artifact_details
               run: |
@@ -92,13 +130,13 @@ jobs:
                   ARTIFACT_NAME="CrankBoy-Device-${APP_VERSION}-nightly"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-            # Step 7: Prepare Artifact for Upload
+            # Step 8: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
                   mkdir artifact_root
                   mv CrankBoy.pdx artifact_root/
 
-            # Step 8: Upload the .pdx Directory
+            # Step 9: Upload the .pdx Directory
             - name: Upload Artifact
               uses: actions/upload-artifact@v6
               with:
@@ -111,33 +149,71 @@ jobs:
         if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: ubuntu-latest
         steps:
-            # Step 1: Check out the repository's code, submodules, and LFS files.
+            # Step 1: Check out the repository's code and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v6
               with:
-                  submodules: "recursive"
                   lfs: true
 
-            # Step 2: Setup ARM GCC Toolchain from Submodule
-            - name: Setup ARM GCC Toolchain from Submodule
+            # Step 2: Download or fallback to submodule for toolchain
+            - name: Download Toolchain or Fallback to Submodule
               run: |
-                  echo "Extracting toolchain from toolchain/linux/..."
-                  tar -xjf toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2
+                  mkdir -p downloads
+
+                  # Try downloading from crankboy.app first
+                  echo "Attempting to download toolchain from crankboy.app..."
+
+                  GCC_URL="https://crankboy.app/toolchain/linux/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2"
+                  SDK_URL="https://crankboy.app/toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz"
+
+                  GCC_DOWNLOADED=false
+                  SDK_DOWNLOADED=false
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2 "$GCC_URL"; then
+                      echo "GCC toolchain downloaded successfully"
+                      GCC_DOWNLOADED=true
+                  else
+                      echo "Failed to download GCC toolchain"
+                  fi
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz "$SDK_URL"; then
+                      echo "Playdate SDK downloaded successfully"
+                      SDK_DOWNLOADED=true
+                  else
+                      echo "Failed to download Playdate SDK"
+                  fi
+
+                  # If either download failed, fallback to submodule
+                  if [ "$GCC_DOWNLOADED" != "true" ] || [ "$SDK_DOWNLOADED" != "true" ]; then
+                      echo "Falling back to toolchain submodule..."
+                      git submodule update --init --depth 1 toolchain
+                      TOOLCHAIN_DIR="toolchain/linux"
+                  else
+                      TOOLCHAIN_DIR="downloads"
+                  fi
+
+                  echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> $GITHUB_ENV
+
+            # Step 3: Setup ARM GCC Toolchain
+            - name: Setup ARM GCC Toolchain
+              run: |
+                  echo "Extracting toolchain from $TOOLCHAIN_DIR/..."
+                  tar -xjf "$TOOLCHAIN_DIR/gcc-arm-none-eabi-9-2019-q4-major-x86_64-linux.tar.bz2"
                   TOOLCHAIN_PATH="$GITHUB_WORKSPACE/gcc-arm-none-eabi-9-2019-q4-major/bin"
                   echo "Adding $TOOLCHAIN_PATH to the system PATH..."
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
 
-            # Step 3: Setup Playdate SDK from Submodule and Verify Toolchain
-            - name: Setup Playdate SDK from Submodule and Verify Toolchain
+            # Step 4: Setup Playdate SDK and Verify Toolchain
+            - name: Setup Playdate SDK and Verify Toolchain
               run: |
                   echo "Verifying compiler version:"
                   arm-none-eabi-gcc --version
-                  echo "Extracting Playdate SDK from toolchain/linux/..."
-                  tar -xf toolchain/linux/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz
+                  echo "Extracting Playdate SDK from $TOOLCHAIN_DIR/..."
+                  tar -xf "$TOOLCHAIN_DIR/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.tar.gz"
                   SDK_DIR_NAME=$(ls -d PlaydateSDK-*/ | sed 's,/$,,')
                   echo "PLAYDATE_SDK_PATH=$GITHUB_WORKSPACE/$SDK_DIR_NAME" >> $GITHUB_ENV
 
-            # Step 4: Update Version and Build Number in pdxinfo
+            # Step 5: Update Version and Build Number in pdxinfo
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
@@ -148,11 +224,11 @@ jobs:
                   echo "Contents of pdxinfo after update:"
                   cat Source/pdxinfo
 
-            # Step 5: Build a universal .pdx for both Device and Simulator
+            # Step 6: Build a universal .pdx for both Device and Simulator
             - name: Build Universal Project (Device & Simulator)
               run: make -j$(nproc)
 
-            # Step 6: Get Simulator Artifact Name
+            # Step 7: Get Simulator Artifact Name
             - name: Get Simulator Artifact Name
               id: artifact_details
               run: |
@@ -160,13 +236,13 @@ jobs:
                   ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-linux"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-            # Step 7: Prepare Artifact for Upload
+            # Step 8: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
                   mkdir artifact_root
                   mv CrankBoy.pdx artifact_root/
 
-            # Step 8: Upload Simulator Artifact
+            # Step 9: Upload Simulator Artifact
             - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v6
               with:
@@ -179,18 +255,38 @@ jobs:
         if: needs.check_for_commits.outputs.has_new_commits == 'true'
         runs-on: macos-latest
         steps:
-            # Step 1: Check out the repository's code, submodules, and LFS files.
+            # Step 1: Check out the repository's code and LFS files.
             - name: Checkout Repository
               uses: actions/checkout@v6
               with:
-                  submodules: "recursive"
                   lfs: true
 
-            # Step 2: Unzip and Install Playdate SDK from Submodule
-            - name: Unzip and Install Playdate SDK from Submodule
+            # Step 2: Download or fallback to submodule for SDK
+            - name: Download SDK or Fallback to Submodule
               run: |
-                  echo "Unzipping SDK archive from toolchain/mac/..."
-                  unzip toolchain/mac/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.zip
+                  mkdir -p downloads
+
+                  # Try downloading from crankboy.app first
+                  echo "Attempting to download SDK from crankboy.app..."
+
+                  SDK_URL="https://crankboy.app/toolchain/mac/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.zip"
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.zip "$SDK_URL"; then
+                      echo "Playdate SDK downloaded successfully"
+                      TOOLCHAIN_DIR="downloads"
+                  else
+                      echo "Failed to download Playdate SDK, falling back to submodule..."
+                      git submodule update --init --depth 1 toolchain
+                      TOOLCHAIN_DIR="toolchain/mac"
+                  fi
+
+                  echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> $GITHUB_ENV
+
+            # Step 3: Unzip and Install Playdate SDK
+            - name: Unzip and Install Playdate SDK
+              run: |
+                  echo "Unzipping SDK archive from $TOOLCHAIN_DIR/..."
+                  unzip "$TOOLCHAIN_DIR/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.zip"
 
                   PKG_PATH=$(find . -name "PlaydateSDK.pkg" -print -quit)
                   if [[ -z "$PKG_PATH" ]]; then
@@ -203,7 +299,7 @@ jobs:
 
                   echo "PLAYDATE_SDK_PATH=$HOME/Developer/PlaydateSDK" >> $GITHUB_ENV
 
-            # Step 3: Update Version and Build Number
+            # Step 4: Update Version and Build Number
             - name: Update Version and Build Number
               run: |
                   DATE_STAMP=$(date +'%Y%m%d')
@@ -211,11 +307,11 @@ jobs:
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
                   sed -i '' -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
 
-            # Step 4: Build Universal Project (Device & Simulator)
+            # Step 5: Build Universal Project (Device & Simulator)
             - name: Build Universal Project (Device & Simulator)
               run: make -j$(sysctl -n hw.ncpu)
 
-            # Step 5: Get Simulator Artifact Name
+            # Step 6: Get Simulator Artifact Name
             - name: Get Simulator Artifact Name
               id: artifact_details
               run: |
@@ -223,13 +319,13 @@ jobs:
                   ARTIFACT_NAME="CrankBoy-Simulator-${APP_VERSION}-nightly-macos"
                   echo "artifact_name=${ARTIFACT_NAME}" >> $GITHUB_OUTPUT
 
-            # Step 6: Prepare Artifact for Upload
+            # Step 7: Prepare Artifact for Upload
             - name: Prepare Artifact for Upload
               run: |
                   mkdir artifact_root
                   mv CrankBoy.pdx artifact_root/
 
-            # Step 7: Upload Simulator Artifact
+            # Step 8: Upload Simulator Artifact
             - name: Upload Simulator Artifact
               uses: actions/upload-artifact@v6
               with:
@@ -248,7 +344,6 @@ jobs:
             - name: Checkout Repository
               uses: actions/checkout@v6
               with:
-                  submodules: "recursive"
                   lfs: true
 
             - name: Setup MSYS2 MinGW64
@@ -269,14 +364,52 @@ jobs:
                       git
                       zip
 
-            - name: Setup ARM GCC Toolchain and Playdate SDK from Submodule
+            - name: Download Toolchain or Fallback to Submodule
               run: |
-                  echo "Extracting ARM GCC toolchain from toolchain/win/..."
-                  7z x toolchain/win/gcc-arm-none-eabi-9-2019-q4-major-win32.zip -ogcc-arm-toolchain -y
+                  mkdir -p downloads
+
+                  # Try downloading from crankboy.app first
+                  echo "Attempting to download toolchain from crankboy.app..."
+
+                  GCC_URL="https://crankboy.app/toolchain/win/gcc-arm-none-eabi-9-2019-q4-major-win32.zip"
+                  SDK_URL="https://crankboy.app/toolchain/win/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.exe"
+
+                  GCC_DOWNLOADED=false
+                  SDK_DOWNLOADED=false
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/gcc-arm-none-eabi-9-2019-q4-major-win32.zip "$GCC_URL"; then
+                      echo "GCC toolchain downloaded successfully"
+                      GCC_DOWNLOADED=true
+                  else
+                      echo "Failed to download GCC toolchain"
+                  fi
+
+                  if curl -fsSL --retry 3 --connect-timeout 30 -o downloads/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.exe "$SDK_URL"; then
+                      echo "Playdate SDK downloaded successfully"
+                      SDK_DOWNLOADED=true
+                  else
+                      echo "Failed to download Playdate SDK"
+                  fi
+
+                  # If either download failed, fallback to submodule
+                  if [ "$GCC_DOWNLOADED" != "true" ] || [ "$SDK_DOWNLOADED" != "true" ]; then
+                      echo "Falling back to toolchain submodule..."
+                      git submodule update --init --depth 1 toolchain
+                      TOOLCHAIN_DIR="toolchain/win"
+                  else
+                      TOOLCHAIN_DIR="downloads"
+                  fi
+
+                  echo "TOOLCHAIN_DIR=$TOOLCHAIN_DIR" >> $GITHUB_ENV
+
+            - name: Setup ARM GCC Toolchain and Playdate SDK
+              run: |
+                  echo "Extracting ARM GCC toolchain from $TOOLCHAIN_DIR/..."
+                  7z x "$TOOLCHAIN_DIR/gcc-arm-none-eabi-9-2019-q4-major-win32.zip" -ogcc-arm-toolchain -y
                   TOOLCHAIN_PATH="$(pwd)/gcc-arm-toolchain/bin"
                   echo "$TOOLCHAIN_PATH" >> $GITHUB_PATH
-                  echo "Extracting SDK from toolchain/win/..."
-                  7z x toolchain/win/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.exe -oPlaydateSDK -y
+                  echo "Extracting SDK from $TOOLCHAIN_DIR/..."
+                  7z x "$TOOLCHAIN_DIR/PlaydateSDK-${{ env.PLAYDATE_SDK_VERSION }}.exe" -oPlaydateSDK -y
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Update Version and Build Number
