@@ -233,11 +233,44 @@ jobs:
                   COMMON_FLAGS: "-DENABLE_CPU_VALIDATION=0 -DGITHUB_RELEASE=1"
               run: make -j$(sysctl -n hw.ncpu)
 
-            # Step 5: Package macOS Simulator Build
-            - name: Package macOS Simulator Build
-              run: zip -r CrankBoy-Simulator-macOS.zip CrankBoy.pdx
+            # Step 5: Import Code Signing Certificates
+            - name: Import Code Signing Certificates
+              uses: apple-actions/import-codesign-certs@v3
+              with:
+                  p12-file-base64: ${{ secrets.MACOS_CERTIFICATE }}
+                  p12-password: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+                  keychain-password: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
 
-            # Step 6: Upload macOS Simulator Artifact
+            # Step 6: Sign pdex.dylib
+            - name: Sign pdex.dylib
+              run: |
+                  CERT_SHA1="${{ secrets.MACOS_CERTIFICATE_SHA1 }}"
+                  DYLIB_PATH="CrankBoy.pdx/pdex.dylib"
+
+                  # Remove any existing signature first
+                  codesign --remove-signature "$DYLIB_PATH" 2>/dev/null || true
+
+                  # Sign the dylib with hardened runtime
+                  codesign --force --timestamp --options runtime --sign "$CERT_SHA1" "$DYLIB_PATH"
+
+                  # Verify signature
+                  codesign --verify --verbose "$DYLIB_PATH"
+
+            # Step 7: Create Signed ZIP
+            - name: Create Signed ZIP
+              run: |
+                  /usr/bin/ditto -c -k --sequesterRsrc --keepParent CrankBoy.pdx CrankBoy-Simulator-macOS.zip
+
+            # Step 8: Notarize ZIP
+            - name: Notarize ZIP
+              run: |
+                  xcrun notarytool submit CrankBoy-Simulator-macOS.zip \
+                    --apple-id "${{ secrets.MACOS_NOTARIZATION_APPLE_ID }}" \
+                    --team-id "${{ secrets.MACOS_NOTARIZATION_TEAM_ID }}" \
+                    --password "${{ secrets.MACOS_NOTARIZATION_PASSWORD }}" \
+                    --wait
+
+            # Step 9: Upload macOS Simulator Artifact
             - name: Upload macOS Simulator Artifact
               uses: actions/upload-artifact@v6
               with:
