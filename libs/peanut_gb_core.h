@@ -1164,9 +1164,11 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
             u8 tmp = src + offset;
 
-            gb->cpu_reg.f_bits.z = (tmp == 0);
-            gb->cpu_reg.f_bits.n = is_dec;
-            gb->cpu_reg.f_bits.h = ((tmp & 0xF) == (0xF & -(s8)is_dec));
+            u8 f = gb->cpu_reg.f & 0x1F;
+            f |= (tmp == 0) ? 0x80 : 0;
+            f |= is_dec ? 0x40 : 0;
+            f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? 0x20 : 0;
+            gb->cpu_reg.f = f;
 
             if (reg8 == 7)
             {
