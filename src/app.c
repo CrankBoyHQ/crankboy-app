@@ -455,7 +455,7 @@ void CB_showHelp(bool first_time)
 
     const char* D =
         "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the "
-        "main menu via ⊙ > settings > Get ROMs.";
+        "main menu via ⊙ > settings > Get ROMs. ";
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
     const char* E = first_time
