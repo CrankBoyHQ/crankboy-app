@@ -96,6 +96,36 @@ SIMULATOR_FLAGS +=
 # flags applied to both simulator and device
 COMMON_FLAGS +=
 
+# --- PGO Configuration ---
+# Profile-Guided Optimization for device builds
+# Requires: GCC compiler for simulator (matching device GCC version)
+# On Linux: sudo apt-get install gcc g++
+PGO_DIR = ./pgo-data
+PGO_GCC ?= gcc
+
+# Phase 1: Build instrumented simulator for profile generation
+# Run gameplay loop in simulator after this - profiles saved to $(PGO_DIR)
+pgo-generate: clean
+	@mkdir -p $(PGO_DIR)
+	$(MAKE) simulator SIMCOMPILER="$(PGO_GCC) -g" SIMULATOR_FLAGS="-fprofile-generate=$(PGO_DIR) -DENABLE_CPU_VALIDATION=0"
+
+# Phase 2: Build optimized device binary using collected profiles
+# Note: Simulator and device GCC versions must match for profile compatibility
+pgo-device: clean
+	$(MAKE) device UDEFS+="-fprofile-use=$(PGO_DIR) -Wno-error=coverage-mismatch -falign-loops=32 -fprefetch-loop-arrays"
+
+# Full PGO workflow helper
+pgo:
+	@echo "=== PGO Build Workflow ==="
+	@echo "Step 1: make pgo-generate       (builds instrumented simulator)"
+	@echo "Step 2: Run simulator, play gameplay loop, exit"
+	@echo "Step 3: make pgo-device         (builds optimized device binary)"
+	@echo ""
+	@echo "Requirements:"
+	@echo "  - Simulator GCC and device GCC must be same version"
+	@echo "  - Set PGO_GCC to specify simulator compiler (default: gcc)"
+	@echo "  - Example: make pgo-generate PGO_GCC=/usr/bin/gcc-9"
+
 # Define ASM defines here
 UADEFS =
 
