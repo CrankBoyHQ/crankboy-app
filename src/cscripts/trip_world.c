@@ -4,7 +4,7 @@
 #define DESCRIPTION                                                                             \
     "- Moves HUD to sidebar\n"                                                                  \
     "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n"               \
-    "- Automatically enables frame blending while under water (flicker transparency effect)\n." \
+    "- Automatically enables frame blending while under water (flicker transparency effect).\n" \
     "\nCreated by: NaOH (Sodium Hydroxide)"
 
 #define ASSETS_DIR SCRIPT_ASSETS_DIR "trip-world/"
