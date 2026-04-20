@@ -127,3 +127,13 @@ PDCFLAGS += --quiet
 # flags for simulator
 DYLIB_FLAGS += $(COMMON_FLAGS) $(SIMULATOR_FLAGS)
 UDEFS += $(COMMON_FLAGS)
+
+# Generate .clangd config for LSP support
+.PHONY: clangd
+clangd:
+	@echo "Generating .clangd with SDK: $(SDK)"
+	@echo 'CompileFlags:' > .clangd
+	@echo '  Add: ' >> .clangd
+	@echo '    - -I$(SDK)/C_API' >> .clangd
+	@echo '    - -DTARGET_EXTENSION=1' >> .clangd
+	@echo '    - -DTARGET_SIMULATOR=1' >> .clangd

@@ -1,0 +1,9 @@
+{
+  "actions" : {
+    "build" : {
+      "enabled" : true,
+      "script" : "doxygen Doxyfile"
+    }
+  },
+  "buildBeforeRunning" : true
+}

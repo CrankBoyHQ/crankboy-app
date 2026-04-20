@@ -1,8 +1,8 @@
 #pragma once
 
+#include "../scene.h"
+#include "../utility.h"
 #include "pd_api.h"
-#include "scene.h"
-#include "utility.h"
 
 #define MODAL_MAX_OPTIONS 3
 

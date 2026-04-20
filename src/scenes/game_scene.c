@@ -6,7 +6,7 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include "gbz.h"
+#include "../gbz.h"
 #include "pd_api.h"
 
 #include <stdbool.h>
@@ -29,15 +29,13 @@ bool gbScreenRequiresFullRefresh;
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
-#include "../revcheck.h"
-#include "../scenes/modal.h"
 #include "../script.h"
 #include "../softpatch.h"
 #include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
 #include "info_scene.h"
-#include "library_scene.h"
+#include "modal.h"
 #include "settings_scene.h"
 
 #include <stdatomic.h>

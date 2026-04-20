@@ -19,3 +19,4 @@ disasm*.txt
 # paranoia
 *.gb
 *.gbc
+.clangd

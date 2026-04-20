@@ -1,0 +1,9 @@
+{
+  "tasks": {
+    "Generate .clangd": {
+      "command": "make",
+      "args": ["clangd"],
+      "directory": "$PROJECT_DIR"
+    }
+  }
+}
