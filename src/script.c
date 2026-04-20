@@ -1,20 +1,18 @@
 #include "../libs/peanut_gb.h"
 #include "app.h"
 #include "dtcm.h"
-#include "jparse.h"
-#include "pd_api.h"
-#include "scenes/game_scene.h"
-/* clang-format off */
-#include "script.h"
-/* clang-format on */
 #include "gbz.h"
+#include "scenes/game_scene.h"
 #include "scriptutil.h"
 #include "userstack.h"
 #include "utility.h"
 
+/* clang-format off */
+#include "script.h"
+/* clang-format on */
+
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
 struct CScriptNode* c_script_list_head = NULL;

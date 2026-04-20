@@ -9,9 +9,7 @@
 #ifndef preferences_h
 #define preferences_h
 
-#include "utility.h"
-
-#include <stdio.h>
+#include <stdint.h>
 
 #define DYNAMIC_RATE_OFF 0
 #define DYNAMIC_RATE_ON 1

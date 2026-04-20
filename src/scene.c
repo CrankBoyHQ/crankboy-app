@@ -9,6 +9,7 @@
 #include "scene.h"
 
 #include "app.h"
+#include "utility.h"
 
 static void CB_Scene_menu_callback(void* object);
 static void CB_Scene_event(void* object, PDSystemEvent event, uint32_t arg);

@@ -10,9 +10,6 @@
 #define scene_h
 
 #include "pd_api.h"
-#include "utility.h"
-
-#include <stdio.h>
 
 typedef enum
 {

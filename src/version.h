@@ -1,7 +1,5 @@
 #pragma once
 
-#include "http.h"
-
 #ifndef GITHUB_RELEASE
 #define GITHUB_RELEASE 0
 #endif

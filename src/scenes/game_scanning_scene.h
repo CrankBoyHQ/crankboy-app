@@ -1,9 +1,8 @@
 // game_scanning_scene.h
 #pragma once
 
-#include "../jparse.h"
+#include "../array.h"
 #include "../scene.h"
-#include "../utility.h"
 
 // States for the scanning process
 typedef enum

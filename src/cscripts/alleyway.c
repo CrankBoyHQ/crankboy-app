@@ -1,10 +1,8 @@
 #include "../scriptutil.h"
 
-#include <stdlib.h>
-
-#define DESCRIPTION                                        \
+#define DESCRIPTION                                       \
     "- On the start screen, press Ⓐ to start the game.\n" \
-    "- In-game, use the crank to move the paddle.\n" \
+    "- In-game, use the crank to move the paddle.\n"      \
     "\nCreated by: stonerl"
 
 /* --- Game-specific RAM Addresses --- */

@@ -3,12 +3,7 @@
 // convenient import for scripts
 
 #include "../libs/peanut_gb.h"
-#include "app.h"
-#include "preferences.h"
-#include "revcheck.h"
-#include "scenes/game_scene.h"
 #include "script.h"
-#include "utility.h"
 
 typedef uint32_t romaddr_t;
 typedef u16 addr16_t;

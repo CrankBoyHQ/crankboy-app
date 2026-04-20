@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../scene.h"
-#include "pd_api.h"
 
 typedef struct CB_ParentalLockScene
 {

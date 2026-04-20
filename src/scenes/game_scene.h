@@ -10,10 +10,8 @@
 #define game_scene_h
 
 #include "../../libs/peanut_gb.h"
-#include "../preferences.h"
 #include "../scene.h"
 
-#include <math.h>
 #include <stdio.h>
 
 typedef struct CB_GameSceneContext CB_GameSceneContext;

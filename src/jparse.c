@@ -1,6 +1,5 @@
 #include "jparse.h"
 
-#include "pd_api.h"
 #include "utility.h"
 
 __section__(".rare") void SI_willDecodeSublist(

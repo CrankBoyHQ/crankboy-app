@@ -2,8 +2,9 @@
 
 #include "userstack.h"
 
-#include "pd_api.h"
 #include "utility.h"
+
+#include <stdint.h>
 
 #define USER_STACK_SIZE 0x4000
 #define CANARY_VALUE 0x5AC3FA3B

@@ -1,8 +1,8 @@
 #include "parental_lock_scene.h"
 
-#include "app.h"
+#include "../app.h"
+#include "../utility.h"
 #include "modal.h"
-#include "utility.h"
 
 #define XORKEY 0xBEA03F8E
 

@@ -2,11 +2,12 @@
 #include "game_scanning_scene.h"
 
 #include "../app.h"
+#include "../jparse.h"
+#include "../script.h"
+#include "../utility.h"
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
-#include "library_scene.h"
 #include "pd_api.h"
-#include "script.h"
 
 struct ScriptInfo;
 

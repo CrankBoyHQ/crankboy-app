@@ -1,6 +1,7 @@
 #ifndef __APPLE__ /* compiler struggles with this file for some reason */
 
 /* clang-format off */
+#include "../scenes/game_scene.h"
 #include "../scriptutil.h"
 
 #include "met2.inc"

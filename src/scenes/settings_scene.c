@@ -12,7 +12,6 @@
 #include "../revcheck.h"
 #include "../scenes/modal.h"
 #include "../script.h"
-#include "../userstack.h"
 #include "../utility.h"
 #include "credits_scene.h"
 #include "homebrew_hub_scene.h"
@@ -1501,7 +1500,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
-        
+
         addUISoundOption(scene, entries, &i);
     }
 
@@ -1613,7 +1612,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 #define PREF(p, ...)                                                                      \
     if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) \
         goto do_remove;
-#include "prefs.x"
+#include "../prefs.x"
 
             continue;
 
@@ -1640,7 +1639,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         }                                                              \
     }                                                                  \
     ++j;
-#include "prefs.x"
+#include "../prefs.x"
     }
 
     return entries;

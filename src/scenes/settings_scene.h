@@ -11,8 +11,6 @@
 #include "../scene.h"
 #include "game_scene.h"
 
-#include <stdio.h>
-
 struct OptionsMenuEntry;
 struct PDSynth;
 struct CB_LibraryScene;

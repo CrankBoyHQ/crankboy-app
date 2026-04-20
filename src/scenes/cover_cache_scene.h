@@ -1,8 +1,7 @@
 #pragma once
 
+#include "../array.h"
 #include "../scene.h"
-
-#include <stdbool.h>
 
 typedef enum
 {

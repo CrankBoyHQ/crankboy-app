@@ -1,7 +1,6 @@
 #include "patches_scene.h"
 
 #include "../userstack.h"
-#include "info_scene.h"
 
 #define MAX_DISP 5
 #define MARGIN 4

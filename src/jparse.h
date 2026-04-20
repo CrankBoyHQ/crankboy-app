@@ -2,8 +2,6 @@
 
 #include "pd_api.h"
 
-#include <stdint.h>
-
 typedef struct TableKeyPair
 {
     char* key;

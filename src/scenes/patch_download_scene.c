@@ -9,9 +9,7 @@
 #include "modal.h"
 #include "parental_lock_scene.h"
 #include "patches_scene.h"
-#include "pd_api.h"
 #include "settings_scene.h"
-#include "utility.h"
 
 #define HEADER_ANIMATION_RATE 2.8f
 #define HEADER_HEIGHT 18

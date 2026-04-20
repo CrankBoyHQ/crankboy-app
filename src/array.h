@@ -9,9 +9,6 @@
 #ifndef array_h
 #define array_h
 
-#include <stdbool.h>
-#include <stdio.h>
-
 typedef struct
 {
     unsigned int length;

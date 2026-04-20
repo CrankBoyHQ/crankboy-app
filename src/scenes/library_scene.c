@@ -10,22 +10,20 @@
 
 #include "../../libs/lz4/lz4.h"
 #include "../app.h"
-#include "../dtcm.h"
 #include "../http.h"
 #include "../http_safe.h"
-#include "../jparse.h"
 #include "../preferences.h"
+#include "../revcheck.h"
 #include "../scenes/modal.h"
 #include "../script.h"
+#include "../softpatch.h"
 #include "../userstack.h"
 #include "../utility.h"
 #include "../version.h"
 #include "credits_scene.h"
 #include "game_scene.h"
 #include "info_scene.h"
-#include "revcheck.h"
 #include "settings_scene.h"
-#include "softpatch.h"
 
 #include <string.h>
 

@@ -1,6 +1,6 @@
 #include "pgmusic.h"
 
-#include "app.h"
+#include "utility.h"
 
 static const float bpm = 185.0f * 2;
 static int beat = 0;

@@ -2,6 +2,8 @@
 
 #include "http.h"
 
+#include <stdbool.h>
+
 // like standard http functions, but ensures http_cancel is never used,
 // as that function seems to be unsafe somehow when dispatching many HTTP requests in short
 // succession.

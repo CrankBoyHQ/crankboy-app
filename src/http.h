@@ -1,7 +1,6 @@
 #pragma once
 
-#include "pd_api.h"
-
+#include <stdint.h>
 #include <stdio.h>
 
 #define USE_SSL true

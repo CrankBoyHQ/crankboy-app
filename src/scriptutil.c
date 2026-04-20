@@ -1,6 +1,9 @@
 #include "scriptutil.h"
 
+#include "preferences.h"
+#include "scenes/game_scene.h"
 #include "userstack.h"
+#include "utility.h"
 
 #define GB script_gb
 

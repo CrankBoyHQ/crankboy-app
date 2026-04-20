@@ -1,4 +1,5 @@
 #include "../preferences.h"
+#include "../scenes/game_scene.h"
 #include "../scriptutil.h"
 
 #define DESCRIPTION                                                                             \

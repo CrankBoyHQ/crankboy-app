@@ -4,7 +4,6 @@
 #include "../pdi.h"
 #include "../utility.h"
 #include "cover_cache_scene.h"
-#include "library_scene.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"

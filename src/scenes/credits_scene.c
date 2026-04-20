@@ -5,8 +5,8 @@
 #include "../pgmusic.h"
 #include "../version.h"
 
+#include <stdio.h>
 #include <stdlib.h>
-#include <time.h>
 
 // pixels per second
 #define AUTO_SCROLL_RATE 20.3f

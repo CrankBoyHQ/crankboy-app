@@ -5,17 +5,17 @@ PREF(save_slot, 0)        // (note: never visible in Bundle mode; only visible i
 PREF(save_state_slot, 0)  // (note: has two corresponding settings)
 
 // audio
-PREF(sound_mode, 2) // 0: Off, 1: Fast, 2: Accurate
-PREF(audio_sync, 0) // 0: Fast, 1: Accurate
+PREF(sound_mode, 2)  // 0: Off, 1: Fast, 2: Accurate
+PREF(audio_sync, 0)  // 0: Fast, 1: Accurate
 
 // ppu timing
-PREF(ppu_timing, 0) // 0: Fast (fixed), 1: Accurate (dynamic)
+PREF(ppu_timing, 0)  // 0: Fast (fixed), 1: Accurate (dynamic)
 PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 
 // display
 PREF(frame_skip, true)
-PREF(blend_frames, 0) // 0: Off, 1: On, 2: Auto
+PREF(blend_frames, 0)  // 0: Off, 1: On, 2: Auto
 PREF(ghost_frame_30fps, 0)
 PREF(dither_pattern, rand() % 2)
 PREF(dither_line, 2)

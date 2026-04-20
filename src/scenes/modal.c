@@ -1,8 +1,8 @@
 #include "modal.h"
 
-#include "app.h"
-#include "scene.h"
-#include "utility.h"
+#include "../app.h"
+#include "../scene.h"
+#include "../utility.h"
 
 #define MODAL_ANIM_TIME 16
 #define MODAL_DROP_TIME 12
@@ -85,7 +85,7 @@ void CB_Modal_update(CB_Modal* modal)
     int h = modal->height;
     float p = MIN(modal->droptimer, MODAL_DROP_TIME) / (float)MODAL_DROP_TIME;
     p = 1 - (1 - p) * sqrtf(1 - p);  // easing
-    int y = -h + ((LCD_ROWS - h) / 2 + h) * p;
+    int y = -h + ((LCD_ROWS - h) / 2.0f + h) * p;
 
     int white_border_thickness = 1;
     int black_border_thickness = 2;

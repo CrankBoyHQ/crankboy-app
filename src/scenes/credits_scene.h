@@ -7,11 +7,7 @@
 
 #pragma once
 
-#include "../jparse.h"
 #include "../scene.h"
-#include "game_scene.h"
-
-#include <stdio.h>
 
 typedef struct CB_CreditsScene
 {
