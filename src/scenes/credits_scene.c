@@ -74,6 +74,11 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
         json_value entry = carray->data[i];
         if (entry.type != kJSONTable)
             continue;
+            
+        if (json_get_table_value(entry, "ignore").type != kJSONNull)
+        {
+            continue;
+        }
 
         if (y >= LCD_ROWS)
             break;

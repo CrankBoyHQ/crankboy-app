@@ -30,6 +30,14 @@
         "contributors": ["tinyevilwizard"]
     },
     {
+        "id": "included-titles",
+        "ignore": true
+    },
+    {
+        "section": "Catalog Billboard Art",
+        "contributors": ["Monseki"]
+    },
+    {
         "section": "Special Thanks",
         "contributors": [
             "SonoSooS",
