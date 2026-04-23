@@ -207,6 +207,49 @@ static __section__(".rare") int parse_json_compressed(
     return result;
 }
 
+struct reader_ud {
+    json_readFunc* read;
+    void* ud;
+};
+
+__section__(".rare")
+static int read_workaround_decode_u(struct reader_ud* ud, void* buf, unsigned int len)
+{
+    int n = ud->read(ud->ud, buf, len);
+    if (n <= 0 || !memchr(buf, '\\', n))
+        return n;
+
+    // workaround for SDK bug: https://devforum.play.date/t/playdate-json-decode-incorrectly-decodes-escape-sequences-in-the-range-u0080-u00ff/25437
+    uint8_t* b = (uint8_t*)buf;
+    int w = 0;
+    for (int r = 0; r < n;)
+    {
+        if (r + 6 <= n && b[r] == '\\' && b[r + 1] == 'u'
+            && b[r + 2] == '0' && b[r + 3] == '0')
+        {
+            uint8_t c4 = b[r + 4], c5 = b[r + 5];
+            int hi = (c4 >= '0' && c4 <= '9') ? c4 - '0'
+                   : (c4 >= 'a' && c4 <= 'f') ? c4 - 'a' + 10
+                   : (c4 >= 'A' && c4 <= 'F') ? c4 - 'A' + 10
+                   : -1;
+            int lo = (c5 >= '0' && c5 <= '9') ? c5 - '0'
+                   : (c5 >= 'a' && c5 <= 'f') ? c5 - 'a' + 10
+                   : (c5 >= 'A' && c5 <= 'F') ? c5 - 'A' + 10
+                   : -1;
+            if (hi >= 0x8 && hi <= 0xF && lo >= 0)
+            {
+                unsigned cp = (unsigned)(hi << 4) | (unsigned)lo;
+                b[w++] = (uint8_t)(0xC0 | (cp >> 6));
+                b[w++] = (uint8_t)(0x80 | (cp & 0x3F));
+                r += 6;
+                continue;
+            }
+        }
+        b[w++] = b[r++];
+    }
+    return w;
+}
+
 __section__(".rare") int parse_json(const char* path, json_value* out, FileOptions opts)
 {
     if (!out)
@@ -233,8 +276,12 @@ __section__(".rare") int parse_json(const char* path, json_value* out, FileOptio
     };
 
     // (gets binary data for json file)
+    struct reader_ud ud = {
+        .read = (int (*)(void*, uint8_t*, int))playdate->file->read,
+        .ud = file
+    };
     json_reader reader = {
-        .read = (int (*)(void*, uint8_t*, int))playdate->file->read, .userdata = file
+        .read = (int (*)(void*, uint8_t*, int))read_workaround_decode_u, .userdata = &ud
     };
 
     int ok = playdate->json->decode(&decoder, reader, out);
@@ -376,7 +423,11 @@ __section__(".rare") int parse_json_string(const char* text, json_value* out)
     };
 
     // (gets binary data for json file)
-    json_reader reader = {.read = (int (*)(void*, uint8_t*, int))read_string, .userdata = &text};
+    struct reader_ud ud = {
+        .read = (int (*)(void*, uint8_t*, int))read_string,
+        .ud = &text
+    };
+    json_reader reader = {.read = (int (*)(void*, uint8_t*, int))read_workaround_decode_u, .userdata = &ud};
 
     int ok = playdate->json->decode(&decoder, reader, out);
 
