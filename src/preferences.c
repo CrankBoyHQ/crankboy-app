@@ -7,9 +7,9 @@
 
 #include "preferences.h"
 
-#include "app.h"
+#include "app.h"  // IWYU pragma: keep
 #include "jparse.h"
-#include "revcheck.h"
+#include "revcheck.h"  // IWYU pragma: keep
 #include "userstack.h"
 
 static const int pref_version = 1;

@@ -9,7 +9,7 @@
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
-#include "../revcheck.h"
+#include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
 #include "../script.h"
 #include "../utility.h"

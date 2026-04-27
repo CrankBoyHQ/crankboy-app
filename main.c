@@ -9,9 +9,9 @@
 #include "pd_api.h"
 #include "src/app.h"
 #include "src/dtcm.h"
+#include "src/global.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
-#include "global.h"
 
 #if __has_include("pdboot/pdboot.h")
 #include "pdboot/pdboot.h"
@@ -87,7 +87,7 @@ static int setHasSystemPrivileges(lua_State* L)
 static int onSystemDeviceLock(lua_State* L)
 {
     bool shouldAbortLock = false;
-    
+
     if (!CB_App->currentlyPaused)
     {
         // check if scene wants to abort the lock
@@ -96,7 +96,7 @@ static int onSystemDeviceLock(lua_State* L)
             shouldAbortLock = true;
         }
     }
-    
+
     playdate->lua->pushBool(shouldAbortLock);
     return 1;
 }
@@ -108,7 +108,7 @@ static bool useLua(void)
         playdate->system->logToConsole("main.pdz not found.");
         return false;
     }
-    
+
     // attempt to access system file to determine if we have system access
     if (cb_file_exists("/System/Launcher.pdx/pdxinfo", kFileRead | kFileReadData))
     {
@@ -118,7 +118,7 @@ static bool useLua(void)
     {
         return true;
     }
-    
+
     return false;
 }
 
@@ -136,7 +136,7 @@ __section__(".text.main") DllExport
     eventHandler_pdnewlib(pd, event, arg);
 
     DTCM_VERIFY_DEBUG();
-    
+
     if (event == kEventPause)
     {
         CB_App->currentlyPaused = true;
@@ -183,13 +183,14 @@ __section__(".text.main") DllExport
 #endif
 
         dtcm_set_mempool(__builtin_frame_address(0) - PLAYDATE_STACK_SIZE);
-        
-        if (cb_file_exists(DISK_IMAGE, kFileReadData)) playdate->file->unlink(DISK_IMAGE, false);
-        
+
+        if (cb_file_exists(DISK_IMAGE, kFileReadData))
+            playdate->file->unlink(DISK_IMAGE, false);
+
         load_global();
-        
+
         CB_init();
-        
+
         if (!useLua())
         {
             pd->system->setUpdateCallback(update, pd);
@@ -198,7 +199,7 @@ __section__(".text.main") DllExport
     else if (event == kEventInitLua)
     {
         initLua();
-        
+
         pd->system->setUpdateCallback(update, pd);
     }
     else if (event == kEventTerminate)
