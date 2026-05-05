@@ -8,7 +8,7 @@
 
 #include "app.h"
 
-#include "../libs/pdnewlib/pdnewlib.h"
+#include "../libs/pdnewlib/pdnewlib.h"  // IWYU pragma: keep
 #include "dtcm.h"
 #include "global.h"
 #include "jparse.h"
