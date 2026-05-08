@@ -11,7 +11,7 @@ typedef struct
 {
     char* version;
     char* url;
-    int w, h;
+    int w, h, margin;
 } PendingUpdateInfo;
 
 // Checks for updates if it's been more than a certain amount of time since the last check.

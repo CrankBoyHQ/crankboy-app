@@ -73,6 +73,12 @@ static int check_is_bundle(void)
             CB_App->forceCheckVersion = true;
         }
         
+        if (strstr(arg, "--check-version-local"))
+        {
+            CB_App->forceCheckVersion = true;
+            CB_App->forceCheckVersionLocal = true;
+        }
+        
         if (startswith(arg, "rom="))
         {
             arg += strlen("rom=");

@@ -166,6 +166,7 @@ typedef struct CB_Application
     bool parentalLockEngaged : 1;
     
     bool forceCheckVersion : 1;
+    bool forceCheckVersionLocal : 1;
 
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;

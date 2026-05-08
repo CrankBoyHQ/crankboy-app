@@ -157,9 +157,11 @@ For coders: we could use help with setting up a [Windows simulator build CI](htt
 
 CrankBoy uses a heavily modified version of Peanut-GB. Various [advanced optimization techniques](https://devforum.play.date/t/dirty-optimization-secrets-c-for-playdate/23011) were used to tailor the performance to the Playdate. If you wish to work on adding features to the emulator core itself, you may want to glance at those optimization techniques since it explains some of the unusual design choices made.
 
-#### Tips
+#### Development Tips
 
 You can use the command line arg `rom=/Shared/Emulation/gb/games/<rom-file>` to quickly launch a rom while testing.
+
+To test the version update check, try `--check-version` (forces a version check), and `--check-version-local` (forces the version dialogue to trigger using the local `version.json`)
 
 ### Project Setup
 

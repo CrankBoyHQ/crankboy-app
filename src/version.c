@@ -20,7 +20,7 @@ static int read_local_version(void)
 {
     free_json_data(localVersionInfo);
     localVersionInfo.type = kJSONNull;
-    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead) != 0)
+    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead|kFileReadData) != 0)
     {
         return 1;
     }
@@ -167,7 +167,10 @@ PendingUpdateInfo* get_pending_update(void)
     PendingUpdateInfo* result = NULL;
     json_value jv_root;
 
-    if (parse_json(UPDATE_INFO_PATH, &jv_root, kFileReadData) == 1 && jv_root.type == kJSONTable)
+    const char* new_update_path = CB_App->forceCheckVersionLocal ? VERSION_INFO_FILE : UPDATE_INFO_PATH;
+    unsigned readFlags = CB_App->forceCheckVersionLocal ? (kFileRead|kFileReadData) : kFileReadData;
+    
+    if (parse_json(new_update_path, &jv_root, readFlags) == 1 && jv_root.type == kJSONTable)
     {
         json_value jv_show = json_get_table_value(jv_root, "show");
         if (jv_show.type != kJSONFalse)
@@ -178,6 +181,7 @@ PendingUpdateInfo* get_pending_update(void)
             json_value jv_url = json_get_table_value(jv_root, "download-v2");
             json_value jv_w = json_get_table_value(jv_root, "download-v2-width");
             json_value jv_h = json_get_table_value(jv_root, "download-v2-height");
+            json_value jv_m = json_get_table_value(jv_root, "download-v2-margin");
             if (jv_url.type == kJSONNull)
             {
                 jv_url = json_get_table_value(jv_root, "download");
@@ -185,6 +189,16 @@ PendingUpdateInfo* get_pending_update(void)
 
             if (jv_version.type == kJSONString && jv_url.type == kJSONString)
             {
+                const char* local_version_name = get_current_version();
+                
+                // paranoia
+                if (!CB_App->forceCheckVersionLocal && local_version_name && !strcmp(jv_version.data.stringval, local_version_name))
+                {
+                    mark_update_as_seen();
+                    free_json_data(jv_root);
+                    return NULL;
+                }
+                
                 result = cb_malloc(sizeof(PendingUpdateInfo));
                 if (result)
                 {
@@ -195,6 +209,9 @@ PendingUpdateInfo* get_pending_update(void)
                     
                     result->h = -1;
                     if (jv_h.type == kJSONInteger && jv_h.data.intval > 0) result->h = jv_h.data.intval;
+                    
+                    result->margin = -1;
+                    if (jv_m.type == kJSONInteger && jv_m.data.intval > 0) result->margin = jv_m.data.intval;
                 }
             }
         }
