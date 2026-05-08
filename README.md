@@ -1,17 +1,24 @@
 ## CrankBoy
 
+[![Static Badge](https://img.shields.io/badge/Catalog%20-%20Available%20-%20%2330d030?logo=macys)](https://play.date/games/crankboy/)
 [![Nightly Build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml/badge.svg)](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml)
-[![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
 [![Matrix](<https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(Matrix%2FElement)>)](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
-[![Discord](https://img.shields.io/discord/675983554655551509?logo=discord&logoColor=white&color=7289DA)](https://discord.com/channels/675983554655551509/1378119815641694278)
+[![Static Badge](https://img.shields.io/badge/Chat%20-%20Community%20-%20%237289da?logo=discord&logoColor=white)
+](https://discord.com/channels/675983554655551509/1378119815641694278)
+[![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
+[![Website](https://img.shields.io/website?url=https%3A%2F%2Fcrankboy.app%2F&up_message=Online&down_color=Down&logo=htmx&logoColor=white&label=Website)](https://crankboy.app/)
+
+<div style="text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">
+  <img src="assets/main-logo.png" width="50%" style="vertical-align: middle;">
+  <a href="https://play.date/games/crankboy/">
+    <img src="assets/playdate-catalog-badge-buy.svg" width="40%" alt="Buy it in Catalog" style="vertical-align: middle;">
+  </a>
+</div>
+
 
 A full-speed Game Boy® emulator for Playdate™. CrankBoy is a fork of [PlayGB](https://github.com/risolvipro/PlayGB)
 and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only C Game Boy emulator by
-[deltabeard](https://github.com/deltabeard).
-
-<p align="center">
-<img src="Source/launcher/card.png?raw=true">
-</p>
+[deltabeard](https://github.com/deltabeard), in turn based on [Greg's GameBoy Emulator](https://github.com/gregtour/gameboy). A portion of [SameBoy](https://github.com/LIJI32/SameBoy) is also used.
 
 ## Features <!--userguide-->
 
@@ -25,6 +32,8 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
     - Conveniently browse and download ROM hacks directly from within CrankBoy.
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
 - <!--no-userguide--> Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
+- \[[Catalog version](https://play.date/games/crankboy/)\] Automatic updates.
+- \[[Catalog version](https://play.date/games/crankboy/)\] 4 included ROMs by homebrew developers.
 
 ## Limitations <!--userguide-->
 
@@ -38,11 +47,13 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 
 ## Installing
 
-<a href="https://github.com/CrankBoyHQ/crankboy-app/releases/latest"><img src="assets/playdate-badge-download.png?raw=true" width="200"></a>
+
+
+### From GitHub
+
+<a href="https://github.com/CrankBoyHQ/crankboy-app/releases/latest"><img src="assets/playdate-badge-download.svg" width="200" alt="Download for Playdate"/></a>
 
 First, download the zip for the [latest release](https://github.com/CrankBoyHQ/crankboy-app/releases/latest), or the [latest unstable nightly build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml) (you must be logged into GitHub to access the nightly).
-
-### Installing CrankBoy
 
 - **Web sideload**
     1. Open the [Web sideload page](https://play.date/account/sideload/) and login to your account.
