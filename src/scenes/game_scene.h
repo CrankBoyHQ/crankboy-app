@@ -148,8 +148,9 @@ typedef struct CB_GameScene
 
     // time since started or last save/load state
     unsigned playtime;
+    bool quitGameModalConfirmOverride : 1;
 
-    bool isCurrentlySaving;
+    bool isCurrentlySaving : 1;
 
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;

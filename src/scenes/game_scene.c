@@ -611,6 +611,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->cached_line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
 
     gameScene->isCurrentlySaving = false;
+    gameScene->quitGameModalConfirmOverride = false;
     gameScene->is_mirroring = false;
 
     gameScene->menuImage = NULL;
@@ -2787,7 +2788,7 @@ __section__(".rare") void CB_GameScene_didSelectLibrary_(void* userdata)
     gameScene->audioLocked = true;
 
     // if playing for more than 1 minute, ask confirmation
-    if (gameScene->playtime >= 60 * 60)
+    if (gameScene->playtime >= 60 * 60 && !gameScene->quitGameModalConfirmOverride)
     {
         const char* options[] = {"No", "Yes", NULL};
         CB_presentModal(
