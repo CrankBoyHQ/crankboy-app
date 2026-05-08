@@ -22,4 +22,5 @@ disasm*.txt
 
 # clangd
 .clangd
+.cache
 compile_commands.json

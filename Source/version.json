@@ -1,6 +1,9 @@
 {
-    "name": "v2.0.0",
+    "name": "v2.0.1",
     "domain": "raw.githubusercontent.com",
     "path": "/CrankBoyHQ/crankboy-app/refs/heads/master/Source/version.json",
-    "download": "Get it from: get.crankboy.app"
+    "download": "Get it on Catalog!",
+    "download-v2": "Get automatic updates by downloading from Catalog\nOtherwise: https://get.crankboy.app/",
+    "download-v2-width": 350,
+    "download-v2-height": 200
 }

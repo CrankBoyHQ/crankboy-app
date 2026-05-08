@@ -11,10 +11,14 @@ typedef struct
 {
     char* version;
     char* url;
+    int w, h;
 } PendingUpdateInfo;
 
 // Checks for updates if it's been more than a certain amount of time since the last check.
 void possibly_check_for_updates(void);
+
+// Immediately check for updates, regardless of timeout
+void check_for_updates(void);
 
 // Reads update status file and returns info if an update modal should be shown.
 PendingUpdateInfo* get_pending_update(void);
@@ -27,4 +31,3 @@ void mark_update_as_seen(void);
 void version_quit(void);
 
 const char* get_current_version(void);
-const char* get_download_url(void);

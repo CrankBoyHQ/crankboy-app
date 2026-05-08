@@ -3,200 +3,120 @@
 #include "app.h"
 #include "http.h"
 #include "jparse.h"
+#include "pd_api/pd_api_file.h"
+#include "pd_api/pd_api_json.h"
 #include "utility.h"
 
 #define ERRMEM -255
 #define STR_ERRMEM "malloc error"
 #define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
+#define LOCAL_VERSION_PATH "version.json"
 #define UPDATE_INFO_PATH "update_info.json"
 
-struct VersionInfo
-{
-    char* name;
-    char* domain;
-    char* path;
-    char* download;
-};
-static struct VersionInfo* localVersionInfo = NULL;
-static struct VersionInfo* newVersionInfo = NULL;
-
-static int read_version_info(const char* text, bool ispath, struct VersionInfo* oinfo)
-{
-    json_value jvinfo;
-
-    if (oinfo->name)
-        cb_free(oinfo->name);
-    if (oinfo->domain)
-        cb_free(oinfo->domain);
-    if (oinfo->path)
-        cb_free(oinfo->path);
-    if (oinfo->download)
-        cb_free(oinfo->download);
-
-    int jparse_result = (ispath) ? parse_json(VERSION_INFO_FILE, &jvinfo, kFileRead | kFileReadData)
-                                 : parse_json_string(text, &jvinfo);
-
-    if (jparse_result == 0 || jvinfo.type != kJSONTable)
-    {
-        free_json_data(jvinfo);
-        return -1;
-    }
-
-    json_value jname = json_get_table_value(jvinfo, "name");
-    json_value jpath = json_get_table_value(jvinfo, "path");
-    json_value jdomain = json_get_table_value(jvinfo, "domain");
-    json_value jdownload = json_get_table_value(jvinfo, "download");
-
-    if (jname.type != kJSONString || jpath.type != kJSONString || jdomain.type != kJSONString ||
-        jdownload.type != kJSONString)
-    {
-        free_json_data(jvinfo);
-        return -2;
-    }
-
-    oinfo->name = cb_strdup(jname.data.stringval);
-    oinfo->path = cb_strdup(jpath.data.stringval);
-    oinfo->domain = cb_strdup(jdomain.data.stringval);
-    oinfo->download = cb_strdup(jdownload.data.stringval);
-
-    free_json_data(jvinfo);
-
-    return 0;
-}
+static json_value localVersionInfo;
+static json_value newVersionInfo;
 
 static int read_local_version(void)
 {
-    if (!localVersionInfo)
+    free_json_data(localVersionInfo);
+    localVersionInfo.type = kJSONNull;
+    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead) != 0)
     {
-        localVersionInfo = cb_malloc(sizeof(struct VersionInfo));
-        if (!localVersionInfo)
-        {
-            return -1;
-        }
-        memset(localVersionInfo, 0, sizeof(*localVersionInfo));
-
-        int result;
-        if ((result = read_version_info("version.json", true, localVersionInfo)))
-        {
-            cb_free(localVersionInfo);
-            localVersionInfo = NULL;
-            return -2;
-        }
+        return 1;
     }
-    return 1;
+    return -1;
 }
 
 const char* get_current_version(void)
 {
     if (read_local_version() == 1)
     {
-        return localVersionInfo->name;
+        json_value name = json_get_table_value(localVersionInfo, "name");
+        if (name.type == kJSONString) return name.data.stringval;
     }
-    else
-    {
-        return NULL;
-    }
+    return NULL;
 }
 
-const char* get_download_url(void)
-{
-    if (newVersionInfo && newVersionInfo->download)
-    {
-        return newVersionInfo->download;
-    }
-    else
-    {
-        return "Please download it manually";
-    }
-}
-
-static void CB_Get(unsigned flags, char* data, size_t data_len, void* ud)
+static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
 {
     if ((flags & (HTTP_ENABLE_DENIED | HTTP_WIFI_NOT_AVAILABLE | ~HTTP_ENABLE_ASKED)) != 0)
     {
+        playdate->system->logToConsole("Update check failed (HTTP error)");
+        return;
+    }
+    
+    if (!data)
+    {
+        playdate->system->logToConsole("Update check failed (Null response)");
         return;
     }
 
+    // skip leading garbage (FIXME: unsure why this is present...)
     char* json_start = strchr(data, '{');
     if (!json_start)
     {
+        playdate->system->logToConsole("Update check failed (Invalid json)");
         return;
     }
-
-    if (!newVersionInfo)
+    
+    free_json_data(newVersionInfo);
+    if (parse_json_string(json_start, &newVersionInfo) != 0)
     {
-        newVersionInfo = cb_malloc(sizeof(struct VersionInfo));
-        if (!newVersionInfo)
-        {
-            return;
-        }
-        memset(newVersionInfo, 0, sizeof(*newVersionInfo));
-    }
-
-    if (read_version_info(json_start, false, newVersionInfo) == 0)
-    {
-        if (strcmp(newVersionInfo->name, localVersionInfo->name) != 0)
+        json_value local_name = json_get_table_value(localVersionInfo, "name");
+        json_value new_name = json_get_table_value(newVersionInfo, "name");
+        if (local_name.type == kJSONString && new_name.type == kJSONString && strcmp(local_name.data.stringval, new_name.data.stringval))
         {
             // New version available. Check if we already notified the user about this one.
-            char* file_content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
+            
             bool should_write = true;
-
-            if (file_content)
+            json_value cachedVersionInfo;
+            cachedVersionInfo.type = kJSONNull;
+            
+            if (parse_json(UPDATE_INFO_PATH, &cachedVersionInfo, kFileReadData) != 0)
             {
-                json_value jv_root;
-                if (parse_json_string(file_content, &jv_root) == 1 && jv_root.type == kJSONTable)
+                json_value cached_name = json_get_table_value(cachedVersionInfo, "name");
+                if (cached_name.type == kJSONString && !strcmp(cached_name.data.stringval, new_name.data.stringval))
                 {
-                    json_value jv_version = json_get_table_value(jv_root, "version");
-                    if (jv_version.type == kJSONString &&
-                        strcmp(jv_version.data.stringval, newVersionInfo->name) == 0)
-                    {
-                        should_write = false;
-                    }
-                    free_json_data(jv_root);
+                    should_write = false;
                 }
-                cb_free(file_content);
             }
-
+    
             if (should_write)
             {
-                char* json_string;
-                // FIXME: use json formatting library
-                playdate->system->formatString(
-                    &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":true}",
-                    newVersionInfo->name, newVersionInfo->download
-                );
-                if (json_string)
-                {
-                    cb_write_entire_file(UPDATE_INFO_PATH, json_string, strlen(json_string));
-                    cb_free(json_string);
-                }
+                write_json_to_disk(UPDATE_INFO_PATH, newVersionInfo);
             }
+            
+            free_json_data(cachedVersionInfo);
         }
     }
-
-    if (data)
+    else
     {
-        cb_free(data);
+        playdate->system->logToConsole("Update check failed (Invalid json)");
     }
 }
 
-static void check_for_updates(void)
+void check_for_updates(void)
 {
-    switch (read_local_version())
+    if (read_local_version() < 0)
     {
-    case -1:
-    case -2:
+        playdate->system->logToConsole("Cannot check for update -- no local version.json");
         return;
-    default:
-        break;
     }
 
 #define TIMEOUT_MS (10 * 1000)
+    playdate->system->logToConsole("Checking for update...");
 
-    http_get(
-        localVersionInfo->domain, localVersionInfo->path, "to check for a version update", CB_Get,
-        TIMEOUT_MS, NULL
-    );
+    json_value jdomain = json_get_table_value(localVersionInfo, "domain");
+    json_value jpath = json_get_table_value(localVersionInfo, "path");
+
+    if (jdomain.type == kJSONString && jpath.type == kJSONString)
+    {
+        http_get(
+            jdomain.data.stringval, jpath.data.stringval, "to check for a version update", 
+            on_get,
+            TIMEOUT_MS, NULL
+        );
+    }
 }
 
 typedef uint32_t timestamp_t;
@@ -244,22 +164,24 @@ void possibly_check_for_updates(void)
 
 PendingUpdateInfo* get_pending_update(void)
 {
-    char* content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
-    if (!content)
-    {
-        return NULL;
-    }
-
     PendingUpdateInfo* result = NULL;
     json_value jv_root;
 
-    if (parse_json_string(content, &jv_root) == 1 && jv_root.type == kJSONTable)
+    if (parse_json(UPDATE_INFO_PATH, &jv_root, kFileReadData) == 1 && jv_root.type == kJSONTable)
     {
         json_value jv_show = json_get_table_value(jv_root, "show");
-        if (jv_show.type == kJSONTrue)
+        if (jv_show.type != kJSONFalse)
         {
-            json_value jv_version = json_get_table_value(jv_root, "version");
-            json_value jv_url = json_get_table_value(jv_root, "url");
+            json_value jv_version = json_get_table_value(jv_root, "name");
+            
+            // prefer download-v2 to download (legacy)
+            json_value jv_url = json_get_table_value(jv_root, "download-v2");
+            json_value jv_w = json_get_table_value(jv_root, "download-v2-width");
+            json_value jv_h = json_get_table_value(jv_root, "download-v2-height");
+            if (jv_url.type == kJSONNull)
+            {
+                jv_url = json_get_table_value(jv_root, "download");
+            }
 
             if (jv_version.type == kJSONString && jv_url.type == kJSONString)
             {
@@ -268,13 +190,17 @@ PendingUpdateInfo* get_pending_update(void)
                 {
                     result->version = cb_strdup(jv_version.data.stringval);
                     result->url = cb_strdup(jv_url.data.stringval);
+                    result->w = -1;
+                    if (jv_w.type == kJSONInteger && jv_w.data.intval > 0) result->w = jv_w.data.intval;
+                    
+                    result->h = -1;
+                    if (jv_h.type == kJSONInteger && jv_h.data.intval > 0) result->h = jv_h.data.intval;
                 }
             }
         }
         free_json_data(jv_root);
     }
 
-    cb_free(content);
     return result;
 }
 
@@ -290,58 +216,18 @@ void free_pending_update_info(PendingUpdateInfo* info)
 
 void mark_update_as_seen(void)
 {
-    char* content = cb_read_entire_file(UPDATE_INFO_PATH, NULL, kFileReadData);
-    if (!content)
-    {
-        return;
-    }
-
     json_value jv_root;
-    if (parse_json_string(content, &jv_root) == 1 && jv_root.type == kJSONTable)
+
+    if (parse_json(UPDATE_INFO_PATH, &jv_root, kFileReadData) == 1 && jv_root.type == kJSONTable)
     {
-        json_value jv_version = json_get_table_value(jv_root, "version");
-        json_value jv_url = json_get_table_value(jv_root, "url");
-
-        if (jv_version.type == kJSONString && jv_url.type == kJSONString)
-        {
-            char* json_string;
-            // FIXME: should use the existing write-json functionality.
-            playdate->system->formatString(
-                &json_string, "{\"version\":\"%s\",\"url\":\"%s\",\"show\":false}",
-                jv_version.data.stringval, jv_url.data.stringval
-            );
-            if (json_string)
-            {
-                cb_write_entire_file(UPDATE_INFO_PATH, json_string, strlen(json_string));
-                CB_App->shouldCheckUpdateInfo = true;
-                cb_free(json_string);
-            }
-        }
-        free_json_data(jv_root);
+        json_set_table_value(&jv_root, "show", json_new_bool(false));
+        write_json_to_disk(UPDATE_INFO_PATH, jv_root);
     }
-
-    cb_free(content);
+    free_json_data(jv_root);
 }
 
 void version_quit(void)
 {
-    if (localVersionInfo)
-    {
-        cb_free(localVersionInfo->name);
-        cb_free(localVersionInfo->domain);
-        cb_free(localVersionInfo->path);
-        cb_free(localVersionInfo->download);
-        cb_free(localVersionInfo);
-        localVersionInfo = NULL;
-    }
-
-    if (newVersionInfo)
-    {
-        cb_free(newVersionInfo->name);
-        cb_free(newVersionInfo->domain);
-        cb_free(newVersionInfo->path);
-        cb_free(newVersionInfo->download);
-        cb_free(newVersionInfo);
-        newVersionInfo = NULL;
-    }
+    free_json_data(localVersionInfo);
+    free_json_data(newVersionInfo);
 }

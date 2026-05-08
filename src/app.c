@@ -65,11 +65,20 @@ static int check_is_bundle(void)
 {
     // check for CLI arg
     const char* arg = playdate->system->getLaunchArgs(NULL);
-    if (startswith(arg, "rom="))
+    
+    if (arg)
     {
-        arg += strlen("rom=");
-        CB_App->bundled_rom = cb_strdup(arg);
-        return true;
+        if (strstr(arg, "--check-version"))
+        {
+            CB_App->forceCheckVersion = true;
+        }
+        
+        if (startswith(arg, "rom="))
+        {
+            arg += strlen("rom=");
+            CB_App->bundled_rom = cb_strdup(arg);
+            return true;
+        }
     }
 
     // check for bundle.json
@@ -530,8 +539,11 @@ void CB_init(void)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
-#if GITHUB_RELEASE && !defined(CRANKBOY_OFFICIAL_CATALOG)
-        possibly_check_for_updates();
+#if !defined(CRANKBOY_OFFICIAL_CATALOG)
+        if (CB_App->forceCheckVersion)
+            check_for_updates();
+        else if (GITHUB_RELEASE)
+            possibly_check_for_updates();
 #endif
         check_for_parental_lock();
 
