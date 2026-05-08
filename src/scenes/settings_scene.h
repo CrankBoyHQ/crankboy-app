@@ -27,6 +27,7 @@ typedef struct CB_SettingsScene
     int totalMenuItemCount;
     float crankAccumulator;
     bool shouldDismiss : 1;
+    bool shouldReturnToLibrary : 1;
     bool wasAudioLocked : 1;
 
     int scroll_direction;

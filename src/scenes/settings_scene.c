@@ -44,7 +44,7 @@ static void CB_SettingsScene_free(void* object);
 static void CB_SettingsScene_menu(void* object);
 static void CB_SettingsScene_didSelectBack(void* userdata);
 static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene);
-static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene);
+static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, bool returnToLibrary);
 static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* settingsScene);
 
 bool save_state(CB_GameScene* gameScene, unsigned slot);
@@ -157,6 +157,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->topVisibleIndex = 0;
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
+    settingsScene->shouldReturnToLibrary = false;
 
     // Initialize continuous scrolling variables
     settingsScene->scroll_direction = 0;
@@ -309,6 +310,10 @@ static void state_action_modal_callback(void* userdata, int option)
     {
         settingsScene->shouldDismiss = true;
     }
+    else if (option == 2)
+    {
+        settingsScene->shouldReturnToLibrary = true;
+    }
 }
 
 static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* settingsScene)
@@ -347,7 +352,7 @@ static void settings_confirm_load_state(void* userdata, int option)
     cb_free(data);
 }
 
-static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
+static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, bool returnToLibrary)
 {
     int result = 0;
 
@@ -423,6 +428,10 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene)
     else
     {
         CB_dismiss(settingsScene->scene);
+        if (returnToLibrary && /* paranoia */ settingsScene->gameScene)
+        {
+            CB_GameScene_didSelectLibrary(settingsScene->gameScene);
+        }
     }
 }
 
@@ -502,12 +511,21 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
         playdate->system->logToConsole("Saved state %d successfully", slot);
 
         // TODO: something less invasive than a modal here.
-        const char* options[] = {"Game", "Settings", NULL};
-        CB_presentModal(CB_Modal_new(
-                            "State saved. Return to:", options, state_action_modal_callback,
-                            settingsScene
-        )
-                            ->scene);
+        const char* options[] = {"Game", "Settings", NULL, NULL};
+        if (!CB_App->bundled_rom)
+        {
+            options[2] = "Library";
+        }
+        CB_Modal* modal = CB_Modal_new(
+            "State saved. Return to:", options,
+            state_action_modal_callback,
+            settingsScene
+        );
+        if (modal)
+        {
+            modal->width = 324;
+            CB_presentModal(modal->scene);
+        }
     }
 
     update_thumbnail(settingsScene);
@@ -1688,9 +1706,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     CB_SettingsScene* settingsScene = object;
     int oldCursorIndex = settingsScene->cursorIndex;
 
-    if (settingsScene->shouldDismiss)
+    if (settingsScene->shouldDismiss || settingsScene->shouldReturnToLibrary)
     {
-        CB_SettingsScene_attemptDismiss(settingsScene);
+        CB_SettingsScene_attemptDismiss(settingsScene, settingsScene->shouldReturnToLibrary);
         return;
     }
 
@@ -1845,7 +1863,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     if (pushed & kButtonB)
     {
-        CB_SettingsScene_attemptDismiss(settingsScene);
+        CB_SettingsScene_attemptDismiss(settingsScene, false);
         return;
     }
 
@@ -2266,7 +2284,7 @@ static void CB_SettingsScene_menu(void* object)
 {
     CB_SettingsScene* settingsScene = object;
     playdate->system->removeAllMenuItems();
-
+    
     if (settingsScene->gameScene)
     {
         playdate->system->addMenuItem("Resume", CB_SettingsScene_didSelectBack, settingsScene);
