@@ -19,4 +19,7 @@ disasm*.txt
 # paranoia
 *.gb
 *.gbc
+
+# clangd
 .clangd
+compile_commands.json
