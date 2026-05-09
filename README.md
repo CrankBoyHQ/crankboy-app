@@ -8,13 +8,11 @@
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fcrankboy.app%2F&up_message=Online&down_color=Down&logo=htmx&logoColor=white&label=Website)](https://crankboy.app/)
 
-<div style="text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;">
-  <img src="assets/main-logo.png" width="50%" style="vertical-align: middle;">
-  <a href="https://play.date/games/crankboy/">
-    <img src="assets/playdate-catalog-badge-buy.svg" width="40%" alt="Buy it in Catalog" style="vertical-align: middle;">
+<p align="center">
+  <a href="https://github.com/CrankBoyHQ/crankboy-app/">
+    <img align="center" src="assets/main-logo.png" width="60%"></a><a href="https://play.date/games/crankboy/"><img align="center" src="assets/playdate-catalog-badge-buy.svg" width="30%" alt="Buy it in Catalog">
   </a>
-</div>
-
+</p>
 
 A full-speed Game Boy® emulator for Playdate™. CrankBoy is a fork of [PlayGB](https://github.com/risolvipro/PlayGB)
 and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only C Game Boy emulator by
