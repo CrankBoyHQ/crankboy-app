@@ -3,14 +3,16 @@
 [![Static Badge](https://img.shields.io/badge/Catalog%20-%20Available%20-%20%2330d030?logo=macys)](https://play.date/games/crankboy/)
 [![Nightly Build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml/badge.svg)](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml)
 [![Matrix](<https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(Matrix%2FElement)>)](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
-[![Static Badge](https://img.shields.io/badge/Chat%20-%20Community%20-%20%237289da?logo=discord&logoColor=white)
+[![Discord (Community Chat)](https://img.shields.io/badge/Chat%20-%20Community%20-%20%237289da?logo=discord&logoColor=white)
+](https://discord.com/channels/675983554655551509/1398373474711371967)
+[![Discord (Dev Chat)](https://img.shields.io/badge/Chat%20-%20Dev%20-%20%237289da?logo=discord&logoColor=white)
 ](https://discord.com/channels/675983554655551509/1378119815641694278)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fcrankboy.app%2F&up_message=Online&down_color=Down&logo=htmx&logoColor=white&label=Website)](https://crankboy.app/)
 
 <p align="center">
   <a href="https://github.com/CrankBoyHQ/crankboy-app/">
-    <img align="center" src="assets/main-logo.png" width="60%"></a><a href="https://play.date/games/crankboy/"><img align="center" src="assets/playdate-catalog-badge-buy.svg" width="30%" alt="Buy it in Catalog">
+    <img align="center" src="assets/main-logo.png" width="60%" alt="CrankBoy Logo"></a><a href="https://play.date/games/crankboy/"><img align="center" src="assets/playdate-catalog-badge-buy.svg" width="30%" alt="Buy it in Catalog">
   </a>
 </p>
 
