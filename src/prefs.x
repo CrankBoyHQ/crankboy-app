@@ -30,7 +30,7 @@ PREF(crank_undock_button, PREF_BUTTON_NONE)
 PREF(crank_dock_button, PREF_BUTTON_NONE)
 PREF(hold_a_press_b, PREF_BUTTON_HP_DEFAULT)
 PREF(hold_b_press_a, PREF_BUTTON_HP_DEFAULT)
-PREF(press_a_b, PREF_BUTTON_AB_NONE)
+PREF(press_a_b, PREF_BUTTON_HP_DEFAULT)
 PREF(lock_button, PREF_BUTTON_NONE)
 
 // behaviour

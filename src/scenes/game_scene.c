@@ -1948,23 +1948,20 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             gameScene->hold_b_press_a = false;
         }
         
+        static unsigned char holdpress_button_matrix[] = {
+            3, 4, 8, 12,
+            5, 9, 13,
+            6, 10, 14,
+            7, 11, 15
+        };
+        
         if unlikely(gameScene->press_a_b_hold)
         {
-            if (preferences_press_a_b >= PREF_BUTTON_N_START)
-            {
-                context->gb->direct.joypad_bits.a = 1;
-                context->gb->direct.joypad_bits.b = 1;
-            }
-            
-            if (preferences_press_a_b == PREF_BUTTON_AB_START || preferences_press_a_b == PREF_BUTTON_AB_START_SELECT || preferences_press_a_b == PREF_BUTTON_N_START || preferences_press_a_b == PREF_BUTTON_N_START_SELECT)
-            {
-                context->gb->direct.joypad_bits.start = 0;
-            }
-            
-            if (preferences_press_a_b == PREF_BUTTON_AB_SELECT || preferences_press_a_b == PREF_BUTTON_AB_START_SELECT || preferences_press_a_b == PREF_BUTTON_N_SELECT || preferences_press_a_b == PREF_BUTTON_N_START_SELECT)
-            {
-                context->gb->direct.joypad_bits.select = 0;
-            }
+            unsigned buttons = holdpress_button_matrix[preferences_press_a_b];
+            if (!(buttons & 1)) context->gb->direct.joypad_bits.a = 1;
+            if (!(buttons & 2)) context->gb->direct.joypad_bits.b = 1;
+            if ((buttons & 4)) context->gb->direct.joypad_bits.start = 0;
+            if ((buttons & 8)) context->gb->direct.joypad_bits.select = 0;
         }
         else
         {
@@ -1984,13 +1981,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }
         }
-        
-        static unsigned char holdpress_button_matrix[] = {
-            3, 4, 8, 12,
-            5, 9, 13,
-            6, 10, 14,
-            7, 11, 15
-        };
         
         if unlikely(gameScene->hold_a_press_b)
         {
