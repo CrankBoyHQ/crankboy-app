@@ -65,7 +65,11 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     pgmusic_update(dt);
     int HEADER_SPACE = 48;
+    #ifdef CRANKBOY_OFFICIAL_CATALOG
+    int FOOTER_SPACE = 22;
+    #else
     int FOOTER_SPACE = 48;
+    #endif
     int y = HEADER_SPACE - creditsScene->scroll;
     int entry_spacing = 8;
 
