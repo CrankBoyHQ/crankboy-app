@@ -525,8 +525,11 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, 
     memcpy(out, gb->xram, XRAM_SIZE);
     out += XRAM_SIZE;
 
-    // cart ram
-    if (gb->gb_cart_ram_size > 0)
+    // cart ram — gb_cart_ram_size is derived from ROM header data;
+    // validate it against the maximum legal GB cart RAM size (128 KB)
+    // before copying to prevent a heap buffer over-read.
+    CB_ASSERT(gb->gb_cart_ram_size <= 0x20000);
+    if (gb->gb_cart_ram_size > 0 && gb->gb_cart_ram_size <= 0x20000)
     {
         memcpy(out, gb->gb_cart_ram, gb->gb_cart_ram_size);
         out += gb->gb_cart_ram_size;
