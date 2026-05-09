@@ -17,15 +17,6 @@ static const int pref_version = 1;
 #define PREF(x, ...) preference_t preferences_##x;
 #include "prefs.x"
 
-typedef enum
-{
-#define PREF(x, ...) PREF_DUMMY_##x,
-#include "prefs.x"
-    PREF_COUNT
-} pref_count_enum;
-
-const int pref_count = PREF_COUNT;
-
 void* preferences_bundle_default = NULL;
 preferences_bitfield_t preferences_bundle_hidden = 0;
 preferences_bitfield_t prefs_locked_by_script = 0;
@@ -38,6 +29,8 @@ static uint8_t preferences_read_uint8(SDFile* file);
 static void preferences_write_uint8(SDFile* file, uint8_t value);
 static uint32_t preferences_read_uint32(SDFile* file);
 static void preferences_write_uint32(SDFile* file, uint32_t value);
+
+int preference_default_value[PREFI_COUNT];
 
 void preferences_set_defaults(void)
 {
@@ -52,8 +45,15 @@ void preferences_set_defaults(void)
 void preferences_init(void)
 {
     // if this fails, re-engineer this to be based on a struct instead of bitfield size
-    CB_ASSERT(pref_count <= 8 * sizeof(preferences_bitfield_t));
+    CB_ASSERT(PREFI_COUNT <= 8 * sizeof(preferences_bitfield_t));
 
+    // set default values
+    {
+        int i = 0;
+        #define PREF(x, d) preference_default_value[i++] = d;
+        #include "prefs.x"
+    }
+    
     preferences_set_defaults();
 
     if (playdate->file->stat(CB_globalPrefsPath, NULL) != 0)
@@ -64,6 +64,9 @@ void preferences_init(void)
     {
         preferences_read_from_disk(CB_globalPrefsPath);
     }
+    
+    // dither pattern default non-determinism
+    preference_default_value[PREFI_dither_pattern] = preferences_dither_pattern % 2;
 
     // paranoia
     preferences_per_game = 0;
@@ -122,7 +125,7 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
     union
     {
         JsonObject obj;
-        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * PREF_COUNT];
+        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * PREFI_COUNT];
     } data;
     json_value j;
     j.type = kJSONTable;
@@ -162,6 +165,14 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
 {
     return (int)(intptr_t)call_with_main_stack_2(_preferences_save_to_disk, filename, &leave_as_is);
+}
+
+int prefvar_to_index(preference_t* pref)
+{
+    #define PREF(a, b) if (&preferences_##a == pref) return PREFI_##a;
+    #include "prefs.x"
+    
+    return -1;
 }
 
 static void cpu_endian_to_big_endian(

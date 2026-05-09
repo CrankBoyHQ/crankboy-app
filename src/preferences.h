@@ -63,7 +63,6 @@ typedef enum preference_index_bit_t
 
 #define PREF(x, ...) extern preference_t preferences_##x;
 #include "prefs.x"
-extern const int pref_count;
 
 void preferences_init(void);
 
@@ -76,6 +75,9 @@ void preferences_merge_from_disk(const char* filename);
 // returns 0 on failure
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is);
 
+// returns -1 on failure
+int prefvar_to_index(preference_t* pref);
+
 // stores the given preferences on the heap. Must be free'd.
 void* preferences_store_subset(preferences_bitfield_t subset);
 void preferences_restore_subset(void* stored);
@@ -83,6 +85,9 @@ void preferences_restore_subset(void* stored);
 // preferences that bundle
 extern void* preferences_bundle_default;
 extern preferences_bitfield_t preferences_bundle_hidden;
+
+// default values for all preferences
+extern int preference_default_value[PREFI_COUNT];
 
 // preferences that script has forced to a particular value
 extern preferences_bitfield_t prefs_locked_by_script;

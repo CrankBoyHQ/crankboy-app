@@ -167,6 +167,9 @@ typedef struct CB_Application
     
     bool forceCheckVersion : 1;
     bool forceCheckVersionLocal : 1;
+    
+    // playdate-level lua enabled (main.pdz)
+    bool lua : 1;
 
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;

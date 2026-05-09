@@ -16,6 +16,7 @@
 #include "credits_scene.h"
 #include "homebrew_hub_scene.h"
 #include "patch_download_scene.h"
+#include "pd_api/pd_api_gfx.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -71,11 +72,12 @@ typedef struct OptionsMenuEntry
     const char* name;
     const char** values;
     const char* description;
-    int* pref_var;
+    preference_t* pref_var;
     unsigned max_value;
 
     bool locked : 1;
     bool show_value_only_on_hover : 1;
+    bool suppress_nondefault_indicator : 1;
     bool thumbnail : 1;
     bool graphics_test : 1;
     bool header : 1;
@@ -164,6 +166,8 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->repeatLevel = 0;
     settingsScene->repeatIncrementTime = 0.0f;
     settingsScene->repeatTime = 0.0f;
+    
+    settingsScene->gradient = playdate->graphics->loadBitmap("images/gradient32", NULL);
 
     void* always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
 
@@ -907,6 +911,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .show_value_only_on_hover = 1,
+            .suppress_nondefault_indicator = 1,
             .thumbnail = 1,
             .on_press = settings_action_save_state_possibly_warn,
             .ud = gameScene,
@@ -922,6 +927,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .show_value_only_on_hover = 1,
+            .suppress_nondefault_indicator = 1,
             .thumbnail = 1,
             .on_press = settings_action_load_state_possibly_warn,
             .ud = gameScene,
@@ -964,6 +970,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 "Select which save file \nto use for the ROM's\ninternal save data.\n \nIf you apply softpatches,\nyou may wish to use\ndifferent saves for each.\n \nNote: \"save states\" are\na different concept.\n",
             .pref_var = &preferences_save_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
+            .suppress_nondefault_indicator = 1,
             .rebuild_when_changed = 1,
             .ud = gameScene,
         };
@@ -1017,12 +1024,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .description = scope_description,
             .pref_var = &preferences_per_game,
             .max_value = 2,
+            .suppress_nondefault_indicator = 1,
             .rebuild_when_changed = 1,
             .on_press = NULL,
             .on_change = settings_post_action_per_game,
         };
     }
 
+    // custom script settings
     if (gameScene && gameScene->script)
     {
         clear_script_settings();
@@ -2062,6 +2071,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         bool is_functionally_inactive =
             (current_entry->pref_var != NULL && current_entry->max_value == 0);
         bool is_disabled = is_static_text || is_locked_option || is_functionally_inactive;
+        bool indicate_nondefault = false;
+        bool is_selected = itemIndex == settingsScene->cursorIndex;
+        int prefvar_index = prefvar_to_index(current_entry->pref_var);
+        if (!is_disabled && /* paranoia */ current_entry->pref_var != NULL && !current_entry->suppress_nondefault_indicator)
+        {
+            indicate_nondefault = *current_entry->pref_var != preference_default_value[prefvar_index];
+        }
 
         int y = initialY + i * rowHeight;
         const char* name = current_entry->name;
@@ -2078,8 +2094,14 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             }
         }
 
-        if (current_entry->show_value_only_on_hover && itemIndex != settingsScene->cursorIndex)
+        if (current_entry->show_value_only_on_hover && !is_selected)
             stateText = "";
+        
+        if (indicate_nondefault && !is_selected)
+        {
+            playdate->graphics->setDrawMode(kDrawModeCopy);
+            playdate->graphics->drawBitmap(settingsScene->gradient, kDividerX - 32, y - 2, kBitmapUnflipped);
+        }
 
         int nameWidth = playdate->graphics->getTextWidth(
             CB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
@@ -2089,10 +2111,10 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         );
         int stateX = kDividerX - stateWidth - kLeftPanePadding;
 
-        if (itemIndex == settingsScene->cursorIndex)
+        if (is_selected)
         {
             playdate->graphics->fillRect(
-                0, y - (rowSpacing / 2), kDividerX, rowHeight, kColorBlack
+                0, y - (rowSpacing / 2) - 1, kDividerX, rowHeight, kColorBlack
             );
             playdate->graphics->setDrawMode(kDrawModeFillWhite);
         }
@@ -2118,13 +2140,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             // Draw the left line segment
             playdate->graphics->drawLine(
                 kLeftPanePadding, lineY, textX - padding, lineY, 1,
-                (itemIndex == settingsScene->cursorIndex) ? kColorWhite : kColorBlack
+                is_selected ? kColorWhite : kColorBlack
             );
 
             // Draw the right line segment
             playdate->graphics->drawLine(
                 textX + nameWidth + padding, lineY, kDividerX - kLeftPanePadding, lineY, 1,
-                (itemIndex == settingsScene->cursorIndex) ? kColorWhite : kColorBlack
+                is_selected ? kColorWhite : kColorBlack
             );
         }
         else
@@ -2141,7 +2163,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         if (is_disabled && !current_entry->header)
         {
-            const uint8_t* dither = (itemIndex != settingsScene->cursorIndex)
+            const uint8_t* dither = (!is_selected)
                                         ? black_transparent_dither
                                         : white_transparent_dither;
             playdate->graphics->fillRect(
@@ -2153,7 +2175,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             }
         }
 
-        if (itemIndex == settingsScene->cursorIndex &&
+        if (is_selected &&
             settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
         {
             float p = (settingsScene->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) /
@@ -2392,6 +2414,9 @@ static void CB_SettingsScene_free(void* object)
         cb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
     }
+    
+    if (settingsScene->gradient)
+        playdate->graphics->freeBitmap(settingsScene->gradient);
 
     CB_Scene_free(settingsScene->scene);
     cb_free(settingsScene);

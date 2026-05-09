@@ -198,6 +198,7 @@ __section__(".text.main") DllExport
     }
     else if (event == kEventInitLua)
     {
+        CB_App->lua = true;
         initLua();
 
         pd->system->setUpdateCallback(update, pd);

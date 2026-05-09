@@ -20,14 +20,20 @@ extern PlaydateAPI* playdate;
 
 // these must not be edited in place, so that it can be assumed a screen update
 // is not needed if the ptr doesn't change.
-extern const uint8_t lcdp_25[16];
-extern const uint8_t lcdp_25s[16];
-extern const uint8_t lcdp_50[16];
-extern const uint8_t lcdp_50b[16];
-extern const uint8_t lcdp_75[16];
-extern const uint8_t lcdp_75s[16];
+extern const uint8_t lcdp_12[16];  // dark 1/8
+extern const uint8_t lcdp_12s[16]; // dark 1/8 (staggered)
+extern const uint8_t lcdp_25[16];  // dark 1/4
+extern const uint8_t lcdp_25s[16]; // dark 1/4 (staggered)
+extern const uint8_t lcdp_37[16];  // dark 3/8
+extern const uint8_t lcdp_50[16];  // medium
+extern const uint8_t lcdp_50b[16]; // medium (alt)
+extern const uint8_t lcdp_62[16];  // bright 5/8
+extern const uint8_t lcdp_75[16];  // bright 3/4
+extern const uint8_t lcdp_75s[16]; // bright 3/4 (staggered)
+extern const uint8_t lcdp_87[16];  // bright 7/8
+extern const uint8_t lcdp_87s[16]; // bright 7/8 (staggered)
 
-extern const uint8_t lcdp_t_50[16];
+extern const uint8_t lcdp_t_50[16]; // transparent white 50%
 
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
