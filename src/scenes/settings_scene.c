@@ -452,6 +452,8 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
+static const char* gb_button_labels_hp[] = {"Default", "Start", "Select", "Start+Select", "Start+A", "Select+A", "Start+Select+A", "Start+A", "Select+B", "Start+Select+B", "Start+A+B", "Select+A+B", "All"};
+static const char* gb_button_labels_ab[] = {"Default", "Start+A+B", "Select+A+B", "All", "Start", "Select", "Start+Select"};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
@@ -1368,14 +1370,47 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 4,
         .on_press = NULL
     };
-
+    
     entries[++i] = (OptionsMenuEntry){
-        .name = "Behavior",
+        .name = "Buttons",
         .header = 1
     };
-
+    
+    // A->B
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Ⓐ›Ⓑ",
+        .values = gb_button_labels_hp,
+        .description =
+            "Assign a replacement\nbutton input for\nholding Ⓐ and then\npressing Ⓑ.\n \nThis replaces the\nnormal button presses.",
+        .pref_var = &preferences_hold_a_press_b,
+        .max_value = 7,
+        .on_press = NULL
+    };
+    
+    // B->A
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Ⓑ›Ⓐ",
+        .values = gb_button_labels_hp,
+        .description =
+            "Assign a replacement\nbutton input for\nholding Ⓑ and then\npressing Ⓐ.\n \nThis replaces the\nnormal button presses.",
+        .pref_var = &preferences_hold_b_press_a,
+        .max_value = 7,
+        .on_press = NULL
+    };
+    
+    // B+A
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Ⓐ+Ⓑ",
+        .values = gb_button_labels_ab,
+        .description =
+            "Assign a replacement\nbutton input when\nsimultaneously pressing\nboth Ⓐ and Ⓑ.\n \nThis replaces the\nnormal button presses.\n \nNote that both buttons must\nbe pressed on exactly\nthe same frame, which\nis quite precise!",
+        .pref_var = &preferences_press_a_b,
+        .max_value = 7,
+        .on_press = NULL
+    };
+    
     // lock button override.
-    // Only available if launched with system privileges. (e.g. through FunnyLoader)
+    // Only available if launched with system privileges. (e.g. through FunnyLoader / FunnyOS)
     // Since this is still experimental, do not show this option at all unless system privileges are detected.
     if (CB_App->hasSystemAccess)
     {
@@ -1390,6 +1425,11 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .on_change = settings_post_action_lock_button
         };
     }
+
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Behavior",
+        .header = 1
+    };
 
     // PPU Timing
     static const char* ppu_timing_labels[] = {"Fast", "Accurate"};

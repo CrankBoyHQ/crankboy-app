@@ -144,9 +144,9 @@ typedef struct CB_Application
 
     unsigned simulate_button_presses[6];
 
-    PDButtons buttons_down;
+    PDButtons buttons_down; // (discards suppressed)
     PDButtons buttons_pressed;
-    PDButtons buttons_released;
+    PDButtons buttons_released; // (discards suppressed)
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
 
