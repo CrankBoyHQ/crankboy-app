@@ -3,8 +3,8 @@
     "domain": "raw.githubusercontent.com",
     "path": "/CrankBoyHQ/crankboy-app/refs/heads/master/Source/version.json",
     "download": "Get it on Catalog!",
-    "download-v2": "Get automatic updates by downloading from Catalog.\nOtherwise, visit: get.crankboy.app",
+    "download-v2": "Get automatic updates by downloading from Catalog.\n\nOtherwise, visit: get.crankboy.app",
     "download-v2-width": 310,
-    "download-v2-height": 174,
+    "download-v2-height": 194,
     "download-v2-margin": 8
 }
