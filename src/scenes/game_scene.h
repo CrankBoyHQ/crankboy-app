@@ -141,7 +141,7 @@ typedef struct CB_GameScene
     bool crank_turbo_a_active;
     bool crank_turbo_b_active;
     bool crank_was_docked;
-    
+
     // set to true when simultaneously pressing a+b
     bool press_a_b_hold;
     bool hold_a_press_b;

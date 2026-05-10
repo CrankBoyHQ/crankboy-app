@@ -1873,7 +1873,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         prev_game_picture_background_color = game_picture_background_color;
     }
 
-    if likely(gameScene->state == CB_GameSceneStateLoaded)
+    if likely (gameScene->state == CB_GameSceneStateLoaded)
     {
         bool shouldDisplayStartSelectUI = (!playdate->system->isCrankDocked() &&
                                            preferences_crank_mode == CRANK_MODE_START_SELECT) ||
@@ -1903,8 +1903,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.joypad_bits.start = gb_joypad_start_is_active_low;
         context->gb->direct.joypad_bits.select = gb_joypad_select_is_active_low;
-        
-        if unlikely(gameScene->lock_button_hold_frames_remaining > 0)
+
+        if unlikely (gameScene->lock_button_hold_frames_remaining > 0)
         {
             --gameScene->lock_button_hold_frames_remaining;
             switch (preferences_lock_button)
@@ -1932,72 +1932,82 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->direct.joypad_bits.up = !(current_pd_buttons & kButtonUp);
         context->gb->direct.joypad_bits.right = !(current_pd_buttons & kButtonRight);
         context->gb->direct.joypad_bits.down = !(current_pd_buttons & kButtonDown);
-        
-        if unlikely(preferences_press_a_b)
+
+        if unlikely (preferences_press_a_b)
         {
             if ((CB_App->buttons_pressed & (kButtonA | kButtonB)) == (kButtonA | kButtonB))
             {
                 gameScene->press_a_b_hold = true;
             }
         }
-        
-        if likely((CB_App->buttons_down & (kButtonA | kButtonB)) != (kButtonA | kButtonB))
+
+        if likely ((CB_App->buttons_down & (kButtonA | kButtonB)) != (kButtonA | kButtonB))
         {
             gameScene->press_a_b_hold = false;
             gameScene->hold_a_press_b = false;
             gameScene->hold_b_press_a = false;
         }
-        
-        static unsigned char holdpress_button_matrix[] = {
-            3, 4, 8, 12,
-            5, 9, 13,
-            6, 10, 14,
-            7, 11, 15
-        };
-        
-        if unlikely(gameScene->press_a_b_hold)
+
+        static unsigned char holdpress_button_matrix[] = {3, 4,  8,  12, 5,  9, 13,
+                                                          6, 10, 14, 7,  11, 15};
+
+        if unlikely (gameScene->press_a_b_hold)
         {
             unsigned buttons = holdpress_button_matrix[preferences_press_a_b];
-            if (!(buttons & 1)) context->gb->direct.joypad_bits.a = 1;
-            if (!(buttons & 2)) context->gb->direct.joypad_bits.b = 1;
-            if ((buttons & 4)) context->gb->direct.joypad_bits.start = 0;
-            if ((buttons & 8)) context->gb->direct.joypad_bits.select = 0;
+            if (!(buttons & 1))
+                context->gb->direct.joypad_bits.a = 1;
+            if (!(buttons & 2))
+                context->gb->direct.joypad_bits.b = 1;
+            if ((buttons & 4))
+                context->gb->direct.joypad_bits.start = 0;
+            if ((buttons & 8))
+                context->gb->direct.joypad_bits.select = 0;
         }
         else
         {
-            if unlikely(preferences_hold_a_press_b)
+            if unlikely (preferences_hold_a_press_b)
             {
-                if ((CB_App->buttons_down & kButtonA) && (CB_App->buttons_pressed & kButtonB) && !(CB_App->buttons_pressed & kButtonA))
+                if ((CB_App->buttons_down & kButtonA) && (CB_App->buttons_pressed & kButtonB) &&
+                    !(CB_App->buttons_pressed & kButtonA))
                 {
                     gameScene->hold_a_press_b = true;
                 }
             }
-            
-            if unlikely(preferences_hold_b_press_a)
+
+            if unlikely (preferences_hold_b_press_a)
             {
-                if ((CB_App->buttons_down & kButtonB) && (CB_App->buttons_pressed & kButtonA) && !(CB_App->buttons_pressed & kButtonB))
+                if ((CB_App->buttons_down & kButtonB) && (CB_App->buttons_pressed & kButtonA) &&
+                    !(CB_App->buttons_pressed & kButtonB))
                 {
                     gameScene->hold_b_press_a = true;
                 }
             }
         }
-        
-        if unlikely(gameScene->hold_a_press_b)
+
+        if unlikely (gameScene->hold_a_press_b)
         {
             unsigned buttons = holdpress_button_matrix[preferences_hold_a_press_b];
-            if (!(buttons & 1)) context->gb->direct.joypad_bits.a = 1;
-            if (!(buttons & 2)) context->gb->direct.joypad_bits.b = 1;
-            if ((buttons & 4)) context->gb->direct.joypad_bits.start = 0;
-            if ((buttons & 8)) context->gb->direct.joypad_bits.select = 0;
+            if (!(buttons & 1))
+                context->gb->direct.joypad_bits.a = 1;
+            if (!(buttons & 2))
+                context->gb->direct.joypad_bits.b = 1;
+            if ((buttons & 4))
+                context->gb->direct.joypad_bits.start = 0;
+            if ((buttons & 8))
+                context->gb->direct.joypad_bits.select = 0;
         }
-        
-        if unlikely(gameScene->hold_b_press_a)
+
+        if unlikely (gameScene->hold_b_press_a)
         {
             unsigned buttons = holdpress_button_matrix[preferences_hold_b_press_a];
-            if (!(buttons & 1)) context->gb->direct.joypad_bits.a = 1;
-            if (!(buttons & 2)) context->gb->direct.joypad_bits.b = 1;
-            if ((buttons & 4)) context->gb->direct.joypad_bits.start = 0;
-            if ((buttons & 8)) context->gb->direct.joypad_bits.select = 0;
+            if (!(buttons & 1))
+                context->gb->direct.joypad_bits.a = 1;
+            if (!(buttons & 2))
+                context->gb->direct.joypad_bits.b = 1;
+            if ((buttons & 4))
+                context->gb->direct.joypad_bits.start = 0;
+            if ((buttons & 8))
+                context->gb->direct.joypad_bits.select = 0;
         }
 
         if (context->gb->direct.joypad_interrupts)

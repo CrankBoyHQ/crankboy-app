@@ -42,7 +42,7 @@ typedef struct CB_SettingsScene
     int initial_audio_sync;
     int initial_ppu_timing;
     preference_t* immutable_settings;
-    
+
     LCDBitmap* gradient;
 
     struct OptionsMenuEntry* entries;

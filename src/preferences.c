@@ -50,10 +50,10 @@ void preferences_init(void)
     // set default values
     {
         int i = 0;
-        #define PREF(x, d) preference_default_value[i++] = d;
-        #include "prefs.x"
+#define PREF(x, d) preference_default_value[i++] = d;
+#include "prefs.x"
     }
-    
+
     preferences_set_defaults();
 
     if (playdate->file->stat(CB_globalPrefsPath, NULL) != 0)
@@ -64,7 +64,7 @@ void preferences_init(void)
     {
         preferences_read_from_disk(CB_globalPrefsPath);
     }
-    
+
     // dither pattern default non-determinism
     preference_default_value[PREFI_dither_pattern] = preferences_dither_pattern % 2;
 
@@ -169,9 +169,11 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
 
 int prefvar_to_index(preference_t* pref)
 {
-    #define PREF(a, b) if (&preferences_##a == pref) return PREFI_##a;
-    #include "prefs.x"
-    
+#define PREF(a, b)                \
+    if (&preferences_##a == pref) \
+        return PREFI_##a;
+#include "prefs.x"
+
     return -1;
 }
 

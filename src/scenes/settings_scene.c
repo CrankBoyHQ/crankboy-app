@@ -166,7 +166,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->repeatLevel = 0;
     settingsScene->repeatIncrementTime = 0.0f;
     settingsScene->repeatTime = 0.0f;
-    
+
     settingsScene->gradient = playdate->graphics->loadBitmap("images/gradient32", NULL);
 
     void* always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
@@ -456,7 +456,11 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
-static const char* gb_button_labels_hp[] = {"Default", "Start", "Select", "Start+Select", "Start+A", "Select+A", "Start+Select+A", "Start+B", "Select+B", "Start+Select+B", "Start+A+B", "Select+A+B", "All"};
+static const char* gb_button_labels_hp[] = {
+    "Default",   "Start",          "Select",  "Start+Select", "Start+A",
+    "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
+    "Start+A+B", "Select+A+B",     "All"
+};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
@@ -524,9 +528,7 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
             options[2] = "Library";
         }
         CB_Modal* modal = CB_Modal_new(
-            "State saved. Return to:", options,
-            state_action_modal_callback,
-            settingsScene
+            "State saved. Return to:", options, state_action_modal_callback, settingsScene
         );
         if (modal)
         {
@@ -2079,9 +2081,11 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         bool indicate_nondefault = false;
         bool is_selected = itemIndex == settingsScene->cursorIndex;
         int prefvar_index = prefvar_to_index(current_entry->pref_var);
-        if (!is_disabled && /* paranoia */ current_entry->pref_var != NULL && !current_entry->suppress_nondefault_indicator)
+        if (!is_disabled && /* paranoia */ current_entry->pref_var != NULL &&
+            !current_entry->suppress_nondefault_indicator)
         {
-            indicate_nondefault = *current_entry->pref_var != preference_default_value[prefvar_index];
+            indicate_nondefault =
+                *current_entry->pref_var != preference_default_value[prefvar_index];
         }
 
         int y = initialY + i * rowHeight;
@@ -2101,11 +2105,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         if (current_entry->show_value_only_on_hover && !is_selected)
             stateText = "";
-        
+
         if (indicate_nondefault && !is_selected)
         {
             playdate->graphics->setDrawMode(kDrawModeCopy);
-            playdate->graphics->drawBitmap(settingsScene->gradient, kDividerX - 32, y - 2, kBitmapUnflipped);
+            playdate->graphics->drawBitmap(
+                settingsScene->gradient, kDividerX - 32, y - 2, kBitmapUnflipped
+            );
         }
 
         int nameWidth = playdate->graphics->getTextWidth(
@@ -2168,9 +2174,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         if (is_disabled && !current_entry->header)
         {
-            const uint8_t* dither = (!is_selected)
-                                        ? black_transparent_dither
-                                        : white_transparent_dither;
+            const uint8_t* dither =
+                (!is_selected) ? black_transparent_dither : white_transparent_dither;
             playdate->graphics->fillRect(
                 kLeftPanePadding, y, nameWidth, fontHeight, (LCDColor)dither
             );
@@ -2180,8 +2185,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             }
         }
 
-        if (is_selected &&
-            settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
+        if (is_selected && settingsScene->option_hold_time > HOLD_TIME_SUPPRESS_RELEASE)
         {
             float p = (settingsScene->option_hold_time - HOLD_TIME_SUPPRESS_RELEASE) /
                       (HOLD_TIME - HOLD_TIME_MARGIN - HOLD_TIME_SUPPRESS_RELEASE);
@@ -2351,7 +2355,7 @@ static void CB_SettingsScene_menu(void* object)
 {
     CB_SettingsScene* settingsScene = object;
     playdate->system->removeAllMenuItems();
-    
+
     if (settingsScene->gameScene)
     {
         playdate->system->addMenuItem("Resume", CB_SettingsScene_didSelectBack, settingsScene);
@@ -2419,7 +2423,7 @@ static void CB_SettingsScene_free(void* object)
         cb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
     }
-    
+
     if (settingsScene->gradient)
         playdate->graphics->freeBitmap(settingsScene->gradient);
 

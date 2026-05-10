@@ -144,9 +144,9 @@ typedef struct CB_Application
 
     unsigned simulate_button_presses[6];
 
-    PDButtons buttons_down; // (discards suppressed)
+    PDButtons buttons_down;  // (discards suppressed)
     PDButtons buttons_pressed;
-    PDButtons buttons_released; // (discards suppressed)
+    PDButtons buttons_released;  // (discards suppressed)
     PDButtons buttons_suppress;  // prevent these from registering until they
                                  // are released
 
@@ -164,10 +164,10 @@ typedef struct CB_Application
     bool hbApiUseHTTPS : 1;
 
     bool parentalLockEngaged : 1;
-    
+
     bool forceCheckVersion : 1;
     bool forceCheckVersionLocal : 1;
-    
+
     // playdate-level lua enabled (main.pdz)
     bool lua : 1;
 
