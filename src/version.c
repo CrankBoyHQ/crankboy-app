@@ -15,12 +15,13 @@
 
 static json_value localVersionInfo;
 static json_value newVersionInfo;
+static char* cachedVersionName = NULL;
 
 static int read_local_version(void)
 {
     free_json_data(localVersionInfo);
     localVersionInfo.type = kJSONNull;
-    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead|kFileReadData) != 0)
+    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead | kFileReadData) != 0)
     {
         return 1;
     }
@@ -29,12 +30,16 @@ static int read_local_version(void)
 
 const char* get_current_version(void)
 {
-    if (read_local_version() == 1)
+    if (!cachedVersionName)
     {
-        json_value name = json_get_table_value(localVersionInfo, "name");
-        if (name.type == kJSONString) return name.data.stringval;
+        if (read_local_version() == 1)
+        {
+            json_value name = json_get_table_value(localVersionInfo, "name");
+            if (name.type == kJSONString)
+                cachedVersionName = cb_strdup(name.data.stringval);
+        }
     }
-    return NULL;
+    return cachedVersionName;
 }
 
 static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
@@ -42,9 +47,10 @@ static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
     if ((flags & (HTTP_ENABLE_DENIED | HTTP_WIFI_NOT_AVAILABLE | ~HTTP_ENABLE_ASKED)) != 0)
     {
         playdate->system->logToConsole("Update check failed (HTTP error)");
+        cb_free(data);
         return;
     }
-    
+
     if (!data)
     {
         playdate->system->logToConsole("Update check failed (Null response)");
@@ -56,36 +62,39 @@ static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
     if (!json_start)
     {
         playdate->system->logToConsole("Update check failed (Invalid json)");
+        cb_free(data);
         return;
     }
-    
+
     free_json_data(newVersionInfo);
     if (parse_json_string(json_start, &newVersionInfo) != 0)
     {
         json_value local_name = json_get_table_value(localVersionInfo, "name");
         json_value new_name = json_get_table_value(newVersionInfo, "name");
-        if (local_name.type == kJSONString && new_name.type == kJSONString && strcmp(local_name.data.stringval, new_name.data.stringval))
+        if (local_name.type == kJSONString && new_name.type == kJSONString &&
+            strcmp(local_name.data.stringval, new_name.data.stringval))
         {
             // New version available. Check if we already notified the user about this one.
-            
+
             bool should_write = true;
             json_value cachedVersionInfo;
             cachedVersionInfo.type = kJSONNull;
-            
+
             if (parse_json(UPDATE_INFO_PATH, &cachedVersionInfo, kFileReadData) != 0)
             {
                 json_value cached_name = json_get_table_value(cachedVersionInfo, "name");
-                if (cached_name.type == kJSONString && !strcmp(cached_name.data.stringval, new_name.data.stringval))
+                if (cached_name.type == kJSONString &&
+                    !strcmp(cached_name.data.stringval, new_name.data.stringval))
                 {
                     should_write = false;
                 }
             }
-    
+
             if (should_write)
             {
                 write_json_to_disk(UPDATE_INFO_PATH, newVersionInfo);
             }
-            
+
             free_json_data(cachedVersionInfo);
         }
     }
@@ -93,6 +102,8 @@ static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
     {
         playdate->system->logToConsole("Update check failed (Invalid json)");
     }
+
+    cb_free(data);
 }
 
 void check_for_updates(void)
@@ -112,8 +123,7 @@ void check_for_updates(void)
     if (jdomain.type == kJSONString && jpath.type == kJSONString)
     {
         http_get(
-            jdomain.data.stringval, jpath.data.stringval, "to check for a version update", 
-            on_get,
+            jdomain.data.stringval, jpath.data.stringval, "to check for a version update", on_get,
             TIMEOUT_MS, NULL
         );
     }
@@ -167,16 +177,18 @@ PendingUpdateInfo* get_pending_update(void)
     PendingUpdateInfo* result = NULL;
     json_value jv_root;
 
-    const char* new_update_path = CB_App->forceCheckVersionLocal ? VERSION_INFO_FILE : UPDATE_INFO_PATH;
-    unsigned readFlags = CB_App->forceCheckVersionLocal ? (kFileRead|kFileReadData) : kFileReadData;
-    
+    const char* new_update_path =
+        CB_App->forceCheckVersionLocal ? VERSION_INFO_FILE : UPDATE_INFO_PATH;
+    unsigned readFlags =
+        CB_App->forceCheckVersionLocal ? (kFileRead | kFileReadData) : kFileReadData;
+
     if (parse_json(new_update_path, &jv_root, readFlags) == 1 && jv_root.type == kJSONTable)
     {
         json_value jv_show = json_get_table_value(jv_root, "show");
         if (jv_show.type != kJSONFalse)
         {
             json_value jv_version = json_get_table_value(jv_root, "name");
-            
+
             // prefer download-v2 to download (legacy)
             json_value jv_url = json_get_table_value(jv_root, "download-v2");
             json_value jv_w = json_get_table_value(jv_root, "download-v2-width");
@@ -190,28 +202,33 @@ PendingUpdateInfo* get_pending_update(void)
             if (jv_version.type == kJSONString && jv_url.type == kJSONString)
             {
                 const char* local_version_name = get_current_version();
-                
+
                 // paranoia
-                if (!CB_App->forceCheckVersionLocal && local_version_name && !strcmp(jv_version.data.stringval, local_version_name))
+                if (!CB_App->forceCheckVersionLocal && local_version_name &&
+                    !strcmp(jv_version.data.stringval, local_version_name))
                 {
-                    mark_update_as_seen();
+                    json_set_table_value(&jv_root, "show", json_new_bool(false));
+                    write_json_to_disk(UPDATE_INFO_PATH, jv_root);
                     free_json_data(jv_root);
                     return NULL;
                 }
-                
+
                 result = cb_malloc(sizeof(PendingUpdateInfo));
                 if (result)
                 {
                     result->version = cb_strdup(jv_version.data.stringval);
                     result->url = cb_strdup(jv_url.data.stringval);
                     result->w = -1;
-                    if (jv_w.type == kJSONInteger && jv_w.data.intval > 0) result->w = jv_w.data.intval;
-                    
+                    if (jv_w.type == kJSONInteger && jv_w.data.intval > 0)
+                        result->w = jv_w.data.intval;
+
                     result->h = -1;
-                    if (jv_h.type == kJSONInteger && jv_h.data.intval > 0) result->h = jv_h.data.intval;
-                    
+                    if (jv_h.type == kJSONInteger && jv_h.data.intval > 0)
+                        result->h = jv_h.data.intval;
+
                     result->margin = -1;
-                    if (jv_m.type == kJSONInteger && jv_m.data.intval > 0) result->margin = jv_m.data.intval;
+                    if (jv_m.type == kJSONInteger && jv_m.data.intval > 0)
+                        result->margin = jv_m.data.intval;
                 }
             }
         }
@@ -246,5 +263,9 @@ void mark_update_as_seen(void)
 void version_quit(void)
 {
     free_json_data(localVersionInfo);
+    localVersionInfo.type = kJSONNull;
     free_json_data(newVersionInfo);
+    newVersionInfo.type = kJSONNull;
+    cb_free(cachedVersionName);
+    cachedVersionName = NULL;
 }

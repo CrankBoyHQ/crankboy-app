@@ -65,20 +65,20 @@ static int check_is_bundle(void)
 {
     // check for CLI arg
     const char* arg = playdate->system->getLaunchArgs(NULL);
-    
+
     if (arg)
     {
         if (strstr(arg, "--check-version"))
         {
             CB_App->forceCheckVersion = true;
         }
-        
+
         if (strstr(arg, "--check-version-local"))
         {
             CB_App->forceCheckVersion = true;
             CB_App->forceCheckVersionLocal = true;
         }
-        
+
         const char* device_arg = strstr(arg, "device=");
         if (device_arg && (device_arg == arg || device_arg[-1] == ' '))
         {
@@ -101,7 +101,8 @@ static int check_is_bundle(void)
         else
         {
             const char* found = strstr(arg, " rom=");
-            if (found) rom_arg = found + strlen(" rom=");
+            if (found)
+                rom_arg = found + strlen(" rom=");
         }
         if (rom_arg)
         {

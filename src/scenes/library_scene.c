@@ -1142,8 +1142,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             libraryScene->update_modal_shown = true;
 
             char* modal_result = aprintf(
-                "CrankBoy Update!\n\n%s -> %s\n\n%s", update_info->version,
-                get_current_version(), update_info->url
+                "CrankBoy Update!\n\n%s -> %s\n\n%s", get_current_version(), update_info->version,
+                update_info->url
             );
 
             if (modal_result)
@@ -1156,17 +1156,17 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 {
                     modal->width = 300;
                     modal->height = 180;
-                    
+
                     if (update_info->w > 0)
                     {
                         modal->width = update_info->w;
                     }
-                    
+
                     if (update_info->h > 0)
                     {
                         modal->height = update_info->h;
                     }
-                    
+
                     if (update_info->margin > 0)
                     {
                         modal->margin = update_info->margin;
