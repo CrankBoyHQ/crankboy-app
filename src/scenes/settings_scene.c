@@ -2106,14 +2106,6 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         if (current_entry->show_value_only_on_hover && !is_selected)
             stateText = "";
 
-        if (indicate_nondefault && !is_selected)
-        {
-            playdate->graphics->setDrawMode(kDrawModeCopy);
-            playdate->graphics->drawBitmap(
-                settingsScene->gradient, kDividerX - 32, y - 2, kBitmapUnflipped
-            );
-        }
-
         int nameWidth = playdate->graphics->getTextWidth(
             CB_App->bodyFont, name, strlen(name), kUTF8Encoding, 0
         );
@@ -2132,6 +2124,15 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         else
         {
             playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        }
+
+        if (indicate_nondefault)
+        {
+            playdate->graphics->setDrawMode(kDrawModeNXOR);
+            playdate->graphics->drawBitmap(
+                settingsScene->gradient, kDividerX - 32, y - 2, kBitmapUnflipped
+            );
+            playdate->graphics->setDrawMode(is_selected ? kDrawModeFillWhite : kDrawModeFillBlack);
         }
 
         if (current_entry->header)
