@@ -7,6 +7,72 @@
 #define MODAL_ANIM_TIME 16
 #define MODAL_DROP_TIME 12
 
+static int count_text_lines(const char* text, int text_w)
+{
+    int total = 0;
+    while (*text)
+    {
+        const char* nl = strchr(text, '\n');
+        int line_len = nl ? (int)(nl - text) : (int)strlen(text);
+
+        if (line_len > 0)
+        {
+            const char* line = text;
+            int remaining = line_len;
+
+            while (remaining > 0)
+            {
+                int line_w = playdate->graphics->getTextWidth(
+                    CB_App->bodyFont, line, remaining, kUTF8Encoding, 0
+                );
+                if (line_w <= text_w)
+                {
+                    total++;
+                    break;
+                }
+
+                int fit = 0;
+                for (int i = 1; i <= remaining; i++)
+                {
+                    if (playdate->graphics->getTextWidth(
+                            CB_App->bodyFont, line, i, kUTF8Encoding, 0
+                        ) > text_w)
+                        break;
+                    fit = i;
+                }
+
+                int break_at = fit;
+                for (int i = fit; i > 0; i--)
+                {
+                    if (line[i - 1] == ' ')
+                    {
+                        break_at = i;
+                        break;
+                    }
+                }
+                if (break_at < 1)
+                    break_at = fit > 0 ? fit : 1;
+
+                total++;
+                remaining -= break_at;
+                line += break_at;
+                while (remaining > 0 && *line == ' ')
+                {
+                    line++;
+                    remaining--;
+                }
+            }
+        }
+        else
+        {
+            total++;
+        }
+
+        text = nl ? nl + 1 : text + line_len;
+    }
+    return total;
+}
+
 void CB_Modal_update(CB_Modal* modal)
 {
     ++modal->master_timer;
@@ -109,8 +175,15 @@ void CB_Modal_update(CB_Modal* modal)
     {
         int line_h = playdate->graphics->getFontHeight(CB_App->bodyFont);
         int text_x = x + m;
-        int text_y = y + m;
         int text_w = w - 2 * m;
+
+        int avail_h = h - 2 * m;
+        int total_lines = count_text_lines(modal->text, text_w);
+        int total_text_h = total_lines * line_h;
+        int y_offset = (modal->options_count == 0 && total_text_h < avail_h)
+                           ? (avail_h - total_text_h) / 2
+                           : 0;
+        int text_y = y + m + y_offset;
 
         const char* p = modal->text;
         while (*p)
