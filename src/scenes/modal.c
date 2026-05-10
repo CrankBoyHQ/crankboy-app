@@ -103,17 +103,86 @@ void CB_Modal_update(CB_Modal* modal)
         h - (total_thickness * 2), kColorWhite
     );
 
-    int m = modal->margin;  // margin
+    int m = modal->margin;
     playdate->graphics->setFont(CB_App->bodyFont);
     if (modal->text)
     {
-        // Apply a 2px vertical offset only for text-only modals
-        // to achieve visual centering.
-        int y_offset = (modal->options_count == 0) ? 2 : 0;
-        playdate->graphics->drawTextInRect(
-            modal->text, strlen(modal->text), kUTF8Encoding, x + m, y + m + y_offset, w - 2 * m,
-            h - 2 * m, kWrapWord, kAlignTextCenter
-        );
+        int line_h = playdate->graphics->getFontHeight(CB_App->bodyFont);
+        int text_x = x + m;
+        int text_y = y + m;
+        int text_w = w - 2 * m;
+
+        const char* p = modal->text;
+        while (*p)
+        {
+            const char* nl = strchr(p, '\n');
+            int line_len = nl ? (int)(nl - p) : (int)strlen(p);
+
+            if (line_len > 0)
+            {
+                const char* line = p;
+                int remaining = line_len;
+
+                while (remaining > 0)
+                {
+                    int line_w = playdate->graphics->getTextWidth(
+                        CB_App->bodyFont, line, remaining, kUTF8Encoding, 0
+                    );
+                    if (line_w <= text_w)
+                    {
+                        playdate->graphics->drawText(
+                            line, remaining, kUTF8Encoding, text_x + (text_w - line_w) / 2, text_y
+                        );
+                        text_y += line_h;
+                        break;
+                    }
+
+                    int fit = 0;
+                    for (int i = 1; i <= remaining; i++)
+                    {
+                        if (playdate->graphics->getTextWidth(
+                                CB_App->bodyFont, line, i, kUTF8Encoding, 0
+                            ) > text_w)
+                            break;
+                        fit = i;
+                    }
+
+                    int break_at = fit;
+                    for (int i = fit; i > 0; i--)
+                    {
+                        if (line[i - 1] == ' ')
+                        {
+                            break_at = i;
+                            break;
+                        }
+                    }
+                    if (break_at < 1)
+                        break_at = fit > 0 ? fit : 1;
+
+                    int seg_w = playdate->graphics->getTextWidth(
+                        CB_App->bodyFont, line, break_at, kUTF8Encoding, 0
+                    );
+                    playdate->graphics->drawText(
+                        line, break_at, kUTF8Encoding, text_x + (text_w - seg_w) / 2, text_y
+                    );
+                    text_y += line_h;
+
+                    remaining -= break_at;
+                    line += break_at;
+                    while (remaining > 0 && *line == ' ')
+                    {
+                        line++;
+                        remaining--;
+                    }
+                }
+            }
+            else
+            {
+                text_y += line_h;
+            }
+
+            p = nl ? nl + 1 : p + line_len;
+        }
     }
 
     int spacing = w / (1 + modal->options_count);
