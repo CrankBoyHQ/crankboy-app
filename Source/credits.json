@@ -39,7 +39,10 @@
     },
     {
         "section": "Catalog Billboard Art",
-        "contributors": ["Monseki"]
+        "contributors": [
+            "Monseki (web)",
+            "rae (device)"
+        ]
     },
     {
         "section": "Special Thanks",
