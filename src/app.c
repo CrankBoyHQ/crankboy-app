@@ -79,10 +79,43 @@ static int check_is_bundle(void)
             CB_App->forceCheckVersionLocal = true;
         }
         
+        const char* device_arg = strstr(arg, "device=");
+        if (device_arg && (device_arg == arg || device_arg[-1] == ' '))
+        {
+            const char* device_val = device_arg + strlen("device=");
+            if (!strncasecmp(device_val, "cgb", 3) || !strncasecmp(device_val, "gbc", 3))
+            {
+                CB_App->bundled_rom_cgb_mode = 2;
+            }
+            else if (!strncasecmp(device_val, "dmg", 3))
+            {
+                CB_App->bundled_rom_cgb_mode = 1;
+            }
+        }
+
+        const char* rom_arg = NULL;
         if (startswith(arg, "rom="))
         {
-            arg += strlen("rom=");
-            CB_App->bundled_rom = cb_strdup(arg);
+            rom_arg = arg + strlen("rom=");
+        }
+        else
+        {
+            const char* found = strstr(arg, " rom=");
+            if (found) rom_arg = found + strlen(" rom=");
+        }
+        if (rom_arg)
+        {
+            const char* end = strchr(rom_arg, ' ');
+            if (end)
+            {
+                size_t len = end - rom_arg;
+                CB_App->bundled_rom = cb_memdup(rom_arg, len + 1);
+                CB_App->bundled_rom[len] = 0;
+            }
+            else
+            {
+                CB_App->bundled_rom = cb_strdup(rom_arg);
+            }
             return true;
         }
     }

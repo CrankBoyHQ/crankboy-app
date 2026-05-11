@@ -475,6 +475,7 @@ static const char* overclock_labels[] = {"Off", "x2", "x4"};
 static const char* dynamic_level_labels[] = {"1", "2", "3", "4",  "5", "6",
                                              "7", "8", "9", "10", "11"};
 static const char* settings_scope_labels[] = {"Global", "Game"};
+static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
 static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
 static const char* article_labels[] = {"Leading", "As-is"};
@@ -1559,12 +1560,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         // remember selection
         entries[++i] = (OptionsMenuEntry){
             .name = "CGB Prompt",
-            .values = off_on_labels,
-            .description = "When opening a ROM\nthat is CGB-optional\n"
-                "(i.e. supports \"Color\"),\n"
-                "prompt to run in\nexperimental CGB mode?\n \n(Note: CGB-only ROMs will\nalways prompt regardless.)",
+            .values = cgb_prompt_labels,
+            .description = "When launching a ROM,\n"
+                "prompt to choose between\n"
+                "DMG (original) and\bexperimental CGB\n(\"Color\") device emulation\n \n"
+                "No: prompt for\n  CGB-only ROMs.\n"
+                "Yes: prompt for CGB-only\n  and CGB-optional ROMs.\n"
+                "Always: prompt even for\n  DMG ROMs.",
             .pref_var = &preferences_prompt_if_cgb_optional,
-            .max_value = 2,
+            .max_value = 3,
             .on_press = NULL
         };
 
@@ -1582,8 +1586,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .values = fps_labels,
         .description =
             "Displays the current\nframes-per-second\non screen.\n \n"
-            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)"
-        ,
+            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)\n \n"
+            "Ideal performance is just\nunder 60 emulated frames\nper second."
+            ,
         .pref_var = &preferences_display_fps,
         .max_value = 3,
         .on_press = NULL

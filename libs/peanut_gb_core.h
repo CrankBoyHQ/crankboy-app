@@ -1063,6 +1063,19 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 break;           // nop
             if (opcode == 0x10)  // STOP
             {
+#if PGB_IS_CGB
+                // CGB speed switch
+                if (gb->cgb_fast_mode_armed)
+                {
+                    gb->cpu_reg.pc++;
+                    gb->cgb_fast_mode = !gb->cgb_fast_mode;
+                    gb->cgb_fast_mode_armed = false;
+                    gb->gb_reg.DIV = 0;
+                    cycles = 1;
+                    break;
+                }
+#endif
+
 #if PGB_IS_DMG
                 // We check for the button-press glitch on DMG.
                 // A button is pressed, and a direction/action line is selected.

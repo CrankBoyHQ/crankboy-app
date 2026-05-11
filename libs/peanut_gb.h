@@ -719,6 +719,11 @@ __section__(".rare.cb") static void __gb_rare_write(
         case 0x4C:  // KEY0 (CGB Undocumented)
             return;
         case 0x4D:  // KEY1 (CGB Speed Switch)
+            if (gb->is_cgb_mode)
+            {
+                gb->cgb_fast_mode_armed = val & 1;
+            }
+            return;
 
         case 0x4F:  // VBK (CGB VRAM Bank)
             if (gb->is_cgb_mode)
@@ -2138,6 +2143,15 @@ _0x10:
     // The instruction is fetched (PC+1) and the handler needs to advance it past the operand
     // (PC+2).
     gb->cpu_reg.pc++;
+
+    // CGB speed switch
+    if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
+    {
+        gb->cgb_fast_mode = !gb->cgb_fast_mode;
+        gb->cgb_fast_mode_armed = false;
+        gb->gb_reg.DIV = 0;
+        goto exit;
+    }
 
     // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
     if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
@@ -4972,6 +4986,15 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 
         // 1. Advance PC over the required operand byte (0x00).
         gb->cpu_reg.pc++;  // PC is now at (PC_0x10 + 2)
+
+        // CGB speed switch
+        if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
+        {
+            gb->cgb_fast_mode = !gb->cgb_fast_mode;
+            gb->cgb_fast_mode_armed = false;
+            gb->gb_reg.DIV = 0;
+            return cycles;
+        }
 
         // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
         if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))

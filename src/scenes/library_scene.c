@@ -438,7 +438,23 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             launch_dmg_or_cgb(game, 0);
             break;
         case GB_SUPPORT_DMG:
-            launch_dmg_or_cgb(game, 0);
+            if (preferences_prompt_if_cgb_optional >= 2)
+            {
+                CB_Modal* modal = CB_Modal_new(
+                    "This ROM is marked as DMG. You can launch in DMG (non-Color) "
+                    "mode, or try CrankBoy's experimental CGB emulation regardless.",
+                    options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
+                );
+
+                modal->width = 380;
+                modal->height = 220;
+
+                CB_presentModal(modal->scene);
+            }
+            else
+            {
+                launch_dmg_or_cgb(game, 0);
+            }
             break;
         case GB_SUPPORT_CGB:
         {
