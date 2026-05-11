@@ -409,7 +409,7 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
     playdate->system->getCrankChange();
 
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_INFO;
+    scene->id = "info";
     infoScene->scene = scene;
     infoScene->title = title ? cb_strdup(title) : NULL;
     infoScene->text = text ? cb_strdup(text) : NULL;

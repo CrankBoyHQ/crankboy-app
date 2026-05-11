@@ -458,7 +458,7 @@ void CB_showHelp(bool first_time)
 
     const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy.\n\n"
                                  "We recommend using CrankBoy Manager."
-                               : "Use CrankBoy Manager (rec) to add ROMs.";
+                               : "Use CrankBoy Manager to add ROMs";
 
     const char* B = "                                        - OR -";
     const char* C1 = "1. Connect your Playdate to another device via USB.\n";

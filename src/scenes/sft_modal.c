@@ -18,7 +18,7 @@ CB_SFTModal* CB_SFTModal_new(void)
     {
         return NULL;
     }
-    scene->type = CB_SCENE_TYPE_SFT_MODAL;
+    scene->id = "sft-modal";
 
     CB_SFTModal* sftModal = allocz(CB_SFTModal);
     if (!sftModal)

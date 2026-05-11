@@ -212,71 +212,48 @@ static bool serial_cb_sft_handler(const char* const* tokens)
     return false;
 }
 
-// Handle cb:scene:get command - Get current scene type
+// Handle cb:scene:get command - Get current scene stack
 // Format: cb:scene:get
-// Response: cb:scene:<scene-type>
+// Response: cb:scene:<root>.<...>.<current>
 static bool serial_cb_scene_get(const char* const* tokens)
 {
-    (void)tokens;  // Unused
+    (void)tokens;
 
-    const char* scene_name = "unknown";
-
-    if (CB_App->scene)
+    if (!CB_App->scene)
     {
-        switch (CB_App->scene->type)
+        serial_send_response("cb:scene:unknown");
+        return true;
+    }
+
+    size_t total = 0;
+    int depth = 0;
+    for (CB_Scene* s = CB_App->scene; s; s = s->parentScene)
+    {
+        const char* id = s->id ? s->id : "unknown";
+        total += strlen(id);
+        depth++;
+    }
+    total += (depth > 0 ? depth - 1 : 0);
+
+    char* buf = cb_malloc(total + 1);
+    buf[total] = 0;
+
+    char* end = buf + total;
+    for (CB_Scene* s = CB_App->scene; s; s = s->parentScene)
+    {
+        const char* id = s->id ? s->id : "unknown";
+        size_t len = strlen(id);
+        end -= len;
+        memcpy(end, id, len);
+        if (s->parentScene)
         {
-        case CB_SCENE_TYPE_LIBRARY:
-            scene_name = "library";
-            break;
-        case CB_SCENE_TYPE_GAME:
-            scene_name = "game";
-            break;
-        case CB_SCENE_TYPE_SETTINGS:
-            scene_name = "settings";
-            break;
-        case CB_SCENE_TYPE_INFO:
-            scene_name = "info";
-            break;
-        case CB_SCENE_TYPE_FILE_COPYING:
-            scene_name = "file-copying";
-            break;
-        case CB_SCENE_TYPE_PATCH_DOWNLOAD:
-            scene_name = "patch-download";
-            break;
-        case CB_SCENE_TYPE_HOMEBREW_HUB:
-            scene_name = "homebrew-hub";
-            break;
-        case CB_SCENE_TYPE_MODAL:
-            scene_name = "modal";
-            break;
-        case CB_SCENE_TYPE_PARENTAL_LOCK:
-            scene_name = "parental-lock";
-            break;
-        case CB_SCENE_TYPE_SFT_MODAL:
-            scene_name = "sft-modal";
-            break;
-        case CB_SCENE_TYPE_COVER_CACHE:
-            scene_name = "cover-cache";
-            break;
-        case CB_SCENE_TYPE_GAME_SCANNING:
-            scene_name = "game-scanning";
-            break;
-        case CB_SCENE_TYPE_CREDITS:
-            scene_name = "credits";
-            break;
-        case CB_SCENE_TYPE_IMAGE_CONVERSION:
-            scene_name = "image-conversion";
-            break;
-        case CB_SCENE_TYPE_PATCHES:
-            scene_name = "patches";
-            break;
-        default:
-            scene_name = "unknown";
-            break;
+            end -= 1;
+            *end = '.';
         }
     }
 
-    serial_send_response("cb:scene:%s", scene_name);
+    serial_send_response("cb:scene:%s", buf);
+    cb_free(buf);
     return true;
 }
 

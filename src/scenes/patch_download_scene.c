@@ -2032,7 +2032,7 @@ CB_PatchDownloadScene* CB_PatchDownloadScene_new(
 )
 {
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_PATCH_DOWNLOAD;
+    scene->id = "patch-download";
     CB_PatchDownloadScene* pds = allocz(CB_PatchDownloadScene);
     pds->scene = scene;
     pds->settingsScene = settingsScene;

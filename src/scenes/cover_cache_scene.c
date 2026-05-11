@@ -28,7 +28,7 @@ CB_CoverCacheScene* CB_CoverCacheScene_new(void)
     CB_CoverCacheScene* cacheScene = cb_calloc(1, sizeof(CB_CoverCacheScene));
 
     cacheScene->scene = CB_Scene_new();
-    cacheScene->scene->type = CB_SCENE_TYPE_COVER_CACHE;
+    cacheScene->scene->id = "cover-cache";
     cacheScene->scene->managedObject = cacheScene;
     cacheScene->scene->update = CB_CoverCacheScene_update;
     cacheScene->scene->free = CB_CoverCacheScene_free;

@@ -247,7 +247,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     }
 
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_SETTINGS;
+    scene->id = "settings";
     scene->managedObject = settingsScene;
     scene->update = CB_SettingsScene_update;
     scene->free = CB_SettingsScene_free;

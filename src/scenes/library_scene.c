@@ -925,7 +925,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     }
 
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_LIBRARY;
+    scene->id = "library";
 
     CB_LibraryScene* libraryScene = allocz(CB_LibraryScene);
 

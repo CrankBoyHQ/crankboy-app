@@ -552,7 +552,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     game_menu_button_input_enabled = 1;
 
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_GAME;
+    scene->id = "game";
 
     CB_GameScene* gameScene = allocz(CB_GameScene);
     gameScene->scene = scene;

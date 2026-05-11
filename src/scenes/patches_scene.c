@@ -205,7 +205,7 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
 
     CB_Scene* scene = CB_Scene_new();
     CB_PatchesScene* patchesScene = allocz(CB_PatchesScene);
-    scene->type = CB_SCENE_TYPE_PATCHES;
+    scene->id = "patches";
     patchesScene->scene = scene;
     scene->managedObject = patchesScene;
 

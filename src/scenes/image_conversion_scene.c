@@ -620,7 +620,7 @@ CB_ImageConversionScene* CB_ImageConversionScene_new(void)
 {
     CB_Scene* scene = CB_Scene_new();
     CB_ImageConversionScene* convScene = cb_malloc(sizeof(CB_ImageConversionScene));
-    scene->type = CB_SCENE_TYPE_IMAGE_CONVERSION;
+    scene->id = "image-conversion";
     convScene->scene = scene;
 
     scene->managedObject = convScene;

@@ -1266,7 +1266,7 @@ static void CB_HomebrewHubScene_menu(void* object)
 CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name)
 {
     CB_Scene* scene = CB_Scene_new();
-    scene->type = CB_SCENE_TYPE_HOMEBREW_HUB;
+    scene->id = "homebrew-hub";
     CB_HomebrewHubScene* hbs = allocz(CB_HomebrewHubScene);
     hbs->scene = scene;
     hbs->option_hold_time = 0.0f;
