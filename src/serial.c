@@ -2,6 +2,7 @@
 
 #include "app.h"
 #include "ft.h"
+#include "scenes/library_scene.h"
 #include "scenes/sft_modal.h"
 #include "utility.h"
 #include "version.h"
@@ -274,7 +275,7 @@ static void serial_cb_send_fs_error(const char* cmd, const char* code)
     serial_send_response("cb:%s:error:%s", cmd, code);
 }
 
-// cb:rm:<urlenc-path>[:r]
+// cb:rm:<path>[:r]   (raw '/' OK; only ':' and '%' need %-escaping)
 static bool serial_cb_rm(const char* const* tokens)
 {
     if (!tokens[2])
@@ -298,7 +299,7 @@ static bool serial_cb_rm(const char* const* tokens)
     return true;
 }
 
-// cb:mv:<urlenc-from>:<urlenc-to>
+// cb:mv:<from>:<to>
 static bool serial_cb_mv(const char* const* tokens)
 {
     if (!tokens[2] || !tokens[3])
@@ -323,7 +324,7 @@ static bool serial_cb_mv(const char* const* tokens)
     return true;
 }
 
-// cb:stat:<urlenc-path> -> cb:stat:ok:<isdir>:<size>:<YYYYMMDDhhmmss>
+// cb:stat:<path> -> cb:stat:ok:<isdir>:<size>:<YYYYMMDDhhmmss>
 static bool serial_cb_stat(const char* const* tokens)
 {
     if (!tokens[2])
@@ -350,7 +351,7 @@ static bool serial_cb_stat(const char* const* tokens)
     return true;
 }
 
-// cb:mkdir:<urlenc-path>[:p]   (:p creates intermediates via full_mkdir)
+// cb:mkdir:<path>[:p]   (:p creates intermediates via full_mkdir)
 static bool serial_cb_mkdir(const char* const* tokens)
 {
     if (!tokens[2])
@@ -408,7 +409,7 @@ static void cb_ls_collect(const char* filename, void* userdata)
     ctx->names[ctx->count++] = dup;
 }
 
-// cb:ls:<urlenc-absolute-path>
+// cb:ls:<absolute-path>
 //   cb:ls:ok:<count>
 //   cb:ls:exists:<absolute-path>   (one per entry; trailing / for dirs)
 //   cb:ls:omit                     (placeholder if path won't fit in 256B line)
@@ -486,7 +487,7 @@ static bool serial_cb_ls(const char* const* tokens)
     return true;
 }
 
-// cb:crc32:<urlenc-path>  ->  cb:crc32:ok:<HEX8>
+// cb:crc32:<path>  ->  cb:crc32:ok:<HEX8>
 static bool serial_cb_crc32(const char* const* tokens)
 {
     if (!tokens[2])
@@ -510,7 +511,7 @@ static bool serial_cb_crc32(const char* const* tokens)
     return true;
 }
 
-// cb:read:<urlenc-path>:<decimal-offset>  ->  cb:read:ok:<bytes>:<base64>
+// cb:read:<path>:<decimal-offset>  ->  cb:read:ok:<bytes>:<base64>
 // reads up to 64 bytes from offset. <bytes> = actual count (may be < 64 at EOF).
 static bool serial_cb_read(const char* const* tokens)
 {
@@ -559,6 +560,54 @@ static bool serial_cb_read(const char* const* tokens)
         return true;
     }
     serial_send_response("cb:read:ok:%d:%s", n, b64);
+    return true;
+}
+
+// emit a per-game string field, dropping with :omit if the line would overflow
+static void emit_games_str(unsigned int i, const char* label, const char* value)
+{
+    if (!value || !*value) return;
+    char buf[256];
+    int n = snprintf(buf, sizeof(buf), "cb:games:%u:%s:%s", i, label, value);
+    if (n < 0 || (size_t)n >= sizeof(buf))
+    {
+        serial_send_response("cb:games:%u:omit:%s", i, label);
+        return;
+    }
+    serial_send_response("%s", buf);
+}
+
+// cb:games  ->  cb:games:<count>, then per-game records terminated by :end
+static bool serial_cb_games(const char* const* tokens)
+{
+    (void)tokens;
+    CB_Array* games = CB_App ? CB_App->gameListCache : NULL;
+    unsigned int count = games ? games->length : 0;
+    serial_send_response("cb:games:%u", count);
+
+    for (unsigned int i = 0; i < count; i++)
+    {
+        CB_Game* g = games->items[i];
+        if (g)
+        {
+            const CB_GameName* nm = g->names;
+            if (nm)
+            {
+                serial_send_response("cb:games:%u:crc32:%08X", i, nm->crc32);
+            }
+            emit_games_str(i, "path", g->fullpath);
+            if (nm)
+            {
+                emit_games_str(i, "short_title", nm->name_short);
+                emit_games_str(i, "long_title", nm->name_detailed);
+                emit_games_str(i, "header_title", nm->name_header);
+                emit_games_str(i, "filename_title", nm->name_filename);
+            }
+            emit_games_str(i, "display_name", g->displayName);
+            emit_games_str(i, "sort_name", g->sortName);
+        }
+        serial_send_response("cb:games:%u:end", i);
+    }
     return true;
 }
 
@@ -620,6 +669,10 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "read") == 0)
     {
         return serial_cb_read(tokens);
+    }
+    else if (strcmp(subcmd, "games") == 0)
+    {
+        return serial_cb_games(tokens);
     }
 
     return false;
