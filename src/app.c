@@ -594,8 +594,6 @@ void CB_init(void)
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
 
-    playdate->system->setSerialMessageCallback(CB_on_serial_message);
-
     if (CB_App->bundled_rom)
     {
         CB_GameScene* gameScene =
@@ -609,6 +607,12 @@ void CB_init(void)
             playdate->system->error("Failed to launch bundled ROM \"%s\"", CB_App->bundled_rom);
             return;
         }
+    }
+    else
+    {
+        // so as not to confuse rom manager, only
+        // do serial communication if not on bundle mode.
+        playdate->system->setSerialMessageCallback(CB_on_serial_message);
     }
 }
 

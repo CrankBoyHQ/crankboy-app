@@ -1920,6 +1920,36 @@ int base64_decode(const char* in, size_t in_len, uint8_t* out, size_t out_max)
     return (int)out_len;
 }
 
+// base64 encode. returns encoded length (excl. NUL), or -1 if out is too small.
+int base64_encode(const uint8_t* in, size_t in_len, char* out, size_t out_size)
+{
+    static const char alphabet[] =
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    size_t need = ((in_len + 2) / 3) * 4;
+    if (out_size <= need) return -1;
+    size_t i = 0, j = 0;
+    while (i + 3 <= in_len)
+    {
+        uint32_t v = ((uint32_t)in[i] << 16) | ((uint32_t)in[i + 1] << 8) | in[i + 2];
+        out[j++] = alphabet[(v >> 18) & 0x3F];
+        out[j++] = alphabet[(v >> 12) & 0x3F];
+        out[j++] = alphabet[(v >> 6) & 0x3F];
+        out[j++] = alphabet[v & 0x3F];
+        i += 3;
+    }
+    if (i < in_len)
+    {
+        uint32_t v = (uint32_t)in[i] << 16;
+        if (i + 1 < in_len) v |= (uint32_t)in[i + 1] << 8;
+        out[j++] = alphabet[(v >> 18) & 0x3F];
+        out[j++] = alphabet[(v >> 12) & 0x3F];
+        out[j++] = (i + 1 < in_len) ? alphabet[(v >> 6) & 0x3F] : '=';
+        out[j++] = '=';
+    }
+    out[j] = '\0';
+    return (int)j;
+}
+
 // URL decode: convert %XX to character, returns decoded length or -1 on error
 int url_decode(const char* in, char* out, size_t out_size)
 {
@@ -1950,6 +1980,49 @@ int url_decode(const char* in, char* out, size_t out_size)
     }
     out[j] = '\0';
     return (int)j;
+}
+
+char* url_encode(const char* in)
+{
+    if (!in) return NULL;
+    static const char hex[] = "0123456789ABCDEF";
+    char* out = NULL;
+    size_t len = 0;
+    for (int pass = 0; pass < 2; pass++)
+    {
+        char* w = out;
+        for (const char* p = in; *p; p++)
+        {
+            unsigned char c = (unsigned char)*p;
+            bool safe = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+                        (c >= '0' && c <= '9') || c == '-' || c == '.' ||
+                        c == '_' || c == '~';
+            if (pass == 0)
+            {
+                len += safe ? 1 : 3;
+            }
+            else if (safe)
+            {
+                *w++ = (char)c;
+            }
+            else
+            {
+                *w++ = '%';
+                *w++ = hex[c >> 4];
+                *w++ = hex[c & 0xF];
+            }
+        }
+        if (pass == 0)
+        {
+            out = cb_malloc(len + 1);
+            if (!out) return NULL;
+        }
+        else
+        {
+            *w = '\0';
+        }
+    }
+    return out;
 }
 
 // Generic serial response function - used by all protocols

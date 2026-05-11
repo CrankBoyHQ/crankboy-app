@@ -49,6 +49,8 @@
  *                           - "gbz_header" = invalid GBZ header
  *                           - "decompress" = decompression failed
  *                           - "orig_crc" = original CRC mismatch
+ *                           - "orig_filename" = invalid original filename
+ *                                               (must be a bare name, no slashes)
  *                           - "notransfer" = no transfer in progress
  *
  * Supported File Types:
@@ -61,6 +63,10 @@
  *   The device automatically selects the target directory based on file extension:
  *   - .pdi files → covers/ directory
  *   - All other valid types (.gb, .gbc, .gbz) → games/ directory
+ *   If <filename> begins with '/', it is treated as an absolute path and used
+ *   verbatim; directory auto-selection, the extension whitelist, and the
+ *   ".." traversal check are all skipped. The host is trusted to supply a
+ *   well-formed destination path.
  *
  * Temp File Naming:
  *   Temporary files during transfer: .ft_<filename>.tmp in target directory
@@ -362,17 +368,38 @@ bool ft_handle_begin(
         return false;
     }
 
-    char safe_name[256];
-    if (!sanitize_filename(decoded_name, safe_name, sizeof(safe_name)))
-    {
-        serial_send_response("ft:x:filename");
-        return false;
-    }
+    bool is_absolute = (decoded_name[0] == '/');
 
-    if (!is_valid_extension(safe_name))
+    char safe_name[256];
+    const char* basename_ptr;  // basename, used for filename/extension/temp/bak
+
+    if (is_absolute)
     {
-        serial_send_response("ft:x:extension");
-        return false;
+        // Absolute paths are trusted verbatim: no extension whitelist, no
+        // ".." traversal ban.
+        const char* slash = strrchr(decoded_name, '/');
+        basename_ptr = slash + 1;
+        if (*basename_ptr == '\0')
+        {
+            // Path ends in '/', no filename component.
+            serial_send_response("ft:x:filename");
+            return false;
+        }
+    }
+    else
+    {
+        if (!sanitize_filename(decoded_name, safe_name, sizeof(safe_name)))
+        {
+            serial_send_response("ft:x:filename");
+            return false;
+        }
+        basename_ptr = safe_name;
+
+        if (!is_valid_extension(basename_ptr))
+        {
+            serial_send_response("ft:x:extension");
+            return false;
+        }
     }
 
     uint32_t num_chunks = (size + FT_CHUNK_SIZE - 1) / FT_CHUNK_SIZE;
@@ -382,12 +409,7 @@ bool ft_handle_begin(
         return false;
     }
 
-    const char* ext = get_extension(safe_name);
-    bool is_cover = (ext && strcasecmp(ext, ".pdi") == 0);
-    const char* target_dir =
-        is_cover ? cb_gb_directory_path(CB_coversPath) : cb_gb_directory_path(CB_gamesPath);
-
-    ft_ctx.filename = cb_strdup(safe_name);
+    ft_ctx.filename = cb_strdup(basename_ptr);
     if (!ft_ctx.filename)
     {
         serial_send_response("ft:x:nomem");
@@ -395,28 +417,66 @@ bool ft_handle_begin(
         return false;
     }
 
-    ft_ctx.final_path = aprintf("%s/%s", target_dir, safe_name);
-    if (!ft_ctx.final_path)
+    if (is_absolute)
     {
-        serial_send_response("ft:x:nomem");
-        ft_cleanup();
-        return false;
-    }
+        // Place the temp/bak sidecars in the same directory as the destination.
+        const char* slash = strrchr(decoded_name, '/');
+        int parent_len = (int)(slash - decoded_name) + 1;  // include the slash
 
-    ft_ctx.temp_path = aprintf("%s/.ft_%s.tmp", target_dir, safe_name);
-    if (!ft_ctx.temp_path)
-    {
-        serial_send_response("ft:x:nomem");
-        ft_cleanup();
-        return false;
-    }
+        ft_ctx.final_path = cb_strdup(decoded_name);
+        if (!ft_ctx.final_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
 
-    ft_ctx.bak_path = aprintf("%s/.ft_%s.bak", target_dir, safe_name);
-    if (!ft_ctx.bak_path)
+        ft_ctx.temp_path = aprintf("%.*s.ft_%s.tmp", parent_len, decoded_name, basename_ptr);
+        if (!ft_ctx.temp_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
+
+        ft_ctx.bak_path = aprintf("%.*s.ft_%s.bak", parent_len, decoded_name, basename_ptr);
+        if (!ft_ctx.bak_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
+    }
+    else
     {
-        serial_send_response("ft:x:nomem");
-        ft_cleanup();
-        return false;
+        const char* ext = get_extension(basename_ptr);
+        bool is_cover = (ext && strcasecmp(ext, ".pdi") == 0);
+        const char* target_dir =
+            is_cover ? cb_gb_directory_path(CB_coversPath) : cb_gb_directory_path(CB_gamesPath);
+
+        ft_ctx.final_path = aprintf("%s/%s", target_dir, basename_ptr);
+        if (!ft_ctx.final_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
+
+        ft_ctx.temp_path = aprintf("%s/.ft_%s.tmp", target_dir, basename_ptr);
+        if (!ft_ctx.temp_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
+
+        ft_ctx.bak_path = aprintf("%s/.ft_%s.bak", target_dir, basename_ptr);
+        if (!ft_ctx.bak_path)
+        {
+            serial_send_response("ft:x:nomem");
+            ft_cleanup();
+            return false;
+        }
     }
 
     ft_ctx.expected_size = size;
@@ -442,10 +502,19 @@ bool ft_handle_begin(
             return false;
         }
 
+        // original_filename must be a bare relative name -- it is always placed
+        // in games/, so any slash (or "..") is rejected outright.
+        if (strchr(decoded_orig_name, '/') || strchr(decoded_orig_name, '\\') ||
+            strstr(decoded_orig_name, "..") != NULL || decoded_orig_name[0] == '\0')
+        {
+            serial_send_response("ft:x:orig_filename");
+            return false;
+        }
+
         char safe_orig_name[256];
         if (!sanitize_filename(decoded_orig_name, safe_orig_name, sizeof(safe_orig_name)))
         {
-            serial_send_response("ft:x:filename");
+            serial_send_response("ft:x:orig_filename");
             return false;
         }
 

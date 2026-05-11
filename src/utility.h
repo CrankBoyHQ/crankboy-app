@@ -198,7 +198,11 @@ uint32_t crc32_for_string(const char* str);
 
 // Base64 and URL decoding (used by ft protocol)
 int base64_decode(const char* in, size_t in_len, uint8_t* out, size_t out_max);
+int base64_encode(const uint8_t* in, size_t in_len, char* out, size_t out_size);
 int url_decode(const char* in, char* out, size_t out_size);
+
+// percent-encode special chars. returned string is caller-owned (cb_free).
+char* url_encode(const char* in);
 
 // Serial response helper (shared by serial.c and ft.c)
 void serial_send_response(const char* format, ...);

@@ -16,7 +16,7 @@
 
 #define TOKEN_MAX 8
 
-// Main ft command handler
+// Main ft (file transfer) command handler
 // Commands:
 //   ft:b:<filename>:<size>:<crc32>    Begin transfer
 //   ft:c:<seq>:<base64>               Send chunk (seq = 4-digit hex)
@@ -257,6 +257,311 @@ static bool serial_cb_scene_get(const char* const* tokens)
     return true;
 }
 
+// emit "cb:<cmd>:error:<code>[:<urlenc-geterr>]"
+static void serial_cb_send_fs_error(const char* cmd, const char* code)
+{
+    const char* err = playdate->file->geterr();
+    if (err && *err)
+    {
+        char* enc = url_encode(err);
+        if (enc)
+        {
+            serial_send_response("cb:%s:error:%s:%s", cmd, code, enc);
+            cb_free(enc);
+            return;
+        }
+    }
+    serial_send_response("cb:%s:error:%s", cmd, code);
+}
+
+// cb:rm:<urlenc-path>[:r]
+static bool serial_cb_rm(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:rm:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0)
+    {
+        serial_send_response("cb:rm:error:filename");
+        return true;
+    }
+    int recursive = (tokens[3] && strcmp(tokens[3], "r") == 0) ? 1 : 0;
+    if (playdate->file->unlink(path, recursive) != 0)
+    {
+        serial_cb_send_fs_error("rm", "io");
+        return true;
+    }
+    serial_send_response("cb:rm:ok");
+    return true;
+}
+
+// cb:mv:<urlenc-from>:<urlenc-to>
+static bool serial_cb_mv(const char* const* tokens)
+{
+    if (!tokens[2] || !tokens[3])
+    {
+        serial_send_response("cb:mv:error:args");
+        return true;
+    }
+    char from[512];
+    char to[512];
+    if (url_decode(tokens[2], from, sizeof(from)) < 0 ||
+        url_decode(tokens[3], to, sizeof(to)) < 0)
+    {
+        serial_send_response("cb:mv:error:filename");
+        return true;
+    }
+    if (playdate->file->rename(from, to) != 0)
+    {
+        serial_cb_send_fs_error("mv", "io");
+        return true;
+    }
+    serial_send_response("cb:mv:ok");
+    return true;
+}
+
+// cb:stat:<urlenc-path> -> cb:stat:ok:<isdir>:<size>:<YYYYMMDDhhmmss>
+static bool serial_cb_stat(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:stat:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0)
+    {
+        serial_send_response("cb:stat:error:filename");
+        return true;
+    }
+    FileStat st;
+    if (playdate->file->stat(path, &st) != 0)
+    {
+        serial_cb_send_fs_error("stat", "notfound");
+        return true;
+    }
+    serial_send_response(
+        "cb:stat:ok:%d:%u:%04d%02d%02d%02d%02d%02d", st.isdir, st.size, st.m_year,
+        st.m_month, st.m_day, st.m_hour, st.m_minute, st.m_second
+    );
+    return true;
+}
+
+// cb:mkdir:<urlenc-path>[:p]   (:p creates intermediates via full_mkdir)
+static bool serial_cb_mkdir(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:mkdir:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0)
+    {
+        serial_send_response("cb:mkdir:error:filename");
+        return true;
+    }
+    bool with_intermediates = (tokens[3] && strcmp(tokens[3], "p") == 0);
+    int rc = with_intermediates ? full_mkdir(path) : playdate->file->mkdir(path);
+    if (rc != 0)
+    {
+        serial_cb_send_fs_error("mkdir", "io");
+        return true;
+    }
+    serial_send_response("cb:mkdir:ok");
+    return true;
+}
+
+typedef struct
+{
+    char** names;
+    int count;
+    int capacity;
+    bool oom;
+} CbLsCtx;
+
+static void cb_ls_collect(const char* filename, void* userdata)
+{
+    CbLsCtx* ctx = userdata;
+    if (ctx->oom) return;
+    if (ctx->count >= ctx->capacity)
+    {
+        int new_cap = ctx->capacity ? ctx->capacity * 2 : 16;
+        char** grown = cb_realloc(ctx->names, (size_t)new_cap * sizeof(char*));
+        if (!grown)
+        {
+            ctx->oom = true;
+            return;
+        }
+        ctx->names = grown;
+        ctx->capacity = new_cap;
+    }
+    char* dup = cb_strdup(filename);
+    if (!dup)
+    {
+        ctx->oom = true;
+        return;
+    }
+    ctx->names[ctx->count++] = dup;
+}
+
+// cb:ls:<urlenc-absolute-path>
+//   cb:ls:ok:<count>
+//   cb:ls:exists:<absolute-path>   (one per entry; trailing / for dirs)
+//   cb:ls:omit                     (placeholder if path won't fit in 256B line)
+static bool serial_cb_ls(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:ls:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0)
+    {
+        serial_send_response("cb:ls:error:filename");
+        return true;
+    }
+    if (path[0] != '/')
+    {
+        serial_send_response("cb:ls:error:notabs");
+        return true;
+    }
+    // always treat the arg as a directory: ensure a trailing slash so the
+    // playdate file API distinguishes "list this dir" from "stat this name"
+    size_t plen = strlen(path);
+    if (plen == 0 || path[plen - 1] != '/')
+    {
+        if (plen + 1 >= sizeof(path))
+        {
+            serial_send_response("cb:ls:error:filename");
+            return true;
+        }
+        path[plen++] = '/';
+        path[plen] = '\0';
+    }
+
+    CbLsCtx ctx = {0};
+    if (playdate->file->listfiles(path, cb_ls_collect, &ctx, 1) != 0)
+    {
+        serial_cb_send_fs_error("ls", "notfound");
+        for (int i = 0; i < ctx.count; i++) cb_free(ctx.names[i]);
+        cb_free(ctx.names);
+        return true;
+    }
+    if (ctx.oom)
+    {
+        serial_send_response("cb:ls:error:nomem");
+        for (int i = 0; i < ctx.count; i++) cb_free(ctx.names[i]);
+        cb_free(ctx.names);
+        return true;
+    }
+
+    // "cb:ls:exists:" is 13 chars; response buffer is 256 incl. NUL, so 255 max line.
+    const size_t budget = 255 - 13;
+
+    serial_send_response("cb:ls:ok:%d", ctx.count);
+
+    for (int i = 0; i < ctx.count; i++)
+    {
+        // listfiles sometimes returns entries with a leading '/'; strip it
+        // so we don't double up against the trailing '/' we ensured on path
+        const char* entry = ctx.names[i];
+        if (*entry == '/') entry++;
+
+        if (plen + strlen(entry) > budget)
+        {
+            serial_send_response("cb:ls:omit");
+        }
+        else
+        {
+            serial_send_response("cb:ls:exists:%s%s", path, entry);
+        }
+        cb_free(ctx.names[i]);
+    }
+    cb_free(ctx.names);
+    return true;
+}
+
+// cb:crc32:<urlenc-path>  ->  cb:crc32:ok:<HEX8>
+static bool serial_cb_crc32(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:crc32:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0 || strstr(path, "..") != NULL)
+    {
+        serial_send_response("cb:crc32:error:filename");
+        return true;
+    }
+    uint32_t crc = 0;
+    if (!cb_calculate_crc32(path, kFileRead | kFileReadData, &crc))
+    {
+        serial_cb_send_fs_error("crc32", "io");
+        return true;
+    }
+    serial_send_response("cb:crc32:ok:%08X", crc);
+    return true;
+}
+
+// cb:read:<urlenc-path>:<decimal-offset>  ->  cb:read:ok:<bytes>:<base64>
+// reads up to 64 bytes from offset. <bytes> = actual count (may be < 64 at EOF).
+static bool serial_cb_read(const char* const* tokens)
+{
+    if (!tokens[2] || !tokens[3])
+    {
+        serial_send_response("cb:read:error:args");
+        return true;
+    }
+    char path[512];
+    if (url_decode(tokens[2], path, sizeof(path)) < 0 || strstr(path, "..") != NULL)
+    {
+        serial_send_response("cb:read:error:filename");
+        return true;
+    }
+    char* endptr = NULL;
+    long offset = strtol(tokens[3], &endptr, 10);
+    if (!endptr || *endptr != '\0' || offset < 0)
+    {
+        serial_send_response("cb:read:error:offset");
+        return true;
+    }
+    SDFile* f = playdate->file->open(path, kFileRead | kFileReadData);
+    if (!f)
+    {
+        serial_cb_send_fs_error("read", "io");
+        return true;
+    }
+    if (playdate->file->seek(f, (int)offset, SEEK_SET) != 0)
+    {
+        serial_cb_send_fs_error("read", "io");
+        playdate->file->close(f);
+        return true;
+    }
+    uint8_t buf[64];
+    int n = playdate->file->read(f, buf, sizeof(buf));
+    playdate->file->close(f);
+    if (n < 0)
+    {
+        serial_cb_send_fs_error("read", "io");
+        return true;
+    }
+    char b64[128];
+    if (base64_encode(buf, (size_t)n, b64, sizeof(b64)) < 0)
+    {
+        serial_send_response("cb:read:error:io");
+        return true;
+    }
+    serial_send_response("cb:read:ok:%d:%s", n, b64);
+    return true;
+}
+
 // Handle cb: command - Routes to subcommands (restart, ping, sft)
 // Format: cb:<subcommand>
 static bool serial_cb_handler(const char* const* tokens)
@@ -287,6 +592,34 @@ static bool serial_cb_handler(const char* const* tokens)
             return serial_cb_scene_get(tokens);
         }
         return false;
+    }
+    else if (strcmp(subcmd, "ls") == 0)
+    {
+        return serial_cb_ls(tokens);
+    }
+    else if (strcmp(subcmd, "rm") == 0)
+    {
+        return serial_cb_rm(tokens);
+    }
+    else if (strcmp(subcmd, "mv") == 0)
+    {
+        return serial_cb_mv(tokens);
+    }
+    else if (strcmp(subcmd, "stat") == 0)
+    {
+        return serial_cb_stat(tokens);
+    }
+    else if (strcmp(subcmd, "mkdir") == 0)
+    {
+        return serial_cb_mkdir(tokens);
+    }
+    else if (strcmp(subcmd, "crc32") == 0)
+    {
+        return serial_cb_crc32(tokens);
+    }
+    else if (strcmp(subcmd, "read") == 0)
+    {
+        return serial_cb_read(tokens);
     }
 
     return false;
