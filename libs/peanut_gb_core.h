@@ -1064,16 +1064,8 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             if (opcode == 0x10)  // STOP
             {
 #if PGB_IS_CGB
-                // CGB speed switch
-                if (gb->cgb_fast_mode_armed)
-                {
-                    gb->cpu_reg.pc++;
-                    gb->cgb_fast_mode = !gb->cgb_fast_mode;
-                    gb->cgb_fast_mode_armed = false;
-                    gb->gb_reg.DIV = 0;
-                    cycles = 1;
-                    break;
-                }
+                // TODO: investigate if this would be a perf boost for DMG too
+                return __gb_rare_instruction(gb, opcode);
 #endif
 
 #if PGB_IS_DMG
@@ -2008,23 +2000,46 @@ __core void $(gb_run_frame)(gb_s* gb)
 
     unsigned int total_cycles = 0;
 
-    static bool latch_log = true;
+#ifdef TARGET_SIMULATOR
+    bool trace_this_frame = (g_trace_frames_remaining > 0);
+    if (trace_this_frame)
+    {
+        playdate->system->logToConsole(
+            "=== TRACE frame begin (rom_bank=%x pc=%04x) ===",
+            gb->selected_rom_bank, gb->cpu_reg.pc
+        );
+    }
+#endif
 
     while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
     {
-        total_cycles += $(__gb_step_cpu)(gb);
-#if defined(TRACE_LOG)
-        if (latch_log)
-            playdate->system->logToConsole(
-                "%x:%04x af=%02x%02x bc=%02x%02x ly=%02x", gb->selected_rom_bank, gb->cpu_reg.pc,
-                gb->cpu_reg.a, gb->cpu_reg.f, gb->cpu_reg.b, gb->cpu_reg.c, gb->gb_reg.LY
-            );
-        else
+#ifdef TARGET_SIMULATOR
+        if (trace_this_frame)
         {
-            // enable/disable logging at specified points
+            playdate->system->logToConsole(
+                "%x:%04x op=%02x af=%02x%02x bc=%02x%02x de=%02x%02x hl=%02x%02x sp=%04x ime=%d ly=%02x",
+                gb->selected_rom_bank, gb->cpu_reg.pc,
+                __gb_read_full(gb, gb->cpu_reg.pc),
+                gb->cpu_reg.a, gb->cpu_reg.f,
+                gb->cpu_reg.b, gb->cpu_reg.c,
+                gb->cpu_reg.d, gb->cpu_reg.e,
+                gb->cpu_reg.h, gb->cpu_reg.l,
+                gb->cpu_reg.sp,
+                gb->gb_ime,
+                gb->gb_reg.LY
+            );
         }
 #endif
+        total_cycles += $(__gb_step_cpu)(gb);
     }
+
+#ifdef TARGET_SIMULATOR
+    if (trace_this_frame)
+    {
+        playdate->system->logToConsole("=== TRACE frame end (cycles=%u) ===", total_cycles);
+        g_trace_frames_remaining--;
+    }
+#endif
 }
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;

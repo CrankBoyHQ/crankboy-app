@@ -683,15 +683,20 @@ void collect_game_filenames_callback(const char* filename, void* userdata)
 
 __section__(".rare") static void switchToPendingScene(void)
 {
-    CB_Scene* scene = CB_App->scene;
+    CB_Scene* oldScene = CB_App->scene;
+    CB_Scene* newScene = CB_App->pendingScene;
 
-    CB_App->scene = CB_App->pendingScene;
+    CB_App->scene = newScene;
     CB_App->pendingScene = NULL;
 
-    if (scene)
+    // Free old scene and any ancestors the new scene isn't keeping,
+    // so non-modal transitions over a parent don't leak it.
+    while (oldScene && oldScene != newScene)
     {
-        void* managedObject = scene->managedObject;
-        scene->free(managedObject);
+        CB_Scene* parent = oldScene->parentScene;
+        void* managedObject = oldScene->managedObject;
+        oldScene->free(managedObject);
+        oldScene = parent;
     }
 }
 

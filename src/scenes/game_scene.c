@@ -351,6 +351,10 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
     }
 }
 
+#ifdef TARGET_SIMULATOR
+volatile int g_trace_frames_remaining = 0;
+#endif
+
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
 intptr_t core_itcm_offset = 0;
@@ -3838,6 +3842,13 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         {
             __gb_dump_vram(context->gb);
         }
+            break;
+#ifdef TARGET_SIMULATOR
+        case 0x74:  // t (trace one frame of instructions)
+            g_trace_frames_remaining = 1;
+            playdate->system->logToConsole("Trace armed: next frame will be logged.");
+            break;
+#endif
 #if ENABLE_RENDER_PROFILER
         case 0x39:  // 9
             playdate->system->logToConsole("Profiler triggered. Will run on next frame.");

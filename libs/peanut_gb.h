@@ -328,6 +328,12 @@ void gb_run_frame(gb_s* gb);
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 bool gb_get_rom_uses_battery(uint8_t* gb_rom);
 
+#ifdef TARGET_SIMULATOR
+// Debug: when nonzero, gb_run_frame logs every instruction for this many frames
+// (decremented per frame). Triggered from the simulator by pressing 'T'.
+extern volatile int g_trace_frames_remaining;
+#endif
+
 #ifdef PGB_IMPL
 
 #include "minigb_apu/minigb_apu.h"
