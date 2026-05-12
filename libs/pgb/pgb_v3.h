@@ -300,7 +300,7 @@ struct PGB_VERSIONED(gb_s)
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
     uint16_t cgb_hdma_dst;
-    int16_t cgb_hdma_len : 7;
+    uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
     uint8_t printer_stub_state;

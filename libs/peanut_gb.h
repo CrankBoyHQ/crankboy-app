@@ -617,6 +617,10 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb
         {
             gb->selected_cart_bank_addr = NULL;
         }
+        else if (gb->mbc == 7)
+        {
+            gb->selected_cart_bank_addr = NULL;
+        }
         else if ((gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks)
         {
             gb->selected_cart_bank_addr = gb->gb_cart_ram + (gb->cart_ram_bank * CRAM_BANK_SIZE);
@@ -675,7 +679,7 @@ __section__(".rare") static uint8_t __gb_detect_mbc1m(const gb_s* gb)
 
 __shell static void __gb_do_hdma(gb_s* gb)
 {
-    int hdma_remaning = ((int8_t)gb->cgb_hdma_len);
+    int hdma_remaning = (unsigned)gb->cgb_hdma_len;
 
     uint16_t src = gb->cgb_hdma_src;
     uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE);
@@ -738,6 +742,13 @@ __section__(".rare.cb") static void __gb_rare_write(
                 __gb_update_selected_bank_addr(gb);
             }
             return;
+        case 0x51:  // HDMA src hi
+            if (gb->is_cgb_mode)
+            {
+                gb->cgb_hdma_src &= 0x00FF;
+                gb->cgb_hdma_src |= ((unsigned)val) << 8;
+            }
+            return;
         case 0x52:  // HDMA src lo
             if (gb->is_cgb_mode)
             {
@@ -745,70 +756,58 @@ __section__(".rare.cb") static void __gb_rare_write(
                 gb->cgb_hdma_src |= val & 0xF0;
             }
             return;
-        case 0x51:  // HDMA src hi
+        case 0x53:  // HDMA dst hi
             if (gb->is_cgb_mode)
             {
-                gb->cgb_hdma_src &= 0x00FF;
-                gb->cgb_hdma_src |= ((unsigned)val & 0xF0) << 8;
+                gb->cgb_hdma_dst &= 0x00FF;
+                gb->cgb_hdma_dst |= ((unsigned)val & 0x1F) << 8;
             }
             return;
         case 0x54:  // HDMA dst lo
             if (gb->is_cgb_mode)
             {
                 gb->cgb_hdma_dst &= 0xFF00;
-                gb->cgb_hdma_dst |= val;
-            }
-            return;
-        case 0x53:  // HDMA dst hi
-            if (gb->is_cgb_mode)
-            {
-                gb->cgb_hdma_dst &= 0x00FF;
-                gb->cgb_hdma_dst |= ((unsigned)val) << 8;
+                gb->cgb_hdma_dst |= (val & 0xF0);
             }
             return;
         case 0x55:  // HDMA5 (VRAM DMA)
             if (gb->is_cgb_mode)
             {
-                int was_len = gb->cgb_hdma_len;
+                int was_len = (unsigned)gb->cgb_hdma_len;
                 gb->cgb_hdma_len = val & 0x7F;
                 bool was_active = gb->cgb_hdma_active;
                 gb->cgb_hdma_active = (val >> 7);
 
                 if (!gb->cgb_hdma_active && was_active)
                 {
+                    #if 0
                     playdate->system->logToConsole(
                         "active HDMA stopped, pc=%x, len was %d", gb->cpu_reg.pc, was_len
                     );
+                    #endif
                 }
                 else
                 {
                     if (gb->cgb_hdma_active)
                     {
+                        #if 0
                         playdate->system->logToConsole(
                             "HDMA (async) 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
                             gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
                         );
+                        #endif
                     }
                     else
                     {
-                        if (gb->cgb_hdma_len != -1)  // TODO: double-check this condition
-                        {
-                            playdate->system->logToConsole(
-                                "HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
-                                gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
-                            );
-                            gb->cgb_hdma_active = true;
-                            while (gb->cgb_hdma_active)
-                                __gb_do_hdma(gb);
-                        }
-                        else
-                        {
-                            // TODO: is this real behaviour?
-                            playdate->system->logToConsole(
-                                "HDMA (null) 0x%x -> 0x%x, pc=%x", gb->cgb_hdma_src,
-                                gb->cgb_hdma_dst, gb->cpu_reg.pc
-                            );
-                        }
+                        #if 0
+                        playdate->system->logToConsole(
+                            "HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
+                            gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
+                        );
+                        #endif
+                        gb->cgb_hdma_active = true;
+                        while (gb->cgb_hdma_active)
+                            __gb_do_hdma(gb);
                     }
                 }
             }
@@ -1051,6 +1050,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             }
             else if (gb->mbc == 7)
             {
+                if (addr >= 0xB000) return 0xFF;
                 if (gb->mbc7.ram_enable_1 && gb->mbc7.ram_enable_2)
                 {
                     uint8_t reg = (addr >> 4) & 0x0F;
@@ -1064,14 +1064,18 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                         return gb->mbc7.accel_y_latched & 0xFF;
                     case 0x5:
                         return gb->mbc7.accel_y_latched >> 8;
+                        
+                        // nonexistent Z axis?
                     case 0x6:
                         return 0x00;
                     case 0x7:
                         return 0xFF;
+                        
                     case 0x8:
-                        return (gb->mbc7.eeprom_pins & 0x83) | 0x7C;
+                        return gb->mbc7.eeprom_pins | 0x7C;
                     }
                 }
+                return 0xFF;
             }
 
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
@@ -1246,7 +1250,7 @@ rare_read:
  */
 __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
 {
-    uint8_t di = (gb->mbc7.eeprom_pins & 0x02) >> 1;
+    const bool di = !!(gb->mbc7.eeprom_pins & 0x02);
 
     /* Data is clocked in/out while CS is high. */
     if ((gb->mbc7.eeprom_pins & 0x80) == 0)
@@ -1275,6 +1279,7 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         /* All commands are 9 bits after start bit */
         if (gb->mbc7.eeprom_bits_shifted == 9)
         {
+            playdate->system->logToConsole("mbc7 command: %3x", gb->mbc7.eeprom_shift_reg & 0x1FF);
             uint8_t opcode = (gb->mbc7.eeprom_shift_reg >> 7) & 0x03;
             gb->mbc7.eeprom_addr = gb->mbc7.eeprom_shift_reg & 0x7F;
 
@@ -1290,8 +1295,11 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                 else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0010) /* ERAL */
                 {
                     if (gb->mbc7.eeprom_write_enabled)
-                        for (int i = 0; i < 128; i++)
+                    {
+                        for (int i = 0; i < gb->gb_cart_ram_size/2; i++)
                             ((uint16_t*)gb->gb_cart_ram)[i] = 0xFFFF;
+                        gb->direct.sram_updated = true;
+                    }   
                 }
                 else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0001) /* WRAL */
                 {
@@ -1321,7 +1329,10 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
 
             case 0b11: /* ERASE */
                 if (gb->mbc7.eeprom_write_enabled)
+                {
                     ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr] = 0xFFFF;
+                    gb->direct.sram_updated = true;
+                }
                 break;
             }
         }
@@ -1334,12 +1345,41 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
             (gb->mbc7.eeprom_pins & ~1) | ((gb->mbc7.eeprom_read_buffer >> 15) & 1);
         gb->mbc7.eeprom_read_buffer <<= 1;
         if (gb->mbc7.eeprom_bits_shifted >= 16)
+        {
             gb->mbc7.eeprom_state = 0; /* IDLE */
+            playdate->system->logToConsole("mbc7 read: %4x", gb->mbc7.eeprom_shift_reg );
+        }
         break;
 
     /* Shifting in data for a WRITE or WRAL command. */
     case 3: /* WRITE */
-        /* Not implemented: Writing to EEPROM is currently not supported. */
+        // shift in 16 bits:
+        gb->mbc7.eeprom_shift_reg = (gb->mbc7.eeprom_shift_reg << 1) | di;
+        if (++gb->mbc7.eeprom_bits_shifted >= 16)
+        {
+            uint16_t data = gb->mbc7.eeprom_shift_reg;
+            if (gb->mbc7.eeprom_addr == 0xFF)
+            {
+                // clear EEPROM
+                for (int i = 0; i < gb->gb_cart_ram_size/2; i++)
+                    ((uint16_t*)gb->gb_cart_ram)[i] = data;
+                gb->direct.sram_updated = 1;
+            }
+            else
+            {
+                // 16-bit write
+                u16* v = &((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr & 0x7F];
+                if (*v != data)
+                {
+                    gb->direct.sram_updated = 1;
+                    *v = data;
+                }
+            }
+            
+            gb->mbc7.eeprom_bits_shifted = 0;
+            gb->mbc7.eeprom_state = 0;
+            gb->mbc7.eeprom_pins &= ~0x01;
+        }
         break;
     }
 }
@@ -1511,7 +1551,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 CB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
                 gb->cart_rtc[idx] = val;
             }
-            else if (gb->mbc == 7)
+            else if (gb->mbc == 7 && addr < 0xB000)
             {
                 if (gb->mbc7.ram_enable_1 && gb->mbc7.ram_enable_2)
                 {
@@ -1541,7 +1581,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                             gb->mbc7.eeprom_state = 0;
                             gb->mbc7.eeprom_bits_shifted = 0;
                         }
-                        if ((val & 0x80) && !(old_pins & 0x40) && (val & 0x40))
+                        if ((val & 0xC0) == 0xC0 && !(old_pins & 0x40))
                         {
                             __gb_mbc7_eeprom_clock(gb);
                         }
@@ -4462,7 +4502,7 @@ uint_fast32_t gb_get_save_size(gb_s* gb)
 
     /* MBC7 has a 256-byte EEPROM. */
     if (gb->mbc == 7)
-        return 512;
+        return 256;
 
     const uint_fast16_t ram_size_location = 0x0149;
     const uint_fast32_t ram_sizes[] = {0x00, 0x800, 0x2000, 0x8000, 0x20000, 0x10000};
@@ -4514,6 +4554,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->mbc7.eeprom_state = 0;
         gb->mbc7.eeprom_write_enabled = 0;
         gb->mbc7.eeprom_pins = 0x01; /* DO is high by default */
+        gb->enable_cart_ram = 1;
     }
 
     __gb_update_selected_bank_addr(gb);
@@ -4843,6 +4884,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
+    
+    // gb_cart_ram_size is set later, in read_cart_ram_file (a required initialization step)
 
     char title_str[17];
     gb_get_rom_name(gb->gb_rom, title_str);

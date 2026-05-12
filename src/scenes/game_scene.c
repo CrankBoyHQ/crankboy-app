@@ -442,6 +442,8 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 
     gameScene->last_save_time = 0;
 
+    // note: mandatory initialization step before starting emulation!
+    // initializes gb_cart_ram
     int ram_load_result =
         read_cart_ram_file(save_filename, context->gb, &gameScene->last_save_time);
 

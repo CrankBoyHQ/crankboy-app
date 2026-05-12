@@ -1558,6 +1558,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
+        
+        addUISoundOption(scene, entries, &i);
 
         // remember selection
         entries[++i] = (OptionsMenuEntry){
@@ -1573,8 +1575,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 3,
             .on_press = NULL
         };
-
-        addUISoundOption(scene, entries, &i);
     }
 
     entries[++i] = (OptionsMenuEntry){
