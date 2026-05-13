@@ -7,17 +7,24 @@
 #define MODAL_ANIM_TIME 16
 #define MODAL_DROP_TIME 12
 
-static int count_text_lines(const char* text, int text_w)
+static void build_wrapped_lines(CB_Modal* modal, int text_w)
 {
-    int total = 0;
-    while (*text)
+    if (!modal->text)
+        return;
+
+    int capacity = 8;
+    int count = 0;
+    CB_ModalLine* lines = (CB_ModalLine*)cb_malloc(sizeof(CB_ModalLine) * capacity);
+
+    const char* p = modal->text;
+    while (*p)
     {
-        const char* nl = strchr(text, '\n');
-        int line_len = nl ? (int)(nl - text) : (int)strlen(text);
+        const char* nl = strchr(p, '\n');
+        int line_len = nl ? (int)(nl - p) : (int)strlen(p);
 
         if (line_len > 0)
         {
-            const char* line = text;
+            const char* line = p;
             int remaining = line_len;
 
             while (remaining > 0)
@@ -25,52 +32,83 @@ static int count_text_lines(const char* text, int text_w)
                 int line_w = playdate->graphics->getTextWidth(
                     CB_App->bodyFont, line, remaining, kUTF8Encoding, 0
                 );
+
+                int seg_len;
+                int seg_w;
                 if (line_w <= text_w)
                 {
-                    total++;
-                    break;
+                    seg_len = remaining;
+                    seg_w = line_w;
                 }
-
-                int fit = 0;
-                for (int i = 1; i <= remaining; i++)
+                else
                 {
-                    if (playdate->graphics->getTextWidth(
-                            CB_App->bodyFont, line, i, kUTF8Encoding, 0
-                        ) > text_w)
-                        break;
-                    fit = i;
-                }
-
-                int break_at = fit;
-                for (int i = fit; i > 0; i--)
-                {
-                    if (line[i - 1] == ' ')
+                    int fit = 0;
+                    for (int i = 1; i <= remaining; i++)
                     {
-                        break_at = i;
-                        break;
+                        if (playdate->graphics->getTextWidth(
+                                CB_App->bodyFont, line, i, kUTF8Encoding, 0
+                            ) > text_w)
+                            break;
+                        fit = i;
                     }
-                }
-                if (break_at < 1)
-                    break_at = fit > 0 ? fit : 1;
 
-                total++;
-                remaining -= break_at;
-                line += break_at;
+                    int break_at = fit;
+                    for (int i = fit; i > 0; i--)
+                    {
+                        if (line[i - 1] == ' ')
+                        {
+                            break_at = i;
+                            break;
+                        }
+                    }
+                    if (break_at < 1)
+                        break_at = fit > 0 ? fit : 1;
+
+                    seg_len = break_at;
+                    seg_w = playdate->graphics->getTextWidth(
+                        CB_App->bodyFont, line, seg_len, kUTF8Encoding, 0
+                    );
+                }
+
+                if (count == capacity)
+                {
+                    capacity *= 2;
+                    lines = (CB_ModalLine*)cb_realloc(lines, sizeof(CB_ModalLine) * capacity);
+                }
+                lines[count].start = line;
+                lines[count].len = seg_len;
+                lines[count].width = seg_w;
+                count++;
+
+                remaining -= seg_len;
+                line += seg_len;
                 while (remaining > 0 && *line == ' ')
                 {
                     line++;
                     remaining--;
                 }
+                if (seg_len == 0)
+                    break;  // paranoia
             }
         }
         else
         {
-            total++;
+            if (count == capacity)
+            {
+                capacity *= 2;
+                lines = (CB_ModalLine*)cb_realloc(lines, sizeof(CB_ModalLine) * capacity);
+            }
+            lines[count].start = p;
+            lines[count].len = 0;
+            lines[count].width = 0;
+            count++;
         }
 
-        text = nl ? nl + 1 : text + line_len;
+        p = nl ? nl + 1 : p + line_len;
     }
-    return total;
+
+    modal->wrapped_lines = lines;
+    modal->wrapped_lines_count = count;
 }
 
 void CB_Modal_update(CB_Modal* modal)
@@ -177,84 +215,27 @@ void CB_Modal_update(CB_Modal* modal)
         int text_x = x + m;
         int text_w = w - 2 * m;
 
+        if (!modal->wrapped_lines)
+            build_wrapped_lines(modal, text_w);
+
         int avail_h = h - 2 * m;
-        int total_lines = count_text_lines(modal->text, text_w);
-        int total_text_h = total_lines * line_h;
+        int total_text_h = modal->wrapped_lines_count * line_h;
         int y_offset = (modal->options_count == 0 && total_text_h < avail_h)
                            ? (avail_h - total_text_h) / 2
                            : 0;
         int text_y = y + m + y_offset;
 
-        const char* p = modal->text;
-        while (*p)
+        for (int i = 0; i < modal->wrapped_lines_count; ++i)
         {
-            const char* nl = strchr(p, '\n');
-            int line_len = nl ? (int)(nl - p) : (int)strlen(p);
-
-            if (line_len > 0)
+            const CB_ModalLine* ln = &modal->wrapped_lines[i];
+            if (ln->len > 0)
             {
-                const char* line = p;
-                int remaining = line_len;
-
-                while (remaining > 0)
-                {
-                    int line_w = playdate->graphics->getTextWidth(
-                        CB_App->bodyFont, line, remaining, kUTF8Encoding, 0
-                    );
-                    if (line_w <= text_w)
-                    {
-                        playdate->graphics->drawText(
-                            line, remaining, kUTF8Encoding, text_x + (text_w - line_w) / 2, text_y
-                        );
-                        text_y += line_h;
-                        break;
-                    }
-
-                    int fit = 0;
-                    for (int i = 1; i <= remaining; i++)
-                    {
-                        if (playdate->graphics->getTextWidth(
-                                CB_App->bodyFont, line, i, kUTF8Encoding, 0
-                            ) > text_w)
-                            break;
-                        fit = i;
-                    }
-
-                    int break_at = fit;
-                    for (int i = fit; i > 0; i--)
-                    {
-                        if (line[i - 1] == ' ')
-                        {
-                            break_at = i;
-                            break;
-                        }
-                    }
-                    if (break_at < 1)
-                        break_at = fit > 0 ? fit : 1;
-
-                    int seg_w = playdate->graphics->getTextWidth(
-                        CB_App->bodyFont, line, break_at, kUTF8Encoding, 0
-                    );
-                    playdate->graphics->drawText(
-                        line, break_at, kUTF8Encoding, text_x + (text_w - seg_w) / 2, text_y
-                    );
-                    text_y += line_h;
-
-                    remaining -= break_at;
-                    line += break_at;
-                    while (remaining > 0 && *line == ' ')
-                    {
-                        line++;
-                        remaining--;
-                    }
-                }
+                playdate->graphics->drawText(
+                    ln->start, ln->len, kUTF8Encoding,
+                    text_x + (text_w - ln->width) / 2, text_y
+                );
             }
-            else
-            {
-                text_y += line_h;
-            }
-
-            p = nl ? nl + 1 : p + line_len;
+            text_y += line_h;
         }
     }
 
@@ -393,6 +374,8 @@ void CB_Modal_free(CB_Modal* modal)
         if (modal->options[i])
             cb_free(modal->options[i]);
     }
+    if (modal->wrapped_lines)
+        cb_free(modal->wrapped_lines);
     if (modal->text)
         cb_free(modal->text);
     CB_Scene_free(modal->scene);
