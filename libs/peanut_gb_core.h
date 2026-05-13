@@ -739,7 +739,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
 
         // points to line data for flipped-y offset
-        uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
+        uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * (7 - (bg_y % 8))];
 #endif
 
         int subx = bg_x % 8;
@@ -1991,13 +1991,16 @@ done_instr_timing:
 
 __core void $(gb_run_frame)(gb_s* gb)
 {
+    gb->direct.has_read_accelerometer_this_frame = false;
+    
     gb->gb_frame = 0;
-
+    
     gb->direct.blend_rect_x_min = 255;
     gb->direct.blend_rect_y_min = 255;
     gb->direct.blend_rect_x_max = 0;
     gb->direct.blend_rect_y_max = 0;
-
+    
+    
     unsigned int total_cycles = 0;
 
 #ifdef TARGET_SIMULATOR
@@ -2032,14 +2035,14 @@ __core void $(gb_run_frame)(gb_s* gb)
 #endif
         total_cycles += $(__gb_step_cpu)(gb);
     }
-
-#ifdef TARGET_SIMULATOR
+    
+    #ifdef TARGET_SIMULATOR
     if (trace_this_frame)
     {
         playdate->system->logToConsole("=== TRACE frame end (cycles=%u) ===", total_cycles);
         g_trace_frames_remaining--;
     }
-#endif
+    #endif
 }
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;

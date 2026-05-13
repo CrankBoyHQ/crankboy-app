@@ -47,12 +47,6 @@ _If crank menu mode is enabled:_
 
 Accumulates menu movement; as the user cranks, this increments, and as the user cranks, it decrements, such that a delta of 1 should correspond to 1 menu movement (with +'ve meaning move up, and -'ve meaning move down).
 
-## `FF5A` [r] - Crank menu delta accumulation
-
-_If crank menu mode is enabled:_
-
-A value in the range 1 to 0xFF indicating how close the crank is to overflowing and incrementing/decrementing crank menu delta.
-
 ## `FF58` [w]
 
 Writing any value here causes the crank menu delta to reset to 0

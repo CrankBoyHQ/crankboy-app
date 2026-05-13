@@ -323,7 +323,6 @@ typedef struct PGB_VERSIONED(chan_freq_sweep) chan_freq_sweep;
 typedef struct PGB_VERSIONED(chan) chan;
 
 void gb_step_cpu(gb_s* gb);
-void gb_run_frame(gb_s* gb);
 
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 bool gb_get_rom_uses_battery(uint8_t* gb_rom);
@@ -982,8 +981,31 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case IO_PLAYDATE_EXTENSION_CTL:
             // (| 0x1C is temporary, to prevent devs from assuming the reserved bits are 0.)
             return gb->direct.crank_docked | 0x1C;
-
-        case 0x58 ... 0x5F:
+            
+        case 0x5A ... 0x5F:
+            if (!gb->direct.has_read_accelerometer_this_frame)
+            {
+                float a[3];
+                playdate->system->getAccelerometer(a, a+1, a+2);
+                
+                for (int i = 0; i < 3; ++i)
+                {
+                    float f = a[i];
+                    if (f >= 4) f = 4;
+                    if (f < -4) f = -4;
+                    int32_t v = 0x8000 + 0x2000 * f;
+                    if (v < 0) v = 0;
+                    if (v >= 0xFFFF) v = 0xFFFF;
+                    gb->direct.peripherals[i+1] = (uint16_t)v;
+                }
+                
+                gb->direct.has_read_accelerometer_this_frame = true;
+            }
+            
+            // fallthrough
+            
+        case 0x58:
+        case 0x59:
             if (gb->direct.ext_crank_menu_indexing)
             {
                 // crank register is handled specially in menu mode
@@ -1323,8 +1345,9 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
             case 0b10:                     /* READ */
                 gb->mbc7.eeprom_state = 2; /* READ */
                 gb->mbc7.eeprom_read_buffer = ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr];
+                playdate->system->logToConsole("mbc7 read: %04x -> %04x", gb->mbc7.eeprom_addr, gb->mbc7.eeprom_read_buffer);
                 gb->mbc7.eeprom_bits_shifted = 0;
-                gb->mbc7.eeprom_pins &= ~0x01; /* Dummy 0 bit */
+                gb->mbc7.eeprom_pins |= 0x01; // done
                 return;
 
             case 0b11: /* ERASE */
@@ -1347,7 +1370,6 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         if (gb->mbc7.eeprom_bits_shifted >= 16)
         {
             gb->mbc7.eeprom_state = 0; /* IDLE */
-            playdate->system->logToConsole("mbc7 read: %4x", gb->mbc7.eeprom_shift_reg );
         }
         break;
 
@@ -1364,6 +1386,7 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                 for (int i = 0; i < gb->gb_cart_ram_size/2; i++)
                     ((uint16_t*)gb->gb_cart_ram)[i] = data;
                 gb->direct.sram_updated = 1;
+                playdate->system->logToConsole("mbc7 wall %04x", data);
             }
             else
             {
@@ -1374,11 +1397,16 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                     gb->direct.sram_updated = 1;
                     *v = data;
                 }
+                playdate->system->logToConsole("mbc7 write %04x <- %04x",gb->mbc7.eeprom_addr, data);
             }
             
             gb->mbc7.eeprom_bits_shifted = 0;
             gb->mbc7.eeprom_state = 0;
-            gb->mbc7.eeprom_pins &= ~0x01;
+            
+            // indicate "done"
+            // NOTE: in real hardware, this bit is clear during the time it takes
+            // for a write to complete
+            gb->mbc7.eeprom_pins |= 0x01;
         }
         break;
     }
@@ -1567,17 +1595,38 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                     case 0x1: /* Latch Accelerometer */
                         if (gb->mbc7.accel_latch_state == 1 && val == 0xAA)
                         {
-                            /* Center value is 0x81D0. Gravity is ~0x70. */
-                            gb->mbc7.accel_x_latched = 0x81D0 + (int16_t)gb->direct.accel_x;
-                            gb->mbc7.accel_y_latched = 0x81D0 + (int16_t)gb->direct.accel_y;
+                            if (!gb->direct.has_read_accelerometer_this_frame)
+                            {
+                                float a[2];
+                                playdate->system->getAccelerometer(a, a+1, NULL);
+                
+                                for (int i = 0; i < 2; ++i)
+                                {
+                                    float f = a[i];
+                                    if (f < -300) f = -300;
+                                    if (f > 300) f = 300;
+                                    int32_t v = 0x81D0 + 0x70 * f;
+                                    // proper clamping
+                                    if (v < 0) v = 0;
+                                    if (v >= 0xFFFF) v = 0xFFFF;
+                                    gb->direct.peripherals[i+1] = (uint16_t)v;
+                                }
+                                
+                                gb->direct.has_read_accelerometer_this_frame = true;
+                            }
+                            
+                            gb->mbc7.accel_x_latched = gb->direct.accel_x;
+                            gb->mbc7.accel_y_latched = gb->direct.accel_y;
                             gb->mbc7.accel_latch_state = 0;
                         }
                         break;
 
                     case 0x8: /* EEPROM Control */
-                        gb->mbc7.eeprom_pins = val;
+                        gb->mbc7.eeprom_pins &= 0x1;
+                        gb->mbc7.eeprom_pins |= (val & ~0x1);
                         if (!(old_pins & 0x80) && (val & 0x80))
                         {
+                            // reset state
                             gb->mbc7.eeprom_state = 0;
                             gb->mbc7.eeprom_bits_shifted = 0;
                         }
@@ -5212,14 +5261,6 @@ void gb_step_cpu(gb_s* gb)
         __gb_step_cpu__cgb(gb);
     else
         __gb_step_cpu__dmg(gb);
-}
-
-void gb_run_frame(gb_s* gb)
-{
-    if (gb->is_cgb_mode)
-        gb_run_frame__cgb(gb);
-    else
-        gb_run_frame__dmg(gb);
 }
 
 #endif  // PGB_IMPL

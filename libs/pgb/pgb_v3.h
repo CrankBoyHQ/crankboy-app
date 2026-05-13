@@ -421,6 +421,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t enable_xram : 1;
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
+        uint8_t has_read_accelerometer_this_frame : 1;
         uint8_t* oam_ghost_buffer;
         uint8_t blend_rect_x_min;
         uint8_t blend_rect_y_min;

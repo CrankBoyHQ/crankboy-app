@@ -450,11 +450,11 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
     switch (ram_load_result)
     {
     case 0:
-        playdate->system->logToConsole("No previous cartridge save data found");
+        playdate->system->logToConsole("No previous cartridge save data found (%s)", save_filename);
         break;
     case 1:
     case 2:
-        playdate->system->logToConsole("Loaded cartridge save data");
+        playdate->system->logToConsole("Loaded cartridge save data (%s)", save_filename);
         break;
     default:
     {
@@ -477,6 +477,12 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
     gameScene->rtc_seconds_to_catch_up = 0;
 
     gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
+    gameScene->cartridge_has_accelerometer = (context->gb->mbc == 7);
+    
+    if (gameScene->cartridge_has_accelerometer)
+    {
+        playdate->system->setPeripheralsEnabled(kAccelerometer);
+    }
 
     if (gameScene->cartridge_has_rtc)
     {
@@ -1035,9 +1041,14 @@ static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int*
     CB_GameScene* gameScene = context->scene;
 
     gb->gb_cart_ram = (sram_len > 0) ? cb_malloc(sram_len) : NULL;
+    
+    // fill with default
     if (gb->gb_cart_ram)
     {
-        memset(gb->gb_cart_ram, 0, sram_len);
+        // TODO: what is the default fill supposed to be?
+        uint8_t fill = 0;
+        if (gb->mbc == 7) fill = 0xFF;
+        memset(gb->gb_cart_ram, fill, sram_len);
     }
     gb->gb_cart_ram_size = sram_len;
 
@@ -3870,6 +3881,7 @@ static void CB_GameScene_free(void* object)
     CB_GameSceneContext* context = gameScene->context;
 
     playdate->system->setAutoLockDisabled(0);
+    playdate->system->setPeripheralsEnabled(kNone);
 
     if (audioGameScene == gameScene)
     {

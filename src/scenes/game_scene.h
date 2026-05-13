@@ -97,6 +97,7 @@ typedef struct CB_GameScene
     bool audioLocked;
     bool cartridge_has_battery;
     bool cartridge_has_rtc;
+    bool cartridge_has_accelerometer;
     bool staticSelectorUIDrawn;
     bool is_stereo;
     bool is_mirroring;
