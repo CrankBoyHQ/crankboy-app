@@ -32,7 +32,7 @@
  * function, you may need to increase this value to prevent buffer overflows,
  * which can lead to unpredictable crashes.
  *
- * As of August 2025, the theoretical maximum count is 36 entries.
+ * As of Mai 2026, the theoretical maximum count is 47 entries.
  * This value provides a safe buffer for future additions.
  */
 #define TOTAL_MENU_ITEMS 50
