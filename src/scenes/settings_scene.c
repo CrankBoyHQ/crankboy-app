@@ -35,7 +35,7 @@
  * As of August 2025, the theoretical maximum count is 36 entries.
  * This value provides a safe buffer for future additions.
  */
-#define TOTAL_MENU_ITEMS 45
+#define TOTAL_MENU_ITEMS 50
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -1383,12 +1383,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 4,
         .on_press = NULL
     };
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "Buttons",
         .header = 1
     };
-    
+
     // A->B
     entries[++i] = (OptionsMenuEntry){
         .name = "Ⓐ›Ⓑ",
@@ -1399,7 +1399,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 13,
         .on_press = NULL
     };
-    
+
     // B->A
     entries[++i] = (OptionsMenuEntry){
         .name = "Ⓑ›Ⓐ",
@@ -1410,7 +1410,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 13,
         .on_press = NULL
     };
-    
+
     // B+A
     entries[++i] = (OptionsMenuEntry){
         .name = "Ⓐ+Ⓑ",
@@ -1421,7 +1421,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 13,
         .on_press = NULL
     };
-    
+
     // lock button override.
     // Only available if launched with system privileges. (e.g. through FunnyLoader / FunnyOS)
     // Since this is still experimental, do not show this option at all unless system privileges are detected.
@@ -1438,7 +1438,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .on_change = settings_post_action_lock_button
         };
     }
-    
+
     // CGB settings
     if (!gameScene || gameScene->context->cgb_mode)
     {
@@ -1450,7 +1450,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             #endif
             .header = 1
         };
-        
+
         entries[++i] = (OptionsMenuEntry){
             .name = "CPU Speed",
             .values = cgb_dmg_labels,
@@ -1582,7 +1582,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .max_value = 2,
             .on_press = NULL
         };
-        
+
         addUISoundOption(scene, entries, &i);
 
         // remember selection
@@ -1649,7 +1649,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .rebuild_when_changed = 0,
         .on_change = NULL,
     };
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "HLE Routines",
         .values = off_on_labels,
