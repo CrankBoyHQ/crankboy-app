@@ -1216,7 +1216,7 @@ __attribute__((always_inline)) static inline void clear_audio_buffers(
  */
 __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len)
 {
-    if (!audio_enabled)
+    if (!audio_enabled || !audioGameScene)
         return 0;
 
     DTCM_VERIFY_DEBUG();
