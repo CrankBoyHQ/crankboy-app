@@ -309,8 +309,7 @@ static bool serial_cb_mv(const char* const* tokens)
     }
     char from[512];
     char to[512];
-    if (url_decode(tokens[2], from, sizeof(from)) < 0 ||
-        url_decode(tokens[3], to, sizeof(to)) < 0)
+    if (url_decode(tokens[2], from, sizeof(from)) < 0 || url_decode(tokens[3], to, sizeof(to)) < 0)
     {
         serial_send_response("cb:mv:error:filename");
         return true;
@@ -345,8 +344,8 @@ static bool serial_cb_stat(const char* const* tokens)
         return true;
     }
     serial_send_response(
-        "cb:stat:ok:%d:%u:%04d%02d%02d%02d%02d%02d", st.isdir, st.size, st.m_year,
-        st.m_month, st.m_day, st.m_hour, st.m_minute, st.m_second
+        "cb:stat:ok:%d:%u:%04d%02d%02d%02d%02d%02d", st.isdir, st.size, st.m_year, st.m_month,
+        st.m_day, st.m_hour, st.m_minute, st.m_second
     );
     return true;
 }
@@ -387,7 +386,8 @@ typedef struct
 static void cb_ls_collect(const char* filename, void* userdata)
 {
     CbLsCtx* ctx = userdata;
-    if (ctx->oom) return;
+    if (ctx->oom)
+        return;
     if (ctx->count >= ctx->capacity)
     {
         int new_cap = ctx->capacity ? ctx->capacity * 2 : 16;
@@ -449,14 +449,16 @@ static bool serial_cb_ls(const char* const* tokens)
     if (playdate->file->listfiles(path, cb_ls_collect, &ctx, 1) != 0)
     {
         serial_cb_send_fs_error("ls", "notfound");
-        for (int i = 0; i < ctx.count; i++) cb_free(ctx.names[i]);
+        for (int i = 0; i < ctx.count; i++)
+            cb_free(ctx.names[i]);
         cb_free(ctx.names);
         return true;
     }
     if (ctx.oom)
     {
         serial_send_response("cb:ls:error:nomem");
-        for (int i = 0; i < ctx.count; i++) cb_free(ctx.names[i]);
+        for (int i = 0; i < ctx.count; i++)
+            cb_free(ctx.names[i]);
         cb_free(ctx.names);
         return true;
     }
@@ -471,7 +473,8 @@ static bool serial_cb_ls(const char* const* tokens)
         // listfiles sometimes returns entries with a leading '/'; strip it
         // so we don't double up against the trailing '/' we ensured on path
         const char* entry = ctx.names[i];
-        if (*entry == '/') entry++;
+        if (*entry == '/')
+            entry++;
 
         if (plen + strlen(entry) > budget)
         {
@@ -566,7 +569,8 @@ static bool serial_cb_read(const char* const* tokens)
 // emit a per-game string field, dropping with :omit if the line would overflow
 static void emit_games_str(unsigned int i, const char* label, const char* value)
 {
-    if (!value || !*value) return;
+    if (!value || !*value)
+        return;
     char buf[256];
     int n = snprintf(buf, sizeof(buf), "cb:games:%u:%s:%s", i, label, value);
     if (n < 0 || (size_t)n >= sizeof(buf))

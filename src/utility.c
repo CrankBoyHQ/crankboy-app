@@ -1926,7 +1926,8 @@ int base64_encode(const uint8_t* in, size_t in_len, char* out, size_t out_size)
     static const char alphabet[] =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     size_t need = ((in_len + 2) / 3) * 4;
-    if (out_size <= need) return -1;
+    if (out_size <= need)
+        return -1;
     size_t i = 0, j = 0;
     while (i + 3 <= in_len)
     {
@@ -1940,7 +1941,8 @@ int base64_encode(const uint8_t* in, size_t in_len, char* out, size_t out_size)
     if (i < in_len)
     {
         uint32_t v = (uint32_t)in[i] << 16;
-        if (i + 1 < in_len) v |= (uint32_t)in[i + 1] << 8;
+        if (i + 1 < in_len)
+            v |= (uint32_t)in[i + 1] << 8;
         out[j++] = alphabet[(v >> 18) & 0x3F];
         out[j++] = alphabet[(v >> 12) & 0x3F];
         out[j++] = (i + 1 < in_len) ? alphabet[(v >> 6) & 0x3F] : '=';
@@ -1984,7 +1986,8 @@ int url_decode(const char* in, char* out, size_t out_size)
 
 char* url_encode(const char* in)
 {
-    if (!in) return NULL;
+    if (!in)
+        return NULL;
     static const char hex[] = "0123456789ABCDEF";
     char* out = NULL;
     size_t len = 0;
@@ -1995,8 +1998,7 @@ char* url_encode(const char* in)
         {
             unsigned char c = (unsigned char)*p;
             bool safe = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
-                        (c >= '0' && c <= '9') || c == '-' || c == '.' ||
-                        c == '_' || c == '~';
+                        (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' || c == '~';
             if (pass == 0)
             {
                 len += safe ? 1 : 3;
@@ -2015,7 +2017,8 @@ char* url_encode(const char* in)
         if (pass == 0)
         {
             out = cb_malloc(len + 1);
-            if (!out) return NULL;
+            if (!out)
+                return NULL;
         }
         else
         {

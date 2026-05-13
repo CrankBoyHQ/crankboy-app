@@ -478,7 +478,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 
     gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
     gameScene->cartridge_has_accelerometer = (context->gb->mbc == 7);
-    
+
     if (gameScene->cartridge_has_accelerometer)
     {
         playdate->system->setPeripheralsEnabled(kAccelerometer);
@@ -1041,13 +1041,14 @@ static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int*
     CB_GameScene* gameScene = context->scene;
 
     gb->gb_cart_ram = (sram_len > 0) ? cb_malloc(sram_len) : NULL;
-    
+
     // fill with default
     if (gb->gb_cart_ram)
     {
         // TODO: what is the default fill supposed to be?
         uint8_t fill = 0;
-        if (gb->mbc == 7) fill = 0xFF;
+        if (gb->mbc == 7)
+            fill = 0xFF;
         memset(gb->gb_cart_ram, fill, sram_len);
     }
     gb->gb_cart_ram_size = sram_len;
@@ -3855,7 +3856,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         {
             __gb_dump_vram(context->gb);
         }
-            break;
+        break;
 #ifdef TARGET_SIMULATOR
         case 0x74:  // t (trace one frame of instructions)
             g_trace_frames_remaining = 1;

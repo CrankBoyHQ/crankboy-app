@@ -231,8 +231,7 @@ void CB_Modal_update(CB_Modal* modal)
             if (ln->len > 0)
             {
                 playdate->graphics->drawText(
-                    ln->start, ln->len, kUTF8Encoding,
-                    text_x + (text_w - ln->width) / 2, text_y
+                    ln->start, ln->len, kUTF8Encoding, text_x + (text_w - ln->width) / 2, text_y
                 );
             }
             text_y += line_h;
