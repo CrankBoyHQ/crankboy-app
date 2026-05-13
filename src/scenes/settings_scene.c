@@ -434,6 +434,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
         CB_dismiss(settingsScene->scene);
         if (returnToLibrary && /* paranoia */ settingsScene->gameScene)
         {
+            settingsScene->wasAudioLocked = true;
             settingsScene->gameScene->quitGameModalConfirmOverride = true;
             CB_GameScene_didSelectLibrary(settingsScene->gameScene);
         }
