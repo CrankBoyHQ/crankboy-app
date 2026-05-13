@@ -310,8 +310,8 @@ typedef struct StateHeader
 
 // ---------------------
 // On struct version update, please change these two lines
-#include "pgb/pgb_v3.h"
-#define PGB_VERSION 3
+#include "pgb/pgb_v4.h"
+#define PGB_VERSION 4
 // ---------------------
 
 typedef struct PGB_VERSIONED(gb_s) gb_s;
@@ -584,7 +584,11 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     // swappable cartridge ROM bank
     int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
-    gb->selected_bank_addr = gb->gb_rom + offset;
+    
+    for (int i = 0; i < 4; ++i)
+    {
+        gb->rom_bank_base[1][i] = gb->gb_rom + offset;
+    }
 
     // swappable cgb wram bank
     int wram_bank = 1;
@@ -603,7 +607,10 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 
 __section__(".text.cb") static void __gb_update_zero_bank_addr(gb_s* gb)
 {
-    gb->gb_zero_bank = gb->gb_rom + gb->zero_bank_base;
+    for (int i = 0; i < 4; ++i)
+    {
+        gb->rom_bank_base[0][i] = gb->gb_rom + gb->zero_bank_base - 0x0000;
+    }
 }
 
 __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb)
@@ -641,6 +648,7 @@ __section__(".text.cb") static void __gb_init_memory_pointers(gb_s* gb)
 {
     gb->wram_base[0] = gb->wram - WRAM_0_ADDR;
     gb->wram_base[1] = gb->wram - WRAM_1_ADDR + 0x1000;
+    gb->echo_ram_base = gb->wram_base[0];
     gb->echo_ram_base = gb->wram - ECHO_ADDR;
     gb->vram_base = gb->vram - VRAM_ADDR;
 }
@@ -878,6 +886,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         /* Interrupt Enable Register */
         case 0xFF:
             gb->gb_reg.IE = val;
+            gb->hram[0xFF] = gb->gb_reg.IE; // duplicated state -- gb_reg.IE is source of truth
             gb->direct.joypad_interrupts = (val & CONTROL_INTR) != 0;
             return;
         }
@@ -1031,6 +1040,130 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
     return 0xFF;
 }
 
+// attempt to detect an optimizable routine
+// (e.g. tight-loop polling an io register)
+uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
+{
+    if (!gb->hle_enabled) return ioval;
+    
+    // pc of instruction following compare
+    u16 pc = gb->cpu_reg.pc;
+    
+    // shouldn't go over ROM -- don't want to trigger side effects on read
+    if (pc >= 0x7FF8 || pc < 3)
+    {
+        // executing from wram is okay though
+        if (pc < 0xC003 || pc >= 0xEFF0)
+        {
+            return ioval;
+        }
+    }
+    
+    #define READ8(addr) (gb->ram_base[(addr) >> 12][addr])
+    
+    int offset = 0;
+    if (READ8(pc-2) == 0xF0 && READ8(pc-1) == (ioaddr & 0xFF))
+    {
+        // ld A, (a8)
+        offset = -2;
+    }
+    else if (READ8(pc - 3) == 0xFA && ((READ8(pc - 1)<<8) | READ8(pc - 2)) == ioaddr)
+    {
+        // ld A, (a16)
+        offset = -3;
+    }
+    else if (READ8(pc - 1) == 0xF2 && gb->cpu_reg.c == (ioaddr & 0xFF))
+    {
+        // ld A, (C)
+        offset = -1;
+    }
+    else if (READ8(pc - 1) == 0x7E && gb->cpu_reg.hl == ioaddr)
+    {
+        // ld A, (HL)
+        offset = -1;
+    }
+    else
+    {
+        goto hle_fail;
+    }
+    
+    u8 op0 = READ8(pc);
+    u8 d8 = READ8(pc+1);
+    u16 addr_next = pc+2;
+    int c=-1, z=-1;
+    if (op0 == 0xFE || op0 == 0xD6)
+    {
+        // cp d8 / sub d8
+        z = ioval == d8;
+        c = ioval < d8;
+    }
+    else if (op0 == 0xE6)
+    {
+        // AND d8
+        z = !(ioval & d8);
+        c = 0;
+    }
+    else
+    {
+        goto hle_fail;
+    }
+    
+    u8 opjd = READ8(addr_next+1);
+    
+    // jr destination should be the read-io opcode
+    if (opjd != 0xFC + offset) goto hle_fail;
+    
+    // jr condition
+    u8 opj = READ8(addr_next);
+    if (opj == 0x20)
+    {
+        // JR NZ
+        if (z == 1) goto hle_unnecessary;
+    }
+    else if (opj == 0x30)
+    {
+        // JR NC
+        if (c == 1) goto hle_unnecessary;
+    }
+    else if (opj == 0x28)
+    {
+        // JR Z
+        if (z == 0) goto hle_unnecessary;
+    }
+    else if (opj == 0x38)
+    {
+        // JR C
+        if (c == 0) goto hle_unnecessary;
+    }
+    else
+    {
+        goto hle_fail;
+    }
+    
+    #undef READ8
+    
+hle_success:
+    // YES, we can hle!
+    #ifdef TARGET_SIMULATOR
+    //playdate->system->logToConsole("HLE %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
+    #endif
+    
+    // rewind pc and wait
+    gb->gb_hle = true;
+    gb->cpu_reg.pc += offset;
+    
+    return ioval;
+    
+hle_unnecessary:
+    return ioval;
+    
+hle_fail:
+    #ifdef TARGET_SIMULATOR
+    playdate->system->logToConsole("HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
+    #endif
+    return ioval;
+}
+
 /**
  * Internal function used to read bytes.
  */
@@ -1042,13 +1175,16 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
     case 0x1:
     case 0x2:
     case 0x3:
-        return gb->gb_zero_bank[addr];
-
+    
     case 0x4:
     case 0x5:
     case 0x6:
     case 0x7:
-        return gb->selected_bank_addr[addr];
+    
+    case 0xC:
+    case 0xD:
+    case 0xE:
+        return gb->ram_base[addr >> 12][addr];
 
     case 0x8:
     case 0x9:
@@ -1115,15 +1251,6 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         }
 
         return 0xFF;
-
-    case 0xC:
-        return gb->wram_base[0][addr];
-
-    case 0xD:
-        return gb->wram_base[1][addr];
-
-    case 0xE:
-        return gb->echo_ram_base[addr];
 
     case 0xF:
         if (addr < OAM_ADDR)
@@ -1225,7 +1352,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.LCDC;
 
         case 0x41:
-            return gb->gb_reg.STAT | 0x80;
+            return __gb_try_hle(gb, addr, gb->gb_reg.STAT | 0x80);
 
         case 0x42:
             return gb->gb_reg.SCY;
@@ -1234,14 +1361,14 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.SCX;
 
         case 0x44:
-            return gb->gb_reg.LY;
+            return __gb_try_hle(gb, addr, gb->gb_reg.LY);
 
         case 0x45:
             return gb->gb_reg.LYC;
 
         /* DMA Register */
         case 0x46:
-            return gb->gb_reg.DMA;
+            return __gb_try_hle(gb, addr, gb->gb_reg.DMA);
 
         /* DMG Palette Registers */
         case 0x47:
@@ -2248,6 +2375,7 @@ _0x10:
     if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
     {
         gb->cgb_fast_mode = !gb->cgb_fast_mode;
+        gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
         gb->cgb_fast_mode_armed = false;
         gb->gb_reg.DIV = 0;
         goto exit;
@@ -4350,11 +4478,14 @@ __shell static void __gb_interrupt(gb_s* gb)
 __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 {
     // In STOP mode, the CPU is paused until a button is pressed.
-    if (gb->gb_halt && gb->direct.joypad != 0xFF)
+    if (gb->gb_stop && gb->direct.joypad != 0xFF)
     {
         gb->gb_stop = 0;
+        gb->gb_hle = false; // paranoia
         return 16;
     }
+    
+    gb->gb_hle = false;
 
 #if 0
     // TODO: optimize serial
@@ -4366,7 +4497,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
     if (gb->gb_reg.tac_enable)
     {
 #if PGB_IS_CGB
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode;
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
 #else
         uint16_t tima_threshold = gb->gb_reg.tac_cycles;
 #endif
@@ -4801,9 +4932,11 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->direct.stat_line = 0;
 
     gb->gb_reg.tima_overflow_delay = 0;
+    gb->hram[0xFF] = gb->gb_reg.IE;
 
     gb->direct.crank_menu_accumulation = 0x8000;
     gb->direct.crank_menu_delta = 0;
+    gb->cgb_fast_mode_active = false;
 
     memset(gb->vram, 0x00, VRAM_SIZE_CGB);
     memset(gb->wram, 0x00, WRAM_SIZE_CGB);
@@ -5094,6 +5227,7 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
         {
             gb->cgb_fast_mode = !gb->cgb_fast_mode;
+            gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
             gb->cgb_fast_mode_armed = false;
             gb->gb_reg.DIV = 0;
             return cycles;

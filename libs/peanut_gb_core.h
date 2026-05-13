@@ -70,19 +70,12 @@ __core static void $(__gb_check_lyc)(gb_s* gb)
 
 __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t addr)
 {
-    if likely (addr < 0x4000)
+    uint8_t* ram_region_base = gb->ram_base[addr >> 12];
+    if (ram_region_base)
     {
-        return gb->gb_zero_bank[addr];
+        return ram_region_base[addr];
     }
-    if likely (addr < 0x8000)
-    {
-        return gb->selected_bank_addr[addr];
-    }
-    if likely (addr >= 0xC000 && addr < 0xE000)
-    {
-        return gb->wram_base[(addr % 0x2000) / 0x1000][addr];
-    }
-    if likely (addr >= 0xFF80 && addr <= 0xFFFE)
+    if likely (addr >= 0xFF80) // no need to check upper bound -- gb->hram[0xFF] should match IE
     {
         return gb->hram[addr % 0x100];
     }
@@ -95,9 +88,9 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
 
 __core_section("short") static void $(__gb_write)(gb_s* restrict gb, const uint16_t addr, uint8_t v)
 {
-    if likely (addr >= 0xC000 && addr < 0xE000)
+    if likely (addr >= 0xC000 && addr < 0xF000)
     {
-        gb->wram_base[(addr % 0x2000) / 0x1000][addr] = v;
+        gb->ram_base[addr >> 12][addr] = v;
         return;
     }
     if likely (addr >= 0xFF80 && addr <= 0xFFFE)
@@ -163,20 +156,24 @@ __core_section("util") clalign
 
 __core_section("short") static uint16_t $(__gb_read16)(gb_s* restrict gb, u16 addr)
 {
-    // Fast path for WRAM
-    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
+    if (addr % 0x1000 != 0xFFF)
     {
-        void* ptr = &gb->wram_base[(addr % 0x2000) / 0x1000][addr];
-        return *(uint16_t*)ptr;
-    }
-    // Fast path for HRAM
-    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
-    {
-        void* ptr = &gb->hram[addr - IO_ADDR];
-        return *(uint16_t*)ptr;
+        // Fast path for ROM+WRAM+ECHO
+        uint8_t* ram_region_base = gb->ram_base[addr >> 12];
+        if (ram_region_base)
+        {
+            void* ptr = &ram_region_base[addr];
+            return *(uint16_t*)ptr;
+        }
+        // Fast path for HRAM
+        else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+        {
+            void* ptr = &gb->hram[addr - IO_ADDR];
+            return *(uint16_t*)ptr;
+        }
     }
 
-    // Fallback for all other cases (unaligned, ROM, I/O, etc.)
+    // Fallback for all other cases (unaligned, I/O, etc.)
     u16 v = $(__gb_read)(gb, addr);
     v |= (u16)$(__gb_read)(gb, addr + 1) << 8;
     return v;
@@ -185,14 +182,18 @@ __core_section("short") static uint16_t $(__gb_read16)(gb_s* restrict gb, u16 ad
 __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr, u16 v)
 {
     // Fast path for WRAM
-    if (addr >= WRAM_0_ADDR && addr < (ECHO_ADDR - 1))
+    if likely(addr >= WRAM_0_ADDR && addr < 0xE000-1
+#if PGB_IS_CGB
+        && addr != 0xCFFF
+#endif
+    )
     {
-        void* ptr = &gb->wram_base[(addr % 0x2000) / 0x1000][addr];
+        void* ptr = &gb->ram_base[addr >> 12][addr];
         *(uint16_t*)ptr = v;
         return;
     }
     // Fast path for HRAM
-    else if (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+    else if likely(addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
     {
         void* ptr = &gb->hram[addr - IO_ADDR];
         *(uint16_t*)ptr = v;
@@ -213,20 +214,10 @@ __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
 {
     u16 addr = gb->cpu_reg.pc;
 
-    if (addr == 0x3FFF || addr == 0x7FFF)
-    {
-        gb->cpu_reg.pc += 2;
-        return $(__gb_read16)(gb, addr);
-    }
-
     uint8_t* rom_ptr;
-    if likely (addr < 0x4000)
+    if likely (addr < 0x7FFF && addr != 0x3FFF)
     {
-        rom_ptr = &gb->gb_zero_bank[addr];
-    }
-    else if likely (addr < 0x8000)
-    {
-        rom_ptr = &gb->selected_bank_addr[addr];
+        rom_ptr = &gb->ram_base[addr >> 12][addr];
     }
     else
     {
@@ -241,12 +232,16 @@ __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
 __core_section("short") static uint16_t $(__gb_pop16)(gb_s* restrict gb)
 {
     u16 v;
+    #if PGB_IS_DMG
+    // unconfirmed whether HRAM is used for stack much
+    // but even if it is, seems rare on CGB(?)
     if likely (gb->cpu_reg.sp >= HRAM_ADDR && gb->cpu_reg.sp < 0xFFFE)
     {
         v = gb->hram[gb->cpu_reg.sp - IO_ADDR];
         v |= gb->hram[gb->cpu_reg.sp - IO_ADDR + 1] << 8;
     }
     else
+    #endif
     {
         v = $(__gb_read16)(gb, gb->cpu_reg.sp);
     }
@@ -256,6 +251,9 @@ __core_section("short") static uint16_t $(__gb_pop16)(gb_s* restrict gb)
 
 __core_section("short") static void $(__gb_push16)(gb_s* restrict gb, u16 v)
 {
+    #if PGB_IS_DMG
+    // unconfirmed whether HRAM is used for stack much
+    // but even if it is, seems rare on CGB(?)
     if likely (gb->cpu_reg.sp >= HRAM_ADDR + 2)
     {
         gb->cpu_reg.sp--;
@@ -265,6 +263,7 @@ __core_section("short") static void $(__gb_push16)(gb_s* restrict gb, u16 v)
         gb->hram[gb->cpu_reg.sp - IO_ADDR] = v & 0xFF;
     }
     else
+    #endif
     {
         gb->cpu_reg.sp--;
         $(__gb_write)(gb, gb->cpu_reg.sp, v >> 8);
@@ -1546,7 +1545,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         __gb_interrupt(gb);
     }
 
-    if unlikely (gb->gb_halt || gb->gb_stop)
+    if unlikely (gb->gb_halt || gb->gb_stop || gb->gb_hle)
     {
         inst_cycles = __gb_calc_halt_cycles(gb);
         goto done_instr_timing;
@@ -1554,6 +1553,11 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = $(__gb_run_instruction_micro)(gb);
+    #if PGB_IS_CGB
+    // DMG might benefit too -- didn't want to adjust it though, since it's stable
+    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
+    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
+    #endif
 #else
     // run once as each, verify
 
@@ -1699,11 +1703,11 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
     {
-        inst_cycles >>= gb->cgb_fast_mode;
+        inst_cycles >>= gb->overclock;
     }
 
 #if PGB_IS_CGB
-    inst_cycles >>= gb->cgb_fast_mode;
+    inst_cycles >>= gb->cgb_fast_mode_active;
 
     // FIXME: we can avoid having to do this if we change the cycle units
     // to allow more fixed-point precision here.
@@ -1742,9 +1746,9 @@ done_instr_timing:
     if (gb->gb_reg.tac_enable)
     {
 #if PGB_IS_CGB
-        gb->counter.tima_count += (inst_cycles >> gb->cgb_fast_mode);
+        gb->counter.tima_count += (inst_cycles >> gb->cgb_fast_mode_active);
         gb->counter.tima_count += inst_cycles;
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode;
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
         while (gb->counter.tima_count >= tima_threshold)
         {
             gb->counter.tima_count -= tima_threshold;
@@ -1773,7 +1777,7 @@ done_instr_timing:
 /* DIV register timing */
 // update DIV timer
 #if PGB_IS_CGB
-    uint16_t div_threshold = DIV_CYCLES >> gb->cgb_fast_mode;
+    uint16_t div_threshold = DIV_CYCLES >> gb->cgb_fast_mode_active;
     gb->counter.div_count += inst_cycles;
     if (gb->counter.div_count >= div_threshold)
     {
@@ -1992,6 +1996,10 @@ done_instr_timing:
 __core void $(gb_run_frame)(gb_s* gb)
 {
     gb->direct.has_read_accelerometer_this_frame = false;
+    
+    #if PGB_IS_CGB
+    gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+    #endif
     
     gb->gb_frame = 0;
     

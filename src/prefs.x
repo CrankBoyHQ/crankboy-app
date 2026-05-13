@@ -48,10 +48,14 @@ PREF(prompt_if_cgb_optional, 0)
 
 // misc
 PREF(itcm, (pd_rev == PD_REV_A))
+PREF(hle, 1)
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(script_has_prompted, false)  // (not a real setting)
+
+// cgb
+PREF(cgb_speed, 0) // 0: default; 1: force slow mode
 
 // scripts can use these arbitrarily (see script_custom_setting_add),
 // but should never assume that the value is within any given bound.

@@ -454,6 +454,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
+static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
@@ -1437,6 +1438,28 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 .on_change = settings_post_action_lock_button
         };
     }
+    
+    // CGB settings
+    if (!gameScene || gameScene->context->cgb_mode)
+    {
+        entries[++i] = (OptionsMenuEntry){
+            #ifdef CRANKBOY_OFFICIAL_CATALOG
+            .name = "CGB (GB Color)",
+            #else
+            .name = "Game Boy Color",
+            #endif
+            .header = 1
+        };
+        
+        entries[++i] = (OptionsMenuEntry){
+            .name = "CPU Speed",
+            .values = cgb_dmg_labels,
+            .description =
+                "Normally, the CGB CPU\ncan run twice as fast as\nthe DMG (non-Color GB).\n \nSet to \"DMG\" to force\nit to run at DMG speed.\n \nCan greatly improve perf\non titles which don't make\nefficient use of the CPU.\n \nThis is the opposite of\noverclocking (see below).",
+            .pref_var = &preferences_cgb_speed,
+            .max_value = 2,
+        };
+    }
 
     entries[++i] = (OptionsMenuEntry){
         .name = "Behavior",
@@ -1625,6 +1648,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL,
         .rebuild_when_changed = 0,
         .on_change = NULL,
+    };
+    
+    entries[++i] = (OptionsMenuEntry){
+        .name = "HLE Routines",
+        .values = off_on_labels,
+        .description = "Automatically identify certain\ncommon routines and\nreplace them with\nhigh-level emulated versions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
+        .pref_var = &preferences_hle,
+        .max_value = 2,
+        .on_press = NULL
     };
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)

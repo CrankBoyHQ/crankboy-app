@@ -256,7 +256,7 @@ static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t 
         // reverse bits
         "rbitne %[val], %[val]\n"
 
-        // reverse byte
+        // reverse bytes
         "revne  %[val], %[val]\n"
         : [val] "+r"(b)
         : [cond] "r"(condition)
