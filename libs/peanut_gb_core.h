@@ -2070,7 +2070,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
     int scale_index = preferences_dither_line;
     if (preferences_dither_stable)
         scale_index += 256 - scy;
-    scale_index &= (scaling - 1);
+    scale_index %= scaling;
     uint8_t* restrict dither_lut0_ptr = dither_lut0;
     uint8_t* restrict dither_lut1_ptr = dither_lut1;
 

@@ -1159,7 +1159,13 @@ hle_unnecessary:
     
 hle_fail:
     #ifdef TARGET_SIMULATOR
-    playdate->system->logToConsole("HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
+    static int hle_n = 0;
+    if (hle_n++ % 256 == 0)
+    {
+        // only display a portion of these, as they flood the console otherwise.
+        // important to print some though, so we can improve HLE detection over time.
+        playdate->system->logToConsole("HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
+    }
     #endif
     return ioval;
 }
