@@ -400,7 +400,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
             if (result)
             {
                 // Also save always-global settings to global preferences file
-                result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
+                result = preferences_save_to_disk(CB_globalPrefsPath, ~(PREFBITS_ALWAYS_GLOBAL));
             }
         }
         else
