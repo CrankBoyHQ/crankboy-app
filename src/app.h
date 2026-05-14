@@ -224,9 +224,9 @@ const char* get_pdboot_name_and_version(void);
     __attribute__((long_call)) __attribute((noinline)) __section__( \
         ".text."                                                    \
         "cb"                                                        \
-    )
+    ) __attribute__((optimize("Os")))
 #else
-#define __shell __attribute((noinline)) __section__(".text.cb")
+#define __shell __attribute((noinline)) __section__(".text.cb") __attribute__((optimize("Os")))
 #endif
 #endif
 
