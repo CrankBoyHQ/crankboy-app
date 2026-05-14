@@ -42,6 +42,7 @@ SECTIONS
 		. = ALIGN(0x1000); . += 0x720;
 		*(.text.cb)
 		*(.text.cb_rare)
+		*(.text.cb_hle_op)
 
 		. = ALIGN(32);
 		build/*(.text)

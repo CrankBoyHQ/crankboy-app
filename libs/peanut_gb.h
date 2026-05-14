@@ -1040,9 +1040,54 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
     return 0xFF;
 }
 
+__section__(".rare.cb_hle") u8 __gb_hle_read_lyc(const gb_s* gb)
+{
+    return gb->gb_reg.LYC;
+}
+
+__section__(".rare.cb_hle") u8 __gb_hle_read_stat(const gb_s* gb)
+{
+    return gb->gb_reg.STAT | 0x80;
+}
+
+__section__(".rare.cb_hle") u8 __gb_hle_read_ly(const gb_s* gb)
+{
+    return gb->gb_reg.LY;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__and_nz(u8 a, u8 b)
+{
+    return (a & b) != 0;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__cp_nz(u8 a, u8 b)
+{
+    return a != b;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__and_z(u8 a, u8 b)
+{
+    return (a & b) == 0;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__cp_z(u8 a, u8 b)
+{
+    return a == b;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__cp_c(u8 a, u8 b)
+{
+    return a < b;
+}
+
+__section__(".rare.cb_hle") bool __gb_hle_op__cp_nc(u8 a, u8 b)
+{
+    return a >= b;
+}
+
 // attempt to detect an optimizable routine
 // (e.g. tight-loop polling an io register)
-uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
+__section__(".rare.cb") uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
 {
     if (!gb->hle_enabled) return ioval;
     
@@ -1089,6 +1134,7 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     
     u8 op0 = READ8(pc);
     u8 d8 = READ8(pc+1);
+    bool carry_fixed = false;
     u16 addr_next = pc+2;
     int c=-1, z=-1;
     if (op0 == 0xFE || op0 == 0xD6)
@@ -1102,6 +1148,7 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
         // AND d8
         z = !(ioval & d8);
         c = 0;
+        carry_fixed = true;
     }
     else
     {
@@ -1119,21 +1166,36 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     {
         // JR NZ
         if (z == 1) goto hle_unnecessary;
+        gb->hle_operation = (op0 == 0xE6)
+            ? __gb_hle_op__and_nz
+            : __gb_hle_op__cp_nz;
     }
     else if (opj == 0x30)
     {
         // JR NC
         if (c == 1) goto hle_unnecessary;
+        
+        if (carry_fixed) goto hle_fail;
+        
+        gb->hle_operation = __gb_hle_op__cp_nc;
     }
     else if (opj == 0x28)
     {
         // JR Z
         if (z == 0) goto hle_unnecessary;
+        
+        gb->hle_operation = (op0 == 0xE6)
+            ? __gb_hle_op__and_z
+            : __gb_hle_op__cp_z;
     }
     else if (opj == 0x38)
     {
         // JR C
         if (c == 0) goto hle_unnecessary;
+        
+        if (carry_fixed) goto hle_fail;
+        
+        gb->hle_operation = __gb_hle_op__cp_c;
     }
     else
     {
@@ -1151,6 +1213,7 @@ hle_success:
     // rewind pc and wait
     gb->gb_hle = true;
     gb->cpu_reg.pc += offset;
+    gb->hle_operand = d8;
     
     return ioval;
     
@@ -1194,6 +1257,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
     case 0xA:
     case 0xB:
+        // TODO: extract to own function, to improve cache behaviour
         if (gb->enable_cart_ram)
         {
             if (gb->mbc == 2)
@@ -1352,6 +1416,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.LCDC;
 
         case 0x41:
+            gb->hle_read_ioval = __gb_hle_read_stat;
             return __gb_try_hle(gb, addr, gb->gb_reg.STAT | 0x80);
 
         case 0x42:
@@ -1361,14 +1426,16 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.SCX;
 
         case 0x44:
+            gb->hle_read_ioval = __gb_hle_read_ly;
             return __gb_try_hle(gb, addr, gb->gb_reg.LY);
 
         case 0x45:
-            return gb->gb_reg.LYC;
+            gb->hle_read_ioval = __gb_hle_read_lyc;
+            return __gb_try_hle(gb, addr, gb->gb_reg.LYC);
 
         /* DMA Register */
         case 0x46:
-            return __gb_try_hle(gb, addr, gb->gb_reg.DMA);
+            return gb->gb_reg.DMA;
 
         /* DMG Palette Registers */
         case 0x47:
@@ -4475,7 +4542,7 @@ __shell static void __gb_interrupt(gb_s* gb)
     }
 }
 
-__shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
+__shell static uint16_t __gb_calc_halt_cycles(gb_s* restrict gb)
 {
     // In STOP mode, the CPU is paused until a button is pressed.
     if (gb->gb_stop && gb->direct.joypad != 0xFF)
@@ -4485,7 +4552,15 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
         return 16;
     }
     
-    gb->gb_hle = false;
+    if (gb->gb_hle)
+    {
+        if (!gb->hle_operation(gb->hle_read_ioval(gb), gb->hle_operand))
+        {
+            gb->gb_hle = false;
+            // FIXME -- should return 0? redo?
+            return 4;
+        }
+    }
 
 #if 0
     // TODO: optimize serial

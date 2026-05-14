@@ -497,6 +497,12 @@ struct PGB_VERSIONED(gb_s)
     // bit, but can be used for other things
     // (so long as nothing writes anything non-zero here.)
     uint32_t zero32[5];
+    
+    // HLE cached comparison
+    // (helps us stay in HLE state less conservatively)
+    u8 hle_operand;
+    u8 (*hle_read_ioval)(const struct PGB_VERSIONED(gb_s)* gb); // reads IO val without side-effects
+    bool (*hle_operation)(uint8_t io_value, uint8_t operand);
 
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
