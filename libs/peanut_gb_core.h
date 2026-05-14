@@ -1553,9 +1553,10 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = $(__gb_run_instruction_micro)(gb);
+    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
     #if PGB_IS_CGB
     // DMG might benefit too -- didn't want to adjust it though, since it's stable
-    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
+    // TODO: specify batching 
     if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
     #endif
 #else

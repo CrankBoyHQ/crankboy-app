@@ -297,7 +297,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
             if (blend != data->prev_blend)
             {
                 force_pref(blend_frames, blend);
-                force_pref(dynamic_rate, blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
+                //force_pref(dynamic_rate, blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
                 force_pref(dither_stable, !blend);
                 data->prev_blend = blend;
             }
@@ -307,7 +307,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         if (state_changed || data->prev_blend != true)
         {
             force_pref(blend_frames, true);
-            force_pref(dynamic_rate, DYNAMIC_RATE_ON);
+            //force_pref(dynamic_rate, DYNAMIC_RATE_ON);
             force_pref(dither_stable, false);
             data->prev_blend = true;
         }
