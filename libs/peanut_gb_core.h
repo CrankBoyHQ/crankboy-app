@@ -1552,13 +1552,17 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     }
 
 #if CPU_VALIDATE == 0
-    inst_cycles = $(__gb_run_instruction_micro)(gb);
-    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
-    #if PGB_IS_CGB
-    // DMG might benefit too -- didn't want to adjust it though, since it's stable
-    // TODO: specify batching 
-    if (!gb->gb_halt && !gb->gb_stop && !gb->gb_hle) inst_cycles += $(__gb_run_instruction_micro)(gb);
-    #endif
+    inst_cycles = 0;
+    int _batch_n = 3;
+    for (int _i = 0; _i < _batch_n; _i++)
+    {
+        if (gb->gb_halt || gb->gb_stop || gb->gb_hle) break;
+        inst_cycles += $(__gb_run_instruction_micro)(gb);
+        if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+            gb->gb_ime = 1;
+        if ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+            __gb_interrupt(gb);
+    }
 #else
     // run once as each, verify
 
@@ -1690,7 +1694,6 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
             );
         }
     }
-#endif
 
     // EI delay handling
     if (gb->gb_ime_countdown > 0)
@@ -1700,6 +1703,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
             gb->gb_ime = 1;
         }
     }
+#endif
 
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
@@ -1997,19 +2001,19 @@ done_instr_timing:
 __core void $(gb_run_frame)(gb_s* gb)
 {
     gb->direct.has_read_accelerometer_this_frame = false;
-    
+
     #if PGB_IS_CGB
     gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
     #endif
-    
+
     gb->gb_frame = 0;
-    
+
     gb->direct.blend_rect_x_min = 255;
     gb->direct.blend_rect_y_min = 255;
     gb->direct.blend_rect_x_max = 0;
     gb->direct.blend_rect_y_max = 0;
-    
-    
+
+
     unsigned int total_cycles = 0;
 
 #ifdef TARGET_SIMULATOR
@@ -2044,7 +2048,7 @@ __core void $(gb_run_frame)(gb_s* gb)
 #endif
         total_cycles += $(__gb_step_cpu)(gb);
     }
-    
+
     #ifdef TARGET_SIMULATOR
     if (trace_this_frame)
     {
