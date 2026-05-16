@@ -456,7 +456,6 @@ static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
-static const char* blend_frames_labels[] = {"Off", "On", "Auto"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
@@ -1147,13 +1146,11 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
-            .values = blend_frames_labels,
+            .values = off_on_labels,
             .description =
-                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.\n \n"
-                "On:\nSlower, but effects work\ncorrectly in all games.\n \n"
-                "Auto:\nFaster, but may not work\nfor all games.",
+                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.",
             .pref_var = &preferences_blend_frames,
-            .max_value = 3,
+            .max_value = 2,
             .rebuild_when_changed = 1,
             .on_press = NULL,
         };

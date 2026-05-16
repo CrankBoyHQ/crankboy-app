@@ -510,25 +510,6 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         }
 #endif
 
-        if (!is_ghost && (OF & OBJ_PALETTE))
-        {
-            int16_t sprite_x = OX - 8;
-            int16_t sprite_y = OY - 16;
-            uint8_t sprite_w = 8;
-            uint8_t sprite_h = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-            int16_t sprite_x2 = sprite_x + sprite_w;
-            int16_t sprite_y2 = sprite_y + sprite_h;
-
-            if (sprite_x < gb->direct.blend_rect_x_min)
-                gb->direct.blend_rect_x_min = (sprite_x < 0) ? 0 : sprite_x;
-            if (sprite_y < gb->direct.blend_rect_y_min)
-                gb->direct.blend_rect_y_min = (sprite_y < 0) ? 0 : sprite_y;
-            if (sprite_x2 > gb->direct.blend_rect_x_max)
-                gb->direct.blend_rect_x_max = (sprite_x2 > LCD_WIDTH) ? LCD_WIDTH : sprite_x2;
-            if (sprite_y2 > gb->direct.blend_rect_y_max)
-                gb->direct.blend_rect_y_max = (sprite_y2 > LCD_HEIGHT) ? LCD_HEIGHT : sprite_y2;
-        }
-
         uint8_t py = gb->gb_reg.LY - (OY - 16);
         if (OF & OBJ_FLIP_Y)
             py = (sprite_height - 1) - py;
@@ -2002,11 +1983,6 @@ __core void $(gb_run_frame)(gb_s* gb)
 #endif
 
     gb->gb_frame = 0;
-
-    gb->direct.blend_rect_x_min = 255;
-    gb->direct.blend_rect_y_min = 255;
-    gb->direct.blend_rect_x_max = 0;
-    gb->direct.blend_rect_y_max = 0;
 
     unsigned int total_cycles = 0;
 

@@ -95,6 +95,10 @@ void preferences_merge_from_disk(const char* filename)
     }
 
     free_json_data(j);
+
+    // migration: old saved blend_frames=2 (removed Auto) -> On (1)
+    if (preferences_blend_frames > 1)
+        preferences_blend_frames = 1;
 }
 
 void preferences_read_from_disk(const char* filename)

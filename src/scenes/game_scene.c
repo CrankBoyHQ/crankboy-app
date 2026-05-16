@@ -1371,67 +1371,6 @@ static __section__(".text.tick") void composite_interlaced_frames(
     }
 }
 
-static __section__(".text.tick") void blend_frames_lut_rect(
-    uint8_t* frame_a, uint8_t* frame_b_and_dest, uint8_t x_min, uint8_t y_min, uint8_t x_max,
-    uint8_t y_max
-)
-{
-    if (y_max > LCD_HEIGHT)
-        y_max = LCD_HEIGHT;
-    if (x_max > LCD_WIDTH)
-        x_max = LCD_WIDTH;
-
-    int start_x_byte = x_min / LCD_PACKING;
-    int end_x_byte = (x_max + (LCD_PACKING - 1)) / LCD_PACKING;
-
-    for (int y = y_min; y < y_max; y++)
-    {
-        if (y < y_max - 1)
-        {
-            uint8_t* next_row_a = frame_a + ((y + 1) * LCD_WIDTH_PACKED) + start_x_byte;
-            uint8_t* next_row_b = frame_b_and_dest + ((y + 1) * LCD_WIDTH_PACKED) + start_x_byte;
-            __builtin_prefetch(next_row_a, 0, 0);
-            __builtin_prefetch(next_row_b, 1, 0);
-        }
-
-        int y_parity = y & 1;
-        uint8_t* row_a = frame_a + (y * LCD_WIDTH_PACKED);
-        uint8_t* row_b = frame_b_and_dest + (y * LCD_WIDTH_PACKED);
-
-        int x = start_x_byte;
-
-        while ((x < end_x_byte) && (((uintptr_t)(row_a + x) & 3) != 0))
-        {
-            row_b[x] = blend_byte(row_a[x], row_b[x], y_parity);
-            x++;
-        }
-
-        uint32_t* row_a_32 = (uint32_t*)(row_a + x);
-        uint32_t* row_b_32 = (uint32_t*)(row_b + x);
-        int end_x_word = (end_x_byte - x) / 4;
-
-        for (int i = 0; i < end_x_word; i++)
-        {
-            uint32_t a_word = row_a_32[i];
-            uint32_t b_word = row_b_32[i];
-
-            uint8_t b0 = blend_byte((a_word >> 0) & 0xFF, (b_word >> 0) & 0xFF, y_parity);
-            uint8_t b1 = blend_byte((a_word >> 8) & 0xFF, (b_word >> 8) & 0xFF, y_parity);
-            uint8_t b2 = blend_byte((a_word >> 16) & 0xFF, (b_word >> 16) & 0xFF, y_parity);
-            uint8_t b3 = blend_byte((a_word >> 24) & 0xFF, (b_word >> 24) & 0xFF, y_parity);
-
-            row_b_32[i] = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
-        }
-
-        x += end_x_word * 4;
-        while (x < end_x_byte)
-        {
-            row_b[x] = blend_byte(row_a[x], row_b[x], y_parity);
-            x++;
-        }
-    }
-}
-
 static void save_check(gb_s* gb);
 
 static __section__(".text.tick") void display_fps(void)
@@ -2147,11 +2086,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
-                // 2. Determine if the screen is static and if sprites were rendered.
+                // 2. Determine if the screen is static.
                 bool screen_is_static =
                     (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
-                bool has_blendable_sprites =
-                    context->gb->direct.blend_rect_x_min < context->gb->direct.blend_rect_x_max;
 
                 // 3. Render Frame B into frame_buffer[1]
                 context->gb->lcd = frame_buffer[1];
@@ -2176,7 +2113,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 context->gb->direct.interlace_mask = saved_interlace_mask;
 
                 // 4. Blend/composite and copy result back to original lcd buffer
-                if (preferences_blend_frames == 1)  // "On" mode
+                if (preferences_blend_frames)
                 {
                     if (!screen_is_static)
                     {
@@ -2190,35 +2127,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         else
                         {
                             blend_frames_lut(frame_buffer[0], frame_buffer[1]);
-                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                        }
-                    }
-                    else
-                    {
-                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                    }
-                }
-                else if (preferences_blend_frames == 2)  // "Auto" mode
-                {
-                    if (!screen_is_static && has_blendable_sprites)
-                    {
-                        if (use_synced_interlace)
-                        {
-                            // For auto mode with interlacing, composite the full frames
-                            // (sprites will be in both frames anyway)
-                            composite_interlaced_frames(
-                                frame_buffer[0], frame_buffer[1], original_lcd
-                            );
-                        }
-                        else
-                        {
-                            blend_frames_lut_rect(
-                                frame_buffer[0], frame_buffer[1],
-                                context->gb->direct.blend_rect_x_min,
-                                context->gb->direct.blend_rect_y_min,
-                                context->gb->direct.blend_rect_x_max,
-                                context->gb->direct.blend_rect_y_max
-                            );
                             memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                     }
