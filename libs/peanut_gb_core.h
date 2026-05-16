@@ -1554,6 +1554,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
     int _batch_n = 3;
+    // this should not be necessary
+    // but keeps e.g. Kirbys Star Stacker from freezing
     for (int _i = 0; _i < _batch_n; _i++)
     {
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle) break;
