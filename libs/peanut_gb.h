@@ -1169,6 +1169,7 @@ hle_unnecessary:
     return ioval;
 
 hle_fail:
+{
 #ifdef TARGET_SIMULATOR
     static int hle_n = 0;
     if (hle_n++ % 256 == 0)
@@ -1181,6 +1182,7 @@ hle_fail:
     }
 #endif
     return ioval;
+}
 }
 
 /**
