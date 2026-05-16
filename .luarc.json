@@ -1,5 +1,5 @@
 {
     "diagnostics": {
-        "globals": ["cb"]
+        "globals": ["cb", "crankboy", "playdate"]
     }
 }
