@@ -3484,7 +3484,6 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
     );
     bool success = false;
 
-    int save_state_size = gb_get_state_size(context->gb);
     SDFile* file = playdate->file->open(state_name, kFileReadData);
     if (!file)
     {
@@ -3604,23 +3603,12 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             }
                             else if (gameScene->script)
                             {
-                                const char* scriptbuff = buff + save_state_size;
-                                if (file_size - save_state_size != header->script_save_data_size)
-                                {
-                                    success = false;
-
-                                    CB_presentModal(
-                                        CB_Modal_new(
-                                            "Script custom state missing from state file.", NULL,
-                                            NULL, NULL
-                                        )
-                                            ->scene
-                                    );
-                                }
-                                else if (!script_load_state(
-                                             gameScene->script, (void*)scriptbuff,
-                                             header->script_save_data_size
-                                         ))
+                                const char* scriptbuff =
+                                    buff + file_size - header->script_save_data_size;
+                                if (!script_load_state(
+                                        gameScene->script, (void*)scriptbuff,
+                                        header->script_save_data_size
+                                    ))
                                 {
                                     success = false;
 
