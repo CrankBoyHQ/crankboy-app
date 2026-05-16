@@ -2059,7 +2059,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->overclock = (unsigned)(preferences_overclock);
         context->gb->cgb_speed_permitted = preferences_cgb_speed == 0;
-        context->gb->hle_enabled = preferences_hle == 1;
+        context->gb->hle_enabled = (preferences_hle == 1) && context->cgb_mode;
 
         if (gbScreenRequiresFullRefresh)
         {

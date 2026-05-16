@@ -1459,6 +1459,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .pref_var = &preferences_cgb_speed,
             .max_value = 2,
         };
+
+        entries[++i] = (OptionsMenuEntry){
+            .name = "HLE Routines",
+            .values = off_on_labels,
+            .description = "Automatically identify certain\ncommon routines and\nreplace them with\nhigh-level emulated versions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
+            .pref_var = &preferences_hle,
+            .max_value = 2,
+            .on_press = NULL
+        };
     }
 
     entries[++i] = (OptionsMenuEntry){
@@ -1648,15 +1657,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL,
         .rebuild_when_changed = 0,
         .on_change = NULL,
-    };
-
-    entries[++i] = (OptionsMenuEntry){
-        .name = "HLE Routines",
-        .values = off_on_labels,
-        .description = "Automatically identify certain\ncommon routines and\nreplace them with\nhigh-level emulated versions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
-        .pref_var = &preferences_hle,
-        .max_value = 2,
-        .on_press = NULL
     };
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
