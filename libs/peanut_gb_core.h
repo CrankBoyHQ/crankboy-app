@@ -1753,7 +1753,6 @@ done_instr_timing:
     if (gb->gb_reg.tac_enable)
     {
 #if PGB_IS_CGB
-        gb->counter.tima_count += (inst_cycles >> gb->cgb_fast_mode_active);
         gb->counter.tima_count += inst_cycles;
         uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
         while (gb->counter.tima_count >= tima_threshold)
