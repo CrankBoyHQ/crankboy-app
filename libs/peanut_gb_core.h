@@ -232,16 +232,12 @@ __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
 __core_section("short") static uint16_t $(__gb_pop16)(gb_s* restrict gb)
 {
     u16 v;
-    #if PGB_IS_DMG
-    // unconfirmed whether HRAM is used for stack much
-    // but even if it is, seems rare on CGB(?)
     if likely (gb->cpu_reg.sp >= HRAM_ADDR && gb->cpu_reg.sp < 0xFFFE)
     {
         v = gb->hram[gb->cpu_reg.sp - IO_ADDR];
         v |= gb->hram[gb->cpu_reg.sp - IO_ADDR + 1] << 8;
     }
     else
-    #endif
     {
         v = $(__gb_read16)(gb, gb->cpu_reg.sp);
     }
@@ -251,9 +247,6 @@ __core_section("short") static uint16_t $(__gb_pop16)(gb_s* restrict gb)
 
 __core_section("short") static void $(__gb_push16)(gb_s* restrict gb, u16 v)
 {
-    #if PGB_IS_DMG
-    // unconfirmed whether HRAM is used for stack much
-    // but even if it is, seems rare on CGB(?)
     if likely (gb->cpu_reg.sp >= HRAM_ADDR + 2)
     {
         gb->cpu_reg.sp--;
@@ -263,7 +256,6 @@ __core_section("short") static void $(__gb_push16)(gb_s* restrict gb, u16 v)
         gb->hram[gb->cpu_reg.sp - IO_ADDR] = v & 0xFF;
     }
     else
-    #endif
     {
         gb->cpu_reg.sp--;
         $(__gb_write)(gb, gb->cpu_reg.sp, v >> 8);
