@@ -433,10 +433,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
         uint8_t* oam_ghost_buffer;
-        uint8_t blend_rect_x_min;
-        uint8_t blend_rect_y_min;
-        uint8_t blend_rect_x_max;
-        uint8_t blend_rect_y_max;
 
         int joypad_interrupt_delay;
 
@@ -749,7 +745,28 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     // v3's padding bit is 0 so the memcpy yields the correct default.
     set_fields(v4_gb, v3_gb, zero_bank_base, printer_last_cmd);
     set_fields(v4_gb, v3_gb, num_rom_banks_mask, counter);
-    set_fields(v4_gb, v3_gb, hram, audio);
+
+    memcpy(
+        &v4_gb->hram, &v3_gb->hram,
+        offsetof(typeof(*v4_gb), direct) - offsetof(typeof(*v4_gb), hram)
+    );
+
+    {
+        size_t sz = (uintptr_t)&v4_gb->direct.oam_ghost_buffer - (uintptr_t)&v4_gb->direct +
+                    sizeof(v4_gb->direct.oam_ghost_buffer);
+        memcpy(&v4_gb->direct, &v3_gb->direct, sz);
+    }
+
+    {
+        size_t sz = sizeof(v4_gb->direct) -
+                    ((uintptr_t)&v4_gb->direct.joypad_interrupt_delay - (uintptr_t)&v4_gb->direct);
+        memcpy(&v4_gb->direct.joypad_interrupt_delay, &v3_gb->direct.joypad_interrupt_delay, sz);
+    }
+
+    {
+        size_t sz = sizeof(*v4_gb) - ((uintptr_t)&v4_gb->gb_cart_ram_size - (uintptr_t)v4_gb);
+        memcpy(&v4_gb->gb_cart_ram_size, &v3_gb->gb_cart_ram_size, sz);
+    }
 
     *out_size = gb_get_state_size_v4(v4_gb);
     char* v4_realloc = cb_realloc(v4_org, *out_size);
