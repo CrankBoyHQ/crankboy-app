@@ -37,7 +37,6 @@ extern int errno;
 
 static PlaydateAPI* pd;
 
-
 int eventHandler_pdnewlib(PlaydateAPI* _pd, PDSystemEvent event, uint32_t arg)
 {
     if (event == kEventInit)

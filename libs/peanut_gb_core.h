@@ -75,7 +75,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
     {
         return ram_region_base[addr];
     }
-    if likely (addr >= 0xFF80) // no need to check upper bound -- gb->hram[0xFF] should match IE
+    if likely (addr >= 0xFF80)  // no need to check upper bound -- gb->hram[0xFF] should match IE
     {
         return gb->hram[addr % 0x100];
     }
@@ -182,7 +182,8 @@ __core_section("short") static uint16_t $(__gb_read16)(gb_s* restrict gb, u16 ad
 __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr, u16 v)
 {
     // Fast path for WRAM
-    if likely(addr >= WRAM_0_ADDR && addr < 0xE000-1
+    if likely (
+        addr >= WRAM_0_ADDR && addr < 0xE000 - 1
 #if PGB_IS_CGB
         && addr != 0xCFFF
 #endif
@@ -193,7 +194,7 @@ __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr,
         return;
     }
     // Fast path for HRAM
-    else if likely(addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
+    else if likely (addr >= HRAM_ADDR && addr < (INTR_EN_ADDR - 1))
     {
         void* ptr = &gb->hram[addr - IO_ADDR];
         *(uint16_t*)ptr = v;
@@ -1550,7 +1551,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     // but keeps e.g. Kirbys Star Stacker from freezing
     for (int _i = 0; _i < _batch_n; _i++)
     {
-        if (gb->gb_halt || gb->gb_stop || gb->gb_hle) break;
+        if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
+            break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
         if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
             gb->gb_ime = 1;
@@ -1995,9 +1997,9 @@ __core void $(gb_run_frame)(gb_s* gb)
 {
     gb->direct.has_read_accelerometer_this_frame = false;
 
-    #if PGB_IS_CGB
+#if PGB_IS_CGB
     gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
-    #endif
+#endif
 
     gb->gb_frame = 0;
 
@@ -2006,7 +2008,6 @@ __core void $(gb_run_frame)(gb_s* gb)
     gb->direct.blend_rect_x_max = 0;
     gb->direct.blend_rect_y_max = 0;
 
-
     unsigned int total_cycles = 0;
 
 #ifdef TARGET_SIMULATOR
@@ -2014,8 +2015,7 @@ __core void $(gb_run_frame)(gb_s* gb)
     if (trace_this_frame)
     {
         playdate->system->logToConsole(
-            "=== TRACE frame begin (rom_bank=%x pc=%04x) ===",
-            gb->selected_rom_bank, gb->cpu_reg.pc
+            "=== TRACE frame begin (rom_bank=%x pc=%04x) ===", gb->selected_rom_bank, gb->cpu_reg.pc
         );
     }
 #endif
@@ -2026,15 +2026,11 @@ __core void $(gb_run_frame)(gb_s* gb)
         if (trace_this_frame)
         {
             playdate->system->logToConsole(
-                "%x:%04x op=%02x af=%02x%02x bc=%02x%02x de=%02x%02x hl=%02x%02x sp=%04x ime=%d ly=%02x",
-                gb->selected_rom_bank, gb->cpu_reg.pc,
-                __gb_read_full(gb, gb->cpu_reg.pc),
-                gb->cpu_reg.a, gb->cpu_reg.f,
-                gb->cpu_reg.b, gb->cpu_reg.c,
-                gb->cpu_reg.d, gb->cpu_reg.e,
-                gb->cpu_reg.h, gb->cpu_reg.l,
-                gb->cpu_reg.sp,
-                gb->gb_ime,
+                "%x:%04x op=%02x af=%02x%02x bc=%02x%02x de=%02x%02x hl=%02x%02x sp=%04x ime=%d "
+                "ly=%02x",
+                gb->selected_rom_bank, gb->cpu_reg.pc, __gb_read_full(gb, gb->cpu_reg.pc),
+                gb->cpu_reg.a, gb->cpu_reg.f, gb->cpu_reg.b, gb->cpu_reg.c, gb->cpu_reg.d,
+                gb->cpu_reg.e, gb->cpu_reg.h, gb->cpu_reg.l, gb->cpu_reg.sp, gb->gb_ime,
                 gb->gb_reg.LY
             );
         }
@@ -2042,13 +2038,13 @@ __core void $(gb_run_frame)(gb_s* gb)
         total_cycles += $(__gb_step_cpu)(gb);
     }
 
-    #ifdef TARGET_SIMULATOR
+#ifdef TARGET_SIMULATOR
     if (trace_this_frame)
     {
         playdate->system->logToConsole("=== TRACE frame end (cycles=%u) ===", total_cycles);
         g_trace_frames_remaining--;
     }
-    #endif
+#endif
 }
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;

@@ -584,7 +584,7 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     // swappable cartridge ROM bank
     int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
-    
+
     for (int i = 0; i < 4; ++i)
     {
         gb->rom_bank_base[1][i] = gb->gb_rom + offset;
@@ -787,31 +787,31 @@ __section__(".rare.cb") static void __gb_rare_write(
 
                 if (!gb->cgb_hdma_active && was_active)
                 {
-                    #if 0
+#if 0
                     playdate->system->logToConsole(
                         "active HDMA stopped, pc=%x, len was %d", gb->cpu_reg.pc, was_len
                     );
-                    #endif
+#endif
                 }
                 else
                 {
                     if (gb->cgb_hdma_active)
                     {
-                        #if 0
+#if 0
                         playdate->system->logToConsole(
                             "HDMA (async) 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
                             gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
                         );
-                        #endif
+#endif
                     }
                     else
                     {
-                        #if 0
+#if 0
                         playdate->system->logToConsole(
                             "HDMA 0x%x -> 0x%x, len=%d, pc=%x", gb->cgb_hdma_src,
                             gb->cgb_hdma_dst, gb->cgb_hdma_len, gb->cpu_reg.pc
                         );
-                        #endif
+#endif
                         gb->cgb_hdma_active = true;
                         while (gb->cgb_hdma_active)
                             __gb_do_hdma(gb);
@@ -886,7 +886,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         /* Interrupt Enable Register */
         case 0xFF:
             gb->gb_reg.IE = val;
-            gb->hram[0xFF] = gb->gb_reg.IE; // duplicated state -- gb_reg.IE is source of truth
+            gb->hram[0xFF] = gb->gb_reg.IE;  // duplicated state -- gb_reg.IE is source of truth
             gb->direct.joypad_interrupts = (val & CONTROL_INTR) != 0;
             return;
         }
@@ -990,29 +990,33 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case IO_PLAYDATE_EXTENSION_CTL:
             // (| 0x1C is temporary, to prevent devs from assuming the reserved bits are 0.)
             return gb->direct.crank_docked | 0x1C;
-            
+
         case 0x5A ... 0x5F:
             if (!gb->direct.has_read_accelerometer_this_frame)
             {
                 float a[3];
-                playdate->system->getAccelerometer(a, a+1, a+2);
-                
+                playdate->system->getAccelerometer(a, a + 1, a + 2);
+
                 for (int i = 0; i < 3; ++i)
                 {
                     float f = a[i];
-                    if (f >= 4) f = 4;
-                    if (f < -4) f = -4;
+                    if (f >= 4)
+                        f = 4;
+                    if (f < -4)
+                        f = -4;
                     int32_t v = 0x8000 + 0x2000 * f;
-                    if (v < 0) v = 0;
-                    if (v >= 0xFFFF) v = 0xFFFF;
-                    gb->direct.peripherals[i+1] = (uint16_t)v;
+                    if (v < 0)
+                        v = 0;
+                    if (v >= 0xFFFF)
+                        v = 0xFFFF;
+                    gb->direct.peripherals[i + 1] = (uint16_t)v;
                 }
-                
+
                 gb->direct.has_read_accelerometer_this_frame = true;
             }
-            
+
             // fallthrough
-            
+
         case 0x58:
         case 0x59:
             if (gb->direct.ext_crank_menu_indexing)
@@ -1044,11 +1048,12 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 // (e.g. tight-loop polling an io register)
 uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
 {
-    if (!gb->hle_enabled) return ioval;
-    
+    if (!gb->hle_enabled)
+        return ioval;
+
     // pc of instruction following compare
     u16 pc = gb->cpu_reg.pc;
-    
+
     // shouldn't go over ROM -- don't want to trigger side effects on read
     if (pc >= 0x7FF8 || pc < 3)
     {
@@ -1058,16 +1063,16 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
             return ioval;
         }
     }
-    
-    #define READ8(addr) (gb->ram_base[(addr) >> 12][addr])
-    
+
+#define READ8(addr) (gb->ram_base[(addr) >> 12][addr])
+
     int offset = 0;
-    if (READ8(pc-2) == 0xF0 && READ8(pc-1) == (ioaddr & 0xFF))
+    if (READ8(pc - 2) == 0xF0 && READ8(pc - 1) == (ioaddr & 0xFF))
     {
         // ld A, (a8)
         offset = -2;
     }
-    else if (READ8(pc - 3) == 0xFA && ((READ8(pc - 1)<<8) | READ8(pc - 2)) == ioaddr)
+    else if (READ8(pc - 3) == 0xFA && ((READ8(pc - 1) << 8) | READ8(pc - 2)) == ioaddr)
     {
         // ld A, (a16)
         offset = -3;
@@ -1086,11 +1091,11 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     {
         goto hle_fail;
     }
-    
+
     u8 op0 = READ8(pc);
-    u8 d8 = READ8(pc+1);
-    u16 addr_next = pc+2;
-    int c=-1, z=-1;
+    u8 d8 = READ8(pc + 1);
+    u16 addr_next = pc + 2;
+    int c = -1, z = -1;
     if (op0 == 0xFE || op0 == 0xD6)
     {
         // cp d8 / sub d8
@@ -1107,66 +1112,74 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     {
         goto hle_fail;
     }
-    
-    u8 opjd = READ8(addr_next+1);
-    
+
+    u8 opjd = READ8(addr_next + 1);
+
     // jr destination should be the read-io opcode
-    if (opjd != 0xFC + offset) goto hle_fail;
-    
+    if (opjd != 0xFC + offset)
+        goto hle_fail;
+
     // jr condition
     u8 opj = READ8(addr_next);
     if (opj == 0x20)
     {
         // JR NZ
-        if (z == 1) goto hle_unnecessary;
+        if (z == 1)
+            goto hle_unnecessary;
     }
     else if (opj == 0x30)
     {
         // JR NC
-        if (c == 1) goto hle_unnecessary;
+        if (c == 1)
+            goto hle_unnecessary;
     }
     else if (opj == 0x28)
     {
         // JR Z
-        if (z == 0) goto hle_unnecessary;
+        if (z == 0)
+            goto hle_unnecessary;
     }
     else if (opj == 0x38)
     {
         // JR C
-        if (c == 0) goto hle_unnecessary;
+        if (c == 0)
+            goto hle_unnecessary;
     }
     else
     {
         goto hle_fail;
     }
-    
-    #undef READ8
-    
+
+#undef READ8
+
 hle_success:
-    // YES, we can hle!
-    #ifdef TARGET_SIMULATOR
-    //playdate->system->logToConsole("HLE %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
-    #endif
-    
+// YES, we can hle!
+#ifdef TARGET_SIMULATOR
+// playdate->system->logToConsole("HLE %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset,
+// ioaddr);
+#endif
+
     // rewind pc and wait
     gb->gb_hle = true;
     gb->cpu_reg.pc += offset;
-    
+
     return ioval;
-    
+
 hle_unnecessary:
     return ioval;
-    
+
 hle_fail:
-    #ifdef TARGET_SIMULATOR
+#ifdef TARGET_SIMULATOR
     static int hle_n = 0;
     if (hle_n++ % 256 == 0)
     {
         // only display a portion of these, as they flood the console otherwise.
         // important to print some though, so we can improve HLE detection over time.
-        playdate->system->logToConsole("HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr);
+        playdate->system->logToConsole(
+            "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr
+        );
     }
-    #endif
+#endif
     return ioval;
 }
 
@@ -1181,12 +1194,12 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
     case 0x1:
     case 0x2:
     case 0x3:
-    
+
     case 0x4:
     case 0x5:
     case 0x6:
     case 0x7:
-    
+
     case 0xC:
     case 0xD:
     case 0xE:
@@ -1214,7 +1227,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             }
             else if (gb->mbc == 7)
             {
-                if (addr >= 0xB000) return 0xFF;
+                if (addr >= 0xB000)
+                    return 0xFF;
                 if (gb->mbc7.ram_enable_1 && gb->mbc7.ram_enable_2)
                 {
                     uint8_t reg = (addr >> 4) & 0x0F;
@@ -1228,13 +1242,13 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                         return gb->mbc7.accel_y_latched & 0xFF;
                     case 0x5:
                         return gb->mbc7.accel_y_latched >> 8;
-                        
+
                         // nonexistent Z axis?
                     case 0x6:
                         return 0x00;
                     case 0x7:
                         return 0xFF;
-                        
+
                     case 0x8:
                         return gb->mbc7.eeprom_pins | 0x7C;
                     }
@@ -1434,7 +1448,8 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         /* All commands are 9 bits after start bit */
         if (gb->mbc7.eeprom_bits_shifted == 9)
         {
-            // playdate->system->logToConsole("mbc7 command: %3x", gb->mbc7.eeprom_shift_reg & 0x1FF);
+            // playdate->system->logToConsole("mbc7 command: %3x", gb->mbc7.eeprom_shift_reg &
+            // 0x1FF);
             uint8_t opcode = (gb->mbc7.eeprom_shift_reg >> 7) & 0x03;
             gb->mbc7.eeprom_addr = gb->mbc7.eeprom_shift_reg & 0x7F;
 
@@ -1451,10 +1466,10 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                 {
                     if (gb->mbc7.eeprom_write_enabled)
                     {
-                        for (int i = 0; i < gb->gb_cart_ram_size/2; i++)
+                        for (int i = 0; i < gb->gb_cart_ram_size / 2; i++)
                             ((uint16_t*)gb->gb_cart_ram)[i] = 0xFFFF;
                         gb->direct.sram_updated = true;
-                    }   
+                    }
                 }
                 else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0001) /* WRAL */
                 {
@@ -1478,7 +1493,8 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
             case 0b10:                     /* READ */
                 gb->mbc7.eeprom_state = 2; /* READ */
                 gb->mbc7.eeprom_read_buffer = ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr];
-                // playdate->system->logToConsole("mbc7 read: %04x -> %04x", gb->mbc7.eeprom_addr, gb->mbc7.eeprom_read_buffer);
+                // playdate->system->logToConsole("mbc7 read: %04x -> %04x", gb->mbc7.eeprom_addr,
+                // gb->mbc7.eeprom_read_buffer);
                 gb->mbc7.eeprom_bits_shifted = 0;
                 return;
 
@@ -1523,7 +1539,7 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
             if (gb->mbc7.eeprom_addr == 0xFF)
             {
                 // clear EEPROM
-                for (int i = 0; i < gb->gb_cart_ram_size/2; i++)
+                for (int i = 0; i < gb->gb_cart_ram_size / 2; i++)
                     ((uint16_t*)gb->gb_cart_ram)[i] = data;
                 gb->direct.sram_updated = 1;
                 // playdate->system->logToConsole("mbc7 wall %04x", data);
@@ -1537,12 +1553,13 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                     gb->direct.sram_updated = 1;
                     *v = data;
                 }
-                // playdate->system->logToConsole("mbc7 write %04x <- %04x",gb->mbc7.eeprom_addr, data);
+                // playdate->system->logToConsole("mbc7 write %04x <- %04x",gb->mbc7.eeprom_addr,
+                // data);
             }
-            
+
             gb->mbc7.eeprom_bits_shifted = 0;
             gb->mbc7.eeprom_state = 0;
-            
+
             // indicate "done"
             // NOTE: in real hardware, this bit is clear during the time it takes
             // for a write to complete
@@ -1740,16 +1757,20 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                         if (gb->mbc7.accel_latch_state == 1 && val == 0xAA)
                         {
                             float a[2];
-                            playdate->system->getAccelerometer(a, a+1, NULL);
+                            playdate->system->getAccelerometer(a, a + 1, NULL);
 
                             for (int i = 0; i < 2; ++i)
                             {
                                 float f = a[i];
-                                if (f < -300.0f) f = -300.0f;
-                                if (f > 300.0f) f = 300.0f;
+                                if (f < -300.0f)
+                                    f = -300.0f;
+                                if (f > 300.0f)
+                                    f = 300.0f;
                                 int32_t v = (int32_t)(0x81D0 + 0x70 * f + 0.5f);
-                                if (v < 0) v = 0;
-                                if (v > 0xFFFF) v = 0xFFFF;
+                                if (v < 0)
+                                    v = 0;
+                                if (v > 0xFFFF)
+                                    v = 0xFFFF;
                                 if (i == 0)
                                     gb->mbc7.accel_x_latched = v;
                                 else
@@ -4487,10 +4508,10 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
     if (gb->gb_stop && gb->direct.joypad != 0xFF)
     {
         gb->gb_stop = 0;
-        gb->gb_hle = false; // paranoia
+        gb->gb_hle = false;  // paranoia
         return 16;
     }
-    
+
     gb->gb_hle = false;
 
 #if 0
@@ -5077,7 +5098,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
-    
+
     // gb_cart_ram_size is set later, in read_cart_ram_file (a required initialization step)
 
     char title_str[17];

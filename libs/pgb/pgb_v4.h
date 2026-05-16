@@ -248,7 +248,7 @@ struct PGB_VERSIONED(gb_s)
     {
         uint8_t gb_halt : 1;
         uint8_t gb_stop : 1;
-        uint8_t gb_hle : 1; // cpu suspended during high-level emulation of a routine
+        uint8_t gb_hle : 1;  // cpu suspended during high-level emulation of a routine
         uint8_t gb_ime : 1;
         uint8_t gb_ime_countdown : 2;
         uint8_t is_cgb_mode : 1;
@@ -286,14 +286,14 @@ struct PGB_VERSIONED(gb_s)
 
     // 1-7, cgb only
     bool cgb_fast_mode_armed : 1;
-    
+
     uint8_t cgb_wram_bank : 3;
     uint8_t cgb_ff75 : 3;
-    bool cgb_fast_mode : 1; // source-of-truth
+    bool cgb_fast_mode : 1;  // source-of-truth
     uint8_t cgb_ff6c : 1;
-    
+
     uint8_t cgb_vram_bank : 1;
-    bool cgb_fast_mode_active : 1; // temp. as above, but settings-affected
+    bool cgb_fast_mode_active : 1;  // temp. as above, but settings-affected
     bool cgb_speed_permitted : 1;
     bool hle_enabled : 1;
 
@@ -375,10 +375,10 @@ struct PGB_VERSIONED(gb_s)
         struct
         {
             /*0-7*/ uint8_t* rom_bank_base[2][4];
-            /*8-9*/ uint8_t* _unused_vram[2]; // unused (see note on vram)
-            /*A-B*/ uint8_t* _unused_cart_base[2]; // unused (need to set sram dirty bit) -- TODO
+            /*8-9*/ uint8_t* _unused_vram[2];       // unused (see note on vram)
+            /*A-B*/ uint8_t* _unused_cart_base[2];  // unused (need to set sram dirty bit) -- TODO
             /*C-D*/ uint8_t* wram_base[2];
-            /*E  */ uint8_t* echo_ram_base; // section E only
+            /*E  */ uint8_t* echo_ram_base;  // section E only
             /*F  */ uint8_t* _unused_io;
         };
     };
