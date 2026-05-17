@@ -2,10 +2,10 @@
 #include "../scenes/game_scene.h"
 #include "../scriptutil.h"
 
-#define DESCRIPTION                                                                             \
-    "- Moves HUD to sidebar\n"                                                                  \
-    "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n"               \
-    "- Automatically enables frame blending while under water (flicker transparency effect).\n" \
+#define DESCRIPTION                                                               \
+    "- Moves HUD to sidebar\n"                                                    \
+    "- Can press Ⓐ or Ⓑ in most situations where Start/Select would be needed.\n" \
+    "- Enables frame blending globally (flicker transparency effect).\n"          \
     "\nCreated by: NaOH (Sodium Hydroxide)"
 
 #define ASSETS_DIR SCRIPT_ASSETS_DIR "trip-world/"
@@ -16,53 +16,10 @@ typedef struct ScriptData
 
     int prev_lives, prev_hp, prev_score;
 
-    int flags_changing;
-    bool prev_blend;
-
     uint16_t glyphs12[0x60][12];
 } ScriptData;
 
 #define USERDATA ScriptData* data
-
-static void handle_flicker(gb_s* gb, ScriptData* data)
-{
-    data->flags_changing = 5;
-}
-
-SCRIPT_BREAKPOINT(0x0892)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x08D2)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x0BC7)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x0D81)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x1106)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x1937)
-{
-    handle_flicker(gb, data);
-}
-
-SCRIPT_BREAKPOINT(0x1C01A)
-{
-    handle_flicker(gb, data);
-}
 
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
@@ -71,6 +28,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
+    force_pref(blend_frames, true);
 
     game_picture_background_color = kColorBlack;
     int s = script_load_tiles12(SCRIPT_ASSETS_DIR "glyph12", data->glyphs12, 0x60);
@@ -116,19 +74,6 @@ static int get_score(gb_s* gb)
 static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     bool show_sidebar = gb->gb_reg.WY == 0x80;
-
-    bool should_blend = data->flags_changing > 0;
-    if (should_blend != data->prev_blend)
-    {
-        force_pref(blend_frames, should_blend);
-        force_pref(dynamic_rate, should_blend ? DYNAMIC_RATE_ON : DYNAMIC_RATE_OFF);
-        data->prev_blend = should_blend;
-    }
-
-    if (data->flags_changing > 0)
-    {
-        data->flags_changing -= frames_elapsed;
-    }
 
     if (show_sidebar)
     {
