@@ -1528,8 +1528,6 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
     int _batch_n = 3;
-    // this should not be necessary
-    // but keeps e.g. Kirbys Star Stacker from freezing
     for (int _i = 0; _i < _batch_n; _i++)
     {
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
@@ -1543,8 +1541,6 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         }
         if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
             gb->gb_ime = 1;
-        if ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-            __gb_interrupt(gb);
     }
 #else
     // run once as each, verify
