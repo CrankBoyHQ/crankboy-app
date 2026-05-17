@@ -421,7 +421,22 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
 
     if (will_use_script && info)
     {
-        launch_dmg_or_cgb(game, info->launch_cgb ? 1 : 0);
+        int cgb = 0;
+        if (info->launch_cgb)
+        {
+            SDFile* f = playdate->file->open(game->fullpath, kFileReadDataOrBundle);
+            if (f)
+            {
+                playdate->file->seek(f, 0x143, SEEK_SET);
+                uint8_t cgb_flag;
+                if (playdate->file->read(f, &cgb_flag, 1) == 1)
+                {
+                    cgb = (cgb_flag == 0x80 || cgb_flag == 0xC0) ? 1 : 0;
+                }
+                playdate->file->close(f);
+            }
+        }
+        launch_dmg_or_cgb(game, cgb);
     }
     else
     {

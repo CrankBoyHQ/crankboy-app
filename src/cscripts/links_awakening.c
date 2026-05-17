@@ -582,6 +582,7 @@ C_SCRIPT{
     .rom_name = "ZELDA",
     .description = DESCRIPTION,
     .experimental = false,
+    .launch_cgb = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
