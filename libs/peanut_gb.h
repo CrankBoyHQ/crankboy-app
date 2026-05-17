@@ -3186,6 +3186,14 @@ _0x76:
         gb->cpu_reg.pc--;
         gb->gb_halt = 1;
     }
+    else
+    {
+        /* HALT bug (DMG, IME=0, pending interrupt) without EI delay.
+         * HALT exits immediately, PC fails to increment past next byte,
+         * so the byte after HALT gets read a second time. */
+        gb->gb_halt_bug = 2;
+        gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+    }
     goto exit;
 }
 
@@ -4753,6 +4761,7 @@ void gb_init_serial(
 __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 {
     gb->gb_halt = 0;
+    gb->gb_halt_bug = 0;
     gb->gb_ime = 1;
 
     /* Initialise MBC values. */
@@ -5342,6 +5351,14 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
              * HALT, which then re-executes and properly halts. */
             gb->cpu_reg.pc--;
             gb->gb_halt = 1;
+        }
+        else
+        {
+            /* HALT bug (DMG, IME=0, pending interrupt) without EI delay.
+             * HALT exits immediately, PC fails to increment past next byte,
+             * so the byte after HALT gets read a second time. */
+            gb->gb_halt_bug = 2;
+            gb->gb_halt_bug_pc = gb->cpu_reg.pc;
         }
         return 1 * 4;
     case 0xE8:

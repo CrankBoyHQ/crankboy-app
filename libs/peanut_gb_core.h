@@ -1535,6 +1535,12 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
             break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
+        if unlikely (gb->gb_halt_bug)
+        {
+            if (gb->gb_halt_bug == 1)
+                gb->cpu_reg.pc = gb->gb_halt_bug_pc;
+            gb->gb_halt_bug--;
+        }
         if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
             gb->gb_ime = 1;
         if ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
@@ -1670,6 +1676,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
                 inst_cycles_m
             );
         }
+    }
+
+    if unlikely (gb->gb_halt_bug)
+    {
+        if (gb->gb_halt_bug == 1)
+            gb->cpu_reg.pc = gb->gb_halt_bug_pc;
+        gb->gb_halt_bug--;
     }
 
     // EI delay handling

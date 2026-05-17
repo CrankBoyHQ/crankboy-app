@@ -266,7 +266,10 @@ struct PGB_VERSIONED(gb_s)
         uint8_t lcd_mode : 2;
         uint8_t lcd_blank : 1;
         uint8_t lcd_master_enable : 1;
+        uint8_t gb_halt_bug : 2;
     };
+
+    uint16_t gb_halt_bug_pc;
 
     uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
 
