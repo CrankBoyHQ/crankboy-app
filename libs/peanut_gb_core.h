@@ -1055,9 +1055,9 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 {
                     if (gb->gb_ime == 0)
                     {
-                        // HALT Bug: pc fails to increment correctly.
-                        // We rewind the pc to re-execute the byte after the opcode.
-                        gb->cpu_reg.pc--;
+                        /* HALT Bug: pc fails to increment correctly.
+                         * PC is already at the operand address (NOP),
+                         * so it will re-execute the byte after the opcode. */
                     }
                     else
                     {

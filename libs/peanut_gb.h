@@ -3178,6 +3178,14 @@ _0x76:
     {
         gb->gb_halt = 1;
     }
+    else if (gb->gb_ime_countdown > 0)
+    {
+        /* HALT bug (DMG, IME=0, pending interrupt) with active EI delay.
+         * Rewind PC to HALT address so the pending interrupt returns to
+         * HALT, which then re-executes and properly halts. */
+        gb->cpu_reg.pc--;
+        gb->gb_halt = 1;
+    }
     goto exit;
 }
 
@@ -5291,8 +5299,6 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
             gb->gb_reg.DIV = 0;
         }
 
-        gb->gb_ime = 0;
-
         return cycles;
     }
     case 0x27:  // daa
@@ -5327,6 +5333,14 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
     case 0x76:
         if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
         {
+            gb->gb_halt = 1;
+        }
+        else if (gb->gb_ime_countdown > 0)
+        {
+            /* HALT bug (DMG, IME=0, pending interrupt) with active EI delay.
+             * Rewind PC to HALT address so the pending interrupt returns to
+             * HALT, which then re-executes and properly halts. */
+            gb->cpu_reg.pc--;
             gb->gb_halt = 1;
         }
         return 1 * 4;
