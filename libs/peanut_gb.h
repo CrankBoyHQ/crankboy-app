@@ -965,7 +965,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x70:  // SVBK (CGB WRAM Bank)
             if (gb->is_cgb_mode)
             {
-                return (~7) | MAX(1, gb->cgb_wram_bank);
+                return (~7) | gb->cgb_wram_bank;
             }
             else
                 return 0xFF;
@@ -4807,7 +4807,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         /* Set registers to state after CGB boot ROM */
         gb->gb_reg.P1 = 0xCF;
         gb->gb_reg.SB = 0x00;
-        gb->gb_reg.SC = 0x7E;
+        gb->gb_reg.SC = 0x7F;
         gb->gb_reg.DIV = 0x26;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
@@ -4879,7 +4879,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         /*****************************************************************/
 
         /* Initialize CPU registers as though the boot ROM has just finished. */
-        gb->cpu_reg.af = 0xB001;
+        uint8_t f = (gb->gb_rom[0x014D] == 0) ? 0x80 : 0xB0;
+        gb->cpu_reg.af = (f << 8) | 0x01;
         gb->cpu_reg.bc = 0x0013;
         gb->cpu_reg.de = 0x00D8;
         gb->cpu_reg.hl = 0x014D;
@@ -5097,7 +5098,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && cgb_mode;
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
-    gb->cgb_wram_bank = 1;
+    gb->cgb_wram_bank = 0;
     gb->cgb_ff6c = 0;
     gb->cgb_ff75 = 0;
     gb->cgb_vram_bank = 0;
