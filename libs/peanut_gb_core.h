@@ -532,6 +532,9 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             end = OX - 9;
         }
 
+#if PGB_IS_CGB
+        uint8_t cgb_obj_pal = gb->cgb_obj_palette_gray[OF & OBJ_CGB_PALETTE];
+#endif
         uint8_t c_add = (OF & OBJ_PALETTE) ? 4 : 0;
 
         for (int disp_x = start; disp_x != end; disp_x += dir)
@@ -549,7 +552,11 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 
                 if (!((OF & OBJ_PRIORITY) && !bg_is_transparent))
                 {
+#if PGB_IS_CGB
+                    uint8_t color_value = (cgb_obj_pal >> (c * 2)) & 3;
+#else
                     uint8_t color_value = (OBP >> (c * 2 + c_add * 2)) & 3;
+#endif
                     if (is_ghost)
                     {
                         uint8_t old_color = $(__gb_get_pixel)(pixels, disp_x);
@@ -570,6 +577,73 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         }
     }
 }
+
+#if PGB_IS_CGB
+__core_section("draw") static uint16_t __cgb_remap_tile(
+    uint8_t lo_plane, uint8_t hi_plane, uint8_t pal
+)
+{
+    uint16_t result = 0;
+    for (int q = 1; q >= 0; q--)
+    {
+        int shift = q * 4;
+        uint8_t n1 = (lo_plane >> shift) & 0x0F;
+        uint8_t n2 = (hi_plane >> shift) & 0x0F;
+        uint8_t pix0 = ((n1 >> 0) & 1) | (((n2 >> 0) & 1) << 1);
+        uint8_t pix1 = ((n1 >> 1) & 1) | (((n2 >> 1) & 1) << 1);
+        uint8_t pix2 = ((n1 >> 2) & 1) | (((n2 >> 2) & 1) << 1);
+        uint8_t pix3 = ((n1 >> 3) & 1) | (((n2 >> 3) & 1) << 1);
+        uint8_t c0 = (pal >> (2 * pix3)) & 3;
+        uint8_t c1 = (pal >> (2 * pix2)) & 3;
+        uint8_t c2 = (pal >> (2 * pix1)) & 3;
+        uint8_t c3 = (pal >> (2 * pix0)) & 3;
+        result <<= 8;
+        result |= (uint16_t)((c0 << 6) | (c1 << 4) | (c2 << 2) | c3);
+    }
+    return result;
+}
+
+__core_section("draw") static void __cgb_merge_tiles(
+    uint16_t tile_data_lo, uint16_t tile_data_hi, uint8_t pal_lo, uint8_t pal_hi, int subx,
+    uint8_t* out0, uint8_t* out2, uint8_t* pri
+)
+{
+    uint8_t lo_p = (uint8_t)tile_data_lo;
+    uint8_t hi_p = (uint8_t)(tile_data_lo >> 8);
+    uint16_t rm_lo = __cgb_remap_tile(lo_p, hi_p, pal_lo);
+
+    if (subx == 0)
+    {
+        *out0 = (uint8_t)rm_lo;
+        *out2 = (uint8_t)(rm_lo >> 8);
+        *pri = lo_p | hi_p;
+        return;
+    }
+    uint8_t lo_hp = (uint8_t)tile_data_hi;
+    uint8_t hi_hp = (uint8_t)(tile_data_hi >> 8);
+    uint16_t rm_hi = __cgb_remap_tile(lo_hp, hi_hp, pal_hi);
+    int shift = subx * 2;
+    uint16_t merged = (rm_lo >> shift) | (rm_hi << (16 - shift));
+    *out0 = (uint8_t)merged;
+    *out2 = (uint8_t)(merged >> 8);
+    *pri = (uint8_t)((lo_p | hi_p) >> subx) | (uint8_t)((lo_hp | hi_hp) << (8 - subx));
+}
+
+__core_section("draw") static uint16_t __cgb_fetch_tile(
+    uint8_t* restrict tile_map, uint8_t* restrict attr_map, uint16_t* restrict reg_data,
+    uint16_t* restrict flip_data, uint8_t map_idx, int tiledata_offset, uint8_t* out_palette
+)
+{
+    map_idx %= 32;
+    uint8_t tile_idx = tile_map[map_idx];
+    uint8_t attrs = attr_map[map_idx];
+    unsigned bank = (attrs & BG_MAP_ATTR_BANK) ? VRAM_SIZE / sizeof(uint16_t) : 0;
+    uint16_t* data = (attrs & BG_MAP_ATTR_Y_FLIP) ? flip_data : reg_data;
+    uint16_t tile = data[bank | (tile_idx < 0x80 ? tiledata_offset : 0) | (8 * (unsigned)tile_idx)];
+    *out_palette = attrs & BG_MAP_ATTR_PALETTE;
+    return reverse_bits_in_each_byte_conditional_u16(tile, !!(attrs & BG_MAP_ATTR_X_FLIP));
+}
+#endif
 
 // renders one scanline
 __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
@@ -605,9 +679,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
     for (int i = 0; i < line_priority_len; ++i)
     {
-        line_priority[i] = 0;
 #if PGB_IS_CGB
+        line_priority[i] = ~0u;
         line_cgb_priority[i] = 0;
+#else
+        line_priority[i] = 0;
 #endif
     }
 
@@ -745,31 +821,18 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         }
 #endif
 
-        uint8_t tile_hi = vram_line_tiles[(bg_x / 8) % 32];
-
-        unsigned bank_offset = 0;
 #if PGB_IS_CGB
-        uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
-        if (tile_attributes & BG_MAP_ATTR_BANK)
-        {
-            bank_offset = VRAM_SIZE / sizeof(uint16_t);
-        }
-#endif
-
-        uint16_t vram_tile_data_hi =
-#if PGB_IS_CGB
-            // cgb can flip tiles
-            ((tile_attributes & BG_MAP_ATTR_Y_FLIP) ? vram_tile_data_flipped_y : vram_tile_data)
-#else
-            vram_tile_data
-#endif
-                [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
-                 (8 * (unsigned)tile_hi)];
-
-#if PGB_IS_CGB
-        vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(
-            vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP)
+        uint8_t tile_palette_lo;
+        uint16_t vram_tile_data_hi = __cgb_fetch_tile(
+            vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
+            (bg_x / 8) % 32, addr_mode_vram_tiledata_offset, &tile_palette_lo
         );
+#else
+        unsigned bank_offset = 0;
+        uint8_t tile_hi = vram_line_tiles[(bg_x / 8) % 32];
+        uint16_t vram_tile_data_hi = vram_tile_data
+            [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
+             (8 * (unsigned)tile_hi)];
 #endif
 
         for (int x = 0; x < (wx + 7) / 8; ++x)
@@ -778,30 +841,30 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
             uint16_t tile_hi = vram_line_tiles[(bg_x / 8 + x + 1) % 32];
 
-            unsigned bank_offset = 0;
 #if PGB_IS_CGB
-            uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
-            if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = VRAM_SIZE / sizeof(uint16_t);
+                uint8_t tile_palette_hi_val;
+                vram_tile_data_hi = __cgb_fetch_tile(
+                    vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
+                    (bg_x / 8 + x + 1) % 32, addr_mode_vram_tiledata_offset, &tile_palette_hi_val
+                );
+                uint8_t out0, out2, pri;
+                __cgb_merge_tiles(
+                    vram_tile_data_lo, vram_tile_data_hi, gb->cgb_bg_palette_gray[tile_palette_lo],
+                    gb->cgb_bg_palette_gray[tile_palette_hi_val], subx, &out0, &out2, &pri
+                );
+                pixels[x * 2] = out0;
+                pixels[x * 2 + 1] = out2;
+
+                line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
+
+                tile_palette_lo = tile_palette_hi_val;
             }
-#endif
-
-            vram_tile_data_hi =
-#if PGB_IS_CGB
-                // cgb can flip tiles
-                ((tile_attributes & BG_MAP_ATTR_Y_FLIP) ? vram_tile_data_flipped_y : vram_tile_data)
 #else
-                vram_tile_data
-#endif
-                    [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
-                     (8 * (unsigned)tile_hi)];
-
-#if PGB_IS_CGB
-            vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(
-                vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP)
-            );
-#endif
+            unsigned bank_offset = 0;
+            vram_tile_data_hi = vram_tile_data
+                [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
+                 (8 * (unsigned)tile_hi)];
 
             uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
             uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx | 8);
@@ -810,6 +873,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
             out[0] = raw1;
             out[2] = raw2;
+#endif
         }
     }
 
@@ -865,31 +929,18 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         }
 #endif
 
-        uint8_t tile_hi = vram_line_tiles[(bg_x / 8 + wx / 8) % 32];
-
-        unsigned bank_offset = 0;
 #if PGB_IS_CGB
-        uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8) % 32];
-        if (tile_attributes & BG_MAP_ATTR_BANK)
-        {
-            bank_offset = VRAM_SIZE / sizeof(uint16_t);
-        }
-#endif
-
-        uint16_t vram_tile_data_hi =
-#if PGB_IS_CGB
-            // cgb can flip tiles
-            ((tile_attributes & BG_MAP_ATTR_Y_FLIP) ? vram_tile_data_flipped_y : vram_tile_data)
-#else
-            vram_tile_data
-#endif
-                [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
-                 (8 * (unsigned)tile_hi)];
-
-#if PGB_IS_CGB
-        vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(
-            vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP)
+        uint8_t win_palette_lo;
+        uint16_t vram_tile_data_hi = __cgb_fetch_tile(
+            vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
+            (bg_x / 8 + wx / 8) % 32, addr_mode_vram_tiledata_offset, &win_palette_lo
         );
+#else
+        unsigned bank_offset = 0;
+        uint8_t tile_hi = vram_line_tiles[(bg_x / 8 + wx / 8) % 32];
+        uint16_t vram_tile_data_hi = vram_tile_data
+            [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
+             (8 * (unsigned)tile_hi)];
 #endif
 
         int subx = bg_x % 8;
@@ -907,30 +958,44 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
             uint16_t tile_hi = vram_line_tiles[(bg_x / 8 + x + 1) % 32];
 
-            unsigned bank_offset = 0;
 #if PGB_IS_CGB
-            uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x + 1) % 32];
-            if (tile_attributes & BG_MAP_ATTR_BANK)
             {
-                bank_offset = VRAM_SIZE / sizeof(uint16_t);
+                uint8_t tile_palette_hi_val;
+                vram_tile_data_hi = __cgb_fetch_tile(
+                    vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
+                    (bg_x / 8 + x + 1) % 32, addr_mode_vram_tiledata_offset, &tile_palette_hi_val
+                );
+                uint8_t out0, out2, pri;
+                __cgb_merge_tiles(
+                    vram_tile_data_lo, vram_tile_data_hi, gb->cgb_bg_palette_gray[win_palette_lo],
+                    gb->cgb_bg_palette_gray[tile_palette_hi_val], subx, &out0, &out2, &pri
+                );
+
+                if (bgmask)
+                {
+                    uint8_t n_bg = 8 - subx;
+                    uint8_t mask0_byte = (n_bg >= 4) ? 0xFFu : (uint8_t)((1u << (2 * n_bg)) - 1);
+                    uint8_t mask2_byte =
+                        (n_bg <= 4) ? 0x00u : (uint8_t)((1u << (2 * (n_bg - 4))) - 1);
+                    uint8_t* win_out = pixels + x * 2;
+                    win_out[0] = (win_out[0] & mask0_byte) | (out0 & ~mask0_byte);
+                    win_out[1] = (win_out[1] & mask2_byte) | (out2 & ~mask2_byte);
+                }
+                else
+                {
+                    pixels[x * 2] = out0;
+                    pixels[x * 2 + 1] = out2;
+                }
+
+                line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
+
+                win_palette_lo = tile_palette_hi_val;
             }
-#endif
-
-            vram_tile_data_hi =
-#if PGB_IS_CGB
-                // cgb can flip tiles
-                ((tile_attributes & BG_MAP_ATTR_Y_FLIP) ? vram_tile_data_flipped_y : vram_tile_data)
 #else
-                vram_tile_data
-#endif
-                    [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
-                     (8 * (unsigned)tile_hi)];
-
-#if PGB_IS_CGB
-            vram_tile_data_hi = reverse_bits_in_each_byte_conditional_u16(
-                vram_tile_data_hi, !!(tile_attributes & BG_MAP_ATTR_X_FLIP)
-            );
-#endif
+            unsigned bank_offset = 0;
+            vram_tile_data_hi = vram_tile_data
+                [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
+                 (8 * (unsigned)tile_hi)];
 
             uint8_t raw1 = (vram_tile_data_lo & 0x00FF) >> subx;
             uint8_t raw2 = (uint16_t)vram_tile_data_lo >> (subx | 8);
@@ -942,13 +1007,14 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
             *(uint32_t*)&out[0] &= combined_mask;
             *(uint32_t*)&out[0] |= combined_planes;
-
+#endif
             // all further chunks should completely mask out the background
             bgmask = 0;
         }
         gb->display.window_clear++;
     }
 
+#if PGB_IS_DMG
     // remap background pixel by palette, and set priority
     uint32_t pal = gb->gb_reg.BGP;
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
@@ -965,10 +1031,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         *(uint32_t*)p = rm;
         ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
+#endif
 
     uint32_t* used_line_priority = line_priority;
 
-#if IS_CGB_MODE
+#if PGB_IS_CGB
     if (!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY))
     {
         used_line_priority = gb->zero32;

@@ -835,6 +835,9 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     generate_dither_luts();
 
+    if (context->cgb_mode)
+        gb_recompute_cgb_gray_palettes(context->gb);
+
     if (audio_settings_changed)
     {
         int headphones = 0;

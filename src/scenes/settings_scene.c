@@ -455,6 +455,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
+static const char* cgb_brightness_labels[] = {"Bright", "Normal", "Dark"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
 static const char* gb_button_labels_hp[] = {
@@ -1463,6 +1464,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .description = "Automatically identify certain\ncommon routines and\nreplace them with\nhigh-level emulated versions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
             .pref_var = &preferences_hle,
             .max_value = 2,
+            .on_press = NULL
+        };
+
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Brightness",
+            .values = cgb_brightness_labels,
+            .description = "Adjusts how CGB colors\nmap to the 4 gray shades\non the 1-bit display.\n \nBright: more visible detail,\nlighter appearance.\n \nNormal: balanced mapping.\n \nDark: deeper shadows, but\nmay lose detail.",
+            .pref_var = &preferences_cgb_brightness,
+            .max_value = 3,
             .on_press = NULL
         };
     }

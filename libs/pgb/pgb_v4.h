@@ -306,6 +306,13 @@ struct PGB_VERSIONED(gb_s)
     uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
+    uint8_t cgb_bg_palette[64];
+    uint8_t cgb_obj_palette[64];
+    uint8_t cgb_bg_palette_gray[8];
+    uint8_t cgb_obj_palette_gray[8];
+    uint8_t cgb_bg_palette_index;
+    uint8_t cgb_obj_palette_index;
+
     uint8_t printer_stub_state;
     uint16_t printer_data_len;
     uint8_t printer_last_cmd;

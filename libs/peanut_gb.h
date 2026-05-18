@@ -154,7 +154,8 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define LCDC_CGB_MASTER_PRIORITY 0x01
 
 /* CGB BG map tile attributes */
-#define BG_MAP_ATTR_PRIORITY 0x80
+#define BG_MAP_ATTR_PRIORITY \
+    0x80  // unimplemented: per-tile BG-over-OBJ priority (deferred, rarely used by CGB games)
 #define BG_MAP_ATTR_Y_FLIP 0x40
 #define BG_MAP_ATTR_X_FLIP 0x20
 #define BG_MAP_ATTR_BANK 0x08
@@ -323,6 +324,7 @@ typedef struct PGB_VERSIONED(chan_freq_sweep) chan_freq_sweep;
 typedef struct PGB_VERSIONED(chan) chan;
 
 void gb_step_cpu(gb_s* gb);
+void gb_recompute_cgb_gray_palettes(gb_s* gb);
 
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 bool gb_get_rom_uses_battery(uint8_t* gb_rom);
@@ -713,6 +715,80 @@ __shell static void __gb_do_hdma(gb_s* gb)
     gb->cgb_hdma_dst += 0x10;
 }
 
+__section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
+{
+    switch (preferences_cgb_brightness)
+    {
+    case 0:
+        if (sum >= 50)
+            return 0;
+        if (sum >= 22)
+            return 1;
+        if (sum >= 5)
+            return 2;
+        return 3;
+    case 2:
+        if (sum >= 82)
+            return 0;
+        if (sum >= 56)
+            return 1;
+        if (sum >= 28)
+            return 2;
+        return 3;
+    default:
+        if (sum >= 63)
+            return 0;
+        if (sum >= 35)
+            return 1;
+        if (sum >= 12)
+            return 2;
+        return 3;
+    }
+}
+
+__section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t pal_idx)
+{
+    uint8_t pal = 0;
+    for (int c = 0; c < 4; c++)
+    {
+        uint8_t lo = gb->cgb_bg_palette[pal_idx * 8 + c * 2];
+        uint8_t hi = gb->cgb_bg_palette[pal_idx * 8 + c * 2 + 1];
+        uint8_t r = lo & 0x1F;
+        uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
+        uint8_t b = (hi >> 2) & 0x1F;
+        uint16_t sum = (uint16_t)r + g + b;
+        uint8_t gray = __cgb_gray_from_sum(sum);
+        pal |= (uint8_t)(gray << (2 * c));
+    }
+    gb->cgb_bg_palette_gray[pal_idx] = pal;
+}
+
+__section__(".rare") static void __cgb_update_obj_gray_palette(gb_s* gb, uint8_t pal_idx)
+{
+    uint8_t pal = 0;
+    for (int c = 0; c < 4; c++)
+    {
+        uint8_t lo = gb->cgb_obj_palette[pal_idx * 8 + c * 2];
+        uint8_t hi = gb->cgb_obj_palette[pal_idx * 8 + c * 2 + 1];
+        uint8_t r = lo & 0x1F;
+        uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
+        uint8_t b = (hi >> 2) & 0x1F;
+        uint16_t sum = (uint16_t)r + g + b;
+        uint8_t gray = __cgb_gray_from_sum(sum);
+        pal |= (uint8_t)(gray << (2 * c));
+    }
+    gb->cgb_obj_palette_gray[pal_idx] = pal;
+}
+
+__section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
+{
+    for (int i = 0; i < 8; i++)
+    {
+        __cgb_update_bg_gray_palette(gb, i);
+        __cgb_update_obj_gray_palette(gb, i);
+    }
+}
+
 __section__(".rare.cb") static void __gb_rare_write(
     gb_s* gb, const uint16_t addr, const uint8_t val
 )
@@ -822,9 +898,44 @@ __section__(".rare.cb") static void __gb_rare_write(
         case 0x56:  // RP (CGB Infrared Port)
             return;
         case 0x68:  // BCPS (CGB BG Palette Spec)
+            if (gb->is_cgb_mode)
+            {
+                gb->cgb_bg_palette_index = val;
+            }
+            return;
         case 0x69:  // BCPD (CGB BG Palette Data)
+            if (gb->is_cgb_mode)
+            {
+                if (gb->lcd_mode != LCD_TRANSFER)
+                {
+                    uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
+                    gb->cgb_bg_palette[idx] = val;
+                    __cgb_update_bg_gray_palette(gb, idx / 8);
+                    if (gb->cgb_bg_palette_index & 0x80)
+                        gb->cgb_bg_palette_index =
+                            (gb->cgb_bg_palette_index & 0x80) | ((idx + 1) & 0x3F);
+                }
+            }
+            return;
         case 0x6A:  // OCPS (CGB OBJ Palette Spec)
+            if (gb->is_cgb_mode)
+            {
+                gb->cgb_obj_palette_index = val;
+            }
+            return;
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
+            if (gb->is_cgb_mode)
+            {
+                if (gb->lcd_mode != LCD_TRANSFER)
+                {
+                    uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
+                    gb->cgb_obj_palette[idx] = val;
+                    __cgb_update_obj_gray_palette(gb, idx / 8);
+                    if (gb->cgb_obj_palette_index & 0x80)
+                        gb->cgb_obj_palette_index =
+                            (gb->cgb_obj_palette_index & 0x80) | ((idx + 1) & 0x3F);
+                }
+            }
             return;
         case 0x76:  // PCM12 (CGB Audio)
         case 0x77:  // PCM34 (CGB Audio)
@@ -917,9 +1028,29 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 
         case 0x56:  // RP (CGB Infrared Port)
         case 0x68:  // BCPS (CGB BG Palette Spec)
+            if (gb->is_cgb_mode)
+                return gb->cgb_bg_palette_index | 0x40;
+            return 0xFF;
         case 0x69:  // BCPD (CGB BG Palette Data)
+            if (gb->is_cgb_mode)
+            {
+                if (gb->lcd_mode != LCD_TRANSFER)
+                    return gb->cgb_bg_palette[gb->cgb_bg_palette_index & 0x3F];
+                return 0xFF;
+            }
+            return 0xFF;
         case 0x6A:  // OCPS (CGB OBJ Palette Spec)
+            if (gb->is_cgb_mode)
+                return gb->cgb_obj_palette_index | 0x40;
+            return 0xFF;
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
+            if (gb->is_cgb_mode)
+            {
+                if (gb->lcd_mode != LCD_TRANSFER)
+                    return gb->cgb_obj_palette[gb->cgb_obj_palette_index & 0x3F];
+                return 0xFF;
+            }
+            return 0xFF;
         case 0x76:  // PCM12 (CGB Audio)
         case 0x77:  // PCM34 (CGB Audio)
             return 0xFF;
@@ -4868,6 +4999,25 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF3E, 0xDA);
         __gb_write_full(gb, 0xFF3F, 0x48);
 
+        /* Initialize CGB palettes to post-boot-ROM state.
+         * BG palettes: all initialized to white by boot ROM.
+         * OBJ palettes: uninitialized, except OBJ0 color 0 lo = 0x00. */
+        for (int i = 0; i < 64; i += 2)
+        {
+            gb->cgb_bg_palette[i] = 0xFF;
+            gb->cgb_bg_palette[i + 1] = 0x7F;
+            gb->cgb_obj_palette[i] = 0x00;
+            gb->cgb_obj_palette[i + 1] = 0x00;
+        }
+        gb->cgb_obj_palette[0] = 0x00;
+        gb->cgb_bg_palette_index = 0x40;
+        gb->cgb_obj_palette_index = 0x40;
+        for (int i = 0; i < 8; i++)
+        {
+            __cgb_update_bg_gray_palette(gb, i);
+            __cgb_update_obj_gray_palette(gb, i);
+        }
+
         /* CGB internal timer is 0x267C */
         gb->counter.div_count = 0x7C;
         gb->lcd_mode = LCD_VBLANK;
@@ -5106,6 +5256,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_ff7x[1] = 0;
     gb->cgb_ff7x[2] = 0;
     gb->cgb_hdma_active = false;
+    gb->cgb_bg_palette_index = 0x40;
+    gb->cgb_obj_palette_index = 0x40;
 
     gb->is_mbc1m = __gb_detect_mbc1m(gb);
     if (gb->is_mbc1m)
