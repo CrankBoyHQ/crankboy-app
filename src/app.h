@@ -64,8 +64,12 @@ enum cgb_support_e
 // Defines the main stack size. This value provides a necessary safety
 // margin to prevent intermittent crashes. It was increased to 0x2700
 // specifically to ensure stability in games like Pokemon Gold/Silver,
-// which have a higher runtime stack requirement.
-#define PLAYDATE_STACK_SIZE 0x2700
+// which have a higher runtime stack requirement. Further increased to
+// 0x2760 (+96) for CGB palette support which adds local variables to
+// the draw_line rendering path and extends the gb_s struct.
+//
+// This is the absolute max we can use. Otherwise instant crash.
+#define PLAYDATE_STACK_SIZE 0x2760
 
 #define FPS_AVG_DECAY 0.8f
 
