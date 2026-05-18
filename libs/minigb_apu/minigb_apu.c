@@ -5,11 +5,11 @@
  * project is based on MiniGBS by Alex Baines: https://github.com/baines/MiniGBS
  */
 
+#include "../../src/app.h"
+#include "../../src/dtcm.h"
+#include "../../src/preferences.h"
+#include "../../src/scenes/game_scene.h"
 #include "../peanut_gb.h"
-#include "../src/app.h"
-#include "../src/dtcm.h"
-#include "../src/preferences.h"
-#include "../src/scenes/game_scene.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -927,6 +927,12 @@ void audio_init(audio_data* audio)
     audio->capacitor_l = 0.0f;
     audio->capacitor_r = 0.0f;
 #endif
+
+    // NRx4 registers ($FF14/$FF19/$FF1E/$FF23) are set to $3F instead of the Pan Docs
+    // post-boot-rom value $BF. The difference is bit 7 (channel trigger): the real boot
+    // ROM sets this because it played "ba-ding" before handing off. With skip-BIOS we
+    // must keep it clear so the game triggers channels when it intends to and avoid a
+    // "ba-ding" when the game first launches.
 
     /* Initialise IO registers. */
     { /* clang-format off */
