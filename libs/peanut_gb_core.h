@@ -1891,8 +1891,10 @@ done_instr_timing:
                 gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
 #if ENABLE_LCD
-                if (gb->lcd_master_enable && !gb->lcd_blank && !gb->direct.frame_skip)
+                if likely(!gb->direct.frame_skip && gb->lcd_master_enable)
+                {
                     $(__gb_draw_line)(gb);
+                }
 #endif
 
                 gb->lcd_mode = LCD_HBLANK;
@@ -1919,7 +1921,6 @@ done_instr_timing:
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
                     gb->gb_frame = 1;
                     gb->gb_reg.IF |= VBLANK_INTR;
-                    gb->lcd_blank = 0;
 
 #if PGB_IS_CGB
                     // FIXME: is this correct?

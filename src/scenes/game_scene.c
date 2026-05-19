@@ -2163,11 +2163,19 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             {
                 save_check(context->gb);
             }
+            
+            // fix for garbage bytes being dumped when lcd disabled
+            // (FIXME: core should just clear the lcd properly in this case)
+            if (!context->gb->lcd_master_enable || !(context->gb->gb_reg.LCDC & LCDC_ENABLE))
+            {
+                memset(context->gb->lcd, 0, LCD_BUFFER_BYTES);
+            }
 
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
             uint8_t* previous_lcd = context->previous_lcd;
             uint16_t line_has_changed[LCD_HEIGHT / 16];
+            
             memset(line_has_changed, 0, sizeof(line_has_changed));
 
             unsigned dither_preference = preferences_dither_line;

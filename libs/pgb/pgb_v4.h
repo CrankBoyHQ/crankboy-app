@@ -264,7 +264,7 @@ struct PGB_VERSIONED(gb_s)
 #define LCD_SEARCH_OAM 2
 #define LCD_TRANSFER 3
         uint8_t lcd_mode : 2;
-        uint8_t lcd_blank : 1;
+        uint8_t lcd_blank : 1; /* UNUSED */
         uint8_t lcd_master_enable : 1;
         uint8_t gb_halt_bug : 2;
     };
@@ -746,7 +746,7 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     set_field(v4_gb, v3_gb, is_cgb_mode);
     set_field(v4_gb, v3_gb, gb_frame);
     set_field(v4_gb, v3_gb, lcd_mode);
-    set_field(v4_gb, v3_gb, lcd_blank);
+    v4_gb->lcd_blank = 0; /* UNUSED */
     set_field(v4_gb, v3_gb, lcd_master_enable);
 
     // cgb_fast_mode_active was appended at the end of the CGB bitfield group;

@@ -5269,8 +5269,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     // Initialize cached base (0 for non-MBC1M)
     gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
 
-    gb->lcd_blank = 0;
-
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
