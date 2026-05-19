@@ -720,27 +720,27 @@ __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
     switch (preferences_cgb_brightness)
     {
     case 0:
-        if (sum >= 50)
-            return 0;
-        if (sum >= 22)
-            return 1;
-        if (sum >= 5)
-            return 2;
-        return 3;
-    case 2:
-        if (sum >= 82)
-            return 0;
-        if (sum >= 56)
-            return 1;
-        if (sum >= 28)
-            return 2;
-        return 3;
-    default:
         if (sum >= 63)
             return 0;
         if (sum >= 35)
             return 1;
         if (sum >= 12)
+            return 2;
+        return 3;
+    case 2:
+        if (sum >= 78)
+            return 0;
+        if (sum >= 50)
+            return 1;
+        if (sum >= 22)
+            return 2;
+        return 3;
+    default:
+        if (sum >= 68)
+            return 0;
+        if (sum >= 38)
+            return 1;
+        if (sum >= 15)
             return 2;
         return 3;
     }
