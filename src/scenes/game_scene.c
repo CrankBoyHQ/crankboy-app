@@ -736,17 +736,17 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
         memset(lcd, 0, LCD_BUFFER_BYTES);
-        
+
         lcd_sources[0] = lcd;
         lcd_sources[1] = playdate->graphics->getDisplayFrame();
-        lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1]+31)/32)*32);
+        lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1] + 31) / 32) * 32);
 
         gameScene->cgb_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_CGB);
         gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
-            context->gb, context->wram, context->vram, lcd_sources[preferences_tcm_lcd], rom, rom_size, gb_error, context,
-            cgb_mode
+            context->gb, context->wram, context->vram, lcd_sources[preferences_tcm_lcd], rom,
+            rom_size, gb_error, context, cgb_mode
         );
 
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
@@ -2726,10 +2726,13 @@ __section__(".rare") static void CB_GameScene_showSettings(void* userdata)
     CB_SettingsScene* settingsScene = CB_SettingsScene_new(gameScene, NULL);
     CB_presentModal(settingsScene->scene);
 
-    // We need to set this here to None in case the user selected any button.
-    // The menu automatically falls back to 0 and the selected button is never
-    // pushed.
-    playdate->system->setMenuItemValue(buttonMenuItem, 1);
+    if (buttonMenuItem)
+    {
+        // We need to set this here to None in case the user selected any button.
+        // The menu automatically falls back to 0 and the selected button is never
+        // pushed.
+        playdate->system->setMenuItemValue(buttonMenuItem, 1);
+    }
     gameScene->button_hold_mode = 1;
 }
 
@@ -3575,7 +3578,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         playdate->system->setAutoLockDisabled(0);
 
         gameScene->lock_button_hold_frames_remaining = 0;
-        
+
         gameScene->scene->forceFullRefresh = true;
 
         // fall-through
