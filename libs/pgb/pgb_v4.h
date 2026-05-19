@@ -442,7 +442,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
-        uint8_t* oam_ghost_buffer;
 
         int joypad_interrupt_delay;
 
@@ -599,7 +598,6 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
         &gb->vram,
         &gb->gb_cart_ram,
         &gb->breakpoints,
-        &gb->direct.oam_ghost_buffer,
         &gb->lcd,
         &gb->direct.priv,
         &gb->gb_error,
@@ -762,8 +760,7 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     );
 
     {
-        size_t sz = (uintptr_t)&v4_gb->direct.oam_ghost_buffer - (uintptr_t)&v4_gb->direct +
-                    sizeof(v4_gb->direct.oam_ghost_buffer);
+        size_t sz = (uintptr_t)&v4_gb->direct.joypad_interrupt_delay - (uintptr_t)&v4_gb->direct;
         memcpy(&v4_gb->direct, &v3_gb->direct, sz);
     }
 

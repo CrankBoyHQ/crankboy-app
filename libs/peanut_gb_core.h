@@ -429,8 +429,7 @@ __core_section("draw") static inline int $(compare_sprites)(
 }
 
 __core_section("draw") static void $(__gb_draw_line_sprites)(
-    gb_s* restrict gb, const uint8_t* oam_src, bool is_ghost, const uint32_t* line_priority,
-    uint8_t* pixels
+    gb_s* restrict gb, const uint8_t* oam_src, const uint32_t* line_priority, uint8_t* pixels
 )
 {
     uint8_t number_of_sprites = 0;
@@ -481,21 +480,6 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
     {
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
-
-        if (is_ghost)
-        {
-            // To prevent thickening, check if the ghost sprite is within 4 pixel of the
-            // real sprite. If so, skip rendering the ghost.
-
-            // FIXME: this doesn't work if sprites are re-ordered, as they likely are in many games.
-
-            const uint8_t* ghost_oam = &oam_src[s_4];
-            const uint8_t* visible_oam = &gb->oam[s_4];
-            if (abs(ghost_oam[1] - visible_oam[1]) <= 4 && abs(ghost_oam[0] - visible_oam[0]) <= 4)
-            {
-                continue;
-            }
-        }
 
         uint8_t OY = oam_src[s_4 + 0];
         uint8_t OX = oam_src[s_4 + 1];
@@ -557,18 +541,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 #else
                     uint8_t color_value = (OBP >> (c * 2 + c_add * 2)) & 3;
 #endif
-                    if (is_ghost)
-                    {
-                        uint8_t old_color = $(__gb_get_pixel)(pixels, disp_x);
-                        if (color_value > old_color)
-                        {
-                            $(__gb_draw_pixel)(pixels, disp_x, color_value);
-                        }
-                    }
-                    else
-                    {
-                        $(__gb_draw_pixel)(pixels, disp_x, color_value);
-                    }
+                    $(__gb_draw_pixel)(pixels, disp_x, color_value);
                 }
             }
         next_sprite_pixel:
@@ -1033,15 +1006,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-        $(__gb_draw_line_sprites)(gb, gb->oam, false, used_line_priority, pixels);
-    }
-
-    // draw ghost sprites
-    if (gb->direct.oam_ghost_buffer)
-    {
-        $(__gb_draw_line_sprites)(
-            gb, gb->direct.oam_ghost_buffer, true, used_line_priority, pixels
-        );
+        $(__gb_draw_line_sprites)(gb, gb->oam, used_line_priority, pixels);
     }
 }
 
