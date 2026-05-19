@@ -704,6 +704,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         }
     }
 
+    const int addr_mode_vram_tiledata_offset = (gb->gb_reg.LCDC & LCDC_TILE_SELECT) ? 0 : 0x800;
+
     // clear row
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
         ((uint32_t*)pixels)[i] = 0;
@@ -755,8 +757,6 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         const uint8_t bg_y = gb->gb_reg.LY + gb->gb_reg.SCY;
 
         uint8_t bg_x = gb->gb_reg.SCX;
-        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
-        int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
         uint8_t* vram = gb->vram;
 
@@ -873,8 +873,6 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     {
         uint8_t bg_x = 256 - wx;
         uint8_t bg_y = gb->display.window_clear;
-        int addr_mode_2 = !(gb->gb_reg.LCDC & LCDC_TILE_SELECT);
-        int addr_mode_vram_tiledata_offset = addr_mode_2 ? 0x800 : 0;
 
         uint8_t* vram = gb->vram;
 
@@ -1793,9 +1791,11 @@ done_instr_timing:
     /* TIMA register timing */
     if (gb->gb_reg.tac_enable)
     {
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
 #if PGB_IS_CGB
+        tima_threshold >>= gb->cgb_fast_mode_active;
+#endif
         gb->counter.tima_count += inst_cycles;
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
         while (gb->counter.tima_count >= tima_threshold)
         {
             gb->counter.tima_count -= tima_threshold;
@@ -1806,39 +1806,20 @@ done_instr_timing:
                 gb->gb_reg.tima_overflow_delay = 1;
             }
         }
-#else
-        gb->counter.tima_count += inst_cycles;
-        while (gb->counter.tima_count >= gb->gb_reg.tac_cycles)
-        {
-            gb->counter.tima_count -= gb->gb_reg.tac_cycles;
-            gb->gb_reg.TIMA++;
-
-            if (gb->gb_reg.TIMA == 0x00)
-            {
-                gb->gb_reg.tima_overflow_delay = 1;
-            }
-        }
-#endif
     }
 
-/* DIV register timing */
-// update DIV timer
+    /* DIV register timing */
+    // update DIV timer
+    uint16_t div_threshold = DIV_CYCLES;
 #if PGB_IS_CGB
-    uint16_t div_threshold = DIV_CYCLES >> gb->cgb_fast_mode_active;
+    div_threshold >>= gb->cgb_fast_mode_active;
+#endif
     gb->counter.div_count += inst_cycles;
     if (gb->counter.div_count >= div_threshold)
     {
         gb->gb_reg.DIV += gb->counter.div_count / div_threshold;
         gb->counter.div_count %= div_threshold;
     }
-#else
-    gb->counter.div_count += inst_cycles;
-    if (gb->counter.div_count >= DIV_CYCLES)
-    {
-        gb->gb_reg.DIV += gb->counter.div_count / DIV_CYCLES;
-        gb->counter.div_count %= DIV_CYCLES;
-    }
-#endif
 
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
     {
