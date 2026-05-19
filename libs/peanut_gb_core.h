@@ -1793,6 +1793,8 @@ done_instr_timing:
         {
             gb->counter.lcd_off_count -= LCD_FRAME_CYCLES;
             gb->gb_frame = 1;
+            for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                ((uint32_t*)gb->lcd)[i] = 0;
         }
     }
     else
