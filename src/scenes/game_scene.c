@@ -3575,6 +3575,8 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         playdate->system->setAutoLockDisabled(0);
 
         gameScene->lock_button_hold_frames_remaining = 0;
+        
+        gameScene->scene->forceFullRefresh = true;
 
         // fall-through
     case kEventTerminate:
