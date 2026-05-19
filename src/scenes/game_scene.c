@@ -735,7 +735,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         context->rom_size = rom_size;
 
         static clalign uint8_t lcd_static[LCD_BUFFER_BYTES];
-        
+
         lcd_sources[0] = lcd_static;
         lcd_sources[1] = playdate->graphics->getDisplayFrame();
         lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1] + 31) / 32) * 32);
@@ -1420,6 +1420,7 @@ static __section__(".text.tick") void display_fps(bool interlace_active)
     buff[4] = '\0';
 
     // Interlace indicator: white "i" when on, black "i" (invisible) when off
+    playdate->graphics->setFont(CB_App->labelFont);
     playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
     playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
     playdate->graphics->setDrawMode(kDrawModeCopy);
