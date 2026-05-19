@@ -533,6 +533,10 @@ static LCDBitmap* numbers_bmp = NULL;
 static uint32_t last_fps_digits;
 static uint8_t fps_draw_timer;
 
+// one is static-alloc; the other is in the display frame buffer area
+// see preferences_tcm_lcd
+static uint8_t* lcd_sources[2];
+
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
@@ -731,13 +735,17 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         context->rom_size = rom_size;
 
         static clalign uint8_t lcd[LCD_BUFFER_BYTES];
-        memset(lcd, 0, sizeof(lcd));
+        memset(lcd, 0, LCD_BUFFER_BYTES);
+        
+        lcd_sources[0] = lcd;
+        lcd_sources[1] = playdate->graphics->getDisplayFrame();
+        lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1]+31)/32)*32);
 
         gameScene->cgb_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_CGB);
         gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
-            context->gb, context->wram, context->vram, lcd, rom, rom_size, gb_error, context,
+            context->gb, context->wram, context->vram, lcd_sources[preferences_tcm_lcd], rom, rom_size, gb_error, context,
             cgb_mode
         );
 
@@ -1983,6 +1991,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->overclock = (unsigned)(preferences_overclock);
         context->gb->cgb_speed_permitted = preferences_cgb_speed == 0;
         context->gb->hle_enabled = (preferences_hle == 1) && context->cgb_mode;
+        context->gb->lcd = lcd_sources[preferences_tcm_lcd];
 
         if (gbScreenRequiresFullRefresh)
         {

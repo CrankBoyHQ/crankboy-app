@@ -1615,6 +1615,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             entries[i].description = itcm_base_desc;
         }
     #endif
+    
+    entries[++i] = (OptionsMenuEntry){
+        .name = "LCD-TCM accel.",
+        .values = off_on_labels,
+        .description = "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore the GB's internal\nframe buffer as well.\n \nSometimes causes\ngarbage data to become\nvisible on screen.",
+        .pref_var = &preferences_tcm_lcd,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     if (CB_App->bundled_rom)
     {
