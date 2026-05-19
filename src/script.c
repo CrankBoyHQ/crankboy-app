@@ -44,7 +44,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             info->c_script_info = cinfo;
             info->info = cinfo->description ? cb_strdup(strltrim(cinfo->description)) : NULL;
             info->experimental = cinfo->experimental;
-            info->launch_cgb = cinfo->launch_cgb;
+            info->launch_system = cinfo->launch_system;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;  // paranoia
             return info;

@@ -41,13 +41,20 @@ typedef size_t (*CS_QuerySerialSize)(void* userdata);
 typedef bool (*CS_Serialize)(char* out, void* userdata);
 typedef bool (*CS_Deserialize)(const char* in, size_t size, void* userdata);
 
+enum ScriptPreferredLaunchSystem
+{
+    ScriptPreferredLaunchSystem_None,
+    ScriptPreferredLaunchSystem_DMG,
+    ScriptPreferredLaunchSystem_CGB,
+};
+
 struct CScriptInfo
 {
     // must match what's in the header
     const char* rom_name;
     const char* description;
     bool experimental;
-    bool launch_cgb;
+    enum ScriptPreferredLaunchSystem launch_system;
     CS_OnBegin on_begin;
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
@@ -63,8 +70,8 @@ struct CScriptInfo
 typedef struct ScriptInfo
 {
     char rom_name[17];
-    bool launch_cgb;
     bool experimental;
+    enum ScriptPreferredLaunchSystem launch_system;
     char* info;  // human-readable description
 
     const struct CScriptInfo* c_script_info;

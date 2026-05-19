@@ -2624,6 +2624,7 @@ C_SCRIPT{
     .rom_name = "METROID2",
     .description = DESCRIPTION,
     .experimental = false,
+    .launch_system = ScriptPreferredLaunchSystem_DMG,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,

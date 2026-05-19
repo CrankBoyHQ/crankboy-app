@@ -621,6 +621,7 @@ C_SCRIPT{
     .rom_name = "HOSHI NO KIRBY",
     .description = DESCRIPTION,
     .experimental = true,
+    .launch_system = ScriptPreferredLaunchSystem_DMG,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,

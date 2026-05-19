@@ -1,5 +1,6 @@
 #include "../scenes/game_scene.h"
 #include "../scriptutil.h"
+#include "script.h"
 
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
@@ -582,7 +583,7 @@ C_SCRIPT{
     .rom_name = "ZELDA",
     .description = DESCRIPTION,
     .experimental = false,
-    .launch_cgb = true,
+    .launch_system = ScriptPreferredLaunchSystem_CGB,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
