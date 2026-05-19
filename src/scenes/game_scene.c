@@ -1652,7 +1652,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (preferences_frame_skip)
                     target_fps = 30.0f;
 
-                float fps = 1.0f / CB_App->avg_dt;
+                float fps = 1.0f / CB_App->avg_dt_raw;
                 float ratio = fps / target_fps;
 
                 if (ratio < INTERLACE_ACTIVATE_RATIO)

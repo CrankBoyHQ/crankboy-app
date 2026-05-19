@@ -703,6 +703,7 @@ __section__(".rare") static void switchToPendingScene(void)
 __section__(".text.main") void CB_update(float dt)
 {
     CB_App->dt = dt;
+    CB_App->avg_dt_raw = (CB_App->avg_dt_raw * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt;
     CB_App->avg_dt =
         (CB_App->avg_dt * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt * CB_App->avg_dt_mult;
     CB_App->avg_dt_mult = 1.0f;
