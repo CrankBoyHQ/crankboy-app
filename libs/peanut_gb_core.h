@@ -605,7 +605,7 @@ __core_section("draw") static uint16_t __cgb_remap_tile(
 
 __core_section("draw") static void __cgb_merge_tiles(
     uint16_t tile_data_lo, uint16_t tile_data_hi, uint8_t pal_lo, uint8_t pal_hi, int subx,
-    uint8_t* out0, uint8_t* out2, uint8_t* pri
+    uint16_t* restrict out, uint8_t* restrict pri
 )
 {
     uint8_t lo_p = (uint8_t)tile_data_lo;
@@ -614,18 +614,14 @@ __core_section("draw") static void __cgb_merge_tiles(
 
     if (subx == 0)
     {
-        *out0 = (uint8_t)rm_lo;
-        *out2 = (uint8_t)(rm_lo >> 8);
+        *out = rm_lo;
         *pri = lo_p | hi_p;
         return;
     }
     uint8_t lo_hp = (uint8_t)tile_data_hi;
     uint8_t hi_hp = (uint8_t)(tile_data_hi >> 8);
     uint16_t rm_hi = __cgb_remap_tile(lo_hp, hi_hp, pal_hi);
-    int shift = subx * 2;
-    uint16_t merged = (rm_lo >> shift) | (rm_hi << (16 - shift));
-    *out0 = (uint8_t)merged;
-    *out2 = (uint8_t)(merged >> 8);
+    *out = (rm_lo >> (subx * 2)) | (rm_hi << (16 - subx * 2));
     *pri = (uint8_t)((lo_p | hi_p) >> subx) | (uint8_t)((lo_hp | hi_hp) << (8 - subx));
 }
 
@@ -668,11 +664,6 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     uint8_t* pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
 
-#if PGB_IS_CGB
-    // allows bg to overrule obj priority
-    uint32_t line_cgb_priority[((LCD_WIDTH + 31) / 32)];
-#endif
-
     const uint32_t line_priority_len = PEANUT_GB_ARRAYSIZE(line_priority);
 
     __builtin_prefetch(pixels, 1);
@@ -681,19 +672,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     {
 #if PGB_IS_CGB
         line_priority[i] = ~0u;
-        line_cgb_priority[i] = 0;
 #else
         line_priority[i] = 0;
 #endif
     }
 
-    uint32_t priority_bits = 0;
-
     int wx = LCD_WIDTH;
-    bool master_priority = true;
-#if PGB_IS_CGB
-    master_priority = !!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY);
-#endif
 
     if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
 #if PGB_IS_DMG
@@ -852,15 +836,13 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 uint8_t pri_lo = tile_palette_lo & BG_MAP_ATTR_PRIORITY;
                 uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
 
-                uint8_t out0, out2, pri;
+                uint8_t pri;
                 __cgb_merge_tiles(
                     vram_tile_data_lo, vram_tile_data_hi,
                     gb->cgb_bg_palette_gray[tile_palette_lo & BG_MAP_ATTR_PALETTE],
-                    gb->cgb_bg_palette_gray[tile_palette_hi_val & BG_MAP_ATTR_PALETTE], subx, &out0,
-                    &out2, &pri
+                    gb->cgb_bg_palette_gray[tile_palette_hi_val & BG_MAP_ATTR_PALETTE], subx,
+                    (uint16_t*)(pixels + x * 2), &pri
                 );
-                pixels[x * 2] = out0;
-                pixels[x * 2 + 1] = out2;
 
                 uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> subx) : 0;
                 if (pri_hi && subx)
@@ -974,10 +956,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                     vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
                     (bg_x / 8 + x + 1) % 32, addr_mode_vram_tiledata_offset, &tile_palette_hi_val
                 );
-                uint8_t out0, out2, pri;
+                uint8_t pri;
                 __cgb_merge_tiles(
                     vram_tile_data_lo, vram_tile_data_hi, gb->cgb_bg_palette_gray[win_palette_lo],
-                    gb->cgb_bg_palette_gray[tile_palette_hi_val], subx, &out0, &out2, &pri
+                    gb->cgb_bg_palette_gray[tile_palette_hi_val], subx, (uint16_t*)(pixels + x * 2),
+                    &pri
                 );
 
                 if (bgmask)
@@ -986,14 +969,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                     uint8_t mask0_byte = (n_bg >= 4) ? 0xFFu : (uint8_t)((1u << (2 * n_bg)) - 1);
                     uint8_t mask2_byte =
                         (n_bg <= 4) ? 0x00u : (uint8_t)((1u << (2 * (n_bg - 4))) - 1);
+                    uint16_t merged = *(uint16_t*)(pixels + x * 2);
+                    uint8_t out0 = (uint8_t)merged;
+                    uint8_t out2 = (uint8_t)(merged >> 8);
                     uint8_t* win_out = pixels + x * 2;
                     win_out[0] = (win_out[0] & mask0_byte) | (out0 & ~mask0_byte);
                     win_out[1] = (win_out[1] & mask2_byte) | (out2 & ~mask2_byte);
-                }
-                else
-                {
-                    pixels[x * 2] = out0;
-                    pixels[x * 2 + 1] = out2;
                 }
 
                 line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
