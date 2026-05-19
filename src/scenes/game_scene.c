@@ -1412,6 +1412,19 @@ static __section__(".text.tick") void display_fps(bool interlace_active)
     buff[3] = (fps_multiplied % 10) + '0';
     buff[4] = '\0';
 
+    // Draw/clear interlace indicator before digit check (must update every draw)
+    if (interlace_active)
+    {
+        int ix = 26;
+        playdate->graphics->fillRect(ix, 0, 8, 12, kColorWhite);
+        int tx = playdate->graphics->getTextWidth(NULL, "I", 1, kUTF8Encoding, 0);
+        playdate->graphics->drawText("I", 1, kUTF8Encoding, ix + (8 - tx) / 2, 1);
+    }
+    else
+    {
+        playdate->graphics->fillRect(26, 0, 8, 12, kColorBlack);
+    }
+
     uint32_t digits4 = *(uint32_t*)&buff[0];
     if (digits4 == last_fps_digits)
         return;
@@ -1452,18 +1465,6 @@ static __section__(".text.tick") void display_fps(bool interlace_active)
     }
 
     playdate->graphics->markUpdatedRows(0, height - 1);
-
-    if (interlace_active)
-    {
-        int ix = 26;
-        playdate->graphics->fillRect(ix, 0, 8, 12, kColorWhite);
-        int tx = playdate->graphics->getTextWidth(NULL, "I", 1, kUTF8Encoding, 0);
-        playdate->graphics->drawText("I", 1, kUTF8Encoding, ix + (8 - tx) / 2, 1);
-    }
-    else
-    {
-        playdate->graphics->fillRect(26, 0, 8, 12, kColorBlack);
-    }
 }
 
 __section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
