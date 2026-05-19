@@ -414,7 +414,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     // check if game would use script
     ScriptInfo* info = get_script_info(game->names->name_header);
     void* prefs = preferences_store_subset(-1);
-    load_game_prefs(game->fullpath, true);
+    load_game_prefs(game->fullpath, false);
     bool will_use_script = preferences_script_support;
     preferences_restore_subset(prefs);
     playdate->system->logToConsole("Will use script: %d", (int)will_use_script);

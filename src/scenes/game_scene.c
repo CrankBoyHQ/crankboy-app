@@ -734,10 +734,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         context->rom = rom;
         context->rom_size = rom_size;
 
-        static clalign uint8_t lcd[LCD_BUFFER_BYTES];
-        memset(lcd, 0, LCD_BUFFER_BYTES);
-
-        lcd_sources[0] = lcd;
+        static clalign uint8_t lcd_static[LCD_BUFFER_BYTES];
+        
+        lcd_sources[0] = lcd_static;
         lcd_sources[1] = playdate->graphics->getDisplayFrame();
         lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1] + 31) / 32) * 32);
 

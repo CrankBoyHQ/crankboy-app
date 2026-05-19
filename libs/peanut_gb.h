@@ -5196,6 +5196,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->vram = vram;
     memset(gb->xram, 0, XRAM_SIZE);
     gb->lcd = lcd;
+    memset(lcd, 0, LCD_BUFFER_BYTES);
     gb->gb_rom = gb_rom;
     gb->gb_rom_size = rom_size;
     gb->gb_error = gb_error;

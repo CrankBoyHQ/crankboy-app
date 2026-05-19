@@ -1134,7 +1134,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \nDespite appearing to be\n30 FPS, the game "
-            "itself\nstill runs at full speed.",
+            "itself\nstill runs at full speed.\n \n"
+            "For games which don't\nfeature scrolling backgrounds,\ncan generally be disabled.",
         .pref_var = &preferences_frame_skip,
         .max_value = 2,
         .rebuild_when_changed = 1,

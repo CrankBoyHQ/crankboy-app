@@ -194,6 +194,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     bool state_changed = (game_state != data->prev_game_state);
 
     game_picture_background_color = kColorWhite;
+    game_hide_indicator = false;
 
     // standard 5:6 compression
     game_picture_scaling = 3;
@@ -243,6 +244,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_x_offset = 0;
         game_picture_scaling = 0;
         game_picture_y_top = 4;
+        game_hide_indicator = true;
         break;
     case GAME_STATE_GAME_OVER:
         if (state_changed)
