@@ -57,11 +57,11 @@ bool gbScreenRequiresFullRefresh;
 // Deactivate interlacing when FPS rises above this fraction of target framerate.
 #define INTERLACE_DEACTIVATE_RATIO 0.97f
 
-// Frames to lock interlacing on after activation, preventing rapid toggling.
+// Frames to lock interlacing on after activation, at 60fps. Halved at 30fps.
 #define INTERLACE_LOCK_FRAMES 30
 
 // Consecutive slow frames required before activating interlacing.
-#define INTERLACE_SLOW_FRAMES_REQUIRED 8
+#define INTERLACE_SLOW_FRAMES_REQUIRED 5
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -1661,7 +1661,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     if (gameScene->interlace_slow_frames >= INTERLACE_SLOW_FRAMES_REQUIRED)
                     {
                         activate_dynamic_rate = true;
-                        gameScene->interlace_lock_frames_remaining = INTERLACE_LOCK_FRAMES;
+                        gameScene->interlace_lock_frames_remaining = preferences_frame_skip
+                                                                         ? INTERLACE_LOCK_FRAMES / 2
+                                                                         : INTERLACE_LOCK_FRAMES;
                         gameScene->interlace_slow_frames = 0;
                     }
                 }
