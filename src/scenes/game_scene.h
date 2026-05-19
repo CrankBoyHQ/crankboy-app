@@ -160,12 +160,10 @@ typedef struct CB_GameScene
 
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
+    int interlace_slow_frames;
+
     uint8_t previous_joypad_state;
     uint32_t patches_hash;
-
-    // Cached interlacing threshold to avoid recalculation every frame
-    int cached_line_threshold;
-    uint8_t cached_dynamic_level;
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);

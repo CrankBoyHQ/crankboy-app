@@ -73,8 +73,6 @@ enum cgb_support_e
 
 #define FPS_AVG_DECAY 0.8f
 
-#define TENDENCY_BASED_ADAPTIVE_INTERLACING 1
-
 typedef struct
 {
     // basename, including extension

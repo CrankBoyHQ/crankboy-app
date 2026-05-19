@@ -478,8 +478,7 @@ static const char* save_slot_labels[] = {
 static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
                                               "Grid (L)",  "Staggered (D)", "Grid (D)"};
 static const char* overclock_labels[] = {"Off", "x2", "x4"};
-static const char* dynamic_level_labels[] = {"1", "2", "3", "4",  "5", "6",
-                                             "7", "8", "9", "10", "11"};
+static const char* dither_line_labels[] = {"1", "2", "3"};
 static const char* settings_scope_labels[] = {"Global", "Game"};
 static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
@@ -1182,22 +1181,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
         };
     }
-    else if (preferences_frame_skip && preferences_blend_frames)
-    {
-        // In 30fps mode with frame blending, only Off/On are available (no Auto)
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing",
-            .values = dynamic_rate_labels,
-            .description =
-                "Skips lines to keep the\nframerate smooth.\n \n"
-                "Off:\nFull quality, no skipping.\n \n"
-                "On:\nAlways on for a reliable\nspeed boost.",
-            .pref_var = &preferences_dynamic_rate,
-            .max_value = 2,  // Only Off and On (0 and 1), no Auto
-            .rebuild_when_changed = 1,
-            .on_press = NULL,
-        };
-    }
     else
     {
         entries[++i] = (OptionsMenuEntry){
@@ -1215,40 +1198,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
     }
 
-    #if TENDENCY_BASED_ADAPTIVE_INTERLACING
-    // dynamic level - only available in AUTO mode (not in 30fps+blending mode)
-    bool interlace_level_enabled = (preferences_dynamic_rate == DYNAMIC_RATE_AUTO) &&
-                                   !preferences_frame_skip;
-    if (interlace_level_enabled)
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing level",
-            .values = dynamic_level_labels,
-            .description =
-                "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
-                "Higher values are less\nsensitive and require more\n"
-                "change to activate\ninterlacing.",
-            .pref_var = &preferences_dynamic_level,
-            .max_value = 11,
-            .on_press = NULL,
-        };
-    }
-    else
-    {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing level",
-            .values = dynamic_level_labels,
-            .description =
-                "Adjusts sensitivity\nbased on the amount of\non-screen change.\n \n"
-                "Higher values are less\nsensitive and require more\n"
-                "change to activate\ninterlacing.",
-            .pref_var = &preferences_dynamic_level,
-            .max_value = 0,
-            .on_press = NULL,
-        };
-    }
-    #endif
-
     // dither
     entries[++i] = (OptionsMenuEntry){
         .name = "Dither",
@@ -1265,7 +1214,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // dither line
     entries[++i] = (OptionsMenuEntry){
         .name = "First scaling line",
-        .values = dynamic_level_labels,
+        .values = dither_line_labels,
         .description =
             "Due to the 3:5 ratio\nbetween the GB's and\nPlaydate's vertical\nresolutions, 1 in every\n3 scanlines must be\nvertically squished.\n \nThis means there are three\nchoices for which lines are\nto be the ones to squish.\n \nIf text is uneven, try\nadjusting this."
         ,

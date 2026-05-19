@@ -20,7 +20,6 @@ PREF(dither_pattern, rand() % 2)
 PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)
-PREF(dynamic_level, 5)
 
 // input
 PREF(crank_mode, CRANK_MODE_START_SELECT)

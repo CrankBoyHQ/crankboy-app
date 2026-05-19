@@ -49,23 +49,19 @@ bool gbScreenRequiresFullRefresh;
 // Upper bound on the number of audio samples we generate per frame.
 #define MAX_AUDIO_SAMPLES_PER_CHUNK ((44100 / 60) * 4)
 
-// --- Parameters for the "Tendency Counter" Auto-Interlace System ---
+// --- Parameters for Frame-Time-Based Auto-Interlace System ---
 
-// The tendency counter's ceiling. Higher values add more inertia.
-#define INTERLACE_TENDENCY_MAX 10
+// Activate interlacing when FPS drops below this fraction of target framerate.
+#define INTERLACE_ACTIVATE_RATIO 0.95f
 
-// Counter threshold to activate interlacing. Lower is more reactive.
-#define INTERLACE_TENDENCY_TRIGGER_ON 5
+// Deactivate interlacing when FPS rises above this fraction of target framerate.
+#define INTERLACE_DEACTIVATE_RATIO 0.97f
 
-// Hysteresis floor; interlacing stays on until the counter drops below this.
-#define INTERLACE_TENDENCY_TRIGGER_OFF 3
+// Frames to lock interlacing on after activation, preventing rapid toggling.
+#define INTERLACE_LOCK_FRAMES 30
 
-// --- Parameters for the Adaptive "Grace Period Lock" ---
-
-// Defines the [min, max] frame range for the adaptive lock.
-// A lower user sensitivity setting results in a longer lock duration (closer to MAX).
-#define INTERLACE_LOCK_DURATION_MAX 60
-#define INTERLACE_LOCK_DURATION_MIN 1
+// Consecutive slow frames required before activating interlacing.
+#define INTERLACE_SLOW_FRAMES_REQUIRED 8
 
 // Enables console logging for the dirty line update mechanism.
 // WARNING: Performance-intensive. Use for debugging only.
@@ -616,11 +612,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     gameScene->interlace_tendency_counter = 0;
     gameScene->interlace_lock_frames_remaining = 0;
-
-    // Initialize cached interlacing threshold
-    gameScene->cached_dynamic_level = preferences_dynamic_level;
-    int percentage_threshold = 25 + (preferences_dynamic_level * 5);
-    gameScene->cached_line_threshold = (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
 
     gameScene->isCurrentlySaving = false;
     gameScene->quitGameModalConfirmOverride = false;
@@ -1376,7 +1367,7 @@ static __section__(".text.tick") void composite_interlaced_frames(
 
 static void save_check(gb_s* gb);
 
-static __section__(".text.tick") void display_fps(void)
+static __section__(".text.tick") void display_fps(bool interlace_active)
 {
     if (!numbers_bmp)
         return;
@@ -1461,6 +1452,18 @@ static __section__(".text.tick") void display_fps(void)
     }
 
     playdate->graphics->markUpdatedRows(0, height - 1);
+
+    if (interlace_active)
+    {
+        int ix = 26;
+        playdate->graphics->fillRect(ix, 0, 8, 12, kColorWhite);
+        int tx = playdate->graphics->getTextWidth(NULL, "I", 1, kUTF8Encoding, 0);
+        playdate->graphics->drawText("I", 1, kUTF8Encoding, ix + (8 - tx) / 2, 1);
+    }
+    else
+    {
+        playdate->graphics->fillRect(26, 0, 8, 12, kColorBlack);
+    }
 }
 
 __section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
@@ -1597,43 +1600,24 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     float progress = 0.5f;
 
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
     /*
      * =========================================================================
-     * Dynamic Rate Control with Adaptive Interlacing
+     * Dynamic Rate Control with Ratio-Based Auto Interlacing
      * =========================================================================
      *
-     * This system maintains a smooth 60 FPS by dynamically skipping screen
-     * lines (interlacing) based on the rendering workload. The "Auto" mode
-     * uses a smart, two-stage system to provide both stability and responsiveness.
+     * Interlace lines are skipped when the framerate drops below a target.
+     * The "Auto" mode compares FPS against the current target (60 or 30 FPS):
+     *   - <95% of target → consecutive slow-frame counter increments
+     *   - ≥ slow-frames threshold → interlacing activates (with lock)
+     *   - 95%–97% of target → hysteresis, holds current state
+     *   - >97% of target → resets counter, stays off
      *
-     * Stage 1: The Tendency Counter
-     * This counter tracks recent frame activity. It increases when the number of
-     * updated lines exceeds a user-settable threshold (indicating a busy
-     * scene) and decreases when the scene is calm. When the counter passes a
-     * 'trigger-on' value, it activates Stage 2.
-     *
-     * Stage 2: The Adaptive Grace Period Lock
-     * Once activated, interlacing is "locked on" for a set duration to
-     * guarantee stable performance during sustained action. This lock's duration
-     * is adaptive, linked directly to the user's sensitivity preference:
-     *  - Low Sensitivity: Long lock, ideal for racing games.
-     *  - High Sensitivity: Minimal/no lock, ideal for brief screen transitions.
-     *
-     * This dual approach provides stability during high-motion sequences while
-     * remaining highly responsive to brief bursts of activity.
-     *
-     * In 30 FPS mode with frame blending, interlacing uses synchronized masks:
-     * Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
-     * When composited together, they form a complete, artifact-free image.
+     * Works identically in 60 FPS mode and 30 FPS + frame blending mode.
      */
 
     bool activate_dynamic_rate = false;
     bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
-    // Allow interlacing in 60fps mode, or in 30fps mode when frame blending is active.
-    // When frame blending with interlacing, Frame A and Frame B use complementary
-    // interlace masks so they combine to form a complete image when blended.
     bool allow_interlace =
         !preferences_frame_skip || (preferences_frame_skip && preferences_blend_frames);
 
@@ -1643,6 +1627,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         {
             activate_dynamic_rate = true;
             gameScene->interlace_lock_frames_remaining = 0;
+            gameScene->interlace_slow_frames = 0;
         }
         else if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
         {
@@ -1650,41 +1635,38 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             {
                 activate_dynamic_rate = true;
                 gameScene->interlace_lock_frames_remaining--;
+                gameScene->interlace_slow_frames = 0;
             }
             else
             {
-                if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_ON)
+                float target_fps = 60.0f;
+                if (preferences_frame_skip)
+                    target_fps = 30.0f;
+
+                float fps = 1.0f / CB_App->avg_dt;
+                float ratio = fps / target_fps;
+
+                if (ratio < INTERLACE_ACTIVATE_RATIO)
                 {
-                    activate_dynamic_rate = true;
+                    gameScene->interlace_slow_frames++;
+                    if (gameScene->interlace_slow_frames >= INTERLACE_SLOW_FRAMES_REQUIRED)
+                    {
+                        activate_dynamic_rate = true;
+                        gameScene->interlace_lock_frames_remaining = INTERLACE_LOCK_FRAMES;
+                        gameScene->interlace_slow_frames = 0;
+                    }
                 }
-                else if (
-                    was_interlaced_last_frame &&
-                    gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_TRIGGER_OFF
-                )
+                else if (was_interlaced_last_frame && ratio < INTERLACE_DEACTIVATE_RATIO)
                 {
                     activate_dynamic_rate = true;
+                    gameScene->interlace_slow_frames = 0;
+                }
+                else
+                {
+                    gameScene->interlace_slow_frames = 0;
                 }
             }
         }
-    }
-
-    if (activate_dynamic_rate && !was_interlaced_last_frame)
-    {
-        float inverted_level_normalized = (10.0f - preferences_dynamic_level) / 10.0f;
-
-        int adaptive_lock_duration =
-            INTERLACE_LOCK_DURATION_MIN +
-            (int)((INTERLACE_LOCK_DURATION_MAX - INTERLACE_LOCK_DURATION_MIN) *
-                  inverted_level_normalized);
-
-        gameScene->interlace_lock_frames_remaining = adaptive_lock_duration;
-    }
-
-    // Reset tendency counter when auto mode is off, or when frame skipping without blending
-    if (preferences_dynamic_rate != DYNAMIC_RATE_AUTO ||
-        (preferences_frame_skip && !preferences_blend_frames))
-    {
-        gameScene->interlace_tendency_counter = 0;
     }
 
     context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
@@ -1693,14 +1675,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     {
         static int frame_i;
         frame_i++;
-
         context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i & 1);
     }
     else
     {
         context->gb->direct.interlace_mask = 0xFF;
     }
-#endif
 
     gameScene->selector.startPressed = false;
     gameScene->selector.selectPressed = false;
@@ -2197,11 +2177,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 last_scy = scy;
             }
 
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-            int updated_playdate_lines = 0;
-            int scale_index_for_calc = dither_preference;
-#endif
-
             void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len) =
                 context->gb->is_cgb_mode ? gb_fast_memcpy_64__cgb : gb_fast_memcpy_64__dmg;
 
@@ -2235,56 +2210,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     line_has_changed[y >> 4] |= (1 << (y & 0xF));
 
                     gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                    if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-                    {
-                        int row_height_on_playdate = 2;
-                        if (scale_index_for_calc == 2)
-                        {
-                            row_height_on_playdate = 1;
-                        }
-                        updated_playdate_lines += row_height_on_playdate;
-                    }
-#endif
                 }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-                scale_index_for_calc++;
-                if (scale_index_for_calc == 3)
-                {
-                    scale_index_for_calc = 0;
-                }
-#endif
             }
-
-#if TENDENCY_BASED_ADAPTIVE_INTERLACING
-            if (!preferences_frame_skip && preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-            {
-                // Recalculate threshold only when preference changes
-                if (preferences_dynamic_level != gameScene->cached_dynamic_level)
-                {
-                    gameScene->cached_dynamic_level = preferences_dynamic_level;
-                    int percentage_threshold = 25 + (preferences_dynamic_level * 5);
-                    gameScene->cached_line_threshold =
-                        (PLAYDATE_LINE_COUNT_MAX * percentage_threshold) / 100;
-                }
-
-                if (updated_playdate_lines > gameScene->cached_line_threshold)
-                {
-                    gameScene->interlace_tendency_counter += 2;
-                }
-                else
-                {
-                    gameScene->interlace_tendency_counter--;
-                }
-
-                if (gameScene->interlace_tendency_counter < 0)
-                    gameScene->interlace_tendency_counter = 0;
-                if (gameScene->interlace_tendency_counter > INTERLACE_TENDENCY_MAX)
-                    gameScene->interlace_tendency_counter = INTERLACE_TENDENCY_MAX;
-            }
-#endif
 
 #if LOG_DIRTY_LINES
             playdate->system->logToConsole("--- Frame Update ---");
@@ -2592,7 +2519,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_display_fps)
             {
-                display_fps();
+                display_fps(context->gb->direct.dynamic_rate_enabled);
             }
         }
     }
