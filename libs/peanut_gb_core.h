@@ -640,7 +640,7 @@ __core_section("draw") static uint16_t __cgb_fetch_tile(
     unsigned bank = (attrs & BG_MAP_ATTR_BANK) ? VRAM_SIZE / sizeof(uint16_t) : 0;
     uint16_t* data = (attrs & BG_MAP_ATTR_Y_FLIP) ? flip_data : reg_data;
     uint16_t tile = data[bank | (tile_idx < 0x80 ? tiledata_offset : 0) | (8 * (unsigned)tile_idx)];
-    *out_palette = attrs & BG_MAP_ATTR_PALETTE;
+    *out_palette = attrs & (BG_MAP_ATTR_PALETTE | BG_MAP_ATTR_PRIORITY);
     return reverse_bits_in_each_byte_conditional_u16(tile, !!(attrs & BG_MAP_ATTR_X_FLIP));
 }
 #endif
@@ -848,15 +848,24 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                     vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
                     (bg_x / 8 + x + 1) % 32, addr_mode_vram_tiledata_offset, &tile_palette_hi_val
                 );
+
+                uint8_t pri_lo = tile_palette_lo & BG_MAP_ATTR_PRIORITY;
+                uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
+
                 uint8_t out0, out2, pri;
                 __cgb_merge_tiles(
-                    vram_tile_data_lo, vram_tile_data_hi, gb->cgb_bg_palette_gray[tile_palette_lo],
-                    gb->cgb_bg_palette_gray[tile_palette_hi_val], subx, &out0, &out2, &pri
+                    vram_tile_data_lo, vram_tile_data_hi,
+                    gb->cgb_bg_palette_gray[tile_palette_lo & BG_MAP_ATTR_PALETTE],
+                    gb->cgb_bg_palette_gray[tile_palette_hi_val & BG_MAP_ATTR_PALETTE], subx, &out0,
+                    &out2, &pri
                 );
                 pixels[x * 2] = out0;
                 pixels[x * 2 + 1] = out2;
 
-                line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
+                uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> subx) : 0;
+                if (pri_hi && subx)
+                    pri_mask |= (uint8_t)(0xFF << (8 - subx));
+                line_priority[x / 4] &= ~(((uint32_t)(pri & pri_mask)) << ((x * 8) & 31));
 
                 tile_palette_lo = tile_palette_hi_val;
             }
