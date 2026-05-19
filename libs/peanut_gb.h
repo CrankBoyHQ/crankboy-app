@@ -2325,11 +2325,13 @@ rare_write:
 }
 
 #if ENABLE_LCD
+#pragma pack(push, 1)
 struct sprite_data
 {
     uint8_t sprite_number;
     uint8_t x;
 };
+#pragma pack(pop)
 #endif
 
 __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode);
