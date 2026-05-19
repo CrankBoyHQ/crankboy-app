@@ -1419,18 +1419,10 @@ static __section__(".text.tick") void display_fps(bool interlace_active)
     buff[3] = (fps_multiplied % 10) + '0';
     buff[4] = '\0';
 
-    // Draw/clear interlace indicator before digit check (must update every draw)
-    if (interlace_active)
-    {
-        int ix = 26;
-        playdate->graphics->fillRect(ix, 0, 8, 12, kColorWhite);
-        int tx = playdate->graphics->getTextWidth(NULL, "I", 1, kUTF8Encoding, 0);
-        playdate->graphics->drawText("I", 1, kUTF8Encoding, ix + (8 - tx) / 2, 1);
-    }
-    else
-    {
-        playdate->graphics->fillRect(26, 0, 8, 12, kColorBlack);
-    }
+    // Interlace indicator: white "i" when on, black "i" (invisible) when off
+    playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
+    playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
 
     uint32_t digits4 = *(uint32_t*)&buff[0];
     if (digits4 == last_fps_digits)
@@ -1457,7 +1449,7 @@ static __section__(".text.tick") void display_fps(bool interlace_active)
                 advance = 7;
             }
 
-            unsigned cdata = (rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
+            unsigned cdata = (~rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
             out |= cdata << (32 - x - 8);
             x += advance;
         }
