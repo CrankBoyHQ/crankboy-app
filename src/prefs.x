@@ -30,7 +30,7 @@ PREF(lock_button, PREF_BUTTON_NONE)
 
 // behaviour
 PREF(ppu_timing, 1)  // 0: Fast (fixed), 1: Accurate (dynamic)
-PREF(batching, 1)  // 0: off (batch 1), 1: on (batch 3)
+PREF(batching, 0)  // 0: off (batch 1), 1: on (batch 3)
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))
 PREF(disable_autolock, 0)

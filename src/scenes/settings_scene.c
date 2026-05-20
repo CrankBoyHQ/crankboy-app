@@ -1136,7 +1136,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \nDespite appearing to be\n30 FPS, the game "
             "itself\nstill runs at full speed.\n \n"
-            "For games which don't\nfeature scrolling backgrounds,\ncan generally be disabled.",
+            "Can generally be disabled,\nif a game doesn't feature\nscrolling backgrounds.",
         .pref_var = &preferences_frame_skip,
         .max_value = 2,
         .rebuild_when_changed = 1,
@@ -1384,7 +1384,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "HLE Routines",
             .values = off_on_labels,
-            .description = "Automatically identify certain\ncommon routines and\nreplace them with\nhigh-level emulated versions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
+            .description = "Automatically identify\ncertain common routines\nand replace them with\nhigh-level emulated\nversions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
             .pref_var = &preferences_hle,
             .max_value = 2,
             .on_press = NULL
@@ -1420,15 +1420,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // instruction batching
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Batching",
-        .values = off_on_labels,
-        .description =
-            "Runs multiple CPU\ninstructions per step to\nimprove performance.\n \n"
-            "Turn off if a game\nhas glitches or doesn't\nrespond to input\ncorrectly."
-        ,
-        .pref_var = &preferences_batching,
-        .max_value = 2,
+    if (!gameScene || !gameScene->context->cgb_mode) {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Batching",
+            .values = off_on_labels,
+            .description =
+                "Runs multiple CPU\ninstructions per step to\nimprove performance.\n \n"
+                "Leave disabled if a game\nhas glitches or doesn't\nrespond to button input\ncorrectly.\n \n"
+                "DMG mode only."
+            ,
+            .pref_var = &preferences_batching,
+            .max_value = 2,
+        };
     };
 
     // overclocking
@@ -1505,8 +1508,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .values = article_labels,
             .description = "If a game title ends with\n"
                         "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
-                        "then it can displayed at\n"
-                        "the start instead, i.e.\n \n"
+                        "it can be displayed at the\n"
+                        "start instead, i.e.\n \n"
                         "  \"The Mummy (USA)\"\n",
             .pref_var = &preferences_display_article,
             .max_value = 2,
@@ -1517,7 +1520,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Sort",
             .values = sort_labels,
-            .description = "Sort the games list\nby filename or\nby database name.\n \nCan also choose to include\narticles that have been\nmoved to the front of the\nname toward sorting.",
+            .description = "Sort the games list either\nby database name or by\nfilename.\n \nCan also choose to include\narticles that have been\nmoved to the front of the\nname toward sorting.",
             .pref_var = &preferences_display_sort,
             .max_value = 4,
             .on_press = NULL
@@ -1528,7 +1531,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "Remember Last",
             .values = off_on_labels,
             .description = "When opening the library,\n"
-                "initial selection will\nbe the last game played.\n",
+                "initial selection will be the\nlast game played.\n",
             .pref_var = &preferences_library_remember_selection,
             .max_value = 2,
             .on_press = NULL
@@ -1541,11 +1544,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "CGB Prompt",
             .values = cgb_prompt_labels,
             .description = "When launching a ROM,\n"
-                "prompt to choose between\n"
-                "DMG (original) and\bexperimental CGB\n(\"Color\") device emulation\n \n"
-                "No: prompt for\n  CGB-only ROMs.\n"
-                "Yes: prompt for CGB-only\n  and CGB-optional ROMs.\n"
-                "Always: prompt even for\n  DMG ROMs.",
+                "show a prompt to choose:\n \n"
+                "1. DMG (original) emulation\n"
+                "2. CGB (\"Color\") emulation\n"
+                "      (experimental)\n \n"
+                "No: CGB-only ROMs\n \n"
+                "Yes: CGB-compatible ROMs\n \n"
+                "Always: CGB and DMG ROMs"
+            ,
             .pref_var = &preferences_prompt_if_cgb_optional,
             .max_value = 3,
             .on_press = NULL
