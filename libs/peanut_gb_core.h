@@ -1547,7 +1547,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
-    int _batch_n = 3;
+    int _batch_n = preferences_batching ? 3 : 1;
     for (int _i = 0; _i < _batch_n; _i++)
     {
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
@@ -1893,7 +1893,7 @@ done_instr_timing:
                 gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
 #if ENABLE_LCD
-                if likely(!gb->direct.frame_skip && gb->lcd_master_enable)
+                if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
                 {
                     $(__gb_draw_line)(gb);
                 }

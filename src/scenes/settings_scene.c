@@ -261,6 +261,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->initial_per_game = preferences_per_game;
     settingsScene->initial_audio_sync = preferences_audio_sync;
     settingsScene->initial_ppu_timing = preferences_ppu_timing;
+    settingsScene->initial_batching = preferences_batching;
 
     if (gameScene)
     {
@@ -1418,6 +1419,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 2,
     };
 
+    // instruction batching
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Batching",
+        .values = off_on_labels,
+        .description =
+            "Runs multiple CPU\ninstructions per step to\nimprove performance.\n \n"
+            "Turn off if a game\nhas glitches or doesn't\nrespond to input\ncorrectly."
+        ,
+        .pref_var = &preferences_batching,
+        .max_value = 2,
+    };
+
     // overclocking
     entries[++i] = (OptionsMenuEntry){
         .name = "Overclock",
@@ -1616,7 +1629,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             entries[i].description = itcm_base_desc;
         }
     #endif
-    
+
     entries[++i] = (OptionsMenuEntry){
         .name = "LCD-TCM accel.",
         .values = off_on_labels,

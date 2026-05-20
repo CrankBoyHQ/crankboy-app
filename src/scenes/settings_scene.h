@@ -41,6 +41,7 @@ typedef struct CB_SettingsScene
     int initial_per_game;
     int initial_audio_sync;
     int initial_ppu_timing;
+    int initial_batching;
     preference_t* immutable_settings;
 
     LCDBitmap* gradient;

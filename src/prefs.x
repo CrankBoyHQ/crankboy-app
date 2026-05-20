@@ -7,9 +7,6 @@ PREF(save_state_slot, 0)  // (note: has two corresponding settings)
 // audio
 PREF(sound_mode, 2)  // 0: Off, 1: Fast, 2: Accurate
 PREF(audio_sync, 0)  // 0: Fast, 1: Accurate
-
-// ppu timing
-PREF(ppu_timing, 1)  // 0: Fast (fixed), 1: Accurate (dynamic)
 PREF(sample_rate, (pd_rev == PD_REV_A) ? 1 : 0)
 PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 
@@ -32,6 +29,8 @@ PREF(press_a_b, PREF_BUTTON_HP_DEFAULT)
 PREF(lock_button, PREF_BUTTON_NONE)
 
 // behaviour
+PREF(ppu_timing, 1)  // 0: Fast (fixed), 1: Accurate (dynamic)
+PREF(batching, 1)  // 0: off (batch 1), 1: on (batch 3)
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))
 PREF(disable_autolock, 0)
