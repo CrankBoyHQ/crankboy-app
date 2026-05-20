@@ -261,7 +261,7 @@ void CB_Modal_update(CB_Modal* modal)
 
     if (modal->warning != CB_MODAL_WARNING_NONE && !modal->icon)
     {
-        modal->icon = playdate->graphics->loadBitmap("images/warning", NULL);
+        modal->icon = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/warning"), NULL);
     }
 
     if (modal->icon)

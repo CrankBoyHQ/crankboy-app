@@ -193,6 +193,7 @@ __section__(".text.main") DllExport
 
         if (!useLua())
         {
+            playdate->system->logToConsole("Lua disabled");
             pd->system->setUpdateCallback(update, pd);
         }
     }

@@ -91,7 +91,7 @@ char* script_load_from_disk(unsigned fidx, size_t* o_size)
 
 int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles)
 {
-    LCDBitmap* src = playdate->graphics->loadBitmap(path, NULL);
+    LCDBitmap* src = playdate->graphics->loadBitmap(CB_get_forwarded_path(path), NULL);
     if (!src)
         return 0;
     int width, height, stride, n = 0;

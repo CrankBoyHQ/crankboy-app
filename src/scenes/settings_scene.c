@@ -167,7 +167,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->repeatIncrementTime = 0.0f;
     settingsScene->repeatTime = 0.0f;
 
-    settingsScene->gradient = playdate->graphics->loadBitmap("images/gradient32", NULL);
+    settingsScene->gradient = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/gradient32"), NULL);
 
     void* always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
 

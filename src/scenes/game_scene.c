@@ -548,7 +548,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     if (!numbers_bmp)
     {
-        numbers_bmp = playdate->graphics->loadBitmap("fonts/numbers", NULL);
+        numbers_bmp = playdate->graphics->loadBitmap(CB_get_forwarded_path("fonts/numbers"), NULL);
     }
 
     if (!DTCM_VERIFY_DEBUG())

@@ -392,7 +392,7 @@ CB_CreditsScene* CB_CreditsScene_new(void)
     scene->menu = CB_CreditsScene_menu;
 
     creditsScene->scene = scene;
-    creditsScene->logo = playdate->graphics->loadBitmap("images/logo", NULL);
+    creditsScene->logo = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/logo"), NULL);
 
     extern const char baked_credits_json[];
     json_value j;

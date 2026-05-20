@@ -195,7 +195,10 @@ typedef struct CB_Application
     char* bundled_rom;         // (path to bundled rom)
     int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
     
+    // use shared roms/saves/settings directory
     bool bundle_shared;
+    
+    // ex. "/Shared/.forwarders/app.crankboyhq.crankboy"
     char* bundle_fwd_path;
 } CB_Application;
 
@@ -225,6 +228,12 @@ const char* get_pdboot_name_and_version(void);
 // and write FORWARDER_INDICATOR_FILE marker in this data dir.
 // Returns a caller-owned path to the install dir on success
 char* CB_install_shared_forwarder(void);
+
+// If we're running in forwarded bundle mode,
+// returns the given path in the forwarded assets dir.
+// Otherwise, returns the original path.
+// (Note: string could be freed on next call.)
+const char* CB_get_forwarded_path(const char* path);
 
 #define PLAYDATE_ROW_STRIDE 52
 

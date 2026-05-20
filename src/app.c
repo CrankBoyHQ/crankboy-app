@@ -62,6 +62,48 @@ static void read_pdx(void)
     }
 }
 
+const char* CB_get_forwarded_path(const char* path)
+{
+    if (!CB_App->bundle_fwd_path) return path;
+    
+    static char* fwdpath = NULL;
+    
+    if (!path || !path[0]) return path;
+    
+    // absolute paths are unchanged
+    if (path[0] == '/') return path;
+    
+    cb_free(fwdpath);
+    return fwdpath = aprintf("%s/%s", CB_App->bundle_fwd_path, path);
+}
+
+static void load_assets(void)
+{
+    static bool loaded = false;
+    if (loaded) return;
+    loaded = true;
+    
+    #define CB_LOAD_FONT(p)                                                                        \
+    ({                                                                                             \
+        const char* _err = NULL;                                                                   \
+        const char* _path = CB_get_forwarded_path(p);                                              \
+        LCDFont* _f = playdate->graphics->loadFont(_path, &_err);                                  \
+        if (!_f || _err)                                                                           \
+            playdate->system->logToConsole(                                                        \
+                "loadFont(%s) failed: %s", _path, _err ? _err : "(null)"                           \
+            );                                                                                     \
+        _f;                                                                                        \
+    })
+
+    CB_App->bodyFont = CB_LOAD_FONT("fonts/Roobert-11-Medium");
+    CB_App->titleFont = CB_LOAD_FONT("fonts/Roobert-20-Medium");
+    CB_App->subheadFont = CB_LOAD_FONT("fonts/Asheville-Sans-14-Bold");
+    CB_App->labelFont = CB_LOAD_FONT("fonts/Nontendo-Bold");
+    #undef CB_LOAD_FONT
+    
+    CB_App->logoBitmap = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/logo"), NULL);
+}
+
 // check for CLI arg and launch path, as well as bundle mode
 // FIXME: ugly that we have this all in one function~
 static int check_is_bundle(void)
@@ -159,6 +201,9 @@ static int check_is_bundle(void)
     json_value jfwd = json_get_table_value(jbundle, "fwd");
     if (jfwd.type == kJSONString)
         CB_App->bundle_fwd_path = cb_strdup(jfwd.data.stringval);
+    
+    // ugly hack -- we need this before showing an info scene :/
+    load_assets();
 
     if (CB_App->bundled_rom)
     {
@@ -295,18 +340,18 @@ static int check_is_bundle(void)
 }
 
 // Copy a single file to shared forwarder destination
-static bool fwd_copy_one(const char* basename, const char* rename, const char* dest_dir)
+static bool fwd_copy_one(const char* fpath, const char* rename, const char* dest_dir)
 {
     size_t size = 0;
-    char* data = cb_read_entire_file(basename, &size, kFileRead | kFileReadData);
+    char* data = cb_read_entire_file(fpath, &size, kFileRead | kFileReadData);
     if (!data)
     {
         playdate->system->logToConsole(
-            "[fwd] missing source: %s (%s)", basename, playdate->file->geterr()
+            "[fwd] missing source: %s (%s)", fpath, playdate->file->geterr()
         );
         return false;
     }
-    char* dest = aprintf("%s/%s", dest_dir, rename ? rename : basename);
+    char* dest = aprintf("%s/%s", dest_dir, rename ? rename : fpath);
     bool ok = cb_write_entire_file(dest, data, size);
     if (!ok)
     {
@@ -317,6 +362,67 @@ static bool fwd_copy_one(const char* basename, const char* rename, const char* d
     cb_free(dest);
     cb_free(data);
     return ok;
+}
+
+static bool fwd_copy_recursive(const char* fpath, const char* dest_dir);
+
+struct fwd_copy_ud {
+    bool result;
+    const char* src_dir;   // current source dir (relative to .pdx)
+    const char* dest_dir;  // destination root (absolute)
+};
+
+static void fwd_copy_recursive_cb(const char* filename, void* vd)
+{
+    struct fwd_copy_ud* ud = vd;
+
+    while (*filename == '/')
+        ++filename;
+    size_t len = strlen(filename);
+    while (len > 0 && filename[len - 1] == '/')
+        --len;
+    if (len == 0)
+        return;
+
+    char name[len + 1];
+    memcpy(name, filename, len);
+    name[len] = 0;
+
+    char* child = aprintf("%s/%s", ud->src_dir, name);
+    if (!child)
+    {
+        ud->result = false;
+        return;
+    }
+    ud->result &= fwd_copy_recursive(child, ud->dest_dir);
+    cb_free(child);
+}
+
+static bool fwd_copy_recursive(const char* fpath, const char* dest_dir)
+{
+    FileStat stat;
+    if (playdate->file->stat(fpath, &stat) != 0)
+        return false;
+
+    if (stat.isdir)
+    {
+        char* dst_subdir = aprintf("%s/%s", dest_dir, fpath);
+        if (dst_subdir)
+        {
+            full_mkdir(dst_subdir);
+            cb_free(dst_subdir);
+        }
+
+        struct fwd_copy_ud ud;
+        ud.result = true;
+        ud.src_dir = fpath;
+        ud.dest_dir = dest_dir;
+        if (playdate->file->listfiles(fpath, fwd_copy_recursive_cb, &ud, true) != 0)
+            return false;
+        return ud.result;
+    }
+
+    return fwd_copy_one(fpath, NULL, dest_dir);
 }
 
 char* CB_install_shared_forwarder(void)
@@ -340,6 +446,19 @@ char* CB_install_shared_forwarder(void)
         cb_free(dest_dir);
         return NULL;
     }
+    
+    // copy all assets (no need to copy launcher/)
+    const char* asset_sources[] = {"fonts", "images"};
+    for (size_t i = 0; i < CB_ARRAY_SIZE(asset_sources); ++i)
+    {
+        const char* source = asset_sources[i];
+        if (!fwd_copy_recursive(source, dest_dir))
+        {
+            playdate->system->logToConsole(
+                "[fwd] failed to copy %s", source
+            );
+        }
+    }
 
     // fwdex file (indicates last forwarder installed version)
     const char* version = get_current_version();
@@ -349,7 +468,7 @@ char* CB_install_shared_forwarder(void)
         playdate->system->logToConsole(
             "[fwd] failed to write %s (%s)", FORWARDER_INDICATOR_FILE, playdate->file->geterr()
         );
-        // keep going -- the install itself succeeded
+        // not fatal
     }
 
     return dest_dir;
@@ -369,6 +488,7 @@ static void maybe_refresh_shared_forwarder(void)
     cb_free(recorded);
     if (!stale)
         return;
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Updating Forwarders...");
     playdate->system->logToConsole(
         "[fwd] fwdex stale -- refreshing shared forwarder for %s",
         CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
@@ -381,13 +501,8 @@ static void maybe_refresh_shared_forwarder(void)
 static void initialize_directory(void)
 {
     size_t len;
-    char* shared_directory = NULL;
-    // Shared bundles always use the global shared dir, ignoring any
-    // per-bundle directory.txt override.
-    if (!CB_App->bundle_shared)
-    {
-        shared_directory = (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
-    }
+    char* shared_directory =
+        (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
     if (!shared_directory)
     {
         shared_directory = aprintf(DEFAULT_SHARED_DIRECTORY);
@@ -668,17 +783,13 @@ void CB_init(void)
     CB_App->coverArtCache.rom_path = NULL;
     CB_App->coverArtCache.art.bitmap = NULL;
 
-    CB_App->bodyFont = playdate->graphics->loadFont("fonts/Roobert-11-Medium", NULL);
-    CB_App->titleFont = playdate->graphics->loadFont("fonts/Roobert-20-Medium", NULL);
-    CB_App->subheadFont = playdate->graphics->loadFont("fonts/Asheville-Sans-14-Bold", NULL);
-    CB_App->labelFont = playdate->graphics->loadFont("fonts/Nontendo-Bold", NULL);
-    CB_App->logoBitmap = playdate->graphics->loadBitmap("images/logo", NULL);
-
     CB_App->migration_modal_needed = false;
 
     read_pdx();
 
     check_is_bundle();
+    
+    load_assets();
 
     if (!CB_App->bundled_rom)
     {
@@ -707,11 +818,24 @@ void CB_init(void)
     }
     else
     {
-        // use local directory as root
-        CB_App->directory = aprintf(".");
-        playdate->file->mkdir(CB_savesPath);
-        playdate->file->mkdir(CB_statesPath);
-        playdate->file->mkdir(CB_settingsPath);
+        if (CB_App->bundle_shared)
+        {
+            CB_App->directory = aprintf(DEFAULT_SHARED_DIRECTORY);
+            full_mkdir(CB_App->directory);
+            full_mkdir(cb_gb_directory_path(CB_savesPath));
+            full_mkdir(cb_gb_directory_path(CB_statesPath));
+            full_mkdir(cb_gb_directory_path(CB_settingsPath));
+            full_mkdir(cb_gb_directory_path(CB_coversPath));
+            full_mkdir(cb_gb_directory_path(CB_gamesPath));
+        }
+        else
+        {
+            // non-shared bundle
+            CB_App->directory = aprintf(".");
+            playdate->file->mkdir(CB_savesPath);
+            playdate->file->mkdir(CB_statesPath);
+            playdate->file->mkdir(CB_settingsPath);
+        }
     }
 
     preferences_init();
@@ -724,9 +848,9 @@ void CB_init(void)
     playdate->sound->synth->setReleaseTime(CB_App->clickSynth, 0.0f);
 
     CB_App->selectorBitmapTable =
-        playdate->graphics->loadBitmapTable("images/selector/selector", NULL);
+        playdate->graphics->loadBitmapTable(CB_get_forwarded_path("images/selector/selector"), NULL);
     CB_App->startSelectBitmap =
-        playdate->graphics->loadBitmap("images/selector-start-select", NULL);
+        playdate->graphics->loadBitmap(CB_get_forwarded_path("images/selector-start-select"), NULL);
 
     // add audio callback later
     CB_App->soundSource = NULL;

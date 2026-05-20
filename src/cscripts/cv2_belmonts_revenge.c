@@ -79,7 +79,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 
     force_pref(crank_mode, CRANK_MODE_OFF);
 
-    data->sidebar = playdate->graphics->loadBitmap(ASSETS_DIR "sidebar", NULL);
+    data->sidebar = playdate->graphics->loadBitmap(CB_get_forwarded_path(ASSETS_DIR "sidebar"), NULL);
     if (data->sidebar)
     {
         for (int i = 0; i < 15; ++i)

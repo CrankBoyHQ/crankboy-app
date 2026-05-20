@@ -695,7 +695,7 @@ CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
     }
 
     const char* error_str = NULL;
-    LCDBitmap* original_image = playdate->graphics->loadBitmap(cover_path, &error_str);
+    LCDBitmap* original_image = playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_path), &error_str);
 
     if (error_str)
     {

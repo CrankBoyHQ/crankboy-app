@@ -805,7 +805,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
         return NULL;
     }
 
-    LCDBitmap* htimg = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "pdimg", NULL);
+    LCDBitmap* htimg = playdate->graphics->loadBitmap(CB_get_forwarded_path(MET2_ASSETS_DIR "pdimg"), NULL);
     if (!htimg)
         return NULL;
 
@@ -818,13 +818,13 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     ScriptData* data = allocz(ScriptData);
     data->map_area = AREA_SECRET_WORLD;
     data->htimg = htimg;
-    data->heximg = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "hex", NULL);
-    data->heximg_dark = playdate->graphics->loadBitmap(MET2_ASSETS_DIR "hexdark", NULL);
+    data->heximg = playdate->graphics->loadBitmap(CB_get_forwarded_path(MET2_ASSETS_DIR "hex"), NULL);
+    data->heximg_dark = playdate->graphics->loadBitmap(CB_get_forwarded_path(MET2_ASSETS_DIR "hexdark"), NULL);
     data->area_associations = mallocz(0x100 * MAP_BANK_COUNT * sizeof(struct AreaAssociation));
     data->map_explored = mallocz(0x100 * MAP_BANK_COUNT);
 
     data->glyphs = split_subimages(
-        playdate->graphics->loadBitmap(MET2_ASSETS_DIR "font", NULL), 16, 16, &data->glyph_c
+        playdate->graphics->loadBitmap(CB_get_forwarded_path(MET2_ASSETS_DIR "font"), NULL), 16, 16, &data->glyph_c
     );
 
     for (int i = 0; i < 0x100 * MAP_BANK_COUNT; ++i)
