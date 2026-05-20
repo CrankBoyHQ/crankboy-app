@@ -71,6 +71,7 @@ extern const char* CB_gamesPath;
 extern const char* CB_coversPath;
 extern const char* CB_statesPath;
 extern const char* CB_settingsPath;
+extern const char* CB_recommendedPath;
 extern const char* CB_globalPrefsPath;
 extern const char* CB_patchesPath;
 

@@ -101,9 +101,10 @@ extern preferences_bitfield_t prefs_locked_by_script;
      PREFBIT_display_sort | PREFBIT_library_remember_selection | PREFBIT_prompt_if_cgb_optional)
 
 // these preferences are always saved per-game, regardless of if global/per-game selected
-#define PREFBITS_NEVER_GLOBAL                                                            \
-    (PREFBIT_per_game | PREFBIT_save_state_slot | PREFBIT_save_slot | PREFBIT_script_A | \
-     PREFBIT_script_B | PREFBIT_script_C | PREFBIT_script_support | PREFBIT_script_has_prompted)
+#define PREFBITS_NEVER_GLOBAL                                                                     \
+    (PREFBIT_per_game | PREFBIT_save_state_slot | PREFBIT_save_slot | PREFBIT_script_A |          \
+     PREFBIT_script_B | PREFBIT_script_C | PREFBIT_script_support | PREFBIT_script_has_prompted | \
+     PREFBIT_recommended_settings_ignored)
 
 // preferences that are never saved to disk
 #define PREFBITS_TRANSIENT (0)

@@ -480,6 +480,17 @@ static void on_end(gb_s* gb, ScriptData* data)
     cb_free(data);
 }
 
+static const struct ScriptRecommendedSetting cv2_recommended[] = {
+    {PREFBIT_frame_skip, 1},    // 30fps
+    {PREFBIT_blend_frames, 1},  // On
+};
+
+static const struct ScriptRecommendedSettings cv2_rec_settings = {
+    .message = NULL,
+    .entries = cv2_recommended,
+    .count = sizeof(cv2_recommended) / sizeof(cv2_recommended[0]),
+};
+
 C_SCRIPT{
     .rom_name = "CASTLEVANIA2 BEL",
     .description = DESCRIPTION,
@@ -489,4 +500,5 @@ C_SCRIPT{
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
     .on_end = (CS_OnEnd)on_end,
+    .recommended_settings = &cv2_rec_settings,
 };

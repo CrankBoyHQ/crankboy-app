@@ -48,6 +48,19 @@ enum ScriptPreferredLaunchSystem
     ScriptPreferredLaunchSystem_CGB,
 };
 
+struct ScriptRecommendedSetting
+{
+    preferences_bitfield_t bit;
+    int value;
+};
+
+struct ScriptRecommendedSettings
+{
+    char* message;
+    const struct ScriptRecommendedSetting* entries;
+    int count;
+};
+
 struct CScriptInfo
 {
     // must match what's in the header
@@ -65,6 +78,8 @@ struct CScriptInfo
     CS_QuerySerialSize query_serial_size;
     CS_Serialize serialize;
     CS_Deserialize deserialize;
+
+    const struct ScriptRecommendedSettings* recommended_settings;
 };
 
 typedef struct ScriptInfo
@@ -120,3 +135,10 @@ ScriptInfo* script_get_info_by_rom_path_and_get_header_info(
     int* o_is_gbz, uint32_t* o_gbz_checksum
 );
 bool script_exists(const char* game_path);
+
+bool script_check_recommended_settings(
+    const struct ScriptRecommendedSettings* settings, const char* game_settings_path
+);
+void script_apply_recommended_settings(
+    const struct ScriptRecommendedSettings* settings, const char* game_settings_path
+);

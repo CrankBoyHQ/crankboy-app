@@ -13,6 +13,7 @@
 #include "global.h"
 #include "jparse.h"
 #include "preferences.h"
+#include "recommended_json.h"
 #include "scenes/file_copying_scene.h"
 #include "scenes/game_scene.h"
 #include "scenes/info_scene.h"
@@ -378,6 +379,7 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_coversPath));
     full_mkdir(cb_gb_directory_path(CB_statesPath));
     full_mkdir(cb_gb_directory_path(CB_settingsPath));
+    full_mkdir(cb_gb_directory_path(CB_recommendedPath));
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
 }
 
@@ -948,6 +950,7 @@ void CB_quit(void)
     }
 
     script_quit();
+    recommended_json_quit();
     version_quit();
 
 #ifdef TARGET_PLAYDATE

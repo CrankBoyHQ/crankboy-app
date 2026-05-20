@@ -50,6 +50,7 @@ PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(script_has_prompted, false)  // (not a real setting)
+PREF(recommended_settings_ignored, 0) // (not a real setting)
 
 // cgb
 PREF(cgb_speed, 0) // 0: default; 1: force slow mode

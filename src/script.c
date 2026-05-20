@@ -38,7 +38,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
     for (size_t i = 0; i < c_script_count && c_scripts; ++i)
     {
         const struct CScriptInfo* cinfo = c_scripts[i];
-        if (cinfo && !strcmp(cinfo->rom_name, game_name))
+        if (cinfo && !strncmp(cinfo->rom_name, game_name, strlen(cinfo->rom_name)))
         {
             ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
@@ -362,4 +362,64 @@ void script_quit(void)
         c_scripts = NULL;
         c_script_count = 0;
     }
+}
+
+static preference_t* pref_by_bit(preferences_bitfield_t bit)
+{
+    int i = 0;
+#define PREF(x, ...)                               \
+    if (((preferences_bitfield_t)1 << i) == (bit)) \
+        return &preferences_##x;                   \
+    ++i;
+#include "prefs.x"
+    return NULL;
+}
+
+bool script_check_recommended_settings(
+    const struct ScriptRecommendedSettings* settings, const char* game_settings_path
+)
+{
+    if (!settings || !settings->entries || settings->count == 0 || !game_settings_path)
+        return true;
+
+    void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
+    preferences_merge_from_disk(game_settings_path);
+
+    bool all_match = true;
+    for (int i = 0; i < settings->count; ++i)
+    {
+        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        if (pref && *pref != settings->entries[i].value)
+        {
+            all_match = false;
+            break;
+        }
+    }
+
+    preferences_restore_subset(stored);
+    cb_free(stored);
+    return all_match;
+}
+
+void script_apply_recommended_settings(
+    const struct ScriptRecommendedSettings* settings, const char* game_settings_path
+)
+{
+    if (!settings || !settings->entries || settings->count == 0 || !game_settings_path)
+        return;
+
+    void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
+    preferences_merge_from_disk(game_settings_path);
+
+    for (int i = 0; i < settings->count; ++i)
+    {
+        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        if (pref)
+            *pref = settings->entries[i].value;
+    }
+
+    preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
+
+    preferences_restore_subset(stored);
+    cb_free(stored);
 }

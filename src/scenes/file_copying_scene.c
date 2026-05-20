@@ -55,6 +55,10 @@ static bool copy_one_file(const char* full_path, const char* filename)
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_statesPath), filename);
     }
+    else if (!strcasecmp(extension, ".json"))
+    {
+        dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_recommendedPath), filename);
+    }
 
     if (!dst_path)
     {
@@ -112,7 +116,8 @@ static void collect_files_callback(const char* filename, void* userdata)
             !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
             !strcasecmp(extension, ".pdi") || !strcasecmp(extension, ".gb") ||
             !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".gbz") ||
-            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state"))
+            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state") ||
+            (!strcasecmp(extension, ".json") && !strcmp(ud->directory, "csettings")))
         {
             should_copy = true;
         }
@@ -146,7 +151,7 @@ void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
 
-        const char* sources[] = {".", "packed"};
+        const char* sources[] = {".", "packed", "csettings"};
         struct list_files_ud ud = {.scene = scene};
 
         for (size_t i = 0; i < sizeof(sources) / sizeof(const char*); ++i)

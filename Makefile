@@ -42,6 +42,7 @@ SRC += src/jparse.c
 SRC += src/listview.c
 SRC += src/pgmusic.c
 SRC += src/preferences.c
+SRC += src/recommended_json.c
 SRC += src/revcheck.c
 SRC += src/scene.c
 SRC += src/scenes/cover_cache_scene.c

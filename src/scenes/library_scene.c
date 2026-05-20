@@ -13,6 +13,7 @@
 #include "../http.h"
 #include "../http_safe.h"
 #include "../preferences.h"
+#include "../recommended_json.h"
 #include "../revcheck.h"
 #include "../scenes/modal.h"
 #include "../script.h"
@@ -676,46 +677,6 @@ static void launch_game_normal(void* ud, int option)
     }
 }
 
-static void apply_lsdj_settings_and_launch(void* ud, int option)
-{
-    if (option != 0)
-    {
-        return;
-    }
-
-    CB_Game* game = ud;
-    char* settings_path = cb_game_config_path(game->fullpath);
-
-    if (settings_path)
-    {
-        void* stored_globals = preferences_store_subset(~(preferences_bitfield_t)0);
-
-        preferences_merge_from_disk(settings_path);
-
-        // Optimal settings for LSDj
-        preferences_per_game = 1;
-        preferences_sound_mode = 2;        // Accurate
-        preferences_audio_sync = 1;        // Accurate
-        preferences_sample_rate = 0;       // High
-        preferences_headphone_audio = 1;   // Stereo
-        preferences_frame_skip = 1;        // 30fps
-        preferences_dither_stable = 0;     // Off
-        preferences_disable_autolock = 1;  // On
-        preferences_overclock = 0;         // Off
-        if (pd_rev == PD_REV_A)
-            preferences_itcm = 1;   // On
-        preferences_uncap_fps = 0;  // Off
-
-        preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
-
-        preferences_restore_subset(stored_globals);
-        cb_free(stored_globals);
-        cb_free(settings_path);
-    }
-
-    launch_game(game, 3);
-}
-
 static void disable_script_and_launch(void* ud, int option)
 {
     CB_Game* game = ud;
@@ -768,25 +729,12 @@ static bool crank_would_cause_input(CB_Game* game)
     return false;
 }
 
-static void launch_game_prompt_if_script(void* ud, int option)
+static void launch_game_script_prompt(CB_Game* game)
 {
-    if (option != 0)
-        return;
-
-    CB_Game* game = ud;
-
-    if (preferences_library_remember_selection)
-    {
-        call_with_user_stack_1(save_last_selected_index, game->fullpath);
-    }
-
     bool launch = true;
 
-    // Prompt for use game script
-
-    // check if user has already accepted/rejected script prompt for this game before
     void* prefs = preferences_store_subset(-1);
-    preferences_script_has_prompted = 0;  // ignore global ver. of this setting
+    preferences_script_has_prompted = 0;
     load_game_prefs(game->fullpath, false);
     int has_prompted = preferences_script_has_prompted;
     int script_enabled = preferences_script_support;
@@ -800,7 +748,11 @@ static void launch_game_prompt_if_script(void* ud, int option)
     ScriptInfo* info = get_script_info(game->names->name_header);
     if (info)
     {
-        if (!info->experimental && !has_prompted)
+        const struct CScriptInfo* csi = info->c_script_info;
+        bool has_game_cb = csi && (csi->on_begin || csi->on_tick || csi->on_draw || csi->on_menu ||
+                                   csi->on_settings || csi->on_end);
+
+        if (!info->experimental && !has_prompted && has_game_cb)
         {
             const char* options[] = {"Yes", "No", "About", NULL};
             if (!info->info)
@@ -817,7 +769,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
             CB_presentModal(modal->scene);
             launch = false;
         }
-        else if (info->experimental && script_enabled)
+        else if (info->experimental && script_enabled && has_game_cb)
         {
             const char* options[] = {"Yes", "No", NULL};
             CB_Modal* modal = CB_Modal_new(
@@ -834,55 +786,131 @@ static void launch_game_prompt_if_script(void* ud, int option)
         }
         script_info_free(info);
     }
-    else if (
-        game->names->name_header &&
-        (!memcmp(game->names->name_header, "LSDj", 4) || !strcmp(game->names->name_header, "LOFI"))
-    )
-    {
-        bool settings_are_optimal = false;
-        char* settings_path = cb_game_config_path(game->fullpath);
-
-        if (playdate->file->stat(settings_path, NULL) == 0)
-        {
-            void* stored_prefs = preferences_store_subset(~(preferences_bitfield_t)0);
-            preferences_merge_from_disk(settings_path);
-
-            if (preferences_per_game == 1 && preferences_sound_mode == 2 &&
-                preferences_audio_sync == 1 && preferences_sample_rate == 0 &&
-                preferences_headphone_audio == 1 && preferences_frame_skip == 1 &&
-                preferences_dither_stable == 0 && preferences_overclock == 0 &&
-                preferences_disable_autolock == 1 && preferences_uncap_fps == 0)
-            {
-                settings_are_optimal = true;
-            }
-
-            preferences_restore_subset(stored_prefs);
-            cb_free(stored_prefs);
-        }
-
-        cb_free(settings_path);
-
-        if (!settings_are_optimal)
-        {
-            const char* options[] = {"OK", NULL, NULL};
-            CB_Modal* modal = CB_Modal_new(
-                "Audio apps require accurate timing.\n\nTo ensure this app runs "
-                "correctly, CrankBoy will apply the recommended settings.",
-                options, apply_lsdj_settings_and_launch, game
-            );
-
-            modal->width = 350;
-            modal->height = 200;
-
-            CB_presentModal(modal->scene);
-            launch = false;
-        }
-    }
 
     if (launch)
     {
         launch_game(game, 3);
     }
+}
+
+static const struct ScriptRecommendedSettings* get_recommended_for_game(CB_Game* game)
+{
+    const struct ScriptRecommendedSettings* rec = recommended_json_lookup(game->names->name_header);
+    if (rec)
+        return rec;
+
+    ScriptInfo* info = get_script_info(game->names->name_header);
+    if (info && info->c_script_info)
+        rec = info->c_script_info->recommended_settings;
+    script_info_free(info);
+
+    return rec;
+}
+
+static void launch_game_recommended_cb(void* ud, int option)
+{
+    // 0 = Apply, 1 = Skip, 2 = Ignore. B-dismiss = -1 (acts as Skip).
+    CB_Game* game = ud;
+    if (option == 0)
+    {
+        const struct ScriptRecommendedSettings* rec = get_recommended_for_game(game);
+        if (rec)
+        {
+            char* settings_path = cb_game_config_path(game->fullpath);
+            if (settings_path)
+            {
+                script_apply_recommended_settings(rec, settings_path);
+                cb_free(settings_path);
+            }
+        }
+    }
+    else if (option == 2)
+    {
+        void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
+        char* settings_path = cb_game_config_path(game->fullpath);
+        if (settings_path)
+        {
+            preferences_merge_from_disk(settings_path);
+            preferences_recommended_settings_ignored = 1;
+            preferences_per_game = 1;
+            preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
+            cb_free(settings_path);
+        }
+        preferences_restore_subset(stored);
+        cb_free(stored);
+    }
+
+    launch_game_script_prompt(game);
+}
+
+static void launch_game_prompt_if_script(void* ud, int option)
+{
+    if (option != 0)
+        return;
+
+    CB_Game* game = ud;
+
+    if (preferences_library_remember_selection)
+    {
+        call_with_user_stack_1(save_last_selected_index, game->fullpath);
+    }
+
+    ScriptInfo* info = get_script_info(game->names->name_header);
+    const struct ScriptRecommendedSettings* rec = NULL;
+
+    if (info && info->c_script_info && info->c_script_info->recommended_settings)
+        rec = info->c_script_info->recommended_settings;
+
+    if (!rec)
+        rec = recommended_json_lookup(game->names->name_header);
+
+    if (rec)
+    {
+        void* prefs = preferences_store_subset(-1);
+        preferences_recommended_settings_ignored = 0;
+        load_game_prefs(game->fullpath, false);
+        bool ignored = preferences_recommended_settings_ignored;
+        preferences_restore_subset(prefs);
+        cb_free(prefs);
+
+        if (!ignored)
+        {
+            char* settings_path = cb_game_config_path(game->fullpath);
+            bool optimal = settings_path && script_check_recommended_settings(rec, settings_path);
+            cb_free(settings_path);
+
+            if (!optimal)
+            {
+                const char* options[] = {"Apply", "Skip", "Ignore", NULL};
+                char* msg = rec->message;
+                char default_msg[256];
+                if (!msg)
+                {
+                    const char* name = game->names->name_short_leading_article;
+                    if (!name || !name[0])
+                        name = game->names->name_header;
+                    snprintf(
+                        default_msg, sizeof(default_msg),
+                        "%s requires custom settings to run properly.\n\n"
+                        "Choose an option to continue.",
+                        name
+                    );
+                    msg = default_msg;
+                }
+                CB_Modal* modal = CB_Modal_new(msg, options, launch_game_recommended_cb, game);
+
+                modal->width = 350;
+                modal->height = 200;
+
+                CB_presentModal(modal->scene);
+                script_info_free(info);
+                return;
+            }
+        }
+    }
+    script_info_free(info);
+
+    launch_game_script_prompt(game);
 }
 
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
