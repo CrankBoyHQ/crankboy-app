@@ -31,7 +31,8 @@
     },
     {
         "section": "Launcher Art",
-        "contributors": ["tinyevilwizard"]
+        "shuffle": false,
+        "contributors": ["tinyevilwizard (static)", "Sodium Hydroxide (animated)"]
     },
     {
         "id": "included-titles",

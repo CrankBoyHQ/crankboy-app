@@ -566,6 +566,106 @@ static bool serial_cb_read(const char* const* tokens)
     return true;
 }
 
+// cb:pdxpath -> cb:pdxpath:ok:<urlencoded path>
+//             or cb:pdxpath:error:unknown
+static bool serial_cb_pdxpath(const char* const* tokens)
+{
+    (void)tokens;
+    const char* p = CB_App ? CB_App->pdxLaunchPath : NULL;
+    if (!p || !*p)
+    {
+        serial_send_response("cb:pdxpath:error:unknown");
+        return true;
+    }
+    char* enc = url_encode(p);
+    if (!enc)
+    {
+        serial_send_response("cb:pdxpath:error:nomem");
+        return true;
+    }
+    serial_send_response("cb:pdxpath:ok:%s", enc);
+    cb_free(enc);
+    return true;
+}
+
+// cb:pdxinfo  emits one line per pdxinfo key as
+//   cb:pdxinfo:kv:<urlenc-key>:<urlenc-value>
+// then a terminator cb:pdxinfo:end. On read failure:
+//   cb:pdxinfo:error:io
+static bool serial_cb_pdxinfo(const char* const* tokens)
+{
+    (void)tokens;
+    size_t len = 0;
+    char* contents = cb_read_entire_file("pdxinfo", &len, kFileRead);
+    if (!contents)
+    {
+        serial_cb_send_fs_error("pdxinfo", "io");
+        return true;
+    }
+
+    char* p = contents;
+    char* end = contents + len;
+    while (p < end)
+    {
+        char* line = p;
+        while (p < end && *p != '\n' && *p != '\r')
+            p++;
+        char* line_end = p;
+        while (p < end && (*p == '\n' || *p == '\r'))
+            p++;
+
+        if (line == line_end)
+            continue;
+        *line_end = 0;
+
+        char* eq = strchr(line, '=');
+        if (!eq)
+            continue;
+        *eq = 0;
+        const char* key = line;
+        const char* value = eq + 1;
+
+        char* enc_k = url_encode(key);
+        char* enc_v = url_encode(value);
+        if (enc_k && enc_v)
+        {
+            serial_send_response("cb:pdxinfo:kv:%s:%s", enc_k, enc_v);
+        }
+        cb_free(enc_k);
+        cb_free(enc_v);
+    }
+    cb_free(contents);
+    serial_send_response("cb:pdxinfo:end");
+    return true;
+}
+
+// cb:fwdinstall  installs/refreshes /Shared/.forwarder/<pdxBundleID>/
+// from this CrankBoy's own resources, writes fwdex marker, and replies
+// with the install dir.
+//   cb:fwdinstall:ok:<urlencoded /Shared/.forwarder/...>
+// or cb:fwdinstall:error:<reason>
+static bool serial_cb_fwdinstall(const char* const* tokens)
+{
+    (void)tokens;
+    char* dir = CB_install_shared_forwarder();
+    if (!dir)
+    {
+        serial_send_response("cb:fwdinstall:error:install");
+        return true;
+    }
+    char* enc = url_encode(dir);
+    if (!enc)
+    {
+        cb_free(dir);
+        serial_send_response("cb:fwdinstall:error:nomem");
+        return true;
+    }
+    serial_send_response("cb:fwdinstall:ok:%s", enc);
+    cb_free(enc);
+    cb_free(dir);
+    return true;
+}
+
 // emit a per-game string field, dropping with :omit if the line would overflow
 static void emit_games_str(unsigned int i, const char* label, const char* value)
 {
@@ -677,6 +777,18 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "games") == 0)
     {
         return serial_cb_games(tokens);
+    }
+    else if (strcmp(subcmd, "pdxpath") == 0)
+    {
+        return serial_cb_pdxpath(tokens);
+    }
+    else if (strcmp(subcmd, "pdxinfo") == 0)
+    {
+        return serial_cb_pdxinfo(tokens);
+    }
+    else if (strcmp(subcmd, "fwdinstall") == 0)
+    {
+        return serial_cb_fwdinstall(tokens);
     }
 
     return false;

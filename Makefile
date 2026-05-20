@@ -72,6 +72,10 @@ SRC += libs/lz4/lz4.c
 SRC += libs/miniz/miniz.c
 SRC += libs/miniz/mini_gzip.c
 
+# Baked JSON (generated from Source/*.json; see rules below)
+SRC += build/baked_version_json.c
+SRC += build/baked_credits_json.c
+
 ASRC = setup.s
 
 # List all user directories here
@@ -111,8 +115,6 @@ override LDSCRIPT=./link_map.ld
 include $(SDK)/C_API/buildsupport/common.mk
 
 # Update pdxinfo from version.json (unless bundle.json present)
-VERSION_JSON := Source/version.json
-PDXINFO := Source/pdxinfo
 PYTHON := $(shell command -v python3b 2>/dev/null)
 
 ifneq ("$(wildcard Source/bundle.json)","")
@@ -124,6 +126,18 @@ endif
 endif
 
 PDCFLAGS += --quiet
+
+# bake Source/*.json into C source (build/ already created by MKOBJDIR)
+build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
+	python3 scripts/embed_json.py $< $@ baked_$*_json
+
+# remove baked json files from .pdx
+# (can't remove them from the Source/ dir, as they are needed for version checks)
+.PHONY: build
+build: all
+	-rm -f $(PRODUCT)/version.json $(PRODUCT)/credits.json
+
+.DEFAULT_GOAL := build
 
 # flags for simulator
 DYLIB_FLAGS += $(COMMON_FLAGS) $(SIMULATOR_FLAGS)

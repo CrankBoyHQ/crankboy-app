@@ -62,10 +62,15 @@ static void read_pdx(void)
     }
 }
 
+// check for CLI arg and launch path, as well as bundle mode
+// FIXME: ugly that we have this all in one function~
 static int check_is_bundle(void)
 {
-    // check for CLI arg
-    const char* arg = playdate->system->getLaunchArgs(NULL);
+    const char* launch_path = NULL;
+
+    const char* arg = playdate->system->getLaunchArgs(&launch_path);
+    CB_App->pdxLaunchPath = cb_strdup(launch_path);
+    playdate->system->logToConsole("launch path: %s", launch_path);
 
     if (arg)
     {
@@ -146,6 +151,14 @@ static int check_is_bundle(void)
             CB_App->bundled_rom_cgb_mode = 1;
         }
     }
+
+    json_value jshared = json_get_table_value(jbundle, "shared");
+    if (jshared.type == kJSONTrue)
+        CB_App->bundle_shared = true;
+
+    json_value jfwd = json_get_table_value(jbundle, "fwd");
+    if (jfwd.type == kJSONString)
+        CB_App->bundle_fwd_path = cb_strdup(jfwd.data.stringval);
 
     if (CB_App->bundled_rom)
     {
@@ -281,10 +294,100 @@ static int check_is_bundle(void)
     return !!CB_App->bundled_rom;
 }
 
+// Copy a single file to shared forwarder destination
+static bool fwd_copy_one(const char* basename, const char* rename, const char* dest_dir)
+{
+    size_t size = 0;
+    char* data = cb_read_entire_file(basename, &size, kFileRead | kFileReadData);
+    if (!data)
+    {
+        playdate->system->logToConsole(
+            "[fwd] missing source: %s (%s)", basename, playdate->file->geterr()
+        );
+        return false;
+    }
+    char* dest = aprintf("%s/%s", dest_dir, rename ? rename : basename);
+    bool ok = cb_write_entire_file(dest, data, size);
+    if (!ok)
+    {
+        playdate->system->logToConsole(
+            "[fwd] failed to write %s (%s)", dest, playdate->file->geterr()
+        );
+    }
+    cb_free(dest);
+    cb_free(data);
+    return ok;
+}
+
+char* CB_install_shared_forwarder(void)
+{
+    if (!CB_App->pdxBundleID || !*CB_App->pdxBundleID)
+    {
+        playdate->system->logToConsole("[fwd] no pdxBundleID, cannot install");
+        return NULL;
+    }
+
+    char* dest_dir = aprintf("%s/%s", SHARED_FORWARDER_ROOT, CB_App->pdxBundleID);
+    if (full_mkdir(dest_dir) != 0)
+    {
+        // pass
+    }
+
+    bool ok = (fwd_copy_one("crankboy.bin", NULL, dest_dir) || fwd_copy_one("pdex.bin", "crankboy.bin", dest_dir));
+
+    if (!ok)
+    {
+        cb_free(dest_dir);
+        return NULL;
+    }
+
+    // fwdex file (indicates last forwarder installed version)
+    const char* version = get_current_version();
+    const char* marker = version ? version : "unknown";
+    if (!cb_write_entire_file(FORWARDER_INDICATOR_FILE, marker, strlen(marker)))
+    {
+        playdate->system->logToConsole(
+            "[fwd] failed to write %s (%s)", FORWARDER_INDICATOR_FILE, playdate->file->geterr()
+        );
+        // keep going -- the install itself succeeded
+    }
+
+    return dest_dir;
+}
+
+// update forwader install if fwdex present and lists differing version
+static void maybe_refresh_shared_forwarder(void)
+{
+    size_t flen = 0;
+    char* recorded = cb_read_entire_file(FORWARDER_INDICATOR_FILE, &flen, kFileReadData);
+    if (!recorded)
+        return;
+    const char* version = get_current_version();
+    bool stale = true;
+    if (version && strlen(recorded) == strlen(version) && !strcmp(recorded, version))
+        stale = false;
+    cb_free(recorded);
+    if (!stale)
+        return;
+    playdate->system->logToConsole(
+        "[fwd] fwdex stale -- refreshing shared forwarder for %s",
+        CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
+    );
+    char* dir = CB_install_shared_forwarder();
+    if (dir)
+        cb_free(dir);
+}
+
 static void initialize_directory(void)
 {
     size_t len;
-    char* shared_directory = (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
+    char* shared_directory = NULL;
+    // Shared bundles always use the global shared dir, ignoring any
+    // per-bundle directory.txt override.
+    if (!CB_App->bundle_shared)
+    {
+        shared_directory = (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
+    }
     if (!shared_directory)
     {
         shared_directory = aprintf(DEFAULT_SHARED_DIRECTORY);
@@ -581,6 +684,7 @@ void CB_init(void)
     {
         cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
         initialize_directory();
+        maybe_refresh_shared_forwarder();
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
         if (CB_App->forceCheckVersion)
             check_for_updates();
@@ -947,6 +1051,11 @@ void CB_quit(void)
     if (CB_App->bundled_rom)
     {
         cb_free(CB_App->bundled_rom);
+    }
+
+    if (CB_App->bundle_fwd_path)
+    {
+        cb_free(CB_App->bundle_fwd_path);
     }
 
     script_quit();

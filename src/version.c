@@ -7,10 +7,11 @@
 #include "pd_api/pd_api_json.h"
 #include "utility.h"
 
+extern const char baked_version_json[];
+
 #define ERRMEM -255
 #define STR_ERRMEM "malloc error"
 #define UPDATE_CHECK_TIMESTAMP_PATH "check_update_timestamp.bin"
-#define LOCAL_VERSION_PATH "version.json"
 #define UPDATE_INFO_PATH "update_info.json"
 
 static json_value localVersionInfo;
@@ -21,7 +22,8 @@ static int read_local_version(void)
 {
     free_json_data(localVersionInfo);
     localVersionInfo.type = kJSONNull;
-    if (parse_json(LOCAL_VERSION_PATH, &localVersionInfo, kFileRead | kFileReadData) != 0)
+
+    if (parse_json_string(baked_version_json, &localVersionInfo) != 0)
     {
         return 1;
     }
@@ -177,12 +179,17 @@ PendingUpdateInfo* get_pending_update(void)
     PendingUpdateInfo* result = NULL;
     json_value jv_root;
 
-    const char* new_update_path =
-        CB_App->forceCheckVersionLocal ? VERSION_INFO_FILE : UPDATE_INFO_PATH;
-    unsigned readFlags =
-        CB_App->forceCheckVersionLocal ? (kFileRead | kFileReadData) : kFileReadData;
+    int parsed;
+    if (CB_App->forceCheckVersionLocal)
+    {
+        parsed = parse_json_string(baked_version_json, &jv_root);
+    }
+    else
+    {
+        parsed = parse_json(UPDATE_INFO_PATH, &jv_root, kFileReadData);
+    }
 
-    if (parse_json(new_update_path, &jv_root, readFlags) == 1 && jv_root.type == kJSONTable)
+    if (parsed && jv_root.type == kJSONTable)
     {
         json_value jv_show = json_get_table_value(jv_root, "show");
         if (jv_show.type != kJSONFalse)

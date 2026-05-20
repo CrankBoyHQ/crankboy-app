@@ -41,8 +41,9 @@ extern pthread_mutex_t audio_mutex;
 #define AUDIO_RING_BUFFER_SIZE 4096                          // ~90ms of audio at 44.1kHz.
 #define AUDIO_RING_BUFFER_MASK (AUDIO_RING_BUFFER_SIZE - 1)  // For fast bitwise modulo
 
-// #define CRANKBOY_OFFICIAL_CATALOG // For the official catalog release from the crankboy team. Not
-// for third-party catalog releases.
+// For the official catalog release from the crankboy team. Not
+// for third-party catalog releases:
+// #define CRANKBOY_OFFICIAL_CATALOG
 
 typedef struct
 {
@@ -176,21 +177,26 @@ typedef struct CB_Application
 
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;
+    
+    char* pdxLaunchPath; // from system->getLaunchArgs
 
     char* hbApiDomain;
     char* hbApiPath;
     char* hbSearchExtraFlags;
     char* hbStaticPath;
 
+    bool migration_modal_needed;
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
     // - library view is omitted
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
-    bool migration_modal_needed;
     char* bundled_rom;         // (path to bundled rom)
     int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
+    
+    bool bundle_shared;
+    char* bundle_fwd_path;
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -214,6 +220,11 @@ void* dtcm_alloc(size_t size);
 
 // returns NULL if was not booted by pdboot.
 const char* get_pdboot_name_and_version(void);
+
+// Install/refresh the shared forwarder (/Shared/.forwader/<...>/crankboy.bin, etc.)
+// and write FORWARDER_INDICATOR_FILE marker in this data dir.
+// Returns a caller-owned path to the install dir on success
+char* CB_install_shared_forwarder(void);
 
 #define PLAYDATE_ROW_STRIDE 52
 
@@ -255,7 +266,6 @@ const char* get_pdboot_name_and_version(void);
 // files that have been copied from PDX to data folder
 #define COPIED_FILES "manifest.json"
 #define PATCH_LIST_FILE "manifest.json"
-#define VERSION_INFO_FILE "version.json"
 #define BUNDLE_FILE "bundle.json"
 #define ROMHACK_DB_FILE "rhdb.json"
 #define DIRECTORY_POINTER "directory.txt"
@@ -267,6 +277,9 @@ const char* get_pdboot_name_and_version(void);
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define PDX_STANDARD_BUNDLE_ID "app.crankboyhq.crankboy"
 #define PDX_CATALOG_BUNDLE_ID "catalog.crankboyhq.crankboy"
+#define SHARED_FORWARDER_ROOT "/Shared/.forwarder"
+
+#define FORWARDER_INDICATOR_FILE "fwdex"
 
 #define DISK_IMAGE "__homebrew_dl_img.pdi"
 

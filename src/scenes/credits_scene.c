@@ -4,6 +4,7 @@
 #include "../jparse.h"
 #include "../pgmusic.h"
 #include "../version.h"
+#include "pd_api/pd_api_json.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -113,6 +114,9 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
         {
             json_value contributors = json_get_table_value(entry, "contributors");
             json_value subtitle = json_get_table_value(entry, "subtitle");
+            json_value jshuffle = json_get_table_value(entry, "shuffle");
+            bool shuffle = true;
+            if (jshuffle.type == kJSONFalse) shuffle = false;
 
             // title
             {
@@ -149,7 +153,7 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             if (contributors.type == kJSONArray && contributors.data.arrayval)
             {
                 JsonArray* contsObj = contributors.data.arrayval;
-                if (first_visit)
+                if (first_visit && shuffle)
                     shuffle_array(contsObj);
 
                 for (size_t j = 0; j < contsObj->n; ++j)
@@ -250,6 +254,22 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             );
             yl += yadv;
 #endif
+
+            if (CB_App->bundled_rom)
+            {
+                const char* bundle_label = "Bundle";
+                if (CB_App->bundle_shared && CB_App->bundle_fwd_path)
+                    bundle_label = "Bundle (shared+fwd)";
+                else if (CB_App->bundle_shared)
+                    bundle_label = "Bundle (shared)";
+                else if (CB_App->bundle_fwd_path)
+                    bundle_label = "Bundle (fwd)";
+                playdate->graphics->drawTextInRect(
+                    bundle_label, strlen(bundle_label), kUTF8Encoding,
+                    margin - creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextLeft
+                );
+                yl += yadv;
+            }
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
             playdate->graphics->drawTextInRect(
@@ -374,8 +394,9 @@ CB_CreditsScene* CB_CreditsScene_new(void)
     creditsScene->scene = scene;
     creditsScene->logo = playdate->graphics->loadBitmap("images/logo", NULL);
 
+    extern const char baked_credits_json[];
     json_value j;
-    int result = parse_json("./credits.json", &j, kFileRead | kFileReadData);
+    int result = parse_json_string(baked_credits_json, &j);
     if (!result || j.type != kJSONArray)
     {
         free_json_data(j);
