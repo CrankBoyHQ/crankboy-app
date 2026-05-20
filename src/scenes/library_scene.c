@@ -807,9 +807,15 @@ static const struct ScriptRecommendedSettings* get_recommended_for_game(CB_Game*
     return rec;
 }
 
+static void launch_game_after_later_info(void* ud, int option)
+{
+    (void)option;
+    launch_game_script_prompt((CB_Game*)ud);
+}
+
 static void launch_game_recommended_cb(void* ud, int option)
 {
-    // 0 = Apply, 1 = Skip, 2 = Ignore. B-dismiss = -1 (acts as Skip).
+    // 0 = Apply, 1 = Later. B-dismiss = -1 (prompts again next launch).
     CB_Game* game = ud;
     if (option == 0)
     {
@@ -823,8 +829,9 @@ static void launch_game_recommended_cb(void* ud, int option)
                 cb_free(settings_path);
             }
         }
+        launch_game_script_prompt(game);
     }
-    else if (option == 2)
+    else if (option == 1)
     {
         void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
         char* settings_path = cb_game_config_path(game->fullpath);
@@ -838,9 +845,21 @@ static void launch_game_recommended_cb(void* ud, int option)
         }
         preferences_restore_subset(stored);
         cb_free(stored);
-    }
 
-    launch_game_script_prompt(game);
+        const char* info_options[] = {"OK", NULL, NULL};
+        CB_Modal* info_modal = CB_Modal_new(
+            "Recommended settings can be applied "
+            "from the settings menu at any time.",
+            info_options, launch_game_after_later_info, game
+        );
+        info_modal->width = 320;
+        info_modal->height = 160;
+        CB_presentModal(info_modal->scene);
+    }
+    else
+    {
+        launch_game_script_prompt(game);
+    }
 }
 
 static void launch_game_prompt_if_script(void* ud, int option)
@@ -880,7 +899,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
 
             if (!optimal)
             {
-                const char* options[] = {"Apply", "Skip", "Ignore", NULL};
+                const char* options[] = {"Apply", "Later", NULL};
                 char* msg = rec->message;
                 char default_msg[256];
                 if (!msg)
