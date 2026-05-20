@@ -379,7 +379,7 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_coversPath));
     full_mkdir(cb_gb_directory_path(CB_statesPath));
     full_mkdir(cb_gb_directory_path(CB_settingsPath));
-    full_mkdir(cb_gb_directory_path(CB_recommendedPath));
+    full_mkdir(cb_gb_directory_path(CB_customSettingsPath));
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
 }
 

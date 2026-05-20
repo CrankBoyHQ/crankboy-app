@@ -858,11 +858,10 @@ static void launch_game_prompt_if_script(void* ud, int option)
     ScriptInfo* info = get_script_info(game->names->name_header);
     const struct ScriptRecommendedSettings* rec = NULL;
 
-    if (info && info->c_script_info && info->c_script_info->recommended_settings)
-        rec = info->c_script_info->recommended_settings;
+    rec = recommended_json_lookup(game->names->name_header);
 
-    if (!rec)
-        rec = recommended_json_lookup(game->names->name_header);
+    if (!rec && info && info->c_script_info && info->c_script_info->recommended_settings)
+        rec = info->c_script_info->recommended_settings;
 
     if (rec)
     {

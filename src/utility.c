@@ -27,7 +27,7 @@ const char* CB_gamesPath = "games";
 const char* CB_coversPath = "covers";
 const char* CB_statesPath = "states";
 const char* CB_settingsPath = "settings";
-const char* CB_recommendedPath = "settings/recommended";
+const char* CB_customSettingsPath = "settings/custom";
 const char* CB_globalPrefsPath = "preferences.json";
 const char* CB_patchesPath = "patches";
 

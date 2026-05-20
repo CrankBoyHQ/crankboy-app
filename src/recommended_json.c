@@ -16,7 +16,8 @@ typedef struct RecommendedJsonEntry
     struct RecommendedJsonEntry* next;
 } RecommendedJsonEntry;
 
-static RecommendedJsonEntry* registry = NULL;
+static RecommendedJsonEntry* data_registry = NULL;
+static RecommendedJsonEntry* bundle_registry = NULL;
 static bool initialized = false;
 
 static preferences_bitfield_t pref_bit_from_name(const char* name)
@@ -51,7 +52,6 @@ static void parse_settings_table(
 
         int value = obj->data[i].value.data.intval;
 
-        // Check if this pref already exists — if so, replace value
         int existing = -1;
         for (int j = 0; j < *out_count; ++j)
         {
@@ -83,10 +83,10 @@ static void parse_settings_table(
     }
 }
 
-static void parse_one_json(const char* path)
+static void parse_one_json(const char* path, FileOptions fopts, RecommendedJsonEntry** registry)
 {
     json_value j;
-    if (!parse_json(path, &j, kFileReadData))
+    if (!parse_json(path, &j, fopts))
     {
         playdate->system->logToConsole("recommended_json: failed to parse \"%s\"", path);
         return;
@@ -140,7 +140,6 @@ static void parse_one_json(const char* path)
         return;
     }
 
-    // Extract ROM name from filename (strip ".json" extension)
     const char* basename = strrchr(path, '/');
     if (basename)
         basename++;
@@ -156,7 +155,7 @@ static void parse_one_json(const char* path)
         return;
     }
 
-    char* rom_name = cb_malloc(name_len - 4);  // - ".json"
+    char* rom_name = cb_malloc(name_len - 4);
     memcpy(rom_name, basename, name_len - 5);
     rom_name[name_len - 5] = 0;
 
@@ -166,11 +165,11 @@ static void parse_one_json(const char* path)
     entry->settings.message = message;
     entry->settings.entries = entries;
     entry->settings.count = count;
-    entry->next = registry;
-    registry = entry;
+    entry->next = *registry;
+    *registry = entry;
 }
 
-static void collect_json_callback(const char* filename, void* ud)
+static void collect_data_json_callback(const char* filename, void* ud)
 {
     (void)ud;
 
@@ -178,41 +177,46 @@ static void collect_json_callback(const char* filename, void* ud)
     if (len < 6 || strcasecmp(filename + len - 5, ".json"))
         return;
 
-    const char* rec_path = cb_gb_directory_path(CB_recommendedPath);
+    const char* rec_path = cb_gb_directory_path(CB_customSettingsPath);
     char* full_path;
     playdate->system->formatString(&full_path, "%s/%s", rec_path, filename);
 
-    parse_one_json(full_path);
+    parse_one_json(full_path, kFileReadData, &data_registry);
 
     cb_free(full_path);
 }
 
-void recommended_json_init(void)
+static void collect_bundle_json_callback(const char* filename, void* ud)
 {
-    const char* rec_path = cb_gb_directory_path(CB_recommendedPath);
+    (void)ud;
 
-    playdate->file->listfiles(rec_path, collect_json_callback, NULL, 0);
+    size_t len = strlen(filename);
+    if (len < 6 || strcasecmp(filename + len - 5, ".json"))
+        return;
+
+    char* full_path;
+    playdate->system->formatString(&full_path, "csettings/%s", filename);
+
+    parse_one_json(full_path, kFileRead, &bundle_registry);
+
+    cb_free(full_path);
 }
 
-const struct ScriptRecommendedSettings* recommended_json_lookup(const char* rom_name)
+static const struct ScriptRecommendedSettings* search_registry(
+    RecommendedJsonEntry* registry, const char* rom_name
+)
 {
-    if (!initialized)
-    {
-        recommended_json_init();
-        initialized = true;
-    }
-
-    if (!rom_name || !rom_name[0])
+    if (!rom_name || !rom_name[0] || !registry)
         return NULL;
 
-    // Exact match first
+    // Exact match
     for (RecommendedJsonEntry* e = registry; e; e = e->next)
     {
         if (!strcmp(e->rom_name, rom_name))
             return &e->settings;
     }
 
-    // Prefix match — find the longest matching prefix
+    // Prefix match — longest matching prefix
     RecommendedJsonEntry* best = NULL;
     size_t best_len = 0;
     size_t rom_len = strlen(rom_name);
@@ -230,7 +234,37 @@ const struct ScriptRecommendedSettings* recommended_json_lookup(const char* rom_
     return best ? &best->settings : NULL;
 }
 
-void recommended_json_quit(void)
+void recommended_json_init(void)
+{
+    // Low priority: shipped settings from bundle
+    playdate->file->listfiles("csettings", collect_bundle_json_callback, NULL, 0);
+
+    // High priority: user-added settings from data dir
+    const char* rec_path = cb_gb_directory_path(CB_customSettingsPath);
+    playdate->file->listfiles(rec_path, collect_data_json_callback, NULL, 0);
+}
+
+const struct ScriptRecommendedSettings* recommended_json_lookup(const char* rom_name)
+{
+    if (!initialized)
+    {
+        recommended_json_init();
+        initialized = true;
+    }
+
+    if (!rom_name || !rom_name[0])
+        return NULL;
+
+    // Highest priority: user data dir
+    const struct ScriptRecommendedSettings* rec = search_registry(data_registry, rom_name);
+    if (rec)
+        return rec;
+
+    // Lower priority: shipped bundle
+    return search_registry(bundle_registry, rom_name);
+}
+
+static void free_registry(RecommendedJsonEntry* registry)
 {
     while (registry)
     {
@@ -241,4 +275,13 @@ void recommended_json_quit(void)
         cb_free(e->entries);
         cb_free(e);
     }
+}
+
+void recommended_json_quit(void)
+{
+    free_registry(data_registry);
+    data_registry = NULL;
+    free_registry(bundle_registry);
+    bundle_registry = NULL;
+    initialized = false;
 }

@@ -1,7 +1,6 @@
 {
     "message": "Audio apps require accurate timing.\n\nChoose Apply to use the recommended settings.",
     "settings": {
-        "per_game": 1,
         "sound_mode": 2,
         "audio_sync": 1,
         "sample_rate": 0,

@@ -418,6 +418,8 @@ void script_apply_recommended_settings(
             *pref = settings->entries[i].value;
     }
 
+    preferences_per_game = 1;
+
     preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
 
     preferences_restore_subset(stored);
