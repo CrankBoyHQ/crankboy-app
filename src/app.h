@@ -186,6 +186,10 @@ typedef struct CB_Application
     char* hbStaticPath;
 
     bool migration_modal_needed;
+
+    // Playdate mirror (streaming video)
+    bool mirror_active;
+    
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
     // - library view is omitted

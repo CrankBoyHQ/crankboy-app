@@ -1599,6 +1599,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     CB_Scene_update(gameScene->scene, dt);
 
+    if (CB_App->mirror_active != gameScene->is_mirroring)
+    {
+        gameScene->is_mirroring = CB_App->mirror_active;
+        int headphones;
+        playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
+        reconfigure_audio_source(gameScene, headphones);
+    }
+
     float progress = 0.5f;
 
     /*
@@ -3611,23 +3619,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             char* recovery_filename = cb_save_filename(context->scene->rom_filename, true);
             write_cart_ram_file(recovery_filename, context->gb);
             cb_free(recovery_filename);
-        }
-        break;
-    case kEventMirrorStarted:
-        gameScene->is_mirroring = true;
-        {
-            int headphones;
-            playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
-            reconfigure_audio_source(gameScene, headphones);
-        }
-        break;
-
-    case kEventMirrorEnded:
-        gameScene->is_mirroring = false;
-        {
-            int headphones;
-            playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
-            reconfigure_audio_source(gameScene, headphones);
         }
         break;
     case kEventKeyPressed:

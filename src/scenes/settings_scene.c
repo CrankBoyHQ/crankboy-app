@@ -1111,14 +1111,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL,
     };
 
-    // Headphone Audio
+    // Mono/Stereo
     entries[++i] = (OptionsMenuEntry){
-        .name = "Headphones",
+        .name = CB_App->mirror_active ? "Mirror/Aux" : "Headphones",
         .values = audio_output_labels,
-        .description = "Select the audio output\nmode when headphones\nare connected."
+        .description = "Select the audio output\nmode when an aux cable\nis connected."
                        "\n \nStereo:\nImmersive sound with\nspatial separation.\n \nMono:\n"
                        "Combines channels, which\nimproves performance.\n \n"
-                       "Also used in Mirror.",
+                       "Also used for Mirror.",
         .pref_var = &preferences_headphone_audio,
         .max_value = 2,
     };
@@ -1648,7 +1648,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     if (CB_App->bundled_rom)
     {
         entries[++i] = (OptionsMenuEntry){
-            .name = "About CrankBoy",
+            .name = "About CrankBoy...",
             .values = NULL,
             .description = "This game is bundled for\nPlaydate via CrankBoy,\na Game Boy emulator.\n \nPress Ⓐ now to learn\nmore about CrankBoy\nand its developers.",
             .pref_var = NULL,

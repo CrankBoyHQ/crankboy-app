@@ -1060,6 +1060,14 @@ void CB_goToLibrary(void)
 __section__(".rare") void CB_event(PDSystemEvent event, uint32_t arg)
 {
     CB_ASSERT(CB_App);
+    if (event == kEventMirrorStarted)
+    {
+        CB_App->mirror_active = true;
+    }
+    else if (event == kEventMirrorEnded)
+    {
+        CB_App->mirror_active = false;
+    }
     if (CB_App->scene)
     {
         CB_ASSERT(CB_App->scene->event != NULL);
