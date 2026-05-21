@@ -56,6 +56,8 @@ extern const uint16_t CB_dither_lut_c1[];
 
 static void update_thumbnail(CB_SettingsScene* settingsScene);
 
+static const char* get_settings_game_name(CB_SettingsScene* settingsScene);
+
 static char* itcm_base_desc = NULL;
 static char* itcm_restart_desc = NULL;
 
@@ -906,29 +908,7 @@ static void apply_recommended_in_settings(
 {
     cb_play_ui_sound(CB_UISound_Confirm);
 
-    const char* game_name = NULL;
-
-    if (settingsScene->libraryScene)
-    {
-        CB_Game* selectedGame =
-            (settingsScene->libraryScene->listView->selectedItem <
-             settingsScene->libraryScene->games->length)
-                ? settingsScene->libraryScene->games
-                      ->items[settingsScene->libraryScene->listView->selectedItem]
-                : NULL;
-        if (selectedGame)
-            game_name = selectedGame->names->name_header;
-    }
-    else if (settingsScene->gameScene)
-    {
-        ScriptInfo* info = script_get_info_by_rom_path(settingsScene->gameScene->rom_filename);
-        if (info)
-        {
-            game_name = info->rom_name;
-            script_info_free(info);
-        }
-    }
-
+    const char* game_name = get_settings_game_name(settingsScene);
     if (!game_name)
         return;
 
@@ -1008,7 +988,10 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
     }
     else if (!preferences_per_game)
     {
-        entry->description = "Switch to 'Game' scope\nto apply recommended\nsettings.";
+        if (script_check_recommended_current(rec))
+            entry->description = "Recommended settings\nare already applied.";
+        else
+            entry->description = "Switch to 'Game' scope\nto apply recommended\nsettings.";
         entry->locked = true;
     }
     else
@@ -1176,18 +1159,36 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_change = settings_post_action_per_game,
         };
 
-        // Apply recommended settings
+        // Apply recommended settings - only shown when settings exist
         {
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Apply recommended",
-                .on_press = apply_recommended_in_settings,
-                .locked = true,
-                .suppress_nondefault_indicator = 1,
-                .rebuild_when_changed = 1,
-            };
+            const char* game_name = get_settings_game_name(scene);
+            bool has_rec = false;
+            if (game_name)
+            {
+                ScriptInfo* sinfo = get_script_info(game_name);
+                has_rec = recommended_json_lookup(game_name) != NULL ||
+                          (sinfo && sinfo->c_script_info &&
+                           sinfo->c_script_info->recommended_settings);
+                script_info_free(sinfo);
+            }
 
-            recalc_recommended_entry_state(&entries[i], scene);
-            scene->rec_entry_index = i;
+            if (has_rec)
+            {
+                entries[++i] = (OptionsMenuEntry){
+                    .name = "Apply recommended",
+                    .on_press = apply_recommended_in_settings,
+                    .locked = true,
+                    .suppress_nondefault_indicator = 1,
+                    .rebuild_when_changed = 1,
+                };
+
+                recalc_recommended_entry_state(&entries[i], scene);
+                scene->rec_entry_index = i;
+            }
+            else
+            {
+                scene->rec_entry_index = -1;
+            }
         }
     }
 
@@ -2172,7 +2173,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Recalc recommended settings button state when dirty
-    if (settingsScene->rec_dirty)
+    if (settingsScene->rec_dirty && settingsScene->rec_entry_index >= 0)
     {
         recalc_recommended_entry_state(
             &settingsScene->entries[settingsScene->rec_entry_index], settingsScene
