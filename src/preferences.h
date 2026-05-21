@@ -45,6 +45,8 @@
 #define DISPLAY_NAME_MODE_FILENAME 2
 
 // at least 1 bit for each setting.
+// TODO: if this runs out, we'll need  __attribute__((vector_size (16))),
+// plus some work to make bit-shifting work
 typedef uint64_t preferences_bitfield_t;
 typedef int preference_t;
 
@@ -98,7 +100,8 @@ extern preferences_bitfield_t prefs_locked_by_script;
 // these preferences are always saved globally, regardless of if global/per-game selected
 #define PREFBITS_ALWAYS_GLOBAL                                                 \
     (PREFBIT_ui_sounds | PREFBIT_display_name_mode | PREFBIT_display_article | \
-     PREFBIT_display_sort | PREFBIT_library_remember_selection | PREFBIT_prompt_if_cgb_optional)
+     PREFBIT_display_sort | PREFBIT_library_remember_selection |               \
+     PREFBIT_prompt_if_cgb_optional | PREFBIT_library_launch_animation)
 
 // these preferences are always saved per-game, regardless of if global/per-game selected
 #define PREFBITS_NEVER_GLOBAL                                                                     \

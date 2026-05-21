@@ -183,6 +183,9 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
                 cb_game_config_path(selectedGame->fullpath);
 
             void* stored_globals = preferences_store_subset(~PREFBITS_NEVER_GLOBAL);
+            settingsScene->stored_neutrals = preferences_store_subset(
+                ~(PREFBITS_NEVER_GLOBAL | PREFBITS_ALWAYS_GLOBAL)
+            );
 
             if (settingsScene->selected_game_settings_path)
             {
@@ -376,8 +379,8 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
                 result = preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
             }
 
-            // Save to global preferences (everything except never-global, including always-global)
-            result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
+            // Save always-globals
+            result = preferences_save_to_disk(CB_globalPrefsPath, ~PREFBITS_ALWAYS_GLOBAL);
         }
         else
         {
@@ -1539,6 +1542,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
 
         addUISoundOption(scene, entries, &i);
+        
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Launch Animation",
+            .values = off_on_labels,
+            .description = "Animation when launching\na ROM from the library.",
+            .pref_var = &preferences_library_launch_animation,
+            .max_value = 2,
+        };
 
         // remember selection
         entries[++i] = (OptionsMenuEntry){
@@ -2402,6 +2413,16 @@ static void CB_SettingsScene_free(void* object)
     {
         preferences_restore_subset(settingsScene->immutable_settings);
         cb_free(settingsScene->immutable_settings);
+    }
+
+    if (settingsScene->stored_neutrals)
+    {
+        if (preferences_per_game)
+        {
+            preferences_restore_subset(settingsScene->stored_neutrals);
+        }
+        cb_free(settingsScene->stored_neutrals);
+        settingsScene->stored_neutrals = NULL;
     }
 
     if (settingsScene->selected_game_settings_path)

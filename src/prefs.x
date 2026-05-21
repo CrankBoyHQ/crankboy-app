@@ -42,6 +42,7 @@ PREF(display_sort, 1)       // 0: by filename; 1: by detailed name; 2 by detaile
                             // article); 3 by filename (with leading article)
 PREF(library_remember_selection, 1)
 PREF(prompt_if_cgb_optional, 0)
+PREF(library_launch_animation, 1)
 
 // misc
 PREF(itcm, (pd_rev == PD_REV_A))

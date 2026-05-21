@@ -89,6 +89,11 @@ typedef struct CB_LibraryScene
 
     void* decompression_buffer;
     size_t decompression_buffer_size;
+
+    int launchAnimShiftLeft;
+    int launchAnimShiftRight;
+    int launchAnimSideBarWidth;
+    bool launchAnimWhiteGap;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);

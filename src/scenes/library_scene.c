@@ -35,9 +35,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void CB_LibraryScene_free(void* object);
 static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
 static void CB_LibraryScene_menu(void* object);
+static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimation);
 static int last_selected_game_index = 0;
 static bool has_loaded_initial_index = false;
 static bool library_was_initialized_once = false;
+static int last_panel_seam = LCD_COLUMNS / 2;
+static CB_LibraryScene* s_active_library_scene = NULL;
 
 // Animation state for the "Downloading cover..." text
 static float coverDownloadAnimationTimer = 0.0f;
@@ -390,6 +393,51 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     cb_free(stored);
 }
 
+static void play_launch_animation(void)
+{
+    CB_LibraryScene* libraryScene = s_active_library_scene;
+    if (!libraryScene) return;
+
+    const int frames = 12;
+    const int sideBarMax = 40;
+    bool fadeOff = (preferences_boot_fade == 0);
+    int seam = last_panel_seam;
+    if (seam < 0) seam = 0;
+    if (seam > LCD_COLUMNS) seam = LCD_COLUMNS;
+
+    int leftWidth = seam;
+    int rightWidth = LCD_COLUMNS - seam;
+
+    for (int i = 1; i <= frames; ++i)
+    {
+        float t = (float)i / (float)frames;
+        float p = 0.5f * t + 0.5f * t * t;
+        int L = (int)(leftWidth * p + 0.5f);
+        int R = (int)(rightWidth * p + 0.5f);
+        if (L > leftWidth) L = leftWidth;
+        if (R > rightWidth) R = rightWidth;
+
+        libraryScene->launchAnimShiftLeft = L;
+        libraryScene->launchAnimShiftRight = R;
+        libraryScene->launchAnimWhiteGap = fadeOff;
+        libraryScene->launchAnimSideBarWidth = fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
+        libraryScene->scene->forceFullRefresh = true;
+
+        CB_LibraryScene_draw(libraryScene, true);
+
+        playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+        playdate->graphics->display();
+
+        unsigned start = playdate->system->getCurrentTimeMilliseconds();
+        while (playdate->system->getCurrentTimeMilliseconds() - start < 1000 / 60) {}
+    }
+
+    libraryScene->launchAnimShiftLeft = 0;
+    libraryScene->launchAnimShiftRight = 0;
+    libraryScene->launchAnimSideBarWidth = 0;
+    libraryScene->launchAnimWhiteGap = false;
+}
+
 // option 0: launch as dmg
 // option 1: launch as cgb
 static void launch_dmg_or_cgb(CB_Game* game, int option)
@@ -401,6 +449,11 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
         if (gameScene)
         {
             CB_present(gameScene->scene);
+        }
+        
+        if (preferences_library_launch_animation)
+        {
+            play_launch_animation();
         }
 
         playdate->system->logToConsole("Present gameScene");
@@ -1101,6 +1154,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     }
 
     CB_LibraryScene* libraryScene = object;
+    s_active_library_scene = libraryScene;
 
     if (libraryScene->state != kLibraryStateDone)
     {
@@ -1398,10 +1452,58 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-    bool needsDisplay = false;
+    if (CB_App->pendingScene)
+    {
+        return;
+    }
 
-    if (libraryScene->model.empty || libraryScene->model.tab != libraryScene->tab ||
-        libraryScene->scene->forceFullRefresh)
+    CB_LibraryScene_draw(libraryScene, false);
+
+    // display errors to user if needed
+    if (getSpooledErrors() > 0)
+    {
+        const char* spool = getSpooledErrorMessage();
+        if (spool)
+        {
+            CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
+            if (!infoScene)
+            {
+                freeSpool();
+                playdate->system->error("Fatal: Out of memory");
+                return;
+            }
+
+            char* spooldup = cb_strdup(spool);
+            if (spooldup)
+            {
+                infoScene->text = spooldup;
+                infoScene->textIsStatic = false;
+                freeSpool();
+            }
+            else
+            {
+                freeSpool();
+
+                infoScene->text =
+                    "A critical error occurred:\n\nOut of Memory\n\nPlease restart CrankBoy.";
+                infoScene->textIsStatic = true;
+
+                infoScene->canClose = true;
+            }
+            CB_presentModal(infoScene->scene);
+        }
+        return;
+    }
+
+    libraryScene->initialLoadComplete = true;
+}
+
+static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimation)
+{
+    bool needsDisplay = forAnimation;
+
+    if (!forAnimation && (libraryScene->model.empty || libraryScene->model.tab != libraryScene->tab ||
+        libraryScene->scene->forceFullRefresh))
     {
         needsDisplay = true;
         if (libraryScene->scene->forceFullRefresh)
@@ -1413,14 +1515,14 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     libraryScene->model.empty = false;
     libraryScene->model.tab = libraryScene->tab;
 
-    if (needsDisplay)
+    if (needsDisplay && !forAnimation)
     {
         playdate->graphics->clear(kColorWhite);
     }
 
     if (libraryScene->tab == CB_LibrarySceneTabList)
     {
-        CB_ListView_update(libraryScene->listView);
+        if (!forAnimation) CB_ListView_update(libraryScene->listView);
 
         int selectedIndex = libraryScene->listView->selectedItem;
 
@@ -1602,8 +1704,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         int leftPanelWidth = screenWidth - rightPanelWidth;
 
+        int animL = libraryScene->launchAnimShiftLeft;
+        int animR = libraryScene->launchAnimShiftRight;
+
         libraryScene->listView->needsDisplay = libraryScene->listView->needsDisplay || needsDisplay;
-        libraryScene->listView->frame = PDRectMake(0, 0, leftPanelWidth, screenHeight);
+        libraryScene->listView->frame = PDRectMake(-animL, 0, leftPanelWidth, screenHeight);
+        last_panel_seam = leftPanelWidth;
 
 #ifdef TARGET_SIMULATOR
         while (page_advance > 0)
@@ -1622,9 +1728,32 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         CB_ListView_draw(libraryScene->listView);
 
+        if (animL > 0 || animR > 0)
+        {
+            playdate->graphics->fillRect(
+                leftPanelWidth - animL, 0, animL + animR, screenHeight,
+                libraryScene->launchAnimWhiteGap ? kColorWhite : kColorBlack
+            );
+
+            if (libraryScene->launchAnimWhiteGap)
+            {
+                int leftEdge = leftPanelWidth - animL;
+                int rightEdge = leftPanelWidth + animR;
+                playdate->graphics->fillRect(
+                    leftEdge + 1, 0, 5, screenHeight, (uintptr_t)&lcdp_50
+                );
+                playdate->graphics->fillRect(
+                    rightEdge - 6, 0, 5, screenHeight, (uintptr_t)&lcdp_50
+                );
+                playdate->graphics->fillRect(leftEdge, 0, 1, screenHeight, kColorBlack);
+                playdate->graphics->fillRect(rightEdge - 1, 0, 1, screenHeight, kColorBlack);
+            }
+        }
+
         if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
         {
-            libraryScene->lastSelectedItem = selectedIndex;
+            if (!forAnimation) libraryScene->lastSelectedItem = selectedIndex;
+            playdate->graphics->setDrawOffset(animR, 0);
 
             playdate->graphics->fillRect(
                 leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorWhite
@@ -1945,6 +2074,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
                 );
             }
+            playdate->graphics->setDrawOffset(0, 0);
         }
     }
     else if (libraryScene->tab == CB_LibrarySceneTabEmpty)
@@ -1967,7 +2097,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             static const char* message5_text = "(Filenames must end with .gb, .gbc, or .gbz)";
 
-            playdate->graphics->clear(kColorWhite);
+            if (!forAnimation) playdate->graphics->clear(kColorWhite);
 
             int titleToMessageSpacing = 8;
             int messageLineSpacing = 4;
@@ -2081,43 +2211,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
-    // display errors to user if needed
-    if (getSpooledErrors() > 0)
+    int sideBar = libraryScene->launchAnimSideBarWidth;
+    if (sideBar > 0)
     {
-        const char* spool = getSpooledErrorMessage();
-        if (spool)
-        {
-            CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
-            if (!infoScene)
-            {
-                freeSpool();
-                playdate->system->error("Fatal: Out of memory");
-                return;
-            }
-
-            char* spooldup = cb_strdup(spool);
-            if (spooldup)
-            {
-                infoScene->text = spooldup;
-                infoScene->textIsStatic = false;
-                freeSpool();
-            }
-            else
-            {
-                freeSpool();
-
-                infoScene->text =
-                    "A critical error occurred:\n\nOut of Memory\n\nPlease restart CrankBoy.";
-                infoScene->textIsStatic = true;
-
-                infoScene->canClose = true;
-            }
-            CB_presentModal(infoScene->scene);
-        }
-        return;
+        playdate->graphics->fillRect(0, 0, sideBar, LCD_ROWS, kColorBlack);
+        playdate->graphics->fillRect(LCD_COLUMNS - sideBar, 0, sideBar, LCD_ROWS, kColorBlack);
     }
-
-    libraryScene->initialLoadComplete = true;
 }
 
 static void CB_LibraryScene_showSettings(void* userdata)
@@ -2136,6 +2235,11 @@ static void CB_LibraryScene_menu(void* object)
 static void CB_LibraryScene_free(void* object)
 {
     CB_LibraryScene* libraryScene = object;
+
+    if (s_active_library_scene == libraryScene)
+    {
+        s_active_library_scene = NULL;
+    }
 
     CB_Scene_free(libraryScene->scene);
 

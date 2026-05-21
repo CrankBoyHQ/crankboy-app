@@ -585,7 +585,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->rom_filename = cb_strdup(rom_filename);
     gameScene->name_short = cb_strdup(name_short);
     gameScene->save_filename = NULL;
-    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
 
     gameScene->state = CB_GameSceneStateError;
     gameScene->error = CB_GameSceneErrorUndefined;
@@ -692,6 +691,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
             cb_free(stored_global);
         }
     }
+
+    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
 
     CB_GameScene_generateBitmask();
 
