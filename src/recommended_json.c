@@ -202,6 +202,18 @@ static void collect_bundle_json_callback(const char* filename, void* ud)
     cb_free(full_path);
 }
 
+static bool wildcard_match(const char* pattern, const char* str)
+{
+    while (*pattern && *str)
+    {
+        if (*pattern != '@' && *pattern != *str)
+            return false;
+        pattern++;
+        str++;
+    }
+    return *pattern == '\0' && *str == '\0';
+}
+
 static const struct ScriptRecommendedSettings* search_registry(
     RecommendedJsonEntry* registry, const char* rom_name
 )
@@ -209,29 +221,21 @@ static const struct ScriptRecommendedSettings* search_registry(
     if (!rom_name || !rom_name[0] || !registry)
         return NULL;
 
-    // Exact match
+    // Exact match — highest priority
     for (RecommendedJsonEntry* e = registry; e; e = e->next)
     {
         if (!strcmp(e->rom_name, rom_name))
             return &e->settings;
     }
 
-    // Prefix match — longest matching prefix
-    RecommendedJsonEntry* best = NULL;
-    size_t best_len = 0;
-    size_t rom_len = strlen(rom_name);
-
+    // Wildcard match — lower priority
     for (RecommendedJsonEntry* e = registry; e; e = e->next)
     {
-        size_t e_len = strlen(e->rom_name);
-        if (e_len > best_len && e_len <= rom_len && !strncmp(e->rom_name, rom_name, e_len))
-        {
-            best = e;
-            best_len = e_len;
-        }
+        if (wildcard_match(e->rom_name, rom_name))
+            return &e->settings;
     }
 
-    return best ? &best->settings : NULL;
+    return NULL;
 }
 
 void recommended_json_init(void)

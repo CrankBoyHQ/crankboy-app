@@ -33,12 +33,29 @@ __section__(".rare") void script_info_free(ScriptInfo* info)
     cb_free(info);
 }
 
+static bool wildcard_match(const char* pattern, const char* str)
+{
+    while (*pattern && *str)
+    {
+        if (*pattern != '@' && *pattern != *str)
+            return false;
+        pattern++;
+        str++;
+    }
+    return *pattern == '\0' && *str == '\0';
+}
+
 __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 {
+    const struct CScriptInfo* wildcard_found = NULL;
+
     for (size_t i = 0; i < c_script_count && c_scripts; ++i)
     {
         const struct CScriptInfo* cinfo = c_scripts[i];
-        if (cinfo && !strncmp(cinfo->rom_name, game_name, strlen(cinfo->rom_name)))
+        if (!cinfo)
+            continue;
+
+        if (!strcmp(cinfo->rom_name, game_name))
         {
             ScriptInfo* info = allocz(ScriptInfo);
             info->c_script_info = cinfo;
@@ -46,9 +63,25 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             info->experimental = cinfo->experimental;
             info->launch_system = cinfo->launch_system;
             strncpy(info->rom_name, game_name, 16);
-            info->rom_name[16] = 0;  // paranoia
+            info->rom_name[16] = 0;
             return info;
         }
+
+        if (!wildcard_found && wildcard_match(cinfo->rom_name, game_name))
+            wildcard_found = cinfo;
+    }
+
+    if (wildcard_found)
+    {
+        ScriptInfo* info = allocz(ScriptInfo);
+        info->c_script_info = wildcard_found;
+        info->info =
+            wildcard_found->description ? cb_strdup(strltrim(wildcard_found->description)) : NULL;
+        info->experimental = wildcard_found->experimental;
+        info->launch_system = wildcard_found->launch_system;
+        strncpy(info->rom_name, game_name, 16);
+        info->rom_name[16] = 0;
+        return info;
     }
 
     return NULL;
