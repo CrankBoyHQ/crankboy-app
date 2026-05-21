@@ -695,7 +695,8 @@ CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
     }
 
     const char* error_str = NULL;
-    LCDBitmap* original_image = playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_path), &error_str);
+    LCDBitmap* original_image =
+        playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_path), &error_str);
 
     if (error_str)
     {
@@ -2040,4 +2041,19 @@ void serial_send_response(const char* format, ...)
 
     // Send response to host via serial
     playdate->system->logToConsole("%s", buffer);
+}
+
+// Wildcard pattern matching for ROM header names.
+// '@' matches any single character. Pattern and string must have equal length.
+// Used by C script and JSON recommended settings lookups.
+bool wildcard_match(const char* pattern, const char* str)
+{
+    while (*pattern && *str)
+    {
+        if (*pattern != '@' && *pattern != *str)
+            return false;
+        pattern++;
+        str++;
+    }
+    return *pattern == '\0' && *str == '\0';
 }

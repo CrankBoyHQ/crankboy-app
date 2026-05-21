@@ -202,18 +202,6 @@ static void collect_bundle_json_callback(const char* filename, void* ud)
     cb_free(full_path);
 }
 
-static bool wildcard_match(const char* pattern, const char* str)
-{
-    while (*pattern && *str)
-    {
-        if (*pattern != '@' && *pattern != *str)
-            return false;
-        pattern++;
-        str++;
-    }
-    return *pattern == '\0' && *str == '\0';
-}
-
 static const struct ScriptRecommendedSettings* search_registry(
     RecommendedJsonEntry* registry, const char* rom_name
 )

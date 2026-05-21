@@ -464,4 +464,6 @@ char* sanitize_url_path(const char* original);
     }                                                             \
     __attribute__((cleanup(DEFER_FUNCNAME(__LINE__)))) int DEFER_VARNAME(__LINE__)
 
+bool wildcard_match(const char* pattern, const char* str);
+
 #endif /* utility_h */

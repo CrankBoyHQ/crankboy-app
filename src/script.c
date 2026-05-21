@@ -33,18 +33,6 @@ __section__(".rare") void script_info_free(ScriptInfo* info)
     cb_free(info);
 }
 
-static bool wildcard_match(const char* pattern, const char* str)
-{
-    while (*pattern && *str)
-    {
-        if (*pattern != '@' && *pattern != *str)
-            return false;
-        pattern++;
-        str++;
-    }
-    return *pattern == '\0' && *str == '\0';
-}
-
 __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
 {
     const struct CScriptInfo* wildcard_found = NULL;
