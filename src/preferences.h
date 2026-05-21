@@ -44,6 +44,12 @@
 #define DISPLAY_NAME_MODE_DETAILED 1
 #define DISPLAY_NAME_MODE_FILENAME 2
 
+#define PREF_FADE_NONE 0
+#define PREF_FADE_SHORT_BLACK 1
+#define PREF_FADE_LONG_BLACK 2
+#define PREF_FADE_SHORT_WHITE 3
+#define PREF_FADE_LONG_WHITE 4
+
 // at least 1 bit for each setting.
 // TODO: if this runs out, we'll need  __attribute__((vector_size (16))),
 // plus some work to make bit-shifting work

@@ -393,14 +393,45 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
     cb_free(stored);
 }
 
-static void play_launch_animation(void)
+static void play_launch_animation(CB_Game* game)
 {
     CB_LibraryScene* libraryScene = s_active_library_scene;
     if (!libraryScene) return;
 
+    // decide gap color (black or white)
+    enum ScriptPreferredLaunchColor script_color = ScriptPreferredLaunchColor_None;
+    if (game && game->names && game->names->name_header)
+    {
+        ScriptInfo* info = get_script_info(game->names->name_header);
+        if (info)
+        {
+            script_color = info->launch_color;
+            script_info_free(info);
+        }
+    }
+
+    int boot_fade = preferences_boot_fade;
+    if (game)
+    {
+        void* stored = preferences_store_subset(-1);
+        load_game_prefs(game->fullpath, false);
+        boot_fade = preferences_boot_fade;
+        preferences_restore_subset(stored);
+    }
+
+    bool white_gap;
+    if (script_color == ScriptPreferredLaunchColor_White)
+        white_gap = true;
+    else if (script_color == ScriptPreferredLaunchColor_Black)
+        white_gap = false;
+    else
+        white_gap = (boot_fade == PREF_FADE_NONE ||
+                     boot_fade == PREF_FADE_SHORT_WHITE ||
+                     boot_fade == PREF_FADE_LONG_WHITE);
+
     const int frames = 12;
     const int sideBarMax = 40;
-    bool fadeOff = (preferences_boot_fade == 0);
+    bool fadeOff = (boot_fade == PREF_FADE_NONE);
     int seam = last_panel_seam;
     if (seam < 0) seam = 0;
     if (seam > LCD_COLUMNS) seam = LCD_COLUMNS;
@@ -410,20 +441,33 @@ static void play_launch_animation(void)
 
     for (int i = 1; i <= frames; ++i)
     {
-        float t = (float)i / (float)frames;
-        float p = 0.5f * t + 0.5f * t * t;
-        int L = (int)(leftWidth * p + 0.5f);
-        int R = (int)(rightWidth * p + 0.5f);
-        if (L > leftWidth) L = leftWidth;
-        if (R > rightWidth) R = rightWidth;
+        if (i == frames)
+        {
+            // animation end: clear to black/white
+            playdate->graphics->setDrawOffset(0, 0);
+            playdate->graphics->clearClipRect();
+            playdate->graphics->fillRect(
+                0, 0, LCD_COLUMNS, LCD_ROWS, white_gap ? kColorWhite : kColorBlack
+            );
+        }
+        else
+        {
+            float t = (float)i / (float)frames;
+            float p = 0.5f * t + 0.5f * t * t;
+            int L = (int)(leftWidth * p + 0.5f);
+            int R = (int)(rightWidth * p + 0.5f);
+            if (L > leftWidth) L = leftWidth;
+            if (R > rightWidth) R = rightWidth;
 
-        libraryScene->launchAnimShiftLeft = L;
-        libraryScene->launchAnimShiftRight = R;
-        libraryScene->launchAnimWhiteGap = fadeOff;
-        libraryScene->launchAnimSideBarWidth = fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
-        libraryScene->scene->forceFullRefresh = true;
+            libraryScene->launchAnimShiftLeft = L;
+            libraryScene->launchAnimShiftRight = R;
+            libraryScene->launchAnimWhiteGap = white_gap;
+            libraryScene->launchAnimSideBarWidth =
+                fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
+            libraryScene->scene->forceFullRefresh = true;
 
-        CB_LibraryScene_draw(libraryScene, true);
+            CB_LibraryScene_draw(libraryScene, true);
+        }
 
         playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
         playdate->graphics->display();
@@ -453,7 +497,7 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
         
         if (preferences_library_launch_animation)
         {
-            play_launch_animation();
+            play_launch_animation(game);
         }
 
         playdate->system->logToConsole("Present gameScene");

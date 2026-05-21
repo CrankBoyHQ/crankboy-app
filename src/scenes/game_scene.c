@@ -8,6 +8,7 @@
 
 #include "../gbz.h"
 #include "pd_api.h"
+#include "pd_api/pd_api_gfx.h"
 
 #include <stdbool.h>
 
@@ -538,7 +539,10 @@ static uint8_t fps_draw_timer;
 // see preferences_tcm_lcd
 static uint8_t* lcd_sources[2];
 
-static const unsigned init_fade_frames[] = {0, 30, 60};
+static const unsigned init_fade_frames[] = {0, 30, 60, 29, 59};
+static const unsigned init_fade_color[] = {
+    kColorWhite, kColorBlack, kColorBlack, kColorWhite, kColorWhite
+};
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
 {
@@ -692,8 +696,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         }
     }
 
-    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
-
     CB_GameScene_generateBitmask();
 
     generate_dither_luts();
@@ -818,12 +820,24 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     gameScene->script_available = false;
     gameScene->script_info_available = false;
+    bool fade_color_override = false;
 
     ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
     if (scriptInfo)
     {
         gameScene->script_available = true;
         gameScene->script_info_available = !!scriptInfo->info;
+
+        if (scriptInfo->launch_color == ScriptPreferredLaunchColor_White)
+        {
+            gameScene->fade_white = true;
+            fade_color_override = true;
+        }
+        else if (scriptInfo->launch_color == ScriptPreferredLaunchColor_Black)
+        {
+            gameScene->fade_white = false;
+            fade_color_override = true;
+        }
     }
 
     if (preferences_script_support && gameScene->script_available && scriptInfo)
@@ -837,6 +851,21 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         }
     }
     script_info_free(scriptInfo);
+
+    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
+    if (!fade_color_override)
+    {
+        gameScene->fade_white = init_fade_color[preferences_boot_fade] == kColorWhite;
+    }
+    
+    // Bundled mode starts out with black screen, so black fade always looks better.
+    // To change this, we'd need to have the pdx post-launch image set to white
+    if (CB_App->bundled_rom) gameScene->fade_white = false;
+    
+    if (fade_color_override)
+    {
+        prefs_locked_by_script |= PREFBIT_boot_fade;
+    }
 
     DTCM_VERIFY();
 
@@ -2737,6 +2766,8 @@ __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_
         base_mask[y] = mask_byte;
     }
 
+    uint8_t fill_byte = gameScene->fade_white ? 0xFF : 0x00;
+
     int n_bands = (LCD_ROWS + 7) / 8;
     for (int band = 0; band < n_bands; band++)
     {
@@ -2746,7 +2777,7 @@ __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_
         {
             uint8_t m = base_mask[y];
             uint8_t shifted = shift ? (uint8_t)((m << shift) | (m >> (8 - shift))) : m;
-            pattern[y] = 0;
+            pattern[y] = fill_byte;
             pattern[8 + y] = shifted;
         }
         playdate->graphics->fillRect(0, band * 8, LCD_COLUMNS, 8, (LCDColor)(uintptr_t)pattern);

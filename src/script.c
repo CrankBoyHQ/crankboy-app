@@ -50,6 +50,7 @@ __section__(".rare") ScriptInfo* get_script_info(const char* game_name)
             info->info = cinfo->description ? cb_strdup(strltrim(cinfo->description)) : NULL;
             info->experimental = cinfo->experimental;
             info->launch_system = cinfo->launch_system;
+            info->launch_color = cinfo->launch_color;
             strncpy(info->rom_name, game_name, 16);
             info->rom_name[16] = 0;
             return info;

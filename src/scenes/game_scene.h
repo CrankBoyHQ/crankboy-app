@@ -166,6 +166,7 @@ typedef struct CB_GameScene
     uint32_t patches_hash;
     
     unsigned fade_frames;
+    bool fade_white;
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);

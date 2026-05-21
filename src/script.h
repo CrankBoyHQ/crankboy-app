@@ -48,6 +48,14 @@ enum ScriptPreferredLaunchSystem
     ScriptPreferredLaunchSystem_CGB,
 };
 
+enum ScriptPreferredLaunchColor
+{
+    ScriptPreferredLaunchColor_None,
+    ScriptPreferredLaunchColor_Black,
+    ScriptPreferredLaunchColor_White,
+};
+
+
 struct ScriptRecommendedSetting
 {
     preferences_bitfield_t bit;
@@ -68,6 +76,7 @@ struct CScriptInfo
     const char* description;
     bool experimental;
     enum ScriptPreferredLaunchSystem launch_system;
+    enum ScriptPreferredLaunchColor launch_color;
     CS_OnBegin on_begin;
     CS_OnTick on_tick;
     CS_OnDraw on_draw;
@@ -87,6 +96,7 @@ typedef struct ScriptInfo
     char rom_name[17];
     bool experimental;
     enum ScriptPreferredLaunchSystem launch_system;
+    enum ScriptPreferredLaunchColor launch_color;
     char* info;  // human-readable description
 
     const struct CScriptInfo* c_script_info;

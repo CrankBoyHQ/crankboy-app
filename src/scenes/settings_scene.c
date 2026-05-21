@@ -74,7 +74,7 @@ struct OptionsMenuEntry;
 typedef struct OptionsMenuEntry
 {
     const char* name;
-    const char** values;
+    const char* const* values;
     const char* description;
     preference_t* pref_var;
     unsigned max_value;
@@ -482,7 +482,7 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* cgb_brightness_labels[] = {"Bright", "Normal", "Dark"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
-static const char* boot_fade_labels[] = {"Off", "Short", "Long"};
+static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
@@ -497,7 +497,7 @@ static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
-const char* save_slot_labels[] = {
+const char* const save_slot_labels[10] = {
     "Slot A", "Slot B", "Slot C", "Slot D", "Slot E",
     "Slot F", "Slot G", "Slot H", "Slot I", "Slot K",
 };
@@ -1789,10 +1789,16 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Boot Fade",
         .values = boot_fade_labels,
-        .description = "Fade from black on\ngame start. Masks visual\nglitches.",
+        .description = "Fade from black/white on\ngame start. Masks visual\nglitches.\n \nThe options marked (W)\nfade from white.",
         .pref_var = &preferences_boot_fade,
-        .max_value = 3,
+        .max_value = 5,
     };
+    
+    if (CB_App->bundled_rom)
+    {
+        entries[i].description = "Fade from black on\ngame start.\n \nIn bundled mode, fade\nfrom white is not currently\npossible.";
+        entries[i].max_value = 3;
+    }
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
