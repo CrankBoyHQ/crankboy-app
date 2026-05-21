@@ -458,3 +458,32 @@ void script_apply_recommended_settings(
     preferences_restore_subset(stored);
     cb_free(stored);
 }
+
+bool script_check_recommended_current(const struct ScriptRecommendedSettings* settings)
+{
+    if (!settings || !settings->entries || settings->count == 0)
+        return true;
+
+    for (int i = 0; i < settings->count; ++i)
+    {
+        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        if (pref && *pref != settings->entries[i].value)
+            return false;
+    }
+    return true;
+}
+
+void script_apply_recommended_current(const struct ScriptRecommendedSettings* settings)
+{
+    if (!settings || !settings->entries || settings->count == 0)
+        return;
+
+    for (int i = 0; i < settings->count; ++i)
+    {
+        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        if (pref)
+            *pref = settings->entries[i].value;
+    }
+
+    preferences_per_game = 1;
+}

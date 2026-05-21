@@ -142,3 +142,5 @@ bool script_check_recommended_settings(
 void script_apply_recommended_settings(
     const struct ScriptRecommendedSettings* settings, const char* game_settings_path
 );
+bool script_check_recommended_current(const struct ScriptRecommendedSettings* settings);
+void script_apply_recommended_current(const struct ScriptRecommendedSettings* settings);

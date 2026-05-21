@@ -9,6 +9,7 @@
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
+#include "../recommended_json.h"
 #include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
 #include "../script.h"
@@ -152,6 +153,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     setCrankSoundsEnabled(true);
     CB_SettingsScene* settingsScene = cb_malloc(sizeof(CB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
+    settingsScene->rec_entry_index = -1;
     settingsScene->gameScene = gameScene;
     settingsScene->libraryScene = libraryScene;
     settingsScene->selected_game_settings_path = NULL;
@@ -167,7 +169,8 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     settingsScene->repeatIncrementTime = 0.0f;
     settingsScene->repeatTime = 0.0f;
 
-    settingsScene->gradient = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/gradient32"), NULL);
+    settingsScene->gradient =
+        playdate->graphics->loadBitmap(CB_get_forwarded_path("images/gradient32"), NULL);
 
     void* always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
 
@@ -183,9 +186,8 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
                 cb_game_config_path(selectedGame->fullpath);
 
             void* stored_globals = preferences_store_subset(~PREFBITS_NEVER_GLOBAL);
-            settingsScene->stored_neutrals = preferences_store_subset(
-                ~(PREFBITS_NEVER_GLOBAL | PREFBITS_ALWAYS_GLOBAL)
-            );
+            settingsScene->stored_neutrals =
+                preferences_store_subset(~(PREFBITS_NEVER_GLOBAL | PREFBITS_ALWAYS_GLOBAL));
 
             if (settingsScene->selected_game_settings_path)
             {
@@ -898,6 +900,121 @@ static void addUISoundOption(CB_SettingsScene* scene, OptionsMenuEntry* entries,
     };
 }
 
+static void apply_recommended_in_settings(
+    struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene
+)
+{
+    cb_play_ui_sound(CB_UISound_Confirm);
+
+    const char* game_name = NULL;
+
+    if (settingsScene->libraryScene)
+    {
+        CB_Game* selectedGame =
+            (settingsScene->libraryScene->listView->selectedItem <
+             settingsScene->libraryScene->games->length)
+                ? settingsScene->libraryScene->games
+                      ->items[settingsScene->libraryScene->listView->selectedItem]
+                : NULL;
+        if (selectedGame)
+            game_name = selectedGame->names->name_header;
+    }
+    else if (settingsScene->gameScene)
+    {
+        ScriptInfo* info = script_get_info_by_rom_path(settingsScene->gameScene->rom_filename);
+        if (info)
+        {
+            game_name = info->rom_name;
+            script_info_free(info);
+        }
+    }
+
+    if (!game_name)
+        return;
+
+    const struct ScriptRecommendedSettings* rec = recommended_json_lookup(game_name);
+    if (!rec)
+    {
+        ScriptInfo* info = get_script_info(game_name);
+        if (info && info->c_script_info)
+            rec = info->c_script_info->recommended_settings;
+        script_info_free(info);
+    }
+
+    if (!rec)
+        return;
+
+    script_apply_recommended_current(rec);
+
+    settingsScene->rec_dirty = true;
+    CB_SettingsScene_rebuildEntries(settingsScene);
+}
+
+static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
+{
+    const char* game_name = NULL;
+
+    if (settingsScene->libraryScene)
+    {
+        CB_Game* selectedGame =
+            (settingsScene->libraryScene->listView->selectedItem <
+             settingsScene->libraryScene->games->length)
+                ? settingsScene->libraryScene->games
+                      ->items[settingsScene->libraryScene->listView->selectedItem]
+                : NULL;
+        if (selectedGame)
+            game_name = selectedGame->names->name_header;
+    }
+    else if (settingsScene->gameScene)
+    {
+        ScriptInfo* sinfo = script_get_info_by_rom_path(settingsScene->gameScene->rom_filename);
+        if (sinfo)
+        {
+            game_name = sinfo->rom_name;
+            script_info_free(sinfo);
+        }
+    }
+
+    const struct ScriptRecommendedSettings* rec = NULL;
+    if (game_name)
+    {
+        rec = recommended_json_lookup(game_name);
+        if (!rec)
+        {
+            ScriptInfo* sinfo = get_script_info(game_name);
+            if (sinfo && sinfo->c_script_info)
+                rec = sinfo->c_script_info->recommended_settings;
+            script_info_free(sinfo);
+        }
+    }
+
+    if (!rec)
+    {
+        entry->description = "No recommended settings\navailable for this title.";
+        entry->locked = true;
+    }
+    else if (!preferences_per_game)
+    {
+        entry->description = "Switch to 'Game' scope\nto apply recommended\nsettings.";
+        entry->locked = true;
+    }
+    else
+    {
+        bool already_optimal = script_check_recommended_current(rec);
+
+        if (already_optimal)
+        {
+            entry->description = "Recommended settings\nare already applied.";
+            entry->locked = true;
+        }
+        else
+        {
+            entry->description = "Apply the recommended\nsettings for this title.";
+            entry->locked = false;
+        }
+    }
+}
+
 static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 {
     CB_GameScene* gameScene = scene->gameScene;
@@ -1045,6 +1162,20 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = NULL,
             .on_change = settings_post_action_per_game,
         };
+
+        // Apply recommended settings
+        {
+            entries[++i] = (OptionsMenuEntry){
+                .name = "Apply recommended",
+                .on_press = apply_recommended_in_settings,
+                .locked = true,
+                .suppress_nondefault_indicator = 1,
+                .rebuild_when_changed = 1,
+            };
+
+            recalc_recommended_entry_state(&entries[i], scene);
+            scene->rec_entry_index = i;
+        }
     }
 
     // custom script settings
@@ -1988,6 +2119,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     if (cursor_entry->on_press && a_pressed && !cursor_entry->locked)
     {
         cursor_entry->on_press(cursor_entry, settingsScene);
+        settingsScene->rec_dirty = true;
     }
     else if (cursor_entry->pref_var && cursor_entry->max_value > 0 && !cursor_entry->locked)
     {
@@ -2006,6 +2138,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
             if (old_value != *cursor_entry->pref_var)
             {
+                settingsScene->rec_dirty = true;
+
                 if (cursor_entry->on_change)
                 {
                     cursor_entry->on_change(cursor_entry, settingsScene, old_value);
@@ -2022,6 +2156,15 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     update_thumbnail(settingsScene);
             }
         }
+    }
+
+    // Recalc recommended settings button state when dirty
+    if (settingsScene->rec_dirty)
+    {
+        recalc_recommended_entry_state(
+            &settingsScene->entries[settingsScene->rec_entry_index], settingsScene
+        );
+        settingsScene->rec_dirty = false;
     }
 
     playdate->graphics->clear(kColorWhite);

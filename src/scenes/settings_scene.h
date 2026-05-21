@@ -29,6 +29,8 @@ typedef struct CB_SettingsScene
     bool shouldDismiss : 1;
     bool shouldReturnToLibrary : 1;
     bool wasAudioLocked : 1;
+    bool rec_dirty : 1;
+    int rec_entry_index;
 
     int scroll_direction;
     int repeatLevel;
@@ -43,7 +45,7 @@ typedef struct CB_SettingsScene
     int initial_ppu_timing;
     int initial_batching;
     preference_t* immutable_settings;
-    
+
     // neutrals: neither always-global nor always-local
     void* stored_neutrals;
 
