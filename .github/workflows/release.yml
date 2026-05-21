@@ -302,6 +302,7 @@ jobs:
                       make
                       unzip
                       p7zip
+                      python
                       curl
                       tar
                       git
