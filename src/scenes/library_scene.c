@@ -815,7 +815,7 @@ static void launch_game_after_later_info(void* ud, int option)
 
 static void launch_game_recommended_cb(void* ud, int option)
 {
-    // 0 = Apply, 1 = Later. B-dismiss = -1 (prompts again next launch).
+    // 0 = Apply, 1 = Later. B-dismiss (don't launch)
     CB_Game* game = ud;
     if (option == 0)
     {
@@ -855,10 +855,6 @@ static void launch_game_recommended_cb(void* ud, int option)
         info_modal->width = 320;
         info_modal->height = 160;
         CB_presentModal(info_modal->scene);
-    }
-    else
-    {
-        launch_game_script_prompt(game);
     }
 }
 
