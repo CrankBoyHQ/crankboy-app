@@ -981,12 +981,7 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
         }
     }
 
-    if (!rec)
-    {
-        entry->description = "No recommended settings\navailable for this title.";
-        entry->locked = true;
-    }
-    else if (!preferences_per_game)
+    if (!preferences_per_game)
     {
         if (script_check_recommended_current(rec))
             entry->description = "Recommended settings\nare already applied.";
@@ -1005,7 +1000,7 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
         }
         else
         {
-            entry->description = "Apply the recommended\nsettings for this title.";
+            entry->description = "Apply the recommended\nsettings for this game.";
             entry->locked = false;
         }
     }
