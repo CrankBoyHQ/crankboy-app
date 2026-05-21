@@ -137,11 +137,7 @@ static void collect_files_callback(const char* filename, void* userdata)
     const char* extension = get_extension(name_for_ext);
     bool should_copy = false;
 
-    if (!strcmp(name_for_ext, "dmg_boot.bin"))
-    {
-        should_copy = true;
-    }
-    else if (extension)
+    if (extension)
     {
         if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
             !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
