@@ -21,6 +21,38 @@ typedef struct
     char* filename;
 } FileToCopy;
 
+static int filename_parse_version(const char* filename, char** out_stripped)
+{
+    if (out_stripped)
+        *out_stripped = NULL;
+
+    const char* at = strrchr(filename, '@');
+    if (!at)
+        return 0;
+    if (at[1] < '1' || at[1] > '9')
+        return 0;
+
+    int version = 0;
+    const char* p = at + 1;
+    while (*p >= '0' && *p <= '9')
+    {
+        version = version * 10 + (*p - '0');
+        p++;
+    }
+    if (*p != '\0')
+        return 0;
+
+    if (out_stripped)
+    {
+        size_t base_len = at - filename;
+        *out_stripped = cb_malloc(base_len + 1);
+        memcpy(*out_stripped, filename, base_len);
+        (*out_stripped)[base_len] = '\0';
+    }
+
+    return version;
+}
+
 struct list_files_ud
 {
     CB_FileCopyingScene* scene;
@@ -99,10 +131,13 @@ static void collect_files_callback(const char* filename, void* userdata)
         return;
     }
 
-    const char* extension = get_extension(filename);
+    char* stripped_filename = NULL;
+    filename_parse_version(filename, &stripped_filename);
+    const char* name_for_ext = stripped_filename ? stripped_filename : filename;
+    const char* extension = get_extension(name_for_ext);
     bool should_copy = false;
 
-    if (!strcmp(filename, "dmg_boot.bin"))
+    if (!strcmp(name_for_ext, "dmg_boot.bin"))
     {
         should_copy = true;
     }
@@ -122,13 +157,31 @@ static void collect_files_callback(const char* filename, void* userdata)
     {
         FileToCopy* file_to_copy = cb_malloc(sizeof(FileToCopy));
         file_to_copy->full_path = full_path;
-        file_to_copy->filename = cb_strdup(filename);
+        file_to_copy->filename = stripped_filename ? stripped_filename : cb_strdup(filename);
         array_push(scene->files_to_copy, file_to_copy);
     }
     else
     {
         cb_free(full_path);
+        cb_free(stripped_filename);
     }
+}
+
+static int compare_files_for_copy(const void* a, const void* b)
+{
+    const FileToCopy* fa = *(const FileToCopy**)a;
+    const FileToCopy* fb = *(const FileToCopy**)b;
+
+    int va = filename_parse_version(fa->full_path, NULL);
+    int vb = filename_parse_version(fb->full_path, NULL);
+
+    if (va == 0 && vb == 0)
+        return 0;
+    if (va == 0 && vb > 0)
+        return -1;
+    if (va > 0 && vb == 0)
+        return 1;
+    return va - vb;
 }
 
 void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
@@ -153,6 +206,14 @@ void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
         {
             ud.directory = sources[i];
             playdate->file->listfiles(sources[i], collect_files_callback, &ud, true);
+        }
+
+        if (scene->files_to_copy->length > 1)
+        {
+            qsort(
+                scene->files_to_copy->items, scene->files_to_copy->length, sizeof(void*),
+                compare_files_for_copy
+            );
         }
 
         if (scene->files_to_copy->length == 0)
