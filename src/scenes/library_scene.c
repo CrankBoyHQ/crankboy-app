@@ -909,8 +909,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
                         name = game->names->name_header;
                     snprintf(
                         default_msg, sizeof(default_msg),
-                        "%s requires custom settings to run properly.\n\n"
-                        "Choose an option to continue.",
+                        "%s has recommended settings from the CrankBoy community.\n\n",
                         name
                     );
                     msg = default_msg;

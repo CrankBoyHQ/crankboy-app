@@ -164,6 +164,8 @@ typedef struct CB_GameScene
 
     uint8_t previous_joypad_state;
     uint32_t patches_hash;
+    
+    unsigned fade_frames;
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);

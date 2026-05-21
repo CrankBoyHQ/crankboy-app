@@ -166,6 +166,7 @@ static void CB_GameScene_generateBitmask(void);
 static void CB_GameScene_free(void* object);
 static void CB_GameScene_event(void* object, PDSystemEvent event, uint32_t arg);
 static bool CB_GameScene_lock(void* object);
+static void screen_fade(CB_GameScene* gameScene, int frame_advance);
 
 static uint8_t* read_rom_to_ram(
     const char* filename, CB_GameSceneError* sceneError, size_t* o_rom_size
@@ -537,6 +538,8 @@ static uint8_t fps_draw_timer;
 // see preferences_tcm_lcd
 static uint8_t* lcd_sources[2];
 
+static const unsigned init_fade_frames[] = {0, 30, 60};
+
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
@@ -582,6 +585,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->rom_filename = cb_strdup(rom_filename);
     gameScene->name_short = cb_strdup(name_short);
     gameScene->save_filename = NULL;
+    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
 
     gameScene->state = CB_GameSceneStateError;
     gameScene->error = CB_GameSceneErrorUndefined;
@@ -670,8 +674,23 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     }
     else
     {
-        // bundled ROMs always use global preferences
+        void* stored_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
+
+        call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
+        void* stored_per_game = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
+
         call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
+
+        if (stored_per_game)
+        {
+            preferences_restore_subset(stored_per_game);
+            cb_free(stored_per_game);
+        }
+        if (stored_global)
+        {
+            preferences_restore_subset(stored_global);
+            cb_free(stored_global);
+        }
     }
 
     CB_GameScene_generateBitmask();
@@ -2529,6 +2548,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }
 #endif
+            
+            if (gameScene->fade_frames > 0)
+            {
+                screen_fade(gameScene, gameScene->next_frames_elapsed);
+            }
 
             if (preferences_display_fps)
             {
@@ -2667,6 +2691,67 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
 }
 
 static const char* loadStateErrorOptions[] = {"OK", "Details", NULL};
+
+int fade_matrix[] = {
+    3, 6, 16, 13,
+    18, 7, 0, 9,
+    11, 15, 17, 14,
+    1, 2, 8, 6,
+    5, 4, 10, 12,
+};
+
+__section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_advance)
+{
+    if ((gameScene->context->gb->gb_reg.LCDC & LCDC_ENABLE) || gameScene->fade_frames < 20)
+    {
+        int nf = (int)gameScene->fade_frames - frame_advance;
+        gameScene->fade_frames = nf >= 0 ? nf : 0;
+        gameScene->scene->forceFullRefresh = true;
+    }
+
+    if (gameScene->fade_frames >= 20)
+    {
+        int n = sizeof(fade_matrix) / sizeof(fade_matrix[0]);
+        for (int i = n - 1; i > 0; i--)
+        {
+            int j = rand() % (i + 1);
+            int t = fade_matrix[i];
+            fade_matrix[i] = fade_matrix[j];
+            fade_matrix[j] = t;
+        }
+    }
+
+    uint8_t base_mask[8];
+    for (int y = 0; y < 8; y++)
+    {
+        uint8_t mask_byte = 0;
+        for (int x = 0; x < 8; x++)
+        {
+            int idx = (y % 5) * 4 + (x % 4);
+            if (fade_matrix[idx] < gameScene->fade_frames)
+            {
+                mask_byte |= (1 << (7 - x));
+            }
+        }
+        base_mask[y] = mask_byte;
+    }
+
+    int n_bands = (LCD_ROWS + 7) / 8;
+    for (int band = 0; band < n_bands; band++)
+    {
+        int shift = (band * 2) & 7;
+        LCDPattern pattern;
+        for (int y = 0; y < 8; y++)
+        {
+            uint8_t m = base_mask[y];
+            uint8_t shifted = shift ? (uint8_t)((m << shift) | (m >> (8 - shift))) : m;
+            pattern[y] = 0;
+            pattern[8 + y] = shifted;
+        }
+        playdate->graphics->fillRect(0, band * 8, LCD_COLUMNS, 8, (LCDColor)(uintptr_t)pattern);
+    }
+    playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+}
 
 __section__(".rare") static void CB_LoadStateErrorModalCallback(void* userdata, int option)
 {

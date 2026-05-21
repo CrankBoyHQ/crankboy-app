@@ -458,6 +458,7 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* cgb_brightness_labels[] = {"Bright", "Normal", "Dark"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
+static const char* boot_fade_labels[] = {"Off", "Short", "Long"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
@@ -1605,6 +1606,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL,
         .rebuild_when_changed = 0,
         .on_change = NULL,
+    };
+    
+    // Starting fade
+    entries[++i] = (OptionsMenuEntry){
+        .name = "Boot Fade",
+        .values = boot_fade_labels,
+        .description = "Fade from black on\ngame start. Masks visual\nglitches.",
+        .pref_var = &preferences_boot_fade,
+        .max_value = 3,
     };
 
     #if defined(ITCM_CORE) && defined(DTCM_ALLOC)

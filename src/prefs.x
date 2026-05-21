@@ -51,6 +51,7 @@ PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(script_has_prompted, false)  // (not a real setting)
 PREF(recommended_settings_ignored, 0) // (not a real setting)
+PREF(boot_fade, 1)
 
 // cgb
 PREF(cgb_speed, 0) // 0: default; 1: force slow mode
@@ -62,5 +63,4 @@ PREF(hle, 1)
 PREF(script_A, 0)
 PREF(script_B, 0)
 PREF(script_C, 0)
-
 #undef PREF

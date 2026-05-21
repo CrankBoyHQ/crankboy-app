@@ -818,6 +818,11 @@ void CB_init(void)
     }
     else
     {
+        // Paint the screen black, hides pdboot
+        playdate->graphics->clear(kColorBlack);
+        playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+        playdate->graphics->display();
+
         if (CB_App->bundle_shared)
         {
             CB_App->directory = aprintf(DEFAULT_SHARED_DIRECTORY);
