@@ -1,0 +1,498 @@
+#include "manage_rom_scene.h"
+
+#include "../app.h"
+#include "../gbz.h"
+#include "../preferences.h"
+#include "../utility.h"
+#include "modal.h"
+
+#include <string.h>
+
+#define INFO_LEFT_X    14
+#define INFO_VALUE_X   130
+#define INFO_TOP_Y     30
+#define INFO_ROW_H     19
+#define ACTION_TOP_Y   148
+#define ACTION_ROW_H   20
+#define ACTION_WIDTH   240
+#define FOOTER_Y       222
+
+static const struct
+{
+    uint8_t v;
+    const char* name;
+} kMapperNames[] = {
+    {0x00, "ROM"},
+    {0x01, "MBC1"},
+    {0x02, "MBC1+RAM"},
+    {0x03, "MBC1+SRAM"},
+    {0x05, "MBC2"},
+    {0x06, "MBC2+SRAM"},
+    {0x08, "ROM+RAM"},
+    {0x09, "ROM+SRAM"},
+    {0x0B, "MMM01"},
+    {0x0C, "MMM01+RAM"},
+    {0x0D, "MMM01+SRAM"},
+    {0x0F, "MBC3+RTC"},
+    {0x10, "MBC3+RTC+SRAM"},
+    {0x11, "MBC3"},
+    {0x12, "MBC3+RAM"},
+    {0x13, "MBC3+SRAM"},
+    {0x19, "MBC5"},
+    {0x1A, "MBC5+RAM"},
+    {0x1B, "MBC5+SRAM"},
+    {0x1C, "MBC5+Vib"},
+    {0x1D, "MBC5+Vib+RAM"},
+    {0x1E, "MBC5+Vib+SRAM"},
+    {0x20, "MBC6"},
+    {0x22, "MBC7+Acc+Vib+SRAM"},
+    {0xFC, "Pocket Camera"},
+    {0xFD, "Bandai TAMA5"},
+    {0xFE, "HuC3"},
+    {0xFF, "HuC1+SRAM"},
+};
+
+static const char* mapper_name_for(uint8_t v)
+{
+    for (size_t i = 0; i < sizeof(kMapperNames) / sizeof(kMapperNames[0]); ++i)
+    {
+        if (kMapperNames[i].v == v)
+            return kMapperNames[i].name;
+    }
+    return NULL;
+}
+
+static bool ends_with_icase(const char* s, const char* suffix)
+{
+    size_t ls = strlen(s);
+    size_t lf = strlen(suffix);
+    if (lf > ls)
+        return false;
+    for (size_t i = 0; i < lf; ++i)
+    {
+        char a = s[ls - lf + i];
+        char b = suffix[i];
+        if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+        if (a != b)
+            return false;
+    }
+    return true;
+}
+
+static void read_rom_header(CB_ManageRomScene* self)
+{
+    self->mapper_byte = 0;
+    self->cgb_flag = 0;
+    self->header_ok = false;
+    self->compressed = ends_with_icase(self->game->fullpath, ".gbz");
+
+    if (self->compressed)
+    {
+        size_t sz = 0;
+        char* data = cb_read_partial_file(
+            self->game->fullpath, GBZ_GZ_OFFSET, &sz, kFileRead | kFileReadData, false
+        );
+        if (data)
+        {
+            GBZ_Header h;
+            if (sz >= GBZ_GZ_OFFSET && gbz_parse_header(&h, (const uint8_t*)data, sz))
+            {
+                self->cgb_flag = gbz_read_header_byte(&h, 0x143);
+                self->mapper_byte = gbz_read_header_byte(&h, 0x147);
+                self->header_ok = true;
+            }
+            cb_free(data);
+        }
+    }
+    else
+    {
+        SDFile* f = playdate->file->open(self->game->fullpath, kFileRead | kFileReadData);
+        if (f)
+        {
+            uint8_t buf[5] = {0};
+            if (playdate->file->seek(f, 0x143, SEEK_SET) >= 0 &&
+                playdate->file->read(f, buf, sizeof(buf)) == (int)sizeof(buf))
+            {
+                self->cgb_flag = buf[0];
+                self->mapper_byte = buf[4];
+                self->header_ok = true;
+            }
+            playdate->file->close(f);
+        }
+    }
+}
+
+static void draw_info_row(int y, const char* label, const char* value)
+{
+    playdate->graphics->drawText(label, strlen(label), kUTF8Encoding, INFO_LEFT_X, y);
+    if (value && *value)
+    {
+        playdate->graphics->drawText(value, strlen(value), kUTF8Encoding, INFO_VALUE_X, y);
+    }
+    else
+    {
+        playdate->graphics->drawText("N/A", strlen("N/A"), kUTF8Encoding, INFO_VALUE_X, y);
+    }
+}
+
+static void cb_delete_rom_confirmed(void* ud, int option)
+{
+    if (option != 1)
+        return;
+    CB_ManageRomScene* self = ud;
+    if (!self || !self->game || !self->game->fullpath)
+        return;
+
+    playdate->file->unlink(self->game->fullpath, 0);
+    playdate->system->restartGame(playdate->system->getLaunchArgs(NULL));
+}
+
+struct script_unlink_ud
+{
+    const char* dir;
+    const char* prefix;
+    size_t prefix_len;
+};
+
+static void script_unlink_cb(const char* filename, void* vd)
+{
+    struct script_unlink_ud* ud = vd;
+    size_t flen = strlen(filename);
+    if (flen <= ud->prefix_len)
+        return;
+    if (strncmp(filename, ud->prefix, ud->prefix_len) != 0)
+        return;
+    if (flen < 4 || strcmp(filename + flen - 4, ".bin") != 0)
+        return;
+    char* full = aprintf("%s/%s", ud->dir, filename);
+    if (full)
+    {
+        playdate->file->unlink(full, 0);
+        cb_free(full);
+    }
+}
+
+static void clear_save_confirmed(void* ud, int option)
+{
+    if (option != 1)
+        return;
+    CB_ManageRomScene* self = ud;
+    if (!self || !self->game || !self->game->fullpath)
+        return;
+
+    int saved_slot = preferences_save_slot;
+    preferences_save_slot = self->save_slot_at_open;
+
+    char* sav = cb_save_filename(self->game->fullpath, false);
+    if (sav)
+    {
+        playdate->file->unlink(sav, 0);
+        cb_free(sav);
+    }
+
+    preferences_save_slot = saved_slot;
+
+    char* base_no_ext = cb_basename(self->game->fullpath, true);
+    if (base_no_ext)
+    {
+        char* prefix = NULL;
+        if (self->save_slot_at_open == 0)
+        {
+            prefix = aprintf("%s.script.", base_no_ext);
+        }
+        else
+        {
+            prefix = aprintf(
+                "%s.%c.script.", base_no_ext, 'A' + self->save_slot_at_open
+            );
+        }
+        if (prefix)
+        {
+            const char* saves_dir = cb_gb_directory_path(CB_savesPath);
+            if (saves_dir)
+            {
+                struct script_unlink_ud cb_ud = {
+                    .dir = saves_dir,
+                    .prefix = prefix,
+                    .prefix_len = strlen(prefix),
+                };
+                playdate->file->listfiles(saves_dir, script_unlink_cb, &cb_ud, 0);
+            }
+            cb_free(prefix);
+        }
+        cb_free(base_no_ext);
+    }
+}
+
+static void delete_cover_confirmed(void* ud, int option)
+{
+    if (option != 1)
+        return;
+    CB_ManageRomScene* self = ud;
+    if (!self || !self->game || !self->game->coverPath)
+        return;
+
+    CB_Game* game = self->game;
+    playdate->file->unlink(game->coverPath, 0);
+    cb_free(game->coverPath);
+    game->coverPath = NULL;
+
+    if (CB_App->coverCache)
+    {
+        for (int i = CB_App->coverCache->length - 1; i >= 0; i--)
+        {
+            CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
+            if (strcmp(entry->rom_path, game->fullpath) == 0)
+            {
+                array_remove_at(CB_App->coverCache, i);
+                cb_free(entry->rom_path);
+                cb_free(entry->compressed_data);
+                cb_free(entry);
+                break;
+            }
+        }
+    }
+    cb_clear_global_cover_cache();
+
+    // cover is gone; drop the 3rd action row
+    if (self->actionCount > 3)
+    {
+        self->actionCount = 3;
+        if (self->cursorIndex >= self->actionCount)
+            self->cursorIndex = self->actionCount - 1;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Scene lifecycle
+// ---------------------------------------------------------------------------
+
+static const char* yes_no_options[] = {"No", "Yes", NULL};
+
+static void invoke_action(CB_ManageRomScene* self, int idx)
+{
+    cb_play_ui_sound(CB_UISound_Confirm);
+    char* msg = NULL;
+    CB_ModalCallback cb = NULL;
+
+    if (idx == 0)
+    {
+        self->dismiss = true;
+    }
+    else if (idx == 1)
+    {
+        msg = aprintf("Delete this ROM?\n%s", self->basename ? self->basename : "");
+        cb = cb_delete_rom_confirmed;
+    }
+    else if (idx == 2)
+    {
+        int sidx = self->save_slot_at_open;
+        if (sidx < 0) sidx = 0;
+        if (sidx >= (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])))
+            sidx = (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])) - 1;
+        const char* slot_label = save_slot_labels[sidx];
+        msg = aprintf("Confirm delete\nsave data for %s?", slot_label);
+        cb = clear_save_confirmed;
+    }
+    else if (idx == 3)
+    {
+        msg = aprintf("Delete this cover art?");
+        cb = delete_cover_confirmed;
+    }
+
+    if (!msg || !cb)
+    {
+        if (msg) cb_free(msg);
+        return;
+    }
+
+    CB_Modal* modal = CB_Modal_new(msg, yes_no_options, cb, self);
+    cb_free(msg);
+    if (modal)
+    {
+        modal->width = 280;
+        modal->height = 140;
+        CB_presentModal(modal->scene);
+    }
+}
+
+static void draw_action_row(int y, const char* label, bool selected)
+{
+    int x = (LCD_COLUMNS - ACTION_WIDTH) / 2;
+    if (selected)
+    {
+        playdate->graphics->fillRect(x, y, ACTION_WIDTH, ACTION_ROW_H, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+    }
+    else
+    {
+        playdate->graphics->drawRect(x, y, ACTION_WIDTH, ACTION_ROW_H, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeCopy);
+    }
+    int tw = playdate->graphics->getTextWidth(
+        CB_App->bodyFont, label, strlen(label), kUTF8Encoding, 0
+    );
+    int fh = playdate->graphics->getFontHeight(CB_App->bodyFont);
+    int tx = x + (ACTION_WIDTH - tw) / 2;
+    int ty = y + (ACTION_ROW_H - fh) / 2;
+    playdate->graphics->drawText(label, strlen(label), kUTF8Encoding, tx, ty);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+}
+
+static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
+{
+    (void)u32enc_dt;
+    CB_ManageRomScene* self = object;
+    if (CB_App->pendingScene || self->dismiss)
+    {
+        CB_dismiss(self->scene);
+        return;
+    }
+
+    PDButtons pushed = CB_App->buttons_pressed;
+    if (pushed & kButtonB)
+    {
+        cb_play_ui_sound(CB_UISound_Navigate);
+        self->dismiss = true;
+        return;
+    }
+    if (pushed & kButtonUp)
+    {
+        if (self->cursorIndex > 0)
+        {
+            self->cursorIndex--;
+            cb_play_ui_sound(CB_UISound_Navigate);
+        }
+    }
+    if (pushed & kButtonDown)
+    {
+        if (self->cursorIndex < self->actionCount - 1)
+        {
+            self->cursorIndex++;
+            cb_play_ui_sound(CB_UISound_Navigate);
+        }
+    }
+    if (pushed & kButtonA)
+    {
+        invoke_action(self, self->cursorIndex);
+        return;
+    }
+
+    // ----- draw -----
+    playdate->graphics->clear(kColorWhite);
+
+    // title
+    playdate->graphics->setFont(CB_App->subheadFont);
+    const char* title = "- Manage ROM -";
+    int tw = playdate->graphics->getTextWidth(
+        CB_App->subheadFont, title, strlen(title), kUTF8Encoding, 0
+    );
+    playdate->graphics->drawText(
+        title, strlen(title), kUTF8Encoding, (LCD_COLUMNS - tw) / 2, 8
+    );
+
+    // info rows
+    playdate->graphics->setFont(CB_App->bodyFont);
+    int y = INFO_TOP_Y;
+
+    draw_info_row(y, "Filename:", self->basename ? self->basename : "");
+    y += INFO_ROW_H;
+
+    draw_info_row(y, "Compressed:", self->compressed ? "Yes" : "No");
+    y += INFO_ROW_H;
+
+    const char* hdr = (self->game->names && self->game->names->name_header)
+                          ? self->game->names->name_header
+                          : NULL;
+    draw_info_row(y, "Header:", hdr);
+    y += INFO_ROW_H;
+
+    char mapper_buf[64];
+    const char* mname = self->header_ok ? mapper_name_for(self->mapper_byte) : NULL;
+    if (mname)
+        snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X (%s)", self->mapper_byte, mname);
+    else if (self->header_ok)
+        snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X", self->mapper_byte);
+    else
+        snprintf(mapper_buf, sizeof(mapper_buf), "?");
+    draw_info_row(y, "Mapper:", mapper_buf);
+    y += INFO_ROW_H;
+
+    char crc_buf[16];
+    if (self->game->names && self->game->names->crc32 != 0)
+        snprintf(crc_buf, sizeof(crc_buf), "%08lX", (unsigned long)self->game->names->crc32);
+    else
+        snprintf(crc_buf, sizeof(crc_buf), "—");
+    draw_info_row(y, "CRC32:", crc_buf);
+    y += INFO_ROW_H;
+
+    const char* sys_str = "DMG";
+    if (self->header_ok)
+    {
+        if (self->cgb_flag == 0x80)
+            sys_str = "DMG / CGB (optional)";
+        else if (self->cgb_flag == 0xC0)
+            sys_str = "CGB";
+    }
+    draw_info_row(y, "System:", sys_str);
+    y += INFO_ROW_H;
+
+    // action rows
+    static const char* action_labels[] = {
+        "Back",
+        "Delete ROM",
+        "Clear save data",
+        "Delete cover art",
+    };
+    for (int i = 0; i < self->actionCount; ++i)
+    {
+        int ay = ACTION_TOP_Y + i * (ACTION_ROW_H + 2);
+        draw_action_row(ay, action_labels[i], i == self->cursorIndex);
+    }
+}
+
+static void CB_ManageRomScene_free(void* object)
+{
+    CB_ManageRomScene* self = object;
+    if (!self)
+        return;
+    if (self->basename)
+        cb_free(self->basename);
+    CB_Scene_free(self->scene);
+    cb_free(self);
+}
+
+CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
+{
+    if (!game)
+        return NULL;
+
+    CB_ManageRomScene* self = cb_malloc(sizeof(CB_ManageRomScene));
+    if (!self)
+        return NULL;
+    memset(self, 0, sizeof(*self));
+
+    self->game = game;
+    self->cursorIndex = 0;
+    self->actionCount = (game->coverPath) ? 4 : 3;
+    self->save_slot_at_open = preferences_save_slot;
+    self->basename = cb_basename(game->fullpath, false);
+
+    read_rom_header(self);
+
+    CB_Scene* scene = CB_Scene_new();
+    if (!scene)
+    {
+        if (self->basename) cb_free(self->basename);
+        cb_free(self);
+        return NULL;
+    }
+    scene->id = "manage_rom";
+    scene->managedObject = self;
+    scene->update = CB_ManageRomScene_update;
+    scene->free = CB_ManageRomScene_free;
+    self->scene = scene;
+
+    return self;
+}

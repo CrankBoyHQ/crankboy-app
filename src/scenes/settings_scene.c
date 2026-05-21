@@ -16,6 +16,7 @@
 #include "../utility.h"
 #include "credits_scene.h"
 #include "homebrew_hub_scene.h"
+#include "manage_rom_scene.h"
 #include "patch_download_scene.h"
 #include "pd_api/pd_api_gfx.h"
 
@@ -148,6 +149,15 @@ static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsSce
     CB_PatchDownloadScene* s =
         CB_PatchDownloadScene_new(option->ud, settingsScene, settingsScene->header_animation_p);
     CB_presentModal(s->scene);
+}
+
+static void open_manage_rom(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
+{
+    (void)settingsScene;
+    cb_play_ui_sound(CB_UISound_Confirm);
+    CB_ManageRomScene* s = CB_ManageRomScene_new((CB_Game*)option->ud);
+    if (s)
+        CB_presentModal(s->scene);
 }
 
 CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene* libraryScene)
@@ -487,7 +497,7 @@ static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
-static const char* save_slot_labels[] = {
+const char* save_slot_labels[] = {
     "Slot A", "Slot B", "Slot C", "Slot D", "Slot E",
     "Slot F", "Slot G", "Slot H", "Slot I", "Slot K",
 };
@@ -1084,6 +1094,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
+            .ud = selectedGame
+        };
+
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Manage ROM",
+            .description = "View ROM info\nand delete the ROM,\nsave data, or cover art.",
+            .values = next_scene,
+            .max_value = 0,
+            .on_press = open_manage_rom,
             .ud = selectedGame
         };
 

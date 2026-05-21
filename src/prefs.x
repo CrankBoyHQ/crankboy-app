@@ -46,7 +46,7 @@ PREF(library_launch_animation, 1)
 
 // misc
 PREF(itcm, (pd_rev == PD_REV_A))
-PREF(tcm_lcd, true)
+PREF(tcm_lcd, false)
 PREF(uncap_fps, false)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)

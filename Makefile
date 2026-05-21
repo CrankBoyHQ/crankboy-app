@@ -51,6 +51,7 @@ SRC += src/scenes/file_copying_scene.c
 SRC += src/scenes/patch_download_scene.c
 SRC += src/scenes/game_scanning_scene.c
 SRC += src/scenes/library_scene.c
+SRC += src/scenes/manage_rom_scene.c
 SRC += src/scenes/image_conversion_scene.c
 SRC += src/scenes/info_scene.c
 SRC += src/scenes/modal.c
