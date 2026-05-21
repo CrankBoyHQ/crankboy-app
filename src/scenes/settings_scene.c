@@ -33,10 +33,10 @@
  * function, you may need to increase this value to prevent buffer overflows,
  * which can lead to unpredictable crashes.
  *
- * As of Mai 2026, the theoretical maximum count is 47 entries.
+ * As of Mai 2026, the theoretical maximum count is 50 entries.
  * This value provides a safe buffer for future additions.
  */
-#define TOTAL_MENU_ITEMS 50
+#define TOTAL_MENU_ITEMS 55
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -950,10 +950,8 @@ static void apply_recommended_in_settings(
     CB_SettingsScene_rebuildEntries(settingsScene);
 }
 
-static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
+static const char* get_settings_game_name(CB_SettingsScene* settingsScene)
 {
-    const char* game_name = NULL;
-
     if (settingsScene->libraryScene)
     {
         CB_Game* selectedGame =
@@ -963,17 +961,32 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
                       ->items[settingsScene->libraryScene->listView->selectedItem]
                 : NULL;
         if (selectedGame)
-            game_name = selectedGame->names->name_header;
+            return selectedGame->names->name_header;
     }
     else if (settingsScene->gameScene)
     {
         ScriptInfo* sinfo = script_get_info_by_rom_path(settingsScene->gameScene->rom_filename);
         if (sinfo)
         {
-            game_name = sinfo->rom_name;
+            // leak? no — string is copied into info->rom_name from ROM header
+            const char* name = sinfo->rom_name;
+            // we must free sinfo but keep name. since name is a stack copy of
+            // info->rom_name which is strncpy'd from game_name, we can use it
+            // after freeing info if we copy it. but it's a 16-char array...
+            // just copy to a static buffer to be safe
+            static char name_buf[17];
+            strncpy(name_buf, sinfo->rom_name, 16);
+            name_buf[16] = 0;
             script_info_free(sinfo);
+            return name_buf;
         }
     }
+    return NULL;
+}
+
+static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
+{
+    const char* game_name = get_settings_game_name(settingsScene);
 
     const struct ScriptRecommendedSettings* rec = NULL;
     if (game_name)
@@ -1680,7 +1693,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
 
         addUISoundOption(scene, entries, &i);
-        
+
         entries[++i] = (OptionsMenuEntry){
             .name = "Launch Animation",
             .values = off_on_labels,
@@ -1756,7 +1769,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .rebuild_when_changed = 0,
         .on_change = NULL,
     };
-    
+
     // Starting fade
     entries[++i] = (OptionsMenuEntry){
         .name = "Boot Fade",
