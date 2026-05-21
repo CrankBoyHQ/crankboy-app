@@ -127,6 +127,11 @@ static int check_is_bundle(void)
             CB_App->forceCheckVersionLocal = true;
         }
 
+        if (strstr(arg, "--update-forwarder"))
+        {
+            CB_App->forceUpdateForwarder = true;
+        }
+
         const char* device_arg = strstr(arg, "device=");
         if (device_arg && (device_arg == arg || device_arg[-1] == ' '))
         {
@@ -474,23 +479,32 @@ char* CB_install_shared_forwarder(void)
     return dest_dir;
 }
 
-// update forwader install if fwdex present and lists differing version
+// update forwader install if fwdex present and lists differing version,
+// or unconditionally when --update-forwarder was passed.
 static void maybe_refresh_shared_forwarder(void)
 {
-    size_t flen = 0;
-    char* recorded = cb_read_entire_file(FORWARDER_INDICATOR_FILE, &flen, kFileReadData);
-    if (!recorded)
-        return;
-    const char* version = get_current_version();
-    bool stale = true;
-    if (version && strlen(recorded) == strlen(version) && !strcmp(recorded, version))
-        stale = false;
-    cb_free(recorded);
-    if (!stale)
-        return;
+    bool stale = false;
+    bool forced = CB_App->forceUpdateForwarder;
+
+    if (!forced)
+    {
+        size_t flen = 0;
+        char* recorded = cb_read_entire_file(FORWARDER_INDICATOR_FILE, &flen, kFileReadData);
+        if (!recorded)
+            return;
+        const char* version = get_current_version();
+        stale = true;
+        if (version && strlen(recorded) == strlen(version) && !strcmp(recorded, version))
+            stale = false;
+        cb_free(recorded);
+        if (!stale)
+            return;
+    }
+
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Updating Forwarders...");
     playdate->system->logToConsole(
-        "[fwd] fwdex stale -- refreshing shared forwarder for %s",
+        "[fwd] %s -- refreshing shared forwarder for %s",
+        forced ? "--update-forwarder" : "fwdex stale",
         CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
     );
     char* dir = CB_install_shared_forwarder();

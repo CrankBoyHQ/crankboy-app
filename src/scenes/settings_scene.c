@@ -277,7 +277,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         settingsScene->immutable_settings = preferences_store_subset(0);
     }
 
-    settingsScene->header_animation_p = preferences_per_game;
+    settingsScene->header_animation_p = CB_App->bundled_rom ? 0 : preferences_per_game;
 
     if (always_global)
     {
@@ -394,7 +394,14 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
     }
     else if (game_settings_path)
     {
-        if (preferences_per_game)
+        if (CB_App->bundled_rom)
+        {
+            // Bundled ROM: global vs per-game is meaningless — there's only one game.
+            // Save everything (except script-locked) to the bundled game's file, never the
+            // global file.
+            result = preferences_save_to_disk(game_settings_path, prefs_locked_by_script);
+        }
+        else if (preferences_per_game)
         {
             // Save per-game settings (excluding always-global)
             result = preferences_save_to_disk(
@@ -1781,7 +1788,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     CB_GameScene* gameScene = settingsScene->gameScene;
 
-    TOWARD(settingsScene->header_animation_p, preferences_per_game, dt * HEADER_ANIMATION_RATE);
+    float header_target = CB_App->bundled_rom ? 0.0f : (float)preferences_per_game;
+    TOWARD(settingsScene->header_animation_p, header_target, dt * HEADER_ANIMATION_RATE);
 
     int header_y = settingsScene->header_animation_p * HEADER_HEIGHT + 0.5f;
 

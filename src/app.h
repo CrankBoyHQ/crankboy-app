@@ -171,6 +171,7 @@ typedef struct CB_Application
 
     bool forceCheckVersion : 1;
     bool forceCheckVersionLocal : 1;
+    bool forceUpdateForwarder : 1;
 
     // playdate-level lua enabled (main.pdz)
     bool lua : 1;
