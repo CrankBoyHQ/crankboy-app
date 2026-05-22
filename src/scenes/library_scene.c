@@ -396,7 +396,8 @@ static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
 static void play_launch_animation(CB_Game* game)
 {
     CB_LibraryScene* libraryScene = s_active_library_scene;
-    if (!libraryScene) return;
+    if (!libraryScene)
+        return;
 
     // decide gap color (black or white)
     enum ScriptPreferredLaunchColor script_color = ScriptPreferredLaunchColor_None;
@@ -425,16 +426,18 @@ static void play_launch_animation(CB_Game* game)
     else if (script_color == ScriptPreferredLaunchColor_Black)
         white_gap = false;
     else
-        white_gap = (boot_fade == PREF_FADE_NONE ||
-                     boot_fade == PREF_FADE_SHORT_WHITE ||
-                     boot_fade == PREF_FADE_LONG_WHITE);
+        white_gap =
+            (boot_fade == PREF_FADE_NONE || boot_fade == PREF_FADE_SHORT_WHITE ||
+             boot_fade == PREF_FADE_LONG_WHITE);
 
     const int frames = 12;
     const int sideBarMax = 40;
     bool fadeOff = (boot_fade == PREF_FADE_NONE);
     int seam = last_panel_seam;
-    if (seam < 0) seam = 0;
-    if (seam > LCD_COLUMNS) seam = LCD_COLUMNS;
+    if (seam < 0)
+        seam = 0;
+    if (seam > LCD_COLUMNS)
+        seam = LCD_COLUMNS;
 
     int leftWidth = seam;
     int rightWidth = LCD_COLUMNS - seam;
@@ -456,8 +459,10 @@ static void play_launch_animation(CB_Game* game)
             float p = 0.5f * t + 0.5f * t * t;
             int L = (int)(leftWidth * p + 0.5f);
             int R = (int)(rightWidth * p + 0.5f);
-            if (L > leftWidth) L = leftWidth;
-            if (R > rightWidth) R = rightWidth;
+            if (L > leftWidth)
+                L = leftWidth;
+            if (R > rightWidth)
+                R = rightWidth;
 
             libraryScene->launchAnimShiftLeft = L;
             libraryScene->launchAnimShiftRight = R;
@@ -473,7 +478,9 @@ static void play_launch_animation(CB_Game* game)
         playdate->graphics->display();
 
         unsigned start = playdate->system->getCurrentTimeMilliseconds();
-        while (playdate->system->getCurrentTimeMilliseconds() - start < 1000 / 60) {}
+        while (playdate->system->getCurrentTimeMilliseconds() - start < 1000 / 60)
+        {
+        }
     }
 
     libraryScene->launchAnimShiftLeft = 0;
@@ -494,7 +501,7 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
         {
             CB_present(gameScene->scene);
         }
-        
+
         if (preferences_library_launch_animation)
         {
             play_launch_animation(game);
@@ -727,7 +734,7 @@ static void launch_game(void* ud, int option)
                     "switching to per-game prefs (%d/%d/%d)", preferences_script_support,
                     was_per_game, global_scripts_enabled
                 );
-                preferences_save_to_disk(settings_path, ~(PREFBITS_NEVER_GLOBAL));
+                preferences_save_to_disk(settings_path, PREFBITS_ALWAYS_GLOBAL);
             }
             else
             {
@@ -1002,8 +1009,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
                         name = game->names->name_header;
                     snprintf(
                         default_msg, sizeof(default_msg),
-                        "%s has recommended settings from the CrankBoy community.\n\n",
-                        name
+                        "%s has recommended settings from the CrankBoy community.\n\n", name
                     );
                     msg = default_msg;
                 }
@@ -1546,8 +1552,9 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 {
     bool needsDisplay = forAnimation;
 
-    if (!forAnimation && (libraryScene->model.empty || libraryScene->model.tab != libraryScene->tab ||
-        libraryScene->scene->forceFullRefresh))
+    if (!forAnimation &&
+        (libraryScene->model.empty || libraryScene->model.tab != libraryScene->tab ||
+         libraryScene->scene->forceFullRefresh))
     {
         needsDisplay = true;
         if (libraryScene->scene->forceFullRefresh)
@@ -1566,7 +1573,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
     if (libraryScene->tab == CB_LibrarySceneTabList)
     {
-        if (!forAnimation) CB_ListView_update(libraryScene->listView);
+        if (!forAnimation)
+            CB_ListView_update(libraryScene->listView);
 
         int selectedIndex = libraryScene->listView->selectedItem;
 
@@ -1783,9 +1791,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             {
                 int leftEdge = leftPanelWidth - animL;
                 int rightEdge = leftPanelWidth + animR;
-                playdate->graphics->fillRect(
-                    leftEdge + 1, 0, 5, screenHeight, (uintptr_t)&lcdp_50
-                );
+                playdate->graphics->fillRect(leftEdge + 1, 0, 5, screenHeight, (uintptr_t)&lcdp_50);
                 playdate->graphics->fillRect(
                     rightEdge - 6, 0, 5, screenHeight, (uintptr_t)&lcdp_50
                 );
@@ -1796,7 +1802,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
         if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
         {
-            if (!forAnimation) libraryScene->lastSelectedItem = selectedIndex;
+            if (!forAnimation)
+                libraryScene->lastSelectedItem = selectedIndex;
             playdate->graphics->setDrawOffset(animR, 0);
 
             playdate->graphics->fillRect(
@@ -2141,7 +2148,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
             static const char* message5_text = "(Filenames must end with .gb, .gbc, or .gbz)";
 
-            if (!forAnimation) playdate->graphics->clear(kColorWhite);
+            if (!forAnimation)
+                playdate->graphics->clear(kColorWhite);
 
             int titleToMessageSpacing = 8;
             int messageLineSpacing = 4;
