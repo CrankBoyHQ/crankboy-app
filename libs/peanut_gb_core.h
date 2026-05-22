@@ -978,6 +978,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             }
 
             line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
+            uint8_t pri_lo = win_palette_lo & BG_MAP_ATTR_PRIORITY;
+            uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
+            uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> subx) : 0;
+            if (pri_hi && subx)
+                pri_mask |= (uint8_t)(0xFF << (8 - subx));
+            line_cgb_priority[x / 4] &= ~(((uint32_t)(pri & pri_mask)) << ((x * 8) & 31));
 
             rm_lo = rm_hi;
             lut_lo = lut_hi;
