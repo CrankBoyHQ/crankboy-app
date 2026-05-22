@@ -429,7 +429,11 @@ __core_section("draw") static inline int $(compare_sprites)(
 }
 
 __core_section("draw") static void $(__gb_draw_line_sprites)(
-    gb_s* restrict gb, const uint8_t* oam_src, const uint32_t* line_priority, uint8_t* pixels
+    gb_s* restrict gb, const uint8_t* oam_src, const uint32_t* line_priority,
+#if PGB_IS_CGB
+    const uint32_t* line_cgb_priority, bool cgb_master_priority,
+#endif
+    uint8_t* pixels
 )
 {
     uint8_t number_of_sprites = 0;
@@ -531,10 +535,18 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             {
                 int P_segment_index = disp_x / 32;
                 int P_bit_in_segment = disp_x % 32;
+#if PGB_IS_CGB
+                uint8_t bg_cgb_priority = 0;
+                if (cgb_master_priority)
+                    bg_cgb_priority = ~(line_cgb_priority[P_segment_index] >> P_bit_in_segment) & 1;
+                if (!(bg_cgb_priority ||
+                      ((OF & OBJ_PRIORITY) &&
+                       !((line_priority[P_segment_index] >> P_bit_in_segment) & 1))))
+#else
                 uint8_t bg_is_transparent =
                     (line_priority[P_segment_index] >> P_bit_in_segment) & 1;
-
                 if (!((OF & OBJ_PRIORITY) && !bg_is_transparent))
+#endif
                 {
 #if PGB_IS_CGB
                     uint8_t color_value = (cgb_obj_pal >> (c * 2)) & 3;
@@ -636,6 +648,9 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
     uint8_t* pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
+#if PGB_IS_CGB
+    uint32_t line_cgb_priority[((LCD_WIDTH + 31) / 32)];
+#endif
 
     const uint32_t line_priority_len = PEANUT_GB_ARRAYSIZE(line_priority);
 
@@ -645,6 +660,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     {
 #if PGB_IS_CGB
         line_priority[i] = ~0u;
+        line_cgb_priority[i] = ~0u;
 #else
         line_priority[i] = 0;
 #endif
@@ -820,7 +836,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> subx) : 0;
                 if (pri_hi && subx)
                     pri_mask |= (uint8_t)(0xFF << (8 - subx));
-                line_priority[x / 4] &= ~(((uint32_t)(pri & pri_mask)) << ((x * 8) & 31));
+                line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
+                line_cgb_priority[x / 4] &= ~(((uint32_t)(pri & pri_mask)) << ((x * 8) & 31));
 
                 tile_palette_lo = tile_palette_hi_val;
             }
@@ -997,7 +1014,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     uint32_t* used_line_priority = line_priority;
 
 #if PGB_IS_CGB
-    if (!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY))
+    bool cgb_master_priority = !!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY);
+    if (!cgb_master_priority)
     {
         used_line_priority = gb->zero32;
     }
@@ -1006,7 +1024,13 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
-        $(__gb_draw_line_sprites)(gb, gb->oam, used_line_priority, pixels);
+        $(__gb_draw_line_sprites)(
+            gb, gb->oam, used_line_priority,
+#if PGB_IS_CGB
+            line_cgb_priority, cgb_master_priority,
+#endif
+            pixels
+        );
     }
 }
 
