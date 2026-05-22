@@ -1,0 +1,365 @@
+#!/usr/bin/env bash
+# Install a .pdx onto a Playdate via data-disk mode, optionally launch it.
+#
+# Linux:  eject uses `gio mount --eject` (udisks2/D-Bus, no sudo needed).
+# macOS:  eject uses `diskutil eject`.
+set -euo pipefail
+
+OS=$(uname -s)
+
+if [[ $OS == Darwin ]]; then
+    PLAYDATE_BY_ID_GLOB='/dev/cu.usbmodemPDU1_*'
+else
+    PLAYDATE_BY_ID_GLOB='/dev/serial/by-id/usb-Panic_Inc_Playdate_*'
+fi
+
+usage() {
+    cat <<EOF
+Usage: $(basename "$0") [options] <path-to.pdx> [device]
+
+Install a .pdx onto an attached Playdate.
+
+  device defaults to the first attached Playdate (USB 1331:5740)
+  discovered under /dev/serial/by-id/.
+
+Options:
+  --launch          After install, launch the game on the device.
+  --detach          With --launch, exit immediately after launching instead
+                    of piping the device's serial output (ctrl+c to stop).
+  --only-bin        Only sync *.bin files (e.g. pdex.bin) into the existing
+                    installed .pdx — first removes existing .bin files there.
+                    Requires the .pdx to already be installed on the device.
+  -h, --help        Show this help.
+
+With --launch, anything after a literal '--' is forwarded as launch
+arguments to the game (delivered via getLaunchArgs):
+  $(basename "$0") --launch my.pdx -- --rom Tetris.gb
+
+This tool was developed with the assistance of LLM coding tools, including Claude and DeepSeek.
+EOF
+}
+
+find_playdate_serial() {
+    for link in $PLAYDATE_BY_ID_GLOB; do
+        [[ -e $link ]] || continue
+        if [[ $OS == Darwin ]]; then
+            echo "$link"
+        else
+            readlink -f -- "$link"
+        fi
+        return 0
+    done
+    return 1
+}
+
+find_playdate_mount() {
+    if [[ $OS == Darwin ]]; then
+        if [[ -d /Volumes/PLAYDATE ]]; then
+            echo /Volumes/PLAYDATE
+            return 0
+        fi
+        mount | awk '/PLAYDATE/ {print $3; exit}'
+    else
+        lsblk -nr -o LABEL,MOUNTPOINT | awk '$1=="PLAYDATE" && $2!="" {print $2; exit}'
+    fi
+}
+
+check_device_access() {
+    local d=$1
+    if [[ ! -e $d ]]; then
+        echo "error: device $d does not exist" >&2
+        exit 1
+    fi
+    if [[ -r $d && -w $d ]]; then
+        return 0
+    fi
+    local grp
+    if [[ $OS == Darwin ]]; then
+        grp=$(stat -f %Sg "$d" 2>/dev/null || true)
+    else
+        grp=$(stat -c %G "$d" 2>/dev/null || true)
+    fi
+    echo "error: no read/write access to $d" >&2
+    if [[ -n $grp && $grp != "UNKNOWN" ]]; then
+        if id -nG -- "$USER" | tr ' ' '\n' | grep -qx -- "$grp"; then
+            echo "  you appear to be in group '$grp' already — start a fresh login" >&2
+            echo "  session (log out / log back in) so the group membership applies." >&2
+        else
+            echo "  fix: add your user to the '$grp' group, then log out and back in:" >&2
+            echo "      sudo usermod -aG $grp \"$USER\"" >&2
+        fi
+    fi
+    exit 1
+}
+
+# ---- arg parsing ---------------------------------------------------------
+
+launch=0
+detach=0
+only_bin=0
+positional=()
+launch_args=()
+while [[ $# -gt 0 ]]; do
+    case $1 in
+    --launch)
+        launch=1
+        shift
+        ;;
+    --detach)
+        detach=1
+        shift
+        ;;
+    --only-bin)
+        only_bin=1
+        shift
+        ;;
+    -h | --help)
+        usage
+        exit 0
+        ;;
+    --)
+        shift
+        while [[ $# -gt 0 ]]; do
+            launch_args+=("$1")
+            shift
+        done
+        ;;
+    -*)
+        echo "error: unknown flag: $1" >&2
+        usage >&2
+        exit 2
+        ;;
+    *)
+        positional+=("$1")
+        shift
+        ;;
+    esac
+done
+
+if [[ ${#launch_args[@]} -gt 0 && $launch -ne 1 ]]; then
+    echo "error: arguments after '--' require --launch" >&2
+    exit 2
+fi
+
+if [[ ${#positional[@]} -eq 0 ]]; then
+    usage
+    exit 0
+fi
+if [[ ${#positional[@]} -gt 2 ]]; then
+    echo "error: too many positional arguments" >&2
+    usage >&2
+    exit 2
+fi
+if [[ $detach -eq 1 && $launch -ne 1 ]]; then
+    echo "error: --detach requires --launch" >&2
+    exit 2
+fi
+
+pdx=${positional[0]}
+device=${positional[1]:-}
+
+# ---- pre-flight ----------------------------------------------------------
+
+if [[ -z $device ]]; then
+    if ! device=$(find_playdate_serial); then
+        echo "error: no Playdate found (looked for $PLAYDATE_BY_ID_GLOB)" >&2
+        exit 1
+    fi
+    echo ">> auto-detected Playdate at $device"
+fi
+
+check_device_access "$device"
+
+if [[ ! -d $pdx ]]; then
+    echo "error: '$pdx' is not a directory (.pdx folder expected)" >&2
+    exit 1
+fi
+
+pdx=${pdx%/}
+app=$(basename "$pdx")
+if [[ $app != *.pdx ]]; then
+    echo "error: '$pdx' does not end in .pdx" >&2
+    exit 1
+fi
+
+if [[ $OS == Darwin ]]; then
+    if ! command -v diskutil >/dev/null 2>&1; then
+        echo "error: 'diskutil' not found" >&2
+        exit 1
+    fi
+elif ! command -v gio >/dev/null 2>&1; then
+    echo "error: 'gio' not found — install glib2 / glib-networking" >&2
+    exit 1
+fi
+
+# ---- data-disk + copy ----------------------------------------------------
+
+echo ">> switching $device to data-disk mode"
+pdutil "$device" datadisk
+
+echo ">> waiting up to 15s for PLAYDATE drive to mount"
+mount=""
+for _ in $(seq 1 30); do
+    mount=$(find_playdate_mount || true)
+    [[ -n $mount && -d $mount ]] && break
+    sleep 0.5
+done
+
+if [[ -z $mount || ! -d $mount ]]; then
+    echo "error: PLAYDATE drive did not appear within 15s" >&2
+    exit 1
+fi
+echo "   mounted at $mount"
+
+echo ">> waiting up to 15s for Games directory to appear"
+games_dir="$mount/Games"
+for _ in $(seq 1 15); do
+    [[ -d $games_dir ]] && break
+    sleep 1
+done
+
+if [[ ! -d $games_dir ]]; then
+    echo "error: '$games_dir' does not exist on PLAYDATE" >&2
+    echo "  contents of $mount:" >&2
+    ls -la "$mount" >&2 || true
+    exit 1
+fi
+
+dest="$games_dir/$app"
+if [[ $only_bin -eq 1 ]]; then
+    if [[ ! -d $dest ]]; then
+        echo "error: --only-bin requires '$dest' to already exist on the device" >&2
+        exit 1
+    fi
+    echo ">> --only-bin: removing existing *.bin files in $dest"
+    find "$dest" -maxdepth 1 -type f -name '*.bin' -print -delete 2>/dev/null
+    echo ">> copying *.bin from $pdx -> $dest"
+    shopt -s nullglob
+    bins=("$pdx"/*.bin)
+    shopt -u nullglob
+    if [[ ${#bins[@]} -eq 0 ]]; then
+        echo "error: no .bin files found in $pdx" >&2
+        exit 1
+    fi
+    cp -- "${bins[@]}" "$dest/"
+    sync
+else
+    if [[ -e $dest ]]; then
+        echo ">> removing existing $dest"
+        rm -rf -- "$dest"
+    fi
+
+    echo ">> copying $pdx -> $dest"
+    cp -r -- "$pdx" "$dest"
+
+    # Strip host-only shared libraries (simulator artifacts) that have
+    # no business on the device.
+    pruned=$(find "$dest" -type f \( \
+        -name '*.so' -o -name '*.dylib' -o -name '*.dll' \
+        \) -print -delete 2>/dev/null | wc -l)
+    if [[ $pruned -gt 0 ]]; then
+        echo ">> pruned $pruned host-only library file(s) (.so/.dylib/.dll)"
+    fi
+
+    sync
+fi
+
+# ---- eject ---------------------------------------------------------------
+
+echo ">> ejecting $mount"
+sleep 1
+eject_err=""
+if [[ $OS == Darwin ]]; then
+    for _ in $(seq 1 10); do
+        eject_err=$(diskutil eject "$mount" 2>&1) && eject_err="" && break
+        sleep 1
+    done
+    if [[ -n $eject_err ]]; then
+        echo "error: eject failed: $eject_err" >&2
+        if command -v lsof >/dev/null 2>&1; then
+            echo "processes holding the mount:" >&2
+            lsof "$mount" >&2 || true
+        fi
+        exit 1
+    fi
+else
+    # gio mount --eject unmounts and then issues the SCSI EJECT that tells the
+    # Playdate firmware to leave data-disk mode. (`udisksctl power-off` only
+    # detaches the USB device from the host, which leaves the Playdate stuck on
+    # "Eject disk to reboot".)
+    #
+    # Right after a copy, gvfs/file-indexers can briefly hold the mount open and
+    # trip "one or more volumes on the medium are busy" — retry for a few seconds.
+    for _ in $(seq 1 10); do
+        eject_err=$(gio mount --eject "$mount" 2>&1) && eject_err="" && break
+        sleep 1
+    done
+    if [[ -n $eject_err ]]; then
+        echo "error: eject failed: $eject_err" >&2
+        if command -v fuser >/dev/null 2>&1; then
+            echo "processes holding the mount:" >&2
+            fuser -vm "$mount" >&2 || true
+        fi
+        exit 1
+    fi
+fi
+
+# ---- (optional) launch ---------------------------------------------------
+
+if [[ $launch -ne 1 ]]; then
+    echo ">> install complete (no --launch given; skipping launch)"
+    exit 0
+fi
+
+echo ">> waiting up to 10s for Playdate serial to come back"
+back=""
+for _ in $(seq 1 20); do
+    if back=$(find_playdate_serial); then
+        break
+    fi
+    back=""
+    sleep 0.5
+done
+
+if [[ -z $back ]]; then
+    echo "error: Playdate serial did not reappear within 10s" >&2
+    exit 1
+fi
+echo "   serial back at $back"
+
+# Give the firmware a beat to finish bringing up the serial console.
+sleep 1
+
+if [[ ${#launch_args[@]} -eq 0 ]]; then
+    echo ">> launching /Games/$app"
+    pdutil "$back" run "/Games/$app"
+else
+    # The Playdate firmware delivers args appended to the `run` serial command
+    # via getLaunchArgs(). This is undocumented in the public protocol, so we
+    # bypass pdutil and write the line straight to the serial port.
+    run_line="run /Games/$app"
+    for a in "${launch_args[@]}"; do
+        run_line+=" $a"
+    done
+    echo ">> launching (raw): $run_line"
+    if [[ $OS == Darwin ]]; then
+        stty -f "$back" raw -echo 2>/dev/null || true
+    else
+        stty -F "$back" raw -echo 2>/dev/null || true
+    fi
+    printf '%s\n' "$run_line" >"$back"
+fi
+
+if [[ $detach -eq 1 ]]; then
+    exit 0
+fi
+
+echo ">> piping $back to terminal (ctrl+c to stop)"
+# Raw mode so we don't mangle the device's output; ignore failure in case
+# the kernel hands the port back with sensible defaults already.
+if [[ $OS == Darwin ]]; then
+    stty -f "$back" raw -echo 2>/dev/null || true
+else
+    stty -F "$back" raw -echo 2>/dev/null || true
+fi
+exec cat -- "$back"
