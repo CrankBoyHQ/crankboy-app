@@ -92,6 +92,16 @@ check_device_access() {
     exit 1
 }
 
+prompt_retry() {
+    while true; do
+        read -r -n 1 -p "(R)etry or (C)ancel? " answer
+        case $answer in
+        [Rr]) return 0 ;;
+        [Cc]) exit 1 ;;
+        esac
+    done
+}
+
 # ---- arg parsing ---------------------------------------------------------
 
 launch=0
@@ -161,10 +171,20 @@ device=${positional[1]:-}
 # ---- pre-flight ----------------------------------------------------------
 
 if [[ -z $device ]]; then
-    if ! device=$(find_playdate_serial); then
-        echo "error: no Playdate found (looked for $PLAYDATE_BY_ID_GLOB)" >&2
-        exit 1
-    fi
+    echo ">> looking for Playdate ($PLAYDATE_BY_ID_GLOB)"
+    while true; do
+        found=0
+        for _ in $(seq 1 15); do
+            if device=$(find_playdate_serial); then
+                found=1
+                break
+            fi
+            sleep 1
+        done
+        [[ $found -eq 1 ]] && break
+        echo "error: no Playdate found after 15s" >&2
+        prompt_retry || exit 1
+    done
     echo ">> auto-detected Playdate at $device"
 fi
 
@@ -195,35 +215,48 @@ fi
 # ---- data-disk + copy ----------------------------------------------------
 
 echo ">> switching $device to data-disk mode"
-pdutil "$device" datadisk
+while true; do
+    sent=0
+    for _ in $(seq 1 15); do
+        if pdutil "$device" datadisk 2>/dev/null; then
+            sent=1
+            break
+        fi
+        sleep 1
+    done
+    [[ $sent -eq 1 ]] && break
+    echo "error: failed to send datadisk command after 15 attempts" >&2
+    prompt_retry || exit 1
+done
 
 echo ">> waiting up to 15s for PLAYDATE drive to mount"
 mount=""
-for _ in $(seq 1 30); do
-    mount=$(find_playdate_mount || true)
+while true; do
+    for _ in $(seq 1 30); do
+        mount=$(find_playdate_mount || true)
+        [[ -n $mount && -d $mount ]] && break
+        sleep 0.5
+    done
     [[ -n $mount && -d $mount ]] && break
-    sleep 0.5
-done
-
-if [[ -z $mount || ! -d $mount ]]; then
     echo "error: PLAYDATE drive did not appear within 15s" >&2
-    exit 1
-fi
+    mount=""
+    prompt_retry || exit 1
+done
 echo "   mounted at $mount"
 
 echo ">> waiting up to 15s for Games directory to appear"
 games_dir="$mount/Games"
-for _ in $(seq 1 15); do
+while true; do
+    for _ in $(seq 1 15); do
+        [[ -d $games_dir ]] && break
+        sleep 1
+    done
     [[ -d $games_dir ]] && break
-    sleep 1
-done
-
-if [[ ! -d $games_dir ]]; then
     echo "error: '$games_dir' does not exist on PLAYDATE" >&2
     echo "  contents of $mount:" >&2
     ls -la "$mount" >&2 || true
-    exit 1
-fi
+    prompt_retry || exit 1
+done
 
 dest="$games_dir/$app"
 if [[ $only_bin -eq 1 ]]; then
@@ -268,41 +301,40 @@ fi
 
 echo ">> ejecting $mount"
 sleep 1
-eject_err=""
-if [[ $OS == Darwin ]]; then
-    for _ in $(seq 1 10); do
-        eject_err=$(diskutil eject "$mount" 2>&1) && eject_err="" && break
-        sleep 1
-    done
-    if [[ -n $eject_err ]]; then
+while true; do
+    eject_err=""
+    if [[ $OS == Darwin ]]; then
+        for _ in $(seq 1 10); do
+            eject_err=$(diskutil eject "$mount" 2>&1) && eject_err="" && break
+            sleep 1
+        done
+        [[ -z $eject_err ]] && break
         echo "error: eject failed: $eject_err" >&2
         if command -v lsof >/dev/null 2>&1; then
             echo "processes holding the mount:" >&2
             lsof "$mount" >&2 || true
         fi
-        exit 1
-    fi
-else
-    # gio mount --eject unmounts and then issues the SCSI EJECT that tells the
-    # Playdate firmware to leave data-disk mode. (`udisksctl power-off` only
-    # detaches the USB device from the host, which leaves the Playdate stuck on
-    # "Eject disk to reboot".)
-    #
-    # Right after a copy, gvfs/file-indexers can briefly hold the mount open and
-    # trip "one or more volumes on the medium are busy" — retry for a few seconds.
-    for _ in $(seq 1 10); do
-        eject_err=$(gio mount --eject "$mount" 2>&1) && eject_err="" && break
-        sleep 1
-    done
-    if [[ -n $eject_err ]]; then
+    else
+        # gio mount --eject unmounts and then issues the SCSI EJECT that tells the
+        # Playdate firmware to leave data-disk mode. (`udisksctl power-off` only
+        # detaches the USB device from the host, which leaves the Playdate stuck on
+        # "Eject disk to reboot".)
+        #
+        # Right after a copy, gvfs/file-indexers can briefly hold the mount open and
+        # trip "one or more volumes on the medium are busy" — retry for a few seconds.
+        for _ in $(seq 1 10); do
+            eject_err=$(gio mount --eject "$mount" 2>&1) && eject_err="" && break
+            sleep 1
+        done
+        [[ -z $eject_err ]] && break
         echo "error: eject failed: $eject_err" >&2
         if command -v fuser >/dev/null 2>&1; then
             echo "processes holding the mount:" >&2
             fuser -vm "$mount" >&2 || true
         fi
-        exit 1
     fi
-fi
+    prompt_retry || exit 1
+done
 
 # ---- (optional) launch ---------------------------------------------------
 
@@ -313,18 +345,19 @@ fi
 
 echo ">> waiting up to 10s for Playdate serial to come back"
 back=""
-for _ in $(seq 1 20); do
-    if back=$(find_playdate_serial); then
-        break
-    fi
-    back=""
-    sleep 0.5
-done
-
-if [[ -z $back ]]; then
+while true; do
+    for _ in $(seq 1 20); do
+        if back=$(find_playdate_serial); then
+            break
+        fi
+        back=""
+        sleep 0.5
+    done
+    [[ -n $back ]] && break
     echo "error: Playdate serial did not reappear within 10s" >&2
-    exit 1
-fi
+    back=""
+    prompt_retry || exit 1
+done
 echo "   serial back at $back"
 
 # Give the firmware a beat to finish bringing up the serial console.
