@@ -546,8 +546,8 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             if (preferences_prompt_if_cgb_optional >= 2)
             {
                 CB_Modal* modal = CB_Modal_new(
-                    "This ROM is marked as DMG. You can launch in DMG (non-Color) "
-                    "mode, or try CrankBoy's experimental CGB emulation regardless.",
+                    "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), "
+                    "or try CrankBoy's experimental CGB (\"Color\") emulation regardless.",
                     options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
                 );
 
@@ -564,9 +564,9 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
         case GB_SUPPORT_CGB:
         {
             CB_Modal* modal = CB_Modal_new(
-                "This ROM is marked CGB-only. CrankBoy only has experimental support for CGB (i.e. "
-                "Color) ROMs. You can try launching this as a standard DMG (non-Color) ROM, or try "
-                "experimental CGB mode.",
+                "This ROM is marked CGB-only.\n \nCrankBoy only has experimental support for CGB "
+                "ROMs. "
+                "You can try launching this as a standard DMG ROM, or try CGB mode (\"Color\").",
                 options, (void*)launch_dmg_or_cgb, game
             );
 
@@ -581,9 +581,9 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             if (preferences_prompt_if_cgb_optional)
             {
                 CB_Modal* modal = CB_Modal_new(
-                    "This ROM optionally supports CGB mode (\"Color\"). You can launch in "
-                    "standard, non-Color DMG mode (recommended), or try using CrankBoy's "
-                    "experimental CGB emulation (likely to fail).",
+                    "This ROM supports CGB mode.\n \nYou can launch in standard, "
+                    "DMG mode (recommended), or try using CrankBoy's experimental "
+                    "CGB (\"Color\") emulation.",
                     options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
                 );
 
