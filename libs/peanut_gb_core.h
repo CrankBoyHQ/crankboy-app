@@ -505,6 +505,8 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         uint16_t t1_i = bank + VRAM_TILES_1 + OT * 0x10 + 2 * py;
         uint8_t t1 = gb->vram[t1_i];
         uint8_t t2 = gb->vram[t1_i + 1];
+        uint8_t t1_r = reverse_bits_u8(t1);
+        uint8_t t2_r = reverse_bits_u8(t2);
 
         int dir, start, end;
         if (OF & OBJ_FLIP_X)
@@ -530,11 +532,11 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
                 goto next_sprite_pixel;
 
-            uint8_t c = ((t1 & 0x80) >> 7) | ((t2 & 0x80) >> 6);
+            uint8_t c = (t2_r & 1) << 1 | (t1_r & 1);
             if (c != 0)
             {
-                int P_segment_index = disp_x / 32;
-                int P_bit_in_segment = disp_x % 32;
+                int P_segment_index = (unsigned)disp_x >> 5;
+                int P_bit_in_segment = disp_x & 31;
 #if PGB_IS_CGB
                 uint8_t bg_cgb_priority = 0;
                 if (cgb_master_priority)
@@ -557,8 +559,8 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
                 }
             }
         next_sprite_pixel:
-            t1 <<= 1;
-            t2 <<= 1;
+            t1_r >>= 1;
+            t2_r >>= 1;
         }
     }
 }
@@ -607,7 +609,6 @@ __core_section("draw") static uint16_t __cgb_fetch_tile(
     uint16_t* restrict flip_data, uint8_t map_idx, int tiledata_offset, uint8_t* out_palette
 )
 {
-    map_idx %= 32;
     uint8_t tile_idx = tile_map[map_idx];
     uint8_t attrs = attr_map[map_idx];
     unsigned bank = (attrs & BG_MAP_ATTR_BANK) ? VRAM_SIZE / sizeof(uint16_t) : 0;
