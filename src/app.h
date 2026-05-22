@@ -62,15 +62,17 @@ enum cgb_support_e
     GB_SUPPORT_DMG_AND_CGB = 3,
 };
 
-// Defines the main stack size. This value provides a necessary safety
-// margin to prevent intermittent crashes. It was increased to 0x2700
-// specifically to ensure stability in games like Pokemon Gold/Silver,
-// which have a higher runtime stack requirement. Further increased to
-// 0x2760 (+96) for CGB palette support which adds local variables to
-// the draw_line rendering path and extends the gb_s struct.
-//
-// This is the absolute max we can use. Otherwise instant crash.
-#define PLAYDATE_STACK_SIZE 0x2760
+/*
+ * Defines the main stack size. This value provides a necessary safety
+ * margin to prevent intermittent crashes. It was increased to 0x2700
+ * initially to ensure stability in games like Pokemon Gold/Silver,
+ * which have a higher runtime stack requirement.
+ *
+ * But we also needed this to support for CGB. This is the absolute max
+ * we should use use. 0x2760 is possible but leaves no headroom if there
+ * ae any changes to the Playdate OS in the future.
+ */
+#define PLAYDATE_STACK_SIZE 0x2700
 
 #define FPS_AVG_DECAY 0.8f
 
@@ -178,8 +180,8 @@ typedef struct CB_Application
 
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;
-    
-    char* pdxLaunchPath; // from system->getLaunchArgs
+
+    char* pdxLaunchPath;  // from system->getLaunchArgs
 
     char* hbApiDomain;
     char* hbApiPath;
@@ -190,7 +192,7 @@ typedef struct CB_Application
 
     // Playdate mirror (streaming video)
     bool mirror_active;
-    
+
     // If this is non-null, then the app is intended to contain exactly one ROM due to the presence
     // of bundle.json The following changes are made:
     // - library view is omitted
@@ -199,10 +201,10 @@ typedef struct CB_Application
     // - some settings become inaccessible
     char* bundled_rom;         // (path to bundled rom)
     int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
-    
+
     // use shared roms/saves/settings directory
     bool bundle_shared;
-    
+
     // ex. "/Shared/.forwarders/app.crankboyhq.crankboy"
     char* bundle_fwd_path;
 } CB_Application;
