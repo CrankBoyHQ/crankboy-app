@@ -2273,7 +2273,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
 static void CB_LibraryScene_showSettings(void* userdata)
 {
-    CB_SettingsScene* settingsScene = CB_SettingsScene_new(NULL, userdata);
+    CB_SettingsScene* settingsScene = CB_SettingsScene_new_userstack(NULL, userdata);
     CB_presentModal(settingsScene->scene);
 }
 

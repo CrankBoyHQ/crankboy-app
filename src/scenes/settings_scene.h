@@ -9,6 +9,7 @@
 #define settings_scene_h
 
 #include "../scene.h"
+#include "../userstack.h"
 #include "game_scene.h"
 
 struct OptionsMenuEntry;
@@ -65,5 +66,12 @@ typedef struct CB_SettingsScene
 CB_SettingsScene* CB_SettingsScene_new(
     CB_GameScene* gameScene, struct CB_LibraryScene* libraryScene
 );
+
+static inline CB_SettingsScene* CB_SettingsScene_new_userstack(
+    CB_GameScene* gameScene, struct CB_LibraryScene* libraryScene
+)
+{
+    return (CB_SettingsScene*)call_with_user_stack_2(CB_SettingsScene_new, gameScene, libraryScene);
+}
 
 #endif /* settings_scene_h */
