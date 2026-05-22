@@ -100,3 +100,7 @@ CB_LibraryScene* CB_LibraryScene_new(void);
 
 CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
 void CB_Game_free(CB_Game* game);
+
+// returns true if removal succeeded
+// does not delete game on disk
+bool CB_LibraryScene_removeGame(CB_Game* game);

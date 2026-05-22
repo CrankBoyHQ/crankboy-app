@@ -5,6 +5,7 @@
 #include "../preferences.h"
 #include "../utility.h"
 #include "modal.h"
+#include "settings_scene.h"
 
 #include <string.h>
 
@@ -145,7 +146,25 @@ static void cb_delete_rom_confirmed(void* ud, int option)
         return;
 
     playdate->file->unlink(self->game->fullpath, 0);
-    playdate->system->restartGame(playdate->system->getLaunchArgs(NULL));
+
+    CB_Game* game = self->game;
+    self->game = NULL;
+
+    if (!CB_LibraryScene_removeGame(game))
+    {
+        playdate->system->restartGame(playdate->system->getLaunchArgs(NULL));
+        return;
+    }
+
+    if (self->scene->parentScene && self->scene->parentScene->id &&
+        strcmp(self->scene->parentScene->id, "settings") == 0)
+    {
+        CB_SettingsScene* parent = self->scene->parentScene->managedObject;
+        if (parent)
+            parent->shouldDismiss = true;
+    }
+
+    self->dismiss = true;
 }
 
 struct script_unlink_ud

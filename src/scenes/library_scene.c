@@ -495,16 +495,16 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
 {
     if (option == 0 || option == 1)
     {
+        if (preferences_library_launch_animation)
+        {
+            play_launch_animation(game);
+        }
+
         CB_GameScene* gameScene =
             CB_GameScene_new(game->fullpath, game->names->name_short_leading_article, option == 1);
         if (gameScene)
         {
             CB_present(gameScene->scene);
-        }
-
-        if (preferences_library_launch_animation)
-        {
-            play_launch_animation(game);
         }
 
         playdate->system->logToConsole("Present gameScene");
@@ -2411,4 +2411,60 @@ void CB_Game_free(CB_Game* game)
     cb_free(game->fullpath);
     cb_free(game->coverPath);
     cb_free(game);
+}
+
+bool CB_LibraryScene_removeGame(CB_Game* game)
+{
+    CB_LibraryScene* libraryScene = s_active_library_scene;
+    if (!libraryScene || !game)
+        return false;
+
+    CB_Array* games = libraryScene->games;
+    int idx = -1;
+    for (int i = 0; i < games->length; i++)
+    {
+        if (games->items[i] == game)
+        {
+            idx = i;
+            break;
+        }
+    }
+    if (idx < 0)
+        return false;
+
+    // paranoia: if last game in list, restart 
+    if (games->length <= 1)
+        return false;
+
+    array_remove_at(games, idx);
+
+    CB_Array* items = libraryScene->listView->items;
+    if (idx < (int)items->length)
+    {
+        CB_ListItemButton* button = items->items[idx];
+        array_remove_at(items, idx);
+        CB_ListItemButton_free(button);
+    }
+
+    int sel = libraryScene->listView->selectedItem;
+    if (sel > idx)
+        sel--;
+    if (sel >= games->length)
+        sel = games->length - 1;
+    if (sel < 0)
+        sel = 0;
+    libraryScene->listView->selectedItem = sel;
+
+    if (libraryScene->lastSelectedItem > idx)
+        libraryScene->lastSelectedItem--;
+    else if (libraryScene->lastSelectedItem == idx)
+        libraryScene->lastSelectedItem = -1;
+
+    CB_ListView_reload(libraryScene->listView);
+    libraryScene->scene->forceFullRefresh = true;
+
+    cb_clear_global_cover_cache();
+
+    CB_Game_free(game);
+    return true;
 }
