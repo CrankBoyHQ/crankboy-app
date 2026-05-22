@@ -306,8 +306,8 @@ struct PGB_VERSIONED(gb_s)
     uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
-    uint8_t cgb_bg_palette[64];
-    uint8_t cgb_obj_palette[64];
+    uint8_t* cgb_bg_palette;
+    uint8_t* cgb_obj_palette;
     uint8_t cgb_bg_palette_gray[8];
     uint8_t cgb_obj_palette_gray[8];
     uint8_t cgb_bg_palette_index;
@@ -514,7 +514,7 @@ FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONE
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + gb->gb_cart_ram_size +
-           MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint));
+           MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint)) + 128;
 
     // skipped: lcd; rom
 }
@@ -524,6 +524,12 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, 
     // gb
     memcpy(out, gb, sizeof(*gb));
     out += sizeof(*gb);
+
+    // CGB palette data (heap allocated, not in struct)
+    memcpy(out, gb->cgb_bg_palette, 64);
+    out += 64;
+    memcpy(out, gb->cgb_obj_palette, 64);
+    out += 64;
 
     // rom header (so we know the associated rom for this state)
     memcpy(out, gb->gb_rom + ROM_HEADER_START, ROM_HEADER_SIZE);
@@ -570,6 +576,13 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     struct PGB_VERSIONED(gb_s)* in_gb = (void*)in;
     in += sizeof(*gb);
+
+    // CGB palette data appended after struct
+    memcpy(gb->cgb_bg_palette, in, 64);
+    in += 64;
+    memcpy(gb->cgb_obj_palette, in, 64);
+    in += 64;
+
     size_t state_size = PGB_VERSIONED(gb_get_state_size)(in_gb);
 
     if (size != state_size)
@@ -623,6 +636,8 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
         &gb->ram_base[13],
         &gb->ram_base[14],
         &gb->ram_base[15],
+        &gb->cgb_bg_palette,
+        &gb->cgb_obj_palette,
     };
 
     void* preserved_data[sizeof(preserved_fields)];

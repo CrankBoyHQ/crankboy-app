@@ -5260,6 +5260,12 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_ff7x[1] = 0;
     gb->cgb_ff7x[2] = 0;
     gb->cgb_hdma_active = false;
+
+    gb->cgb_bg_palette = malloc(64);
+    gb->cgb_obj_palette = malloc(64);
+    memset(gb->cgb_bg_palette, 0, 64);
+    memset(gb->cgb_obj_palette, 0, 64);
+
     gb->cgb_bg_palette_index = 0x40;
     gb->cgb_obj_palette_index = 0x40;
 
