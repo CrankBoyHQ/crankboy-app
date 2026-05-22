@@ -83,8 +83,23 @@ static void parse_settings_table(
     }
 }
 
-static void parse_one_json(const char* path, FileOptions fopts, RecommendedJsonEntry** registry)
+static void parse_one_json(const char* path_arg, FileOptions fopts, RecommendedJsonEntry** registry)
 {
+    // Strip trailing .gz — parse_json auto-detects .json.gz from .json paths
+    size_t plen = strlen(path_arg);
+    char json_path_buf[256];
+    const char* path;
+    if (plen > 3 && !strcasecmp(path_arg + plen - 3, ".gz"))
+    {
+        memcpy(json_path_buf, path_arg, plen - 3);
+        json_path_buf[plen - 3] = '\0';
+        path = json_path_buf;
+    }
+    else
+    {
+        path = path_arg;
+    }
+
     json_value j;
     if (!parse_json(path, &j, fopts))
     {
@@ -191,7 +206,11 @@ static void collect_bundle_json_callback(const char* filename, void* ud)
     (void)ud;
 
     size_t len = strlen(filename);
-    if (len < 6 || strcasecmp(filename + len - 5, ".json"))
+
+    // Match .json or .json.gz
+    bool is_json = (len > 5 && !strcasecmp(filename + len - 5, ".json"));
+    bool is_json_gz = (len > 8 && !strcasecmp(filename + len - 8, ".json.gz"));
+    if (!is_json && !is_json_gz)
         return;
 
     char* full_path;

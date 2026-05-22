@@ -132,11 +132,20 @@ PDCFLAGS += --quiet
 build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	python3 scripts/embed_json.py $< $@ baked_$*_json
 
+# Compress recommended settings JSONs and add to pdx
+# Uses find -exec to handle filenames with spaces
+.PHONY: compress-csettings
+compress-csettings:
+	mkdir -p build/csettings
+	find src/csettings -name '*.json' -exec sh -c 'gzip -c "$$1" > "build/csettings/$$(basename "$$1").gz"' _ {} \;
+
 # remove baked json files from .pdx
 # (can't remove them from the Source/ dir, as they are needed for version checks)
 .PHONY: build
-build: all
+build: all compress-csettings
 	-rm -f $(PRODUCT)/version.json $(PRODUCT)/credits.json
+	mkdir -p $(PRODUCT)/csettings
+	find build/csettings -name '*.json.gz' -exec sh -c 'cp "$$1" "$(PRODUCT)/csettings/"' _ {} \;
 
 .DEFAULT_GOAL := build
 
