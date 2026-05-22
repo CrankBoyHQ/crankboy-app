@@ -857,11 +857,12 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     {
         gameScene->fade_white = init_fade_color[preferences_boot_fade] == kColorWhite;
     }
-    
+
     // Bundled mode starts out with black screen, so black fade always looks better.
     // To change this, we'd need to have the pdx post-launch image set to white
-    if (CB_App->bundled_rom) gameScene->fade_white = false;
-    
+    if (CB_App->bundled_rom)
+        gameScene->fade_white = false;
+
     if (fade_color_override)
     {
         prefs_locked_by_script |= PREFBIT_boot_fade;
@@ -883,7 +884,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
     generate_dither_luts();
 
     if (context->cgb_mode)
-        gb_recompute_cgb_gray_palettes(context->gb);
+        gameScene->cgb_needs_palette_recompute = true;
 
     if (audio_settings_changed)
     {
@@ -1645,6 +1646,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
+
+    if (gameScene->cgb_needs_palette_recompute)
+    {
+        gb_recompute_cgb_gray_palettes(context->gb);
+        gameScene->cgb_needs_palette_recompute = false;
+    }
 
     CB_Scene_update(gameScene->scene, dt);
 
@@ -2578,7 +2585,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }
 #endif
-            
+
             if (gameScene->fade_frames > 0)
             {
                 screen_fade(gameScene, gameScene->next_frames_elapsed);
@@ -2723,11 +2730,7 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
 static const char* loadStateErrorOptions[] = {"OK", "Details", NULL};
 
 int fade_matrix[] = {
-    3, 6, 16, 13,
-    18, 7, 0, 9,
-    11, 15, 17, 14,
-    1, 2, 8, 6,
-    5, 4, 10, 12,
+    3, 6, 16, 13, 18, 7, 0, 9, 11, 15, 17, 14, 1, 2, 8, 6, 5, 4, 10, 12,
 };
 
 __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_advance)

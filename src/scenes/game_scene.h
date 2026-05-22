@@ -157,6 +157,7 @@ typedef struct CB_GameScene
     bool quitGameModalConfirmOverride : 1;
 
     bool isCurrentlySaving : 1;
+    bool cgb_needs_palette_recompute : 1;
 
     int interlace_tendency_counter;
     int interlace_lock_frames_remaining;
@@ -164,7 +165,7 @@ typedef struct CB_GameScene
 
     uint8_t previous_joypad_state;
     uint32_t patches_hash;
-    
+
     unsigned fade_frames;
     bool fade_white;
 } CB_GameScene;
