@@ -1783,8 +1783,10 @@ done_instr_timing:
         uint16_t tima_threshold = gb->gb_reg.tac_cycles;
 #if PGB_IS_CGB
         tima_threshold >>= gb->cgb_fast_mode_active;
-#endif
+        gb->counter.tima_count += (inst_cycles << !gb->cgb_fast_mode_active);
+#else
         gb->counter.tima_count += inst_cycles;
+#endif
         while (gb->counter.tima_count >= tima_threshold)
         {
             gb->counter.tima_count -= tima_threshold;
