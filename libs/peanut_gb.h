@@ -747,6 +747,24 @@ __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
     }
 }
 
+__section__(".rare") static void __cgb_build_remap_lut(uint8_t* lut, uint8_t pal)
+{
+    for (int i = 0; i < 256; i++)
+    {
+        uint8_t lo = i & 0x0F;
+        uint8_t hi = i >> 4;
+        uint8_t p0 = (lo & 1) | ((hi & 1) << 1);
+        uint8_t p1 = ((lo >> 1) & 1) | (((hi >> 1) & 1) << 1);
+        uint8_t p2 = ((lo >> 2) & 1) | (((hi >> 2) & 1) << 1);
+        uint8_t p3 = ((lo >> 3) & 1) | (((hi >> 3) & 1) << 1);
+        uint8_t c0 = (pal >> (2 * p3)) & 3;
+        uint8_t c1 = (pal >> (2 * p2)) & 3;
+        uint8_t c2 = (pal >> (2 * p1)) & 3;
+        uint8_t c3 = (pal >> (2 * p0)) & 3;
+        lut[i] = (c0 << 6) | (c1 << 4) | (c2 << 2) | c3;
+    }
+}
+
 __section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t pal_idx)
 {
     uint8_t pal = 0;
@@ -762,6 +780,7 @@ __section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t 
         pal |= (uint8_t)(gray << (2 * c));
     }
     gb->cgb_bg_palette_gray[pal_idx] = pal;
+    __cgb_build_remap_lut(gb->cgb_bg_palette + 64 + pal_idx * 256, pal);
 }
 
 __section__(".rare") static void __cgb_update_obj_gray_palette(gb_s* gb, uint8_t pal_idx)
@@ -5261,9 +5280,10 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_ff7x[2] = 0;
     gb->cgb_hdma_active = false;
 
-    gb->cgb_bg_palette = malloc(64);
+#define CGB_PALETTE_LUT_SIZE (8 * 256)
+    gb->cgb_bg_palette = malloc(64 + CGB_PALETTE_LUT_SIZE);
     gb->cgb_obj_palette = malloc(64);
-    memset(gb->cgb_bg_palette, 0, 64);
+    memset(gb->cgb_bg_palette, 0, 64 + CGB_PALETTE_LUT_SIZE);
     memset(gb->cgb_obj_palette, 0, 64);
 
     gb->cgb_bg_palette_index = 0x40;
