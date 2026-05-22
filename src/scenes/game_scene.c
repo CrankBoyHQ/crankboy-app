@@ -3632,22 +3632,26 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                     );
                                 }
                             }
-                            else if (gameScene->script)
+                            else
                             {
-                                const char* scriptbuff =
-                                    buff + file_size - header->script_save_data_size;
-                                if (!script_load_state(
-                                        gameScene->script, (void*)scriptbuff,
-                                        header->script_save_data_size
-                                    ))
+                                gameScene->cgb_needs_palette_recompute = true;
+                                if (gameScene->script)
                                 {
-                                    success = false;
+                                    const char* scriptbuff =
+                                        buff + file_size - header->script_save_data_size;
+                                    if (!script_load_state(
+                                            gameScene->script, (void*)scriptbuff,
+                                            header->script_save_data_size
+                                        ))
+                                    {
+                                        success = false;
 
-                                    CB_presentModal(CB_Modal_new(
-                                                        "Failed to load script's custom state.",
-                                                        NULL, NULL, NULL
-                                    )
-                                                        ->scene);
+                                        CB_presentModal(CB_Modal_new(
+                                                            "Failed to load script's custom state.",
+                                                            NULL, NULL, NULL
+                                        )
+                                                            ->scene);
+                                    }
                                 }
                             }
                         }
