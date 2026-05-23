@@ -1601,7 +1601,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
-    int _batch_n = (gb->is_cgb_mode || preferences_batching) ? 3 : 1;
+    int _batch_n;
+    if (gb->is_cgb_mode)
+        _batch_n = 3;
+    else if (gb->direct.batching_remaining > 0)
+        _batch_n = 1;
+    else
+        _batch_n = preferences_batching ? 3 : 1;
     for (int _i = 0; _i < _batch_n; _i++)
     {
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
@@ -2092,6 +2098,9 @@ __core void $(gb_run_frame)(gb_s* gb)
         g_trace_frames_remaining--;
     }
 #endif
+
+    if (gb->direct.batching_remaining > 0)
+        gb->direct.batching_remaining--;
 }
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;

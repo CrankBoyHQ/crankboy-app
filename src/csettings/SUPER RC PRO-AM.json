@@ -1,5 +1,6 @@
 {
     "settings": {
-        "batching": 0
+        "batching": 1,
+        "batching_delay": 90
     }
 }

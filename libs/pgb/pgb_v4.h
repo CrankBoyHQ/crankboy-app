@@ -485,6 +485,8 @@ struct PGB_VERSIONED(gb_s)
         uint16_t crank_menu_accumulation;
         int8_t crank_menu_delta;
 
+        uint16_t batching_remaining; /* frames before enabling batching */
+
         /* Implementation defined data. Set to NULL if not required. */
         // (in actual usage, this points to a CB_GameSceneContext*)
         void* priv;
