@@ -26,6 +26,8 @@ Options:
   --launch          After install, launch the game on the device.
   --detach          With --launch, exit immediately after launching instead
                     of piping the device's serial output (ctrl+c to stop).
+  --retry           After a timeout, prompt to (R)etry instead of exiting.
+  --timeout SECONDS  Wait time for each step (default: 15).
   --only-bin        Only sync *.bin files (e.g. pdex.bin) into the existing
                     installed .pdx — first removes existing .bin files there.
                     Requires the .pdx to already be installed on the device.
@@ -93,6 +95,7 @@ check_device_access() {
 }
 
 prompt_retry() {
+    [[ $retry -eq 0 ]] && exit 1
     while true; do
         read -r -n 1 -p "(R)etry or (C)ancel? " answer
         case $answer in
@@ -106,6 +109,8 @@ prompt_retry() {
 
 launch=0
 detach=0
+retry=0
+timeout=15
 only_bin=0
 positional=()
 launch_args=()
@@ -118,6 +123,14 @@ while [[ $# -gt 0 ]]; do
     --detach)
         detach=1
         shift
+        ;;
+    --retry)
+        retry=1
+        shift
+        ;;
+    --timeout)
+        timeout=$2
+        shift 2
         ;;
     --only-bin)
         only_bin=1
@@ -174,7 +187,7 @@ if [[ -z $device ]]; then
     echo ">> looking for Playdate ($PLAYDATE_BY_ID_GLOB)"
     while true; do
         found=0
-        for _ in $(seq 1 15); do
+        for _ in $(seq 1 $timeout); do
             if device=$(find_playdate_serial); then
                 found=1
                 break
@@ -182,7 +195,7 @@ if [[ -z $device ]]; then
             sleep 1
         done
         [[ $found -eq 1 ]] && break
-        echo "error: no Playdate found after 15s" >&2
+        echo "error: no Playdate found after ${timeout}s" >&2
         prompt_retry || exit 1
     done
     echo ">> auto-detected Playdate at $device"
@@ -217,7 +230,7 @@ fi
 echo ">> switching $device to data-disk mode"
 while true; do
     sent=0
-    for _ in $(seq 1 15); do
+    for _ in $(seq 1 $timeout); do
         if pdutil "$device" datadisk 2>/dev/null; then
             sent=1
             break
@@ -225,29 +238,29 @@ while true; do
         sleep 1
     done
     [[ $sent -eq 1 ]] && break
-    echo "error: failed to send datadisk command after 15 attempts" >&2
+    echo "error: failed to send datadisk command after ${timeout}s" >&2
     prompt_retry || exit 1
 done
 
-echo ">> waiting up to 15s for PLAYDATE drive to mount"
+echo ">> waiting up to ${timeout}s for PLAYDATE drive to mount"
 mount=""
 while true; do
-    for _ in $(seq 1 30); do
+    for _ in $(seq 1 $((timeout * 2))); do
         mount=$(find_playdate_mount || true)
         [[ -n $mount && -d $mount ]] && break
         sleep 0.5
     done
     [[ -n $mount && -d $mount ]] && break
-    echo "error: PLAYDATE drive did not appear within 15s" >&2
+    echo "error: PLAYDATE drive did not appear within ${timeout}s" >&2
     mount=""
     prompt_retry || exit 1
 done
 echo "   mounted at $mount"
 
-echo ">> waiting up to 15s for Games directory to appear"
+echo ">> waiting up to ${timeout}s for Games directory to appear"
 games_dir="$mount/Games"
 while true; do
-    for _ in $(seq 1 15); do
+    for _ in $(seq 1 $timeout); do
         [[ -d $games_dir ]] && break
         sleep 1
     done
@@ -304,7 +317,7 @@ sleep 1
 while true; do
     eject_err=""
     if [[ $OS == Darwin ]]; then
-        for _ in $(seq 1 10); do
+        for _ in $(seq 1 $timeout); do
             eject_err=$(diskutil eject "$mount" 2>&1) && eject_err="" && break
             sleep 1
         done
@@ -322,7 +335,7 @@ while true; do
         #
         # Right after a copy, gvfs/file-indexers can briefly hold the mount open and
         # trip "one or more volumes on the medium are busy" — retry for a few seconds.
-        for _ in $(seq 1 10); do
+        for _ in $(seq 1 $timeout); do
             eject_err=$(gio mount --eject "$mount" 2>&1) && eject_err="" && break
             sleep 1
         done
@@ -343,10 +356,10 @@ if [[ $launch -ne 1 ]]; then
     exit 0
 fi
 
-echo ">> waiting up to 10s for Playdate serial to come back"
+echo ">> waiting up to ${timeout}s for Playdate serial to come back"
 back=""
 while true; do
-    for _ in $(seq 1 20); do
+    for _ in $(seq 1 $((timeout * 2))); do
         if back=$(find_playdate_serial); then
             break
         fi
@@ -354,7 +367,7 @@ while true; do
         sleep 0.5
     done
     [[ -n $back ]] && break
-    echo "error: Playdate serial did not reappear within 10s" >&2
+    echo "error: Playdate serial did not reappear within ${timeout}s" >&2
     back=""
     prompt_retry || exit 1
 done
