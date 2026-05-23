@@ -299,6 +299,7 @@ struct PGB_VERSIONED(gb_s)
     bool cgb_fast_mode_active : 1;  // temp. as above, but settings-affected
     bool cgb_speed_permitted : 1;
     bool hle_enabled : 1;
+    uint8_t hle_ioaddr;
 
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;

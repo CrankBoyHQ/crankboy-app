@@ -1026,6 +1026,8 @@ __section__(".rare.cb") static void __gb_rare_write(
     (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
+static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
+
 __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t addr)
 {
     if (addr >= 0xFEA0 && addr < 0xFF00)
@@ -1103,7 +1105,10 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x55:  // HDMA5 (VRAM DMA)
             if (gb->is_cgb_mode)
             {
-                return ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80);
+                return __gb_try_hle(
+                    gb, addr,
+                    ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80)
+                );
             }
             return 0xFF;
 
@@ -1238,6 +1243,16 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
         // ld A, (HL)
         offset = -1;
     }
+    else if (READ8(pc - 1) == 0x2A && gb->cpu_reg.hl == ioaddr)
+    {
+        // ld A, (HL+)
+        offset = -1;
+    }
+    else if (READ8(pc - 1) == 0x3A && gb->cpu_reg.hl == ioaddr)
+    {
+        // ld A, (HL-)
+        offset = -1;
+    }
     else
     {
         goto hle_fail;
@@ -1258,6 +1273,15 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
         // AND d8
         z = !(ioval & d8);
         c = 0;
+    }
+    else if (op0 == 0xCB)
+    {
+        u8 bitop = READ8(pc + 1);
+        // BIT n,A: opcodes 0x47+8n, mask 01bbb111
+        if ((bitop & 0xC7) != 0x47)
+            goto hle_fail;
+        z = !(ioval & (1 << ((bitop >> 3) & 7)));
+        c = -1;  // BIT doesn't affect C
     }
     else
     {
@@ -1313,6 +1337,7 @@ hle_success:
     // rewind pc and wait
     gb->gb_hle = true;
     gb->cpu_reg.pc += offset;
+    gb->hle_ioaddr = ioaddr & 0xFF;
 
     return ioval;
 
@@ -1518,7 +1543,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         /* Interrupt Flag Register */
         case 0x0F:
-            return gb->gb_reg.IF;
+            return __gb_try_hle(gb, addr, gb->gb_reg.IF);
 
         /* LCD Registers */
         case 0x40:
@@ -4751,6 +4776,27 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
         ppu_cycles_remaining = 1;
     }
     src[2] = (uint32_t)ppu_cycles_remaining;
+
+    // Register-specific HLE: LY polling waits for LY change, not just mode change
+    if (gb->hle_ioaddr == 0x44)
+    {
+        uint16_t ly_cycles;
+        switch (gb->lcd_mode)
+        {
+        case LCD_HBLANK:  // already optimal, LY++ at end of HBlank
+            ly_cycles = ppu_cycles_remaining;
+            break;
+        case LCD_TRANSFER:
+            // skip remaining mode3 + all of mode0
+            ly_cycles = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+            break;
+        default:
+            // LCD_VBLANK, LCD_SEARCH_OAM, or LCD off: wait for scanline end
+            ly_cycles = LCD_LINE_CYCLES - gb->counter.lcd_count;
+            break;
+        }
+        src[2] = ly_cycles;
+    }
 
     // Find the minimum cycles until the next event
     uint32_t cycles = src[0];
