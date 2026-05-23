@@ -443,6 +443,9 @@ struct PGB_VERSIONED(gb_s)
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
+        uint8_t batching_delayed : 1;
+
+        uint8_t batching_grace_frames;
 
         int joypad_interrupt_delay;
 
@@ -484,8 +487,6 @@ struct PGB_VERSIONED(gb_s)
         // for ext_crank_menu_indexing. Defaults to 0x8000.
         uint16_t crank_menu_accumulation;
         int8_t crank_menu_delta;
-
-        uint16_t batching_remaining; /* frames before enabling batching */
 
         /* Implementation defined data. Set to NULL if not required. */
         // (in actual usage, this points to a CB_GameSceneContext*)

@@ -1601,10 +1601,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
+    // DMG batching: off during boot (delayed flag), plus 10-frame grace
+    // after first real interrupt so title screens finish rendering.
+    // After that, respects the user's batching preference.
     int _batch_n;
     if (gb->is_cgb_mode)
         _batch_n = 3;
-    else if (gb->direct.batching_remaining > 0)
+    else if (gb->direct.batching_delayed || gb->direct.batching_grace_frames > 0)
         _batch_n = 1;
     else
         _batch_n = preferences_batching ? 3 : 1;
@@ -1968,6 +1971,9 @@ done_instr_timing:
                 if (gb->cgb_hdma_active)
                     __gb_do_hdma(gb);
 #endif
+
+                if (gb->direct.batching_grace_frames > 0)
+                    gb->direct.batching_grace_frames--;
             }
             break;
 
@@ -2098,9 +2104,6 @@ __core void $(gb_run_frame)(gb_s* gb)
         g_trace_frames_remaining--;
     }
 #endif
-
-    if (gb->direct.batching_remaining > 0)
-        gb->direct.batching_remaining--;
 }
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
