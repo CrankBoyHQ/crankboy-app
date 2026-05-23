@@ -5201,6 +5201,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
     gb->direct.crank_menu_accumulation = 0x8000;
     gb->direct.crank_menu_delta = 0;
+    gb->direct.batching_remaining = 90;
     gb->cgb_fast_mode_active = false;
 
     memset(gb->vram, 0x00, VRAM_SIZE_CGB);
