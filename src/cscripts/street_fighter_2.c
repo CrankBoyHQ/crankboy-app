@@ -371,7 +371,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
     {
         if (entering_game)
         {
-            data->refresh_frames = 8;  // a few frames to let VRAM settle after transitions
+            data->refresh_frames = 15;  // a few frames to let VRAM settle after transitions
             reset_sidebar_cache(data);
         }
 
