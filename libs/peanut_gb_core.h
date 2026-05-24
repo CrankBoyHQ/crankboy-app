@@ -1843,8 +1843,10 @@ done_instr_timing:
     uint16_t div_threshold = DIV_CYCLES;
 #if PGB_IS_CGB
     div_threshold >>= gb->cgb_fast_mode_active;
-#endif
+    gb->counter.div_count += (inst_cycles << !gb->cgb_fast_mode_active);
+#else
     gb->counter.div_count += inst_cycles;
+#endif
     if (gb->counter.div_count >= div_threshold)
     {
         gb->gb_reg.DIV += gb->counter.div_count / div_threshold;
