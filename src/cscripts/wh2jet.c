@@ -3,9 +3,10 @@
 
 #include <pd_api/pd_api_gfx.h>
 
-#define DESCRIPTION                                                \
-    "- Custom in-game HUD at the top, for clean 2x scaling.\n"     \
-    "- Press Ⓐ on the title and other screens instead of Start.\n" \
+#define DESCRIPTION                                                 \
+    "- Custom in-game HUD at the top, for clean 2x scaling.\n"      \
+    "- Press Ⓐ on the Title and other screens instead of Start.\n"  \
+    "- Press Ⓑ on the Options screen instead of Start to return.\n" \
     "\nCreated by: stonerl"
 
 #define SETTLE_TICKS 30
@@ -336,6 +337,14 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 
     if (data->option)
     {
+        PDButtons pushed;
+        playdate->system->getButtonState(NULL, &pushed, NULL);
+        if (pushed & kButtonB)
+        {
+            script_gb->direct.joypad_bits.b = 1;
+            script_gb->direct.joypad_bits.start = 0;
+        }
+
         for (int i = 0x1820; i <= 0x1A00; i += 0x20)
             gb->vram[i] = 0xA1;
         for (int i = 0x1821; i <= 0x1A01; i += 0x20)
