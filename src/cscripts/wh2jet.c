@@ -89,6 +89,15 @@ static const int WIN_R_DST[3] = {
     0x1872,
 };
 
+static const int CHAR_SRC[14] = {
+    0x1843, 0x1844, 0x1845, 0x1846, 0x1847, 0x1848, 0x1849,
+    0x184A, 0x184B, 0x184C, 0x184D, 0x184E, 0x184F, 0x1850,
+};
+static const int CHAR_DST[14] = {
+    0x1863, 0x1864, 0x1865, 0x1866, 0x1867, 0x1868, 0x1869,
+    0x186A, 0x186B, 0x186C, 0x186D, 0x186E, 0x186F, 0x1870,
+};
+
 static bool is_logo_screen(gb_s* gb)
 {
     return gb->vram[0x190F] == 0xDD;
@@ -294,6 +303,17 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     {
         script_gb->direct.joypad_bits.start = 1;
         data->suppress_start--;
+    }
+
+    if (data->char_select)
+    {
+        for (int i = 0; i < 14; i++)
+            gb->vram[CHAR_DST[i]] = gb->vram[CHAR_SRC[i]];
+        gb->vram[0x1881] = 0;
+        gb->vram[0x1882] = 0;
+        gb->vram[0x188C] = 0;
+        gb->vram[0x188D] = 0;
+        gb->vram[0x188E] = 0;
     }
 
     if (data->in_game || data->demo)
