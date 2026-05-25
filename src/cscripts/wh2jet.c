@@ -1,6 +1,8 @@
 #include "../scenes/game_scene.h"
 #include "../scriptutil.h"
 
+#include <pd_api/pd_api_gfx.h>
+
 #define DESCRIPTION                                                \
     "- Custom in-game HUD at the top, for clean 2x scaling.\n"     \
     "- Press Ⓐ on the title and other screens instead of Start.\n" \
@@ -120,8 +122,8 @@ static bool is_mode_screen(gb_s* gb)
 
 static bool is_option_screen(gb_s* gb)
 {
-    return gb->vram[0x1821] == 0xA2 && gb->vram[0x1832] == 0xA4 && gb->vram[0x1A01] == 0xA6 &&
-           gb->vram[0x1A12] == 0xA7;
+    return gb->vram[0x1869] == 0x84 && gb->vram[0x1814] == 0xA1 && gb->vram[0x19C8] == 0x84 &&
+           gb->vram[0x1905] == 0x84;
 }
 
 static bool is_in_game(gb_s* gb)
@@ -163,17 +165,17 @@ static LCDColor tile_pixel_to_color(uint8_t lo, uint8_t hi, int bit)
     return pal[((hi >> bit) & 1) << 1 | ((lo >> bit) & 1)];
 }
 
-static void draw_tile(
-    gb_s* gb, int tile_idx, int dst_x, int dst_y, int scale, bool flip_x, bool unsigned_addr
+static void draw_tile_at(
+    gb_s* gb, int vram_offset, int dst_x, int dst_y, int scale, bool flip_x, bool flip_y
 )
 {
-    uint16_t tile_addr = tile_addr_for_idx(tile_idx, unsigned_addr);
-    uint8_t* tile = &gb->vram[tile_addr];
+    uint8_t* tile = &gb->vram[vram_offset];
 
     for (int dy = 0; dy < 8; ++dy)
     {
-        uint8_t lo = tile[2 * dy + 0];
-        uint8_t hi = tile[2 * dy + 1];
+        int sy = flip_y ? (7 - dy) : dy;
+        uint8_t lo = tile[2 * sy + 0];
+        uint8_t hi = tile[2 * sy + 1];
 
         int run_x = 0;
         while (run_x < 8)
@@ -196,6 +198,15 @@ static void draw_tile(
     }
 }
 
+static void draw_tile(
+    gb_s* gb, int tile_idx, int dst_x, int dst_y, int scale, bool flip_x, bool unsigned_addr,
+    bool flip_y
+)
+{
+    uint16_t tile_addr = tile_addr_for_idx(tile_idx, unsigned_addr);
+    draw_tile_at(gb, tile_addr, dst_x, dst_y, scale, flip_x, flip_y);
+}
+
 static void draw_hud(gb_s* gb, ScriptData* data)
 {
     bool seed = !data->hud_seeded || gbScreenRequiresFullRefresh;
@@ -216,10 +227,28 @@ static void draw_hud(gb_s* gb, ScriptData* data)
         bool overlap_r = (i == 0 || i == 3 || i == 6);
 
         if (changed_l || overlap_l)
-            draw_tile(gb, tl, PORTRAIT_L_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr);
+            draw_tile(gb, tl, PORTRAIT_L_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
         if (changed_r || overlap_r)
-            draw_tile(gb, tr, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr);
+            draw_tile(gb, tr, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
     }
+}
+
+static void draw_options_sidebar(gb_s* gb)
+{
+    draw_tile_at(gb, 0x0A20, 0, 0, 2, true, false);
+    for (int y = 16; y < 224; y += 16)
+        draw_tile_at(gb, 0x0A50, 0, y, 2, true, false);
+    draw_tile_at(gb, 0x0A60, 0, 224, 2, true, false);
+
+    draw_tile_at(gb, 0x0A40, 384, 0, 2, true, false);
+    for (int y = 16; y < 224; y += 16)
+        draw_tile_at(gb, 0x0A50, 384, y, 2, true, false);
+    draw_tile_at(gb, 0x0A70, 384, 224, 2, true, false);
+
+    for (int x = 16; x < 384; x += 16)
+        draw_tile_at(gb, 0x0A30, x, 0, 2, true, false);
+    for (int x = 16; x < 384; x += 16)
+        draw_tile_at(gb, 0x0A30, x, 224, 2, true, false);
 }
 
 static ScriptData* on_begin(gb_s* gb, const char* header_name)
@@ -305,6 +334,22 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         data->suppress_start--;
     }
 
+    if (data->option)
+    {
+        for (int i = 0x1820; i <= 0x1A00; i += 0x20)
+            gb->vram[i] = 0xA1;
+        for (int i = 0x1821; i <= 0x1A01; i += 0x20)
+            gb->vram[i] = 0xA1;
+        for (int i = 0x1832; i <= 0x1A12; i += 0x20)
+            gb->vram[i] = 0xA1;
+        for (int i = 0x1833; i <= 0x1A13; i += 0x20)
+            gb->vram[i] = 0xA1;
+        for (int i = 0x1820; i <= 0x1833; i++)
+            gb->vram[i] = 0xA1;
+        for (int i = 0x1A00; i <= 0x1A13; i++)
+            gb->vram[i] = 0xA1;
+    }
+
     if (data->char_select)
     {
         for (int i = 0; i < 14; i++)
@@ -373,10 +418,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
     }
     else if (data->option)
     {
-        game_picture_y_top = 0;
-        game_picture_y_bottom = LCD_HEIGHT;
-        game_picture_scaling = 3;
-        game_picture_background_color = kColorWhite;
+        game_picture_y_top = 20;
+        game_picture_y_bottom = 132;
+        game_picture_scaling = 0;
+        game_picture_background_color = kColorBlack;
     }
     else if (data->logo)
     {
@@ -391,6 +436,19 @@ static void on_draw(gb_s* gb, ScriptData* data)
         game_picture_y_bottom = 133;
         game_picture_scaling = 0;
         game_picture_background_color = kColorWhite;
+    }
+
+    if (data->option)
+    {
+        const int left_w = game_picture_x_offset;
+        const int right_x = game_picture_x_offset + LCD_WIDTH * 2;
+        const int right_w = LCD_COLUMNS - right_x;
+        if (left_w > 0)
+            playdate->graphics->fillRect(0, 0, left_w, LCD_ROWS, kColorBlack);
+        if (right_w > 0)
+            playdate->graphics->fillRect(right_x, 0, right_w, LCD_ROWS, kColorBlack);
+        draw_options_sidebar(gb);
+        return;
     }
 
     if (!data->in_game && !data->demo)
