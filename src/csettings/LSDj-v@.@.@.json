@@ -9,8 +9,7 @@
         "dither_stable": 0,
         "overclock": 0,
         "disable_autolock": 1,
-        "uncap_fps": 0,
-        "boot_fade": 4
+        "uncap_fps": 0
     },
     "settings_A": {
         "itcm": 1
