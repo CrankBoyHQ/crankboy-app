@@ -980,7 +980,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
 
             if (!optimal)
             {
-                const char* options[] = {"Apply", "Later", NULL};
+                const char* options[] = {"Apply", "Ignore", NULL};
                 char* msg = rec->message;
                 char default_msg[256];
                 if (!msg)

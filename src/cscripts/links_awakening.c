@@ -579,6 +579,17 @@ static void on_draw(gb_s* gb, ScriptData* data)
     data->prev_in_inventory = true;
 }
 
+static const struct ScriptRecommendedSetting recommended[] = {
+    {PREFBIT_frame_skip, 2},    // dynamic
+    
+    RECOMMENDED_SETTINGS_END,
+};
+
+static const struct ScriptRecommendedSettings rec_settings = {
+    .message = NULL,
+    .settings = recommended
+};
+
 C_SCRIPT{
     .rom_name = "ZELDA",
     .description = DESCRIPTION,
@@ -588,4 +599,5 @@ C_SCRIPT{
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
     .on_end = (CS_OnEnd)on_end,
+    .recommended_settings = &rec_settings,
 };
