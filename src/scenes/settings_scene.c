@@ -409,19 +409,25 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
     {
         if (CB_App->bundled_rom)
         {
-            // Bundled ROM: global vs per-game is meaningless - there's only one game.
-            // Save everything to the bundled game's file, never the global file.
+            // Bundled ROM: save everything to the bundled game's file.
+            // For script-locked prefs, save their pre-script disk values so
+            // disabling scripts later doesn't bleed force_pref'd values.
+            void* locked = preferences_store_subset(prefs_locked_by_script);
+            preferences_merge_from_disk(game_settings_path);
             result = preferences_save_to_disk(game_settings_path, 0);
+            preferences_restore_subset(locked);
+            cb_free(locked);
         }
         else if (preferences_per_game)
         {
-            // Save per-game settings to the game's config file.
-            // Must NOT exclude prefs_locked_by_script - script-locked values set by
-            // force_pref() (e.g. cv2's blend_frames=1) need to persist across settings
-            // open/close. Otherwise opening settings from game scope and dismissing
-            // silently drops locked prefs, causing the recommended-settings dialog to
-            // re-appear on next launch.
+            // Save per-game settings. For script-locked prefs, save their
+            // pre-script disk values so disabling scripts later doesn't
+            // bleed force_pref'd values into the config.
+            void* locked = preferences_store_subset(prefs_locked_by_script);
+            preferences_merge_from_disk(game_settings_path);
             result = preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
+            preferences_restore_subset(locked);
+            cb_free(locked);
 
             if (result)
             {
