@@ -1684,7 +1684,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
     bool allow_interlace =
-        !preferences_frame_skip || (preferences_frame_skip && preferences_blend_frames);
+        preferences_frame_skip != 2 &&
+        (!preferences_frame_skip || preferences_blend_frames);
 
     if (allow_interlace)
     {
@@ -1704,9 +1705,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
             else
             {
-                float target_fps = 60.0f;
-                if (preferences_frame_skip)
-                    target_fps = 30.0f;
+                float target_fps = 30.0f;
+                if (!preferences_frame_skip)
+                    target_fps = 60.0f;
 
                 float fps = 1.0f / CB_App->avg_dt_raw;
                 float ratio = fps / target_fps;
@@ -2091,10 +2092,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->audioLocked = 0;
             }
 
-            gameScene->playtime += 1 + preferences_frame_skip;
-            CB_App->avg_dt_mult =
-                (preferences_frame_skip && preferences_display_fps == 1) ? 0.5f : 1.0f;
-
             void* gb_run_frame_ =
                 (context->gb->is_cgb_mode) ? gb_run_frame__cgb : gb_run_frame__dmg;
 #ifdef DTCM_ALLOC
@@ -2103,7 +2100,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
 
-            if (preferences_frame_skip && preferences_blend_frames)
+            if (preferences_frame_skip == 1 && preferences_blend_frames)
             {
                 // --- 30fps Frame Blending with Double Buffering ---
                 // Two buffers to avoid memcpy - swap lcd pointer instead
@@ -2193,6 +2190,46 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 context->gb->lcd = original_lcd;
             }
+            else if (preferences_frame_skip == 2)
+            {
+                // run 1 frame, then run 1 more if scrolled
+                // TODO -- can probably be combined with the 30/60 version below?
+                context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+#else
+                run_frame_function_pointer(context->gb);
+#endif
+                ++gameScene->next_frames_elapsed;
+                tick_audio_sync(gameScene);
+
+                bool scroll_changed =
+                    (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                    (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                    (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                    (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+
+                if (scroll_changed)
+                {
+                    context->gb->direct.frame_skip = 1;
+#ifdef DTCM_ALLOC
+                    DTCM_VERIFY_DEBUG();
+                    run_frame_function_pointer(context->gb);
+                    DTCM_VERIFY_DEBUG();
+#else
+                    run_frame_function_pointer(context->gb);
+#endif
+                    ++gameScene->next_frames_elapsed;
+                    tick_audio_sync(gameScene);
+                }
+
+                gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+            }
             else
             {
                 // --- 60fps and non-blended 30fps logic ---
@@ -2210,6 +2247,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     tick_audio_sync(gameScene);
                 }
             }
+            
+            CB_App->avg_dt_mult =
+                (gameScene->next_frames_elapsed == 2 && preferences_display_fps == 1) ? 0.5f : 1.0f;
+            gameScene->playtime += gameScene->next_frames_elapsed;
 
             if (!dtcm_enabled())
             {
@@ -2394,7 +2435,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // Always request the update loop to run at 30 FPS.
             // (60 game boy frames per second.)
             // This ensures gb_run_frame() is called at a consistent rate.
-            gameScene->scene->preferredRefreshRate = preferences_frame_skip ? 30 : 60;
+            gameScene->scene->preferredRefreshRate = (gameScene->next_frames_elapsed == 2)
+                ? 30 : 60;
 
             if (preferences_uncap_fps)
                 gameScene->scene->preferredRefreshRate = -1;
@@ -2403,7 +2445,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             {
                 // Check RTC once per second (60 frames at 60fps, 30 frames at 30fps)
                 static int rtc_frame_counter = 0;
-                int rtc_check_interval = preferences_frame_skip ? 30 : 60;
+                int rtc_check_interval = (preferences_frame_skip == 1) ? 30 : 60;
 
                 if (++rtc_frame_counter >= rtc_check_interval)
                 {

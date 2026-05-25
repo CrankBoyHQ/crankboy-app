@@ -163,6 +163,12 @@ typedef struct CB_GameScene
     int interlace_lock_frames_remaining;
     int interlace_slow_frames;
 
+    // Adaptive frame_skip (preferences_frame_skip == 2)
+    uint8_t adaptive_prev_scx;
+    uint8_t adaptive_prev_scy;
+    uint8_t adaptive_prev_wx;
+    uint8_t adaptive_prev_bgp;
+
     uint8_t previous_joypad_state;
     uint32_t patches_hash;
 

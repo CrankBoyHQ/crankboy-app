@@ -502,6 +502,7 @@ static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* audio_sync_labels[] = {"Fast", "Accurate"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
+static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
 static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
                                     "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
 const char* const save_slot_labels[10] = {
@@ -1279,20 +1280,20 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // frame skip
     entries[++i] = (OptionsMenuEntry){
         .name = "30 FPS mode",
-        .values = off_on_labels,
+        .values = frame_skip_labels,
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
-            "for most games.\n \nDespite appearing to be\n30 FPS, the game "
-            "itself\nstill runs at full speed.\n \n"
-            "Can generally be disabled,\nif a game doesn't feature\nscrolling backgrounds.",
+            "for most games.\n \n"
+            "Can generally be disabled\nif a game doesn't feature\nscrolling backgrounds.\n \n"
+            "\"Adaptive\": experimental,\nswitches between 30/60\ndepending on if the\nscreen is scrolling etc.",
         .pref_var = &preferences_frame_skip,
-        .max_value = 2,
+        .max_value = 3,
         .rebuild_when_changed = 1,
         .on_press = NULL,
     };
 
     // frame blending
-    if (preferences_frame_skip)
+    if (preferences_frame_skip == 1)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
@@ -1318,7 +1319,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     // dynamic rate adjustment
-    if (preferences_frame_skip && !preferences_blend_frames)
+    if (preferences_frame_skip == 1 && !preferences_blend_frames)
     {
         // Interlacing disabled in 30fps mode without frame blending
         entries[++i] = (OptionsMenuEntry){
