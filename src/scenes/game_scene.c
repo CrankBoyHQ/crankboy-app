@@ -189,6 +189,7 @@ static const char* selectButtonText = "select";
 static int last_scy = -1;
 static uint8_t CB_dither_lut_row0[256];
 static uint8_t CB_dither_lut_row1[256];
+uint8_t cgb_blend_stage = 0;
 
 const uint16_t CB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
@@ -1684,8 +1685,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
     bool allow_interlace =
-        preferences_frame_skip != 2 &&
-        (!preferences_frame_skip || preferences_blend_frames);
+        preferences_frame_skip != 2 && (!preferences_frame_skip || preferences_blend_frames);
 
     if (allow_interlace)
     {
@@ -2100,7 +2100,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
 
-            if (preferences_frame_skip == 1 && preferences_blend_frames)
+            bool cgb_auto_blend = context->gb->is_cgb_mode && preferences_cgb_brightness == 0;
+
+            if (preferences_frame_skip == 1 && (preferences_blend_frames || cgb_auto_blend))
             {
                 // --- 30fps Frame Blending with Double Buffering ---
                 // Two buffers to avoid memcpy - swap lcd pointer instead
@@ -2115,7 +2117,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
                 bool use_synced_interlace = activate_dynamic_rate;
 
-                // 1. Render Frame A into frame_buffer[0]
+                // 1. Render Frame A into frame_buffer[0] (bright thresholds for CGB auto blend)
+                if (cgb_auto_blend)
+                {
+                    cgb_blend_stage = 1;
+                    gb_recompute_cgb_gray_palettes(context->gb);
+                }
                 context->gb->lcd = frame_buffer[0];
                 context->gb->direct.frame_skip = 0;
                 if (use_synced_interlace)
@@ -2136,9 +2143,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 // 2. Determine if the screen is static.
                 bool screen_is_static =
-                    (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+                    cgb_auto_blend
+                        ? false
+                        : (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
 
-                // 3. Render Frame B into frame_buffer[1]
+                // 3. Render Frame B into frame_buffer[1] (dark thresholds for CGB auto blend)
+                if (cgb_auto_blend)
+                {
+                    cgb_blend_stage = 2;
+                    gb_recompute_cgb_gray_palettes(context->gb);
+                }
                 context->gb->lcd = frame_buffer[1];
                 context->gb->direct.frame_skip = screen_is_static;
                 if (use_synced_interlace)
@@ -2157,11 +2171,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
+                // Restore normal thresholds
+                if (cgb_auto_blend)
+                {
+                    cgb_blend_stage = 0;
+                    gb_recompute_cgb_gray_palettes(context->gb);
+                }
+
                 // Restore original interlace mask for other rendering modes
                 context->gb->direct.interlace_mask = saved_interlace_mask;
 
                 // 4. Blend/composite and copy result back to original lcd buffer
-                if (preferences_blend_frames)
+                if (preferences_blend_frames || cgb_auto_blend)
                 {
                     if (!screen_is_static)
                     {
@@ -2205,11 +2226,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 ++gameScene->next_frames_elapsed;
                 tick_audio_sync(gameScene);
 
-                bool scroll_changed =
-                    (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                    (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                    (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                    (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+                bool scroll_changed = (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                                      (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                                      (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                                      (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
 
                 if (scroll_changed)
                 {
@@ -2247,7 +2267,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     tick_audio_sync(gameScene);
                 }
             }
-            
+
             CB_App->avg_dt_mult =
                 (gameScene->next_frames_elapsed == 2 && preferences_display_fps == 1) ? 0.5f : 1.0f;
             gameScene->playtime += gameScene->next_frames_elapsed;
@@ -2376,6 +2396,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
 
+            uint8_t* dither_lut0 = CB_dither_lut_row0;
+            uint8_t* dither_lut1 = CB_dither_lut_row1;
+
 #if ENABLE_RENDER_PROFILER
             if (CB_run_profiler_on_next_frame)
             {
@@ -2390,8 +2413,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 update_fb_dirty_lines_(
                     playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                    playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
-                    CB_dither_lut_row0, CB_dither_lut_row1
+                    playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, dither_lut0,
+                    dither_lut1
                 );
 
                 float endTime = playdate->system->getElapsedTime();
@@ -2423,8 +2446,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             update_fb_dirty_lines_(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled,
-                CB_dither_lut_row0, CB_dither_lut_row1
+                playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, dither_lut0,
+                dither_lut1
             );
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
@@ -2435,8 +2458,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // Always request the update loop to run at 30 FPS.
             // (60 game boy frames per second.)
             // This ensures gb_run_frame() is called at a consistent rate.
-            gameScene->scene->preferredRefreshRate = (gameScene->next_frames_elapsed == 2)
-                ? 30 : 60;
+            gameScene->scene->preferredRefreshRate =
+                (gameScene->next_frames_elapsed == 2) ? 30 : 60;
 
             if (preferences_uncap_fps)
                 gameScene->scene->preferredRefreshRate = -1;

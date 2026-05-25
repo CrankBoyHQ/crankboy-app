@@ -56,7 +56,7 @@ PREF(boot_fade, 1)
 
 // cgb
 PREF(cgb_speed, 0) // 0: default; 1: force slow mode
-PREF(cgb_brightness, 1) // 0: Bright; 1: Normal; 2: Dark
+PREF(cgb_brightness, 0) // 0: Auto blend; 1: Bright; 2: Normal; 3: Dark
 PREF(hle, 1)
 
 // scripts can use these arbitrarily (see script_custom_setting_add),

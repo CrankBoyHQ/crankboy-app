@@ -36,6 +36,9 @@
 #include "../src/preferences.h"
 #include "../src/utility.h"
 
+// 0 = normal (use preferences_cgb_brightness), 1 = blend-bright, 2 = blend-dark
+extern uint8_t cgb_blend_stage;
+
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
 #include <stdlib.h> /* Required for abort */
@@ -718,32 +721,61 @@ __shell static void __gb_do_hdma(gb_s* gb)
 
 __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
 {
-    switch (preferences_cgb_brightness)
+    switch (cgb_blend_stage)
     {
-    case 0:
-        if (sum >= 63)
+    case 1:
+        if (sum >= 55)
             return 0;
-        if (sum >= 35)
+        if (sum >= 28)
             return 1;
-        if (sum >= 12)
+        if (sum >= 10)
             return 2;
         return 3;
     case 2:
-        if (sum >= 78)
+        if (sum >= 75)
             return 0;
-        if (sum >= 50)
+        if (sum >= 45)
             return 1;
-        if (sum >= 22)
+        if (sum >= 20)
             return 2;
         return 3;
     default:
-        if (sum >= 68)
-            return 0;
-        if (sum >= 38)
-            return 1;
-        if (sum >= 15)
-            return 2;
-        return 3;
+        switch (preferences_cgb_brightness)
+        {
+        case 0:
+            // Auto: fallback to Normal when not in blend mode
+            if (sum >= 68)
+                return 0;
+            if (sum >= 38)
+                return 1;
+            if (sum >= 15)
+                return 2;
+            return 3;
+        case 1:
+            if (sum >= 63)
+                return 0;
+            if (sum >= 35)
+                return 1;
+            if (sum >= 12)
+                return 2;
+            return 3;
+        case 3:
+            if (sum >= 78)
+                return 0;
+            if (sum >= 50)
+                return 1;
+            if (sum >= 22)
+                return 2;
+            return 3;
+        default:
+            if (sum >= 68)
+                return 0;
+            if (sum >= 38)
+                return 1;
+            if (sum >= 15)
+                return 2;
+            return 3;
+        }
     }
 }
 
@@ -775,7 +807,7 @@ __section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t 
         uint8_t r = lo & 0x1F;
         uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
         uint8_t b = (hi >> 2) & 0x1F;
-        uint16_t sum = (uint16_t)r + g + b;
+        uint16_t sum = (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
         uint8_t gray = __cgb_gray_from_sum(sum);
         pal |= (uint8_t)(gray << (2 * c));
     }
@@ -793,7 +825,7 @@ __section__(".rare") static void __cgb_update_obj_gray_palette(gb_s* gb, uint8_t
         uint8_t r = lo & 0x1F;
         uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
         uint8_t b = (hi >> 2) & 0x1F;
-        uint16_t sum = (uint16_t)r + g + b;
+        uint16_t sum = (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
         uint8_t gray = __cgb_gray_from_sum(sum);
         pal |= (uint8_t)(gray << (2 * c));
     }

@@ -479,7 +479,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
-static const char* cgb_brightness_labels[] = {"Bright", "Normal", "Dark"};
+static const char* cgb_brightness_labels[] = {"Auto", "Bright", "Normal", "Dark"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
@@ -1291,7 +1291,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "Frame blending",
             .values = off_on_labels,
             .description =
-                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.",
+                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.\n \nAlways on for CGB games\nwhen Brightness is Auto\nand 30 FPS is enabled.",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -1534,9 +1534,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Brightness",
             .values = cgb_brightness_labels,
-            .description = "Adjusts how CGB colors\nmap to the 4 gray shades\non the 1-bit display.\n \nBright: more visible detail,\nlighter appearance.\n \nNormal: balanced mapping.\n \nDark: deeper shadows, but\nmay lose detail.",
+            .description = "Adjusts how CGB colors\nmap to the 4 gray shades\non the 1-bit display.\n \nAuto: blends bright/dark\nframes in 30fps mode for\nmore effective gray levels.\n \nFalls back to Normal in\n60 FPS mode.\n",
             .pref_var = &preferences_cgb_brightness,
-            .max_value = 3,
+            .max_value = 4,
             .on_press = NULL
         };
     }
