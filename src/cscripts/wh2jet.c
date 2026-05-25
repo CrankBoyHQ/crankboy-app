@@ -32,8 +32,6 @@ typedef struct ScriptData
     bool hud_seeded;
     uint8_t prev_portrait_l[9];
     uint8_t prev_portrait_r[9];
-    uint8_t prev_win_l[3];
-    uint8_t prev_win_r[3];
 } ScriptData;
 
 #define USERDATA ScriptData* data
@@ -60,32 +58,36 @@ static const int PORTRAIT_R_X[9] = {352, 368, 384, 352, 368, 384, 352, 368, 384}
 static const int NAME_L_ADDRS[7] = {
     0x1804, 0x1805, 0x1806, 0x1807, 0x1808, 0x1809, 0x180A,
 };
+static const int NAME_L_DST[7] = {
+    0x18A1, 0x18A2, 0x18A3, 0x18A4, 0x18A5, 0x18A6, 0x18A7,
+};
 static const int NAME_R_ADDRS[7] = {
     0x1849, 0x184A, 0x184B, 0x184C, 0x184D, 0x184E, 0x184F,
 };
-
-static const int NAME_Y = 32;
-static const int NAME_L_X[7] = {64, 80, 96, 112, 128, 144, 160};
-static const int NAME_R_X[7] = {222, 238, 254, 272, 288, 304, 320};
+static const int NAME_R_DST[7] = {
+    0x18AC, 0x18AD, 0x18AE, 0x18AF, 0x18B0, 0x18B1, 0x18B2,
+};
 
 static const int WIN_L_ADDRS[3] = {
     0x1824,
     0x1825,
     0x1826,
 };
+static const int WIN_L_DST[3] = {
+    0x1861,
+    0x1862,
+    0x1863,
+};
 static const int WIN_R_ADDRS[3] = {
     0x182D,
     0x182E,
     0x182F,
 };
-
-static const int WIN_Y = 0;
-static const int WIN_L_X[3] = {
-    64,
-    80,
-    96,
+static const int WIN_R_DST[3] = {
+    0x1870,
+    0x1871,
+    0x1872,
 };
-static const int WIN_R_X[3] = {288, 304, 320};
 
 static bool is_logo_screen(gb_s* gb)
 {
@@ -209,28 +211,6 @@ static void draw_hud(gb_s* gb, ScriptData* data)
         if (changed_r || overlap_r)
             draw_tile(gb, tr, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr);
     }
-    for (int i = 0; i < 7; ++i)
-    {
-        uint8_t tl = gb->vram[NAME_L_ADDRS[i]];
-        uint8_t tr = gb->vram[NAME_R_ADDRS[i]];
-        draw_tile(gb, tl, NAME_L_X[i], NAME_Y, 2, true, unsigned_addr);
-        draw_tile(gb, tr, NAME_R_X[i], NAME_Y, 2, true, unsigned_addr);
-    }
-    for (int i = 0; i < 3; ++i)
-    {
-        uint8_t tl = gb->vram[WIN_L_ADDRS[i]];
-        uint8_t tr = gb->vram[WIN_R_ADDRS[i]];
-        bool cur_blank_l = (tl == 0x41);
-        bool cur_blank_r = (tr == 0x41);
-        bool prev_blank_l = (data->prev_win_l[i] == 0x41);
-        bool prev_blank_r = (data->prev_win_r[i] == 0x41);
-        data->prev_win_l[i] = tl;
-        data->prev_win_r[i] = tr;
-        if (!cur_blank_l || !prev_blank_l)
-            draw_tile(gb, tl, WIN_L_X[i], WIN_Y, 2, true, unsigned_addr);
-        if (!cur_blank_r || !prev_blank_r)
-            draw_tile(gb, tr, WIN_R_X[i], WIN_Y, 2, true, unsigned_addr);
-    }
 }
 
 static ScriptData* on_begin(gb_s* gb, const char* header_name)
@@ -314,6 +294,20 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     {
         script_gb->direct.joypad_bits.start = 1;
         data->suppress_start--;
+    }
+
+    if (data->in_game || data->demo)
+    {
+        for (int i = 0; i < 7; i++)
+        {
+            gb->vram[NAME_L_DST[i]] = gb->vram[NAME_L_ADDRS[i]];
+            gb->vram[NAME_R_DST[i]] = gb->vram[NAME_R_ADDRS[i]];
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            gb->vram[WIN_L_DST[i]] = gb->vram[WIN_L_ADDRS[i]];
+            gb->vram[WIN_R_DST[i]] = gb->vram[WIN_R_ADDRS[i]];
+        }
     }
 }
 
