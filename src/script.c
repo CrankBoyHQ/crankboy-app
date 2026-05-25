@@ -2,6 +2,8 @@
 #include "app.h"
 #include "dtcm.h"
 #include "gbz.h"
+#include "recommended_json.h"
+#include "revcheck.h"
 #include "scenes/game_scene.h"
 #include "scriptutil.h"
 #include "userstack.h"
@@ -401,17 +403,17 @@ bool script_check_recommended_settings(
     const struct ScriptRecommendedSettings* settings, const char* game_settings_path
 )
 {
-    if (!settings || !settings->entries || settings->count == 0 || !game_settings_path)
+    if (!settings || !settings->settings || settings->settings[0].bit == 0 || !game_settings_path)
         return true;
 
     void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
     preferences_merge_from_disk(game_settings_path);
 
     bool all_match = true;
-    for (int i = 0; i < settings->count; ++i)
+    for (int i = 0; settings->settings[i].bit != 0; ++i)
     {
-        preference_t* pref = pref_by_bit(settings->entries[i].bit);
-        if (pref && *pref != settings->entries[i].value)
+        preference_t* pref = pref_by_bit(settings->settings[i].bit);
+        if (pref && *pref != settings->settings[i].value)
         {
             all_match = false;
             break;
@@ -427,17 +429,17 @@ void script_apply_recommended_settings(
     const struct ScriptRecommendedSettings* settings, const char* game_settings_path
 )
 {
-    if (!settings || !settings->entries || settings->count == 0 || !game_settings_path)
+    if (!settings || !settings->settings || settings->settings[0].bit == 0 || !game_settings_path)
         return;
 
     void* stored = preferences_store_subset(~(preferences_bitfield_t)0);
     preferences_merge_from_disk(game_settings_path);
 
-    for (int i = 0; i < settings->count; ++i)
+    for (int i = 0; settings->settings[i].bit != 0; ++i)
     {
-        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        preference_t* pref = pref_by_bit(settings->settings[i].bit);
         if (pref)
-            *pref = settings->entries[i].value;
+            *pref = settings->settings[i].value;
     }
 
     preferences_per_game = 1;
@@ -450,13 +452,13 @@ void script_apply_recommended_settings(
 
 bool script_check_recommended_current(const struct ScriptRecommendedSettings* settings)
 {
-    if (!settings || !settings->entries || settings->count == 0)
+    if (!settings || !settings->settings || settings->settings[0].bit == 0)
         return true;
 
-    for (int i = 0; i < settings->count; ++i)
+    for (int i = 0; settings->settings[i].bit != 0; ++i)
     {
-        preference_t* pref = pref_by_bit(settings->entries[i].bit);
-        if (pref && *pref != settings->entries[i].value)
+        preference_t* pref = pref_by_bit(settings->settings[i].bit);
+        if (pref && *pref != settings->settings[i].value)
             return false;
     }
     return true;
@@ -464,15 +466,84 @@ bool script_check_recommended_current(const struct ScriptRecommendedSettings* se
 
 void script_apply_recommended_current(const struct ScriptRecommendedSettings* settings)
 {
-    if (!settings || !settings->entries || settings->count == 0)
+    if (!settings || !settings->settings || settings->settings[0].bit == 0)
         return;
 
-    for (int i = 0; i < settings->count; ++i)
+    for (int i = 0; settings->settings[i].bit != 0; ++i)
     {
-        preference_t* pref = pref_by_bit(settings->entries[i].bit);
+        preference_t* pref = pref_by_bit(settings->settings[i].bit);
         if (pref)
-            *pref = settings->entries[i].value;
+            *pref = settings->settings[i].value;
     }
 
     preferences_per_game = 1;
+}
+
+#define MAX_RECOMMENDED_MERGED 64
+
+static struct ScriptRecommendedSetting merge_entries[MAX_RECOMMENDED_MERGED];
+static int merge_count;
+static struct ScriptRecommendedSettings merged;
+
+static const struct ScriptRecommendedSettings* merge_rev_settings(
+    const struct ScriptRecommendedSettings* settings
+)
+{
+    merge_count = 0;
+    for (int i = 0; settings->settings[i].bit != 0 && merge_count < MAX_RECOMMENDED_MERGED; ++i)
+        merge_entries[merge_count++] = settings->settings[i];
+
+    const struct ScriptRecommendedSetting* rev = NULL;
+    if (pd_rev == PD_REV_A)
+        rev = settings->settings_A;
+    else if (pd_rev == PD_REV_B)
+        rev = settings->settings_B;
+
+    if (rev)
+    {
+        for (int i = 0; rev[i].bit != 0 && merge_count < MAX_RECOMMENDED_MERGED; ++i)
+        {
+            int found = -1;
+            for (int j = 0; j < merge_count; ++j)
+            {
+                if (merge_entries[j].bit == rev[i].bit)
+                {
+                    found = j;
+                    break;
+                }
+            }
+            if (found >= 0)
+                merge_entries[found].value = rev[i].value;
+            else
+                merge_entries[merge_count++] = rev[i];
+        }
+    }
+
+    merge_entries[merge_count] = (struct ScriptRecommendedSetting)RECOMMENDED_SETTINGS_END;
+
+    merged.message = settings->message;
+    merged.settings = merge_entries;
+    merged.settings_A = NULL;
+    merged.settings_B = NULL;
+    return &merged;
+}
+
+const struct ScriptRecommendedSettings* script_get_recommended_for_game(const char* rom_name)
+{
+    if (!rom_name || !rom_name[0])
+        return NULL;
+
+    const struct ScriptRecommendedSettings* rec = recommended_json_lookup(rom_name);
+    if (rec)
+        return rec;
+
+    ScriptInfo* info = get_script_info(rom_name);
+    if (info && info->c_script_info)
+        rec = info->c_script_info->recommended_settings;
+    script_info_free(info);
+
+    if (rec && (rec->settings_A || rec->settings_B))
+        rec = merge_rev_settings(rec);
+
+    return rec;
 }

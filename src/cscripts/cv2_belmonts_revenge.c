@@ -79,7 +79,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 
     force_pref(crank_mode, CRANK_MODE_OFF);
 
-    data->sidebar = playdate->graphics->loadBitmap(CB_get_forwarded_path(ASSETS_DIR "sidebar"), NULL);
+    data->sidebar =
+        playdate->graphics->loadBitmap(CB_get_forwarded_path(ASSETS_DIR "sidebar"), NULL);
     if (data->sidebar)
     {
         for (int i = 0; i < 15; ++i)
@@ -483,12 +484,18 @@ static void on_end(gb_s* gb, ScriptData* data)
 static const struct ScriptRecommendedSetting cv2_recommended[] = {
     {PREFBIT_frame_skip, 1},    // 30fps
     {PREFBIT_blend_frames, 1},  // On
+    RECOMMENDED_SETTINGS_END,
+};
+
+static const struct ScriptRecommendedSetting cv2_recommended_rev_a[] = {
+    {PREFBIT_batching, 1},
+    RECOMMENDED_SETTINGS_END,
 };
 
 static const struct ScriptRecommendedSettings cv2_rec_settings = {
     .message = NULL,
-    .entries = cv2_recommended,
-    .count = sizeof(cv2_recommended) / sizeof(cv2_recommended[0]),
+    .settings = cv2_recommended,
+    .settings_A = cv2_recommended_rev_a,
 };
 
 C_SCRIPT{

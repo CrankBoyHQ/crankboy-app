@@ -50,7 +50,16 @@ static void parse_settings_table(
             continue;
         }
 
-        int value = obj->data[i].value.data.intval;
+        json_value val = obj->data[i].value;
+        if (val.type != kJSONInteger)
+        {
+            playdate->system->logToConsole(
+                "recommended_json: setting \"%s\" value is not an integer, skipping", key
+            );
+            continue;
+        }
+
+        int value = val.data.intval;
 
         int existing = -1;
         for (int j = 0; j < *out_count; ++j)
@@ -155,6 +164,9 @@ static void parse_one_json(const char* path_arg, FileOptions fopts, RecommendedJ
         return;
     }
 
+    entries = cb_realloc(entries, sizeof(struct ScriptRecommendedSetting) * (count + 1));
+    entries[count] = (struct ScriptRecommendedSetting)RECOMMENDED_SETTINGS_END;
+
     const char* basename = strrchr(path, '/');
     if (basename)
         basename++;
@@ -162,7 +174,8 @@ static void parse_one_json(const char* path_arg, FileOptions fopts, RecommendedJ
         basename = path;
 
     size_t name_len = strlen(basename);
-    if (name_len <= 5)
+    size_t json_ext_len = 5;  // strlen(".json")
+    if (name_len <= json_ext_len)
     {
         playdate->system->logToConsole("recommended_json: filename too short \"%s\"", path);
         cb_free(message);
@@ -170,16 +183,15 @@ static void parse_one_json(const char* path_arg, FileOptions fopts, RecommendedJ
         return;
     }
 
-    char* rom_name = cb_malloc(name_len - 4);
-    memcpy(rom_name, basename, name_len - 5);
-    rom_name[name_len - 5] = 0;
+    char* rom_name = cb_malloc(name_len - json_ext_len + 1);
+    memcpy(rom_name, basename, name_len - json_ext_len);
+    rom_name[name_len - json_ext_len] = 0;
 
     RecommendedJsonEntry* entry = cb_malloc(sizeof(RecommendedJsonEntry));
     entry->rom_name = rom_name;
     entry->entries = entries;
     entry->settings.message = message;
-    entry->settings.entries = entries;
-    entry->settings.count = count;
+    entry->settings.settings = entries;
     entry->next = *registry;
     *registry = entry;
 }
@@ -207,7 +219,6 @@ static void collect_bundle_json_callback(const char* filename, void* ud)
 
     size_t len = strlen(filename);
 
-    // Match .json or .json.gz
     bool is_json = (len > 5 && !strcasecmp(filename + len - 5, ".json"));
     bool is_json_gz = (len > 8 && !strcasecmp(filename + len - 8, ".json.gz"));
     if (!is_json && !is_json_gz)

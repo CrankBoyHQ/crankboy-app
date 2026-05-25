@@ -13,7 +13,6 @@
 #include "../http.h"
 #include "../http_safe.h"
 #include "../preferences.h"
-#include "../recommended_json.h"
 #include "../revcheck.h"
 #include "../scenes/modal.h"
 #include "../script.h"
@@ -897,20 +896,6 @@ static void launch_game_script_prompt(CB_Game* game)
     }
 }
 
-static const struct ScriptRecommendedSettings* get_recommended_for_game(CB_Game* game)
-{
-    const struct ScriptRecommendedSettings* rec = recommended_json_lookup(game->names->name_header);
-    if (rec)
-        return rec;
-
-    ScriptInfo* info = get_script_info(game->names->name_header);
-    if (info && info->c_script_info)
-        rec = info->c_script_info->recommended_settings;
-    script_info_free(info);
-
-    return rec;
-}
-
 static void launch_game_after_later_info(void* ud, int option)
 {
     (void)option;
@@ -923,7 +908,8 @@ static void launch_game_recommended_cb(void* ud, int option)
     CB_Game* game = ud;
     if (option == 0)
     {
-        const struct ScriptRecommendedSettings* rec = get_recommended_for_game(game);
+        const struct ScriptRecommendedSettings* rec =
+            script_get_recommended_for_game(game->names->name_header);
         if (rec)
         {
             char* settings_path = cb_game_config_path(game->fullpath);
@@ -974,13 +960,8 @@ static void launch_game_prompt_if_script(void* ud, int option)
         call_with_user_stack_1(save_last_selected_index, game->fullpath);
     }
 
-    ScriptInfo* info = get_script_info(game->names->name_header);
-    const struct ScriptRecommendedSettings* rec = NULL;
-
-    rec = recommended_json_lookup(game->names->name_header);
-
-    if (!rec && info && info->c_script_info && info->c_script_info->recommended_settings)
-        rec = info->c_script_info->recommended_settings;
+    const struct ScriptRecommendedSettings* rec =
+        script_get_recommended_for_game(game->names->name_header);
 
     if (rec)
     {
@@ -1019,12 +1000,10 @@ static void launch_game_prompt_if_script(void* ud, int option)
                 modal->height = 200;
 
                 CB_presentModal(modal->scene);
-                script_info_free(info);
                 return;
             }
         }
     }
-    script_info_free(info);
 
     launch_game_script_prompt(game);
 }
@@ -2432,7 +2411,7 @@ bool CB_LibraryScene_removeGame(CB_Game* game)
     if (idx < 0)
         return false;
 
-    // paranoia: if last game in list, restart 
+    // paranoia: if last game in list, restart
     if (games->length <= 1)
         return false;
 

@@ -55,18 +55,20 @@ enum ScriptPreferredLaunchColor
     ScriptPreferredLaunchColor_White,
 };
 
-
 struct ScriptRecommendedSetting
 {
     preferences_bitfield_t bit;
     int value;
 };
 
+#define RECOMMENDED_SETTINGS_END {0, 0}
+
 struct ScriptRecommendedSettings
 {
     char* message;
-    const struct ScriptRecommendedSetting* entries;
-    int count;
+    const struct ScriptRecommendedSetting* settings;
+    const struct ScriptRecommendedSetting* settings_A;
+    const struct ScriptRecommendedSetting* settings_B;
 };
 
 struct CScriptInfo
@@ -154,3 +156,4 @@ void script_apply_recommended_settings(
 );
 bool script_check_recommended_current(const struct ScriptRecommendedSettings* settings);
 void script_apply_recommended_current(const struct ScriptRecommendedSettings* settings);
+const struct ScriptRecommendedSettings* script_get_recommended_for_game(const char* rom_name);

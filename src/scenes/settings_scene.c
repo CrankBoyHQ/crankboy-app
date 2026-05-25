@@ -9,7 +9,6 @@
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
-#include "../recommended_json.h"
 #include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
 #include "../script.h"
@@ -410,17 +409,19 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
     {
         if (CB_App->bundled_rom)
         {
-            // Bundled ROM: global vs per-game is meaningless — there's only one game.
-            // Save everything (except script-locked) to the bundled game's file, never the
-            // global file.
-            result = preferences_save_to_disk(game_settings_path, prefs_locked_by_script);
+            // Bundled ROM: global vs per-game is meaningless - there's only one game.
+            // Save everything to the bundled game's file, never the global file.
+            result = preferences_save_to_disk(game_settings_path, 0);
         }
         else if (preferences_per_game)
         {
-            // Save per-game settings (excluding always-global)
-            result = preferences_save_to_disk(
-                game_settings_path, prefs_locked_by_script | PREFBITS_ALWAYS_GLOBAL
-            );
+            // Save per-game settings to the game's config file.
+            // Must NOT exclude prefs_locked_by_script - script-locked values set by
+            // force_pref() (e.g. cv2's blend_frames=1) need to persist across settings
+            // open/close. Otherwise opening settings from game scope and dismissing
+            // silently drops locked prefs, causing the recommended-settings dialog to
+            // re-appear on next launch.
+            result = preferences_save_to_disk(game_settings_path, PREFBITS_ALWAYS_GLOBAL);
 
             if (result)
             {
@@ -922,15 +923,7 @@ static void apply_recommended_in_settings(
     if (!game_name)
         return;
 
-    const struct ScriptRecommendedSettings* rec = recommended_json_lookup(game_name);
-    if (!rec)
-    {
-        ScriptInfo* info = get_script_info(game_name);
-        if (info && info->c_script_info)
-            rec = info->c_script_info->recommended_settings;
-        script_info_free(info);
-    }
-
+    const struct ScriptRecommendedSettings* rec = script_get_recommended_for_game(game_name);
     if (!rec)
         return;
 
@@ -955,21 +948,19 @@ static const char* get_settings_game_name(CB_SettingsScene* settingsScene)
     }
     else if (settingsScene->gameScene)
     {
-        ScriptInfo* sinfo = script_get_info_by_rom_path(settingsScene->gameScene->rom_filename);
-        if (sinfo)
+        char rom_name[17];
+        ScriptInfo* sinfo = script_get_info_by_rom_path_and_get_header_info(
+            settingsScene->gameScene->rom_filename, rom_name, NULL, NULL, NULL, NULL
+        );
+        if (rom_name[0])
         {
-            // leak? no — string is copied into info->rom_name from ROM header
-            const char* name = sinfo->rom_name;
-            // we must free sinfo but keep name. since name is a stack copy of
-            // info->rom_name which is strncpy'd from game_name, we can use it
-            // after freeing info if we copy it. but it's a 16-char array...
-            // just copy to a static buffer to be safe
             static char name_buf[17];
-            strncpy(name_buf, sinfo->rom_name, 16);
+            strncpy(name_buf, rom_name, 16);
             name_buf[16] = 0;
             script_info_free(sinfo);
             return name_buf;
         }
+        script_info_free(sinfo);
     }
     return NULL;
 }
@@ -978,18 +969,7 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
 {
     const char* game_name = get_settings_game_name(settingsScene);
 
-    const struct ScriptRecommendedSettings* rec = NULL;
-    if (game_name)
-    {
-        rec = recommended_json_lookup(game_name);
-        if (!rec)
-        {
-            ScriptInfo* sinfo = get_script_info(game_name);
-            if (sinfo && sinfo->c_script_info)
-                rec = sinfo->c_script_info->recommended_settings;
-            script_info_free(sinfo);
-        }
-    }
+    const struct ScriptRecommendedSettings* rec = script_get_recommended_for_game(game_name);
 
     if (!preferences_per_game)
     {
@@ -1176,15 +1156,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         // Apply recommended settings - only shown when settings exist
         {
             const char* game_name = get_settings_game_name(scene);
-            bool has_rec = false;
-            if (game_name)
-            {
-                ScriptInfo* sinfo = get_script_info(game_name);
-                has_rec = recommended_json_lookup(game_name) != NULL ||
-                          (sinfo && sinfo->c_script_info &&
-                           sinfo->c_script_info->recommended_settings);
-                script_info_free(sinfo);
-            }
+            bool has_rec = script_get_recommended_for_game(game_name) != NULL;
 
             if (has_rec)
             {
@@ -1793,7 +1765,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .pref_var = &preferences_boot_fade,
         .max_value = 5,
     };
-    
+
     if (CB_App->bundled_rom)
     {
         entries[i].description = "Fade from black on\ngame start.\n \nIn bundled mode, fade\nfrom white is not currently\npossible.";
