@@ -4,3 +4,6 @@
 [submodule "libs/pdboot"]
 	path = libs/pdboot
 	url = https://github.com/CrankBoyHQ/pdboot.git
+[submodule "libs/pdll"]
+	path = libs/pdll
+	url = https://github.com/CrankBoyHQ/pdll.git

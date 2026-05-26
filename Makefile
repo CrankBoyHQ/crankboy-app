@@ -73,6 +73,12 @@ SRC += libs/lz4/lz4.c
 SRC += libs/miniz/miniz.c
 SRC += libs/miniz/mini_gzip.c
 
+# uzlib (used by pdll's device loader)
+SRC += libs/pdll/uzlib/tinflate.c
+SRC += libs/pdll/uzlib/tinfzlib.c
+SRC += libs/pdll/uzlib/adler32.c
+SRC += libs/pdll/uzlib/crc32.c
+
 # Baked JSON (generated from Source/*.json; see rules below)
 SRC += build/baked_version_json.c
 SRC += build/baked_credits_json.c
