@@ -1,6 +1,6 @@
 #include "../scenes/game_scene.h"
+#include "../script.h"
 #include "../scriptutil.h"
-#include "script.h"
 
 #define DESCRIPTION                                                              \
     "- HUD is now on the side of the screen, to take advantage of widescreen.\n" \
@@ -580,14 +580,13 @@ static void on_draw(gb_s* gb, ScriptData* data)
 }
 
 static const struct ScriptRecommendedSetting recommended[] = {
-    {PREFBIT_frame_skip, 2},    // dynamic
-    
+    {PREFBIT_frame_skip, 2},  // dynamic
+
     RECOMMENDED_SETTINGS_END,
 };
 
 static const struct ScriptRecommendedSettings rec_settings = {
-    .message = NULL,
-    .settings = recommended
+    .message = NULL, .settings = recommended
 };
 
 C_SCRIPT{

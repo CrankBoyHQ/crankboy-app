@@ -1,6 +1,5 @@
 #include "recommended_json.h"
 
-#include "app.h"
 #include "jparse.h"
 #include "revcheck.h"
 #include "script.h"

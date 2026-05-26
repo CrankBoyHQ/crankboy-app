@@ -10,11 +10,9 @@
 #define app_h
 
 #include "pd_api.h"
-#include "preferences.h"
 #include "scene.h"
 #include "utility.h"
 
-#include <math.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>

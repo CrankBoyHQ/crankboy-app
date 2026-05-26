@@ -13,7 +13,7 @@
 #include "../http.h"
 #include "../http_safe.h"
 #include "../preferences.h"
-#include "../revcheck.h"
+#include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
 #include "../script.h"
 #include "../softpatch.h"

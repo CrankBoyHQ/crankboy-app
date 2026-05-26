@@ -3,6 +3,7 @@
 #include "../app.h"
 #include "../jparse.h"
 #include "../pgmusic.h"
+#include "../preferences.h"
 #include "../version.h"
 #include "pd_api/pd_api_json.h"
 
@@ -116,7 +117,8 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             json_value subtitle = json_get_table_value(entry, "subtitle");
             json_value jshuffle = json_get_table_value(entry, "shuffle");
             bool shuffle = true;
-            if (jshuffle.type == kJSONFalse) shuffle = false;
+            if (jshuffle.type == kJSONFalse)
+                shuffle = false;
 
             // title
             {

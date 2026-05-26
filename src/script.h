@@ -1,6 +1,7 @@
 #pragma once
 
 #include "app.h"
+#include "preferences.h"
 
 #include <stdbool.h>
 #include <stdint.h>
