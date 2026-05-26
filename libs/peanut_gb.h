@@ -5213,6 +5213,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
     gb->direct.joypad = 0xFF;
     gb->direct.stat_line = 0;
+    gb->direct.joypad_interrupt_delay = 0;
 
     gb->gb_reg.tima_overflow_delay = 0;
     gb->hram[0xFF] = gb->gb_reg.IE;

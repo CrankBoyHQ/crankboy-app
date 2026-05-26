@@ -443,6 +443,8 @@ struct PGB_VERSIONED(gb_s)
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
 
+        int joypad_interrupt_delay;
+
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
 

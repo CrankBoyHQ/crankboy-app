@@ -1943,7 +1943,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             uint8_t changed = gameScene->prev_joypad ^ curr;
             if (changed)
             {
-                context->gb->gb_reg.IF |= CONTROL_INTR;
+                context->gb->direct.joypad_interrupt_delay = rand() % (int)SCREEN_REFRESH_CYCLES;
             }
             gameScene->prev_joypad = curr;
         }

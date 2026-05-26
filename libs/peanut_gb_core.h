@@ -1799,6 +1799,19 @@ done_instr_timing:
         }
     }
 
+    if (gb->direct.joypad_interrupt_delay > 0)
+    {
+        if (gb->direct.joypad_interrupt_delay <= (int)inst_cycles)
+        {
+            gb->gb_reg.IF |= CONTROL_INTR;
+            gb->direct.joypad_interrupt_delay = 0;
+        }
+        else
+        {
+            gb->direct.joypad_interrupt_delay -= inst_cycles;
+        }
+    }
+
     /* Handle delayed TIMA overflow from the previous cycle. */
     if (gb->gb_reg.tima_overflow_delay)
     {
