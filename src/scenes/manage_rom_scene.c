@@ -9,47 +9,29 @@
 
 #include <string.h>
 
-#define INFO_LEFT_X    14
-#define INFO_VALUE_X   130
-#define INFO_TOP_Y     30
-#define INFO_ROW_H     19
-#define ACTION_TOP_Y   148
-#define ACTION_ROW_H   20
-#define ACTION_WIDTH   240
-#define FOOTER_Y       222
+#define INFO_LEFT_X 14
+#define INFO_VALUE_X 130
+#define INFO_TOP_Y 30
+#define INFO_ROW_H 19
+#define ACTION_TOP_Y 148
+#define ACTION_ROW_H 20
+#define ACTION_WIDTH 240
+#define FOOTER_Y 222
 
 static const struct
 {
     uint8_t v;
     const char* name;
 } kMapperNames[] = {
-    {0x00, "ROM"},
-    {0x01, "MBC1"},
-    {0x02, "MBC1+RAM"},
-    {0x03, "MBC1+SRAM"},
-    {0x05, "MBC2"},
-    {0x06, "MBC2+SRAM"},
-    {0x08, "ROM+RAM"},
-    {0x09, "ROM+SRAM"},
-    {0x0B, "MMM01"},
-    {0x0C, "MMM01+RAM"},
-    {0x0D, "MMM01+SRAM"},
-    {0x0F, "MBC3+RTC"},
-    {0x10, "MBC3+RTC+SRAM"},
-    {0x11, "MBC3"},
-    {0x12, "MBC3+RAM"},
-    {0x13, "MBC3+SRAM"},
-    {0x19, "MBC5"},
-    {0x1A, "MBC5+RAM"},
-    {0x1B, "MBC5+SRAM"},
-    {0x1C, "MBC5+Vib"},
-    {0x1D, "MBC5+Vib+RAM"},
-    {0x1E, "MBC5+Vib+SRAM"},
-    {0x20, "MBC6"},
-    {0x22, "MBC7+Acc+Vib+SRAM"},
-    {0xFC, "Pocket Camera"},
-    {0xFD, "Bandai TAMA5"},
-    {0xFE, "HuC3"},
+    {0x00, "ROM"},           {0x01, "MBC1"},         {0x02, "MBC1+RAM"},
+    {0x03, "MBC1+SRAM"},     {0x05, "MBC2"},         {0x06, "MBC2+SRAM"},
+    {0x08, "ROM+RAM"},       {0x09, "ROM+SRAM"},     {0x0B, "MMM01"},
+    {0x0C, "MMM01+RAM"},     {0x0D, "MMM01+SRAM"},   {0x0F, "MBC3+RTC"},
+    {0x10, "MBC3+RTC+SRAM"}, {0x11, "MBC3"},         {0x12, "MBC3+RAM"},
+    {0x13, "MBC3+SRAM"},     {0x19, "MBC5"},         {0x1A, "MBC5+RAM"},
+    {0x1B, "MBC5+SRAM"},     {0x1C, "MBC5+Vib"},     {0x1D, "MBC5+Vib+RAM"},
+    {0x1E, "MBC5+Vib+SRAM"}, {0x20, "MBC6"},         {0x22, "MBC7+Acc+Vib+SRAM"},
+    {0xFC, "Pocket Camera"}, {0xFD, "Bandai TAMA5"}, {0xFE, "HuC3"},
     {0xFF, "HuC1+SRAM"},
 };
 
@@ -73,8 +55,10 @@ static bool ends_with_icase(const char* s, const char* suffix)
     {
         char a = s[ls - lf + i];
         char b = suffix[i];
-        if (a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
-        if (b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+        if (a >= 'A' && a <= 'Z')
+            a = (char)(a - 'A' + 'a');
+        if (b >= 'A' && b <= 'Z')
+            b = (char)(b - 'A' + 'a');
         if (a != b)
             return false;
     }
@@ -222,9 +206,7 @@ static void clear_save_confirmed(void* ud, int option)
         }
         else
         {
-            prefix = aprintf(
-                "%s.%c.script.", base_no_ext, 'A' + self->save_slot_at_open
-            );
+            prefix = aprintf("%s.%c.script.", base_no_ext, 'A' + self->save_slot_at_open);
         }
         if (prefix)
         {
@@ -307,7 +289,8 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     else if (idx == 2)
     {
         int sidx = self->save_slot_at_open;
-        if (sidx < 0) sidx = 0;
+        if (sidx < 0)
+            sidx = 0;
         if (sidx >= (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])))
             sidx = (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])) - 1;
         const char* slot_label = save_slot_labels[sidx];
@@ -322,7 +305,8 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
 
     if (!msg || !cb)
     {
-        if (msg) cb_free(msg);
+        if (msg)
+            cb_free(msg);
         return;
     }
 
@@ -349,9 +333,8 @@ static void draw_action_row(int y, const char* label, bool selected)
         playdate->graphics->drawRect(x, y, ACTION_WIDTH, ACTION_ROW_H, kColorBlack);
         playdate->graphics->setDrawMode(kDrawModeCopy);
     }
-    int tw = playdate->graphics->getTextWidth(
-        CB_App->bodyFont, label, strlen(label), kUTF8Encoding, 0
-    );
+    int tw =
+        playdate->graphics->getTextWidth(CB_App->bodyFont, label, strlen(label), kUTF8Encoding, 0);
     int fh = playdate->graphics->getFontHeight(CB_App->bodyFont);
     int tx = x + (ACTION_WIDTH - tw) / 2;
     int ty = y + (ACTION_ROW_H - fh) / 2;
@@ -407,9 +390,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     int tw = playdate->graphics->getTextWidth(
         CB_App->subheadFont, title, strlen(title), kUTF8Encoding, 0
     );
-    playdate->graphics->drawText(
-        title, strlen(title), kUTF8Encoding, (LCD_COLUMNS - tw) / 2, 8
-    );
+    playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, (LCD_COLUMNS - tw) / 2, 8);
 
     // info rows
     playdate->graphics->setFont(CB_App->bodyFont);
@@ -503,7 +484,8 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
     CB_Scene* scene = CB_Scene_new();
     if (!scene)
     {
-        if (self->basename) cb_free(self->basename);
+        if (self->basename)
+            cb_free(self->basename);
         cb_free(self);
         return NULL;
     }

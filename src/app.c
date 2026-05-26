@@ -64,15 +64,18 @@ static void read_pdx(void)
 
 const char* CB_get_forwarded_path(const char* path)
 {
-    if (!CB_App->bundle_fwd_path) return path;
-    
+    if (!CB_App->bundle_fwd_path)
+        return path;
+
     static char* fwdpath = NULL;
-    
-    if (!path || !path[0]) return path;
-    
+
+    if (!path || !path[0])
+        return path;
+
     // absolute paths are unchanged
-    if (path[0] == '/') return path;
-    
+    if (path[0] == '/')
+        return path;
+
     cb_free(fwdpath);
     return fwdpath = aprintf("%s/%s", CB_App->bundle_fwd_path, path);
 }
@@ -80,27 +83,28 @@ const char* CB_get_forwarded_path(const char* path)
 static void load_assets(void)
 {
     static bool loaded = false;
-    if (loaded) return;
+    if (loaded)
+        return;
     loaded = true;
-    
-    #define CB_LOAD_FONT(p)                                                                        \
-    ({                                                                                             \
-        const char* _err = NULL;                                                                   \
-        const char* _path = CB_get_forwarded_path(p);                                              \
-        LCDFont* _f = playdate->graphics->loadFont(_path, &_err);                                  \
-        if (!_f || _err)                                                                           \
-            playdate->system->logToConsole(                                                        \
-                "loadFont(%s) failed: %s", _path, _err ? _err : "(null)"                           \
-            );                                                                                     \
-        _f;                                                                                        \
+
+#define CB_LOAD_FONT(p)                                                  \
+    ({                                                                   \
+        const char* _err = NULL;                                         \
+        const char* _path = CB_get_forwarded_path(p);                    \
+        LCDFont* _f = playdate->graphics->loadFont(_path, &_err);        \
+        if (!_f || _err)                                                 \
+            playdate->system->logToConsole(                              \
+                "loadFont(%s) failed: %s", _path, _err ? _err : "(null)" \
+            );                                                           \
+        _f;                                                              \
     })
 
     CB_App->bodyFont = CB_LOAD_FONT("fonts/Roobert-11-Medium");
     CB_App->titleFont = CB_LOAD_FONT("fonts/Roobert-20-Medium");
     CB_App->subheadFont = CB_LOAD_FONT("fonts/Asheville-Sans-14-Bold");
     CB_App->labelFont = CB_LOAD_FONT("fonts/Nontendo-Bold");
-    #undef CB_LOAD_FONT
-    
+#undef CB_LOAD_FONT
+
     CB_App->logoBitmap = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/logo"), NULL);
 }
 
@@ -206,7 +210,7 @@ static int check_is_bundle(void)
     json_value jfwd = json_get_table_value(jbundle, "fwd");
     if (jfwd.type == kJSONString)
         CB_App->bundle_fwd_path = cb_strdup(jfwd.data.stringval);
-    
+
     // ugly hack -- we need this before showing an info scene :/
     load_assets();
 
@@ -371,7 +375,8 @@ static bool fwd_copy_one(const char* fpath, const char* rename, const char* dest
 
 static bool fwd_copy_recursive(const char* fpath, const char* dest_dir);
 
-struct fwd_copy_ud {
+struct fwd_copy_ud
+{
     bool result;
     const char* src_dir;   // current source dir (relative to .pdx)
     const char* dest_dir;  // destination root (absolute)
@@ -444,14 +449,16 @@ char* CB_install_shared_forwarder(void)
         // pass
     }
 
-    bool ok = (fwd_copy_one("crankboy.bin", NULL, dest_dir) || fwd_copy_one("pdex.bin", "crankboy.bin", dest_dir));
+    bool ok =
+        (fwd_copy_one("crankboy.bin", NULL, dest_dir) ||
+         fwd_copy_one("pdex.bin", "crankboy.bin", dest_dir));
 
     if (!ok)
     {
         cb_free(dest_dir);
         return NULL;
     }
-    
+
     // copy all assets (no need to copy launcher/)
     const char* asset_sources[] = {"fonts", "images"};
     for (size_t i = 0; i < CB_ARRAY_SIZE(asset_sources); ++i)
@@ -459,9 +466,7 @@ char* CB_install_shared_forwarder(void)
         const char* source = asset_sources[i];
         if (!fwd_copy_recursive(source, dest_dir))
         {
-            playdate->system->logToConsole(
-                "[fwd] failed to copy %s", source
-            );
+            playdate->system->logToConsole("[fwd] failed to copy %s", source);
         }
     }
 
@@ -486,9 +491,7 @@ static void maybe_refresh_shared_forwarder(void)
 {
     bool stale = false;
     PDButtons bdown;
-    playdate->system->getButtonState(
-        &bdown, NULL, NULL
-    );
+    playdate->system->getButtonState(&bdown, NULL, NULL);
     bool forced = CB_App->forceUpdateForwarder || (bdown & kButtonA);
 
     if (!forced)
@@ -508,8 +511,7 @@ static void maybe_refresh_shared_forwarder(void)
 
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Updating Forwarders...");
     playdate->system->logToConsole(
-        "[fwd] %s -- refreshing shared forwarder for %s",
-        forced ? "force-update" : "fwdex stale",
+        "[fwd] %s -- refreshing shared forwarder for %s", forced ? "force-update" : "fwdex stale",
         CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
     );
     char* dir = CB_install_shared_forwarder();
@@ -520,8 +522,7 @@ static void maybe_refresh_shared_forwarder(void)
 static void initialize_directory(void)
 {
     size_t len;
-    char* shared_directory =
-        (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
+    char* shared_directory = (void*)cb_read_entire_file(DIRECTORY_POINTER, &len, kFileRead);
     if (!shared_directory)
     {
         shared_directory = aprintf(DEFAULT_SHARED_DIRECTORY);
@@ -807,7 +808,7 @@ void CB_init(void)
     read_pdx();
 
     check_is_bundle();
-    
+
     load_assets();
 
     if (!CB_App->bundled_rom)
@@ -871,8 +872,9 @@ void CB_init(void)
     playdate->sound->synth->setSustainLevel(CB_App->clickSynth, 0.0f);
     playdate->sound->synth->setReleaseTime(CB_App->clickSynth, 0.0f);
 
-    CB_App->selectorBitmapTable =
-        playdate->graphics->loadBitmapTable(CB_get_forwarded_path("images/selector/selector"), NULL);
+    CB_App->selectorBitmapTable = playdate->graphics->loadBitmapTable(
+        CB_get_forwarded_path("images/selector/selector"), NULL
+    );
     CB_App->startSelectBitmap =
         playdate->graphics->loadBitmap(CB_get_forwarded_path("images/selector-start-select"), NULL);
 

@@ -17,7 +17,7 @@ typedef struct CB_ManageRomScene
     uint8_t cgb_flag;
     bool compressed;
     bool header_ok;
-    char* basename; // (with extension)
+    char* basename;  // (with extension)
 } CB_ManageRomScene;
 
 CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game);

@@ -186,7 +186,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     ScriptData* data = allocz(ScriptData);
 
     const char* err = NULL;
-    data->sidebar = playdate->graphics->loadBitmap(CB_get_forwarded_path(KIRBY_ASSETS_DIR "sidebar"), &err);
+    data->sidebar =
+        playdate->graphics->loadBitmap(CB_get_forwarded_path(KIRBY_ASSETS_DIR "sidebar"), &err);
 
     if (err || !data->sidebar)
         script_error("Script error loading bitmap: %s", err);
