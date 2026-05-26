@@ -2043,18 +2043,6 @@ done_instr_timing:
             break;
         }
     }
-
-    if (gb->direct.joypad_interrupts && gb->direct.joypad_interrupt_delay >= 0)
-    {
-        gb->direct.joypad_interrupt_delay -= inst_cycles;
-        if (gb->direct.joypad_interrupt_delay < 0)
-        {
-            // Timer expired, fire the interrupt now.
-            gb->gb_reg.IF |= CONTROL_INTR;
-            // Reset the timer to its inactive state.
-            gb->direct.joypad_interrupt_delay = -1;
-        }
-    }
 }
     return inst_cycles;
 }

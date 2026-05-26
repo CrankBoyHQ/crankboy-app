@@ -425,8 +425,6 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 
     gb_reset(context->gb, context->cgb_mode);
 
-    context->gb->direct.joypad_interrupt_delay = -1;
-
     playdate->system->logToConsole("Initialized gb context.");
     char* save_filename = cb_save_filename(gameScene->rom_filename, false);
     gameScene->save_filename = save_filename;
@@ -614,8 +612,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         playdate->system->logToConsole("Failed to allocate audio scratch buffers.");
         gameScene->audio_temp_capacity = 0;
     }
-
-    gameScene->previous_joypad_state = 0xFF;
 
     gameScene->crank_turbo_accumulator = 0.0f;
     gameScene->crank_turbo_a_active = false;
@@ -2016,35 +2012,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 context->gb->direct.joypad_bits.start = 0;
             if ((buttons & 8))
                 context->gb->direct.joypad_bits.select = 0;
-        }
-
-        if (context->gb->direct.joypad_interrupts)
-        {
-            uint8_t new_joypad_state = context->gb->direct.joypad;
-            uint8_t old_joypad_state = gameScene->previous_joypad_state;
-            uint8_t newly_pressed_mask = (old_joypad_state & ~new_joypad_state);
-
-            // Check if a new button was pressed AND no interrupt is already pending.
-            if (newly_pressed_mask != 0 && context->gb->direct.joypad_interrupt_delay < 0)
-            {
-                uint8_t p1_select = context->gb->gb_reg.P1;
-                bool is_dpad_selected = ((p1_select & 0x10) == 0);
-                bool is_action_selected = ((p1_select & 0x20) == 0);
-
-                bool dpad_pressed = (newly_pressed_mask & 0xF0);
-                bool action_pressed = (newly_pressed_mask & 0x0F);
-
-                // If a relevant button was pressed, schedule an interrupt.
-                if ((is_dpad_selected && dpad_pressed) || (is_action_selected && action_pressed))
-                {
-                    // Schedule the interrupt to fire after a random number of CPU cycles.
-                    // This range (up to ~4560 cycles) simulates the press happening
-                    // at various points within the next few scanlines.
-                    context->gb->direct.joypad_interrupt_delay = rand() % (LCD_LINE_CYCLES * 10);
-                }
-            }
-
-            gameScene->previous_joypad_state = new_joypad_state;
         }
 
         context->gb->overclock = (unsigned)(preferences_overclock);

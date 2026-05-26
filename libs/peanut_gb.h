@@ -1049,8 +1049,7 @@ __section__(".rare.cb") static void __gb_rare_write(
         /* Interrupt Enable Register */
         case 0xFF:
             gb->gb_reg.IE = val;
-            gb->hram[0xFF] = gb->gb_reg.IE;  // duplicated state -- gb_reg.IE is source of truth
-            gb->direct.joypad_interrupts = (val & CONTROL_INTR) != 0;
+            gb->hram[0xFF] = gb->gb_reg.IE;
             return;
         }
     }
@@ -1529,28 +1528,28 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         {
             uint8_t p1_val = gb->gb_reg.P1;
             uint8_t joypad_val = gb->direct.joypad;
-            uint8_t result = 0xFF;  // Default to all high (no buttons pressed, all lines high)
+            uint8_t result = 0xFF;
 
-            // If D-Pad selection line is low, AND the D-pad state.
             if ((p1_val & 0x10) == 0)
-            {
-                // (joypad_val >> 4) gets the upper nibble (D-pad)
-                // | 0xF0 ensures we only affect the lower nibble.
                 result &= (joypad_val >> 4) | 0xF0;
-            }
-
-            // If Action button selection line is low, AND the button state.
             if ((p1_val & 0x20) == 0)
-            {
-                // (joypad_val & 0x0F) gets the lower nibble (buttons)
-                // | 0xF0 ensures we only affect the lower nibble.
                 result &= (joypad_val & 0x0F) | 0xF0;
-            }
 
-            // Finally, combine the input result with the selection bits.
-            // Bits 7 and 6 are always high.
             result = (result & 0x0F) | (p1_val & 0x30) | 0xC0;
 
+            uint8_t new_lower = result & 0x0F;
+            if (new_lower == 0x0F)
+                gb->direct.joypad_int_ready = 1;
+            if (gb->direct.joypad_int_ready)
+            {
+                uint8_t falling = gb->direct.joypad_prev_p1_lower & ~new_lower;
+                if (falling)
+                {
+                    gb->gb_reg.IF |= CONTROL_INTR;
+                    gb->direct.joypad_int_ready = 0;
+                }
+            }
+            gb->direct.joypad_prev_p1_lower = new_lower;
             return result;
         }
 
@@ -5041,6 +5040,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
         /* Set registers to state after CGB boot ROM */
         gb->gb_reg.P1 = 0xCF;
+        gb->direct.joypad_prev_p1_lower = 0x0F;
+        gb->direct.joypad_int_ready = 1;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7F;
         gb->gb_reg.DIV = 0x26;
@@ -5143,6 +5144,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
         /* Set registers to state after DMG boot ROM */
         gb->gb_reg.P1 = 0xCF;
+        gb->direct.joypad_prev_p1_lower = 0x0F;
+        gb->direct.joypad_int_ready = 1;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7E;
         gb->gb_reg.DIV = 0xAB;

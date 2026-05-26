@@ -169,7 +169,6 @@ typedef struct CB_GameScene
     uint8_t adaptive_prev_wx;
     uint8_t adaptive_prev_bgp;
 
-    uint8_t previous_joypad_state;
     uint32_t patches_hash;
 
     unsigned fade_frames;
