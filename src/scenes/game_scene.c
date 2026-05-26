@@ -603,6 +603,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
+    gameScene->prev_joypad = 0xFF;
 
     gameScene->audio_temp_capacity = MAX_AUDIO_SAMPLES_PER_CHUNK;
     gameScene->audio_temp_left = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
@@ -1936,6 +1937,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->direct.joypad_bits.up = !(current_pd_buttons & kButtonUp);
         context->gb->direct.joypad_bits.right = !(current_pd_buttons & kButtonRight);
         context->gb->direct.joypad_bits.down = !(current_pd_buttons & kButtonDown);
+
+        {
+            uint8_t curr = context->gb->direct.joypad;
+            uint8_t changed = gameScene->prev_joypad ^ curr;
+            if (changed)
+            {
+                context->gb->gb_reg.IF |= CONTROL_INTR;
+            }
+            gameScene->prev_joypad = curr;
+        }
 
         if unlikely (preferences_press_a_b)
         {

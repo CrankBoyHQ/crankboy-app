@@ -443,9 +443,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
 
-        uint8_t joypad_prev_p1_lower;  // lower nibble of previous P1 read, used for edge detection
-        uint8_t joypad_int_ready;      // re-arm flag: set when all P1 lower bits are high
-
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
 
@@ -776,17 +773,11 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     );
 
     {
-        size_t prefix_sz =
-            (uintptr_t)&v4_gb->direct.joypad_prev_p1_lower - (uintptr_t)&v4_gb->direct;
-        memcpy(&v4_gb->direct, &v3_gb->direct, prefix_sz);
-
-        v4_gb->direct.joypad_prev_p1_lower = 0;
-        v4_gb->direct.joypad_int_ready = 0;
-
-        size_t v4_tail_off = (uintptr_t)&v4_gb->direct.interlace_mask - (uintptr_t)&v4_gb->direct;
-        size_t v3_tail_off = (uintptr_t)&v3_gb->direct.interlace_mask - (uintptr_t)&v3_gb->direct;
-        size_t tail_sz = sizeof(v4_gb->direct) - v4_tail_off;
-        memcpy((char*)&v4_gb->direct + v4_tail_off, (char*)&v3_gb->direct + v3_tail_off, tail_sz);
+        size_t v4_off = (uintptr_t)&v4_gb->direct.interlace_mask - (uintptr_t)&v4_gb->direct;
+        size_t v3_off = (uintptr_t)&v3_gb->direct.interlace_mask - (uintptr_t)&v3_gb->direct;
+        memcpy(&v4_gb->direct, &v3_gb->direct, v4_off);
+        size_t tail_sz = sizeof(v4_gb->direct) - v4_off;
+        memcpy((char*)&v4_gb->direct + v4_off, (char*)&v3_gb->direct + v3_off, tail_sz);
     }
 
     {

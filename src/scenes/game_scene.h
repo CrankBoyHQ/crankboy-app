@@ -137,6 +137,7 @@ typedef struct CB_GameScene
     int button_hold_frames_remaining;
 
     int lock_button_hold_frames_remaining;
+    uint8_t prev_joypad;
 
     float crank_turbo_accumulator;
     bool crank_turbo_a_active;
