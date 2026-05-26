@@ -4693,10 +4693,6 @@ __shell static void __gb_interrupt(gb_s* gb)
         /* Disable interrupts */
         gb->gb_ime = 0;
         gb->gb_ime_countdown = 0;
-        gb->direct.batching_delayed = 0;
-        // 10-frame grace after first interrupt so title screens render
-        // single-step before batching kicks in (e.g. Super RC Pro-Am)
-        gb->direct.batching_grace_frames = 10;
 
         /* Push Program Counter */
         if (gb->is_cgb_mode)
@@ -5240,8 +5236,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
     gb->direct.crank_menu_accumulation = 0x8000;
     gb->direct.crank_menu_delta = 0;
-    gb->direct.batching_delayed = 1;
-    gb->direct.batching_grace_frames = 0;
+    gb->direct.batching_remaining = 90;
     gb->cgb_fast_mode_active = false;
 
     memset(gb->vram, 0x00, VRAM_SIZE_CGB);
