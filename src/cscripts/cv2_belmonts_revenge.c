@@ -484,10 +484,6 @@ static void on_end(gb_s* gb, ScriptData* data)
 static const struct ScriptRecommendedSetting cv2_recommended[] = {
     {PREFBIT_frame_skip, 1},    // 30fps
     {PREFBIT_blend_frames, 1},  // On
-    RECOMMENDED_SETTINGS_END,
-};
-
-static const struct ScriptRecommendedSetting cv2_recommended_rev_a[] = {
     {PREFBIT_batching, 1},
     RECOMMENDED_SETTINGS_END,
 };
@@ -495,7 +491,6 @@ static const struct ScriptRecommendedSetting cv2_recommended_rev_a[] = {
 static const struct ScriptRecommendedSettings cv2_rec_settings = {
     .message = NULL,
     .settings = cv2_recommended,
-    .settings_A = cv2_recommended_rev_a,
 };
 
 C_SCRIPT{
