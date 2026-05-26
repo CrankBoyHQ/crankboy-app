@@ -480,11 +480,16 @@ char* CB_install_shared_forwarder(void)
 }
 
 // update forwader install if fwdex present and lists differing version,
-// or unconditionally when --update-forwarder was passed.
+// or unconditionally when --update-forwarder was passed,
+// or if (A) button is held (secret method for power-users)
 static void maybe_refresh_shared_forwarder(void)
 {
     bool stale = false;
-    bool forced = CB_App->forceUpdateForwarder;
+    PDButtons bdown;
+    playdate->system->getButtonState(
+        &bdown, NULL, NULL
+    );
+    bool forced = CB_App->forceUpdateForwarder || (bdown & kButtonA);
 
     if (!forced)
     {
@@ -504,7 +509,7 @@ static void maybe_refresh_shared_forwarder(void)
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Updating Forwarders...");
     playdate->system->logToConsole(
         "[fwd] %s -- refreshing shared forwarder for %s",
-        forced ? "--update-forwarder" : "fwdex stale",
+        forced ? "force-update" : "fwdex stale",
         CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
     );
     char* dir = CB_install_shared_forwarder();
