@@ -311,6 +311,7 @@ struct PGB_VERSIONED(gb_s)
     uint8_t* cgb_obj_palette;
     uint8_t cgb_bg_palette_gray[8];
     uint8_t cgb_obj_palette_gray[8];
+    uint8_t cgb_obj_palette_gray_alt[8];
     uint8_t cgb_bg_palette_index;
     uint8_t cgb_obj_palette_index;
 
@@ -403,6 +404,7 @@ struct PGB_VERSIONED(gb_s)
     uint8_t hram[HRAM_SIZE];  // note: includes registers as well as hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
+    uint8_t* lcd_alt;
 
     struct
     {
@@ -442,6 +444,7 @@ struct PGB_VERSIONED(gb_s)
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
+        uint8_t cgb_dual_output : 1;
 
         int joypad_interrupt_delay;
 

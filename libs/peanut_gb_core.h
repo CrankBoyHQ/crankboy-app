@@ -433,7 +433,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 #if PGB_IS_CGB
     const uint32_t* line_cgb_priority, bool cgb_master_priority,
 #endif
-    uint8_t* pixels
+    uint8_t* pixels, uint8_t* pixels_alt
 )
 {
     uint8_t number_of_sprites = 0;
@@ -556,6 +556,14 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
                     uint8_t color_value = (OBP >> (c * 2 + c_add * 2)) & 3;
 #endif
                     $(__gb_draw_pixel)(pixels, disp_x, color_value);
+#if PGB_IS_CGB
+                    if (pixels_alt)
+                    {
+                        uint8_t obj_pal_dark = gb->cgb_obj_palette_gray_alt[OF & OBJ_CGB_PALETTE];
+                        uint8_t col_dark = (obj_pal_dark >> (c * 2)) & 3;
+                        $(__gb_draw_pixel)(pixels_alt, disp_x, col_dark);
+                    }
+#endif
                 }
             }
         next_sprite_pixel:
@@ -604,6 +612,19 @@ __core_section("draw") static void __cgb_merge_tiles(
     *pri = (uint8_t)((lo_p | hi_p) >> subx) | (uint8_t)((lo_hp | hi_hp) << (8 - subx));
 }
 
+__core_section("draw") static void __cgb_write_dark(
+    uint16_t tile_hi, uint16_t rm_lo_dark, const uint8_t* restrict lut_hi_dark, int subx,
+    uint8_t* restrict pixels_alt, int x, uint16_t* restrict rm_hi_dark_out
+)
+{
+    uint8_t lo_h = (uint8_t)tile_hi;
+    uint8_t hi_h = (uint8_t)(tile_hi >> 8);
+    uint16_t rm_hi_dark = __cgb_remap_tile(lo_h, hi_h, lut_hi_dark);
+    uint16_t* out = (uint16_t*)(pixels_alt + x * 2);
+    *out = (subx == 0) ? rm_lo_dark : (rm_lo_dark >> (subx * 2)) | (rm_hi_dark << (16 - subx * 2));
+    *rm_hi_dark_out = rm_hi_dark;
+}
+
 __core_section("draw") static uint16_t __cgb_fetch_tile(
     uint8_t* restrict tile_map, uint8_t* restrict attr_map, uint16_t* restrict reg_data,
     uint16_t* restrict flip_data, uint8_t map_idx, int tiledata_offset, uint8_t* out_palette
@@ -643,6 +664,10 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
 #if PGB_IS_CGB
     uint32_t line_cgb_priority[((LCD_WIDTH + 31) / 32)];
+    uint8_t* pixels_alt =
+        gb->direct.cgb_dual_output ? &gb->lcd_alt[gb->gb_reg.LY * LCD_WIDTH_PACKED] : NULL;
+#else
+    uint8_t* pixels_alt = NULL;
 #endif
 
     const uint32_t line_priority_len = PEANUT_GB_ARRAYSIZE(line_priority);
@@ -691,6 +716,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     // clear row
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
         ((uint32_t*)pixels)[i] = 0;
+#if PGB_IS_CGB
+    if (pixels_alt)
+        for (int i = 0; i < LCD_WIDTH / 16; ++i)
+            ((uint32_t*)pixels_alt)[i] = 0;
+#endif
 
 // remaps 16-bit lo (t1) and hi (t2) colours to 2bbp 32-bit v
 // Optimized version: processes 4 pixels at a time instead of 1
@@ -789,6 +819,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
 #if PGB_IS_CGB
 #define CGB_LUT(gb, pal_idx) ((gb)->cgb_bg_palette + 64 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
+#define CGB_LUT_DARK(gb, pal_idx) \
+    ((gb)->cgb_bg_palette + 64 + 8 * 256 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
 
         uint8_t tile_palette_lo;
         uint16_t vram_tile_data_hi = __cgb_fetch_tile(
@@ -800,6 +832,14 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t lo_p = (uint8_t)vram_tile_data_hi;
         uint8_t hi_p = (uint8_t)(vram_tile_data_hi >> 8);
         uint16_t rm_lo = __cgb_remap_tile(lo_p, hi_p, lut_lo);
+
+        const uint8_t* lut_lo_dark = NULL;
+        uint16_t rm_lo_dark = 0;
+        if (pixels_alt)
+        {
+            lut_lo_dark = CGB_LUT_DARK(gb, tile_palette_lo);
+            rm_lo_dark = __cgb_remap_tile(lo_p, hi_p, lut_lo_dark);
+        }
 
         for (int x = 0; x < (wx + 7) / 8; ++x)
         {
@@ -815,6 +855,9 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
 
             const uint8_t* lut_hi = CGB_LUT(gb, tile_palette_hi_val);
+            const uint8_t* lut_hi_dark = NULL;
+            if (pixels_alt)
+                lut_hi_dark = CGB_LUT_DARK(gb, tile_palette_hi_val);
             uint8_t pri;
             uint16_t rm_hi;
             uint8_t pri_hi_byte;
@@ -822,6 +865,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 vram_tile_data_lo, vram_tile_data_hi, rm_lo, true, lut_lo, lut_hi, subx,
                 (uint16_t*)(pixels + x * 2), &pri, &rm_hi, &pri_hi_byte
             );
+
+            uint16_t rm_hi_dark = 0;
+            if (pixels_alt)
+                __cgb_write_dark(
+                    vram_tile_data_hi, rm_lo_dark, lut_hi_dark, subx, pixels_alt, x, &rm_hi_dark
+                );
 
             uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> subx) : 0;
             if (pri_hi && subx)
@@ -832,8 +881,14 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             rm_lo = rm_hi;
             lut_lo = lut_hi;
             tile_palette_lo = tile_palette_hi_val;
+            if (pixels_alt)
+            {
+                rm_lo_dark = rm_hi_dark;
+                lut_lo_dark = lut_hi_dark;
+            }
         }
 #undef CGB_LUT
+#undef CGB_LUT_DARK
 #else
         unsigned bank_offset = 0;
         uint8_t tile_hi = vram_line_tiles[(bg_x / 8) % 32];
@@ -917,6 +972,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
 #if PGB_IS_CGB
 #define CGB_LUT(gb, pal_idx) ((gb)->cgb_bg_palette + 64 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
+#define CGB_LUT_DARK(gb, pal_idx) \
+    ((gb)->cgb_bg_palette + 64 + 8 * 256 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
 
         uint8_t win_palette_lo;
         uint16_t vram_tile_data_hi = __cgb_fetch_tile(
@@ -946,6 +1003,14 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t hi_p = (uint8_t)(vram_tile_data_hi >> 8);
         uint16_t rm_lo = __cgb_remap_tile(lo_p, hi_p, lut_lo);
 
+        const uint8_t* lut_lo_dark = NULL;
+        uint16_t rm_lo_dark = 0;
+        if (pixels_alt)
+        {
+            lut_lo_dark = CGB_LUT_DARK(gb, win_palette_lo);
+            rm_lo_dark = __cgb_remap_tile(lo_p, hi_p, lut_lo_dark);
+        }
+
         for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
         {
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
@@ -957,6 +1022,9 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             );
 
             const uint8_t* lut_hi = CGB_LUT(gb, tile_palette_hi_val);
+            const uint8_t* lut_hi_dark = NULL;
+            if (pixels_alt)
+                lut_hi_dark = CGB_LUT_DARK(gb, tile_palette_hi_val);
             uint8_t pri;
             uint16_t rm_hi;
             uint8_t pri_hi_byte;
@@ -964,6 +1032,12 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 vram_tile_data_lo, vram_tile_data_hi, rm_lo, true, lut_lo, lut_hi, subx,
                 (uint16_t*)(pixels + x * 2), &pri, &rm_hi, &pri_hi_byte
             );
+
+            uint16_t rm_hi_dark = 0;
+            if (pixels_alt)
+                __cgb_write_dark(
+                    vram_tile_data_hi, rm_lo_dark, lut_hi_dark, subx, pixels_alt, x, &rm_hi_dark
+                );
 
             if (bgmask)
             {
@@ -976,6 +1050,17 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
                 uint8_t* win_out = pixels + x * 2;
                 win_out[0] = (win_out[0] & mask0_byte) | (out0 & ~mask0_byte);
                 win_out[1] = (win_out[1] & mask2_byte) | (out2 & ~mask2_byte);
+#if PGB_IS_CGB
+                if (pixels_alt)
+                {
+                    uint16_t d_merged = *(uint16_t*)(pixels_alt + x * 2);
+                    uint8_t d_out0 = (uint8_t)d_merged;
+                    uint8_t d_out2 = (uint8_t)(d_merged >> 8);
+                    uint8_t* d_win_out = pixels_alt + x * 2;
+                    d_win_out[0] = (d_win_out[0] & mask0_byte) | (d_out0 & ~mask0_byte);
+                    d_win_out[1] = (d_win_out[1] & mask2_byte) | (d_out2 & ~mask2_byte);
+                }
+#endif
             }
 
             line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
@@ -989,10 +1074,16 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             rm_lo = rm_hi;
             lut_lo = lut_hi;
             win_palette_lo = tile_palette_hi_val;
+            if (pixels_alt)
+            {
+                rm_lo_dark = rm_hi_dark;
+                lut_lo_dark = lut_hi_dark;
+            }
             // all further chunks should completely mask out the background
             bgmask = 0;
         }
 #undef CGB_LUT
+#undef CGB_LUT_DARK
 #else
         for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
         {
@@ -1059,7 +1150,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 #if PGB_IS_CGB
             line_cgb_priority, cgb_master_priority,
 #endif
-            pixels
+            pixels, pixels_alt
         );
     }
 }

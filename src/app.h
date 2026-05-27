@@ -70,7 +70,7 @@ enum cgb_support_e
  * we should use use. 0x2760 is possible but leaves no headroom if there
  * ae any changes to the Playdate OS in the future.
  */
-#define PLAYDATE_STACK_SIZE 0x2700
+#define PLAYDATE_STACK_SIZE 0x2710
 
 #define FPS_AVG_DECAY 0.8f
 

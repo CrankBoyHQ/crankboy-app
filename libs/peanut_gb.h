@@ -36,7 +36,6 @@
 #include "../src/preferences.h"
 #include "../src/utility.h"
 
-// 0 = normal (use preferences_cgb_brightness), 1 = blend-bright, 2 = blend-dark
 extern uint8_t cgb_blend_stage;
 
 #include <stddef.h> /* Required for offsetof */
@@ -740,42 +739,13 @@ __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
             return 2;
         return 3;
     default:
-        switch (preferences_cgb_brightness)
-        {
-        case 0:
-            // Auto: fallback to Normal when not in blend mode
-            if (sum >= 68)
-                return 0;
-            if (sum >= 38)
-                return 1;
-            if (sum >= 15)
-                return 2;
-            return 3;
-        case 1:
-            if (sum >= 63)
-                return 0;
-            if (sum >= 35)
-                return 1;
-            if (sum >= 12)
-                return 2;
-            return 3;
-        case 3:
-            if (sum >= 78)
-                return 0;
-            if (sum >= 50)
-                return 1;
-            if (sum >= 22)
-                return 2;
-            return 3;
-        default:
-            if (sum >= 68)
-                return 0;
-            if (sum >= 38)
-                return 1;
-            if (sum >= 15)
-                return 2;
-            return 3;
-        }
+        if (sum >= 68)
+            return 0;
+        if (sum >= 38)
+            return 1;
+        if (sum >= 15)
+            return 2;
+        return 3;
     }
 }
 
@@ -797,7 +767,9 @@ __section__(".rare") static void __cgb_build_remap_lut(uint8_t* lut, uint8_t pal
     }
 }
 
-__section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t pal_idx)
+__section__(".rare") static void __cgb_update_bg_gray_palette(
+    gb_s* gb, uint8_t pal_idx, int lut_offset
+)
 {
     uint8_t pal = 0;
     for (int c = 0; c < 4; c++)
@@ -812,10 +784,12 @@ __section__(".rare") static void __cgb_update_bg_gray_palette(gb_s* gb, uint8_t 
         pal |= (uint8_t)(gray << (2 * c));
     }
     gb->cgb_bg_palette_gray[pal_idx] = pal;
-    __cgb_build_remap_lut(gb->cgb_bg_palette + 64 + pal_idx * 256, pal);
+    __cgb_build_remap_lut(gb->cgb_bg_palette + 64 + (pal_idx + lut_offset) * 256, pal);
 }
 
-__section__(".rare") static void __cgb_update_obj_gray_palette(gb_s* gb, uint8_t pal_idx)
+__section__(".rare") static void __cgb_update_obj_gray_palette(
+    gb_s* gb, uint8_t pal_idx, uint8_t* target
+)
 {
     uint8_t pal = 0;
     for (int c = 0; c < 4; c++)
@@ -829,15 +803,18 @@ __section__(".rare") static void __cgb_update_obj_gray_palette(gb_s* gb, uint8_t
         uint8_t gray = __cgb_gray_from_sum(sum);
         pal |= (uint8_t)(gray << (2 * c));
     }
-    gb->cgb_obj_palette_gray[pal_idx] = pal;
+    target[pal_idx] = pal;
 }
 
 __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
 {
+    int lut_offset = (cgb_blend_stage == 2) ? 8 : 0;
+    uint8_t* obj_target =
+        (cgb_blend_stage == 2) ? gb->cgb_obj_palette_gray_alt : gb->cgb_obj_palette_gray;
     for (int i = 0; i < 8; i++)
     {
-        __cgb_update_bg_gray_palette(gb, i);
-        __cgb_update_obj_gray_palette(gb, i);
+        __cgb_update_bg_gray_palette(gb, i, lut_offset);
+        __cgb_update_obj_gray_palette(gb, i, obj_target);
     }
 }
 
@@ -962,7 +939,7 @@ __section__(".rare.cb") static void __gb_rare_write(
                 {
                     uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
-                    __cgb_update_bg_gray_palette(gb, idx / 8);
+                    __cgb_update_bg_gray_palette(gb, idx / 8, 0);
                     if (gb->cgb_bg_palette_index & 0x80)
                         gb->cgb_bg_palette_index =
                             (gb->cgb_bg_palette_index & 0x80) | ((idx + 1) & 0x3F);
@@ -982,7 +959,7 @@ __section__(".rare.cb") static void __gb_rare_write(
                 {
                     uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
-                    __cgb_update_obj_gray_palette(gb, idx / 8);
+                    __cgb_update_obj_gray_palette(gb, idx / 8, gb->cgb_obj_palette_gray);
                     if (gb->cgb_obj_palette_index & 0x80)
                         gb->cgb_obj_palette_index =
                             (gb->cgb_obj_palette_index & 0x80) | ((idx + 1) & 0x3F);
@@ -5100,9 +5077,10 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->cgb_obj_palette_index = 0x40;
         for (int i = 0; i < 8; i++)
         {
-            __cgb_update_bg_gray_palette(gb, i);
-            __cgb_update_obj_gray_palette(gb, i);
+            __cgb_update_bg_gray_palette(gb, i, 0);
+            __cgb_update_obj_gray_palette(gb, i, gb->cgb_obj_palette_gray);
         }
+        memset(gb->cgb_obj_palette_gray_alt, 0, sizeof(gb->cgb_obj_palette_gray_alt));
 
         /* CGB internal timer is 0x267C */
         gb->counter.div_count = 0x7C;
@@ -5345,7 +5323,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_ff7x[2] = 0;
     gb->cgb_hdma_active = false;
 
-#define CGB_PALETTE_LUT_SIZE (8 * 256)
+#define CGB_PALETTE_LUT_SIZE (16 * 256)
     gb->cgb_bg_palette = malloc(64 + CGB_PALETTE_LUT_SIZE);
     gb->cgb_obj_palette = malloc(64);
     memset(gb->cgb_bg_palette, 0, 64 + CGB_PALETTE_LUT_SIZE);
