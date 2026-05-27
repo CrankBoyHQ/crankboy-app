@@ -68,9 +68,10 @@ enum cgb_support_e
  *
  * But we also needed this to support for CGB. This is the absolute max
  * we should use use. 0x2760 is possible but leaves no headroom if there
- * ae any changes to the Playdate OS in the future.
+ * are any changes to the Playdate OS in the future. 0x2720 is currently
+ * used to avoid occasional DTCM crashes on RevA devices.
  */
-#define PLAYDATE_STACK_SIZE 0x2710
+#define PLAYDATE_STACK_SIZE 0x2720
 
 #define FPS_AVG_DECAY 0.8f
 
