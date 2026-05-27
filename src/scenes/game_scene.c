@@ -64,10 +64,6 @@ bool gbScreenRequiresFullRefresh;
 // Consecutive slow frames required before activating interlacing.
 #define INTERLACE_SLOW_FRAMES_REQUIRED 5
 
-// Enables console logging for the dirty line update mechanism.
-// WARNING: Performance-intensive. Use for debugging only.
-#define LOG_DIRTY_LINES 0
-
 CB_GameScene* audioGameScene = NULL;
 
 void CB_reset_audio_sync_state(void)
@@ -307,10 +303,6 @@ static const char* buttonMenuOptions[] = {
 };
 
 static const char* quitGameOptions[] = {"No", "Yes", NULL};
-
-#if ENABLE_RENDER_PROFILER
-static bool CB_run_profiler_on_next_frame = false;
-#endif
 
 void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 {
@@ -699,13 +691,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     generate_dither_luts();
 
     CB_GameScene_selector_init(gameScene);
-
-#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
-    int highlightWidth = 10;
-    gameScene->debug_highlightFrame = PDRectMake(
-        CB_LCD_X - 1 - highlightWidth, 0, highlightWidth, playdate->display->getHeight()
-    );
-#endif
 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
@@ -2035,10 +2020,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             playdate->graphics->clear(game_picture_background_color);
         }
 
-#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
-        memset(gameScene->debug_updatedRows, 0, LCD_ROWS);
-#endif
-
         context->gb->direct.sram_updated = 0;
 
         bool skip_frame = false;
@@ -2400,50 +2381,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }
 
-#if LOG_DIRTY_LINES
-            playdate->system->logToConsole("--- Frame Update ---");
-            int range_start = 0;
-            bool is_dirty_range = (line_has_changed[0] & 1);
-
-            for (int y = 1; y < LCD_HEIGHT; y++)
-            {
-                bool is_dirty_current = (line_has_changed[y >> 4] >> (y & 0xF)) & 1;
-
-                if (is_dirty_current != is_dirty_range)
-                {
-                    if (range_start == y - 1)
-                    {
-                        playdate->system->logToConsole(
-                            "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
-                        );
-                    }
-                    else
-                    {
-                        playdate->system->logToConsole(
-                            "Lines %d-%d: %s", range_start, y - 1,
-                            is_dirty_range ? "Updated" : "Omitted"
-                        );
-                    }
-                    range_start = y;
-                    is_dirty_range = is_dirty_current;
-                }
-            }
-
-            if (range_start == LCD_HEIGHT - 1)
-            {
-                playdate->system->logToConsole(
-                    "Line %d: %s", range_start, is_dirty_range ? "Updated" : "Omitted"
-                );
-            }
-            else
-            {
-                playdate->system->logToConsole(
-                    "Lines %d-%d: %s", range_start, LCD_HEIGHT - 1,
-                    is_dirty_range ? "Updated" : "Omitted"
-                );
-            }
-#endif
-
             void (*update_fb_dirty_lines_)(
                 uint8_t* restrict framebuffer, uint8_t* restrict lcd,
                 const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
@@ -2455,43 +2392,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             uint8_t* dither_lut0 = CB_dither_lut_row0;
             uint8_t* dither_lut1 = CB_dither_lut_row1;
-
-#if ENABLE_RENDER_PROFILER
-            if (CB_run_profiler_on_next_frame)
-            {
-                CB_run_profiler_on_next_frame = false;
-
-                for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                {
-                    line_has_changed[i] = 0xFFFF;
-                }
-
-                float startTime = playdate->system->getElapsedTime();
-
-                update_fb_dirty_lines_(
-                    playdate->graphics->getFrame(), current_lcd, line_has_changed,
-                    playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, dither_lut0,
-                    dither_lut1
-                );
-
-                float endTime = playdate->system->getElapsedTime();
-                float totalRenderTime = endTime - startTime;
-                float averageLineRenderTime = totalRenderTime / (float)LCD_HEIGHT;
-
-                playdate->system->logToConsole("--- Profiler Result ---");
-                playdate->system->logToConsole(
-                    "Total Render Time for %d lines: %.8f s", LCD_HEIGHT, totalRenderTime
-                );
-                playdate->system->logToConsole(
-                    "Average Line Render Time: %.8f s", averageLineRenderTime
-                );
-                playdate->system->logToConsole(
-                    "New #define value suggestion: %.8ff", averageLineRenderTime
-                );
-
-                return;
-            }
-#endif
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
@@ -2687,26 +2587,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
 
             playdate->graphics->setDrawMode(kDrawModeCopy);
-
-#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
-            PDRect highlightFrame = gameScene->debug_highlightFrame;
-            playdate->graphics->fillRect(
-                highlightFrame.x, highlightFrame.y, highlightFrame.width, highlightFrame.height,
-                kColorBlack
-            );
-
-            for (int y = 0; y < CB_LCD_HEIGHT; y++)
-            {
-                int absoluteY = CB_LCD_Y + y;
-
-                if (gameScene->debug_updatedRows[absoluteY])
-                {
-                    playdate->graphics->fillRect(
-                        highlightFrame.x, absoluteY, highlightFrame.width, 1, kColorWhite
-                    );
-                }
-            }
-#endif
 
             if (gameScene->fade_frames > 0)
             {
@@ -3901,12 +3781,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         case 0x74:  // t (trace one frame of instructions)
             g_trace_frames_remaining = 1;
             playdate->system->logToConsole("Trace armed: next frame will be logged.");
-            break;
-#endif
-#if ENABLE_RENDER_PROFILER
-        case 0x39:  // 9
-            playdate->system->logToConsole("Profiler triggered. Will run on next frame.");
-            CB_run_profiler_on_next_frame = true;
             break;
 #endif
         }

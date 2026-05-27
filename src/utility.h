@@ -38,8 +38,6 @@ extern const uint8_t lcdp_t_50[16];  // transparent white 50%
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
 #define CB_DEBUG false
-#define CB_DEBUG_UPDATED_ROWS false
-#define ENABLE_RENDER_PROFILER false
 
 #ifndef ENABLE_CPU_VALIDATION
 /* Enables (1) or disables (0) CPU validation in the Simulator.

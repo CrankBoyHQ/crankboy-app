@@ -121,11 +121,6 @@ typedef struct CB_GameScene
 
     CB_CrankSelector selector;
 
-#if CB_DEBUG && CB_DEBUG_UPDATED_ROWS
-    PDRect debug_highlightFrame;
-    bool debug_updatedRows[LCD_ROWS];
-#endif
-
     float prev_dt;
 
     int next_frames_elapsed;
