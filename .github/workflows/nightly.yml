@@ -49,6 +49,10 @@ jobs:
               with:
                   lfs: true
 
+            # Step 1.1: Initialize source submodules
+            - name: Initialize Source Submodules
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+
             # Step 2: Download or fallback to submodule for toolchain
             - name: Download Toolchain or Fallback to Submodule
               run: |
@@ -155,6 +159,10 @@ jobs:
               with:
                   lfs: true
 
+            # Step 1.1: Initialize source submodules
+            - name: Initialize Source Submodules
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+
             # Step 2: Download or fallback to submodule for toolchain
             - name: Download Toolchain or Fallback to Submodule
               run: |
@@ -260,6 +268,10 @@ jobs:
               uses: actions/checkout@v6
               with:
                   lfs: true
+
+            # Step 1.1: Initialize source submodules
+            - name: Initialize Source Submodules
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
 
             # Step 2: Download or fallback to submodule for SDK
             - name: Download SDK or Fallback to Submodule
@@ -382,6 +394,9 @@ jobs:
               uses: actions/checkout@v6
               with:
                   lfs: true
+
+            - name: Initialize Source Submodules
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
 
             - name: Setup MSYS2 MinGW64
               uses: msys2/setup-msys2@v2
