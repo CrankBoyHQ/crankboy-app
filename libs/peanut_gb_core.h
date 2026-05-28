@@ -767,7 +767,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     {
         if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
         {
-            if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.LY >= gb->display.WY))
+            if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.LY >= gb->gb_reg.WY))
             {
                 gb->display.window_clear++;
             }
@@ -778,7 +778,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     __builtin_prefetch(&gb->gb_reg.LCDC, 0);
     __builtin_prefetch(&gb->gb_reg.WX, 0);
     __builtin_prefetch(&gb->gb_reg.BGP, 0);
-    __builtin_prefetch(&gb->display.WY, 0);
+    __builtin_prefetch(&gb->gb_reg.WY, 0);
 
     uint8_t* pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
@@ -811,7 +811,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         // non-CGB mode: window is also disabled if BG is disabled
         (gb->gb_reg.LCDC & LCDC_BG_ENABLE) &&
 #endif
-        (gb->gb_reg.LY >= gb->display.WY) && (gb->gb_reg.WX < LCD_WIDTH + 7))
+        (gb->gb_reg.LY >= gb->gb_reg.WY) && (gb->gb_reg.WX < LCD_WIDTH + 7))
     {
         if (gb->gb_reg.WX == 166)
         {
@@ -1966,7 +1966,7 @@ done_instr_timing:
                 mode3_cycles += scx_mod8;
 
                 bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
-                                   (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->display.WY);
+                                   (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->gb_reg.WY);
 #if PGB_IS_DMG
                 win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
 #endif
@@ -2093,7 +2093,6 @@ done_instr_timing:
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
                     gb->display.window_clear = 0;
-                    gb->display.WY = gb->gb_reg.WY;
 
                     $(__gb_check_lyc)(gb);
                     $(__gb_update_stat_irq)(gb);
