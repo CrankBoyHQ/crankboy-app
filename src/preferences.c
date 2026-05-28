@@ -65,9 +65,6 @@ void preferences_init(void)
         preferences_read_from_disk(CB_globalPrefsPath);
     }
 
-    // dither pattern default non-determinism
-    preference_default_value[PREFI_dither_pattern] = preferences_dither_pattern % 2;
-
     // paranoia
     preferences_per_game = 0;
 }
