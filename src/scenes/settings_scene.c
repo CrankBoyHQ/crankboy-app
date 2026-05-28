@@ -1009,7 +1009,6 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         return NULL;
     memset(entries, 0, sizeof(OptionsMenuEntry) * max_entries);
 
-    /* clang-format off */
     int i = -1;
 
     if (gameScene)
@@ -1018,8 +1017,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Save state",
             .values = slot_labels,
-            .description =
-                "Create a snapshot of\nthis moment, which\ncan be resumed later.",
+            .description = "Create a snapshot of\nthis moment, which\ncan be resumed later.",
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .show_value_only_on_hover = 1,
@@ -1033,9 +1031,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Load state",
             .values = slot_labels,
-            .description =
-                "Restore the previously-\ncreated snapshot."
-            ,
+            .description = "Restore the previously-\ncreated snapshot.",
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .show_value_only_on_hover = 1,
@@ -1050,7 +1046,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Get ROMs",
-            .description = "Download \"homebrew\"\ngames for free from\nHomebrew Hub\n(hh.gbdev.io).\n \nThis feature is still\nexperimental and could\ncrash, or downloads\ncould silently fail.\n \nRequires internet.\n \nParental lock is available.",
+            .description =
+                "Download \"homebrew\"\ngames for free from\nHomebrew Hub\n(hh.gbdev.io).\n \nThis "
+                "feature is still\nexperimental and could\ncrash, or downloads\ncould silently "
+                "fail.\n \nRequires internet.\n \nParental lock is available.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_homebrew_hub,
@@ -1060,7 +1059,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
         {
             entries[i].locked = true;
-            entries[i].description = "Homebrew Hub API\nnot found. Check\nthis pdx file:\n" HOMEBREW_HUB_API_FILE;
+            entries[i].description =
+                "Homebrew Hub API\nnot found. Check\nthis pdx file:\n" HOMEBREW_HUB_API_FILE;
         }
     }
 
@@ -1068,7 +1068,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Patches",
-            .description = "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to verify\nthat a hack is compatible\nwith your ROM before\napplying it.\n \nParental lock is available.",
+            .description =
+                "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to "
+                "verify\nthat a hack is compatible\nwith your ROM before\napplying it.\n "
+                "\nParental lock is available.",
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
@@ -1088,7 +1091,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "Save Data",
             .values = save_slot_labels,
             .description =
-                "Select which save file \nto use for the ROM's\ninternal save data.\n \nIf you apply softpatches,\nyou may wish to use\ndifferent saves for each.\n \nNote: \"save states\" are\na different concept.\n",
+                "Select which save file \nto use for the ROM's\ninternal save data.\n \nIf you "
+                "apply softpatches,\nyou may wish to use\ndifferent saves for each.\n \nNote: "
+                "\"save states\" are\na different concept.\n",
             .pref_var = &preferences_save_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .suppress_nondefault_indicator = 1,
@@ -1099,7 +1104,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         if (!selectedGame->names->rom_has_battery)
         {
             entries[i].locked = true;
-            entries[i].description = "Because this ROM does\nnot use internal save\ndata, this feature\nis disabled.";
+            entries[i].description =
+                "Because this ROM does\nnot use internal save\ndata, this feature\nis disabled.";
         }
         else
         {
@@ -1108,12 +1114,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             char* save_file = cb_save_filename(selectedGame->fullpath, false);
             if (cb_file_exists(save_file, kFileReadData))
             {
-                save_info = aprintf("Save data exists in %s.\n \n%s", save_slot_labels[preferences_save_slot], entries[i].description);
+                save_info = aprintf(
+                    "Save data exists in %s.\n \n%s", save_slot_labels[preferences_save_slot],
+                    entries[i].description
+                );
                 entries[i].description = save_info;
             }
             else
             {
-                save_info = aprintf("%s is empty.\n \n%s", save_slot_labels[preferences_save_slot], entries[i].description);
+                save_info = aprintf(
+                    "%s is empty.\n \n%s", save_slot_labels[preferences_save_slot],
+                    entries[i].description
+                );
                 entries[i].description = save_info;
             }
             cb_free(save_file);
@@ -1183,15 +1195,13 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         script_add_settings(gameScene->script);
         if (script_settings_info_count > 0)
         {
-            entries[++i] = (OptionsMenuEntry){
-                .name = "Script",
-                .header = 1
-            };
+            entries[++i] = (OptionsMenuEntry){.name = "Script", .header = 1};
 
             for (int j = 0; j < script_settings_info_count; ++j)
             {
                 struct ScriptSettingsInfo* info = &script_settings_info[j];
-                if (*info->preference >= info->maxvalue) *info->preference = 0;
+                if (*info->preference >= info->maxvalue)
+                    *info->preference = 0;
                 entries[++i] = (OptionsMenuEntry){
                     .name = info->name,
                     .values = (const char**)info->options,
@@ -1203,10 +1213,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         }
     }
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Audio",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Audio", .header = 1};
 
     // sound
     {
@@ -1226,13 +1233,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Timing",
         .values = audio_sync_labels,
-        .description = "Change how audio is timed.\n \n"
-                       "Fast:\nGood performance. Sound\n"
-                       "timing is less precise.\n \n"
-                       "Accurate:\nMost faithful audio.\n"
-                       "Uses a buffer to ensure\n"
-                       "sound pitch and speed are\n"
-                       "perfect. Comes at a minor\nperformance cost.",
+        .description =
+            "Change how audio is timed.\n \n"
+            "Fast:\nGood performance. Sound\n"
+            "timing is less precise.\n \n"
+            "Accurate:\nMost faithful audio.\n"
+            "Uses a buffer to ensure\n"
+            "sound pitch and speed are\n"
+            "perfect. Comes at a minor\nperformance cost.",
         .pref_var = &preferences_audio_sync,
         .max_value = 2,
     };
@@ -1255,18 +1263,16 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = CB_App->mirror_active ? "Mirror/Aux" : "Headphones",
         .values = audio_output_labels,
-        .description = "Select the audio output\nmode when an aux cable\nis connected."
-                       "\n \nStereo:\nImmersive sound with\nspatial separation.\n \nMono:\n"
-                       "Combines channels, which\nimproves performance.\n \n"
-                       "Also used for Mirror.",
+        .description =
+            "Select the audio output\nmode when an aux cable\nis connected.\n \n"
+            "Stereo:\nImmersive sound with\nspatial separation.\n \nMono:\n"
+            "Combines channels, which\nimproves performance.\n \n"
+            "Also used for Mirror.",
         .pref_var = &preferences_headphone_audio,
         .max_value = 2,
     };
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Display",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Display", .header = 1};
 
     // frame skip
     entries[++i] = (OptionsMenuEntry){
@@ -1276,7 +1282,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
             "for most games.\n \n"
             "Can generally be disabled\nif a game doesn't feature\nscrolling backgrounds.\n \n"
-            "\"Adaptive\": experimental,\nswitches between 30/60\ndepending on if the\nscreen is scrolling etc.",
+            "\"Adaptive\": experimental,\nswitches between 30/60\ndepending on if the\nscreen is "
+            "scrolling etc.",
         .pref_var = &preferences_frame_skip,
         .max_value = 3,
         .rebuild_when_changed = 1,
@@ -1284,13 +1291,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // frame blending
-    if (preferences_frame_skip == 1)
+    if ((libraryScene && preferences_frame_skip == 1) ||
+        (!gameScene->context->cgb_mode && preferences_frame_skip == 1))
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
             .description =
-                "Blends frames to create\na transparency effect.\n \nThis improves visuals\nat a cost to performance.\n \nAlways on for CGB games\nwhen Brightness is Auto\nand 30 FPS is enabled.",
+                "Only available when\n30 FPS mode is enabled.\n \nAlways active during "
+                "CGB\n(\"Color\") emulation and\nchanging this setting has\nno effect.",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -1302,7 +1311,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
-            .description = "Only available when\n30 FPS mode is enabled.",
+            .description =
+                "Only available when\n30 FPS mode is enabled.\n \nAlways active during "
+                "CGB\n(\"Color\") emulation and\nchanging this setting has\nno effect.",
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
             .on_press = NULL,
@@ -1316,7 +1327,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
             .values = dynamic_rate_labels,
-            .description = "Only available when\n30 FPS mode is disabled,\nor when frame blending\nis enabled.",
+            .description =
+                "Only available when\n30 FPS mode is disabled,\nor when frame blending\nis "
+                "enabled.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 0,
             .rebuild_when_changed = 1,
@@ -1345,8 +1358,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Dither",
         .values = dither_pattern_labels,
         .description =
-            "How to represent\n4-color graphics\non a 1-bit display.\n \nL: bias toward light\n \nD: bias toward dark"
-        ,
+            "How to represent\n4-color graphics\non a 1-bit display.\n \n"
+            "L: bias toward light\n \n"
+            "D: bias toward dark",
         .pref_var = &preferences_dither_pattern,
         .max_value = 6,
         .graphics_test = 1,
@@ -1358,8 +1372,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "First scaling line",
         .values = dither_line_labels,
         .description =
-            "Due to the 3:5 ratio\nbetween the GB's and\nPlaydate's vertical\nresolutions, 1 in every\n3 scanlines must be\nvertically squished.\n \nThis means there are three\nchoices for which lines are\nto be the ones to squish.\n \nIf text is uneven, try\nadjusting this."
-        ,
+            "Due to the 3:5 ratio\nbetween the GB's and\nPlaydate's vertical\nresolutions, 1 in "
+            "every\n3 scanlines must be\nvertically squished.\n \nThis means there are "
+            "three\nchoices for which lines are\nto be the ones to squish.\n \nIf text is uneven, "
+            "try\nadjusting this.",
         .pref_var = &preferences_dither_line,
         .max_value = 3,
         .on_press = NULL
@@ -1379,19 +1395,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Crank",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Crank", .header = 1};
 
     // crank mode
     entries[++i] = (OptionsMenuEntry){
         .name = "Mode",
         .values = crank_mode_labels,
         .description =
-            "Assign a (turbo) function\nto the crank.\n \nStart/Select:\nBack = Start, Front = "
-            "Select\nSee 'Down' option below.\n \nTurbo A/B:\nCW = A, CCW = B\n \nTurbo "
-            "B/A:\nCW = B, CCW = A",
+            "Assign a (turbo) function\nto the crank.\n \n"
+            "Start/Select:\nBack = Start, Front = Select\n"
+            "See 'Down' option below.\n \n"
+            "Turbo A/B:\nCW = A, CCW = B\n \n"
+            "Turbo B/A:\nCW = B, CCW = A",
         .pref_var = &preferences_crank_mode,
         .max_value = 4,
         .rebuild_when_changed = 1,
@@ -1404,8 +1419,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Down",
             .values = crank_down_action_labels,
-            .description = "When the crank is pointed\ndown (between Start and\n"
-                           "Select), choose whether\nto hold Start + Select or\ndo nothing.",
+            .description =
+                "When the crank is pointed\ndown (between Start and\n"
+                "Select), choose whether\nto hold Start + Select or\ndo nothing.",
             .pref_var = &preferences_crank_down_action,
             .max_value = 2,
             .on_press = NULL,
@@ -1427,8 +1443,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Undock",
         .values = gb_button_labels,
-        .description =
-            "Assign a button input\nfor undocking the crank.\n \n",
+        .description = "Assign a button input\nfor undocking the crank.\n \n",
         .pref_var = &preferences_crank_undock_button,
         .max_value = 4,
         .on_press = NULL
@@ -1438,24 +1453,21 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Dock",
         .values = gb_button_labels,
-        .description =
-            "Assign a button input\nfor docking the crank.\n \n",
+        .description = "Assign a button input\nfor docking the crank.\n \n",
         .pref_var = &preferences_crank_dock_button,
         .max_value = 4,
         .on_press = NULL
     };
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Buttons",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Buttons", .header = 1};
 
     // A->B
     entries[++i] = (OptionsMenuEntry){
         .name = "Ⓐ›Ⓑ",
         .values = gb_button_labels_hp,
         .description =
-            "Assign a replacement\nbutton input for\nholding Ⓐ and then\npressing Ⓑ.\n \nThis replaces the\nnormal button presses.",
+            "Assign a replacement\nbutton input for\nholding Ⓐ and then\npressing Ⓑ.\n \n"
+            "This replaces the\nnormal button presses.",
         .pref_var = &preferences_hold_a_press_b,
         .max_value = 13,
         .on_press = NULL
@@ -1466,7 +1478,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Ⓑ›Ⓐ",
         .values = gb_button_labels_hp,
         .description =
-            "Assign a replacement\nbutton input for\nholding Ⓑ and then\npressing Ⓐ.\n \nThis replaces the\nnormal button presses.",
+            "Assign a replacement\nbutton input for\nholding Ⓑ and then\npressing Ⓐ.\n \n"
+            "This replaces the\nnormal button presses.",
         .pref_var = &preferences_hold_b_press_a,
         .max_value = 13,
         .on_press = NULL
@@ -1477,7 +1490,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Ⓐ+Ⓑ",
         .values = gb_button_labels_hp,
         .description =
-            "Assign a replacement\nbutton input when\nsimultaneously pressing\nboth Ⓐ and Ⓑ.\n \nThis replaces the\nnormal button presses.\n \nNote: both buttons must\nbe pressed on exactly\nthe same frame, which\nis quite precise!",
+            "Assign a replacement\nbutton input when\nsimultaneously pressing\nboth Ⓐ and Ⓑ.\n \n"
+            "This replaces the\nnormal button presses.\n \nNote: both buttons must\nbe pressed "
+            "on exactly\nthe same frame, which\nis quite precise!",
         .pref_var = &preferences_press_a_b,
         .max_value = 13,
         .on_press = NULL
@@ -1485,18 +1500,21 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     // lock button override.
     // Only available if launched with system privileges. (e.g. through FunnyLoader / FunnyOS)
-    // Since this is still experimental, do not show this option at all unless system privileges are detected.
+    // Since this is still experimental, do not show this option at all unless system privileges are
+    // detected.
     if (CB_App->hasSystemAccess)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Lock Override",
             .values = gb_button_labels,
             .description =
-                "Playdate's lock button\ncan be used for\nstart or select.\n \nRequires system access\n(i.e. launch CrankBoy\nvia FunnyLoader)\n \n"
-                "Only applies input from\nthe moment the lock\nbutton is pressed;\nholding the lock button\nhas no effect.",
-                .pref_var = &preferences_lock_button,
-                .max_value = 3,
-                .on_change = settings_post_action_lock_button
+                "Playdate's lock button\ncan be used for\nstart or select.\n \nRequires system "
+                "access\n(i.e. launch CrankBoy\nvia FunnyLoader)\n \n"
+                "Only applies input from\nthe moment the lock\nbutton is pressed;\nholding the "
+                "lock button\nhas no effect.",
+            .pref_var = &preferences_lock_button,
+            .max_value = 3,
+            .on_change = settings_post_action_lock_button
         };
     }
 
@@ -1504,11 +1522,11 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     if (!gameScene || gameScene->context->cgb_mode)
     {
         entries[++i] = (OptionsMenuEntry){
-            #ifdef CRANKBOY_OFFICIAL_CATALOG
+#ifdef CRANKBOY_OFFICIAL_CATALOG
             .name = "CGB (GB Color)",
-            #else
+#else
             .name = "Game Boy Color",
-            #endif
+#endif
             .header = 1
         };
 
@@ -1516,7 +1534,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .name = "CPU Speed",
             .values = cgb_dmg_labels,
             .description =
-                "Normally, the CGB CPU\ncan run twice as fast as\nthe DMG (non-Color GB).\n \nSet to \"DMG\" to force\nit to run at DMG speed.\n \nCan greatly improve perf\non titles which don't make\nefficient use of the CPU.\n \nThis is the opposite of\noverclocking (see below).",
+                "Normally, the CGB CPU\ncan run twice as fast as\nthe DMG (non-Color GB).\n \nSet "
+                "to \"DMG\" to force\nit to run at DMG speed.\n \nCan greatly improve perf\non "
+                "titles which don't make\nefficient use of the CPU.\n \nThis is the opposite "
+                "of\noverclocking (see below).",
             .pref_var = &preferences_cgb_speed,
             .max_value = 2,
         };
@@ -1524,43 +1545,44 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "HLE Routines",
             .values = off_on_labels,
-            .description = "Automatically identify\ncertain common routines\nand replace them with\nhigh-level emulated\nversions.\n \nCan allow for large\nperformance gains, but\npotentially inaccurate.",
+            .description =
+                "Automatically identify\ncertain common routines\nand replace them "
+                "with\nhigh-level emulated\nversions.\n \nCan allow for large\nperformance gains, "
+                "but\npotentially inaccurate.",
             .pref_var = &preferences_hle,
             .max_value = 2,
             .on_press = NULL
         };
-
     }
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Behavior",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Behavior", .header = 1};
 
     // PPU Timing
     static const char* ppu_timing_labels[] = {"Fast", "Accurate"};
     entries[++i] = (OptionsMenuEntry){
         .name = "PPU Timing",
         .values = ppu_timing_labels,
-        .description = "Controls PPU sprite timing\naccuracy.\n \n"
-                       "Fast:\nFixed penalty per line.\nBest performance. Some\n"
-                       "games may have glitches.\n \n"
-                       "Accurate:\nDynamic calculation.\nMost faithful to hardware.\n"
-                       "May impact performance in\nsprite-heavy scenes.",
+        .description =
+            "Controls PPU sprite timing\naccuracy.\n \n"
+            "Fast:\nFixed penalty per line.\nBest performance. Some\n"
+            "games may have glitches.\n \n"
+            "Accurate:\nDynamic calculation.\nMost faithful to hardware.\n"
+            "May impact performance in\nsprite-heavy scenes.",
         .pref_var = &preferences_ppu_timing,
         .max_value = 2,
     };
 
     // instruction batching
-    if (!gameScene || !gameScene->context->cgb_mode) {
+    if (!gameScene || !gameScene->context->cgb_mode)
+    {
         entries[++i] = (OptionsMenuEntry){
             .name = "Batching",
             .values = off_on_labels,
             .description =
                 "Runs multiple CPU\ninstructions per step to\nimprove performance.\n \n"
-                "Leave disabled if a game\nhas glitches or doesn't\nrespond to button input\ncorrectly.\n \n"
-                "DMG mode only."
-            ,
+                "Leave disabled if a game\nhas glitches or doesn't\nrespond to button "
+                "input\ncorrectly.\n \n"
+                "DMG mode only.",
             .pref_var = &preferences_batching,
             .max_value = 2,
         };
@@ -1571,23 +1593,24 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Overclock",
         .values = overclock_labels,
         .description =
-            "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to achieve this.\n \n"
+            "Attempt to reduce lag\nin emulated device, but\nthe Playdate must work\nharder to "
+            "achieve this.\n \n"
             "Allows the emulated CPU\nto run much faster\nduring VBLANK.\n \n"
-            "Not a guaranteed way to\nimprove performance,\nand may introduce\ninaccuracies."
-        ,
+            "Not a guaranteed way to\nimprove performance,\nand may introduce\ninaccuracies.",
         .pref_var = &preferences_overclock,
         .max_value = 3,
         .on_press = NULL
     };
 
-    #define BASE_SCRIPT_STRING "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might be used to\nnavigate menus. This\nsetting is always per-game."
+#define BASE_SCRIPT_STRING                                                                         \
+    "Scripts attempt to add\nPlaydate feature support\ninto ROMs. For instance,\nthe crank might " \
+    "be used to\nnavigate menus. This\nsetting is always per-game."
 
     // C scripts
     entries[++i] = (OptionsMenuEntry){
         .name = "Game scripts",
         .values = off_on_labels,
-        .description =
-            BASE_SCRIPT_STRING,
+        .description = BASE_SCRIPT_STRING,
         .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
@@ -1598,16 +1621,20 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         if (gameScene->script_available)
         {
-            entries[i].description = BASE_SCRIPT_STRING "\n \nYou must restart the\nROM for this setting\nto take effect.";
+            entries[i].description = BASE_SCRIPT_STRING
+                "\n \nYou must restart the\nROM for this setting\nto take effect.";
             if (gameScene->script_info_available)
             {
-                entries[i].description = BASE_SCRIPT_STRING "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart the\nROM for this setting\nto take effect.";
+                entries[i].description = BASE_SCRIPT_STRING
+                    "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart "
+                    "the\nROM for this setting\nto take effect.";
                 entries[i].on_hold = display_script_info;
             }
         }
         else
         {
-            entries[i].description = BASE_SCRIPT_STRING "\n \nThere is no script\navailable for this ROM.";
+            entries[i].description =
+                BASE_SCRIPT_STRING "\n \nThere is no script\navailable for this ROM.";
             entries[i].locked = 1;
         }
     }
@@ -1615,20 +1642,18 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // Library settings
     if (!gameScene)
     {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Library",
-            .header = 1
-        };
+        entries[++i] = (OptionsMenuEntry){.name = "Library", .header = 1};
 
         // display name mode
         entries[++i] = (OptionsMenuEntry){
             .name = "Title display",
             .values = display_name_mode_labels,
-            .description = "Choose how game titles\n"
-                        "are displayed in the list.\n \n"
-                        "Short:\nThe common game title\n(by database match).\n \n"
-                        "Detailed:\nThe full title, including\nregion and version info.\n \n"
-                        "Filename:\nThe original ROM filename.\n \n",
+            .description =
+                "Choose how game titles\n"
+                "are displayed in the list.\n \n"
+                "Short:\nThe common game title\n(by database match).\n \n"
+                "Detailed:\nThe full title, including\nregion and version info.\n \n"
+                "Filename:\nThe original ROM filename.\n \n",
             .pref_var = &preferences_display_name_mode,
             .max_value = 3,
             .on_press = NULL
@@ -1638,11 +1663,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Article",
             .values = article_labels,
-            .description = "If a game title ends with\n"
-                        "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
-                        "it can be displayed at the\n"
-                        "start instead, i.e.\n \n"
-                        "  \"The Mummy (USA)\"\n",
+            .description =
+                "If a game title ends with\n"
+                "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
+                "it can be displayed at the\n"
+                "start instead, i.e.\n \n"
+                "  \"The Mummy (USA)\"\n",
             .pref_var = &preferences_display_article,
             .max_value = 2,
             .on_press = NULL
@@ -1652,7 +1678,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Sort",
             .values = sort_labels,
-            .description = "Sort the games list either\nby database name or by\nfilename.\n \nCan also choose to include\narticles that have been\nmoved to the front of the\nname toward sorting.",
+            .description =
+                "Sort the games list either\nby database name or by\nfilename.\n \nCan also choose "
+                "to include\narticles that have been\nmoved to the front of the\nname toward "
+                "sorting.",
             .pref_var = &preferences_display_sort,
             .max_value = 4,
             .on_press = NULL
@@ -1662,7 +1691,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Remember Last",
             .values = off_on_labels,
-            .description = "When opening the library,\n"
+            .description =
+                "When opening the library,\n"
                 "initial selection will be the\nlast game played.\n",
             .pref_var = &preferences_library_remember_selection,
             .max_value = 2,
@@ -1683,25 +1713,22 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "CGB Prompt",
             .values = cgb_prompt_labels,
-            .description = "When launching a ROM,\n"
+            .description =
+                "When launching a ROM,\n"
                 "show a prompt to choose:\n \n"
                 "1. DMG (original) emulation\n"
                 "2. CGB (\"Color\") emulation\n"
                 "      (experimental)\n \n"
                 "No: CGB-only ROMs\n \n"
                 "Yes: CGB-compatible ROMs\n \n"
-                "Always: CGB and DMG ROMs"
-            ,
+                "Always: CGB and DMG ROMs",
             .pref_var = &preferences_prompt_if_cgb_optional,
             .max_value = 3,
             .on_press = NULL
         };
     }
 
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Miscellaneous",
-        .header = 1
-    };
+    entries[++i] = (OptionsMenuEntry){.name = "Miscellaneous", .header = 1};
 
     // show fps
     entries[++i] = (OptionsMenuEntry){
@@ -1709,9 +1736,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .values = fps_labels,
         .description =
             "Displays the current\nframes-per-second\non screen.\n \n"
-            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can differ if 30 FPS\nmode is enabled.)\n \n"
-            "Ideal performance is just\nunder 60 emulated frames\nper second."
-            ,
+            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can "
+            "differ if 30 FPS\nmode is enabled.)\n \n"
+            "Ideal performance is just\nunder 60 emulated frames\nper second.",
         .pref_var = &preferences_display_fps,
         .max_value = 3,
         .on_press = NULL
@@ -1722,8 +1749,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .name = "Turbo Speed",
         .values = off_on_labels,
         .description =
-            "Removes the FPS limit.\n \nThis is intended\njust for benchmarking\nperformance, not for\ncasual play."
-        ,
+            "Removes the FPS limit.\n \nThis is intended\njust for benchmarking\nperformance, not "
+            "for\ncasual play.",
         .pref_var = &preferences_uncap_fps,
         .max_value = 2,
         .on_press = NULL
@@ -1739,7 +1766,9 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Disable auto lock",
         .values = off_on_labels,
-        .description = "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This only applies\nwhile a game is running.",
+        .description =
+            "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This "
+            "only applies\nwhile a game is running.",
         .pref_var = &preferences_disable_autolock,
         .max_value = 2,
         .on_press = NULL,
@@ -1751,50 +1780,67 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     entries[++i] = (OptionsMenuEntry){
         .name = "Boot Fade",
         .values = boot_fade_labels,
-        .description = "Fade from black/white on\ngame start. Masks visual\nglitches.\n \nThe options marked (W)\nfade from white.",
+        .description =
+            "Fade from black/white on\ngame start. Masks visual\nglitches.\n \n"
+            "The options marked (W)\nfade from white.",
         .pref_var = &preferences_boot_fade,
         .max_value = 5,
     };
 
     if (CB_App->bundled_rom)
     {
-        entries[i].description = "Fade from black on\ngame start.\n \nIn bundled mode, fade\nfrom white is not currently\npossible.";
+        entries[i].description =
+            "Fade from black on\ngame start.\n \nIn bundled mode, fade\nfrom white is not "
+            "currently\npossible.";
         entries[i].max_value = 3;
     }
 
-    #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
     // itcm accel
-        if (itcm_base_desc == NULL) {
-            playdate->system->formatString(&itcm_base_desc, "Unstable, but greatly\nimproves performance.\n \n"
-                "Runs emulator core\ndirectly from the stack.\n \n"
-                "Works with Rev A.\n(Your device: %s)",
-                pd_rev_description
-            );
-        }
+    if (itcm_base_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_base_desc,
+            "Unstable, but greatly\nimproves performance.\n \n"
+            "Runs emulator core\ndirectly from the stack.\n \n"
+            "Works with Rev A.\n(Your device: %s)",
+            pd_rev_description
+        );
+    }
 
-        if (itcm_restart_desc == NULL) {
-            playdate->system->formatString(&itcm_restart_desc, "%s\n \nYou need to restart the\ngame for these changes to\napply.", itcm_base_desc);
-        }
+    if (itcm_restart_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_restart_desc, "%s\n \nYou need to restart the\ngame for these changes to\napply.",
+            itcm_base_desc
+        );
+    }
 
-        entries[++i] = (OptionsMenuEntry){
-            .name = "ITCM acceleration",
-            .values = off_on_labels,
-            .pref_var = &preferences_itcm,
-            .max_value = 2,
-            .on_press = NULL
-        };
+    entries[++i] = (OptionsMenuEntry){
+        .name = "ITCM acceleration",
+        .values = off_on_labels,
+        .pref_var = &preferences_itcm,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
-        if (gameScene) {
-            entries[i].description = itcm_restart_desc;
-        } else {
-            entries[i].description = itcm_base_desc;
-        }
-    #endif
+    if (gameScene)
+    {
+        entries[i].description = itcm_restart_desc;
+    }
+    else
+    {
+        entries[i].description = itcm_base_desc;
+    }
+#endif
 
     entries[++i] = (OptionsMenuEntry){
         .name = "LCD-TCM accel.",
         .values = off_on_labels,
-        .description = "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore the GB's internal\nframe buffer as well.\n \nSometimes causes\ngarbage data to become\nvisible on screen.",
+        .description =
+            "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore "
+            "the GB's internal\nframe buffer as well.\n \nSometimes causes\ngarbage data to "
+            "become\nvisible on screen.",
         .pref_var = &preferences_tcm_lcd,
         .max_value = 2,
         .on_press = NULL
@@ -1805,14 +1851,14 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "About CrankBoy...",
             .values = NULL,
-            .description = "This game is bundled for\nPlaydate via CrankBoy,\na Game Boy emulator.\n \nPress Ⓐ now to learn\nmore about CrankBoy\nand its developers.",
+            .description =
+                "This game is bundled for\nPlaydate via CrankBoy,\na Game Boy emulator.\n \n"
+                "Press Ⓐ now to learn\nmore about CrankBoy\nand its developers.",
             .pref_var = NULL,
             .max_value = 0,
             .on_press = display_credits
         };
     }
-
-    /* clang-format on */
     CB_ASSERT(i < max_entries - 1);
 
     // remove any entries hidden by bundle
