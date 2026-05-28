@@ -889,7 +889,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
     else
     {
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.0f);
-        context->gb->direct.sound = 0;
+        context->gb->direct.sound = 1;
         audioGameScene = NULL;
     }
 
