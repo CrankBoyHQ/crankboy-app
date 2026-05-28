@@ -702,6 +702,14 @@ __core_section("draw") static void __cgb_draw_tile_strip(
         uint8_t pri;
         uint16_t rm_hi;
         uint8_t pri_hi_byte;
+        uint16_t bg_pixels = 0;
+        uint16_t bg_pixels_alt = 0;
+        if (bgmask)
+        {
+            bg_pixels = *(uint16_t*)(pixels + x * 2);
+            if (pixels_alt)
+                bg_pixels_alt = *(uint16_t*)(pixels_alt + x * 2);
+        }
         __cgb_merge_tiles(
             vram_tile_data_lo, vram_tile_data_hi, rm_lo, true, lut_lo, lut_hi, subx,
             (uint16_t*)(pixels + x * 2), &pri, &rm_hi, &pri_hi_byte
@@ -718,20 +726,18 @@ __core_section("draw") static void __cgb_draw_tile_strip(
             uint8_t n_bg = 8 - subx;
             uint8_t mask0_byte = (n_bg >= 4) ? 0xFFu : (uint8_t)((1u << (2 * n_bg)) - 1);
             uint8_t mask2_byte = (n_bg <= 4) ? 0x00u : (uint8_t)((1u << (2 * (n_bg - 4))) - 1);
-            uint16_t merged = *(uint16_t*)(pixels + x * 2);
-            uint8_t out0 = (uint8_t)merged;
-            uint8_t out2 = (uint8_t)(merged >> 8);
             uint8_t* win_out = pixels + x * 2;
-            win_out[0] = (win_out[0] & mask0_byte) | (out0 & ~mask0_byte);
-            win_out[1] = (win_out[1] & mask2_byte) | (out2 & ~mask2_byte);
+            uint8_t bg0 = (uint8_t)bg_pixels;
+            uint8_t bg2 = (uint8_t)(bg_pixels >> 8);
+            win_out[0] = (bg0 & mask0_byte) | (win_out[0] & ~mask0_byte);
+            win_out[1] = (bg2 & mask2_byte) | (win_out[1] & ~mask2_byte);
             if (pixels_alt)
             {
-                uint16_t d_merged = *(uint16_t*)(pixels_alt + x * 2);
-                uint8_t d_out0 = (uint8_t)d_merged;
-                uint8_t d_out2 = (uint8_t)(d_merged >> 8);
+                uint8_t d_bg0 = (uint8_t)bg_pixels_alt;
+                uint8_t d_bg2 = (uint8_t)(bg_pixels_alt >> 8);
                 uint8_t* d_win_out = pixels_alt + x * 2;
-                d_win_out[0] = (d_win_out[0] & mask0_byte) | (d_out0 & ~mask0_byte);
-                d_win_out[1] = (d_win_out[1] & mask2_byte) | (d_out2 & ~mask2_byte);
+                d_win_out[0] = (d_bg0 & mask0_byte) | (d_win_out[0] & ~mask0_byte);
+                d_win_out[1] = (d_bg2 & mask2_byte) | (d_win_out[1] & ~mask2_byte);
             }
             bgmask = 0;
         }

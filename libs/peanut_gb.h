@@ -157,8 +157,6 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 
 /* CGB BG map tile attributes */
 #define BG_MAP_ATTR_PRIORITY 0x80
-// implemented for BG tiles; window per-tile priority not yet supported
-
 #define BG_MAP_ATTR_Y_FLIP 0x40
 #define BG_MAP_ATTR_X_FLIP 0x20
 #define BG_MAP_ATTR_BANK 0x08
