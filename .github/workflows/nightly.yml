@@ -395,9 +395,6 @@ jobs:
               with:
                   lfs: true
 
-            - name: Initialize Source Submodules
-              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
-
             - name: Setup MSYS2 MinGW64
               uses: msys2/setup-msys2@v2
               with:
@@ -416,6 +413,9 @@ jobs:
                       tar
                       git
                       zip
+
+            - name: Initialize Source Submodules
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
 
             - name: Download Toolchain or Fallback to Submodule
               run: |
