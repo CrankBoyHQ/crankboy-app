@@ -767,9 +767,21 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     v4_gb->lcd_blank = 0; /* UNUSED */
     set_field(v4_gb, v3_gb, lcd_master_enable);
 
-    // cgb_fast_mode_active was appended at the end of the CGB bitfield group;
-    // v3's padding bit is 0 so the memcpy yields the correct default.
-    set_fields(v4_gb, v3_gb, zero_bank_base, printer_last_cmd);
+    {
+        size_t sz = (uintptr_t)&v3_gb->cgb_ff7x[0] - (uintptr_t)&v3_gb->zero_bank_base;
+        memcpy(&v4_gb->zero_bank_base, &v3_gb->zero_bank_base, sz);
+    }
+
+    {
+        size_t sz = (uintptr_t)&v3_gb->printer_stub_state - (uintptr_t)&v3_gb->cgb_ff7x[0];
+        memcpy(&v4_gb->cgb_ff7x[0], &v3_gb->cgb_ff7x[0], sz);
+    }
+
+    {
+        size_t sz = (uintptr_t)&v3_gb->printer_last_cmd + sizeof(v3_gb->printer_last_cmd) -
+                    (uintptr_t)&v3_gb->printer_stub_state;
+        memcpy(&v4_gb->printer_stub_state, &v3_gb->printer_stub_state, sz);
+    }
     set_fields(v4_gb, v3_gb, num_rom_banks_mask, counter);
 
     memcpy(
@@ -801,8 +813,9 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     }
     v4_org = v4_realloc;
 
+    memset(v4_org + sizeof(StateHeader) + sizeof(struct gb_s_v4), 0, 128);
     memcpy(
-        v4_org + sizeof(StateHeader) + sizeof(struct gb_s_v4),
+        v4_org + sizeof(StateHeader) + sizeof(struct gb_s_v4) + 128,
         v3_in + sizeof(StateHeader) + sizeof(struct gb_s_v3),
         ROM_HEADER_SIZE + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + v3_gb->gb_cart_ram_size +
             MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint))
