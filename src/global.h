@@ -6,6 +6,7 @@
 struct global_t
 {
     bool shown_intro : 1;
+    const char* cores_dir;
 };
 
 extern struct global_t global;

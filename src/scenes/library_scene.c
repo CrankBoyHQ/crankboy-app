@@ -2341,10 +2341,10 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     CB_Game* game = cb_malloc(sizeof(CB_Game));
     memset(game, 0, sizeof(CB_Game));
 
+    char* games_dir = cb_system_directory_path_for_slug(cachedName->system_slug, CB_gamesPath);
     char* fullpath_str;
-    playdate->system->formatString(
-        &fullpath_str, "%s/%s", cb_gb_directory_path(CB_gamesPath), cachedName->filename
-    );
+    playdate->system->formatString(&fullpath_str, "%s/%s", games_dir, cachedName->filename);
+    cb_free(games_dir);
     game->fullpath = fullpath_str;
 
     game->names = cachedName;
@@ -2371,9 +2371,11 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     if (found_cover_name_ptr)
     {
         const char* found_cover_name = *found_cover_name_ptr;
+        char* covers_dir = cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
         playdate->system->formatString(
-            &game->coverPath, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), found_cover_name
+            &game->coverPath, "%s/%s.pdi", covers_dir, found_cover_name
         );
+        cb_free(covers_dir);
     }
     else
     {

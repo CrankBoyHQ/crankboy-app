@@ -7,6 +7,8 @@
 //
 
 #include "app.h"
+#include "libcrankemu/libcrankemu.h"
+#include "pdll/pdll.h"
 
 #ifdef TARGET_PLAYDATE
 #include "../libs/pdnewlib/pdnewlib.h"
@@ -709,16 +711,200 @@ static void get_homebrew_hub_api(void)
     // CB_App->hbSearchExtraFlags);
 }
 
+// true if slug is already claimed by any known core
+static bool CB_system_slug_claimed(const char* slug)
+{
+    for (size_t i = 0; i < CB_App->cores_n; ++i)
+        for (size_t j = 0; j < CB_App->cores[i].n_system_slugs; ++j)
+            if (strcmp(CB_App->cores[i].system_slugs[j], slug) == 0)
+                return true;
+    return false;
+}
+
+static void CB_load_core(char* path)
+{
+    pdll_t* pdll = pdll_open(playdate, path, PDLL_FILE_PDX | PDLL_FILE_DATA);
+    if (!pdll)
+    {
+        playdate->system->logToConsole("CB_load_core: %s", pdll_get_error());
+        return;
+    }
+
+    const char* (*core_id)(void) = pdll_symbol(pdll, "ce_core_id");
+    const char* (*core_name)(void) = pdll_symbol(pdll, "ce_core_name");
+    const char* (*core_version)(void) = pdll_symbol(pdll, "ce_core_version");
+    const char* (*system_slugs)(void) = pdll_symbol(pdll, "ce_get_system_slugs");
+    uint32_t (*get_version)(void) = pdll_symbol(pdll, "ce_get_version");
+
+    if (!core_id || !core_name || !core_version || !system_slugs || !get_version)
+    {
+        playdate->system->logToConsole(
+            "CB_load_core: '%s' missing required symbol -- %s", path, pdll_get_error()
+        );
+        pdll_close(pdll);
+        return;
+    }
+
+    uint32_t ce_version = get_version();
+    if (ce_version > CRANKEMU_VERSION)
+    {
+        playdate->system->logToConsole(
+            "CB_load_core: '%s' needs core version %u, frontend supports up to %u", path,
+            (unsigned)ce_version, (unsigned)CRANKEMU_VERSION
+        );
+        pdll_close(pdll);
+        return;
+    }
+
+    emucore_t core = {0};
+    core.ce_version = ce_version;
+    core.id = cb_strdup(core_id());
+    core.path = cb_strdup(path);
+    core.core_version = cb_strdup(core_version());
+    core.human_name = cb_strdup(core_name());
+    
+    core.pdll = NULL;
+
+    // split the ;-separated system directories, dropping empties and ones already claimed.
+    const char* slugs = system_slugs();
+    for (const char* p = slugs ? slugs : ""; *p;)
+    {
+        const char* start = p;
+        while (*p && *p != ';')
+            ++p;
+        size_t toklen = (size_t)(p - start);
+        if (*p == ';')
+            ++p;
+        if (toklen == 0)
+            continue;
+
+        char* token = cb_malloc(toklen + 1);
+        memcpy(token, start, toklen);
+        token[toklen] = 0;
+
+        bool dup = CB_system_slug_claimed(token);
+        for (size_t j = 0; !dup && j < core.n_system_slugs; ++j)
+            dup = strcmp(core.system_slugs[j], token) == 0;
+        if (dup)
+        {
+            cb_free(token);
+            continue;
+        }
+
+        core.system_slugs = cb_realloc(
+            core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*)
+        );
+        core.system_slugs[core.n_system_slugs++] = token;
+    }
+
+    CB_App->cores = cb_realloc(CB_App->cores, (CB_App->cores_n + 1) * sizeof(emucore_t));
+    CB_App->cores[CB_App->cores_n++] = core;
+
+    playdate->system->logToConsole(
+        "CB_load_core: loaded '%s' (%s %s, id=%s) with %u system dir(s)", path, core.human_name,
+        core.core_version, core.id, (unsigned)core.n_system_slugs
+    );
+
+    pdll_close(pdll);
+}
+
+typedef struct
+{
+    char* basepath;
+    unsigned long long mtime;  // YYYYMMDDHHMMSS, 0 if stat failed
+} CB_core_candidate;
+
+typedef struct
+{
+    const char* dir;
+    CB_core_candidate* items;
+    size_t n;
+    size_t cap;
+} CB_cores_scan;
+
+static void CB_cores_scan_cb(const char* filename, void* ud)
+{
+    CB_cores_scan* scan = ud;
+
+    static const char* const exts[] = {".bin", ".pdll", ".so", ".dll", ".dylib"};
+    size_t len = strlen(filename);
+    size_t extlen = 0;
+    for (size_t i = 0; i < sizeof(exts) / sizeof(exts[0]); ++i)
+    {
+        size_t el = strlen(exts[i]);
+        if (len > el && strcmp(filename + len - el, exts[i]) == 0)
+        {
+            extlen = el;
+            break;
+        }
+    }
+    if (extlen == 0)
+        return;
+
+    char* fullpath = aprintf("%s/%s", scan->dir, filename);
+    FileStat st;
+    unsigned long long mtime = 0;
+    if (playdate->file->stat(fullpath, &st) == 0)
+        mtime = (unsigned long long)st.m_year * 10000000000ull +
+                (unsigned long long)st.m_month * 100000000ull +
+                (unsigned long long)st.m_day * 1000000ull +
+                (unsigned long long)st.m_hour * 10000ull +
+                (unsigned long long)st.m_minute * 100ull + (unsigned long long)st.m_second;
+    cb_free(fullpath);
+
+    if (scan->n == scan->cap)
+    {
+        scan->cap = scan->cap ? scan->cap * 2 : 8;
+        scan->items = cb_realloc(scan->items, scan->cap * sizeof(CB_core_candidate));
+    }
+    scan->items[scan->n].basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
+    scan->items[scan->n].mtime = mtime;
+    scan->n++;
+}
+
+static void CB_load_cores(void)
+{
+    const char* dir = global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY;
+
+    CB_cores_scan scan = {.dir = dir, .items = NULL, .n = 0, .cap = 0};
+    cb_listfiles(dir, CB_cores_scan_cb, &scan, 0, kFileRead | kFileReadData);
+
+    if (scan.n == 0) return;
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading cores...");
+    
+    // sort reverse-chronologically
+    for (size_t i = 1; i < scan.n; ++i)
+    {
+        CB_core_candidate cur = scan.items[i];
+        size_t j = i;
+        while (j > 0 && scan.items[j - 1].mtime < cur.mtime)
+        {
+            scan.items[j] = scan.items[j - 1];
+            --j;
+        }
+        scan.items[j] = cur;
+    }
+
+    for (size_t i = 0; i < scan.n; ++i)
+    {
+        CB_load_core(scan.items[i].basepath);
+        cb_free(scan.items[i].basepath);
+    }
+    cb_free(scan.items);
+}
+
 static void non_bundle_init(void)
 {
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
-    get_homebrew_hub_api();
+    get_homebrew_hub_api();    
 
     CB_App->rhdb_present =
         cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
 
     global.shown_intro = true;
     save_global();
+    
+    CB_load_cores();
 
     CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
     CB_present(copyingScene->scene);
@@ -1113,6 +1299,7 @@ __section__(".rare") void CB_event(PDSystemEvent event, uint32_t arg)
 void free_game_names(const CB_GameName* gameName)
 {
     cb_free(gameName->filename);
+    cb_free(gameName->system_slug);
     if (gameName->name_database)
         cb_free(gameName->name_database);
     cb_free(gameName->name_short);

@@ -11,6 +11,9 @@ static json_value global_to_json(void)
     json_value jv = json_new_table();
 
     json_set_table_value(&jv, "intro", json_new_bool(global.shown_intro));
+    json_set_table_value(
+        &jv, "cores", json_new_string(global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY)
+    );
 
     return jv;
 }
@@ -19,6 +22,10 @@ static bool global_from_json(json_value jv)
 {
     json_value jshown_intro = json_get_table_value(jv, "intro");
     global.shown_intro = jshown_intro.type == kJSONTrue;
+
+    const char* cores = json_as_string(json_get_table_value(jv, "cores"));
+    cb_free((void*)global.cores_dir);
+    global.cores_dir = cb_strdup(cores ? cores : DEFAULT_CORES_DIRECTORY);
 
     return true;
 }

@@ -73,7 +73,7 @@ SRC += libs/lz4/lz4.c
 SRC += libs/miniz/miniz.c
 SRC += libs/miniz/mini_gzip.c
 
-# uzlib (used by pdll's device loader)
+SRC += libs/pdll/pdll.c
 SRC += libs/pdll/uzlib/tinflate.c
 SRC += libs/pdll/uzlib/tinfzlib.c
 SRC += libs/pdll/uzlib/adler32.c
@@ -134,19 +134,16 @@ endif
 
 PDCFLAGS += --quiet
 
-# bake Source/*.json into C source (build/ already created by MKOBJDIR)
+# bake Source/*.json into C source
 build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	python3 scripts/embed_json.py $< $@ baked_$*_json
 
 # Compress recommended settings JSONs and add to pdx
-# Uses find -exec to handle filenames with spaces
 .PHONY: compress-csettings
 compress-csettings:
 	mkdir -p build/csettings
 	find src/csettings -name '*.json' -exec sh -c 'gzip -c "$$1" > "build/csettings/$$(basename "$$1").gz"' _ {} \;
 
-# remove baked json files from .pdx
-# (can't remove them from the Source/ dir, as they are needed for version checks)
 .PHONY: build
 build: all compress-csettings
 	-rm -f $(PRODUCT)/version.json $(PRODUCT)/credits.json

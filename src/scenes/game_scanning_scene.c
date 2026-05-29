@@ -7,8 +7,8 @@
 #include "../utility.h"
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
-
-#include <pd_api.h>
+#include "pd_api.h"
+#include "pdll/pdll.h"
 
 struct ScriptInfo;
 
@@ -25,6 +25,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     newName->filename = cb_strdup(filename);
     newName->name_filename = cb_basename(filename, true);
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
+    newName->system_slug = cb_strdup(GB_SYSTEM_SLUG);
 
     char* fullpath;
     playdate->system->formatString(
@@ -220,6 +221,143 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     }
 }
 
+static void process_one_emucore_game(
+    CB_GameScanningScene* scanScene, const char* filename, const char* games_dir, const char* slug
+)
+{
+    char* fullpath = aprintf("%s/%s", games_dir, filename);
+
+    size_t rom_size = 0;
+    uint8_t* rom = (uint8_t*)cb_read_entire_file(fullpath, &rom_size, kFileReadData | kFileRead);
+    cb_free(fullpath);
+    if (!rom)
+        return;
+
+    CB_GameName* newName = allocz(CB_GameName);
+    newName->filename = cb_strdup(filename);
+    newName->name_filename = cb_basename(filename, true);
+    newName->name_filename_leading_article = common_article_form(newName->name_filename);
+    newName->system_slug = cb_strdup(slug);
+
+    newName->crc32 = crc32_for_buffer(rom, rom_size);
+    newName->rom_cgb_support = NON_GB_SYSTEM;
+    newName->rom_has_battery = scanScene->save_size_fn
+        ? (scanScene->save_size_fn(rom, rom_size) > 0)
+        : false;
+
+    cb_free(rom);
+
+    newName->name_short = cb_strdup(newName->name_filename);
+    newName->name_detailed = cb_strdup(newName->name_filename);
+    newName->name_short_leading_article = common_article_form(newName->name_short);
+    newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
+
+    array_push(CB_App->gameNameCache, newName);
+}
+
+static void collect_all_filenames_callback(const char* filename, void* userdata)
+{
+    array_push((CB_Array*)userdata, cb_strdup(filename));
+}
+
+static void clear_game_filenames(CB_GameScanningScene* scanScene)
+{
+    for (unsigned int i = 0; i < scanScene->game_filenames->length; ++i)
+        cb_free(scanScene->game_filenames->items[i]);
+    array_clear(scanScene->game_filenames);
+}
+
+static CB_ScanSource* scan_source_new(char* games_dir, const char* slug, int emucore_index)
+{
+    CB_ScanSource* src = allocz(CB_ScanSource);
+    src->games_dir = games_dir;
+    src->slug = cb_strdup(slug);
+    src->emucore_index = emucore_index;
+    return src;
+}
+
+static void scan_source_free(CB_ScanSource* src)
+{
+    cb_free(src->games_dir);
+    cb_free(src->slug);
+    cb_free(src);
+}
+
+static void build_scan_sources(CB_GameScanningScene* scanScene)
+{
+    array_push(
+        scanScene->sources,
+        scan_source_new(
+            cb_system_directory_path_for_slug(GB_SYSTEM_SLUG, CB_gamesPath), 
+            GB_SYSTEM_SLUG, -1
+        )
+    );
+
+    for (size_t i = 0; i < CB_App->cores_n; ++i)
+    {
+        emucore_t* emucore = &CB_App->cores[i];
+        for (size_t j = 0; j < emucore->n_system_slugs; ++j)
+        {
+            const char* slug = emucore->system_slugs[j];
+            array_push(
+                scanScene->sources,
+                scan_source_new(
+                    cb_system_directory_path_for_slug(slug, CB_gamesPath), 
+                    slug, (int)i
+                )
+            );
+        }
+    }
+}
+
+static void open_emucore_for_source(CB_GameScanningScene* scanScene, const CB_ScanSource* src)
+{
+    scanScene->emucore_pdll = NULL;
+    scanScene->save_size_fn = NULL;
+    cb_free(scanScene->progress_title);
+    scanScene->progress_title = NULL;
+
+    const char* system_name = NULL;
+    if (src->emucore_index >= 0)
+    {
+        emucore_t* emucore = &CB_App->cores[src->emucore_index];
+        pdll_t* pdll = pdll_open(playdate, emucore->path, PDLL_FILE_PDX | PDLL_FILE_DATA);
+        if (pdll)
+        {
+            scanScene->emucore_pdll = pdll;
+            scanScene->save_size_fn =
+                (ce_rom_save_size_fn)pdll_symbol(pdll, "ce_get_rom_save_size");
+
+            const char* (*name_from_slug)(const char*) =
+                pdll_symbol(pdll, "ce_get_system_name_from_slug");
+            if (name_from_slug)
+                system_name = name_from_slug(src->slug);
+        }
+        else
+        {
+            playdate->system->logToConsole(
+                "game-scanning: could not open emucore '%s': %s", emucore->path, pdll_get_error()
+            );
+        }
+    }
+
+    // " (<system name>)" if derivable, otherwise " (<system slug>)".
+    scanScene->progress_title =
+        aprintf("Scanning Games... (%s)", system_name ? system_name : src->slug);
+}
+
+static void close_emucore_for_source(CB_GameScanningScene* scanScene)
+{
+    if (scanScene->emucore_pdll)
+    {
+        pdll_close((pdll_t*)scanScene->emucore_pdll);
+        scanScene->emucore_pdll = NULL;
+    }
+    scanScene->save_size_fn = NULL;
+    cb_free(scanScene->progress_title);
+    scanScene->progress_title = NULL;
+}
+
 static void checkForPngCallback(const char* filename, void* userdata)
 {
     if (filename_has_stbi_extension(filename))
@@ -241,51 +379,84 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     {
     case kScanningStateInit:
     {
-        playdate->file->listfiles(
-            cb_gb_directory_path(CB_gamesPath), collect_game_filenames_callback,
-            scanScene->game_filenames, 0
-        );
+        build_scan_sources(scanScene);
+        scanScene->source_index = 0;
+        scanScene->state = kScanningStateListSource;
+        break;
+    }
 
-        array_reserve(CB_App->gameNameCache, scanScene->game_filenames->length);
-
-        if (scanScene->game_filenames->length == 0)
+    case kScanningStateListSource:
+    {
+        if (scanScene->source_index >= (int)scanScene->sources->length)
         {
             scanScene->state = kScanningStateDone;
+            break;
+        }
+
+        CB_ScanSource* src = scanScene->sources->items[scanScene->source_index];
+
+        if (src->emucore_index < 0)
+        {
+            // .gb/.gbc/.gbz
+            playdate->file->listfiles(
+                src->games_dir, collect_game_filenames_callback, scanScene->game_filenames, 0
+            );
         }
         else
         {
-            scanScene->progress_max_width = cb_calculate_progress_max_width(
-                CB_App->subheadFont, PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
+            // emucore plugins
+            open_emucore_for_source(scanScene, src);
+            playdate->file->listfiles(
+                src->games_dir, collect_all_filenames_callback, scanScene->game_filenames, 0
             );
-
-            scanScene->state = kScanningStateScanning;
         }
+
+        array_reserve(
+            CB_App->gameNameCache, CB_App->gameNameCache->length + scanScene->game_filenames->length
+        );
+        scanScene->progress_max_width = cb_calculate_progress_max_width(
+            CB_App->subheadFont, PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
+        );
+        scanScene->current_index = 0;
+        scanScene->state = kScanningStateScanning;
         break;
     }
 
     case kScanningStateScanning:
     {
+        CB_ScanSource* src = scanScene->sources->items[scanScene->source_index];
+
         if (scanScene->current_index < scanScene->game_filenames->length)
         {
             const char* filename = scanScene->game_filenames->items[scanScene->current_index];
 
-            char progress_message[32];
-            snprintf(
-                progress_message, sizeof(progress_message), "%d/%d", scanScene->current_index + 1,
-                scanScene->game_filenames->length
-            );
+            if (src->emucore_index < 0)
+            {
+                char progress_message[32];
+                snprintf(
+                    progress_message, sizeof(progress_message), "%d/%d",
+                    scanScene->current_index + 1, scanScene->game_filenames->length
+                );
+                cb_draw_logo_screen_centered_split(
+                    CB_App->subheadFont, "Scanning Games... ", progress_message,
+                    scanScene->progress_max_width
+                );
+                process_one_game(scanScene, filename);
+            }
+            else
+            {
+                cb_draw_logo_screen_and_display(CB_App->subheadFont, scanScene->progress_title);
+                process_one_emucore_game(scanScene, filename, src->games_dir, src->slug);
+            }
 
-            cb_draw_logo_screen_centered_split(
-                CB_App->subheadFont, "Scanning Games... ", progress_message,
-                scanScene->progress_max_width
-            );
-
-            process_one_game(scanScene, filename);
             scanScene->current_index++;
         }
         else
         {
-            scanScene->state = kScanningStateDone;
+            close_emucore_for_source(scanScene);
+            clear_game_filenames(scanScene);
+            scanScene->source_index++;
+            scanScene->state = kScanningStateListSource;
         }
         break;
     }
@@ -345,6 +516,15 @@ void CB_GameScanningScene_free(void* object)
 {
     CB_GameScanningScene* scanScene = object;
 
+    close_emucore_for_source(scanScene);
+
+    if (scanScene->sources)
+    {
+        for (unsigned int i = 0; i < scanScene->sources->length; i++)
+            scan_source_free(scanScene->sources->items[i]);
+        array_free(scanScene->sources);
+    }
+
     if (scanScene->game_filenames)
     {
         for (int i = 0; i < scanScene->game_filenames->length; i++)
@@ -387,6 +567,7 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
 
     scanScene->game_filenames = array_new();
     scanScene->new_cache_entries = array_new();
+    scanScene->sources = array_new();
     scanScene->current_index = 0;
     scanScene->state = kScanningStateInit;
     scanScene->crc_cache_modified = false;

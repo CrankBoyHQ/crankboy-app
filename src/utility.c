@@ -1117,6 +1117,14 @@ const char* cb_gb_directory_path(const char* path)
     return s;
 }
 
+char* cb_system_directory_path_for_slug(const char* slug, const char* subpath)
+{
+    if (!slug || !strcmp(slug, GB_SYSTEM_SLUG))
+        return aprintf("%s/%s", CB_App->directory, subpath);
+
+    return aprintf("%s/%s/%s", CB_App->directory, slug, subpath);
+}
+
 int full_mkdir(const char* path)
 {
     if (!path || !*path)

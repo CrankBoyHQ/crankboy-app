@@ -160,6 +160,10 @@ void cb_drawRoundRect(PDRect rect, int radius, int lineWidth, LCDColor color);
 // needn't be caller-freed; but only valid until next call to cb_gb_directory_path
 const char* cb_gb_directory_path(const char* path);
 
+// e.g. /Shared/Emulation/<slug>/<subpath>
+// returns caller-owned string
+char* cb_system_directory_path_for_slug(const char* slug, const char* subpath);
+
 // games/ -> /Data/<...>/games/
 const char* cb_data_directory_path(const char* path);
 

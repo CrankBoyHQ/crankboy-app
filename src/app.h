@@ -43,6 +43,8 @@ extern pthread_mutex_t audio_mutex;
 // for third-party catalog releases:
 // #define CRANKBOY_OFFICIAL_CATALOG
 
+typedef struct pdll_s pdll_t;
+
 typedef struct
 {
     int16_t left[AUDIO_RING_BUFFER_SIZE];
@@ -55,6 +57,7 @@ enum cgb_support_e
 {
     // these enum values are cached to disk,
     // so don't modify existing ones.
+    NON_GB_SYSTEM = 0,
     GB_SUPPORT_DMG = 1,
     GB_SUPPORT_CGB = 2,
     GB_SUPPORT_DMG_AND_CGB = 3,
@@ -77,18 +80,21 @@ typedef struct
 {
     // basename, including extension
     char* filename;
+    
+    // e.g. "pm", "gb" (includes both dmg and cgb)
+    char* system_slug;
 
     // CRC32 of rom's contents
     uint32_t crc32;
 
-    // TODO: add these
     bool rom_has_battery;
+    
     enum cgb_support_e rom_cgb_support;
 
     // common database name, for thumbnail matching etc.
     char* name_database;
 
-    // human-readable variations
+    // human-readable variations (all may be NULL except name_filename and name_filename_leading_article)
     char* name_short;
     char* name_detailed;
     char* name_filename;  // (basename, extension stripped)
@@ -118,6 +124,17 @@ typedef struct
     int rowbytes;
     bool has_mask;
 } CB_CoverCacheEntry;
+
+typedef struct {
+    unsigned ce_version;
+    char* id; // e.g. "stella_pd"
+    char* path;
+    char* core_version;
+    char* human_name; // e.g. "StellaPD"
+    size_t n_system_slugs;
+    char** system_slugs;
+    pdll_t* pdll; /* NULL if not currently open */
+} emucore_t;
 
 typedef struct CB_Application
 {
@@ -204,6 +221,9 @@ typedef struct CB_Application
 
     // ex. "/Shared/.forwarders/app.crankboyhq.crankboy"
     char* bundle_fwd_path;
+    
+    size_t cores_n;
+    emucore_t* cores;
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -289,6 +309,8 @@ const char* CB_get_forwarded_path(const char* path);
 #define PARENTAL_LOCK_FILE "parental_lock.bin"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
+#define DEFAULT_CORES_DIRECTORY "/Shared/Emulation/cores"
+#define GB_SYSTEM_SLUG "gb"  // built-in Game Boy system (lives in CB_App->directory)
 #define PDX_STANDARD_BUNDLE_ID "app.crankboyhq.crankboy"
 #define PDX_CATALOG_BUNDLE_ID "catalog.crankboyhq.crankboy"
 #define SHARED_FORWARDER_ROOT "/Shared/.forwarder"
