@@ -100,6 +100,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     }
 
     force_pref(blend_frames, true);
+    force_pref(frame_skip, true);
     force_pref(dither_stable, false);
 
     // press A/B to skip logo
@@ -207,7 +208,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     case GAME_STATE_LOGO:
         if (state_changed)
         {
-            force_pref(dither_stable, false);
+            // currently we don't need to do anything here
         }
         game_picture_scaling = 0;
         game_picture_y_top = 6;  // eyeballed
@@ -216,7 +217,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     case GAME_STATE_REEL:
         if (state_changed)
         {
-            force_pref(dither_stable, false);
+            // currently we don't need to do anything here
         }
         game_picture_scaling = 4;
         game_picture_y_top = 4;  // eyeballed
@@ -227,14 +228,14 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     case GAME_STATE_SOUND_TEST:
         if (state_changed)
         {
-            force_pref(dither_stable, false);
+            // currently we don't need to do anything here
         }
         game_picture_background_color = kColorBlack;
         break;
     case GAME_STATE_STAGE_SELECT:
         if (state_changed)
         {
-            force_pref(dither_stable, false);
+            // currently we don't need to do anything here
         }
         // 4 scanlines : 7 rows
         game_picture_scaling = 4;
@@ -250,7 +251,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     case GAME_STATE_GAME_OVER:
         if (state_changed)
         {
-            force_pref(dither_stable, false);
+            // currently we don't need to do anything here
         }
         break;
     default:
@@ -482,8 +483,6 @@ static void on_end(gb_s* gb, ScriptData* data)
 }
 
 static const struct ScriptRecommendedSetting cv2_recommended[] = {
-    {PREFBIT_frame_skip, 1},    // 30fps
-    {PREFBIT_blend_frames, 1},  // On
     {PREFBIT_batching, 1},
     RECOMMENDED_SETTINGS_END,
 };
