@@ -1291,12 +1291,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // frame blending
-    if (preferences_frame_skip == 1)
+    if (preferences_frame_skip != 0)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
-            .description = "Only available when\n30 FPS mode is enabled.\n",
+            .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -1308,7 +1308,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
-            .description = "Only available when\n30 FPS mode is enabled.\n",
+            .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
             .on_press = NULL,
