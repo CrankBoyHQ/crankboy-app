@@ -26,17 +26,13 @@
 #endif
 
 /*
- * Defines the maximum number of entries that the settings menu can hold.
- * This value is used to allocate a fixed-size buffer for all menu items.
+ * The sections are built individually via per-section builder functions.
+ * Each builder allocates up to MAX_SECTION_ENTRIES entries and the post-build
+ * filters (bundle hidden, script locked) compact them as needed.
  *
- * IMPORTANT: If you add new OptionsMenuEntry items in the getOptionsEntries()
- * function, you may need to increase this value to prevent buffer overflows,
- * which can lead to unpredictable crashes.
- *
- * As of Mai 2026, the theoretical maximum count is 50 entries.
- * This value provides a safe buffer for future additions.
+ * If a new OptionsMenuEntry items is added to a section builder,
+ * MAX_SECTION_ENTRIES may need to be increased to prevent buffer overflows.
  */
-#define TOTAL_MENU_ITEMS 55
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -92,12 +88,44 @@ typedef struct OptionsMenuEntry
     void* ud;
 } OptionsMenuEntry;
 
+// Per-section building
+#define MAX_SECTION_ENTRIES 20
+#define SECTION_DEFS_COUNT 9
+
+typedef struct OptionsMenuEntry* (*SectionBuilder)(struct CB_SettingsScene*, int* count);
+
+typedef struct
+{
+    const char* name;
+    SectionBuilder builder;
+} SectionDef;
+
+static void applyBundleHiddenFilter(OptionsMenuEntry* entries, int* count);
+static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count);
+static void switchToSection(struct CB_SettingsScene* s, int sectionIndex);
+
+static OptionsMenuEntry* build_general(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_script(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_audio(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_display(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_input(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_cgb(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_behavior(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_library(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_misc(struct CB_SettingsScene*, int* count);
+
+static SectionBuilder section_builders[SECTION_DEFS_COUNT];
+
+static SectionDef section_defs[] = {
+    {"General", build_general},   {"Script", build_script},   {"Audio", build_audio},
+    {"Display", build_display},   {"Input", build_input},     {"Game Boy Color", build_cgb},
+    {"Behavior", build_behavior}, {"Library", build_library}, {"Miscellaneous", build_misc},
+};
+
 // how long to remember last-selected preference in menu
 #define TIME_FORGET_LAST_PREFERENCE 15
 static void* last_selected_preference;
 static unsigned last_selected_preference_time;
-
-static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene);
 
 void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
@@ -164,6 +192,17 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     setCrankSoundsEnabled(true);
     CB_SettingsScene* settingsScene = cb_malloc(sizeof(CB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
+
+    {
+        static bool builders_inited = false;
+        if (!builders_inited)
+        {
+            for (int k = 0; k < SECTION_DEFS_COUNT; k++)
+                section_builders[k] = section_defs[k].builder;
+            builders_inited = true;
+        }
+    }
+
     settingsScene->rec_entry_index = -1;
     settingsScene->gameScene = gameScene;
     settingsScene->libraryScene = libraryScene;
@@ -230,31 +269,26 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
     }
 
-    settingsScene->entries = getOptionsEntries(settingsScene);
-
-    settingsScene->totalMenuItemCount = 0;
-    if (settingsScene->entries)
+    // Determine active sections
+    settingsScene->activeSectionCount = 0;
+    for (int j = 0; j < SECTION_DEFS_COUNT; j++)
     {
-        for (int i = 0; settingsScene->entries[i].name; i++)
+        int probe_count = 0;
+        OptionsMenuEntry* probe = section_builders[j](settingsScene, &probe_count);
+        if (probe && probe_count > 0)
         {
-            settingsScene->totalMenuItemCount++;
+            applyBundleHiddenFilter(probe, &probe_count);
+            if (probe_count > 0)
+                settingsScene->activeSectionIndices[settingsScene->activeSectionCount++] = j;
         }
+        if (probe)
+            cb_free(probe);
     }
 
-    // Ensure the initial cursor position is not on a header item.
-    if (settingsScene->totalMenuItemCount > 0)
-    {
-        while (settingsScene->entries[settingsScene->cursorIndex].header)
-        {
-            settingsScene->cursorIndex++;
-            // This check prevents an infinite loop if all items are somehow headers.
-            if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount)
-            {
-                settingsScene->cursorIndex = 0;
-                break;
-            }
-        }
-    }
+    if (settingsScene->activeSectionCount > 0)
+        switchToSection(settingsScene, 0);
+    else
+        settingsScene->entries = NULL;
 
     if (gameScene)
     {
@@ -302,18 +336,47 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
     int t_since =
         (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
 
-    if (last_selected_preference && t_since <= TIME_FORGET_LAST_PREFERENCE)
+    if (last_selected_preference && t_since <= TIME_FORGET_LAST_PREFERENCE &&
+        settingsScene->entries)
     {
-        int i = 0;
-        for (OptionsMenuEntry* entry = settingsScene->entries; entry->name; ++entry, ++i)
+        bool found = false;
+        for (int i = 0; i < settingsScene->totalMenuItemCount; i++)
         {
-            if (entry->pref_var == last_selected_preference)
+            if (settingsScene->entries[i].pref_var == last_selected_preference)
             {
                 playdate->system->logToConsole(
                     "Last selected option: %p; t=%d", last_selected_preference, t_since
                 );
                 settingsScene->cursorIndex = i;
+                found = true;
                 break;
+            }
+        }
+        if (!found)
+        {
+            for (int s = 1; s < settingsScene->activeSectionCount; s++)
+            {
+                int defIdx = settingsScene->activeSectionIndices[s];
+                int probe_count = 0;
+                OptionsMenuEntry* probe = section_builders[defIdx](settingsScene, &probe_count);
+                if (!probe)
+                    continue;
+                int at = -1;
+                for (int i = 0; i < probe_count; i++)
+                {
+                    if (probe[i].pref_var == last_selected_preference)
+                    {
+                        at = i;
+                        break;
+                    }
+                }
+                cb_free(probe);
+                if (at >= 0)
+                {
+                    switchToSection(settingsScene, s);
+                    settingsScene->cursorIndex = at;
+                    break;
+                }
             }
         }
     }
@@ -994,7 +1057,60 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
     }
 }
 
-static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
+static void applyBundleHiddenFilter(OptionsMenuEntry* entries, int* count)
+{
+    if (!preferences_bundle_hidden)
+        return;
+    int n = *count;
+    for (int j = n - 1; j >= 0; j--)
+    {
+        OptionsMenuEntry* entry = &entries[j];
+        bool remove = false;
+        if (entry->header && (j + 1 >= n || entries[j + 1].header || !entries[j + 1].name))
+            remove = true;
+        if (!remove)
+        {
+#define PREF(p, ...)                                                                      \
+    if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) \
+        remove = true;
+#include "../prefs.x"
+        }
+        if (remove)
+        {
+            memmove(&entries[j], &entries[j + 1], (size_t)(n - j - 1) * sizeof(OptionsMenuEntry));
+            n--;
+        }
+    }
+    *count = n;
+}
+
+static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count)
+{
+    for (int i = 0; i < count; i++)
+    {
+        OptionsMenuEntry* entry = &entries[i];
+        int j = 0;
+#define PREF(x, ...)                                                   \
+    if (entry->pref_var == &preferences_##x)                           \
+    {                                                                  \
+        if (prefs_locked_by_script & (1 << (preferences_bitfield_t)j)) \
+        {                                                              \
+            entry->locked = 1;                                         \
+            entry->description = "Disabled by game script.";           \
+        }                                                              \
+    }                                                                  \
+    ++j;
+#include "../prefs.x"
+    }
+}
+
+/*
+ * General
+ *  Save state, Load state, Get ROMs, Patches,
+ *  Manage ROM, Save Data, Settings scope,
+ *  Apply recommended
+ */
+static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
 {
     CB_GameScene* gameScene = scene->gameScene;
     CB_LibraryScene* libraryScene = scene->libraryScene;
@@ -1003,18 +1119,23 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             ? libraryScene->games->items[libraryScene->listView->selectedItem]
             : NULL;
 
-    int max_entries = TOTAL_MENU_ITEMS;
-    OptionsMenuEntry* entries = cb_malloc(sizeof(OptionsMenuEntry) * max_entries);
-    if (!entries)
-        return NULL;
-    memset(entries, 0, sizeof(OptionsMenuEntry) * max_entries);
+    scene->rec_entry_index = -1;
 
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "General",
+        .header = 1,
+        .description =
+            "Core settings including\nsave states, ROM\nmanagement, patches,\nand settings "
+            "scope.\n \nAll other sections\nrespect the current\nscope setting."
+    };
 
     if (gameScene)
     {
-        // save state
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Save state",
             .values = slot_labels,
             .description = "Create a snapshot of\nthis moment, which\ncan be resumed later.",
@@ -1027,8 +1148,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .ud = gameScene,
         };
 
-        // load state
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Load state",
             .values = slot_labels,
             .description = "Restore the previously-\ncreated snapshot.",
@@ -1044,7 +1164,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (libraryScene)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Get ROMs",
             .description =
                 "Download \"homebrew\"\ngames for free from\nHomebrew Hub\n(hh.gbdev.io).\n \nThis "
@@ -1058,15 +1178,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
         if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
         {
-            entries[i].locked = true;
-            entries[i].description =
+            section[i].locked = true;
+            section[i].description =
                 "Homebrew Hub API\nnot found. Check\nthis pdx file:\n" HOMEBREW_HUB_API_FILE;
         }
     }
 
     if (libraryScene && selectedGame)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Patches",
             .description =
                 "Manage and download\ngame patches, also known\nas ROM hacks.\n \nRemember to "
@@ -1078,7 +1198,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .ud = selectedGame
         };
 
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Manage ROM",
             .description = "View ROM info\nand delete the ROM,\nsave data, or cover art.",
             .values = next_scene,
@@ -1087,7 +1207,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .ud = selectedGame
         };
 
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Save Data",
             .values = save_slot_labels,
             .description =
@@ -1103,8 +1223,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
         if (!selectedGame->names->rom_has_battery)
         {
-            entries[i].locked = true;
-            entries[i].description =
+            section[i].locked = true;
+            section[i].description =
                 "Because this ROM does\nnot use internal save\ndata, this feature\nis disabled.";
         }
         else
@@ -1116,17 +1236,17 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             {
                 save_info = aprintf(
                     "Save data exists in %s.\n \n%s", save_slot_labels[preferences_save_slot],
-                    entries[i].description
+                    section[i].description
                 );
-                entries[i].description = save_info;
+                section[i].description = save_info;
             }
             else
             {
                 save_info = aprintf(
                     "%s is empty.\n \n%s", save_slot_labels[preferences_save_slot],
-                    entries[i].description
+                    section[i].description
                 );
-                entries[i].description = save_info;
+                section[i].description = save_info;
             }
             cb_free(save_file);
         }
@@ -1151,7 +1271,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 "Game:\nEdit settings specific\nfor the selected game.";
         }
 
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Settings scope",
             .values = settings_scope_labels,
             .description = scope_description,
@@ -1163,14 +1283,13 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_change = settings_post_action_per_game,
         };
 
-        // Apply recommended settings - only shown when settings exist
         {
             const char* game_name = get_settings_game_name(scene);
             bool has_rec = script_get_recommended_for_game(game_name) != NULL;
 
             if (has_rec)
             {
-                entries[++i] = (OptionsMenuEntry){
+                section[++i] = (OptionsMenuEntry){
                     .name = "Apply recommended",
                     .on_press = apply_recommended_in_settings,
                     .locked = true,
@@ -1178,59 +1297,102 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                     .rebuild_when_changed = 1,
                 };
 
-                recalc_recommended_entry_state(&entries[i], scene);
+                recalc_recommended_entry_state(&section[i], scene);
                 scene->rec_entry_index = i;
             }
-            else
-            {
-                scene->rec_entry_index = -1;
-            }
         }
     }
 
-    // custom script settings
-    if (gameScene && gameScene->script)
-    {
-        clear_script_settings();
-        script_add_settings(gameScene->script);
-        if (script_settings_info_count > 0)
-        {
-            entries[++i] = (OptionsMenuEntry){.name = "Script", .header = 1};
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
 
-            for (int j = 0; j < script_settings_info_count; ++j)
-            {
-                struct ScriptSettingsInfo* info = &script_settings_info[j];
-                if (*info->preference >= info->maxvalue)
-                    *info->preference = 0;
-                entries[++i] = (OptionsMenuEntry){
-                    .name = info->name,
-                    .values = (const char**)info->options,
-                    .description = info->description,
-                    .pref_var = info->preference,
-                    .max_value = info->maxvalue,
-                };
-            }
-        }
+/*
+ * Script
+ *  Script custom settings (if available)
+ */
+static OptionsMenuEntry* build_script(CB_SettingsScene* scene, int* count)
+{
+    CB_GameScene* gameScene = scene->gameScene;
+    scene->rec_entry_index = -1;
+
+    if (!gameScene || !gameScene->script)
+    {
+        *count = 0;
+        return NULL;
     }
 
-    entries[++i] = (OptionsMenuEntry){.name = "Audio", .header = 1};
-
-    // sound
+    clear_script_settings();
+    script_add_settings(gameScene->script);
+    if (script_settings_info_count <= 0)
     {
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Sound",
-            .values = sound_mode_labels,
-            .description =
-                "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
-                "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
-            .pref_var = &preferences_sound_mode,
-            .max_value = 3,
-            .on_press = NULL,
+        *count = 0;
+        return NULL;
+    }
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Script",
+        .header = 1,
+        .description = "Game-specific settings\nprovided by a custom\nscript for this ROM."
+    };
+
+    for (int j = 0; j < script_settings_info_count; ++j)
+    {
+        struct ScriptSettingsInfo* info = &script_settings_info[j];
+        if (*info->preference >= info->maxvalue)
+            *info->preference = 0;
+        section[++i] = (OptionsMenuEntry){
+            .name = info->name,
+            .values = (const char**)info->options,
+            .description = info->description,
+            .pref_var = info->preference,
+            .max_value = info->maxvalue,
         };
     }
 
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Audio
+ *  Sound, Timing, Sample rate,
+ *  Headphones / Mirror/Aux
+ */
+static OptionsMenuEntry* build_audio(CB_SettingsScene* scene, int* count)
+{
+    (void)scene;
+    scene->rec_entry_index = -1;
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Audio",
+        .header = 1,
+        .description = "Sound quality, timing\naccuracy, sample rate,\nand headphone output."
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Sound",
+        .values = sound_mode_labels,
+        .description =
+            "Accurate:\nHighest quality sound.\n \nFast:\nGood balance of\n"
+            "quality and speed.\n \nOff:\nNo audio for best\nperformance.",
+        .pref_var = &preferences_sound_mode,
+        .max_value = 3,
+        .on_press = NULL,
+    };
+
     // Timing
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Timing",
         .values = audio_sync_labels,
         .description =
@@ -1246,7 +1408,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // sample rate
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Sample rate",
         .values = sample_rate_labels,
         .description =
@@ -1260,7 +1422,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // Mono/Stereo
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = CB_App->mirror_active ? "Mirror/Aux" : "Headphones",
         .values = audio_output_labels,
         .description =
@@ -1272,10 +1434,33 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .max_value = 2,
     };
 
-    entries[++i] = (OptionsMenuEntry){.name = "Display", .header = 1};
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Display
+ *  30 FPS mode, Frame blending, Interlacing,
+ *  Dither, First scaling line, Stabilization
+ */
+static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
+{
+    (void)scene;
+    scene->rec_entry_index = -1;
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Display",
+        .header = 1,
+        .description = "Frame rate, dither\npattern, scaling, and\nvisual stabilization."
+    };
 
     // frame skip
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "30 FPS mode",
         .values = frame_skip_labels,
         .description =
@@ -1293,7 +1478,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // frame blending
     if (preferences_frame_skip != 0)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
             .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
@@ -1305,7 +1490,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
     else
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
             .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
@@ -1318,7 +1503,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // dynamic rate adjustment
     if (preferences_frame_skip == 0 || (preferences_frame_skip == 1 && preferences_blend_frames))
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
             .values = dynamic_rate_labels,
             .description =
@@ -1334,7 +1519,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
     else
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
             .values = dynamic_rate_labels,
             .description =
@@ -1350,7 +1535,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     // dither
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Dither",
         .values = dither_pattern_labels,
         .description =
@@ -1364,7 +1549,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // dither line
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "First scaling line",
         .values = dither_line_labels,
         .description =
@@ -1378,7 +1563,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // stabilization
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Stabilization",
         .values = off_on_labels,
         .description =
@@ -1391,11 +1576,34 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    entries[++i] = (OptionsMenuEntry){.name = "Crank", .header = 1};
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Input
+ *  Crank Mode, Crank Down, Undock, Dock,
+ *  Ⓐ›Ⓑ, Ⓑ›Ⓐ, Ⓐ+Ⓑ, Lock Override
+ */
+static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
+{
+    (void)scene;
+    scene->rec_entry_index = -1;
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Input",
+        .header = 1,
+        .description = "Crank function, dock\nand undock mapping,\nand button remapping."
+    };
 
     // crank mode
-    entries[++i] = (OptionsMenuEntry){
-        .name = "Mode",
+    section[++i] = (OptionsMenuEntry){
+        .name = "Crank",
         .values = crank_mode_labels,
         .description =
             "Assign a (turbo) function\nto the crank.\n \n"
@@ -1412,7 +1620,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // crank down action
     if (preferences_crank_mode == CRANK_MODE_START_SELECT)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Down",
             .values = crank_down_action_labels,
             .description =
@@ -1425,7 +1633,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
     else
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Down",
             .values = crank_down_action_labels,
             .description = "Only available when\nCrank mode is set to\nStart/Select.",
@@ -1436,7 +1644,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     // undock
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Undock",
         .values = gb_button_labels,
         .description = "Assign a button input\nfor undocking the crank.\n \n",
@@ -1446,7 +1654,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // dock
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Dock",
         .values = gb_button_labels,
         .description = "Assign a button input\nfor docking the crank.\n \n",
@@ -1455,10 +1663,8 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         .on_press = NULL
     };
 
-    entries[++i] = (OptionsMenuEntry){.name = "Buttons", .header = 1};
-
     // A->B
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Ⓐ›Ⓑ",
         .values = gb_button_labels_hp,
         .description =
@@ -1470,7 +1676,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // B->A
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Ⓑ›Ⓐ",
         .values = gb_button_labels_hp,
         .description =
@@ -1482,7 +1688,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // B+A
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Ⓐ+Ⓑ",
         .values = gb_button_labels_hp,
         .description =
@@ -1500,7 +1706,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // detected.
     if (CB_App->hasSystemAccess)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Lock Override",
             .values = gb_button_labels,
             .description =
@@ -1514,48 +1720,92 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         };
     }
 
-    // CGB settings
-    if (!gameScene || gameScene->context->cgb_mode)
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Game Boy Color
+ *  CPU Speed, HLE Routines
+ */
+static OptionsMenuEntry* build_cgb(CB_SettingsScene* scene, int* count)
+{
+    CB_GameScene* gameScene = scene->gameScene;
+    scene->rec_entry_index = -1;
+
+    if (gameScene && !gameScene->context->cgb_mode)
     {
-        entries[++i] = (OptionsMenuEntry){
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-            .name = "CGB (GB Color)",
-#else
-            .name = "Game Boy Color",
-#endif
-            .header = 1
-        };
-
-        entries[++i] = (OptionsMenuEntry){
-            .name = "CPU Speed",
-            .values = cgb_dmg_labels,
-            .description =
-                "Normally, the CGB CPU\ncan run twice as fast as\nthe DMG (non-Color GB).\n \nSet "
-                "to \"DMG\" to force\nit to run at DMG speed.\n \nCan greatly improve perf\non "
-                "titles which don't make\nefficient use of the CPU.\n \nThis is the opposite "
-                "of\noverclocking (see below).",
-            .pref_var = &preferences_cgb_speed,
-            .max_value = 2,
-        };
-
-        entries[++i] = (OptionsMenuEntry){
-            .name = "HLE Routines",
-            .values = off_on_labels,
-            .description =
-                "Automatically identify\ncertain common routines\nand replace them "
-                "with\nhigh-level emulated\nversions.\n \nCan allow for large\nperformance gains, "
-                "but\npotentially inaccurate.",
-            .pref_var = &preferences_hle,
-            .max_value = 2,
-            .on_press = NULL
-        };
+        *count = 0;
+        return NULL;
     }
 
-    entries[++i] = (OptionsMenuEntry){.name = "Behavior", .header = 1};
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        .name = "CGB (GB Color)",
+#else
+        .name = "Game Boy Color",
+#endif
+        .header = 1,
+        .description = "CGB CPU speed control\nand high-level emulation\nroutines."
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "CPU Speed",
+        .values = cgb_dmg_labels,
+        .description =
+            "Normally, the CGB CPU\ncan run twice as fast as\nthe DMG (non-Color GB).\n \nSet "
+            "to \"DMG\" to force\nit to run at DMG speed.\n \nCan greatly improve perf\non "
+            "titles which don't make\nefficient use of the CPU.\n \nThis is the opposite "
+            "of\noverclocking (see below).",
+        .pref_var = &preferences_cgb_speed,
+        .max_value = 2,
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "HLE Routines",
+        .values = off_on_labels,
+        .description =
+            "Automatically identify\ncertain common routines\nand replace them "
+            "with\nhigh-level emulated\nversions.\n \nCan allow for large\nperformance gains, "
+            "but\npotentially inaccurate.",
+        .pref_var = &preferences_hle,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Behavior
+ *  PPU Timing, Batching, Overclock,
+ *  Game scripts
+ */
+static OptionsMenuEntry* build_behavior(CB_SettingsScene* scene, int* count)
+{
+    CB_GameScene* gameScene = scene->gameScene;
+    scene->rec_entry_index = -1;
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Behavior",
+        .header = 1,
+        .description = "PPU timing accuracy,\nCPU batching, overclock,\nand script support."
+    };
 
     // PPU Timing
     static const char* ppu_timing_labels[] = {"Fast", "Accurate"};
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "PPU Timing",
         .values = ppu_timing_labels,
         .description =
@@ -1571,7 +1821,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     // instruction batching
     if (!gameScene || !gameScene->context->cgb_mode)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "Batching",
             .values = off_on_labels,
             .description =
@@ -1582,10 +1832,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .pref_var = &preferences_batching,
             .max_value = 2,
         };
-    };
+    }
 
     // overclocking
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Overclock",
         .values = overclock_labels,
         .description =
@@ -1603,7 +1853,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     "be used to\nnavigate menus. This\nsetting is always per-game."
 
     // C scripts
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Game scripts",
         .values = off_on_labels,
         .description = BASE_SCRIPT_STRING,
@@ -1617,117 +1867,170 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     {
         if (gameScene->script_available)
         {
-            entries[i].description = BASE_SCRIPT_STRING
+            section[i].description = BASE_SCRIPT_STRING
                 "\n \nYou must restart the\nROM for this setting\nto take effect.";
             if (gameScene->script_info_available)
             {
-                entries[i].description = BASE_SCRIPT_STRING
+                section[i].description = BASE_SCRIPT_STRING
                     "\n \nHold the Ⓐ button now\nfor more information.\n \nYou must restart "
                     "the\nROM for this setting\nto take effect.";
-                entries[i].on_hold = display_script_info;
+                section[i].on_hold = display_script_info;
             }
         }
         else
         {
-            entries[i].description =
+            section[i].description =
                 BASE_SCRIPT_STRING "\n \nThere is no script\navailable for this ROM.";
-            entries[i].locked = 1;
+            section[i].locked = 1;
         }
     }
 
-    // Library settings
-    if (!gameScene)
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Library
+ *  Title display, Article, Sort,
+ *  Remember Last, UI sounds,
+ *  Launch Animation, CGB Prompt
+ */
+static OptionsMenuEntry* build_library(CB_SettingsScene* scene, int* count)
+{
+    CB_GameScene* gameScene = scene->gameScene;
+    scene->rec_entry_index = -1;
+
+    // display name mode
+    if (gameScene)
     {
-        entries[++i] = (OptionsMenuEntry){.name = "Library", .header = 1};
-
-        // display name mode
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Title display",
-            .values = display_name_mode_labels,
-            .description =
-                "Choose how game titles\n"
-                "are displayed in the list.\n \n"
-                "Short:\nThe common game title\n(by database match).\n \n"
-                "Detailed:\nThe full title, including\nregion and version info.\n \n"
-                "Filename:\nThe original ROM filename.\n \n",
-            .pref_var = &preferences_display_name_mode,
-            .max_value = 3,
-            .on_press = NULL
-        };
-
-        // display article
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Article",
-            .values = article_labels,
-            .description =
-                "If a game title ends with\n"
-                "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
-                "it can be displayed at the\n"
-                "start instead, i.e.\n \n"
-                "  \"The Mummy (USA)\"\n",
-            .pref_var = &preferences_display_article,
-            .max_value = 2,
-            .on_press = NULL
-        };
-
-        // sorting
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Sort",
-            .values = sort_labels,
-            .description =
-                "Sort the games list either\nby database name or by\nfilename.\n \nCan also choose "
-                "to include\narticles that have been\nmoved to the front of the\nname toward "
-                "sorting.",
-            .pref_var = &preferences_display_sort,
-            .max_value = 4,
-            .on_press = NULL
-        };
-
-        // remember selection
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Remember Last",
-            .values = off_on_labels,
-            .description =
-                "When opening the library,\n"
-                "initial selection will be the\nlast game played.\n",
-            .pref_var = &preferences_library_remember_selection,
-            .max_value = 2,
-            .on_press = NULL
-        };
-
-        addUISoundOption(scene, entries, &i);
-
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Launch Animation",
-            .values = off_on_labels,
-            .description = "Animation when launching\na ROM from the library.",
-            .pref_var = &preferences_library_launch_animation,
-            .max_value = 2,
-        };
-
-        // remember selection
-        entries[++i] = (OptionsMenuEntry){
-            .name = "CGB Prompt",
-            .values = cgb_prompt_labels,
-            .description =
-                "When launching a ROM,\n"
-                "show a prompt to choose:\n \n"
-                "1. DMG (original) emulation\n"
-                "2. CGB (\"Color\") emulation\n"
-                "      (experimental)\n \n"
-                "No: CGB-only ROMs\n \n"
-                "Yes: CGB-compatible ROMs\n \n"
-                "Always: CGB and DMG ROMs",
-            .pref_var = &preferences_prompt_if_cgb_optional,
-            .max_value = 3,
-            .on_press = NULL
-        };
+        *count = 0;
+        return NULL;
     }
 
-    entries[++i] = (OptionsMenuEntry){.name = "Miscellaneous", .header = 1};
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Library",
+        .header = 1,
+        .description =
+            "Game list appearance,\nsorting, launch behavior,\nand CGB prompt options.\n \nVisible "
+            "in Library scope."
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Title display",
+        .values = display_name_mode_labels,
+        .description =
+            "Choose how game titles\n"
+            "are displayed in the list.\n \n"
+            "Short:\nThe common game title\n(by database match).\n \n"
+            "Detailed:\nThe full title, including\nregion and version info.\n \n"
+            "Filename:\nThe original ROM filename.\n \n",
+        .pref_var = &preferences_display_name_mode,
+        .max_value = 3,
+        .on_press = NULL
+    };
+
+    // display article
+    section[++i] = (OptionsMenuEntry){
+        .name = "Article",
+        .values = article_labels,
+        .description =
+            "If a game title ends with\n"
+            "an article, such as\n \n  \"Mummy, The (USA)\"\n \n"
+            "it can be displayed at the\n"
+            "start instead, i.e.\n \n"
+            "  \"The Mummy (USA)\"\n",
+        .pref_var = &preferences_display_article,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
+    // sorting
+    section[++i] = (OptionsMenuEntry){
+        .name = "Sort",
+        .values = sort_labels,
+        .description =
+            "Sort the games list either\nby database name or by\nfilename.\n \nCan also choose "
+            "to include\narticles that have been\nmoved to the front of the\nname toward "
+            "sorting.",
+        .pref_var = &preferences_display_sort,
+        .max_value = 4,
+        .on_press = NULL
+    };
+
+    // remember selection
+    section[++i] = (OptionsMenuEntry){
+        .name = "Remember Last",
+        .values = off_on_labels,
+        .description =
+            "When opening the library,\n"
+            "initial selection will be the\nlast game played.\n",
+        .pref_var = &preferences_library_remember_selection,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
+    addUISoundOption(scene, section, &i);
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Launch Animation",
+        .values = off_on_labels,
+        .description = "Animation when launching\na ROM from the library.",
+        .pref_var = &preferences_library_launch_animation,
+        .max_value = 2,
+    };
+
+    // remember selection
+    section[++i] = (OptionsMenuEntry){
+        .name = "CGB Prompt",
+        .values = cgb_prompt_labels,
+        .description =
+            "When launching a ROM,\n"
+            "show a prompt to choose:\n \n"
+            "1. DMG (original) emulation\n"
+            "2. CGB (\"Color\") emulation\n"
+            "      (experimental)\n \n"
+            "No: CGB-only ROMs\n \n"
+            "Yes: CGB-compatible ROMs\n \n"
+            "Always: CGB and DMG ROMs",
+        .pref_var = &preferences_prompt_if_cgb_optional,
+        .max_value = 3,
+        .on_press = NULL
+    };
+
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
+
+/*
+ * Miscellaneous
+ *  Show FPS, Turbo Speed, UI sounds,
+ *  Disable auto lock, Boot Fade,
+ *  ITCM acceleration, LCD-TCM accel.,
+ *  About CrankBoy...
+ */
+static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
+{
+    CB_GameScene* gameScene = scene->gameScene;
+    scene->rec_entry_index = -1;
+
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = -1;
 
     // show fps
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
+        .name = "Miscellaneous",
+        .header = 1,
+        .description = "FPS display, turbo\nspeed, boot fade,\nITCM acceleration,\nand more."
+    };
+
+    section[++i] = (OptionsMenuEntry){
         .name = "Show FPS",
         .values = fps_labels,
         .description =
@@ -1741,7 +2044,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // uncap fps
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Turbo Speed",
         .values = off_on_labels,
         .description =
@@ -1755,11 +2058,11 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     if (CB_App->bundled_rom)
     {
         // ui sounds (for non-bundled, part of library settings only)
-        addUISoundOption(scene, entries, &i);
+        addUISoundOption(scene, section, &i);
     }
 
     // Disable Auto Lock
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Disable auto lock",
         .values = off_on_labels,
         .description =
@@ -1773,7 +2076,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // Starting fade
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "Boot Fade",
         .values = boot_fade_labels,
         .description =
@@ -1785,10 +2088,10 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (CB_App->bundled_rom)
     {
-        entries[i].description =
+        section[i].description =
             "Fade from black on\ngame start.\n \nIn bundled mode, fade\nfrom white is not "
             "currently\npossible.";
-        entries[i].max_value = 3;
+        section[i].max_value = 3;
     }
 
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
@@ -1812,7 +2115,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         );
     }
 
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "ITCM acceleration",
         .values = off_on_labels,
         .pref_var = &preferences_itcm,
@@ -1822,15 +2125,15 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (gameScene)
     {
-        entries[i].description = itcm_restart_desc;
+        section[i].description = itcm_restart_desc;
     }
     else
     {
-        entries[i].description = itcm_base_desc;
+        section[i].description = itcm_base_desc;
     }
 #endif
 
-    entries[++i] = (OptionsMenuEntry){
+    section[++i] = (OptionsMenuEntry){
         .name = "LCD-TCM accel.",
         .values = off_on_labels,
         .description =
@@ -1844,7 +2147,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
 
     if (CB_App->bundled_rom)
     {
-        entries[++i] = (OptionsMenuEntry){
+        section[++i] = (OptionsMenuEntry){
             .name = "About CrankBoy...",
             .values = NULL,
             .description =
@@ -1855,56 +2158,28 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
             .on_press = display_credits
         };
     }
-    CB_ASSERT(i < max_entries - 1);
 
-    // remove any entries hidden by bundle
-    if (preferences_bundle_hidden)
-    {
-        for (size_t j = max_entries - 1; j-- > 0;)
-        {
-            bool remove = false;
-            struct OptionsMenuEntry* entry = &entries[j];
+    CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
+    *count = i + 1;
+    return section;
+}
 
-            // remove header if no options below it
-            if (entry->header && (entries[j + 1].header || !entries[j + 1].name))
-                goto do_remove;
+static void switchToSection(CB_SettingsScene* s, int sectionIndex)
+{
+    if (s->entries)
+        cb_free(s->entries);
 
-// remove normal option (if hidden)
-#define PREF(p, ...)                                                                      \
-    if ((preferences_bundle_hidden & PREFBIT_##p) && entry->pref_var == &preferences_##p) \
-        goto do_remove;
-#include "../prefs.x"
+    int defIdx = s->activeSectionIndices[sectionIndex];
+    int count = 0;
+    s->entries = section_builders[defIdx](s, &count);
+    applyBundleHiddenFilter(s->entries, &count);
+    applyScriptLockedFilter(s->entries, count);
+    s->totalMenuItemCount = count;
+    s->currentSectionIndex = sectionIndex;
 
-            continue;
-
-        do_remove:
-            for (size_t k = j; k < max_entries - 1; ++k)
-            {
-                entries[k] = entries[k + 1];
-            }
-        }
-    }
-
-    // disable any entries if script requires it
-    for (int i = 0; i < max_entries; ++i)
-    {
-        OptionsMenuEntry* entry = &entries[i];
-        int j = 0;
-#define PREF(x, ...)                                                   \
-    if (entry->pref_var == &preferences_##x)                           \
-    {                                                                  \
-        if (prefs_locked_by_script & (1 << (preferences_bitfield_t)j)) \
-        {                                                              \
-            entry->locked = 1;                                         \
-            entry->description = "Disabled by game script.";           \
-        }                                                              \
-    }                                                                  \
-    ++j;
-#include "../prefs.x"
-    }
-
-    return entries;
-};
+    s->cursorIndex = 0;
+    s->topVisibleIndex = 0;
+}
 
 static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
 {
@@ -1913,21 +2188,20 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
         cb_free(settingsScene->entries);
     }
 
-    settingsScene->entries = getOptionsEntries(settingsScene);
-
-    // count all entries that have a name
-    settingsScene->totalMenuItemCount = 0;
-    if (settingsScene->entries)
-    {
-        for (int i = 0; settingsScene->entries[i].name; i++)
-        {
-            settingsScene->totalMenuItemCount++;
-        }
-    }
+    int defIdx = settingsScene->activeSectionIndices[settingsScene->currentSectionIndex];
+    int count = 0;
+    settingsScene->entries = section_builders[defIdx](settingsScene, &count);
+    applyBundleHiddenFilter(settingsScene->entries, &count);
+    applyScriptLockedFilter(settingsScene->entries, count);
+    settingsScene->totalMenuItemCount = count;
 
     if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount)
     {
         settingsScene->cursorIndex = settingsScene->totalMenuItemCount - 1;
+    }
+    if (settingsScene->cursorIndex < 0)
+    {
+        settingsScene->cursorIndex = 0;
     }
 }
 
@@ -2073,21 +2347,17 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         for (int i = 0; i < num_steps; ++i)
         {
-            // Move the cursor, skipping over any headers
-            do
-            {
-                settingsScene->cursorIndex += direction;
+            settingsScene->cursorIndex += direction;
 
-                // Wrap the cursor index if it goes out of bounds
-                if (settingsScene->cursorIndex >= menuItemCount)
-                {
-                    settingsScene->cursorIndex = 0;
-                }
-                else if (settingsScene->cursorIndex < 0)
-                {
-                    settingsScene->cursorIndex = menuItemCount - 1;
-                }
-            } while (settingsScene->entries[settingsScene->cursorIndex].header);
+            // Wrap the cursor index within the current section
+            if (settingsScene->cursorIndex >= menuItemCount)
+            {
+                settingsScene->cursorIndex = 0;
+            }
+            else if (settingsScene->cursorIndex < 0)
+            {
+                settingsScene->cursorIndex = menuItemCount - 1;
+            }
         }
     }
 
@@ -2119,7 +2389,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     {
         settingsScene->topVisibleIndex =
             MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2),
-                settingsScene->totalMenuItemCount - MAX_VISIBLE_ITEMS);
+                menuItemCount - MAX_VISIBLE_ITEMS);
+        settingsScene->topVisibleIndex = MAX(0, settingsScene->topVisibleIndex);
     }
 
     OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
@@ -2132,6 +2403,21 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             a_pressed = 0;
     }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
+
+    // Left/Right on a section header switches section pages
+    if (cursor_entry->header && direction != 0 && settingsScene->activeSectionCount > 1)
+    {
+        cb_play_ui_sound(CB_UISound_Navigate);
+        switchToSection(
+            settingsScene,
+            (settingsScene->currentSectionIndex + direction + settingsScene->activeSectionCount) %
+                settingsScene->activeSectionCount
+        );
+        cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
+        direction = 0;
+        settingsScene->option_hold_time = 0;
+        menuItemCount = settingsScene->totalMenuItemCount;
+    }
 
     if (cursor_entry->on_hold && !cursor_entry->locked)
     {

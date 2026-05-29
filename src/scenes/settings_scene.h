@@ -26,6 +26,9 @@ typedef struct CB_SettingsScene
     int cursorIndex;
     int topVisibleIndex;
     int totalMenuItemCount;
+    int currentSectionIndex;
+    int activeSectionCount;
+    int activeSectionIndices[12];
     float crankAccumulator;
     bool shouldDismiss : 1;
     bool shouldReturnToLibrary : 1;
