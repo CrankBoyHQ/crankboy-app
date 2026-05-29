@@ -17,7 +17,7 @@ PREF(headphone_audio, 1)  // 0: Mono, 1: Stereo
 /* --- display --- */
 PREF(frame_skip, true)   // 0: Off, 1: On, 2: Adaptive
 PREF(blend_frames, 0)    // 0: Off, 1: On
-PREF(dither_pattern, 1)  // 0: Staggered, 1: Grid, 2: Staggered (L),
+PREF(dither_pattern, 0)  // 0: Staggered, 1: Grid, 2: Staggered (L),
                          // 3: Grid (L), 4: Staggered (D), 5: Grid (D)
 
 PREF(dither_line, 2)
