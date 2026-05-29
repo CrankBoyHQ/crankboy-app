@@ -1667,7 +1667,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
 
     bool allow_interlace =
-        preferences_frame_skip != 2 && (!preferences_frame_skip || preferences_blend_frames);
+        preferences_frame_skip == 0 || (preferences_frame_skip == 1 && preferences_blend_frames);
 
     if (allow_interlace)
     {
@@ -2141,21 +2141,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                 (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
                                 (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
 
-                            // Frame N+1 (dark) — skip PPU if screen is static
-                            cgb_blend_stage = 2;
-                            gb_recompute_cgb_gray_palettes__to_bright(context->gb);
-                            context->gb->lcd = cb_frame_buffer[1];
-                            context->gb->direct.frame_skip = !scroll_changed;
-#ifdef DTCM_ALLOC
-                            DTCM_VERIFY_DEBUG();
-                            run_frame_function_pointer(context->gb);
-                            DTCM_VERIFY_DEBUG();
-#else
-                            run_frame_function_pointer(context->gb);
-#endif
-                            ++gameScene->next_frames_elapsed;
-                            tick_audio_sync(gameScene);
-
                             gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
                             gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
                             gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
@@ -2163,6 +2148,21 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                             if (scroll_changed)
                             {
+                                // Frame N+1 (dark)
+                                cgb_blend_stage = 2;
+                                gb_recompute_cgb_gray_palettes__to_bright(context->gb);
+                                context->gb->lcd = cb_frame_buffer[1];
+                                context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
+#else
+                                run_frame_function_pointer(context->gb);
+#endif
+                                ++gameScene->next_frames_elapsed;
+                                tick_audio_sync(gameScene);
+
                                 blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
                                 memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                             }
@@ -2376,19 +2376,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
                         (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
 
-                    // Frame N+1 → buffer[1] (skip PPU render if screen is static)
-                    context->gb->lcd = frame_buffer[1];
-                    context->gb->direct.frame_skip = !scroll_changed;
-#ifdef DTCM_ALLOC
-                    DTCM_VERIFY_DEBUG();
-                    run_frame_function_pointer(context->gb);
-                    DTCM_VERIFY_DEBUG();
-#else
-                    run_frame_function_pointer(context->gb);
-#endif
-                    ++gameScene->next_frames_elapsed;
-                    tick_audio_sync(gameScene);
-
                     gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
                     gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
                     gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
@@ -2396,6 +2383,19 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                     if (scroll_changed)
                     {
+                        // Frame N+1 → buffer[1]
+                        context->gb->lcd = frame_buffer[1];
+                        context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+
                         blend_frames_lut(frame_buffer[0], frame_buffer[1]);
                         memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }

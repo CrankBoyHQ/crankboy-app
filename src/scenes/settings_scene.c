@@ -1316,22 +1316,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     }
 
     // dynamic rate adjustment
-    if (preferences_frame_skip == 1 && !preferences_blend_frames)
-    {
-        // Interlacing disabled in 30fps mode without frame blending
-        entries[++i] = (OptionsMenuEntry){
-            .name = "Interlacing",
-            .values = dynamic_rate_labels,
-            .description =
-                "Only available when\n30 FPS mode is disabled,\nor when frame blending\nis "
-                "enabled.",
-            .pref_var = &preferences_dynamic_rate,
-            .max_value = 0,
-            .rebuild_when_changed = 1,
-            .on_press = NULL,
-        };
-    }
-    else
+    if (preferences_frame_skip == 0 || (preferences_frame_skip == 1 && preferences_blend_frames))
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Interlacing",
@@ -1343,6 +1328,22 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
                 "Auto:\nRecommended. Skips lines\nonly when needed.",
             .pref_var = &preferences_dynamic_rate,
             .max_value = 3,
+            .rebuild_when_changed = 1,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        entries[++i] = (OptionsMenuEntry){
+            .name = "Interlacing",
+            .values = dynamic_rate_labels,
+            .description =
+                "Only available in:\n \n"
+                "- 60 FPS mode\n"
+                "- 30 FPS mode with enabled\n"
+                "    frame blending",
+            .pref_var = &preferences_dynamic_rate,
+            .max_value = 0,
             .rebuild_when_changed = 1,
             .on_press = NULL,
         };
