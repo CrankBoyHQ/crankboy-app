@@ -1665,7 +1665,7 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
 
     // A->B
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ›Ⓑ",
+        .name = "Ⓐ ›Ⓑ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement\nbutton input for\nholding Ⓐ and then\npressing Ⓑ.\n \n"
@@ -1677,7 +1677,7 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
 
     // B->A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓑ›Ⓐ",
+        .name = "Ⓑ ›Ⓐ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement\nbutton input for\nholding Ⓑ and then\npressing Ⓐ.\n \n"
@@ -1689,7 +1689,7 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
 
     // B+A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ+Ⓑ",
+        .name = "Ⓐ + Ⓑ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement\nbutton input when\nsimultaneously pressing\nboth Ⓐ and Ⓑ.\n \n"
