@@ -1291,15 +1291,12 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
     };
 
     // frame blending
-    if ((libraryScene && preferences_frame_skip == 1) ||
-        (!gameScene->context->cgb_mode && preferences_frame_skip == 1))
+    if (preferences_frame_skip == 1)
     {
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
-            .description =
-                "Only available when\n30 FPS mode is enabled.\n \nAlways active during "
-                "CGB\n(\"Color\") emulation and\nchanging this setting has\nno effect.",
+            .description = "Only available when\n30 FPS mode is enabled.\n",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -1311,9 +1308,7 @@ static OptionsMenuEntry* getOptionsEntries(CB_SettingsScene* scene)
         entries[++i] = (OptionsMenuEntry){
             .name = "Frame blending",
             .values = off_on_labels,
-            .description =
-                "Only available when\n30 FPS mode is enabled.\n \nAlways active during "
-                "CGB\n(\"Color\") emulation and\nchanging this setting has\nno effect.",
+            .description = "Only available when\n30 FPS mode is enabled.\n",
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
             .on_press = NULL,
