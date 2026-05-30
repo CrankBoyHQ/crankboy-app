@@ -9,7 +9,7 @@
 #ifndef scene_h
 #define scene_h
 
-#include "pd_api.h"
+#include <pd_api.h>
 
 typedef struct CB_Scene
 {

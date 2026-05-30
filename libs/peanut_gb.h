@@ -33,8 +33,6 @@
 #define PEANUT_GB_H
 
 #include "../src/app.h"
-#include "../src/preferences.h"
-#include "../src/utility.h"
 
 extern uint8_t cgb_blend_stage;
 

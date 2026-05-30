@@ -8,7 +8,10 @@
 
 #include "app.h"
 
-#include "../libs/pdnewlib/pdnewlib.h"  // IWYU pragma: keep
+#ifdef TARGET_PLAYDATE
+#include "../libs/pdnewlib/pdnewlib.h"
+#endif
+
 #include "dtcm.h"
 #include "global.h"
 #include "jparse.h"

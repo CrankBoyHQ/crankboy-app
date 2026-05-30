@@ -7,9 +7,10 @@
 //
 
 #include "../gbz.h"
-#include "pd_api.h"
-#include "pd_api/pd_api_gfx.h"
+#include "../preferences.h"
 
+#include <pd_api.h>
+#include <pd_api/pd_api_gfx.h>
 #include <stdbool.h>
 
 unsigned game_picture_x_offset;

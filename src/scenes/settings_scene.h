@@ -8,6 +8,7 @@
 #ifndef settings_scene_h
 #define settings_scene_h
 
+#include "../preferences.h"
 #include "../scene.h"
 #include "../userstack.h"
 #include "game_scene.h"

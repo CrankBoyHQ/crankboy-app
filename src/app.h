@@ -9,10 +9,10 @@
 #ifndef app_h
 #define app_h
 
-#include "pd_api.h"
 #include "scene.h"
 #include "utility.h"
 
+#include <pd_api.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdio.h>

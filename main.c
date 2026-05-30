@@ -6,12 +6,13 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
-#include "pd_api.h"
 #include "src/app.h"
 #include "src/dtcm.h"
 #include "src/global.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
+
+#include <pd_api.h>
 
 #if __has_include("pdboot/pdboot.h")
 #include "pdboot/pdboot.h"

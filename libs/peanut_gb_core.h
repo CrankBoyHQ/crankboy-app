@@ -23,6 +23,10 @@
 #error "PGB_TEMPLATE must be defined"
 #endif
 
+#include "../src/app.h"
+#include "../src/preferences.h"
+#include "../src/utility.h"
+
 /**
  * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
  * Note: __cgb and __dmg implementations should be identical

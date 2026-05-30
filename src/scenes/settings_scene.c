@@ -17,10 +17,11 @@
 #include "homebrew_hub_scene.h"
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
-#include "pd_api/pd_api_gfx.h"
 
+#include <pd_api/pd_api_gfx.h>
 #include <stdlib.h>
 #include <string.h>
+
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif

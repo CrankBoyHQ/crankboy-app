@@ -5,8 +5,8 @@
 #include "../pgmusic.h"
 #include "../preferences.h"
 #include "../version.h"
-#include "pd_api/pd_api_json.h"
 
+#include <pd_api/pd_api_json.h>
 #include <stdio.h>
 #include <stdlib.h>
 
