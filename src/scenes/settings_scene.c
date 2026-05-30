@@ -967,7 +967,7 @@ bool script_custom_setting_add(const char* name, const char* description, const 
 static void addUISoundOption(CB_SettingsScene* scene, OptionsMenuEntry* entries, int* i)
 {
     entries[++*i] = (OptionsMenuEntry){
-        .name = "UI sounds",
+        .name = "UI Sounds",
         .values = off_on_labels,
         .description = "Enable or disable\ninterface sound effects.\n",
         .pref_var = &preferences_ui_sounds,
@@ -1411,7 +1411,7 @@ static OptionsMenuEntry* build_audio(CB_SettingsScene* scene, int* count)
 
     // sample rate
     section[++i] = (OptionsMenuEntry){
-        .name = "Sample rate",
+        .name = "Sample Rate",
         .values = sample_rate_labels,
         .description =
             "Adjusts audio quality.\nHigher values may impact\nperformance.\n \n"
@@ -1463,7 +1463,7 @@ static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
 
     // frame skip
     section[++i] = (OptionsMenuEntry){
-        .name = "30 FPS mode",
+        .name = "30 FPS Mode",
         .values = frame_skip_labels,
         .description =
             "Skips displaying every\nsecond frame. Greatly\nimproves performance\n"
@@ -1481,7 +1481,7 @@ static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
     if (preferences_frame_skip != 0)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Frame blending",
+            .name = "Frame Blending",
             .values = off_on_labels,
             .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
             .pref_var = &preferences_blend_frames,
@@ -1493,7 +1493,7 @@ static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
     else
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Frame blending",
+            .name = "Frame Blending",
             .values = off_on_labels,
             .description = "Only available when\n30 FPS or Adaptive mode\nis enabled.\n",
             .pref_var = &preferences_blend_frames,
@@ -1552,7 +1552,7 @@ static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
 
     // dither line
     section[++i] = (OptionsMenuEntry){
-        .name = "First scaling line",
+        .name = "First Scaling Line",
         .values = dither_line_labels,
         .description =
             "Due to the 3:5 ratio\nbetween the GB's and\nPlaydate's vertical\nresolutions, 1 in "
@@ -1864,7 +1864,7 @@ static OptionsMenuEntry* build_behavior(CB_SettingsScene* scene, int* count)
 
     // C scripts
     section[++i] = (OptionsMenuEntry){
-        .name = "Game scripts",
+        .name = "Game Scripts",
         .values = off_on_labels,
         .description = BASE_SCRIPT_STRING,
         .pref_var = &preferences_script_support,
@@ -1903,7 +1903,7 @@ static OptionsMenuEntry* build_behavior(CB_SettingsScene* scene, int* count)
 /*
  * Library
  *  Title display, Article, Sort,
- *  Remember Last, UI sounds,
+ *  Remember Last, Sample Rate,
  *  Launch Animation, CGB Prompt
  */
 static OptionsMenuEntry* build_library(CB_SettingsScene* scene, int* count)
@@ -1931,7 +1931,7 @@ static OptionsMenuEntry* build_library(CB_SettingsScene* scene, int* count)
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Title display",
+        .name = "Title Display",
         .values = display_name_mode_labels,
         .description =
             "Choose how game titles\n"
@@ -2037,7 +2037,7 @@ static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
     section[++i] = (OptionsMenuEntry){
         .name = "Miscellaneous",
         .header = 1,
-        .description = "FPS display, turbo\nspeed, boot fade,\nITCM acceleration,\nand more."
+        .description = "FPS display, turbo\nspeed, boot fade,\nITCM Acceleration,\nand more."
     };
 
     section[++i] = (OptionsMenuEntry){
@@ -2073,7 +2073,7 @@ static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
 
     // Disable Auto Lock
     section[++i] = (OptionsMenuEntry){
-        .name = "Disable auto lock",
+        .name = "Disable Auto Lock",
         .values = off_on_labels,
         .description =
             "Prevents the device\nfrom auto-locking after\n3 minutes of inactivity.\n \nNote: This "
@@ -2126,7 +2126,7 @@ static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
     }
 
     section[++i] = (OptionsMenuEntry){
-        .name = "ITCM acceleration",
+        .name = "ITCM Acceleration",
         .values = off_on_labels,
         .pref_var = &preferences_itcm,
         .max_value = 2,
@@ -2144,7 +2144,7 @@ static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
 #endif
 
     section[++i] = (OptionsMenuEntry){
-        .name = "LCD-TCM accel.",
+        .name = "LCD-TCM Accel.",
         .values = off_on_labels,
         .description =
             "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore "
