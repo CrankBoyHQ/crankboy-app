@@ -37,6 +37,7 @@
 extern uint8_t cgb_blend_stage;
 extern uint8_t cgb_gray_lum_min;
 extern uint8_t cgb_gray_lum_max;
+extern int8_t cgb_gray_bias;
 
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
@@ -717,37 +718,40 @@ __shell static void __gb_do_hdma(gb_s* gb)
     gb->cgb_hdma_dst += 0x10;
 }
 
+#define __cgb_numer(x) ((x) < 0 ? 0 : (x) > 8 ? 8 : (x))
+
 __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
 {
     uint16_t range = (uint16_t)cgb_gray_lum_max - (uint16_t)cgb_gray_lum_min;
     if (range == 0)
         range = 1;
     uint16_t base = (uint16_t)cgb_gray_lum_min;
+    int8_t b = cgb_gray_bias;
 
     switch (cgb_blend_stage)
     {
     case 1:
-        if (sum >= base + ((range * 3) >> 2))
+        if (sum >= base + ((range * __cgb_numer(6 - b)) >> 3))
             return 0;
-        if (sum >= base + (range >> 1))
+        if (sum >= base + ((range * __cgb_numer(4 - b)) >> 3))
             return 1;
-        if (sum >= base + (range >> 2))
+        if (sum >= base + ((range * __cgb_numer(2 - b)) >> 3))
             return 2;
         return 3;
     case 2:
-        if (sum >= base + ((range * 7) >> 3))
+        if (sum >= base + ((range * __cgb_numer(7 - b)) >> 3))
             return 0;
-        if (sum >= base + ((range * 5) >> 3))
+        if (sum >= base + ((range * __cgb_numer(5 - b)) >> 3))
             return 1;
-        if (sum >= base + ((range * 3) >> 3))
+        if (sum >= base + ((range * __cgb_numer(3 - b)) >> 3))
             return 2;
         return 3;
     default:
-        if (sum >= base + ((range * 3) >> 2))
+        if (sum >= base + ((range * __cgb_numer(6 - b)) >> 3))
             return 0;
-        if (sum >= base + (range >> 1))
+        if (sum >= base + ((range * __cgb_numer(4 - b)) >> 3))
             return 1;
-        if (sum >= base + (range >> 2))
+        if (sum >= base + ((range * __cgb_numer(2 - b)) >> 3))
             return 2;
         return 3;
     }

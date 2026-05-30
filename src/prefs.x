@@ -68,8 +68,9 @@ PREF(script_has_prompted, 0)           // 0: No, 1: Yes (not a real setting)
 PREF(recommended_settings_ignored, 0)  // 0: No, 1: Yes (not a real setting)
 
 /* --- cgb --- */
-PREF(cgb_speed, 0)  // 0: Default, 1: Force slow mode
-PREF(hle, 1)        // 0: Off, 1: On
+PREF(cgb_speed, 0)       // 0: Default, 1: Force slow mode
+PREF(hle, 1)             // 0: Off, 1: On
+PREF(cgb_blend_bias, 2)  // 0=Darker, 1=Dark, 2=Neutral, 3=Bright, 4=Brighter
 
 /*
  * scripts can use these arbitrarily (see script_custom_setting_add),

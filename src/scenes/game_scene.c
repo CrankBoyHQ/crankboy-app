@@ -189,6 +189,7 @@ static uint8_t CB_dither_lut_row1[256];
 uint8_t cgb_blend_stage = 0;
 uint8_t cgb_gray_lum_min = 0;
 uint8_t cgb_gray_lum_max = 93;
+int8_t cgb_gray_bias = 0;
 
 const uint16_t CB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
@@ -2065,6 +2066,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             if (context->gb->is_cgb_mode)
             {
                 // --- CGB Dual-Output Blending ---
+                cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
                 static clalign uint8_t cb_frame_buffer[2][LCD_BUFFER_BYTES];
 
                 uint8_t* original_lcd = context->gb->lcd;

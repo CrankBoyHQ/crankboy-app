@@ -543,6 +543,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
+static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "Brighter"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
@@ -1777,6 +1778,14 @@ static OptionsMenuEntry* build_cgb(CB_SettingsScene* scene, int* count)
         .pref_var = &preferences_hle,
         .max_value = 2,
         .on_press = NULL
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "Grayscale Bias",
+        .values = cgb_bias_labels,
+        .description = "Shift CGB grayscale\nconversion toward darker\nor brighter shades.",
+        .pref_var = &preferences_cgb_blend_bias,
+        .max_value = 5,
     };
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
