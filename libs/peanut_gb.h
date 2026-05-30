@@ -35,6 +35,8 @@
 #include "../src/app.h"
 
 extern uint8_t cgb_blend_stage;
+extern uint8_t cgb_gray_lum_min;
+extern uint8_t cgb_gray_lum_max;
 
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
@@ -717,30 +719,35 @@ __shell static void __gb_do_hdma(gb_s* gb)
 
 __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
 {
+    uint16_t range = (uint16_t)cgb_gray_lum_max - (uint16_t)cgb_gray_lum_min;
+    if (range == 0)
+        range = 1;
+    uint16_t base = (uint16_t)cgb_gray_lum_min;
+
     switch (cgb_blend_stage)
     {
     case 1:
-        if (sum >= 55)
+        if (sum >= base + ((range * 3) >> 2))
             return 0;
-        if (sum >= 28)
+        if (sum >= base + (range >> 1))
             return 1;
-        if (sum >= 10)
+        if (sum >= base + (range >> 2))
             return 2;
         return 3;
     case 2:
-        if (sum >= 75)
+        if (sum >= base + ((range * 7) >> 3))
             return 0;
-        if (sum >= 45)
+        if (sum >= base + ((range * 5) >> 3))
             return 1;
-        if (sum >= 20)
+        if (sum >= base + ((range * 3) >> 3))
             return 2;
         return 3;
     default:
-        if (sum >= 68)
+        if (sum >= base + ((range * 3) >> 2))
             return 0;
-        if (sum >= 38)
+        if (sum >= base + (range >> 1))
             return 1;
-        if (sum >= 15)
+        if (sum >= base + (range >> 2))
             return 2;
         return 3;
     }
@@ -803,8 +810,54 @@ __section__(".rare") static void __cgb_update_obj_gray_palette(
     target[pal_idx] = pal;
 }
 
+__section__(".rare") static void __cgb_scan_luminance_range(gb_s* gb)
+{
+    uint8_t min_lum = 255;
+    uint8_t max_lum = 0;
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int c = 0; c < 4; c++)
+        {
+            uint8_t lo = gb->cgb_bg_palette[i * 8 + c * 2];
+            uint8_t hi = gb->cgb_bg_palette[i * 8 + c * 2 + 1];
+            uint8_t r = lo & 0x1F;
+            uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
+            uint8_t b = (hi >> 2) & 0x1F;
+            uint16_t sum =
+                (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
+            if (sum < min_lum)
+                min_lum = (uint8_t)sum;
+            if (sum > max_lum)
+                max_lum = (uint8_t)sum;
+        }
+    }
+
+    for (int i = 0; i < 8; i++)
+    {
+        for (int c = 0; c < 4; c++)
+        {
+            uint8_t lo = gb->cgb_obj_palette[i * 8 + c * 2];
+            uint8_t hi = gb->cgb_obj_palette[i * 8 + c * 2 + 1];
+            uint8_t r = lo & 0x1F;
+            uint8_t g = ((lo >> 5) & 7) | ((hi & 3) << 3);
+            uint8_t b = (hi >> 2) & 0x1F;
+            uint16_t sum =
+                (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
+            if (sum < min_lum)
+                min_lum = (uint8_t)sum;
+            if (sum > max_lum)
+                max_lum = (uint8_t)sum;
+        }
+    }
+
+    cgb_gray_lum_min = min_lum;
+    cgb_gray_lum_max = max_lum;
+}
+
 __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
 {
+    __cgb_scan_luminance_range(gb);
     int lut_offset = (cgb_blend_stage == 2) ? 8 : 0;
     uint8_t* obj_target =
         (cgb_blend_stage == 2) ? gb->cgb_obj_palette_gray_alt : gb->cgb_obj_palette_gray;
@@ -817,6 +870,7 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
 
 __section__(".rare") void gb_recompute_cgb_gray_palettes__to_bright(gb_s* gb)
 {
+    __cgb_scan_luminance_range(gb);
     for (int i = 0; i < 8; i++)
     {
         __cgb_update_bg_gray_palette(gb, i, 0);

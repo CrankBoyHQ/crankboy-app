@@ -187,6 +187,8 @@ static int last_scy = -1;
 static uint8_t CB_dither_lut_row0[256];
 static uint8_t CB_dither_lut_row1[256];
 uint8_t cgb_blend_stage = 0;
+uint8_t cgb_gray_lum_min = 0;
+uint8_t cgb_gray_lum_max = 93;
 
 const uint16_t CB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
