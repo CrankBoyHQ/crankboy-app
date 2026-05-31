@@ -317,34 +317,43 @@ __audio static void update_square(
             // --- ACCURATE MODE ---
             uint32_t pos = 0;
             uint32_t prev_pos = 0;
-            int32_t sample = 0;
+            int32_t weighted_sum = 0;
 
             while (update_freq(c, &pos, sample_rate))
             {
                 c->square.duty_counter = (c->square.duty_counter + 1) & 7;
-                sample += ((pos - prev_pos) / c->freq_inc) * c->val;
+                weighted_sum += (int32_t)(pos - prev_pos) * c->val;
                 c->val =
                     (c->square.duty & (1 << c->square.duty_counter)) ? SQUARE_HIGH : SQUARE_LOW;
                 prev_pos = pos;
             }
 
-            sample += c->val;
-            sample *= c->volume;
-            sample_out = sample;
+            weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
+            if (c->freq_inc > 0)
+                sample_out = (weighted_sum / (int32_t)c->freq_inc) * c->volume;
+            else
+                sample_out = c->val * c->volume;
         }
         else
         {
             // --- FAST MODE ---
             c->freq_counter += c->freq_inc;
+            int step_count = 0;
+            int32_t step_sum = 0;
             while (c->freq_counter >= sample_rate)
             {
                 c->freq_counter -= sample_rate;
                 c->square.duty_counter = (c->square.duty_counter + 1) & 7;
                 c->val =
                     (c->square.duty & (1 << c->square.duty_counter)) ? SQUARE_HIGH : SQUARE_LOW;
+                step_count++;
+                step_sum += c->val;
             }
 
-            sample_out = c->val * c->volume;
+            if (step_count >= 3)
+                sample_out = (step_sum / step_count) * c->volume;
+            else
+                sample_out = c->val * c->volume;
         }
 
         if (c->muted)
