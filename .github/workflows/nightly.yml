@@ -493,6 +493,7 @@ jobs:
                       src/cscripts/*.c src/*.c src/scenes/*.c \
                       libs/minigb_apu/minigb_apu.c libs/pdnewlib/pdnewlib.c main.c \
                       libs/lz4/lz4.c libs/miniz/miniz.c libs/miniz/mini_gzip.c \
+                      libs/pdll/pdll.c \
                       build/baked_version_json.c build/baked_credits_json.c \
                       "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
 
