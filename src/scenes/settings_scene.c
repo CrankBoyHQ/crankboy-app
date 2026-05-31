@@ -2645,13 +2645,19 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             int lineY = y + (fontHeight / 2);
             int padding = 5;
 
-            // Draw the left line segment
+            int rightArrowWidth =
+                playdate->graphics->getTextWidth(CB_App->bodyFont, ">", 1, kUTF8Encoding, 0);
+
+            playdate->graphics->drawText("<", 1, kUTF8Encoding, 6, y + 1);
+            playdate->graphics->drawText(
+                ">", 1, kUTF8Encoding, kDividerX - rightArrowWidth - 6, y + 1
+            );
+
             playdate->graphics->drawLine(
                 kLeftPanePadding, lineY, textX - padding, lineY, 1,
                 is_selected ? kColorWhite : kColorBlack
             );
 
-            // Draw the right line segment
             playdate->graphics->drawLine(
                 textX + nameWidth + padding, lineY, kDividerX - kLeftPanePadding, lineY, 1,
                 is_selected ? kColorWhite : kColorBlack
