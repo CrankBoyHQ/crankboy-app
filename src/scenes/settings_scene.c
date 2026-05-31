@@ -1127,13 +1127,22 @@ static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    section[++i] = (OptionsMenuEntry){
-        .name = "General",
-        .header = 1,
-        .description =
-            "Core settings including\nsave states, ROM\nmanagement, patches,\nand settings "
-            "scope.\n \nAll other sections\nrespect the current\nscope setting."
-    };
+    {
+        const char* general_desc;
+        if (gameScene)
+            general_desc =
+                "Save and load snapshots,\nmanage settings scope.\n \nAll other sections\n"
+                "respect the current\nscope setting.";
+        else if (selectedGame)
+            general_desc =
+                "Download ROMs, manage\npatches, save data, and\nsettings scope.\n \nAll other "
+                "sections\nrespect the current\nscope setting.";
+        else
+            general_desc = "Download \"homebrew\"\ngames for free from\nHomebrew Hub.";
+
+        section[++i] =
+            (OptionsMenuEntry){.name = "General", .header = 1, .description = general_desc};
+    }
 
     if (gameScene)
     {
