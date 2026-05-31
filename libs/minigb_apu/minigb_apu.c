@@ -573,14 +573,14 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
             c->freq_counter -= sample_rate;
             c->val = (c->noise.lfsr_reg & 1) ? SQUARE_LOW : SQUARE_HIGH;
 
-            uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) ^ ((c->noise.lfsr_reg >> 1) & 1);
+            uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
 
             c->noise.lfsr_reg >>= 1;
             c->noise.lfsr_reg |= (xor_res << 14);
 
-            if (!c->lfsr_wide)
+            if (c->lfsr_wide)
             {
-                c->noise.lfsr_reg ^= (xor_res << 6);
+                c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
             }
         }
 
@@ -692,7 +692,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     }
     else if (i == 3)
     {  // noise
-        c->noise.lfsr_reg = 0xFFFF;
+        c->noise.lfsr_reg = 0x0000;
         c->val = SQUARE_LOW;
     }
     else
