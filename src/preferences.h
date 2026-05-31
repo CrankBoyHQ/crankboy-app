@@ -101,7 +101,7 @@ extern int preference_default_value[PREFI_COUNT];
 extern preferences_bitfield_t prefs_locked_by_script;
 
 // all the preferences that need the game to restart to apply
-#define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support | PREFBIT_save_slot)
+#define PREFBITS_REQUIRES_RESTART (PREFBIT_itcm | PREFBIT_script_support | PREFBIT_save_slot | PREFBIT_boot_fade)
 
 // these preferences are always saved globally, regardless of if global/per-game selected
 #define PREFBITS_ALWAYS_GLOBAL                                                                    \
@@ -114,7 +114,7 @@ extern preferences_bitfield_t prefs_locked_by_script;
     (PREFBIT_per_game | PREFBIT_save_state_slot | PREFBIT_save_slot | PREFBIT_script_A |          \
      PREFBIT_script_B | PREFBIT_script_C | PREFBIT_script_support | PREFBIT_script_has_prompted | \
      PREFBIT_recommended_settings_ignored)
-
+     
 // preferences that are never saved to disk
 #define PREFBITS_TRANSIENT (0)
 

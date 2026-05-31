@@ -88,8 +88,6 @@ PREF(library_launch_animation, 1)
  * display_fps:                    0=Off, 1=On, 2=Playdate
  * ui_sounds:                      0=Off, 1=On
  * boot_fade:                      0=Off, 1=Short, 2=Long, 3=Short (W), 4=Long (W)
- * script_has_prompted:            0=No, 1=Yes (not a real setting)
- * recommended_settings_ignored:   0=No, 1=Yes (not a real setting)
  */
 PREF(itcm, (pd_rev == PD_REV_A))
 PREF(tcm_lcd, 0)
@@ -97,6 +95,11 @@ PREF(uncap_fps, 0)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(boot_fade, 1)
+
+/* --- phony --- 
+ * script_has_prompted:            0=No, 1=Yes (not a real setting)
+ * recommended_settings_ignored:   0=No, 1=Yes (not a real setting)
+*/
 PREF(script_has_prompted, 0)
 PREF(recommended_settings_ignored, 0)
 
