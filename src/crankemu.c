@@ -1,10 +1,9 @@
 // crankemu.c
 
-
+#include "../libs/libcrankemu/libcrankemu.h"
+#include "../libs/pdll/pdll.h"
 #include "app.h"
 #include "dtcm.h"
-#include "libcrankemu/libcrankemu.h"
-#include "pdll/pdll.h"
 #include "utility.h"
 
 #include <stdarg.h>
@@ -17,18 +16,17 @@ static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
     return dtcm_alloc_aligned(size, alignment ? alignment : 1);
 }
 
-__attribute__((format(printf, 1, 2)))
-static void ce_fe_set_error(const char* fmt, ...)
+__attribute__((format(printf, 1, 2))) static void ce_fe_set_error(const char* fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
     char* msg = NULL;
     playdate->system->vaFormatString(&msg, fmt, ap);
     va_end(ap);
-    
+
     // TODO -- actually store this for proper user display
     // (TBD)
-    
+
     if (msg)
     {
         playdate->system->logToConsole("emucore: %s", msg);
@@ -82,7 +80,7 @@ void CB_load_emucore(emucore_t* core)
 
     if (!core)
         return;
-    
+
     playdate->system->logToConsole("load core: %s", core->id);
 
     core->pdll = pdll_open(playdate, core->path, PDLL_FILE_PDX | PDLL_FILE_DATA);
@@ -92,7 +90,7 @@ void CB_load_emucore(emucore_t* core)
         return;
     }
     CB_App->active_emucore = (int)(core - CB_App->cores);
-    
+
     CB_ASSERT(CB_App->active_emucore >= 0 && CB_App->active_emucore < CB_App->cores_n);
 
     void (*set_frontend)(const ce_frontend_t*) = pdll_symbol(core->pdll, "ce_set_frontend");

@@ -7,8 +7,9 @@
 //
 
 #include "app.h"
-#include "libcrankemu/libcrankemu.h"
-#include "pdll/pdll.h"
+
+#include "../libs/libcrankemu/libcrankemu.h"
+#include "../libs/pdll/pdll.h"
 
 #ifdef TARGET_PLAYDATE
 #include "../libs/pdnewlib/pdnewlib.h"
@@ -152,11 +153,11 @@ static int check_is_bundle(void)
     const char* arg = playdate->system->getLaunchArgs(&launch_path);
     CB_App->pdxLaunchPath = cb_strdup(launch_path);
     playdate->system->logToConsole("launch path: %s", launch_path);
-    
+
     if (arg && arg[0])
     {
         playdate->system->logToConsole("launch arg: %s", arg);
-        
+
         if (strstr(arg, "--check-version"))
         {
             CB_App->forceCheckVersion = true;
@@ -809,7 +810,7 @@ static void CB_load_core(const char* path)
     core.path = cb_strdup(path);
     core.core_version = cb_strdup(core_version());
     core.human_name = cb_strdup(core_name());
-    
+
     core.pdll = NULL;
 
     // split the ;-separated system directories, dropping empties and ones already claimed.
@@ -838,9 +839,8 @@ static void CB_load_core(const char* path)
             continue;
         }
 
-        core.system_slugs = cb_realloc(
-            core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*)
-        );
+        core.system_slugs =
+            cb_realloc(core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*));
         core.system_slugs[core.n_system_slugs++] = token;
     }
 
@@ -916,9 +916,10 @@ static void CB_load_cores(void)
     CB_cores_scan scan = {.dir = dir, .items = NULL, .n = 0, .cap = 0};
     cb_listfiles(dir, CB_cores_scan_cb, &scan, 0, kFileRead | kFileReadData);
 
-    if (scan.n == 0) return;
+    if (scan.n == 0)
+        return;
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading cores...");
-    
+
     // sort reverse-chronologically
     for (size_t i = 1; i < scan.n; ++i)
     {
@@ -943,14 +944,14 @@ static void CB_load_cores(void)
 static void non_bundle_init(void)
 {
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
-    get_homebrew_hub_api();    
+    get_homebrew_hub_api();
 
     CB_App->rhdb_present =
         cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
 
     global.shown_intro = true;
     save_global();
-    
+
     CB_load_cores();
 
     CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
@@ -1136,8 +1137,7 @@ void CB_init(void)
             return;
         }
 
-        CB_EmucoreGameScene* es =
-            CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, "Bundled ROM");
+        CB_EmucoreGameScene* es = CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, "Bundled ROM");
         if (es)
         {
             CB_present(es->scene);
@@ -1165,7 +1165,7 @@ void CB_init(void)
             return;
         }
     }
-    else // non-bundled mode
+    else  // non-bundled mode
     {
         // so as not to confuse rom manager, only
         // do serial communication if not on bundle mode.
@@ -1299,7 +1299,8 @@ __section__(".text.main") void CB_update(float dt)
     if (refreshRate > 0)
     {
         float refreshInterval = 1.0f / refreshRate;
-        while (playdate->system->getElapsedTime() < refreshInterval);
+        while (playdate->system->getElapsedTime() < refreshInterval)
+            ;
     }
 #endif
 

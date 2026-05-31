@@ -1,6 +1,7 @@
 // game_scanning_scene.c
 #include "game_scanning_scene.h"
 
+#include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../jparse.h"
 #include "../script.h"
@@ -8,7 +9,6 @@
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 #include "pd_api.h"
-#include "pdll/pdll.h"
 
 struct ScriptInfo;
 
@@ -22,9 +22,9 @@ typedef struct
 {
     uint32_t crc;
     uint32_t size;
-    uint32_t m_time; // for staleness
+    uint32_t m_time;  // for staleness
     enum cgb_support_e sys;
-    bool battery; // "sram"
+    bool battery;  // "sram"
     char name_header[17];
 } CB_RomCacheEntry;
 
@@ -205,8 +205,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     newName->name_database = fetched.detailed_name ? cb_strdup(fetched.detailed_name) : NULL;
     newName->name_short =
         fetched.short_name ? cb_strdup(fetched.short_name) : cb_strdup(newName->name_filename);
-    newName->name_detailed =
-        fetched.detailed_name ? cb_strdup(fetched.detailed_name) : cb_strdup(newName->name_filename);
+    newName->name_detailed = fetched.detailed_name ? cb_strdup(fetched.detailed_name)
+                                                   : cb_strdup(newName->name_filename);
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
     if (fetched.short_name)
@@ -238,7 +238,8 @@ static void process_one_emucore_game(
     if (!ok)
     {
         size_t rom_size = 0;
-        uint8_t* rom = (uint8_t*)cb_read_entire_file(fullpath, &rom_size, kFileReadData | kFileRead);
+        uint8_t* rom =
+            (uint8_t*)cb_read_entire_file(fullpath, &rom_size, kFileReadData | kFileRead);
         if (rom)
         {
             entry.crc = crc32_for_buffer(rom, rom_size);
@@ -308,8 +309,7 @@ static void build_scan_sources(CB_GameScanningScene* scanScene)
     array_push(
         scanScene->sources,
         scan_source_new(
-            cb_system_directory_path_for_slug(GB_SYSTEM_SLUG, CB_gamesPath), 
-            GB_SYSTEM_SLUG, -1
+            cb_system_directory_path_for_slug(GB_SYSTEM_SLUG, CB_gamesPath), GB_SYSTEM_SLUG, -1
         )
     );
 
@@ -321,10 +321,7 @@ static void build_scan_sources(CB_GameScanningScene* scanScene)
             const char* slug = emucore->system_slugs[j];
             array_push(
                 scanScene->sources,
-                scan_source_new(
-                    cb_system_directory_path_for_slug(slug, CB_gamesPath), 
-                    slug, (int)i
-                )
+                scan_source_new(cb_system_directory_path_for_slug(slug, CB_gamesPath), slug, (int)i)
             );
         }
     }

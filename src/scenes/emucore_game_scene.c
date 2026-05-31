@@ -1,10 +1,10 @@
 #include "emucore_game_scene.h"
 
+#include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../preferences.h"
 #include "../userstack.h"
 #include "../utility.h"
-#include "pdll/pdll.h"
 
 #include <string.h>
 
@@ -221,8 +221,9 @@ static void CB_EmucoreGameScene_free(void* object)
     cb_free(es);
 }
 
-CB_EmucoreGameScene* CB_EmucoreGameScene_new(const char* rom_path, const char* slug,
-                                             const char* name_short)
+CB_EmucoreGameScene* CB_EmucoreGameScene_new(
+    const char* rom_path, const char* slug, const char* name_short
+)
 {
     CB_EmucoreGameScene* es = cb_malloc(sizeof(CB_EmucoreGameScene));
     if (!es)
@@ -232,7 +233,7 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(const char* rom_path, const char* s
     CB_Scene* scene = CB_Scene_new();
     scene->id = "emucore";
     scene->managedObject = es;
-    scene->preferredRefreshRate = 0; // handled by core
+    scene->preferredRefreshRate = 0;  // handled by core
     scene->update = (void*)CB_EmucoreGameScene_update;
     scene->menu = (void*)CB_EmucoreGameScene_menu;
     scene->event = (void*)CB_EmucoreGameScene_event;
