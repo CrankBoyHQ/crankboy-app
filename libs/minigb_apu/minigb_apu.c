@@ -672,7 +672,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.inc = sweep_inc_table[c->sweep.rate ? c->sweep.rate : 8];
 
-        if (c->sweep.rate > 0 || c->sweep.shift > 0)
+        if (c->sweep.shift > 0)
         {
             if (calculate_new_sweep_freq(c))
             {
@@ -693,6 +693,10 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     else if (i == 3)
     {  // noise
         c->noise.lfsr_reg = 0xFFFF;
+        c->val = SQUARE_LOW;
+    }
+    else
+    {
         c->val = SQUARE_LOW;
     }
 
@@ -777,6 +781,13 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         else
         {
             chans[0].sweep.inc = sweep_inc_table[chans[0].sweep.rate];
+        }
+
+        if (chans[0].sweep_up && chans[0].sweep.shift > 0)
+        {
+            uint16_t check = chans[0].sweep.freq + (chans[0].sweep.freq >> chans[0].sweep.shift);
+            if (check > 2047)
+                chan_enable(audio, 0, false);
         }
 
         if (old_sweep_up == false && chans[0].sweep_up == true && old_rate > 0)
