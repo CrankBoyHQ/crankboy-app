@@ -752,6 +752,31 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
     switch (addr)
     {
+    case 0xFF10:
+    {
+        uint8_t old_rate = chans[0].sweep.rate;
+        bool old_sweep_up = chans[0].sweep_up;
+
+        chans[0].sweep.rate = (val >> 4) & 0x07;
+        chans[0].sweep_up = !(val & 0x08);
+        chans[0].sweep.shift = val & 0x07;
+
+        if (chans[0].sweep.rate == 0)
+        {
+            chans[0].sweep.inc = 0;
+        }
+        else
+        {
+            chans[0].sweep.inc = sweep_inc_table[chans[0].sweep.rate];
+        }
+
+        if (old_sweep_up == false && chans[0].sweep_up == true && old_rate > 0)
+        {
+            chan_enable(audio, 0, false);
+        }
+    }
+    break;
+
     case 0xFF12:
     case 0xFF17:
     case 0xFF21:
