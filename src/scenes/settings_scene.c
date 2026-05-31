@@ -1676,7 +1676,7 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
 
     // A->B
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ ›Ⓑ",
+        .name = "Ⓐ › Ⓑ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement\nbutton input for\nholding Ⓐ and then\npressing Ⓑ.\n \n"
@@ -1688,7 +1688,7 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
 
     // B->A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓑ ›Ⓐ",
+        .name = "Ⓑ › Ⓐ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement\nbutton input for\nholding Ⓑ and then\npressing Ⓐ.\n \n"
@@ -2657,9 +2657,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             int rightArrowWidth =
                 playdate->graphics->getTextWidth(CB_App->bodyFont, ">", 1, kUTF8Encoding, 0);
 
-            playdate->graphics->drawText("<", 1, kUTF8Encoding, 6, y + 1);
+            playdate->graphics->drawText("‹", 1, kUTF8Encoding, 6, y + 2);
             playdate->graphics->drawText(
-                ">", 1, kUTF8Encoding, kDividerX - rightArrowWidth - 6, y + 1
+                "›", 1, kUTF8Encoding, kDividerX - rightArrowWidth - 6, y + 2
             );
 
             playdate->graphics->drawLine(
