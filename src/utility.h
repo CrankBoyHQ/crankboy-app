@@ -122,6 +122,9 @@ char* common_article_form(const char* input);
 // extracts final '.' and what follows it
 const char* get_extension(const char* filename);
 
+// caller-freed
+char* cb_strip_extension(const char* path);
+
 bool cb_valid_basename(const char* fname);
 
 float cb_easeInOutQuad(float x);

@@ -27,6 +27,8 @@ SRC += $(wildcard src/cscripts/*.c)
 
 # List C source files here
 SRC += src/app.c
+SRC += src/crankemu.c
+SRC += src/scenes/emucore_game_scene.c
 SRC += src/scenes/parental_lock_scene.c
 SRC += src/scenes/game_scene.c
 SRC += src/scenes/settings_scene.c

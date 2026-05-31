@@ -125,7 +125,7 @@ typedef struct
     bool has_mask;
 } CB_CoverCacheEntry;
 
-typedef struct {
+typedef struct emucore_s {
     unsigned ce_version;
     char* id; // e.g. "stella_pd"
     char* path;
@@ -213,8 +213,9 @@ typedef struct CB_Application
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
-    char* bundled_rom;         // (path to bundled rom)
-    int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
+    char* bundled_rom; // (path to bundled rom)
+    int bundled_rom_cgb_mode; // 0: unspecified. 1: force dmg. 2: force cgb.
+    char* bundled_core; // (path to emucore for bundle or NULL)
 
     // use shared roms/saves/settings directory
     bool bundle_shared;
@@ -224,6 +225,7 @@ typedef struct CB_Application
     
     size_t cores_n;
     emucore_t* cores;
+    int active_emucore;  // index into cores of the currently-loaded core, or -1
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -241,6 +243,11 @@ void CB_presentModal(CB_Scene* scene);
 void CB_dismiss(CB_Scene* scene);
 void CB_headphone_state_changed(int headphone, int mic);
 void CB_showHelp(bool first_time);
+
+// Unload active core, then load the given core. (NULL: unload only.)
+void CB_load_emucore(emucore_t* core);
+
+emucore_t* CB_get_emucore_by_slug(const char* slug);
 
 // allocates in DTCM region (if enabled).
 // note, there is no associated free.

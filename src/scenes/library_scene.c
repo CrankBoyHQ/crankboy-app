@@ -21,6 +21,7 @@
 #include "../utility.h"
 #include "../version.h"
 #include "credits_scene.h"
+#include "emucore_game_scene.h"
 #include "game_scene.h"
 #include "info_scene.h"
 #include "settings_scene.h"
@@ -510,6 +511,29 @@ static void launch_dmg_or_cgb(CB_Game* game, int option)
     }
 }
 
+// returns true if handled
+static bool maybe_launch_emucore_game(CB_Game* game)
+{
+    const char* slug = game->names->system_slug;
+    if (!slug || strcmp(slug, GB_SYSTEM_SLUG) == 0)
+        return false;
+
+    if (!CB_get_emucore_by_slug(slug))
+    {
+        CB_InfoScene* info =
+            CB_InfoScene_new("No Core", "No emulator core is installed for this game's system.");
+        if (info)
+            CB_presentModal(info->scene);
+        return true;
+    }
+
+    CB_EmucoreGameScene* es =
+        CB_EmucoreGameScene_new(game->fullpath, slug, game->names->name_short_leading_article);
+    if (es)
+        CB_present(es->scene);
+    return true;
+}
+
 static void launch_game_prompt_cgb(CB_Game* game, int launch)
 {
     if (launch != 1)
@@ -960,6 +984,10 @@ static void launch_game_prompt_if_script(void* ud, int option)
         call_with_user_stack_1(save_last_selected_index, game->fullpath);
     }
 
+    // emucore games bypass the normal dmg/cgb launch flow
+    if (maybe_launch_emucore_game(game))
+        return;
+
     const struct ScriptRecommendedSettings* rec =
         script_get_recommended_for_game(game->names->name_header);
 
@@ -1048,6 +1076,8 @@ __section__(".rare") static void CB_LibraryScene_event(
 
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
+    CB_ASSERT(!CB_App->bundled_rom);
+    
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
     CB_App->shouldCheckUpdateInfo = GITHUB_RELEASE || CB_App->forceCheckVersion;
 #else

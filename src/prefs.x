@@ -2,11 +2,9 @@
  * format: PREF(name, default value)
  */
 
-/* --- general --- */
-PREF(per_game, 0)         // 0: Global, 1: Per-game (never visible in Bundle mode)
-PREF(save_slot, 0)        // 0: Slot A .. 9: Slot K (note: never visible in Bundle mode;
-                          //                         only visible in library view)
-PREF(save_state_slot, 0)  // 0: Slot A .. 9: Slot K (note: has two corresponding settings)
+PREF(per_game, 0) // (note: never visible in Bundle mode)
+PREF(save_slot, 0) // (note: never visible in Bundle mode; only visible in library view)
+PREF(save_state_slot, 0) // (note: has two corresponding settings)
 
 /* --- audio --- */
 PREF(sound_mode, 2)       // 0: Off, 1: Fast, 2: Accurate

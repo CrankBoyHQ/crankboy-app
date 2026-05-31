@@ -19,6 +19,7 @@
 #include "jparse.h"
 #include "preferences.h"
 #include "recommended_json.h"
+#include "scenes/emucore_game_scene.h"
 #include "scenes/file_copying_scene.h"
 #include "scenes/game_scene.h"
 #include "scenes/info_scene.h"
@@ -113,6 +114,35 @@ static void load_assets(void)
     CB_App->logoBitmap = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/logo"), NULL);
 }
 
+// parses both '\ ' and '\\ ' as spaces.
+// (Simulator launch is inconsistent about these)
+static char* parse_escaped_value(const char* start)
+{
+    char* out = cb_malloc(strlen(start) + 1);
+    size_t n = 0;
+    const char* p = start;
+    while (*p)
+    {
+        if (*p == '\\')
+        {
+            ++p;
+        }
+        else if (*p == ' ')
+        {
+            if (p > start && p[-1] == '\\')
+                out[n++] = *p++;
+            else
+                break;
+        }
+        else
+        {
+            out[n++] = *p++;
+        }
+    }
+    out[n] = 0;
+    return out;
+}
+
 // check for CLI arg and launch path, as well as bundle mode
 // FIXME: ugly that we have this all in one function~
 static int check_is_bundle(void)
@@ -122,9 +152,11 @@ static int check_is_bundle(void)
     const char* arg = playdate->system->getLaunchArgs(&launch_path);
     CB_App->pdxLaunchPath = cb_strdup(launch_path);
     playdate->system->logToConsole("launch path: %s", launch_path);
-
-    if (arg)
+    
+    if (arg && arg[0])
     {
+        playdate->system->logToConsole("launch arg: %s", arg);
+        
         if (strstr(arg, "--check-version"))
         {
             CB_App->forceCheckVersion = true;
@@ -155,6 +187,18 @@ static int check_is_bundle(void)
             }
         }
 
+        const char* core_arg = NULL;
+        if (startswith(arg, "core="))
+            core_arg = arg + strlen("core=");
+        else
+        {
+            const char* found = strstr(arg, " core=");
+            if (found)
+                core_arg = found + strlen(" core=");
+        }
+        if (core_arg)
+            CB_App->bundled_core = parse_escaped_value(core_arg);
+
         const char* rom_arg = NULL;
         if (startswith(arg, "rom="))
         {
@@ -168,17 +212,7 @@ static int check_is_bundle(void)
         }
         if (rom_arg)
         {
-            const char* end = strchr(rom_arg, ' ');
-            if (end)
-            {
-                size_t len = end - rom_arg;
-                CB_App->bundled_rom = cb_memdup(rom_arg, len + 1);
-                CB_App->bundled_rom[len] = 0;
-            }
-            else
-            {
-                CB_App->bundled_rom = cb_strdup(rom_arg);
-            }
+            CB_App->bundled_rom = parse_escaped_value(rom_arg);
             return true;
         }
     }
@@ -193,6 +227,10 @@ static int check_is_bundle(void)
 
     if (jrom.type == kJSONString)
         CB_App->bundled_rom = cb_strdup(jrom.data.stringval);
+
+    json_value jcore = json_get_table_value(jbundle, "core");
+    if (jcore.type == kJSONString)
+        CB_App->bundled_core = cb_strdup(jcore.data.stringval);
 
     json_value jdevice = json_get_table_value(jbundle, "device");
     if (jdevice.type == kJSONString)
@@ -721,7 +759,7 @@ static bool CB_system_slug_claimed(const char* slug)
     return false;
 }
 
-static void CB_load_core(char* path)
+static void CB_load_core(const char* path)
 {
     pdll_t* pdll = pdll_open(playdate, path, PDLL_FILE_PDX | PDLL_FILE_DATA);
     if (!pdll)
@@ -734,9 +772,8 @@ static void CB_load_core(char* path)
     const char* (*core_name)(void) = pdll_symbol(pdll, "ce_core_name");
     const char* (*core_version)(void) = pdll_symbol(pdll, "ce_core_version");
     const char* (*system_slugs)(void) = pdll_symbol(pdll, "ce_get_system_slugs");
-    uint32_t (*get_version)(void) = pdll_symbol(pdll, "ce_get_version");
 
-    if (!core_id || !core_name || !core_version || !system_slugs || !get_version)
+    if (!core_id || !core_name || !core_version || !system_slugs)
     {
         playdate->system->logToConsole(
             "CB_load_core: '%s' missing required symbol -- %s", path, pdll_get_error()
@@ -745,7 +782,9 @@ static void CB_load_core(char* path)
         return;
     }
 
-    uint32_t ce_version = get_version();
+    uint32_t (*get_version)(void) = pdll_symbol(pdll, "ce_get_version");
+
+    uint32_t ce_version = get_version ? get_version() : CRANKEMU_VERSION;
     if (ce_version > CRANKEMU_VERSION)
     {
         playdate->system->logToConsole(
@@ -978,6 +1017,7 @@ static bool games_exist_in_data(void)
 void CB_init(void)
 {
     CB_App = allocz(CB_Application);
+    CB_App->active_emucore = -1;
 
     cb_register_all_c_scripts();
 
@@ -1073,7 +1113,37 @@ void CB_init(void)
     // custom frame rate delimiter
     playdate->display->setRefreshRate(0);
 
-    if (CB_App->bundled_rom)
+    if (CB_App->bundled_rom && CB_App->bundled_core)
+    {
+        char* base = cb_strip_extension(CB_App->bundled_core);
+        size_t before = CB_App->cores_n;
+        CB_load_core(base);
+        cb_free(base);
+
+        emucore_t* core = (CB_App->cores_n > before) ? &CB_App->cores[CB_App->cores_n - 1] : NULL;
+        const char* slug = (core && core->n_system_slugs > 0) ? core->system_slugs[0] : NULL;
+        if (!slug)
+        {
+            playdate->system->error("Failed to load core \"%s\"", CB_App->bundled_core);
+            return;
+        }
+
+        CB_EmucoreGameScene* es =
+            CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, "Bundled ROM");
+        if (es)
+        {
+            CB_present(es->scene);
+        }
+        else
+        {
+            playdate->system->error(
+                "Failed to launch bundled ROM \"%s\" with core \"%s\"", CB_App->bundled_rom,
+                CB_App->bundled_core
+            );
+            return;
+        }
+    }
+    else if (CB_App->bundled_rom)
     {
         CB_GameScene* gameScene =
             CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM", CB_App->bundled_rom_cgb_mode == 2);
@@ -1087,7 +1157,7 @@ void CB_init(void)
             return;
         }
     }
-    else
+    else // non-bundled mode
     {
         // so as not to confuse rom manager, only
         // do serial communication if not on bundle mode.
@@ -1221,8 +1291,7 @@ __section__(".text.main") void CB_update(float dt)
     if (refreshRate > 0)
     {
         float refreshInterval = 1.0f / refreshRate;
-        while (playdate->system->getElapsedTime() < refreshInterval)
-            ;
+        while (playdate->system->getElapsedTime() < refreshInterval);
     }
 #endif
 
@@ -1399,6 +1468,11 @@ void CB_quit(void)
     if (CB_App->bundled_rom)
     {
         cb_free(CB_App->bundled_rom);
+    }
+
+    if (CB_App->bundled_core)
+    {
+        cb_free(CB_App->bundled_core);
     }
 
     if (CB_App->bundle_fwd_path)

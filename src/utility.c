@@ -471,6 +471,21 @@ const char* get_extension(const char* filename)
     return filename + strlen(filename) - diff;
 }
 
+char* cb_strip_extension(const char* path)
+{
+    if (!path)
+        return NULL;
+
+    const char* ext = get_extension(path);  // '.' within the final component, or end
+    size_t len = (size_t)(ext - path);
+    char* result = cb_malloc(len + 1);
+    if (!result)
+        return NULL;
+    memcpy(result, path, len);
+    result[len] = '\0';
+    return result;
+}
+
 char* cb_basename(const char* filename, bool stripExtension)
 {
     if (filename == NULL)
@@ -1119,10 +1134,26 @@ const char* cb_gb_directory_path(const char* path)
 
 char* cb_system_directory_path_for_slug(const char* slug, const char* subpath)
 {
-    if (!slug || !strcmp(slug, GB_SYSTEM_SLUG))
+    // non-shared bundle: ignore slug system entirely (just store saves in ./saves)
+    bool non_shared_bundle = CB_App->bundled_rom && !CB_App->bundle_shared;
+
+    if (non_shared_bundle || !slug || !strcmp(slug, GB_SYSTEM_SLUG))
         return aprintf("%s/%s", CB_App->directory, subpath);
 
-    return aprintf("%s/%s/%s", CB_App->directory, slug, subpath);
+    const char* dir = CB_App->directory;
+    const char* last_slash = strrchr(dir, '/');
+    const char* last_elem = last_slash ? last_slash + 1 : dir;
+
+    // non-gb games are siblings, i.e. <...>/gb/../a26/<...>
+    if (!strcmp(last_elem, GB_SYSTEM_SLUG))
+    {
+        int root_len = last_slash ? (int)(last_slash - dir) : 0;
+        return aprintf("%.*s/%s/%s", root_len, dir, slug, subpath);
+    }
+
+    // weird custom directory (not <...>/gb): nest the system under it: <dir>/<slug>/<subpath>.
+    // (probably not worth supporting this but if we offer directory.txt we should commit to it :P)
+    return aprintf("%s/%s/%s", dir, slug, subpath);
 }
 
 int full_mkdir(const char* path)

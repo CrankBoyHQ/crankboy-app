@@ -18,14 +18,112 @@ void CB_GameScanningScene_free(void* object);
 
 void collect_game_filenames_callback(const char* filename, void* userdata);
 
-static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
+typedef struct
 {
-    CB_GameName* newName = allocz(CB_GameName);
+    uint32_t crc;
+    uint32_t size;
+    uint32_t m_time; // for staleness
+    enum cgb_support_e sys;
+    bool battery; // "sram"
+    char name_header[17];
+} CB_RomCacheEntry;
 
+// caller-freed
+static char* cache_key(const char* slug, const char* filename)
+{
+    return aprintf("%s:%s", slug, filename);
+}
+
+// stat path and compute its mtime
+static bool stat_rom(const char* fullpath, FileStat* o_stat, uint32_t* o_mtime)
+{
+    if (playdate->file->stat(fullpath, o_stat) != 0)
+        return false;
+
+    struct PDDateTime dt = {
+        .year = o_stat->m_year,
+        .month = o_stat->m_month,
+        .day = o_stat->m_day,
+        .hour = o_stat->m_hour,
+        .minute = o_stat->m_minute,
+        .second = o_stat->m_second
+    };
+    *o_mtime = playdate->system->convertDateTimeToEpoch(&dt);
+    return true;
+}
+
+static bool cache_lookup(
+    CB_GameScanningScene* scanScene, const char* key, uint32_t size, uint32_t m_time,
+    CB_RomCacheEntry* out
+)
+{
+    if (scanScene->crc_cache.type != kJSONTable)
+        return false;
+
+    JsonObject* obj = scanScene->crc_cache.data.tableval;
+    TableKeyPair key_to_find = {.key = (char*)key};
+    TableKeyPair* found = (TableKeyPair*)bsearch(
+        &key_to_find, obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs
+    );
+    if (!found || found->value.type != kJSONTable)
+        return false;
+
+    json_value e = found->value;
+    json_value crc = json_get_table_value(e, "crc32");
+    json_value sz = json_get_table_value(e, "size");
+    json_value mt = json_get_table_value(e, "m_time");
+    json_value sram = json_get_table_value(e, "sram");
+    json_value sys = json_get_table_value(e, "sys");
+    json_value hdr = json_get_table_value(e, "name_header");
+
+    if (crc.type != kJSONInteger || sz.type != kJSONInteger || mt.type != kJSONInteger ||
+        sram.type != kJSONInteger || sys.type != kJSONInteger || hdr.type != kJSONString)
+        return false;
+    if ((uint32_t)sz.data.intval != size || (uint32_t)mt.data.intval != m_time)
+        return false;
+
+    out->crc = (uint32_t)crc.data.intval;
+    out->size = size;
+    out->m_time = m_time;
+    out->battery = sram.data.intval;
+    out->sys = sys.data.intval;
+    strncpy(out->name_header, hdr.data.stringval, sizeof(out->name_header) - 1);
+    out->name_header[sizeof(out->name_header) - 1] = 0;
+    return true;
+}
+
+// queue a freshly-computed entry for `key` to be merged into crc_cache.json.
+static void cache_store(CB_GameScanningScene* scanScene, const char* key, const CB_RomCacheEntry* e)
+{
+    json_value entry = {.type = kJSONTable, .data.tableval = cb_calloc(1, sizeof(JsonObject))};
+    json_set_table_value(&entry, "crc32", json_new_int((int)e->crc));
+    json_set_table_value(&entry, "size", json_new_int((int)e->size));
+    json_set_table_value(&entry, "m_time", json_new_int((int)e->m_time));
+    json_set_table_value(&entry, "sram", json_new_int(e->battery));
+    json_set_table_value(&entry, "sys", json_new_int(e->sys));
+    json_set_table_value(&entry, "name_header", json_new_string(e->name_header));
+
+    json_value* file_entry = cb_calloc(1, sizeof(json_value));
+    file_entry->type = kJSONTable;
+    file_entry->data.tableval = cb_calloc(1, sizeof(JsonObject));
+    json_set_table_value(file_entry, key, entry);
+
+    array_push(scanScene->new_cache_entries, file_entry);
+    scanScene->crc_cache_modified = true;
+}
+
+static void fill_basic_names(CB_GameName* newName, const char* filename, const char* slug)
+{
     newName->filename = cb_strdup(filename);
     newName->name_filename = cb_basename(filename, true);
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
-    newName->system_slug = cb_strdup(GB_SYSTEM_SLUG);
+    newName->system_slug = cb_strdup(slug);
+}
+
+static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
+{
+    CB_GameName* newName = allocz(CB_GameName);
+    fill_basic_names(newName, filename, GB_SYSTEM_SLUG);
 
     char* fullpath;
     playdate->system->formatString(
@@ -33,7 +131,8 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
     );
 
     FileStat stat;
-    if (playdate->file->stat(fullpath, &stat) != 0)
+    uint32_t m_time;
+    if (!stat_rom(fullpath, &stat, &m_time))
     {
         playdate->system->logToConsole("Failed to stat file: %s", fullpath);
         cb_free(fullpath);
@@ -42,183 +141,80 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
         return;
     }
 
-    struct PDDateTime dt = {
-        .year = stat.m_year,
-        .month = stat.m_month,
-        .day = stat.m_day,
-        .hour = stat.m_hour,
-        .minute = stat.m_minute,
-        .second = stat.m_second
-    };
-    uint32_t m_time_epoch = playdate->system->convertDateTimeToEpoch(&dt);
+    char* key = cache_key(GB_SYSTEM_SLUG, filename);
+    CB_RomCacheEntry entry = {0};
+    bool ok = cache_lookup(scanScene, key, stat.size, m_time, &entry);
 
-    uint32_t crc = 0;
-    bool needs_calculation = true;
-    char header_name_buffer[17] = {0};
-    enum cgb_support_e cgb = 0;
-    unsigned battery = false;
-
-    json_value cached_entry = {.type = kJSONNull};
-    if (scanScene->crc_cache.type == kJSONTable)
-    {
-        JsonObject* obj = scanScene->crc_cache.data.tableval;
-
-        TableKeyPair key_to_find;
-        key_to_find.key = (char*)filename;
-
-        TableKeyPair* found_pair = (TableKeyPair*)bsearch(
-            &key_to_find, obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs
-        );
-
-        if (found_pair)
-        {
-            cached_entry = found_pair->value;
-        }
-    }
-
-    if (cached_entry.type == kJSONTable)
-    {
-        json_value cached_crc_val = json_get_table_value(cached_entry, "crc32");
-        json_value cached_size_val = json_get_table_value(cached_entry, "size");
-        json_value cached_mtime_val = json_get_table_value(cached_entry, "m_time");
-        json_value cached_header_val = json_get_table_value(cached_entry, "name_header");
-        json_value cached_battery = json_get_table_value(cached_entry, "sram");
-        json_value cached_cgb_val = json_get_table_value(cached_entry, "cgb");
-
-        if (cached_crc_val.type == kJSONInteger && cached_size_val.type == kJSONInteger &&
-            cached_mtime_val.type == kJSONInteger && cached_header_val.type == kJSONString &&
-            cached_battery.type == kJSONInteger && cached_cgb_val.type == kJSONInteger)
-        {
-            if ((uint32_t)cached_size_val.data.intval == stat.size &&
-                (uint32_t)cached_mtime_val.data.intval == m_time_epoch)
-            {
-                crc = (uint32_t)cached_crc_val.data.intval;
-                strncpy(
-                    header_name_buffer, cached_header_val.data.stringval,
-                    sizeof(header_name_buffer) - 1
-                );
-                battery = cached_battery.data.intval;
-                cgb = cached_cgb_val.data.intval;
-                needs_calculation = false;
-            }
-        }
-    }
-
-    CB_FetchedNames fetched = {NULL, NULL, 0, true};
-
-    if (needs_calculation)
+    if (!ok)
     {
         int is_gbz = 0;
         uint32_t gbz_checksum = 0;
+        enum cgb_support_e cgb = 0;
+        unsigned battery = false;
         struct ScriptInfo* info = script_get_info_by_rom_path_and_get_header_info(
-            fullpath, header_name_buffer, &cgb, &battery, &is_gbz, &gbz_checksum
+            fullpath, entry.name_header, &cgb, &battery, &is_gbz, &gbz_checksum
         );
         if (info)
-        {
             script_info_free(info);
-        }
-        for (int i = strlen(header_name_buffer) - 1; i >= 0; --i)
+        for (int i = strlen(entry.name_header) - 1; i >= 0; --i)
         {
-            if (header_name_buffer[i] == ' ')
-            {
-                header_name_buffer[i] = 0;
-            }
+            if (entry.name_header[i] == ' ')
+                entry.name_header[i] = 0;
             else
-            {
                 break;
-            }
         }
 
-        bool valid = false;
+        uint32_t crc = 0;
         if (is_gbz)
         {
-            valid = true;
             crc = gbz_checksum;
+            ok = true;
         }
         else if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
         {
-            valid = true;
+            ok = true;
         }
 
-        if (valid)
+        if (ok)
         {
-            fetched.failedToOpenROM = false;
-
-            json_value new_entry_val;
-            new_entry_val.type = kJSONTable;
-            JsonObject* obj = cb_calloc(1, sizeof(JsonObject));
-            new_entry_val.data.tableval = obj;
-
-            json_value crc_val = {.type = kJSONInteger, .data.intval = crc};
-            json_value size_val = {.type = kJSONInteger, .data.intval = stat.size};
-            json_value mtime_val = {.type = kJSONInteger, .data.intval = m_time_epoch};
-            json_value header_val = {
-                .type = kJSONString, .data.stringval = cb_strdup(header_name_buffer)
-            };
-            json_value cgb_val = {.type = kJSONInteger, .data.intval = cgb};
-            json_value bat_val = {.type = kJSONInteger, .data.intval = battery};
-
-            json_set_table_value(&new_entry_val, "name_header", header_val);
-            json_set_table_value(&new_entry_val, "crc32", crc_val);
-            json_set_table_value(&new_entry_val, "size", size_val);
-            json_set_table_value(&new_entry_val, "m_time", mtime_val);
-            json_set_table_value(&new_entry_val, "sram", bat_val);
-            json_set_table_value(&new_entry_val, "cgb", cgb_val);
-
-            json_value* new_file_entry = cb_calloc(1, sizeof(json_value));
-            new_file_entry->type = kJSONTable;
-            JsonObject* file_obj = cb_calloc(1, sizeof(JsonObject));
-            new_file_entry->data.tableval = file_obj;
-
-            json_set_table_value(new_file_entry, filename, new_entry_val);
-
-            array_push(scanScene->new_cache_entries, new_file_entry);
-            scanScene->crc_cache_modified = true;
+            entry.crc = crc;
+            entry.size = stat.size;
+            entry.m_time = m_time;
+            entry.sys = cgb;
+            entry.battery = battery;
+            cache_store(scanScene, key, &entry);
         }
     }
-    else
-    {
-        fetched.failedToOpenROM = false;
-    }
 
-    newName->name_header = cb_strdup(header_name_buffer);
-
-    if (!fetched.failedToOpenROM)
-    {
-        CB_FetchedNames names_from_db = cb_get_titles_from_db_by_crc(crc);
-        fetched.short_name = names_from_db.short_name;
-        fetched.detailed_name = names_from_db.detailed_name;
-    }
-
-    fetched.crc32 = crc;
-    newName->crc32 = fetched.crc32;
-    newName->rom_cgb_support = cgb;
-    newName->rom_has_battery = battery;
+    cb_free(key);
     cb_free(fullpath);
 
-    newName->name_database = (fetched.detailed_name) ? cb_strdup(fetched.detailed_name) : NULL;
-    newName->name_short =
-        (fetched.short_name) ? cb_strdup(fetched.short_name) : cb_strdup(newName->name_filename);
-    newName->name_detailed = (fetched.detailed_name) ? cb_strdup(fetched.detailed_name)
-                                                     : cb_strdup(newName->name_filename);
+    if (!ok)  // couldn't open/checksum the ROM; drop it
+    {
+        free_game_names(newName);
+        cb_free(newName);
+        return;
+    }
 
+    newName->name_header = cb_strdup(entry.name_header);
+    newName->crc32 = entry.crc;
+    newName->rom_cgb_support = entry.sys;
+    newName->rom_has_battery = entry.battery;
+
+    CB_FetchedNames fetched = cb_get_titles_from_db_by_crc(entry.crc);
+    newName->name_database = fetched.detailed_name ? cb_strdup(fetched.detailed_name) : NULL;
+    newName->name_short =
+        fetched.short_name ? cb_strdup(fetched.short_name) : cb_strdup(newName->name_filename);
+    newName->name_detailed =
+        fetched.detailed_name ? cb_strdup(fetched.detailed_name) : cb_strdup(newName->name_filename);
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
-
     if (fetched.short_name)
         cb_free(fetched.short_name);
     if (fetched.detailed_name)
         cb_free(fetched.detailed_name);
 
-    if (!fetched.failedToOpenROM)
-    {
-        array_push(CB_App->gameNameCache, newName);
-    }
-    else
-    {
-        free_game_names(newName);
-        cb_free(newName);
-    }
+    array_push(CB_App->gameNameCache, newName);
 }
 
 static void process_one_emucore_game(
@@ -227,25 +223,49 @@ static void process_one_emucore_game(
 {
     char* fullpath = aprintf("%s/%s", games_dir, filename);
 
-    size_t rom_size = 0;
-    uint8_t* rom = (uint8_t*)cb_read_entire_file(fullpath, &rom_size, kFileReadData | kFileRead);
+    FileStat stat;
+    uint32_t m_time;
+    if (!stat_rom(fullpath, &stat, &m_time))
+    {
+        cb_free(fullpath);
+        return;
+    }
+
+    char* key = cache_key(slug, filename);
+    CB_RomCacheEntry entry = {0};
+    bool ok = cache_lookup(scanScene, key, stat.size, m_time, &entry);
+
+    if (!ok)
+    {
+        size_t rom_size = 0;
+        uint8_t* rom = (uint8_t*)cb_read_entire_file(fullpath, &rom_size, kFileReadData | kFileRead);
+        if (rom)
+        {
+            entry.crc = crc32_for_buffer(rom, rom_size);
+            entry.size = stat.size;
+            entry.m_time = m_time;
+            entry.sys = NON_GB_SYSTEM;
+            entry.battery =
+                scanScene->save_size_fn ? (scanScene->save_size_fn(rom, rom_size) > 0) : false;
+            cb_free(rom);
+            cache_store(scanScene, key, &entry);
+            ok = true;
+        }
+    }
+
+    cb_free(key);
     cb_free(fullpath);
-    if (!rom)
+
+    if (!ok)  // unreadable, or a subdirectory
         return;
 
     CB_GameName* newName = allocz(CB_GameName);
-    newName->filename = cb_strdup(filename);
-    newName->name_filename = cb_basename(filename, true);
-    newName->name_filename_leading_article = common_article_form(newName->name_filename);
-    newName->system_slug = cb_strdup(slug);
+    fill_basic_names(newName, filename, slug);
 
-    newName->crc32 = crc32_for_buffer(rom, rom_size);
+    newName->crc32 = entry.crc;
     newName->rom_cgb_support = NON_GB_SYSTEM;
-    newName->rom_has_battery = scanScene->save_size_fn
-        ? (scanScene->save_size_fn(rom, rom_size) > 0)
-        : false;
-
-    cb_free(rom);
+    newName->rom_has_battery = entry.battery;
+    newName->name_header = cb_strdup("");
 
     newName->name_short = cb_strdup(newName->name_filename);
     newName->name_detailed = cb_strdup(newName->name_filename);
@@ -581,7 +601,25 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
             if (scanScene->crc_cache.type == kJSONTable)
             {
                 JsonObject* obj = scanScene->crc_cache.data.tableval;
-                if (obj && obj->n > 1)
+
+                // discard legacy keys (missing slug)
+                bool legacy = false;
+                for (size_t i = 0; obj && i < obj->n; ++i)
+                    if (!strchr(obj->data[i].key, ':'))
+                    {
+                        legacy = true;
+                        break;
+                    }
+
+                if (legacy)
+                {
+                    free_json_data(scanScene->crc_cache);
+                    scanScene->crc_cache.type = kJSONTable;
+                    JsonObject* empty = cb_malloc(sizeof(JsonObject));
+                    empty->n = 0;
+                    scanScene->crc_cache.data.tableval = empty;
+                }
+                else if (obj && obj->n > 1)
                 {
                     qsort(obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs);
                 }
