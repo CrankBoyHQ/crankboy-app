@@ -783,8 +783,16 @@ static void CB_load_core(const char* path)
     }
 
     uint32_t (*get_version)(void) = pdll_symbol(pdll, "ce_get_version");
+    if (!get_version)
+    {
+        playdate->system->logToConsole(
+            "CB_load_core: '%s' is not a valid core, lacks ce_get_version", path
+        );
+        pdll_close(pdll);
+        return;
+    }
 
-    uint32_t ce_version = get_version ? get_version() : CRANKEMU_VERSION;
+    uint32_t ce_version = get_version();
     if (ce_version > CRANKEMU_VERSION)
     {
         playdate->system->logToConsole(
