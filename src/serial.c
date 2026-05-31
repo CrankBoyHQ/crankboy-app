@@ -2,6 +2,7 @@
 
 #include "app.h"
 #include "ft.h"
+#include "revcheck.h"
 #include "scenes/library_scene.h"
 #include "scenes/sft_modal.h"
 #include "utility.h"
@@ -211,6 +212,29 @@ static bool serial_cb_sft_handler(const char* const* tokens)
     }
 
     return false;
+}
+
+// Handle cb:rev command - Get the Playdate hardware revision
+// Format: cb:rev
+// Response: cb:rev:A, cb:rev:B, or cb:rev:Unknown
+static bool serial_cb_rev(const char* const* tokens)
+{
+    (void)tokens;
+    const char* suffix;
+    switch (pd_rev)
+    {
+    case PD_REV_A:
+        suffix = "A";
+        break;
+    case PD_REV_B:
+        suffix = "B";
+        break;
+    default:
+        suffix = "Unknown";
+        break;
+    }
+    serial_send_response("cb:rev:%s", suffix);
+    return true;
 }
 
 // Handle cb:scene:get command - Get current scene stack
@@ -737,6 +761,10 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "sft") == 0)
     {
         return serial_cb_sft_handler(tokens);
+    }
+    else if (strcmp(subcmd, "rev") == 0)
+    {
+        return serial_cb_rev(tokens);
     }
     else if (strcmp(subcmd, "scene") == 0)
     {
