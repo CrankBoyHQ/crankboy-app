@@ -486,8 +486,11 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 
     const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
 
-    /* Render sprites from lowest priority to highest priority. */
-    for (int8_t i = number_of_sprites - 1; i >= 0; i--)
+    uint8_t column_decided[LCD_WIDTH];
+    for (int x = 0; x < LCD_WIDTH; x++)
+        column_decided[x] = 0;
+
+    for (int8_t i = 0; i < number_of_sprites; i++)
     {
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
@@ -499,14 +502,12 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             continue;
 
         uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
-        uint8_t OF = oam_src[s_4 + 3];  // flags
+        uint8_t OF = oam_src[s_4 + 3];
 
         unsigned bank = 0;
 #if PGB_IS_CGB
         if (OF & OBJ_CGB_BANK)
-        {
             bank = VRAM_SIZE;
-        }
 #endif
 
         uint8_t py = gb->gb_reg.LY - (OY - 16);
@@ -543,9 +544,13 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
                 goto next_sprite_pixel;
 
+            if (column_decided[disp_x])
+                goto next_sprite_pixel;
+
             uint8_t c = (t2_r & 1) << 1 | (t1_r & 1);
             if (c != 0)
             {
+                column_decided[disp_x] = 1;
                 int P_segment_index = (unsigned)disp_x >> 5;
                 int P_bit_in_segment = disp_x & 31;
 #if PGB_IS_CGB
