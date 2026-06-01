@@ -767,6 +767,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
             chans[0].enabled = false;
             chans[1].enabled = false;
             chans[2].enabled = false;
+            chans[2].wave.sample = 0;
             chans[3].enabled = false;
         }
         return;
