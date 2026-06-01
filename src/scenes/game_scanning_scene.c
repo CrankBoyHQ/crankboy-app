@@ -8,7 +8,8 @@
 #include "../utility.h"
 #include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
-#include "pd_api.h"
+
+#include <pd_api.h>
 
 struct ScriptInfo;
 
