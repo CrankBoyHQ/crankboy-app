@@ -561,10 +561,12 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
     }
 
     if (c->freq >= 14)
+    {
         c->enabled = 0;
+        return;
+    }
 
     len = update_len(audio, c, len);
-
     if (!c->enabled)
         return;
 
