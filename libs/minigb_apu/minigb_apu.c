@@ -174,20 +174,42 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
     if (!c->len_enabled || c->len.inc == 0)
         return len;
 
-    int sample_rate = get_audio_sample_rate();
-    int tr = (sample_rate - c->len.counter) / c->len.inc;
+    int tick_rate = (int)(c->len.inc & 0xFFFF);
+    int ticks_needed = (int)(c->len.inc >> 16);
 
-    if (tr > len)
-    {
-        c->len.counter += len * c->len.inc;
+    if (ticks_needed <= 0)
         return len;
+
+    int sample_rate = get_audio_sample_rate();
+    uint32_t counter_before = c->len.counter;
+    uint32_t counter_after = counter_before + (uint32_t)len * (uint32_t)tick_rate;
+
+    uint32_t ticks_total = counter_after / (uint32_t)sample_rate;
+
+    if (ticks_total < (uint32_t)ticks_needed)
+    {
+        c->len.counter = counter_after;
+        return len;
+    }
+
+    uint32_t target = (uint32_t)ticks_needed * (uint32_t)sample_rate;
+    int tr;
+    if (counter_before >= target)
+    {
+        tr = 0;
     }
     else
     {
-        c->len.counter = 0;
-        chan_enable(audio, c - audio->chans, 0);
-        return tr;
+        uint32_t needed = target - counter_before;
+        tr = (int)((needed + (uint32_t)tick_rate - 1) / (uint32_t)tick_rate);
     }
+
+    if (tr > len)
+        tr = len;
+
+    c->len.counter = 0;
+    chan_enable(audio, (int)(c - audio->chans), 0);
+    return tr;
 }
 
 /* This function is only for the "Accurate" mode. */
@@ -695,7 +717,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->val = SQUARE_LOW;
     }
 
-    c->len.inc = (len_max > c->len.load) ? 256 / (len_max - c->len.load) : 0;
+    c->len.inc = 256 | ((uint32_t)(len_max - c->len.load) << 16);
     c->len.counter = 0;
 }
 
