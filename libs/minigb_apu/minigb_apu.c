@@ -34,8 +34,11 @@
 
 #define VOL_INIT_MAX (INT16_MAX / 8)
 #define VOL_INIT_MIN (INT16_MIN / 8)
-#define SQUARE_HIGH 273   /* VOL_INIT_MAX / MAX_CHAN_VOLUME */
-#define SQUARE_LOW (-273) /* VOL_INIT_MIN / MAX_CHAN_VOLUME */
+
+/* Handles time keeping for sound generation.
+ * This is a fixed reference to ensure timing calculations are consistent
+ * regardless of the output sample rate. */
+#define FREQ_INC_REF 44100
 
 #define MAX_CHAN_VOLUME 15
 
@@ -79,18 +82,13 @@ static inline int get_sample_replication(void)
 
 static inline int get_audio_sample_rate(void)
 {
-    static const int rates[] = {44100, 22050, 14700};
-    return rates[preferences_sample_rate];
+    return FREQ_INC_REF / get_sample_replication();
 }
 
 /**
  * Memory holding audio registers between 0xFF10 and 0xFF3F inclusive.
  */
 static uint32_t precomputed_noise_freqs[8][16];
-
-/* Cached frequency tracking - skip division when c->freq hasn't changed. */
-static uint16_t cached_square_freq[2];
-static uint16_t cached_wave_freq;
 
 __audio static void set_note_freq(chan* c, const uint32_t freq)
 {
@@ -158,14 +156,13 @@ __audio static bool calculate_new_sweep_freq(chan* c)
     if (c->sweep.shift > 0)
     {
         c->freq = new_freq;
-        cached_square_freq[0] = new_freq;
         c->sweep.freq = new_freq;
     }
 
     return false;  // Channel still active
 }
 
-/* Returns sample index at which to stop outputting in channel. */
+// returns sample index at which to stop outputting in channel
 __audio static int update_len(audio_data* restrict audio, chan* c, int len)
 {
     if (!c->enabled)
@@ -212,7 +209,7 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
     return tr;
 }
 
-/* This function is only for the "Accurate" mode. */
+// This function is only for the "Accurate" mode.
 __audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
 {
     uint32_t inc = c->freq_inc - *pos;
@@ -293,13 +290,9 @@ __audio static void update_square(
     if (!c->powered || !c->enabled)
         return;
 
-    if (c->freq != cached_square_freq[ch2])
-    {
-        cached_square_freq[ch2] = c->freq;
-        uint32_t freq = DMG_CLOCK_FREQ_U / ((2048 - c->freq) << 5);
-        set_note_freq(c, freq);
-        c->freq_inc *= 8;
-    }
+    uint32_t freq = DMG_CLOCK_FREQ_U / ((2048 - c->freq) << 5);
+    set_note_freq(c, freq);
+    c->freq_inc *= 8;
 
     if (preferences_sound_mode != 2)
     {
@@ -340,8 +333,9 @@ __audio static void update_square(
             {
                 c->square.duty_counter = (c->square.duty_counter + 1) & 7;
                 weighted_sum += (int32_t)(pos - prev_pos) * c->val;
-                c->val =
-                    (c->square.duty & (1 << c->square.duty_counter)) ? SQUARE_HIGH : SQUARE_LOW;
+                c->val = (c->square.duty & (1 << c->square.duty_counter))
+                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
                 prev_pos = pos;
             }
 
@@ -361,8 +355,9 @@ __audio static void update_square(
             {
                 c->freq_counter -= sample_rate;
                 c->square.duty_counter = (c->square.duty_counter + 1) & 7;
-                c->val =
-                    (c->square.duty & (1 << c->square.duty_counter)) ? SQUARE_HIGH : SQUARE_LOW;
+                c->val = (c->square.duty & (1 << c->square.duty_counter))
+                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
                 step_count++;
                 step_sum += c->val;
             }
@@ -378,7 +373,7 @@ __audio static void update_square(
 
 #if TARGET_PLAYDATE
         // --- Hardware ---
-        int16_t sample16 = sample_out >> 2;
+        int16_t sample16 = sample_out / 4;
         uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
         if (left == right)  // MONO
         {
@@ -402,7 +397,7 @@ __audio static void update_square(
         }
 #else
         // --- Simulator Path ---
-        sample_out >>= 2;
+        sample_out /= 4;
         if (left == right)  // MONO
         {
             int32_t left_contrib = sample_out * c->on_left * audio->vol_l;
@@ -424,7 +419,7 @@ __audio static int8_t wave_sample(
 {
     uint8_t sample;
 
-    sample = audio_mem(audio)[(0xFF30 + (pos >> 1)) - AUDIO_ADDR_COMPENSATION];
+    sample = audio_mem(audio)[(0xFF30 + pos / 2) - AUDIO_ADDR_COMPENSATION];
     if (pos & 1)
     {
         sample &= 0xF;
@@ -446,13 +441,9 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     if (!c->powered || !c->enabled)
         return;
 
-    if (c->freq != cached_wave_freq)
-    {
-        cached_wave_freq = c->freq;
-        uint32_t freq = (DMG_CLOCK_FREQ_U / 64) / (2048 - c->freq);
-        set_note_freq(c, freq);
-        c->freq_inc *= 32;
-    }
+    uint32_t freq = (DMG_CLOCK_FREQ_U / 64) / (2048 - c->freq);
+    set_note_freq(c, freq);
+    c->freq_inc *= 32;
 
     if (c->freq_inc == 0 && preferences_sound_mode != 2)
         return;
@@ -503,7 +494,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
         int32_t mono_sample = sample_out;
 #if TARGET_PLAYDATE
-        int16_t sample16 = mono_sample >> 2;
+        int16_t sample16 = mono_sample / 4;
         uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
 
         if (left == right)
@@ -528,12 +519,12 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
         }
 #else
         // --- Simulator Path ---
-        mono_sample >>= 2;
+        mono_sample /= 4;
         if (left == right)
         {
             int32_t left_contrib = mono_sample * c->on_left * audio->vol_l;
             int32_t right_contrib = mono_sample * c->on_right * audio->vol_r;
-            left[i] += (left_contrib + right_contrib) >> 1;
+            left[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
@@ -590,7 +581,8 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
         while (c->freq_counter >= sample_rate)
         {
             c->freq_counter -= sample_rate;
-            c->val = (c->noise.lfsr_reg & 1) ? SQUARE_LOW : SQUARE_HIGH;
+            c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MIN / MAX_CHAN_VOLUME)
+                                             : (VOL_INIT_MAX / MAX_CHAN_VOLUME);
 
             uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
 
@@ -608,7 +600,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
         int32_t mono_sample = c->val * c->volume;
 #if TARGET_PLAYDATE
-        int16_t sample16 = mono_sample >> 2;
+        int16_t sample16 = mono_sample / 4;
 
         uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
 
@@ -635,12 +627,12 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
         }
 #else
         // --- Simulator Path ---
-        mono_sample >>= 2;
+        mono_sample /= 4;
         if (left == right)
         {
             int32_t left_contrib = mono_sample * c->on_left * audio->vol_l;
             int32_t right_contrib = mono_sample * c->on_right * audio->vol_r;
-            left[i] += (left_contrib + right_contrib) >> 1;
+            left[i] += (left_contrib + right_contrib) / 2;
         }
         else
         {
@@ -650,16 +642,6 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 #endif
     }
 }
-
-/* Envelope increment table: 64 / step for steps 0-7.
- * step 0 -> 8 (special case), 1 -> 64, 2 -> 32, 3 -> 21, 4 -> 16, 5 -> 12, 6 -> 10, 7 -> 9
- */
-static const uint32_t env_inc_table[8] = {8, 64, 32, 21, 16, 12, 10, 9};
-
-/* Sweep increment table: 128 / period for periods 1-8. Index 0 unused.
- * period 1 -> 128, 2 -> 64, 3 -> 42, 4 -> 32, 5 -> 25, 6 -> 21, 7 -> 18, 8 -> 16
- */
-static const uint8_t sweep_inc_table[9] = {0, 128, 64, 42, 32, 25, 21, 18, 16};
 
 static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 {
@@ -675,7 +657,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->env.step = val & 0x07;
         c->env.up = val & 0x08 ? 1 : 0;
-        c->env.inc = env_inc_table[c->env.step];
+        c->env.inc = c->env.step ? 64ul / (uint32_t)c->env.step : 8ul;
         c->env.counter = 0;
     }
 
@@ -689,7 +671,13 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->sweep_up = !(val & 0x08);
         c->sweep.shift = (val & 0x07);
 
-        c->sweep.inc = sweep_inc_table[c->sweep.rate ? c->sweep.rate : 8];
+        uint8_t period = c->sweep.rate;
+        if (period == 0)
+        {
+            period = 8;
+        }
+
+        c->sweep.inc = (128 / period);
 
         if (c->sweep.shift > 0)
         {
@@ -712,11 +700,11 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     else if (i == 3)
     {  // noise
         c->noise.lfsr_reg = 0x0000;
-        c->val = SQUARE_LOW;
+        c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
     else
     {
-        c->val = SQUARE_LOW;
+        c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
 
     c->len.inc = 256 | ((uint32_t)(len_max - c->len.load) << 16);
@@ -781,7 +769,14 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
     audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
 
-    i = (addr - AUDIO_ADDR_COMPENSATION) * 0.2f;
+    if (preferences_sound_mode == 2)
+    {
+        i = (addr - AUDIO_ADDR_COMPENSATION) * 0.2f;
+    }
+    else
+    {
+        i = (addr - AUDIO_ADDR_COMPENSATION) / 5;
+    }
 
     switch (addr)
     {
@@ -800,7 +795,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         }
         else
         {
-            chans[0].sweep.inc = sweep_inc_table[chans[0].sweep.rate];
+            chans[0].sweep.inc = 128 / chans[0].sweep.rate;
         }
 
         if (chans[0].sweep_up && chans[0].sweep.shift > 0)
@@ -931,10 +926,6 @@ void audio_init(audio_data* audio)
     memset(chans, 0, 4 * sizeof(chan));
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
-
-    cached_square_freq[0] = 0xFFFF;
-    cached_square_freq[1] = 0xFFFF;
-    cached_wave_freq = 0xFFFF;
 
 #if TARGET_PLAYDATE
     audio->capacitor_l = 0;
@@ -1178,7 +1169,7 @@ __attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
     int16_t* buf, int len
 )
 {
-    int batch_count = len >> 3;
+    int batch_count = len / 8;
     int remaining = len % 8;
 
     asm volatile(
