@@ -1362,8 +1362,9 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
 
     u8 opjd = READ8(addr_next + 1);
 
-    // jr destination should be the read-io opcode
-    if (opjd != 0xFC + offset)
+    // jr destination should be the read-io opcode (backward JR),
+    // or forward JR is treated as an exit-on-condition-met pattern
+    if (opjd >= 0x80 && opjd != 0xFC + offset)
         goto hle_fail;
 
     // jr condition
