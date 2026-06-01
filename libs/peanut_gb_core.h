@@ -457,7 +457,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
         const uint8_t oam_y = oam[0];
         const uint8_t oam_x = oam[1];
 
-        if (oam_x > 0 && (current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
+        if ((current_ly + 16 >= oam_y) && (current_ly + 16 < oam_y + sprite_height))
         {
             sprites_to_render[number_of_sprites].sprite_number = s;
             sprites_to_render[number_of_sprites].x = oam_x;
@@ -491,6 +491,10 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 
         uint8_t OY = oam_src[s_4 + 0];
         uint8_t OX = oam_src[s_4 + 1];
+
+        if (OX == 0 || OX >= 168)
+            continue;
+
         uint8_t OT = oam_src[s_4 + 2] & (gb->gb_reg.LCDC & LCDC_OBJ_SIZE ? 0xFE : 0xFF);
         uint8_t OF = oam_src[s_4 + 3];  // flags
 
