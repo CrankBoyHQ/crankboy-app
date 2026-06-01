@@ -33,8 +33,7 @@ PREF(dither_stable, (pd_rev != PD_REV_A))
 PREF(dynamic_rate, DYNAMIC_RATE_OFF)
 
 /* --- input ---
- * crank_mode:           0=Start/Select, 1=Turbo A/B,
- *                       2=Turbo B/A, 3=None
+ * crank_mode:           0=Start/Select, 1=Turbo A/B, 2=Turbo B/A, 3=None
  * crank_down_action:    0=None, 1=Select+Start
  * crank_undock_button:  0=None, 1=Start, 2=Select, 3=Start+Select
  * crank_dock_button:    same as above
