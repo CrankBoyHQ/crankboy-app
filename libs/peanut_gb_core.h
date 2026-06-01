@@ -423,13 +423,15 @@ __core_section("draw") static inline int $(compare_sprites)(
     const struct sprite_data* const sd1, const struct sprite_data* const sd2
 )
 {
-    /* Smaller X-coordinate has higher priority. */
+#if PGB_IS_CGB
+    return (int)sd1->sprite_number - (int)sd2->sprite_number;
+#else
     int x_res = (int)sd1->x - (int)sd2->x;
     if (x_res != 0)
         return x_res;
 
-    /* If X is the same, smaller OAM index has higher priority. */
     return (int)sd1->sprite_number - (int)sd2->sprite_number;
+#endif
 }
 
 __core_section("draw") static void $(__gb_draw_line_sprites)(
@@ -444,7 +446,8 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
     struct sprite_data sprites_to_render[MAX_SPRITES_LINE];
 
     /* Find up to 10 sprites on this line, sorted by priority.
-     * Lower X-coordinate has higher priority. If X is the same,
+     * CGB: lower OAM index has higher priority.
+     * DMG: lower X-coordinate has higher priority. If X is the same,
      * lower OAM index has higher priority. */
 
     // Gather all visible sprites for this scanline (LY).
