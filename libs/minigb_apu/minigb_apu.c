@@ -48,23 +48,18 @@
 
 #if TARGET_PLAYDATE
 /* Q1.15 fixed-point equivalents of the factors below.
- * Formula: (int16_t)((0.999958 ^ (DMG_CLOCK_FREQ / sample_rate)) * 32768)
+ * Formula: (int16_t)((base ^ (DMG_CLOCK_FREQ / sample_rate)) * 32768)
+ *   DMG  base: 0.999958  -> 32637, 32507, 32378
+ *   CGB  base: 0.998943  -> 29632, 26797, 24233
  */
-static const int16_t get_charge_factors_q15[] = {
-    32637,  // 0.996f
-    32507,  // 0.992f
-    32378   // 0.988f
-};
+static const int16_t get_charge_factors_q15[2][3] = {{32637, 32507, 32378}, {29632, 26797, 24233}};
 #else
 
 /* The factors are calculated using the formula:
- * 0.999958^(DMG_CLOCK_FREQ / sample_rate)
+ * base^(DMG_CLOCK_FREQ / sample_rate)
+ * DMG base: 0.999958, CGB base: 0.998943
  */
-static const float get_charge_factors[] = {
-    0.996f,  // High quality: 44100 Hz
-    0.992f,  // Medium quality: 22050 Hz
-    0.988f,  // Low quality: 14700 Hz
-};
+static const float get_charge_factors[2][3] = {{0.996f, 0.992f, 0.988f}, {0.904f, 0.818f, 0.739f}};
 
 static inline int16_t clamp16(float s)
 {
@@ -1345,10 +1340,12 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         if (dacs_enabled)
         {
 #if TARGET_PLAYDATE
-            int16_t charge_factor = get_charge_factors_q15[preferences_sample_rate];
+            int cgb_idx = gameScene->context->gb->is_cgb_mode;
+            int16_t charge_factor = get_charge_factors_q15[cgb_idx][preferences_sample_rate];
             high_pass_filter_fixed_asm(left, right, len, audio, charge_factor);
 #else
-            float charge_factor = get_charge_factors[preferences_sample_rate];
+            int cgb_idx = gameScene->context->gb->is_cgb_mode;
+            float charge_factor = get_charge_factors[cgb_idx][preferences_sample_rate];
             for (int i = 0; i < len; i++)
             {
                 float in_l = left[i];
