@@ -9,7 +9,7 @@
     "- Press Ⓑ on the Options screen instead of Start to return.\n" \
     "\nCreated by: stonerl"
 
-#define SETTLE_TICKS 30
+#define SETTLE_TICKS 60
 #define A_BLOCK_TICKS 15
 #define START_PULSE_TICKS 2
 
