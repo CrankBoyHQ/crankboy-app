@@ -1327,29 +1327,13 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     }
     else
     {
-        // fall through to BIT n,(HL) check
-    }
-
-    int c = -1, z = -1;
-    u16 addr_next;
-    if (offset == 0)
-    {
-        // BIT n,(HL) - combined read+compare in one instruction
-        if (READ8(pc - 2) == 0xCB && (READ8(pc - 1) & 0xC7) == 0x46)
-        {
-            offset = -2;
-            uint8_t bit = (READ8(pc - 1) >> 3) & 7;
-            z = !(ioval & (1 << bit));
-            c = -1;
-            addr_next = pc;
-            goto hle_jr;
-        }
         goto hle_fail;
     }
 
     u8 op0 = READ8(pc);
     u8 d8 = READ8(pc + 1);
-    addr_next = pc + 2;
+    u16 addr_next = pc + 2;
+    int c = -1, z = -1;
     if (op0 == 0xFE || op0 == 0xD6)
     {
         // cp d8 / sub d8
@@ -1376,12 +1360,11 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
         goto hle_fail;
     }
 
-hle_jr:;
     u8 opjd = READ8(addr_next + 1);
 
     // jr destination should be the read-io opcode (backward JR),
     // or forward JR is treated as an exit-on-condition-met pattern
-    if (opjd >= 0x80 && opjd != (uint8_t)(offset - (addr_next - pc) - 2))
+    if (opjd >= 0x80 && opjd != 0xFC + offset)
         goto hle_fail;
 
     // jr condition
