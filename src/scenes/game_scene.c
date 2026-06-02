@@ -526,18 +526,9 @@ char* cb_game_config_path(const char* rom_filename)
     return path;
 }
 
-static LCDBitmap* numbers_bmp = NULL;
-static uint32_t last_fps_digits;
-static uint8_t fps_draw_timer;
-
 // one is static-alloc; the other is in the display frame buffer area
 // see preferences_tcm_lcd
 static uint8_t* lcd_sources[2];
-
-static const unsigned init_fade_frames[] = {0, 30, 60, 29, 59};
-static const unsigned init_fade_color[] = {
-    kColorWhite, kColorBlack, kColorBlack, kColorWhite, kColorWhite
-};
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
 {
@@ -547,11 +538,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     last_scy = -1;
 
     playdate->system->logToConsole("ROM: %s", rom_filename);
-
-    if (!numbers_bmp)
-    {
-        numbers_bmp = playdate->graphics->loadBitmap(CB_get_forwarded_path("fonts/numbers"), NULL);
-    }
 
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
@@ -839,10 +825,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     }
     script_info_free(scriptInfo);
 
-    gameScene->fade_frames = init_fade_frames[preferences_boot_fade];
+    gameScene->fade_frames = cb_boot_fade_initial_frames(preferences_boot_fade);
     if (!fade_color_override)
     {
-        gameScene->fade_white = init_fade_color[preferences_boot_fade] == kColorWhite;
+        gameScene->fade_white = cb_boot_fade_initial_white(preferences_boot_fade);
     }
 
     // Bundled mode starts out with black screen, so black fade always looks better.
@@ -1410,99 +1396,6 @@ static __section__(".text.tick") void composite_interlaced_frames(
 }
 
 static void save_check(gb_s* gb);
-
-static __section__(".text.tick") void display_fps(bool interlace_active)
-{
-    if (!numbers_bmp)
-        return;
-
-    if ((++fps_draw_timer & 3) != 0)
-        return;
-
-    float fps;
-    if (CB_App->avg_dt <= 1.0f / 98.5f)
-    {
-        fps = 99.9f;
-    }
-    else
-    {
-        fps = 1.0f / CB_App->avg_dt;
-    }
-
-    // for rounding
-    fps += 0.004f;
-
-    uint8_t* lcd = playdate->graphics->getFrame();
-
-    uint8_t* data;
-    int width, height, rowbytes;
-    playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
-
-    if (!data || !lcd)
-        return;
-
-    char buff[5];
-
-    int fps_multiplied = (int)(fps * 10.0f);
-
-    if (fps_multiplied > 999)
-    {
-        fps_multiplied = 999;
-    }
-
-    buff[0] = (fps_multiplied / 100) + '0';
-    buff[1] = ((fps_multiplied / 10) % 10) + '0';
-    buff[2] = '.';
-    buff[3] = (fps_multiplied % 10) + '0';
-    buff[4] = '\0';
-
-    // Interlace indicator: white "i" when on, black "i" (invisible) when off
-    playdate->graphics->setFont(CB_App->labelFont);
-    playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
-    playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
-    playdate->graphics->setDrawMode(kDrawModeCopy);
-
-    uint32_t digits4 = *(uint32_t*)&buff[0];
-    if (digits4 == last_fps_digits)
-        return;
-    last_fps_digits = digits4;
-
-    for (int y = 0; y < height; ++y)
-    {
-        uint32_t out = 0;
-        unsigned x = 0;
-        uint8_t* rowdata = data + y * rowbytes;
-        for (int i = 0; i < sizeof(buff); ++i)
-        {
-            char c = buff[i];
-            int cidx = 11, advance = 0;
-            if (c == '.')
-            {
-                cidx = 10;
-                advance = 3;
-            }
-            else if (c >= '0' && c <= '9')
-            {
-                cidx = c - '0';
-                advance = 7;
-            }
-
-            unsigned cdata = (~rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
-            out |= cdata << (32 - x - 8);
-            x += advance;
-        }
-
-        uint32_t mask = ((1 << (30 - x)) - 1);
-
-        for (int i = 0; i < 4; ++i)
-        {
-            lcd[y * LCD_ROWSIZE + i] &= (mask >> ((3 - i) * 8));
-            lcd[y * LCD_ROWSIZE + i] |= (out >> ((3 - i) * 8));
-        }
-    }
-
-    playdate->graphics->markUpdatedRows(0, height - 1);
-}
 
 __section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
 {
@@ -2759,7 +2652,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_display_fps)
             {
-                display_fps(context->gb->direct.dynamic_rate_enabled);
+                cb_render_fps(context->gb->direct.dynamic_rate_enabled);
             }
         }
     }
@@ -2895,10 +2788,6 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
 
 static const char* loadStateErrorOptions[] = {"OK", "Details", NULL};
 
-int fade_matrix[] = {
-    3, 6, 16, 13, 18, 7, 0, 9, 11, 15, 17, 14, 1, 2, 8, 6, 5, 4, 10, 12,
-};
-
 __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_advance)
 {
     if ((gameScene->context->gb->gb_reg.LCDC & LCDC_ENABLE) || gameScene->fade_frames < 20)
@@ -2908,50 +2797,7 @@ __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_
         gameScene->scene->forceFullRefresh = true;
     }
 
-    if (gameScene->fade_frames >= 20)
-    {
-        int n = sizeof(fade_matrix) / sizeof(fade_matrix[0]);
-        for (int i = n - 1; i > 0; i--)
-        {
-            int j = rand() % (i + 1);
-            int t = fade_matrix[i];
-            fade_matrix[i] = fade_matrix[j];
-            fade_matrix[j] = t;
-        }
-    }
-
-    uint8_t base_mask[8];
-    for (int y = 0; y < 8; y++)
-    {
-        uint8_t mask_byte = 0;
-        for (int x = 0; x < 8; x++)
-        {
-            int idx = (y % 5) * 4 + (x % 4);
-            if (fade_matrix[idx] < gameScene->fade_frames)
-            {
-                mask_byte |= (1 << (7 - x));
-            }
-        }
-        base_mask[y] = mask_byte;
-    }
-
-    uint8_t fill_byte = gameScene->fade_white ? 0xFF : 0x00;
-
-    int n_bands = (LCD_ROWS + 7) / 8;
-    for (int band = 0; band < n_bands; band++)
-    {
-        int shift = (band * 2) & 7;
-        LCDPattern pattern;
-        for (int y = 0; y < 8; y++)
-        {
-            uint8_t m = base_mask[y];
-            uint8_t shifted = shift ? (uint8_t)((m << shift) | (m >> (8 - shift))) : m;
-            pattern[y] = fill_byte;
-            pattern[8 + y] = shifted;
-        }
-        playdate->graphics->fillRect(0, band * 8, LCD_COLUMNS, 8, (LCDColor)(uintptr_t)pattern);
-    }
-    playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
+    cb_render_boot_fade(gameScene->fade_frames, gameScene->fade_white);
 }
 
 __section__(".rare") static void CB_LoadStateErrorModalCallback(void* userdata, int option)
@@ -4108,4 +3954,168 @@ void show_game_script_info(const char* rompath, const char* name_short)
     cb_free(text);
 
     CB_presentModal(infoScene->scene);
+}
+
+static LCDBitmap* numbers_bmp = NULL;
+static uint8_t fps_draw_timer;
+
+static const unsigned init_fade_frames[] = {0, 30, 60, 29, 59};
+static const unsigned init_fade_color[] = {
+    kColorWhite, kColorBlack, kColorBlack, kColorWhite, kColorWhite
+};
+
+unsigned cb_boot_fade_initial_frames(int boot_fade_pref)
+{
+    if (boot_fade_pref < 0 || boot_fade_pref >= (int)CB_ARRAY_SIZE(init_fade_frames))
+        return 0;
+    return init_fade_frames[boot_fade_pref];
+}
+
+bool cb_boot_fade_initial_white(int boot_fade_pref)
+{
+    if (boot_fade_pref < 0 || boot_fade_pref >= (int)CB_ARRAY_SIZE(init_fade_color))
+        return false;
+    return init_fade_color[boot_fade_pref] == kColorWhite;
+}
+
+__section__(".text.tick") void cb_render_fps(bool interlace_active)
+{
+    if (!numbers_bmp)
+    {
+        numbers_bmp = playdate->graphics->loadBitmap(CB_get_forwarded_path("fonts/numbers"), NULL);
+        if (!numbers_bmp)
+            return;
+    }
+
+    static char buff[5] = "00.0";
+    if ((++fps_draw_timer & 3) == 0)
+    {
+        float fps;
+        if (CB_App->avg_dt <= 1.0f / 98.5f)
+        {
+            fps = 99.9f;
+        }
+        else
+        {
+            fps = 1.0f / CB_App->avg_dt;
+        }
+
+        // for rounding
+        fps += 0.004f;
+
+        int fps_multiplied = (int)(fps * 10.0f);
+
+        if (fps_multiplied > 999)
+        {
+            fps_multiplied = 999;
+        }
+
+        buff[0] = (fps_multiplied / 100) + '0';
+        buff[1] = ((fps_multiplied / 10) % 10) + '0';
+        buff[2] = '.';
+        buff[3] = (fps_multiplied % 10) + '0';
+        buff[4] = '\0';
+    }
+
+    uint8_t* lcd = playdate->graphics->getFrame();
+
+    uint8_t* data;
+    int width, height, rowbytes;
+    playdate->graphics->getBitmapData(numbers_bmp, &width, &height, &rowbytes, NULL, &data);
+
+    if (!data || !lcd)
+        return;
+
+    playdate->graphics->setFont(CB_App->labelFont);
+    playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
+    playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+
+    for (int y = 0; y < height; ++y)
+    {
+        uint32_t out = 0;
+        unsigned x = 0;
+        uint8_t* rowdata = data + y * rowbytes;
+        for (int i = 0; i < sizeof(buff); ++i)
+        {
+            char c = buff[i];
+            int cidx = 11, advance = 0;
+            if (c == '.')
+            {
+                cidx = 10;
+                advance = 3;
+            }
+            else if (c >= '0' && c <= '9')
+            {
+                cidx = c - '0';
+                advance = 7;
+            }
+
+            unsigned cdata = (~rowdata[cidx]) & reverse_bits_u8((1 << (advance + 1)) - 1);
+            out |= cdata << (32 - x - 8);
+            x += advance;
+        }
+
+        uint32_t mask = ((1 << (30 - x)) - 1);
+
+        for (int i = 0; i < 4; ++i)
+        {
+            lcd[y * LCD_ROWSIZE + i] &= (mask >> ((3 - i) * 8));
+            lcd[y * LCD_ROWSIZE + i] |= (out >> ((3 - i) * 8));
+        }
+    }
+
+    playdate->graphics->markUpdatedRows(0, height - 1);
+}
+
+static int fade_matrix[] = {
+    3, 6, 16, 13, 18, 7, 0, 9, 11, 15, 17, 14, 1, 2, 8, 6, 5, 4, 10, 12,
+};
+
+__section__(".rare") void cb_render_boot_fade(unsigned fade_frames, bool fade_white)
+{
+    if (fade_frames >= 20)
+    {
+        int n = sizeof(fade_matrix) / sizeof(fade_matrix[0]);
+        for (int i = n - 1; i > 0; i--)
+        {
+            int j = rand() % (i + 1);
+            int t = fade_matrix[i];
+            fade_matrix[i] = fade_matrix[j];
+            fade_matrix[j] = t;
+        }
+    }
+
+    uint8_t base_mask[8];
+    for (int y = 0; y < 8; y++)
+    {
+        uint8_t mask_byte = 0;
+        for (int x = 0; x < 8; x++)
+        {
+            int idx = (y % 5) * 4 + (x % 4);
+            if (fade_matrix[idx] < (int)fade_frames)
+            {
+                mask_byte |= (1 << (7 - x));
+            }
+        }
+        base_mask[y] = mask_byte;
+    }
+
+    uint8_t fill_byte = fade_white ? 0xFF : 0x00;
+
+    int n_bands = (LCD_ROWS + 7) / 8;
+    for (int band = 0; band < n_bands; band++)
+    {
+        int shift = (band * 2) & 7;
+        LCDPattern pattern;
+        for (int y = 0; y < 8; y++)
+        {
+            uint8_t m = base_mask[y];
+            uint8_t shifted = shift ? (uint8_t)((m << shift) | (m >> (8 - shift))) : m;
+            pattern[y] = fill_byte;
+            pattern[8 + y] = shifted;
+        }
+        playdate->graphics->fillRect(0, band * 8, LCD_COLUMNS, 8, (LCDColor)(uintptr_t)pattern);
+    }
+    playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
 }

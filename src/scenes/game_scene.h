@@ -184,6 +184,13 @@ bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
 struct CB_Game;
 void show_game_script_info(const char* rompath, const char* name_short);
 
+void cb_render_fps(bool interlace_active);
+
+void cb_render_boot_fade(unsigned fade_frames, bool fade_white);
+
+unsigned cb_boot_fade_initial_frames(int boot_fade_pref);
+bool cb_boot_fade_initial_white(int boot_fade_pref);
+
 // horizontal position of game boy screen on playdate screen; must be a multiple of 8
 extern unsigned game_picture_x_offset;
 

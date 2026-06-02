@@ -1,6 +1,7 @@
 #ifndef LIBCRANKEMU_H_
 #define LIBCRANKEMU_H_
 
+// ABI-compatible crankemu version
 #define CRANKEMU_VERSION 1
 
 #include <pd_api.h>
@@ -21,6 +22,16 @@
 /* frontend may show preference as not matching the default value.
    for settings whose current value matches the default, this should never be set. */
 #define CE_PREF_NONDEFAULT 32
+
+typedef struct
+{
+    // true if core can use itcm.
+    // Requires alloc_dtcm to be provided.
+    bool itcm_allowed;
+    
+    // true if should not frame rate limit
+    bool turbo;
+} ce_frontend_settings_t;
 
 typedef struct ce_frontend
 {
@@ -51,6 +62,8 @@ typedef struct ce_frontend
     // 1 -> rev B
     // 2... -> rev C and beyond
     int (*get_hardware_revision)(void);
+    
+    const ce_frontend_settings_t* (*settings)(void);
 } ce_frontend_t;
 
 enum ce_preference_type
@@ -122,7 +135,7 @@ size_t ce_get_rom_save_size(const uint8_t* rom, size_t size);
 // -- logic (gameplay) --
 bool ce_play(void); // begin playing rom
 void ce_stop(void); // end playing rom (cannot be resumed)
-void ce_update(void);
+int ce_update(void); // returns number of frames advanced (at least 1).
 
 // frontend informs core that playdate frame buffer has been modified and needs a refresh.
 void ce_full_redraw(void);

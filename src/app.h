@@ -242,6 +242,7 @@ extern const char* const save_slot_labels[10];
 void CB_init(void);
 void CB_event(PDSystemEvent event, uint32_t arg);
 void CB_update(float dt);
+void CB_account_frame_timing(float dt);
 void CB_poll_buttons(void);
 void CB_present(CB_Scene* scene);
 void CB_quit(void);

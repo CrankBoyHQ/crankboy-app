@@ -5,6 +5,7 @@
 #include "app.h"
 #include "dtcm.h"
 #include "emucore_prefs.h"
+#include "preferences.h"
 #include "utility.h"
 
 #include <stdarg.h>
@@ -45,6 +46,14 @@ static void ce_fe_get_buttons(PDButtons* o_down, PDButtons* o_pressed, PDButtons
         *o_released = CB_App->buttons_released;
 }
 
+static const ce_frontend_settings_t* ce_fe_settings(void)
+{
+    static ce_frontend_settings_t settings;
+    settings.itcm_allowed = (preferences_itcm != 0);
+    settings.turbo = (preferences_uncap_fps != 0);
+    return &settings;
+}
+
 static const ce_frontend_t cb_emucore_frontend = {
     .version = CRANKEMU_VERSION,
     .alloc_dtcm = ce_fe_alloc_dtcm,
@@ -52,6 +61,7 @@ static const ce_frontend_t cb_emucore_frontend = {
     .get_buttons = ce_fe_get_buttons,
     .blockingModal = NULL,
     .get_hardware_revision = NULL,
+    .settings = ce_fe_settings,
 };
 
 void cb_apply_persisted_emucore_prefs(emucore_t* core, const char* slug)

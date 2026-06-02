@@ -10,6 +10,7 @@
 #include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../dtcm.h"
+#include "../emucore_prefs.h"
 #include "../preferences.h"
 #include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
@@ -125,7 +126,17 @@ const static SectionDef section_defs_base[] = {
 // how long to remember last-selected preference in menu (seconds)s
 #define TIME_FORGET_LAST_PREFERENCE 15
 static void* last_selected_preference;
+static char last_selected_emucore_id[64];
 static unsigned last_selected_preference_time;
+
+static bool entry_matches_last_selected(const OptionsMenuEntry* e)
+{
+    if (last_selected_preference && e->pref_var == last_selected_preference)
+        return true;
+    if (last_selected_emucore_id[0] && e->emucore_pref && e->emucore_pref->id)
+        return strcmp(e->emucore_pref->id, last_selected_emucore_id) == 0;
+    return false;
+}
 
 void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
@@ -264,6 +275,61 @@ static OptionsMenuEntry make_emucore_entry(ce_preference_t* p)
     uint32_t flags = p->flags ? p->flags(p) : 0;
     e.locked = (flags & CE_PREF_LOCKED) ? 1 : 0;
     return e;
+}
+
+static const char* settings_emu_slug(CB_SettingsScene* s)
+{
+    if (s->emucoreGameScene && s->emucoreGameScene->slug)
+        return s->emucoreGameScene->slug;
+    if (s->libraryScene)
+    {
+        CB_Game* g = (s->libraryScene->listView->selectedItem < s->libraryScene->games->length)
+                         ? s->libraryScene->games->items[s->libraryScene->listView->selectedItem]
+                         : NULL;
+        if (g && g->names) return g->names->system_slug;
+    }
+    return NULL;
+}
+
+// caller-owned
+static char* settings_emu_game_path(CB_SettingsScene* s)
+{
+    if (s->emucoreGameScene && s->emucoreGameScene->rom_path)
+        return cb_game_config_path(s->emucoreGameScene->rom_path);
+    if (s->libraryScene && s->selected_game_settings_path)
+        return cb_strdup(s->selected_game_settings_path);
+    return NULL;
+}
+
+static void settings_persist_emucore_pref(
+    CB_SettingsScene* s, ce_preference_t* p, unsigned value)
+{
+    const char* slug = settings_emu_slug(s);
+    if (!slug || !p->id) return;
+    char key[96];
+    snprintf(key, sizeof(key), "%s:%s", slug, p->id);
+    uint32_t flags = p->flags ? p->flags(p) : 0;
+    if (flags & CE_PREF_ALWAYS_GLOBAL)
+        cb_emucore_prefs_set_global(key, value);
+    else if (flags & CE_PREF_ALWAYS_LOCAL)
+        cb_emucore_prefs_set_local(key, value);
+    else if (preferences_per_game)
+        cb_emucore_prefs_set_local(key, value);
+    else
+        cb_emucore_prefs_set_global(key, value);
+}
+
+static void settings_save_emucore_prefs(CB_SettingsScene* s)
+{
+    if (!s->emu_prefs) return;
+    cb_emucore_prefs_save_to_disk(CB_globalPrefsPath, true);
+
+    char* game_path = settings_emu_game_path(s);
+    if (game_path)
+    {
+        cb_emucore_prefs_save_to_disk(game_path, false);
+        cb_free(game_path);
+    }
 }
 
 static void append_emucore_prefs_for_section(
@@ -468,6 +534,14 @@ CB_SettingsScene* CB_SettingsScene_new(
                                 rom = NULL;  // ownership transferred to scene
                                 if (get_prefs)
                                     emu_prefs = get_prefs();
+                                if (emu_prefs)
+                                {
+                                    if (settingsScene->selected_game_settings_path)
+                                        cb_emucore_prefs_read_from_disk(
+                                            settingsScene->selected_game_settings_path, false
+                                        );
+                                    cb_apply_persisted_emucore_prefs(core, slug);
+                                }
                             }
                             cb_free(basename);
                         }
@@ -638,13 +712,13 @@ CB_SettingsScene* CB_SettingsScene_new(
     int t_since =
         (int)playdate->system->getSecondsSinceEpoch(NULL) - (int)last_selected_preference_time;
 
-    if (last_selected_preference && t_since <= TIME_FORGET_LAST_PREFERENCE &&
-        settingsScene->entries)
+    if ((last_selected_preference || last_selected_emucore_id[0]) &&
+        t_since <= TIME_FORGET_LAST_PREFERENCE && settingsScene->entries)
     {
         bool found = false;
         for (int i = 0; i < settingsScene->totalMenuItemCount; i++)
         {
-            if (settingsScene->entries[i].pref_var == last_selected_preference)
+            if (entry_matches_last_selected(&settingsScene->entries[i]))
             {
                 playdate->system->logToConsole(
                     "Last selected option: %p; t=%d", last_selected_preference, t_since
@@ -668,7 +742,7 @@ CB_SettingsScene* CB_SettingsScene_new(
                 int at = -1;
                 for (int i = 0; i < probe_count; i++)
                 {
-                    if (probe[i].pref_var == last_selected_preference)
+                    if (entry_matches_last_selected(&probe[i]))
                     {
                         at = i;
                         break;
@@ -815,6 +889,8 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
         // (not sure when this would apply...)
         result = preferences_save_to_disk(CB_globalPrefsPath, PREFBITS_NEVER_GLOBAL);
     }
+
+    settings_save_emucore_prefs(settingsScene);
 
     if (!result)
     {
@@ -2440,32 +2516,29 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         .description = "FPS display, turbo speed, boot fade, ITCM Acceleration, and more."
     };
 
-    if (!emucore_mode)
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "Show FPS",
-            .values = fps_labels,
-            .description =
-                "Displays the current frames-per-second on screen.\n\n"
-                "Choice of displaying Playdate screen refreshes or emulated frames. (These can "
-                "differ if 30 FPS mode is enabled.)\n\n"
-                "Ideal performance is just under 60 emulated frames per second.",
-            .pref_var = &preferences_display_fps,
-            .max_value = 3,
-            .on_press = NULL
-        };
+    section[++i] = (OptionsMenuEntry){
+        .name = "Show FPS",
+        .values = fps_labels,
+        .description =
+            "Displays the current frames-per-second on screen.\n\n"
+            "Choice of displaying Playdate screen refreshes or emulated frames. (These can "
+            "differ if 30 FPS mode is enabled.)\n\n"
+            "Ideal performance is just under 60 emulated frames per second.",
+        .pref_var = &preferences_display_fps,
+        .max_value = 3,
+        .on_press = NULL
+    };
 
-        section[++i] = (OptionsMenuEntry){
-            .name = "Turbo Speed",
-            .values = off_on_labels,
-            .description =
-                "Removes the FPS limit.\n\n"
-                "This is intended just for benchmarking performance, not for casual play.",
-            .pref_var = &preferences_uncap_fps,
-            .max_value = 2,
-            .on_press = NULL
-        };
-    }
+    section[++i] = (OptionsMenuEntry){
+        .name = "Turbo Speed",
+        .values = off_on_labels,
+        .description =
+            "Removes the FPS limit.\n\n"
+            "This is intended just for benchmarking performance, not for casual play.",
+        .pref_var = &preferences_uncap_fps,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
     if (CB_App->bundled_rom)
     {
@@ -2506,47 +2579,47 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         section[i].max_value = 3;
     }
 
-    if (!emucore_mode)
-    {
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
-        // itcm accel
-        if (itcm_base_desc == NULL)
-        {
-            playdate->system->formatString(
-                &itcm_base_desc,
-                "Unstable, but greatly improves performance.\n\n"
-                "Runs emulator core directly from the stack.\n\n"
-                "Works with Rev A.\n(Your device: %s)",
-                pd_rev_description
-            );
-        }
+    // itcm accel
+    if (itcm_base_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_base_desc,
+            "Unstable, but greatly improves performance.\n\n"
+            "Runs emulator core directly from the stack.\n\n"
+            "Works with Rev A.\n(Your device: %s)",
+            pd_rev_description
+        );
+    }
 
-        if (itcm_restart_desc == NULL)
-        {
-            playdate->system->formatString(
-                &itcm_restart_desc,
-                "%s\n\nYou need to restart the game for these changes to apply.", itcm_base_desc
-            );
-        }
+    if (itcm_restart_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_restart_desc,
+            "%s\n\nYou need to restart the game for these changes to apply.", itcm_base_desc
+        );
+    }
 
-        section[++i] = (OptionsMenuEntry){
-            .name = "ITCM Acceleration",
-            .values = off_on_labels,
-            .pref_var = &preferences_itcm,
-            .max_value = 2,
-            .on_press = NULL
-        };
+    section[++i] = (OptionsMenuEntry){
+        .name = "ITCM Acceleration",
+        .values = off_on_labels,
+        .pref_var = &preferences_itcm,
+        .max_value = 2,
+        .on_press = NULL
+    };
 
-        if (gameScene)
-        {
-            section[i].description = itcm_restart_desc;
-        }
-        else
-        {
-            section[i].description = itcm_base_desc;
-        }
+    if (gameScene || scene->emucoreGameScene)
+    {
+        section[i].description = itcm_restart_desc;
+    }
+    else
+    {
+        section[i].description = itcm_base_desc;
+    }
 #endif
 
+    if (!emucore_mode)
+    {
         section[++i] = (OptionsMenuEntry){
             .name = "LCD-TCM Accel.",
             .values = off_on_labels,
@@ -2926,7 +2999,17 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     //
     // This is actually a good thing! We don't want to mess with players' muscle
     // memories and cause them to accidentally load state when they mean to save state
-    last_selected_preference = settingsScene->entries[settingsScene->cursorIndex].pref_var;
+    {
+        OptionsMenuEntry* sel = &settingsScene->entries[settingsScene->cursorIndex];
+        last_selected_preference = sel->pref_var;
+        if (sel->emucore_pref && sel->emucore_pref->id)
+            snprintf(
+                last_selected_emucore_id, sizeof(last_selected_emucore_id), "%s",
+                sel->emucore_pref->id
+            );
+        else
+            last_selected_emucore_id[0] = 0;
+    }
     last_selected_preference_time = playdate->system->getSecondsSinceEpoch(NULL);
 
     if (oldCursorIndex != settingsScene->cursorIndex)
@@ -3049,8 +3132,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             unsigned new_value =
                 (old_value + (unsigned)((int)cursor_entry->max_value + direction)) %
                 cursor_entry->max_value;
-            if (p->set)
-                p->set(p, new_value);
+            if (p->set && p->set(p, new_value) && old_value != new_value)
+                settings_persist_emucore_pref(settingsScene, p, new_value);
 
             cb_play_ui_sound(CB_UISound_Confirm);
 

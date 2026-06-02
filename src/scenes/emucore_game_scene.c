@@ -194,20 +194,39 @@ static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
         es->update_rom();
 }
 
+// for performance reasons, skip most stuff
 static void emucore_update_override(void* ud)
 {
     CB_EmucoreGameScene* es = ud;
 
+    float dt = playdate->system->getElapsedTime();
+    playdate->system->resetElapsedTime();
+
     if unlikely (CB_App->scene != es->scene || CB_App->pendingScene || es->go_to_library)
     {
-        float dt = playdate->system->getElapsedTime();
-        playdate->system->resetElapsedTime();
         CB_update(dt);
         return;
     }
 
+    int frames = 1;
     if likely (es->rom_playing && es->update_rom)
-        es->update_rom();
+        frames = es->update_rom();
+
+    if (frames < 1)
+        frames = 1;
+
+    CB_App->avg_dt_mult = (preferences_display_fps == 1) ? (1.0f / frames) : 1.0f;
+    CB_account_frame_timing(dt);
+
+    if (es->fade_frames > 0)
+    {
+        es->fade_frames =
+            es->fade_frames > (unsigned)frames ? es->fade_frames - (unsigned)frames : 0;
+        cb_render_boot_fade(es->fade_frames, es->fade_white);
+    }
+
+    if (preferences_display_fps)
+        cb_render_fps(false);
 
     playdate->graphics->display();
 }
@@ -343,7 +362,16 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
     }
     es->rom_loaded = true;
 
+    char* emu_cfg = cb_game_config_path(rom_path);
+    if (emu_cfg)
+    {
+        cb_emucore_prefs_read_from_disk(emu_cfg, false);
+        cb_free(emu_cfg);
+    }
     cb_apply_persisted_emucore_prefs(es->core, es->slug);
+
+    es->fade_frames = cb_boot_fade_initial_frames(preferences_boot_fade);
+    es->fade_white = cb_boot_fade_initial_white(preferences_boot_fade);
 
     emucore_load_sram(es);
 
