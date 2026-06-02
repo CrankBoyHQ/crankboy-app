@@ -7,10 +7,9 @@
 
 #include "preferences.h"
 
-#include "app.h"
 #include "emucore_prefs.h"
 #include "jparse.h"
-#include "revcheck.h" 
+#include "revcheck.h"  // IWYU pragma: keep
 #include "userstack.h"
 #include "utility.h"
 
@@ -120,7 +119,8 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
     json_value root;
     if (!parse_json(filename, &root, kFileReadData) || root.type != kJSONTable)
     {
-        if (root.type != kJSONNull) free_json_data(root);
+        if (root.type != kJSONNull)
+            free_json_data(root);
         root = json_new_table();
         if (root.type != kJSONTable)
         {

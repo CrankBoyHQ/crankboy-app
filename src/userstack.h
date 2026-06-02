@@ -20,7 +20,7 @@ void* call_with_user_stack_3_impl(user_stack_fn, void* a, void* b, void* c);
     call_with_user_stack_3_impl(                                                               \
         (user_stack_fn)fn, (void*)(uintptr_t)(a), (void*)(uintptr_t)(b), (void*)(uintptr_t)(c) \
     )
-    
+
 // if in user stack, can invoke fn on original stack
 // (don't go further than this though!)
 // preserves dtcm region, so this could be a slow operation.

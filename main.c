@@ -6,12 +6,12 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 
+#include "libs/pdll/pdll.h"
 #include "src/app.h"
 #include "src/dtcm.h"
 #include "src/global.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
-#include "pdll/pdll.h"
 
 #include <pd_api.h>
 
@@ -161,7 +161,7 @@ __section__(".text.main") DllExport
             playdate->system->logToConsole("Loaded CrankBoy as pdll? Aborting!");
             return 0;
         }
-        
+
         playdate = pd;
 
         int headphone, mic;

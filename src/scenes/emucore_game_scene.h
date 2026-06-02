@@ -8,7 +8,9 @@
 
 typedef struct emucore_s emucore_t;
 
-typedef bool (*ce_load_rom_fn)(uint8_t* rom, size_t size, const char* system_slug, const char* rom_basename);
+typedef bool (*ce_load_rom_fn)(
+    uint8_t* rom, size_t size, const char* system_slug, const char* rom_basename
+);
 typedef void (*ce_update_fn)(void);
 typedef void (*ce_unload_rom_fn)(void);
 typedef bool (*ce_play_fn)(void);
@@ -26,11 +28,11 @@ typedef struct CB_EmucoreGameScene
     char* slug;
     char* name_short;
 
-    ce_load_rom_fn   load_rom;
-    ce_update_fn     update_rom;
+    ce_load_rom_fn load_rom;
+    ce_update_fn update_rom;
     ce_unload_rom_fn unload_rom;
-    ce_play_fn       play;
-    ce_stop_fn       stop;
+    ce_play_fn play;
+    ce_stop_fn stop;
 
     bool rom_loaded;
     bool rom_playing;

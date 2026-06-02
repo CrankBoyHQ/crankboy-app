@@ -6,6 +6,8 @@
 //
 #include "settings_scene.h"
 
+#include "../../libs/libcrankemu/libcrankemu.h"
+#include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
@@ -14,13 +16,10 @@
 #include "../script.h"
 #include "../utility.h"
 #include "credits_scene.h"
-#include "emucore_prefs.h"
+#include "emucore_game_scene.h"
 #include "homebrew_hub_scene.h"
-#include "libcrankemu/libcrankemu.h"
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
-#include "pdll/pdll.h"
-#include "scenes/emucore_game_scene.h"
 
 #include <pd_api/pd_api_gfx.h>
 #include <stdlib.h>

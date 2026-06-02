@@ -1,7 +1,6 @@
 #pragma once
 
 #include "app.h"
-#include "jparse.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -19,4 +18,3 @@ void cb_emucore_prefs_set_global(const char* key, unsigned value);
 void cb_emucore_prefs_set_local(const char* key, unsigned value);
 
 void cb_apply_persisted_emucore_prefs(emucore_t* core, const char* system_slug);
-                                      

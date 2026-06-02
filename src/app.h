@@ -80,7 +80,7 @@ typedef struct
 {
     // basename, including extension
     char* filename;
-    
+
     // e.g. "pm", "gb" (includes both dmg and cgb)
     char* system_slug;
 
@@ -88,13 +88,14 @@ typedef struct
     uint32_t crc32;
 
     bool rom_has_battery;
-    
+
     enum cgb_support_e rom_cgb_support;
 
     // common database name, for thumbnail matching etc.
     char* name_database;
 
-    // human-readable variations (all may be NULL except name_filename and name_filename_leading_article)
+    // human-readable variations (all may be NULL except name_filename and
+    // name_filename_leading_article)
     char* name_short;
     char* name_detailed;
     char* name_filename;  // (basename, extension stripped)
@@ -125,12 +126,13 @@ typedef struct
     bool has_mask;
 } CB_CoverCacheEntry;
 
-typedef struct emucore_s {
+typedef struct emucore_s
+{
     unsigned ce_version;
-    char* id; // e.g. "stella_pd"
+    char* id;  // e.g. "stella_pd"
     char* path;
     char* core_version;
-    char* human_name; // e.g. "StellaPD"
+    char* human_name;  // e.g. "StellaPD"
     size_t n_system_slugs;
     char** system_slugs;
     pdll_t* pdll; /* NULL if not currently open */
@@ -141,7 +143,7 @@ typedef struct CB_Application
     // used by some scenes to bypass normal input
     void (*update_override)(void* ud);
     void* update_override_ud;
-    
+
     float dt;
     float avg_dt;       // for fps calculation (scaled by avg_dt_mult)
     float avg_dt_mult;  // reciprocal number of emulated frames last frame
@@ -217,16 +219,16 @@ typedef struct CB_Application
     // - credits accessible via setings
     // - no per-game/global settings distinction
     // - some settings become inaccessible
-    char* bundled_rom; // (path to bundled rom)
-    int bundled_rom_cgb_mode; // 0: unspecified. 1: force dmg. 2: force cgb.
-    char* bundled_core; // (path to emucore for bundle or NULL)
+    char* bundled_rom;         // (path to bundled rom)
+    int bundled_rom_cgb_mode;  // 0: unspecified. 1: force dmg. 2: force cgb.
+    char* bundled_core;        // (path to emucore for bundle or NULL)
 
     // use shared roms/saves/settings directory
     bool bundle_shared;
 
     // ex. "/Shared/.forwarders/app.crankboyhq.crankboy"
     char* bundle_fwd_path;
-    
+
     size_t cores_n;
     emucore_t* cores;
     int active_emucore;  // index into cores of the currently-loaded core, or -1

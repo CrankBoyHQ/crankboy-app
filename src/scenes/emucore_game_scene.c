@@ -198,7 +198,7 @@ static void emucore_update_override(void* ud)
 {
     CB_EmucoreGameScene* es = ud;
 
-    if unlikely(CB_App->scene != es->scene || CB_App->pendingScene || es->go_to_library)
+    if unlikely (CB_App->scene != es->scene || CB_App->pendingScene || es->go_to_library)
     {
         float dt = playdate->system->getElapsedTime();
         playdate->system->resetElapsedTime();
@@ -206,7 +206,7 @@ static void emucore_update_override(void* ud)
         return;
     }
 
-    if likely(es->rom_playing && es->update_rom)
+    if likely (es->rom_playing && es->update_rom)
         es->update_rom();
 
     playdate->graphics->display();
@@ -224,7 +224,8 @@ static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_
     if (event == kEventResume && es->core && es->core->pdll)
     {
         void (*full_redraw)(void) = pdll_symbol(es->core->pdll, "ce_full_redraw");
-        if (full_redraw) full_redraw();
+        if (full_redraw)
+            full_redraw();
     }
 
     // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead.
@@ -249,12 +250,14 @@ static void CB_EmucoreGameScene_free(void* object)
     if (es->rom_playing)
     {
         emucore_save_sram_if_dirty(es);
-        if (es->stop) es->stop();
+        if (es->stop)
+            es->stop();
         es->rom_playing = false;
     }
     if (es->rom_loaded)
     {
-        if (es->unload_rom) es->unload_rom();
+        if (es->unload_rom)
+            es->unload_rom();
         es->rom_loaded = false;
     }
 
@@ -309,11 +312,11 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
         return NULL;
     }
 
-    es->load_rom   = (ce_load_rom_fn)pdll_symbol(es->core->pdll, "ce_load_rom");
+    es->load_rom = (ce_load_rom_fn)pdll_symbol(es->core->pdll, "ce_load_rom");
     es->update_rom = (ce_update_fn)pdll_symbol(es->core->pdll, "ce_update");
     es->unload_rom = (ce_unload_rom_fn)pdll_symbol(es->core->pdll, "ce_unload_rom");
-    es->play       = (ce_play_fn)pdll_symbol(es->core->pdll, "ce_play");
-    es->stop       = (ce_stop_fn)pdll_symbol(es->core->pdll, "ce_stop");
+    es->play = (ce_play_fn)pdll_symbol(es->core->pdll, "ce_play");
+    es->stop = (ce_stop_fn)pdll_symbol(es->core->pdll, "ce_stop");
     if (!es->load_rom || !es->update_rom || !es->unload_rom || !es->play || !es->stop)
     {
         playdate->system->logToConsole("emucore: '%s' missing required symbol", es->core->path);

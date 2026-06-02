@@ -753,7 +753,8 @@ static void get_homebrew_hub_api(void)
 // true if slug is already claimed by any known core
 static bool CB_system_slug_claimed(const char* slug)
 {
-    if (!strcmp(slug, "gb")) return true;
+    if (!strcmp(slug, "gb"))
+        return true;
     for (size_t i = 0; i < CB_App->cores_n; ++i)
         for (size_t j = 0; j < CB_App->cores[i].n_system_slugs; ++j)
             if (strcmp(CB_App->cores[i].system_slugs[j], slug) == 0)
@@ -948,7 +949,9 @@ static void CB_load_cores(void)
 
     for (size_t i = 0; i < scan.n; ++i)
     {
-        playdate->system->logToConsole("CB_load_cores: pre-load[%u] %s", (unsigned)i, scan.items[i].basepath);
+        playdate->system->logToConsole(
+            "CB_load_cores: pre-load[%u] %s", (unsigned)i, scan.items[i].basepath
+        );
         CB_load_core(scan.items[i].basepath);
         playdate->system->logToConsole("CB_load_cores: post-load[%u]", (unsigned)i);
         cb_free(scan.items[i].basepath);
@@ -1151,7 +1154,8 @@ void CB_init(void)
         cb_free(base);
 
         emucore_t* core = (CB_App->cores_n > before) ? &CB_App->cores[CB_App->cores_n - 1] : NULL;
-        // TODO: don't hardcode slug as [0] -- require bundle.json to specify system slug if >= 2 slugs present.
+        // TODO: don't hardcode slug as [0] -- require bundle.json to specify system slug if >= 2
+        // slugs present.
         const char* slug = (core && core->n_system_slugs > 0) ? core->system_slugs[0] : NULL;
         if (!slug)
         {

@@ -131,9 +131,11 @@ char* cb_strdup(const char* string)
 
 size_t cb_nullterm_array_len(void* const* arr)
 {
-    if (!arr) return 0;
+    if (!arr)
+        return 0;
     size_t n = 0;
-    while (arr[n]) ++n;
+    while (arr[n])
+        ++n;
     return n;
 }
 

@@ -11,8 +11,8 @@
 #include "../preferences.h"
 #include "../scene.h"
 #include "../userstack.h"
+#include "emucore_game_scene.h"
 #include "game_scene.h"
-#include "scenes/emucore_game_scene.h"
 
 struct OptionsMenuEntry;
 struct SectionDef;

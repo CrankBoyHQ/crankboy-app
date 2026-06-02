@@ -1077,7 +1077,7 @@ __section__(".rare") static void CB_LibraryScene_event(
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_ASSERT(!CB_App->bundled_rom);
-    
+
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
     CB_App->shouldCheckUpdateInfo = GITHUB_RELEASE || CB_App->forceCheckVersion;
 #else
@@ -2401,10 +2401,9 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     if (found_cover_name_ptr)
     {
         const char* found_cover_name = *found_cover_name_ptr;
-        char* covers_dir = cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
-        playdate->system->formatString(
-            &game->coverPath, "%s/%s.pdi", covers_dir, found_cover_name
-        );
+        char* covers_dir =
+            cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
+        playdate->system->formatString(&game->coverPath, "%s/%s.pdi", covers_dir, found_cover_name);
         cb_free(covers_dir);
     }
     else

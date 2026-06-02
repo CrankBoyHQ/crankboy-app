@@ -1,11 +1,11 @@
 // game_scanning_scene.h
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
-
 #include "../array.h"
 #include "../scene.h"
+
+#include <stddef.h>
+#include <stdint.h>
 
 // States for the scanning process
 typedef enum
@@ -20,7 +20,7 @@ typedef struct
 {
     char* games_dir;
     char* slug;
-    int emucore_index; // (-1 for built-in GB)
+    int emucore_index;  // (-1 for built-in GB)
 } CB_ScanSource;
 
 typedef size_t (*ce_rom_save_size_fn)(const uint8_t*, size_t);
@@ -36,7 +36,7 @@ typedef struct CB_GameScanningScene
     bool crc_cache_modified;
     int progress_max_width;
 
-    CB_Array* sources; // CB_ScanSource*
+    CB_Array* sources;  // CB_ScanSource*
     int source_index;
     void* emucore_pdll;
     ce_rom_save_size_fn save_size_fn;

@@ -119,38 +119,46 @@ static void fetch_core_rom_info(CB_ManageRomScene* self)
     if (!self->game || !self->game->names || !self->game->names->system_slug)
         return;
     const char* slug = self->game->names->system_slug;
-    if (strcmp(slug, GB_SYSTEM_SLUG) == 0) return;
+    if (strcmp(slug, GB_SYSTEM_SLUG) == 0)
+        return;
     emucore_t* core = CB_get_emucore_by_slug(slug);
-    if (!core || !core->path) return;
+    if (!core || !core->path)
+        return;
 
     size_t rom_size = 0;
     char* rom = cb_read_entire_file_maybe_compressed(
-        self->game->fullpath, &rom_size, kFileRead | kFileReadData);
-    if (!rom || rom_size == 0) { if (rom) cb_free(rom); return; }
+        self->game->fullpath, &rom_size, kFileRead | kFileReadData
+    );
+    if (!rom || rom_size == 0)
+    {
+        if (rom)
+            cb_free(rom);
+        return;
+    }
 
     pdll_t* pdll = core->pdll;
     bool opened_here = false;
     if (!pdll)
     {
-        pdll = pdll_open(playdate, core->path,
-            PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
+        pdll = pdll_open(playdate, core->path, PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
         opened_here = (pdll != NULL);
     }
     if (pdll)
     {
-        ce_get_rom_info_fn get_info =
-            (ce_get_rom_info_fn)pdll_symbol(pdll, "get_rom_info");
+        ce_get_rom_info_fn get_info = (ce_get_rom_info_fn)pdll_symbol(pdll, "get_rom_info");
         if (get_info)
         {
             const char* s = get_info((const uint8_t*)rom, rom_size);
-            if (s) self->core_info_text = cb_strdup(s);
+            if (s)
+                self->core_info_text = cb_strdup(s);
         }
         ce_get_rom_header_name_fn get_header =
             (ce_get_rom_header_name_fn)pdll_symbol(pdll, "get_rom_header_name");
         if (get_header)
         {
             const char* s = get_header((const uint8_t*)rom, rom_size);
-            if (s) self->core_header_name = cb_strdup(s);
+            if (s)
+                self->core_header_name = cb_strdup(s);
         }
         if (opened_here)
         {
@@ -448,9 +456,8 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     draw_info_row(y, "Filename:", self->basename ? self->basename : "");
     y += INFO_ROW_H;
 
-    const bool is_gb =
-        self->game->names && self->game->names->system_slug
-        && strcmp(self->game->names->system_slug, GB_SYSTEM_SLUG) == 0;
+    const bool is_gb = self->game->names && self->game->names->system_slug &&
+                       strcmp(self->game->names->system_slug, GB_SYSTEM_SLUG) == 0;
 
     draw_info_row(y, "Compressed:", self->compressed ? "Yes" : "No");
     y += INFO_ROW_H;
@@ -467,9 +474,8 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            hdr = (self->core_header_name && *self->core_header_name)
-                      ? self->core_header_name
-                      : NULL;
+            hdr =
+                (self->core_header_name && *self->core_header_name) ? self->core_header_name : NULL;
         }
         draw_info_row(y, "Header:", hdr);
         y += INFO_ROW_H;
@@ -492,7 +498,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     {
         // Emucore
         const char* p = self->core_info_text;
-        const int max_rows = (ACTION_TOP_Y - INFO_TOP_Y) / INFO_ROW_H - 1; // leave room for CRC32
+        const int max_rows = (ACTION_TOP_Y - INFO_TOP_Y) / INFO_ROW_H - 1;  // leave room for CRC32
         int rows_drawn = (y - INFO_TOP_Y) / INFO_ROW_H;
         while (*p && rows_drawn < max_rows)
         {
@@ -503,25 +509,29 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             if (tab)
             {
                 size_t llen = (size_t)(tab - p);
-                if (llen >= sizeof(label)) llen = sizeof(label) - 1;
+                if (llen >= sizeof(label))
+                    llen = sizeof(label) - 1;
                 memcpy(label, p, llen);
                 label[llen] = '\0';
                 size_t vlen = (size_t)(line_end - (tab + 1));
-                if (vlen >= sizeof(value)) vlen = sizeof(value) - 1;
+                if (vlen >= sizeof(value))
+                    vlen = sizeof(value) - 1;
                 memcpy(value, tab + 1, vlen);
                 value[vlen] = '\0';
             }
             else
             {
                 size_t llen = (size_t)(line_end - p);
-                if (llen >= sizeof(label)) llen = sizeof(label) - 1;
+                if (llen >= sizeof(label))
+                    llen = sizeof(label) - 1;
                 memcpy(label, p, llen);
                 label[llen] = '\0';
             }
             draw_info_row(y, label, *value ? value : NULL);
             y += INFO_ROW_H;
             ++rows_drawn;
-            if (!nl) break;
+            if (!nl)
+                break;
             p = nl + 1;
         }
     }
@@ -595,8 +605,8 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
-    if (game->names && game->names->system_slug
-        && strcmp(game->names->system_slug, GB_SYSTEM_SLUG) == 0)
+    if (game->names && game->names->system_slug &&
+        strcmp(game->names->system_slug, GB_SYSTEM_SLUG) == 0)
     {
         read_rom_header(self);
     }
