@@ -184,27 +184,31 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     force_prefs();
 
     ScriptData* data = allocz(ScriptData);
+    if (!data)
+        return NULL;
 
     const char* err = NULL;
     data->sidebar =
         playdate->graphics->loadBitmap(CB_get_forwarded_path(KIRBY_ASSETS_DIR "sidebar"), &err);
 
     if (err || !data->sidebar)
-        script_error("Script error loading bitmap: %s", err);
-    if (data->sidebar)
     {
-        for (int i = 0; i < 20; ++i)
+        printf("Script error loading bitmap: %s\n", err);
+        cb_free(data);
+        return NULL;
+    }
+
+    for (int i = 0; i < 20; ++i)
+    {
+        for (int j = 0; j < 12; ++j)
         {
-            for (int j = 0; j < 12; ++j)
+            data->tiles12[i][j] = 0;
+            for (int k = 0; k < 12; ++k)
             {
-                data->tiles12[i][j] = 0;
-                for (int k = 0; k < 12; ++k)
-                {
-                    int x = (i % 5) * 12 + k;
-                    int y = 240 + (i / 5) * 12 + j;
-                    data->tiles12[i][j] |= playdate->graphics->getBitmapPixel(data->sidebar, x, y)
-                                           << (15 - k);
-                }
+                int x = (i % 5) * 12 + k;
+                int y = 240 + (i / 5) * 12 + j;
+                data->tiles12[i][j] |= playdate->graphics->getBitmapPixel(data->sidebar, x, y)
+                                       << (15 - k);
             }
         }
     }
@@ -440,77 +444,39 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
     bool full_refresh = !data->prev_in_game || gbScreenRequiresFullRefresh;
 
-    // Read all RAM values first to check if anything changed
-    uint8_t newlives = 0, newhealth = 0, boss = 0, boss_visible = 0;
-    uint32_t newscore = 0;
+    uint8_t newlives = ram_peek(0xD089);
+    uint8_t newhealth = ram_peek(0xD086);
+    uint8_t boss = ram_peek(0xD093);
+    uint8_t boss_visible = ram_peek(0xFF8F);
+    uint32_t newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
+                        (ram_peek(0xD073) << 24);
 
-    if (full_refresh)
-    {
-        newlives = ram_peek(0xD089);
-        newhealth = ram_peek(0xD086);
-        boss = ram_peek(0xD093);
-        boss_visible = ram_peek(0xFF8F);
-        newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
-                   (ram_peek(0xD073) << 24);
-    }
-    else
-    {
-        // Quick check if anything changed before reading all values
-        newlives = ram_peek(0xD089);
-        if (newlives == data->prev_lives)
-        {
-            newhealth = ram_peek(0xD086);
-            if (newhealth == data->prev_health)
-            {
-                boss = ram_peek(0xD093);
-                boss_visible = ram_peek(0xFF8F);
-                uint8_t effective_boss = (boss_visible & 0x80) ? boss : 0xFF;
-                if (effective_boss == data->prev_boss)
-                {
-                    newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) |
-                               (ram_peek(0xD072) << 16) | (ram_peek(0xD073) << 24);
-                    if (newscore == data->prev_score)
-                    {
-                        // Nothing changed, skip drawing
-                        return;
-                    }
-                }
-            }
-        }
-        // Something changed, read remaining values
-        if (newhealth == 0)
-            newhealth = ram_peek(0xD086);
-        if (boss == 0)
-        {
-            boss = ram_peek(0xD093);
-            boss_visible = ram_peek(0xFF8F);
-        }
-        if (newscore == 0)
-            newscore = ram_peek(0xD070) | (ram_peek(0xD071) << 8) | (ram_peek(0xD072) << 16) |
-                       (ram_peek(0xD073) << 24);
-    }
-
-    // Determine effective boss value
     uint8_t effective_boss = (boss_visible & 0x80) ? boss : 0xFF;
 
-    // Determine what needs to be redrawn
+    if (!full_refresh)
+    {
+        if (newlives == data->prev_lives && newhealth == data->prev_health &&
+            effective_boss == data->prev_boss && newscore == data->prev_score)
+        {
+            return;
+        }
+    }
+
+    uint8_t* lcd = playdate->graphics->getFrame();
+    if (!lcd)
+        return;
+
+    int rowbytes = PLAYDATE_ROW_STRIDE;
+
+    if (gbScreenRequiresFullRefresh && data->sidebar)
+    {
+        playdate->graphics->drawBitmap(data->sidebar, 320, 0, kBitmapUnflipped);
+    }
+
     bool refresh_lives = full_refresh || newlives != data->prev_lives;
     bool refresh_health = full_refresh || newhealth != data->prev_health;
     bool refresh_boss = full_refresh || effective_boss != data->prev_boss;
     bool refresh_score = full_refresh || newscore != data->prev_score;
-
-    if (!refresh_lives && !refresh_health && !refresh_boss && !refresh_score)
-    {
-        return;
-    }
-
-    uint8_t* lcd = playdate->graphics->getFrame();
-    int rowbytes = PLAYDATE_ROW_STRIDE;
-
-    if (gbScreenRequiresFullRefresh)
-    {
-        playdate->graphics->drawBitmap(data->sidebar, 320, 0, kBitmapUnflipped);
-    }
 
     // lives
     if (refresh_lives)
