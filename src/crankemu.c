@@ -109,6 +109,17 @@ emucore_t* CB_get_emucore_by_slug(const char* slug)
     return NULL;
 }
 
+void cb_emucore_set_frontend(pdll_t* pdll)
+{
+    if (!pdll)
+        return;
+    void (*set_frontend)(const ce_frontend_t*) = pdll_symbol(pdll, "ce_set_frontend");
+    if (set_frontend)
+        set_frontend(&cb_emucore_frontend);
+    else
+        playdate->system->logToConsole("cb_emucore_set_frontend: %s", pdll_get_error());
+}
+
 void CB_load_emucore(emucore_t* core)
 {
     // unload the currently-active core, if any
@@ -145,9 +156,5 @@ void CB_load_emucore(emucore_t* core)
 
     CB_ASSERT(CB_App->active_emucore >= 0 && CB_App->active_emucore < CB_App->cores_n);
 
-    void (*set_frontend)(const ce_frontend_t*) = pdll_symbol(core->pdll, "ce_set_frontend");
-    if (set_frontend)
-        set_frontend(&cb_emucore_frontend);
-    else
-        playdate->system->logToConsole("CB_load_emucore: %s", pdll_get_error());
+    cb_emucore_set_frontend(core->pdll);
 }

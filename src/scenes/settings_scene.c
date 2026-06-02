@@ -513,7 +513,10 @@ CB_SettingsScene* CB_SettingsScene_new(
                 if (pdll)
                 {
                     if (we_opened)
+                    {
                         settingsScene->peek_pdll = pdll;
+                        cb_emucore_set_frontend(pdll);
+                    }
 
                     ce_preference_t** (*get_prefs)(void) = pdll_symbol(pdll, "ce_get_preferences");
 
@@ -3237,6 +3240,14 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         {
             indicate_nondefault =
                 *current_entry->pref_var != preference_default_value[prefvar_index];
+        }
+        else if (!is_disabled && current_entry->emucore_pref != NULL &&
+                 !current_entry->suppress_nondefault_indicator)
+        {
+            // TODO: cache this any time option is modified.
+            ce_preference_t* p = current_entry->emucore_pref;
+            uint32_t flags = p->flags ? p->flags(p) : 0;
+            indicate_nondefault = (flags & CE_PREF_NONDEFAULT) != 0;
         }
 
         int y = initialY + i * rowHeight;

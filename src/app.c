@@ -25,6 +25,7 @@
 #include "scenes/game_scene.h"
 #include "scenes/info_scene.h"
 #include "scenes/library_scene.h"
+#include "scenes/modal.h"
 #include "scenes/parental_lock_scene.h"
 #include "script.h"
 #include "serial.h"
@@ -923,6 +924,12 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
 
 static void CB_load_cores(void)
 {
+    if (CB_App->skip_emucores)
+    {
+        playdate->system->logToConsole("CB_load_cores: skipped (safe mode)");
+        return;
+    }
+
     const char* dir = global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY;
     playdate->system->logToConsole("CB_load_cores: dir=%s", dir);
 
@@ -957,6 +964,94 @@ static void CB_load_cores(void)
         cb_free(scan.items[i].basepath);
     }
     cb_free(scan.items);
+}
+
+#define SETUP_CANARY_KEY "setup-canary"
+
+static bool read_setup_canary(void)
+{
+    json_value j;
+    if (!parse_json(CB_globalPrefsPath, &j, kFileReadData))
+        return false;
+    bool tripped = (json_get_table_value(j, SETUP_CANARY_KEY).type == kJSONTrue);
+    free_json_data(j);
+    return tripped;
+}
+
+void CB_set_setup_canary(bool value)
+{
+    json_value root;
+    if (!parse_json(CB_globalPrefsPath, &root, kFileReadData) || root.type != kJSONTable)
+    {
+        if (root.type != kJSONNull)
+            free_json_data(root);
+        root = json_new_table();
+        if (root.type != kJSONTable)
+            return;
+    }
+    json_set_table_value(&root, SETUP_CANARY_KEY, json_new_bool(value));
+    write_json_to_disk(CB_globalPrefsPath, root);
+    free_json_data(root);
+}
+
+// Checks for emucore files on disk without loading them.
+static bool cb_emucores_exist(void)
+{
+    const char* dir = global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY;
+    CB_cores_scan scan = {.dir = dir, .items = NULL, .n = 0, .cap = 0};
+    cb_listfiles(dir, CB_cores_scan_cb, &scan, 0, kFileRead | kFileReadData);
+    bool exist = scan.n > 0;
+    for (size_t i = 0; i < scan.n; ++i)
+        cb_free(scan.items[i].basepath);
+    cb_free(scan.items);
+    return exist;
+}
+
+static void cb_purge_emucores(void)
+{
+    const char* dir = global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY;
+    playdate->system->logToConsole("purging all emucores: %s", dir);
+    playdate->file->unlink(dir, 1 /* recursive */);
+}
+
+static void start_non_bundle_flow(void);
+
+static void boot_recovery_scene_update(void* object, uint32_t u32enc_dt)
+{
+    (void)object;
+    (void)u32enc_dt;
+    if (CB_App->pendingScene)
+        return;
+    start_non_bundle_flow();
+}
+
+static void emucore_recovery_callback(void* ud, int option)
+{
+    (void)ud;
+    if (option == 0)  // Safe Mode: skip emucores this session
+        CB_App->skip_emucores = true;
+    else if (option == 1)  // Purge: delete all emucores permanently
+        cb_purge_emucores();
+    // option 2 ("Ignore") or -1 (cancelled): proceed as normal
+}
+
+static void present_emucore_recovery_modal(void)
+{
+    CB_Scene* bootScene = CB_Scene_new();
+    bootScene->managedObject = bootScene;
+    bootScene->update = boot_recovery_scene_update;
+    bootScene->use_user_stack = 0;
+    CB_App->scene = bootScene;
+
+    const char* options[] = {"Safe Mode", "Purge", "Ignore", NULL};
+    CB_Modal* modal = CB_Modal_new(
+        "It looks like CrankBoy failed to properly start last time. Emulation cores could be the problem.\nYou can skip them this launch (Safe Mode), delete them all (Purge), or try to launch normally again (Ignore).",
+        options, emucore_recovery_callback, NULL
+    );
+    modal->width = 390;
+    modal->height = 218;
+    modal->margin = 11;
+    CB_presentModal(modal->scene);
 }
 
 static void non_bundle_init(void)
@@ -1047,6 +1142,19 @@ static bool games_exist_in_data(void)
     return any_found;
 }
 
+static void start_non_bundle_flow(void)
+{
+    if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) ||
+        games_exist_in_data())
+    {
+        non_bundle_init();
+    }
+    else
+    {
+        CB_showHelp(true);
+    }
+}
+
 void CB_init(void)
 {
     CB_App = allocz(CB_Application);
@@ -1088,14 +1196,18 @@ void CB_init(void)
 
         playdate->system->logToConsole("shown intro: %d", (int)global.shown_intro);
 
-        if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) ||
-            games_exist_in_data())
+        // Crash-detection: if the canary from last run is still set, setup
+        // didn't reach the library. Offer emucore recovery if cores exist.
+        bool setup_crashed = read_setup_canary();
+        CB_set_setup_canary(true);
+
+        if (setup_crashed && cb_emucores_exist())
         {
-            non_bundle_init();
+            present_emucore_recovery_modal();
         }
         else
         {
-            CB_showHelp(true);
+            start_non_bundle_flow();
         }
     }
     else

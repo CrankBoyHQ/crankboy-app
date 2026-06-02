@@ -232,6 +232,9 @@ typedef struct CB_Application
     size_t cores_n;
     emucore_t* cores;
     int active_emucore;  // index into cores of the currently-loaded core, or -1
+
+    // "safe mode": skip loading emucores this session (set by crash recovery).
+    bool skip_emucores;
 } CB_Application;
 
 extern CB_Application* CB_App;
@@ -241,6 +244,8 @@ extern const char* const save_slot_labels[10];
 
 void CB_init(void);
 void CB_event(PDSystemEvent event, uint32_t arg);
+
+void CB_set_setup_canary(bool value);
 void CB_update(float dt);
 void CB_account_frame_timing(float dt);
 void CB_poll_buttons(void);
@@ -254,6 +259,8 @@ void CB_showHelp(bool first_time);
 
 // Unload active core, then load the given core. (NULL: unload only.)
 void CB_load_emucore(emucore_t* core);
+
+void cb_emucore_set_frontend(pdll_t* pdll);
 
 emucore_t* CB_get_emucore_by_slug(const char* slug);
 

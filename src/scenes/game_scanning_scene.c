@@ -343,6 +343,7 @@ static void open_emucore_for_source(CB_GameScanningScene* scanScene, const CB_Sc
         if (pdll)
         {
             scanScene->emucore_pdll = pdll;
+            cb_emucore_set_frontend(pdll);
             scanScene->save_size_fn =
                 (ce_rom_save_size_fn)pdll_symbol(pdll, "ce_get_rom_save_size");
 

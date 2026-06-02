@@ -1078,6 +1078,9 @@ CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_ASSERT(!CB_App->bundled_rom);
 
+    // setup completed without crashing
+    CB_set_setup_canary(false);
+
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
     CB_App->shouldCheckUpdateInfo = GITHUB_RELEASE || CB_App->forceCheckVersion;
 #else
