@@ -294,15 +294,19 @@ __audio static void update_square(
     set_note_freq(c, freq);
     c->freq_inc *= 8;
 
+    int sample_replication = get_sample_replication();
+    int sample_rate = get_audio_sample_rate();
+
     if (preferences_sound_mode != 2)
     {
         if (c->freq_inc == 0)
             return;
     }
 
+    if (c->freq_inc / 8 > (uint32_t)sample_rate / 2)
+        return;
+
     len = update_len(audio, c, len);
-    int sample_replication = get_sample_replication();
-    int sample_rate = get_audio_sample_rate();
 
 #if TARGET_PLAYDATE
     int16_t final_vol_l = c->on_left * audio->vol_l;
@@ -445,12 +449,16 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     set_note_freq(c, freq);
     c->freq_inc *= 32;
 
+    int sample_replication = get_sample_replication();
+    int sample_rate = get_audio_sample_rate();
+
     if (c->freq_inc == 0 && preferences_sound_mode != 2)
         return;
 
+    if (c->freq_inc / 32 > (uint32_t)sample_rate / 2)
+        return;
+
     len = update_len(audio, c, len);
-    int sample_replication = get_sample_replication();
-    int sample_rate = get_audio_sample_rate();
 
 #if TARGET_PLAYDATE
     int16_t final_vol_l = c->on_left * audio->vol_l;
@@ -463,22 +471,27 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
-        int32_t sample_out = (int32_t)c->wave.sample * (INT16_MAX / 32);
-
-        if (c->muted)
-        {
-            sample_out = 0;
-        }
+        int32_t sample_out;
 
         if (preferences_sound_mode == 2)
         {
             // --- ACCURATE MODE ---
             uint32_t pos = 0;
+            uint32_t prev_pos = 0;
+            int32_t weighted_sum = 0;
+
             while (update_freq(c, &pos, sample_rate))
             {
+                weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
                 c->val = (c->val + 1) & 31;
                 c->wave.sample = wave_sample(audio, c->val, c->volume);
+                prev_pos = pos;
             }
+
+            weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->wave.sample;
+            int32_t avg =
+                (c->freq_inc > 0) ? (weighted_sum / (int32_t)c->freq_inc) : c->wave.sample;
+            sample_out = avg * (INT16_MAX / 32);
         }
         else
         {
@@ -491,6 +504,12 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
                 c->wave.sample = wave_sample(audio, c->val, c->volume);
             }
         }
+
+        if (preferences_sound_mode != 2)
+            sample_out = (int32_t)c->wave.sample * (INT16_MAX / 32);
+
+        if (c->muted)
+            sample_out = 0;
 
         int32_t mono_sample = sample_out;
 #if TARGET_PLAYDATE
