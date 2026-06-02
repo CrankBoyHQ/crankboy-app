@@ -33,8 +33,8 @@ typedef struct ScriptData
     int suppress_start;
     int a_blocked;
     bool hud_seeded;
-    uint8_t prev_portrait_l[9];
-    uint8_t prev_portrait_r[9];
+    uint32_t prev_data_hash_l[9];
+    uint32_t prev_data_hash_r[9];
 } ScriptData;
 
 #define USERDATA ScriptData* data
@@ -216,21 +216,26 @@ static void draw_hud(gb_s* gb, ScriptData* data)
 
     for (int i = 0; i < 9; ++i)
     {
-        uint8_t tl = gb->vram[PORTRAIT_L_ADDRS[i]];
-        uint8_t tr = gb->vram[PORTRAIT_R_ADDRS[i]];
+        int idx_l = gb->vram[PORTRAIT_L_ADDRS[i]];
+        int idx_r = gb->vram[PORTRAIT_R_ADDRS[i]];
 
-        bool changed_l = seed || tl != data->prev_portrait_l[i];
-        bool changed_r = seed || tr != data->prev_portrait_r[i];
-        data->prev_portrait_l[i] = tl;
-        data->prev_portrait_r[i] = tr;
+        uint16_t addr_l = tile_addr_for_idx(idx_l, unsigned_addr);
+        uint16_t addr_r = tile_addr_for_idx(idx_r, unsigned_addr);
+        uint32_t hash_l = *(uint32_t*)&gb->vram[addr_l];
+        uint32_t hash_r = *(uint32_t*)&gb->vram[addr_r];
+
+        bool changed_l = seed || hash_l != data->prev_data_hash_l[i];
+        bool changed_r = seed || hash_r != data->prev_data_hash_r[i];
+        data->prev_data_hash_l[i] = hash_l;
+        data->prev_data_hash_r[i] = hash_r;
 
         bool overlap_l = (i == 2 || i == 5 || i == 8);
         bool overlap_r = (i == 0 || i == 3 || i == 6);
 
         if (changed_l || overlap_l)
-            draw_tile(gb, tl, PORTRAIT_L_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
+            draw_tile(gb, idx_l, PORTRAIT_L_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
         if (changed_r || overlap_r)
-            draw_tile(gb, tr, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
+            draw_tile(gb, idx_r, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
     }
 }
 
