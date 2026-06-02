@@ -168,6 +168,18 @@ void* call_with_main_stack_3_impl(user_stack_fn ufn, void* a, void* b, void* c)
     return call_with_main_stack_2(call_with_main_stack_3_helper, ufn, &args[0]);
 }
 
+static void* call_with_user_stack_3_helper(void* ufn, void** args)
+{
+    void* (*fn)(void*, void*, void*) = ufn;
+    return fn(args[0], args[1], args[2]);
+}
+
+void* call_with_user_stack_3_impl(user_stack_fn ufn, void* a, void* b, void* c)
+{
+    void* args[] = {a, b, c};
+    return call_with_user_stack_2(call_with_user_stack_3_helper, ufn, &args[0]);
+}
+
 static void* call_with_main_stack_4_helper(void* ufn, void** args)
 {
     void* (*fn)(void*, void*, void*, void*) = ufn;

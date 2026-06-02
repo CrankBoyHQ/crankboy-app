@@ -12,15 +12,24 @@
 #include "../scene.h"
 #include "../userstack.h"
 #include "game_scene.h"
+#include "scenes/emucore_game_scene.h"
 
 struct OptionsMenuEntry;
+struct SectionDef;
 struct PDSynth;
 struct CB_LibraryScene;
+struct CB_EmucoreGameScene;
+struct ce_preference;
+typedef struct ce_preference ce_preference_t;
+
+#define CB_SETTINGS_MAX_EXTRA_SECTIONS 4
 
 typedef struct CB_SettingsScene
 {
     CB_Scene* scene;
     CB_GameScene* gameScene;
+    // NULL unless we're editing settings for an emucore game.
+    struct CB_EmucoreGameScene* emucoreGameScene;
     struct CB_LibraryScene* libraryScene;
     char* selected_game_settings_path;
 
@@ -28,8 +37,6 @@ typedef struct CB_SettingsScene
     int topVisibleIndex;
     int totalMenuItemCount;
     int currentSectionIndex;
-    int activeSectionCount;
-    int activeSectionIndices[12];
     float crankAccumulator;
     bool shouldDismiss : 1;
     bool shouldReturnToLibrary : 1;
@@ -56,7 +63,15 @@ typedef struct CB_SettingsScene
 
     LCDBitmap* gradient;
 
+    size_t sections_count;
+    struct SectionDef* sections;
     struct OptionsMenuEntry* entries;
+
+    // borrowed from emucore
+    ce_preference_t** emu_prefs;
+
+    pdll_t* peek_pdll;
+    uint8_t* peek_rom;
 
     // for options which have special on-hold behaviour
     float option_hold_time;
@@ -68,14 +83,15 @@ typedef struct CB_SettingsScene
 } CB_SettingsScene;
 
 CB_SettingsScene* CB_SettingsScene_new(
-    CB_GameScene* gameScene, struct CB_LibraryScene* libraryScene
+    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene, struct CB_LibraryScene* libraryScene
 );
 
 static inline CB_SettingsScene* CB_SettingsScene_new_userstack(
-    CB_GameScene* gameScene, struct CB_LibraryScene* libraryScene
+    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene, struct CB_LibraryScene* libraryScene
 )
 {
-    return (CB_SettingsScene*)call_with_user_stack_2(CB_SettingsScene_new, gameScene, libraryScene);
+    return (CB_SettingsScene*)call_with_user_stack_3(
+        CB_SettingsScene_new, gameScene, emucoreGameScene, libraryScene
+    );
 }
-
 #endif /* settings_scene_h */

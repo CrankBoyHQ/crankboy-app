@@ -81,6 +81,7 @@ void preferences_read_from_disk(const char* filename);
 void preferences_merge_from_disk(const char* filename);
 
 // returns 0 on failure
+// always leaves emucore prefs as-they-are
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is);
 
 // returns -1 on failure

@@ -114,6 +114,8 @@ typedef enum
 char* cb_strdup(const char* string);
 char* cb_memdup(const char* buff, int len);
 
+size_t cb_nullterm_array_len(void* const* arr);
+
 char* cb_basename(const char* filename, bool stripExtension);
 char* cb_save_filename(const char* filename, bool isRecovery);
 char* cb_extract_fs_error_code(const char* filename);

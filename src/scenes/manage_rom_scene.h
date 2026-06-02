@@ -18,6 +18,10 @@ typedef struct CB_ManageRomScene
     bool compressed;
     bool header_ok;
     char* basename;  // (with extension)
+
+    // for emucore games
+    char* core_info_text;
+    char* core_header_name;
 } CB_ManageRomScene;
 
 CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game);

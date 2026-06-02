@@ -2,9 +2,11 @@
 
 #include "../../libs/pdll/pdll.h"
 #include "../app.h"
+#include "../emucore_prefs.h"
 #include "../preferences.h"
 #include "../userstack.h"
 #include "../utility.h"
+#include "settings_scene.h"
 
 #include <string.h>
 
@@ -64,7 +66,7 @@ static void emucore_load_sram(CB_EmucoreGameScene* es)
 static void emucore_save_sram_if_dirty(CB_EmucoreGameScene* es)
 {
     pdll_t* pdll = es->core ? es->core->pdll : NULL;
-    if (!pdll || !es->rom_started)
+    if (!pdll || !es->rom_playing)
         return;
 
     size_t (*get_save_size)(void) = pdll_symbol(pdll, "ce_get_save_size");
@@ -94,7 +96,7 @@ static void emucore_save_sram_if_dirty(CB_EmucoreGameScene* es)
 bool CB_emucore_save_state(CB_EmucoreGameScene* es, unsigned slot)
 {
     pdll_t* pdll = es->core ? es->core->pdll : NULL;
-    if (!pdll || !es->rom_started)
+    if (!pdll || !es->rom_playing)
         return false;
 
     size_t (*get_state_size)(void) = pdll_symbol(pdll, "ce_get_state_size");
@@ -126,7 +128,7 @@ bool CB_emucore_save_state(CB_EmucoreGameScene* es, unsigned slot)
 bool CB_emucore_load_state(CB_EmucoreGameScene* es, unsigned slot)
 {
     pdll_t* pdll = es->core ? es->core->pdll : NULL;
-    if (!pdll || !es->rom_started)
+    if (!pdll || !es->rom_playing)
         return false;
 
     bool (*state_load)(const uint8_t*, size_t) = pdll_symbol(pdll, "ce_state_load");
@@ -155,11 +157,23 @@ static void CB_EmucoreGameScene_didSelectLibrary(void* userdata)
     es->go_to_library = true;
 }
 
+static void CB_EmucoreGameScene_didSelectSettings(void* userdata)
+{
+    CB_EmucoreGameScene* es = userdata;
+    CB_SettingsScene* settingsScene = CB_SettingsScene_new_userstack(NULL, es, NULL);
+    CB_presentModal(settingsScene->scene);
+}
+
 static void CB_EmucoreGameScene_menu(void* object)
 {
     CB_EmucoreGameScene* es = object;
     if (!CB_App->bundled_rom)
         playdate->system->addMenuItem("Library", CB_EmucoreGameScene_didSelectLibrary, es);
+    playdate->system->addMenuItem("Settings", CB_EmucoreGameScene_didSelectSettings, es);
+
+    // emucore can provide an entry too
+    if (es->core && es->core->pdll && es->core->pdll->eventHandler)
+        es->core->pdll->eventHandler(es->core->pdll->playdate_ptr, kEventPause, 0);
 }
 
 static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
@@ -176,7 +190,7 @@ static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    if (es->rom_started && es->update_rom)
+    if (es->rom_playing && es->update_rom)
         es->update_rom();
 }
 
@@ -189,8 +203,9 @@ static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_
     if (event == kEventPause || event == kEventLock || event == kEventTerminate)
         emucore_save_sram_if_dirty(es);
 
-    // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead
-    if (event == kEventInit || event == kEventTerminate)
+    // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead.
+    // kEventPause driven by *_menu()
+    if (event == kEventInit || event == kEventTerminate || event == kEventPause)
         return;
 
     if (es->core && es->core->pdll && es->core->pdll->eventHandler)
@@ -201,12 +216,16 @@ static void CB_EmucoreGameScene_free(void* object)
 {
     CB_EmucoreGameScene* es = object;
 
-    if (es->rom_started)
+    if (es->rom_playing)
     {
         emucore_save_sram_if_dirty(es);
-        if (es->end_rom)
-            es->end_rom();
-        es->rom_started = false;
+        if (es->stop) es->stop();
+        es->rom_playing = false;
+    }
+    if (es->rom_loaded)
+    {
+        if (es->unload_rom) es->unload_rom();
+        es->rom_loaded = false;
     }
 
     if (es->core && es->core->pdll)
@@ -259,10 +278,12 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
         return NULL;
     }
 
-    es->start_rom = (ce_start_rom_fn)pdll_symbol(es->core->pdll, "ce_start_rom");
+    es->load_rom   = (ce_load_rom_fn)pdll_symbol(es->core->pdll, "ce_load_rom");
     es->update_rom = (ce_update_fn)pdll_symbol(es->core->pdll, "ce_update");
-    es->end_rom = (ce_end_rom_fn)pdll_symbol(es->core->pdll, "ce_end_rom");
-    if (!es->start_rom || !es->update_rom || !es->end_rom)
+    es->unload_rom = (ce_unload_rom_fn)pdll_symbol(es->core->pdll, "ce_unload_rom");
+    es->play       = (ce_play_fn)pdll_symbol(es->core->pdll, "ce_play");
+    es->stop       = (ce_stop_fn)pdll_symbol(es->core->pdll, "ce_stop");
+    if (!es->load_rom || !es->update_rom || !es->unload_rom || !es->play || !es->stop)
     {
         playdate->system->logToConsole("emucore: '%s' missing required symbol", es->core->path);
         CB_EmucoreGameScene_free(es);
@@ -278,16 +299,26 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
     }
 
     char* rom_basename = cb_basename(rom_path, false);  // filename with extension, for the core
-    bool started = es->start_rom(es->rom, es->rom_size, es->slug, rom_basename);
+    bool loaded = es->load_rom(es->rom, es->rom_size, es->slug, rom_basename);
     cb_free(rom_basename);
-    if (!started)
+    if (!loaded)
     {
-        playdate->system->logToConsole("emucore: ce_start_rom failed for '%s'", rom_path);
+        playdate->system->logToConsole("emucore: ce_load_rom failed for '%s'", rom_path);
         CB_EmucoreGameScene_free(es);
         return NULL;
     }
-    es->rom_started = true;
+    es->rom_loaded = true;
+
+    cb_apply_persisted_emucore_prefs(es->core, es->slug);
 
     emucore_load_sram(es);
+
+    if (!es->play())
+    {
+        playdate->system->logToConsole("emucore: ce_play failed for '%s'", rom_path);
+        CB_EmucoreGameScene_free(es);
+        return NULL;
+    }
+    es->rom_playing = true;
     return es;
 }

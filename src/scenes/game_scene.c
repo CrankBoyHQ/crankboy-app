@@ -3012,7 +3012,7 @@ __section__(".rare") void CB_GameScene_didSelectLibrary(void* userdata)
 __section__(".rare") static void CB_GameScene_showSettings(void* userdata)
 {
     CB_GameScene* gameScene = userdata;
-    CB_SettingsScene* settingsScene = CB_SettingsScene_new_userstack(gameScene, NULL);
+    CB_SettingsScene* settingsScene = CB_SettingsScene_new_userstack(gameScene, NULL, NULL);
     CB_presentModal(settingsScene->scene);
 
     if (buttonMenuItem)

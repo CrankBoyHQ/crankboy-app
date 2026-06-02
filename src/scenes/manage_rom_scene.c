@@ -1,5 +1,6 @@
 #include "manage_rom_scene.h"
 
+#include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../gbz.h"
 #include "../preferences.h"
@@ -106,6 +107,58 @@ static void read_rom_header(CB_ManageRomScene* self)
             playdate->file->close(f);
         }
     }
+}
+
+typedef const char* (*ce_get_rom_info_fn)(const uint8_t* rom, size_t size);
+typedef const char* (*ce_get_rom_header_name_fn)(const uint8_t* rom, size_t size);
+
+static void fetch_core_rom_info(CB_ManageRomScene* self)
+{
+    self->core_info_text = NULL;
+    self->core_header_name = NULL;
+    if (!self->game || !self->game->names || !self->game->names->system_slug)
+        return;
+    const char* slug = self->game->names->system_slug;
+    if (strcmp(slug, GB_SYSTEM_SLUG) == 0) return;
+    emucore_t* core = CB_get_emucore_by_slug(slug);
+    if (!core || !core->path) return;
+
+    size_t rom_size = 0;
+    char* rom = cb_read_entire_file_maybe_compressed(
+        self->game->fullpath, &rom_size, kFileRead | kFileReadData);
+    if (!rom || rom_size == 0) { if (rom) cb_free(rom); return; }
+
+    pdll_t* pdll = core->pdll;
+    bool opened_here = false;
+    if (!pdll)
+    {
+        pdll = pdll_open(playdate, core->path,
+            PDLL_FILE_PDX | PDLL_FILE_DATA);
+        opened_here = (pdll != NULL);
+    }
+    if (pdll)
+    {
+        ce_get_rom_info_fn get_info =
+            (ce_get_rom_info_fn)pdll_symbol(pdll, "get_rom_info");
+        if (get_info)
+        {
+            const char* s = get_info((const uint8_t*)rom, rom_size);
+            if (s) self->core_info_text = cb_strdup(s);
+        }
+        ce_get_rom_header_name_fn get_header =
+            (ce_get_rom_header_name_fn)pdll_symbol(pdll, "get_rom_header_name");
+        if (get_header)
+        {
+            const char* s = get_header((const uint8_t*)rom, rom_size);
+            if (s) self->core_header_name = cb_strdup(s);
+        }
+        if (opened_here)
+        {
+            pdll_close(pdll);
+        }
+    }
+
+    cb_free(rom);
 }
 
 static void draw_info_row(int y, const char* label, const char* value)
@@ -265,10 +318,6 @@ static void delete_cover_confirmed(void* ud, int option)
     }
 }
 
-// ---------------------------------------------------------------------------
-// Scene lifecycle
-// ---------------------------------------------------------------------------
-
 static const char* yes_no_options[] = {"No", "Yes", NULL};
 
 static void invoke_action(CB_ManageRomScene* self, int idx)
@@ -399,44 +448,107 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     draw_info_row(y, "Filename:", self->basename ? self->basename : "");
     y += INFO_ROW_H;
 
+    const bool is_gb =
+        self->game->names && self->game->names->system_slug
+        && strcmp(self->game->names->system_slug, GB_SYSTEM_SLUG) == 0;
+
     draw_info_row(y, "Compressed:", self->compressed ? "Yes" : "No");
     y += INFO_ROW_H;
 
-    const char* hdr = (self->game->names && self->game->names->name_header)
-                          ? self->game->names->name_header
-                          : NULL;
-    draw_info_row(y, "Header:", hdr);
-    y += INFO_ROW_H;
-
-    char mapper_buf[64];
-    const char* mname = self->header_ok ? mapper_name_for(self->mapper_byte) : NULL;
-    if (mname)
-        snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X (%s)", self->mapper_byte, mname);
-    else if (self->header_ok)
-        snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X", self->mapper_byte);
-    else
-        snprintf(mapper_buf, sizeof(mapper_buf), "?");
-    draw_info_row(y, "Mapper:", mapper_buf);
-    y += INFO_ROW_H;
-
-    char crc_buf[16];
-    if (self->game->names && self->game->names->crc32 != 0)
-        snprintf(crc_buf, sizeof(crc_buf), "%08lX", (unsigned long)self->game->names->crc32);
-    else
-        snprintf(crc_buf, sizeof(crc_buf), "—");
-    draw_info_row(y, "CRC32:", crc_buf);
-    y += INFO_ROW_H;
-
-    const char* sys_str = "DMG";
-    if (self->header_ok)
     {
-        if (self->cgb_flag == 0x80)
-            sys_str = "DMG / CGB (optional)";
-        else if (self->cgb_flag == 0xC0)
-            sys_str = "CGB";
+        // Header: GB pulls it from the cart header byte, emucore from the
+        // core's get_rom_header_name() callback.
+        const char* hdr = NULL;
+        if (is_gb)
+        {
+            hdr = (self->game->names && self->game->names->name_header)
+                      ? self->game->names->name_header
+                      : NULL;
+        }
+        else
+        {
+            hdr = (self->core_header_name && *self->core_header_name)
+                      ? self->core_header_name
+                      : NULL;
+        }
+        draw_info_row(y, "Header:", hdr);
+        y += INFO_ROW_H;
     }
-    draw_info_row(y, "System:", sys_str);
-    y += INFO_ROW_H;
+
+    if (is_gb)
+    {
+        char mapper_buf[64];
+        const char* mname = self->header_ok ? mapper_name_for(self->mapper_byte) : NULL;
+        if (mname)
+            snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X (%s)", self->mapper_byte, mname);
+        else if (self->header_ok)
+            snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X", self->mapper_byte);
+        else
+            snprintf(mapper_buf, sizeof(mapper_buf), "?");
+        draw_info_row(y, "Mapper:", mapper_buf);
+        y += INFO_ROW_H;
+    }
+    else if (self->core_info_text)
+    {
+        // Emucore
+        const char* p = self->core_info_text;
+        const int max_rows = (ACTION_TOP_Y - INFO_TOP_Y) / INFO_ROW_H - 1; // leave room for CRC32
+        int rows_drawn = (y - INFO_TOP_Y) / INFO_ROW_H;
+        while (*p && rows_drawn < max_rows)
+        {
+            const char* nl = strchr(p, '\n');
+            const char* line_end = nl ? nl : p + strlen(p);
+            const char* tab = memchr(p, '\t', (size_t)(line_end - p));
+            char label[64] = {0}, value[128] = {0};
+            if (tab)
+            {
+                size_t llen = (size_t)(tab - p);
+                if (llen >= sizeof(label)) llen = sizeof(label) - 1;
+                memcpy(label, p, llen);
+                label[llen] = '\0';
+                size_t vlen = (size_t)(line_end - (tab + 1));
+                if (vlen >= sizeof(value)) vlen = sizeof(value) - 1;
+                memcpy(value, tab + 1, vlen);
+                value[vlen] = '\0';
+            }
+            else
+            {
+                size_t llen = (size_t)(line_end - p);
+                if (llen >= sizeof(label)) llen = sizeof(label) - 1;
+                memcpy(label, p, llen);
+                label[llen] = '\0';
+            }
+            draw_info_row(y, label, *value ? value : NULL);
+            y += INFO_ROW_H;
+            ++rows_drawn;
+            if (!nl) break;
+            p = nl + 1;
+        }
+    }
+
+    {
+        char crc_buf[16];
+        if (self->game->names && self->game->names->crc32 != 0)
+            snprintf(crc_buf, sizeof(crc_buf), "%08lX", (unsigned long)self->game->names->crc32);
+        else
+            snprintf(crc_buf, sizeof(crc_buf), "—");
+        draw_info_row(y, "CRC32:", crc_buf);
+        y += INFO_ROW_H;
+    }
+
+    if (is_gb)
+    {
+        const char* sys_str = "DMG";
+        if (self->header_ok)
+        {
+            if (self->cgb_flag == 0x80)
+                sys_str = "DMG / CGB (optional)";
+            else if (self->cgb_flag == 0xC0)
+                sys_str = "CGB";
+        }
+        draw_info_row(y, "System:", sys_str);
+        y += INFO_ROW_H;
+    }
 
     // action rows
     static const char* action_labels[] = {
@@ -459,6 +571,10 @@ static void CB_ManageRomScene_free(void* object)
         return;
     if (self->basename)
         cb_free(self->basename);
+    if (self->core_info_text)
+        cb_free(self->core_info_text);
+    if (self->core_header_name)
+        cb_free(self->core_header_name);
     CB_Scene_free(self->scene);
     cb_free(self);
 }
@@ -479,7 +595,15 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
-    read_rom_header(self);
+    if (game->names && game->names->system_slug
+        && strcmp(game->names->system_slug, GB_SYSTEM_SLUG) == 0)
+    {
+        read_rom_header(self);
+    }
+    else
+    {
+        fetch_core_rom_info(self);
+    }
 
     CB_Scene* scene = CB_Scene_new();
     if (!scene)

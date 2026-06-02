@@ -77,7 +77,7 @@ typedef struct ce_preference
     uint32_t (*flags)(struct ce_preference* self);
 } ce_preference_t;
 
-// -- symbols for library export --
+// == symbols for library export ==
 
 static inline uint32_t ce_get_version(void) { return CRANKEMU_VERSION; }
 /* Optional */ bool ce_is_backward_compatible(uint32_t version); /* Return true if emu core backward-compatible with the given version. */
@@ -95,7 +95,18 @@ const char* ce_get_system_slugs(void);
 // return NULL on failure
 /* OPTIONAL */ const char* ce_get_system_name_from_slug(const char* system_slug);
 
-// rom info
+// -- rom management --
+
+// loading a rom is precondition to all the functions that follow from this point on.
+// but loading a rom does not always entail the rom will be played.
+// rom data is owned by frontend, but core may modify the rom if necessary.
+bool ce_load_rom(uint8_t* rom, size_t size, const char* system_slug, const char* rom_basename);
+
+// forget the currently-loaded rom.
+// should also reset all preferences to their default value (even global ones)
+void ce_unload_rom(void);
+
+// -- rom info --
 
 // should return a string matching [a-zA-Z0-9 _]*, or NULL
 /* OPTIONAL */ const char* get_rom_header_name(const uint8_t* rom, size_t size);
@@ -108,27 +119,31 @@ const char* get_rom_info(const uint8_t* rom, size_t size);
 // return 0 to indicate no save data
 size_t ce_get_rom_save_size(const uint8_t* rom, size_t size);
 
-// logic
-bool ce_start_rom(uint8_t* rom, size_t size, const char* system_slug, const char* rom_basename);
-void ce_end_rom(void);
+// -- logic (gameplay) --
+bool ce_play();
+void ce_stop(void);
 void ce_update(void);
 
-// save data (all optional)
+// frontend informs core that playdate frame buffer has been modified and needs a refresh.
+void ce_full_redraw(void);
+
+// -- save data (all optional) --
 bool ce_is_save_dirty(void); // return true if saving would be warranted
 void ce_save(uint8_t* buffer, size_t size);
 bool ce_load(const uint8_t* buffer, size_t size);  // return false on error
 
-// save-states (all optional)
+// -- save-states (all optional) --
 size_t ce_get_state_size(void);
 bool ce_state_save(uint8_t* buffer, size_t size);        // return false on failure
 bool ce_state_load(const uint8_t* buffer, size_t size);  // return false on failure
 
-// misc
+// -- misc --
 
 // NULL-terminated preference list.
 // For a give ROM, should not change.
 // May be invoked either during during play (i.e. after ce_start_rom) or before.
-ce_preference_t** ce_get_preferences(uint8_t* rom, size_t size);
+// core-owned.
+ce_preference_t** ce_get_preferences(void);
 
 // note: eventHandler will receive normal events.
 // however, eventHandler should NOT set the playdate update callback.

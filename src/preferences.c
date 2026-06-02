@@ -7,10 +7,14 @@
 
 #include "preferences.h"
 
-#include "app.h"  // IWYU pragma: keep
+#include "app.h"
+#include "emucore_prefs.h"
 #include "jparse.h"
-#include "revcheck.h"  // IWYU pragma: keep
+#include "revcheck.h" 
 #include "userstack.h"
+#include "utility.h"
+
+#include <string.h>
 
 static const int pref_version = 1;
 
@@ -47,6 +51,8 @@ void preferences_init(void)
     // if this fails, re-engineer this to be based on a struct instead of bitfield size
     CB_ASSERT(PREFI_COUNT <= 8 * sizeof(preferences_bitfield_t));
 
+    cb_emucore_prefs_init();
+
     // set default values
     {
         int i = 0;
@@ -63,6 +69,7 @@ void preferences_init(void)
     else
     {
         preferences_read_from_disk(CB_globalPrefsPath);
+        cb_emucore_prefs_read_from_disk(CB_globalPrefsPath, true);
     }
 
     // paranoia
@@ -106,57 +113,31 @@ void preferences_read_from_disk(const char* filename)
 
 int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leave_as_is)
 {
-    // This ensures transient settings are NEVER saved to disk automatically.
     preferences_bitfield_t final_leave_as_is_mask = *leave_as_is | PREFBITS_TRANSIENT;
 
     playdate->system->logToConsole("Save preferences to %s...", filename);
 
-    void* preserved_all = preferences_store_subset(-1);
-    void* preserved_to_write = preferences_store_subset(~final_leave_as_is_mask);
-
-    if (final_leave_as_is_mask != 0 && preserved_to_write)
+    json_value root;
+    if (!parse_json(filename, &root, kFileReadData) || root.type != kJSONTable)
     {
-        preferences_merge_from_disk(filename);
-        preferences_restore_subset(preserved_to_write);
+        if (root.type != kJSONNull) free_json_data(root);
+        root = json_new_table();
+        if (root.type != kJSONTable)
+        {
+            playdate->system->logToConsole("Save preferences: alloc failed");
+            return 0;
+        }
     }
 
-    if (preserved_to_write)
-        cb_free(preserved_to_write);
-
-    union
-    {
-        JsonObject obj;
-        volatile char _[sizeof(JsonObject) + sizeof(TableKeyPair) * PREFI_COUNT];
-    } data;
-    json_value j;
-    j.type = kJSONTable;
-    j.data.tableval = &data.obj;
-
-    TableKeyPair* pairs = (TableKeyPair*)(&data.obj + 1);
-
     int i = 0;
-    int pairs_count = 0;
-
 #define PREF(x, ...)                                                    \
     if (!((final_leave_as_is_mask) & ((preferences_bitfield_t)1 << i))) \
-    {                                                                   \
-        pairs[pairs_count].key = #x;                                    \
-        pairs[pairs_count].value.type = kJSONInteger;                   \
-        pairs[pairs_count].value.data.intval = preferences_##x;         \
-        ++pairs_count;                                                  \
-    }                                                                   \
+        json_set_table_value(&root, #x, json_new_int(preferences_##x)); \
     ++i;
 #include "prefs.x"
 
-    data.obj.n = pairs_count;
-
-    if (preserved_all)
-    {
-        preferences_restore_subset(preserved_all);
-        cb_free(preserved_all);
-    }
-
-    int error = write_json_to_disk(filename, j);
+    int error = write_json_to_disk(filename, root);
+    free_json_data(root);
 
     playdate->system->logToConsole("Save preferences status code %d", error);
 

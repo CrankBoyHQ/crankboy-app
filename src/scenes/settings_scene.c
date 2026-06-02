@@ -9,7 +9,7 @@
 #include "../app.h"
 #include "../dtcm.h"
 #include "../preferences.h"
-#include "../revcheck.h"  // IWYU pragma: keep
+#include "../revcheck.h" // IWYU pragma: keep
 #include "../scenes/modal.h"
 #include "../script.h"
 #include "../utility.h"
@@ -17,23 +17,19 @@
 #include "homebrew_hub_scene.h"
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
+#include "emucore_prefs.h"
+#include "libcrankemu/libcrankemu.h"
+#include "pdll/pdll.h"
+#include "scenes/emucore_game_scene.h"
 
 #include <pd_api/pd_api_gfx.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #ifndef _WIN32
 #include <sys/wait.h>
 #endif
-
-/*
- * The sections are built individually via per-section builder functions.
- * Each builder allocates up to MAX_SECTION_ENTRIES entries and the post-build
- * filters (bundle hidden, script locked) compact them as needed.
- *
- * If a new OptionsMenuEntry items is added to a section builder,
- * MAX_SECTION_ENTRIES may need to be increased to prevent buffer overflows.
- */
 
 #define MAX_VISIBLE_ITEMS 6
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
@@ -72,6 +68,11 @@ typedef struct OptionsMenuEntry
     const char* name;
     const char* const* values;
     const char* description;
+    
+    // used for emucore prefs
+    ce_preference_t* emucore_pref;
+    
+    // used for standard prefs.x preferences
     preference_t* pref_var;
     unsigned max_value;
 
@@ -91,39 +92,42 @@ typedef struct OptionsMenuEntry
 
 // Per-section building
 #define MAX_SECTION_ENTRIES 20
-#define SECTION_DEFS_COUNT 9
 
-typedef struct OptionsMenuEntry* (*SectionBuilder)(struct CB_SettingsScene*, int* count);
-
-typedef struct
+typedef struct SectionDef
 {
     const char* name;
-    SectionBuilder builder;
+    OptionsMenuEntry* (*builder)(struct SectionDef*, struct CB_SettingsScene*, int* count);
+    bool emucore_merge;
+    ce_preference_t* emucore_category_base;
 } SectionDef;
 
 static void applyBundleHiddenFilter(OptionsMenuEntry* entries, int* count);
 static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count);
 static void switchToSection(struct CB_SettingsScene* s, int sectionIndex);
 
-static OptionsMenuEntry* build_general(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_script(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_audio(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_display(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_input(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_cgb(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_behavior(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_library(struct CB_SettingsScene*, int* count);
-static OptionsMenuEntry* build_misc(struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_general(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_script(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_audio(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_display(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_input(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_cgb(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_behavior(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_library(SectionDef*, struct CB_SettingsScene*, int* count);
+static OptionsMenuEntry* build_misc(SectionDef*, struct CB_SettingsScene*, int* count);
 
-static SectionBuilder section_builders[SECTION_DEFS_COUNT];
-
-static SectionDef section_defs[] = {
-    {"General", build_general},   {"Script", build_script},   {"Audio", build_audio},
-    {"Display", build_display},   {"Input", build_input},     {"Game Boy Color", build_cgb},
-    {"Behavior", build_behavior}, {"Library", build_library}, {"Miscellaneous", build_misc},
+const static SectionDef section_defs_base[] = {
+    {"General", build_general, true},
+    {"Script", build_script, false},
+    {"Audio", build_audio, false},
+    {"Display", build_display, false},
+    {"Input", build_input, false},
+    {"Game Boy Color", build_cgb, false},
+    {"Behavior", build_behavior, false},
+    {"Library", build_library, true},
+    {"Miscellaneous", build_misc, true},
 };
 
-// how long to remember last-selected preference in menu
+// how long to remember last-selected preference in menu (seconds)s
 #define TIME_FORGET_LAST_PREFERENCE 15
 static void* last_selected_preference;
 static unsigned last_selected_preference_time;
@@ -188,24 +192,121 @@ static void open_manage_rom(OptionsMenuEntry* option, CB_SettingsScene* settings
         CB_presentModal(s->scene);
 }
 
-CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene* libraryScene)
+static SectionDef* push_section_def(CB_SettingsScene* scene)
+{
+    size_t n = scene->sections_count + 1;
+    SectionDef* p = cb_realloc(scene->sections, n * sizeof(SectionDef));
+    if (!p) return NULL;
+    scene->sections = p;
+    scene->sections_count = n;
+    memset(&p[n - 1], 0, sizeof(SectionDef));
+    return &p[n - 1];
+}
+
+static void pop_section_def(CB_SettingsScene* scene)
+{
+    if (scene->sections_count > 0) scene->sections_count--;
+}
+
+static SectionDef* insert_section_def_at(CB_SettingsScene* scene, size_t at)
+{
+    if (at > scene->sections_count) at = scene->sections_count;
+    if (!push_section_def(scene)) return NULL;
+    SectionDef* arr = scene->sections;
+    size_t tail = scene->sections_count - 1;
+    if (at < tail)
+        memmove(&arr[at + 1], &arr[at], (tail - at) * sizeof(SectionDef));
+    memset(&arr[at], 0, sizeof(SectionDef));
+    return &arr[at];
+}
+
+// determine category root for pref, or NULL
+static ce_preference_t* emu_pref_category(ce_preference_t** emu_prefs, int idx)
+{
+    for (int j = idx - 1; j >= 0; --j)
+    {
+        if (emu_prefs[j]->type == CE_PREFERENCE_CATEGORY)
+        {
+            return emu_prefs[j];
+        }
+    }
+    return NULL;
+}
+
+static ce_preference_t* find_emu_category_by_name(ce_preference_t** emu_prefs, const char* name)
+{
+    if (!emu_prefs || !name) return NULL;
+    for (int i = 0; emu_prefs[i]; ++i)
+    {
+        if (emu_prefs[i]->type != CE_PREFERENCE_CATEGORY) continue;
+        ce_preference_t* cat = emu_prefs[i];
+        const char* cat_name = cat->name ? cat->name(cat) : cat->id;
+        if (cat_name && strcasecmp(cat_name, name) == 0) return cat;
+    }
+    return NULL;
+}
+
+static bool cb_settings_emucore_mode(CB_SettingsScene* scene)
+{
+    return scene && (scene->emucoreGameScene != NULL || scene->emu_prefs != NULL);
+}
+
+static OptionsMenuEntry make_emucore_entry(ce_preference_t* p)
+{
+    OptionsMenuEntry e = {0};
+    e.name        = p->name ? p->name(p) : "Preference";
+    e.description = p->description ? p->description(p) : NULL;
+    e.values      = p->values;
+    e.max_value   = (unsigned)cb_nullterm_array_len((void* const*)p->values);
+    e.emucore_pref = p;
+    uint32_t flags = p->flags ? p->flags(p) : 0;
+    e.locked = (flags & CE_PREF_LOCKED) ? 1 : 0;
+    return e;
+}
+
+static OptionsMenuEntry* build_emucore_category(
+    SectionDef* def, struct CB_SettingsScene* scene, int* count)
+{
+    OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    if (!section) { *count = 0; return NULL; }
+    memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
+    int i = 1;
+
+    ce_preference_t** prefs = scene->emu_prefs;
+    if (prefs)
+    {
+        int n = (int)cb_nullterm_array_len((void* const*)prefs);
+        for (int k = 0; k < n && i < MAX_SECTION_ENTRIES; ++k)
+        {
+            ce_preference_t* p = prefs[k];
+            if (p->type != CE_PREFERENCE_STANDARD) continue;
+            ce_preference_t* cat = emu_pref_category(prefs, k);
+            if (cat != def->emucore_category_base) continue;
+            section[i++] = make_emucore_entry(p);
+        }
+    }
+
+    if (i == 1)
+    {
+        // No matching prefs -- drop the section entirely.
+        cb_free(section);
+        *count = 0;
+        return NULL;
+    }
+    section[0] = (OptionsMenuEntry){ .name = def->name, .header = 1 };
+    *count = i;
+    return section;
+}
+
+CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreScene, CB_LibraryScene* libraryScene)
 {
     setCrankSoundsEnabled(true);
     CB_SettingsScene* settingsScene = cb_malloc(sizeof(CB_SettingsScene));
     memset(settingsScene, 0, sizeof(*settingsScene));
 
-    {
-        static bool builders_inited = false;
-        if (!builders_inited)
-        {
-            for (int k = 0; k < SECTION_DEFS_COUNT; k++)
-                section_builders[k] = section_defs[k].builder;
-            builders_inited = true;
-        }
-    }
-
     settingsScene->rec_entry_index = -1;
     settingsScene->gameScene = gameScene;
+    settingsScene->emucoreGameScene = emucoreScene;
     settingsScene->libraryScene = libraryScene;
     settingsScene->selected_game_settings_path = NULL;
     settingsScene->cursorIndex = 0;
@@ -264,29 +365,183 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
             }
         }
     }
+    
+    ce_preference_t** emu_prefs = NULL;
 
     if (gameScene)
     {
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
     }
-
-    // Determine active sections
-    settingsScene->activeSectionCount = 0;
-    for (int j = 0; j < SECTION_DEFS_COUNT; j++)
+    else if (emucoreScene)
     {
+        if (emucoreScene->core && emucoreScene->core->pdll)
+        {
+            ce_preference_t** (*get_prefs)(void) =
+                pdll_symbol(emucoreScene->core->pdll, "ce_get_preferences");
+            if (get_prefs) emu_prefs = get_prefs();
+        }
+    }
+    else if (libraryScene)
+    {
+        CB_Game* selectedGame =
+            (libraryScene->listView->selectedItem < libraryScene->games->length)
+                ? libraryScene->games->items[libraryScene->listView->selectedItem]
+                : NULL;
+        const char* slug = (selectedGame && selectedGame->names)
+                               ? selectedGame->names->system_slug : NULL;
+        if (slug && strcmp(slug, GB_SYSTEM_SLUG))
+        {
+            // non-gb slug -- use emucore
+            
+            emucore_t* core = CB_get_emucore_by_slug(slug);
+            if (core && core->path)
+            {
+                // FIXME -- very ugly
+                
+                pdll_t* pdll = NULL;
+                bool we_opened = false;
+                if (CB_App->active_emucore >= 0
+                    && &CB_App->cores[CB_App->active_emucore] == core
+                    && core->pdll)
+                {
+                    pdll = core->pdll;
+                }
+                else
+                {
+                    pdll = pdll_open(playdate, core->path,
+                                     PDLL_FILE_PDX | PDLL_FILE_DATA);
+                    we_opened = (pdll != NULL);
+                }
+                if (pdll)
+                {
+                    if (we_opened) settingsScene->peek_pdll = pdll;
+
+                    ce_preference_t** (*get_prefs)(void) =
+                        pdll_symbol(pdll, "ce_get_preferences");
+
+                    if (we_opened)
+                    {
+                        bool (*load_rom)(uint8_t*, size_t, const char*, const char*) =
+                            pdll_symbol(pdll, "ce_load_rom");
+                        size_t rom_size = 0;
+                        uint8_t* rom = (uint8_t*)cb_read_entire_file_maybe_compressed(
+                            selectedGame->fullpath, &rom_size, kFileRead | kFileReadData);
+                        if (rom && load_rom)
+                        {
+                            char* basename = cb_basename(selectedGame->fullpath, false);
+                            if (load_rom(rom, rom_size, slug, basename ? basename : ""))
+                            {
+                                settingsScene->peek_rom = rom;
+                                rom = NULL;  // ownership transferred to scene
+                                if (get_prefs) emu_prefs = get_prefs();
+                            }
+                            cb_free(basename);
+                        }
+                        if (rom) cb_free(rom);
+                    }
+                    else
+                    {
+                        if (get_prefs) emu_prefs = get_prefs();
+                    }
+                }
+            }
+        }
+    }
+    settingsScene->emu_prefs = emu_prefs;
+
+    int emu_pref_count = (int)cb_nullterm_array_len((void* const*)emu_prefs);
+    bool* emu_pref_cat_assigned = NULL;
+    if (emu_prefs)
+    {
+        emu_pref_cat_assigned = allocza(bool, emu_pref_count + 1 /* paranoia */);
+    }
+
+    bool emucore_mode = cb_settings_emucore_mode(settingsScene);
+    for (int j = 0; j < CB_ARRAY_SIZE(section_defs_base); j++)
+    {
+        SectionDef* def = push_section_def(settingsScene);
+        memcpy(def, &section_defs_base[j], sizeof(SectionDef));
+
+        if (emucore_mode)
+        {
+            def->emucore_category_base =
+                find_emu_category_by_name(emu_prefs, def->name);
+        }
+
+        // check if non-empty
         int probe_count = 0;
-        OptionsMenuEntry* probe = section_builders[j](settingsScene, &probe_count);
+        OptionsMenuEntry* probe = def->builder
+            ? def->builder(def, settingsScene, &probe_count)
+            : NULL;
         if (probe && probe_count > 0)
         {
             applyBundleHiddenFilter(probe, &probe_count);
-            if (probe_count > 0)
-                settingsScene->activeSectionIndices[settingsScene->activeSectionCount++] = j;
         }
         if (probe)
             cb_free(probe);
+
+        if (emu_prefs && (def->emucore_merge || def->emucore_category_base))
+        {
+            for (int i = 0; i < emu_pref_count; ++i)
+            {
+                if (emu_prefs[i]->type != CE_PREFERENCE_STANDARD) continue;
+                ce_preference_t* cat = emu_pref_category(emu_prefs, i);
+                bool matches;
+                if (def->emucore_category_base)
+                    matches = (cat == def->emucore_category_base);
+                else if (cat == NULL)
+                    matches = (j == 0);  // uncategorised -> General
+                else
+                    matches = (strcasecmp(cat->id, def->name) == 0);
+                if (matches)
+                {
+                    emu_pref_cat_assigned[i] = true;
+                    ++probe_count;
+                }
+            }
+        }
+
+        if (probe_count == 0)
+            pop_section_def(settingsScene);
     }
 
-    if (settingsScene->activeSectionCount > 0)
+    // add in unabsorbed emu prefs into new sections
+    if (emu_prefs)
+    {
+        size_t section_def_insert_idx = 1;
+        for (int i = 0; i < emu_pref_count; ++i)
+        {
+            if (emu_prefs[i]->type != CE_PREFERENCE_CATEGORY) continue;
+
+            ce_preference_t* cat = emu_prefs[i];
+            const char* cat_name = cat->name ? cat->name(cat) : cat->id;
+            bool any_orphan = false;
+            for (int k = i + 1; k < emu_pref_count; ++k)
+            {
+                if (emu_prefs[k]->type == CE_PREFERENCE_CATEGORY) break;
+                if (emu_prefs[k]->type != CE_PREFERENCE_STANDARD) continue;
+                if (!emu_pref_cat_assigned[k]) { any_orphan = true; break; }
+            }
+            if (!any_orphan) continue;
+
+            SectionDef* def = insert_section_def_at(settingsScene, section_def_insert_idx++);
+            if (!def) break;
+            def->name = cat_name;
+            def->emucore_category_base = cat;
+            def->builder = build_emucore_category;
+            def->emucore_merge = true;
+
+            for (int k = i + 1; k < emu_pref_count; ++k)
+            {
+                if (emu_prefs[k]->type == CE_PREFERENCE_CATEGORY) break;
+                if (emu_prefs[k]->type == CE_PREFERENCE_STANDARD)
+                    emu_pref_cat_assigned[k] = true;
+            }
+        }
+    }
+    cb_free(emu_pref_cat_assigned);
+
+    if (settingsScene->sections_count > 0)
         switchToSection(settingsScene, 0);
     else
         settingsScene->entries = NULL;
@@ -355,11 +610,12 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
         }
         if (!found)
         {
-            for (int s = 1; s < settingsScene->activeSectionCount; s++)
+            for (size_t s = 1; s < settingsScene->sections_count; s++)
             {
-                int defIdx = settingsScene->activeSectionIndices[s];
+                SectionDef* def = &settingsScene->sections[s];
+                if (!def->builder) continue;
                 int probe_count = 0;
-                OptionsMenuEntry* probe = section_builders[defIdx](settingsScene, &probe_count);
+                OptionsMenuEntry* probe = def->builder(def, settingsScene, &probe_count);
                 if (!probe)
                     continue;
                 int at = -1;
@@ -374,7 +630,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_LibraryScene*
                 cb_free(probe);
                 if (at >= 0)
                 {
-                    switchToSection(settingsScene, s);
+                    switchToSection(settingsScene, (int)s);
                     settingsScene->cursorIndex = at;
                     break;
                 }
@@ -902,6 +1158,31 @@ static void settings_action_load_state_possibly_warn(
     }
 }
 
+static bool emucore_save_state_supported(CB_EmucoreGameScene* es)
+{
+    if (!es || !es->core || !es->core->pdll) return false;
+    pdll_t* pdll = es->core->pdll;
+    return pdll_symbol(pdll, "ce_get_state_size")
+        && pdll_symbol(pdll, "ce_state_save")
+        && pdll_symbol(pdll, "ce_state_load");
+}
+
+static void settings_action_emucore_save_state(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+{
+    (void)settingsScene;
+    CB_EmucoreGameScene* es = e->ud;
+    if (es) CB_emucore_save_state(es, (unsigned)preferences_save_state_slot);
+}
+
+static void settings_action_emucore_load_state(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene)
+{
+    (void)settingsScene;
+    CB_EmucoreGameScene* es = e->ud;
+    if (es) CB_emucore_load_state(es, (unsigned)preferences_save_state_slot);
+}
+
 struct ScriptSettingsInfo
 {
     preference_t* preference;
@@ -1112,7 +1393,7 @@ static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count)
  *  Manage ROM, Save Data, Settings scope,
  *  Apply recommended
  */
-static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
     CB_GameScene* gameScene = scene->gameScene;
     CB_LibraryScene* libraryScene = scene->libraryScene;
@@ -1170,6 +1451,42 @@ static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
             .thumbnail = 1,
             .on_press = settings_action_load_state_possibly_warn,
             .ud = gameScene,
+        };
+    }
+    else if (scene->emucoreGameScene)
+    {
+        bool supported = emucore_save_state_supported(scene->emucoreGameScene);
+        const char* save_desc = supported
+            ? "Create a snapshot of\nthis moment, which\ncan be resumed later."
+            : "This emucore does not\nsupport save states.";
+        const char* load_desc = supported
+            ? "Restore the previously-\ncreated snapshot."
+            : "This emucore does not\nsupport save states.";
+
+        section[++i] = (OptionsMenuEntry){
+            .name = "Save state",
+            .values = slot_labels,
+            .description = save_desc,
+            .pref_var = &preferences_save_state_slot,
+            .max_value = SAVE_STATE_SLOT_COUNT,
+            .show_value_only_on_hover = 1,
+            .suppress_nondefault_indicator = 1,
+            .locked = !supported,
+            .on_press = supported ? settings_action_emucore_save_state : NULL,
+            .ud = scene->emucoreGameScene,
+        };
+
+        section[++i] = (OptionsMenuEntry){
+            .name = "Load state",
+            .values = slot_labels,
+            .description = load_desc,
+            .pref_var = &preferences_save_state_slot,
+            .max_value = SAVE_STATE_SLOT_COUNT,
+            .show_value_only_on_hover = 1,
+            .suppress_nondefault_indicator = 1,
+            .locked = !supported,
+            .on_press = supported ? settings_action_emucore_load_state : NULL,
+            .ud = scene->emucoreGameScene,
         };
     }
 
@@ -1263,11 +1580,11 @@ static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
         }
     }
 
-    if (gameScene || (libraryScene && selectedGame))
+    if (gameScene || (libraryScene && selectedGame) || scene->emucoreGameScene)
     {
         const char* scope_description;
 
-        if (gameScene)
+        if (gameScene || scene->emucoreGameScene)
         {
             scope_description =
                 "Use shared settings or\ncreate custom ones for\nthis game.\n \n"
@@ -1323,8 +1640,11 @@ static OptionsMenuEntry* build_general(CB_SettingsScene* scene, int* count)
  * Script
  *  Script custom settings (if available)
  */
-static OptionsMenuEntry* build_script(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_script(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     CB_GameScene* gameScene = scene->gameScene;
     scene->rec_entry_index = -1;
 
@@ -1376,9 +1696,11 @@ static OptionsMenuEntry* build_script(CB_SettingsScene* scene, int* count)
  *  Sound, Timing, Sample rate,
  *  Headphones / Mirror/Aux
  */
-static OptionsMenuEntry* build_audio(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
-    (void)scene;
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     scene->rec_entry_index = -1;
 
     OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
@@ -1455,9 +1777,11 @@ static OptionsMenuEntry* build_audio(CB_SettingsScene* scene, int* count)
  *  30 FPS mode, Frame blending, Interlacing,
  *  Dither, First scaling line, Stabilization
  */
-static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
-    (void)scene;
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     scene->rec_entry_index = -1;
 
     OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
@@ -1597,9 +1921,11 @@ static OptionsMenuEntry* build_display(CB_SettingsScene* scene, int* count)
  *  Crank Mode, Crank Down, Undock, Dock,
  *  Ⓐ›Ⓑ, Ⓑ›Ⓐ, Ⓐ+Ⓑ, Lock Override
  */
-static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
-    (void)scene;
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     scene->rec_entry_index = -1;
 
     OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
@@ -1740,8 +2066,11 @@ static OptionsMenuEntry* build_input(CB_SettingsScene* scene, int* count)
  * Game Boy Color
  *  CPU Speed, HLE Routines
  */
-static OptionsMenuEntry* build_cgb(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     CB_GameScene* gameScene = scene->gameScene;
     scene->rec_entry_index = -1;
 
@@ -1807,8 +2136,11 @@ static OptionsMenuEntry* build_cgb(CB_SettingsScene* scene, int* count)
  *  PPU Timing, Batching, Overclock,
  *  Game scripts
  */
-static OptionsMenuEntry* build_behavior(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
+    if (cb_settings_emucore_mode(scene))
+        return build_emucore_category(def, scene, count);
+
     CB_GameScene* gameScene = scene->gameScene;
     scene->rec_entry_index = -1;
 
@@ -1915,7 +2247,7 @@ static OptionsMenuEntry* build_behavior(CB_SettingsScene* scene, int* count)
  *  Remember Last, Sample Rate,
  *  Launch Animation, CGB Prompt
  */
-static OptionsMenuEntry* build_library(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
     CB_GameScene* gameScene = scene->gameScene;
     scene->rec_entry_index = -1;
@@ -2033,46 +2365,48 @@ static OptionsMenuEntry* build_library(CB_SettingsScene* scene, int* count)
  *  ITCM acceleration, LCD-TCM accel.,
  *  About CrankBoy...
  */
-static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
+static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
     CB_GameScene* gameScene = scene->gameScene;
+    bool emucore_mode = cb_settings_emucore_mode(scene);
     scene->rec_entry_index = -1;
 
     OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    // show fps
     section[++i] = (OptionsMenuEntry){
         .name = "Miscellaneous",
         .header = 1,
         .description = "FPS display, turbo\nspeed, boot fade,\nITCM Acceleration,\nand more."
     };
 
-    section[++i] = (OptionsMenuEntry){
-        .name = "Show FPS",
-        .values = fps_labels,
-        .description =
-            "Displays the current\nframes-per-second\non screen.\n \n"
-            "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can "
-            "differ if 30 FPS\nmode is enabled.)\n \n"
-            "Ideal performance is just\nunder 60 emulated frames\nper second.",
-        .pref_var = &preferences_display_fps,
-        .max_value = 3,
-        .on_press = NULL
-    };
+    if (!emucore_mode)
+    {
+        section[++i] = (OptionsMenuEntry){
+            .name = "Show FPS",
+            .values = fps_labels,
+            .description =
+                "Displays the current\nframes-per-second\non screen.\n \n"
+                "Choice of displaying\nPlaydate screen refreshes\nor emulated frames.\n(These can "
+                "differ if 30 FPS\nmode is enabled.)\n \n"
+                "Ideal performance is just\nunder 60 emulated frames\nper second.",
+            .pref_var = &preferences_display_fps,
+            .max_value = 3,
+            .on_press = NULL
+        };
 
-    // uncap fps
-    section[++i] = (OptionsMenuEntry){
-        .name = "Turbo Speed",
-        .values = off_on_labels,
-        .description =
-            "Removes the FPS limit.\n \nThis is intended\njust for benchmarking\nperformance, not "
-            "for\ncasual play.",
-        .pref_var = &preferences_uncap_fps,
-        .max_value = 2,
-        .on_press = NULL
-    };
+        section[++i] = (OptionsMenuEntry){
+            .name = "Turbo Speed",
+            .values = off_on_labels,
+            .description =
+                "Removes the FPS limit.\n \nThis is intended\njust for benchmarking\nperformance, not "
+                "for\ncasual play.",
+            .pref_var = &preferences_uncap_fps,
+            .max_value = 2,
+            .on_press = NULL
+        };
+    }
 
     if (CB_App->bundled_rom)
     {
@@ -2113,56 +2447,60 @@ static OptionsMenuEntry* build_misc(CB_SettingsScene* scene, int* count)
         section[i].max_value = 3;
     }
 
+    if (!emucore_mode)
+    {
 #if defined(ITCM_CORE) && defined(DTCM_ALLOC)
-    // itcm accel
-    if (itcm_base_desc == NULL)
-    {
-        playdate->system->formatString(
-            &itcm_base_desc,
-            "Unstable, but greatly\nimproves performance.\n \n"
-            "Runs emulator core\ndirectly from the stack.\n \n"
-            "Works with Rev A.\n(Your device: %s)",
-            pd_rev_description
-        );
-    }
+        // itcm accel
+        if (itcm_base_desc == NULL)
+        {
+            playdate->system->formatString(
+                &itcm_base_desc,
+                "Unstable, but greatly\nimproves performance.\n \n"
+                "Runs emulator core\ndirectly from the stack.\n \n"
+                "Works with Rev A.\n(Your device: %s)",
+                pd_rev_description
+            );
+        }
 
-    if (itcm_restart_desc == NULL)
-    {
-        playdate->system->formatString(
-            &itcm_restart_desc, "%s\n \nYou need to restart the\ngame for these changes to\napply.",
-            itcm_base_desc
-        );
-    }
+        if (itcm_restart_desc == NULL)
+        {
+            playdate->system->formatString(
+                &itcm_restart_desc,
+                "%s\n \nYou need to restart the\ngame for these changes to\napply.",
+                itcm_base_desc
+            );
+        }
 
-    section[++i] = (OptionsMenuEntry){
-        .name = "ITCM Acceleration",
-        .values = off_on_labels,
-        .pref_var = &preferences_itcm,
-        .max_value = 2,
-        .on_press = NULL
-    };
+        section[++i] = (OptionsMenuEntry){
+            .name = "ITCM Acceleration",
+            .values = off_on_labels,
+            .pref_var = &preferences_itcm,
+            .max_value = 2,
+            .on_press = NULL
+        };
 
-    if (gameScene)
-    {
-        section[i].description = itcm_restart_desc;
-    }
-    else
-    {
-        section[i].description = itcm_base_desc;
-    }
+        if (gameScene)
+        {
+            section[i].description = itcm_restart_desc;
+        }
+        else
+        {
+            section[i].description = itcm_base_desc;
+        }
 #endif
 
-    section[++i] = (OptionsMenuEntry){
-        .name = "LCD-TCM Accel.",
-        .values = off_on_labels,
-        .description =
-            "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore "
-            "the GB's internal\nframe buffer as well.\n \nSometimes causes\ngarbage data to "
-            "become\nvisible on screen.",
-        .pref_var = &preferences_tcm_lcd,
-        .max_value = 2,
-        .on_press = NULL
-    };
+        section[++i] = (OptionsMenuEntry){
+            .name = "LCD-TCM Accel.",
+            .values = off_on_labels,
+            .description =
+                "Provides minor perf boost\nby using the Playdate's\nown last-frame buffer to\nstore "
+                "the GB's internal\nframe buffer as well.\n \nSometimes causes\ngarbage data to "
+                "become\nvisible on screen.",
+            .pref_var = &preferences_tcm_lcd,
+            .max_value = 2,
+            .on_press = NULL
+        };
+    }
 
     if (CB_App->bundled_rom)
     {
@@ -2187,12 +2525,20 @@ static void switchToSection(CB_SettingsScene* s, int sectionIndex)
 {
     if (s->entries)
         cb_free(s->entries);
+    s->entries = NULL;
 
-    int defIdx = s->activeSectionIndices[sectionIndex];
     int count = 0;
-    s->entries = section_builders[defIdx](s, &count);
-    applyBundleHiddenFilter(s->entries, &count);
-    applyScriptLockedFilter(s->entries, count);
+    if (sectionIndex >= 0 && (size_t)sectionIndex < s->sections_count)
+    {
+        SectionDef* def = &s->sections[sectionIndex];
+        if (def->builder)
+            s->entries = def->builder(def, s, &count);
+    }
+    if (s->entries)
+    {
+        applyBundleHiddenFilter(s->entries, &count);
+        applyScriptLockedFilter(s->entries, count);
+    }
     s->totalMenuItemCount = count;
     s->currentSectionIndex = sectionIndex;
 
@@ -2205,13 +2551,22 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
     if (settingsScene->entries)
     {
         cb_free(settingsScene->entries);
+        settingsScene->entries = NULL;
     }
 
-    int defIdx = settingsScene->activeSectionIndices[settingsScene->currentSectionIndex];
     int count = 0;
-    settingsScene->entries = section_builders[defIdx](settingsScene, &count);
-    applyBundleHiddenFilter(settingsScene->entries, &count);
-    applyScriptLockedFilter(settingsScene->entries, count);
+    int idx = settingsScene->currentSectionIndex;
+    if (idx >= 0 && (size_t)idx < settingsScene->sections_count)
+    {
+        SectionDef* def = &settingsScene->sections[idx];
+        if (def->builder)
+            settingsScene->entries = def->builder(def, settingsScene, &count);
+    }
+    if (settingsScene->entries)
+    {
+        applyBundleHiddenFilter(settingsScene->entries, &count);
+        applyScriptLockedFilter(settingsScene->entries, count);
+    }
     settingsScene->totalMenuItemCount = count;
 
     if (settingsScene->cursorIndex >= settingsScene->totalMenuItemCount)
@@ -2424,13 +2779,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
     // Left/Right on a section header switches section pages
-    if (cursor_entry->header && direction != 0 && settingsScene->activeSectionCount > 1)
+    if (cursor_entry->header && direction != 0 && settingsScene->sections_count > 1)
     {
         cb_play_ui_sound(CB_UISound_Navigate);
+        int n = (int)settingsScene->sections_count;
         switchToSection(
             settingsScene,
-            (settingsScene->currentSectionIndex + direction + settingsScene->activeSectionCount) %
-                settingsScene->activeSectionCount
+            (settingsScene->currentSectionIndex + direction + n) % n
         );
         cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
         direction = 0;
@@ -2933,6 +3288,28 @@ static void CB_SettingsScene_free(void* object)
 
     if (settingsScene->entries)
         cb_free(settingsScene->entries);
+
+    if (settingsScene->sections)
+    {
+        cb_free(settingsScene->sections);
+        settingsScene->sections = NULL;
+        settingsScene->sections_count = 0;
+    }
+
+    if (settingsScene->peek_pdll)
+    {
+        void (*unload_rom)(void) = pdll_symbol(settingsScene->peek_pdll, "ce_unload_rom");
+        if (unload_rom) unload_rom();
+        settingsScene->peek_pdll->flags |= PDLL_NO_TERM;
+        pdll_close(settingsScene->peek_pdll);
+        settingsScene->peek_pdll = NULL;
+    }
+    if (settingsScene->peek_rom)
+    {
+        cb_free(settingsScene->peek_rom);
+        settingsScene->peek_rom = NULL;
+    }
+    settingsScene->emu_prefs = NULL;  // aliased into now-freed pdll memory
 
     if (itcm_base_desc)
     {

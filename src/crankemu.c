@@ -4,6 +4,7 @@
 #include "../libs/pdll/pdll.h"
 #include "app.h"
 #include "dtcm.h"
+#include "emucore_prefs.h"
 #include "utility.h"
 
 #include <stdarg.h>
@@ -50,7 +51,43 @@ static const ce_frontend_t cb_emucore_frontend = {
     .set_error = ce_fe_set_error,
     .get_buttons = ce_fe_get_buttons,
     .blockingModal = NULL,
+    .get_hardware_revision = NULL,
 };
+
+void cb_apply_persisted_emucore_prefs(emucore_t* core, const char* slug)
+{
+    if (!core || !core->pdll || core->n_system_slugs == 0)
+        return;
+    ce_preference_t** (*get_prefs)(void) =
+        pdll_symbol(core->pdll, "ce_get_preferences");
+    if (!get_prefs)
+        return;
+    ce_preference_t** prefs = get_prefs();
+    if (!prefs)
+        return;
+    size_t n_prefs = cb_nullterm_array_len((void* const*)prefs);
+    for (size_t i = 0; i < n_prefs; ++i)
+    {
+        ce_preference_t* pref = prefs[i];
+        if (pref->type != CE_PREFERENCE_STANDARD || !pref->id || !pref->set)
+            continue;
+        char key[96];
+        snprintf(key, sizeof(key), "%s:%s", slug, pref->id);
+        uint32_t flags = pref->flags ? pref->flags(pref) : 0;
+        unsigned value = 0;
+        bool found = false;
+        if (!(flags & CE_PREF_ALWAYS_GLOBAL))
+            found = cb_emucore_prefs_get_local(key, &value);
+        if (!found && !(flags & CE_PREF_ALWAYS_LOCAL))
+            found = cb_emucore_prefs_get_global(key, &value);
+        if (!found)
+            continue;
+        size_t count = cb_nullterm_array_len((void* const*)pref->values);
+        if (count == 0 || value >= count)
+            continue;
+        pref->set(pref, value);
+    }
+}
 
 emucore_t* CB_get_emucore_by_slug(const char* slug)
 {
