@@ -721,10 +721,6 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->noise.lfsr_reg = 0x0000;
         c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
-    else
-    {
-        c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
-    }
 
     c->len.inc = 256 | ((uint32_t)(len_max - c->len.load) << 16);
     c->len.counter = 0;
