@@ -55,12 +55,14 @@ PREF(lock_button, PREF_BUTTON_NONE)
 
 /* --- behaviour ---
  * ppu_timing:         0=Fast (fixed), 1=Accurate (dynamic)
+ * sprite_sorting:     0=Fast, 1=Accurate
  * batching:           0=Off (batch 1), 1=On (batch 3)
  * overclock:          0=Off, 1=x2, 2=x4
  * script_support:     0=Off, 1=On
  * disable_autolock:   0=Off, 1=On
  */
 PREF(ppu_timing, 1)
+PREF(sprite_sorting, 0)
 PREF(batching, 0)
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))
@@ -96,10 +98,10 @@ PREF(display_fps, 0)
 PREF(ui_sounds, 1)
 PREF(boot_fade, 1)
 
-/* --- phony --- 
+/* --- phony ---
  * script_has_prompted:            0=No, 1=Yes (not a real setting)
  * recommended_settings_ignored:   0=No, 1=Yes (not a real setting)
-*/
+ */
 PREF(script_has_prompted, 0)
 PREF(recommended_settings_ignored, 0)
 

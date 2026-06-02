@@ -55,6 +55,7 @@ typedef struct CB_SettingsScene
     int initial_per_game;
     int initial_audio_sync;
     int initial_ppu_timing;
+    int initial_sprite_sorting;
     int initial_batching;
     preference_t* immutable_settings;
 
@@ -83,11 +84,13 @@ typedef struct CB_SettingsScene
 } CB_SettingsScene;
 
 CB_SettingsScene* CB_SettingsScene_new(
-    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene, struct CB_LibraryScene* libraryScene
+    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene,
+    struct CB_LibraryScene* libraryScene
 );
 
 static inline CB_SettingsScene* CB_SettingsScene_new_userstack(
-    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene, struct CB_LibraryScene* libraryScene
+    CB_GameScene* gameScene, CB_EmucoreGameScene* emucoreGameScene,
+    struct CB_LibraryScene* libraryScene
 )
 {
     return (CB_SettingsScene*)call_with_user_stack_3(
