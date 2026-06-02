@@ -11,6 +11,7 @@
 #include "src/global.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
+#include "pdll/pdll.h"
 
 #include <pd_api.h>
 
@@ -154,6 +155,13 @@ __section__(".text.main") DllExport
 
     if (event == kEventInit)
     {
+        // prevent recursion
+        if (event == kEventInit && arg == PDLL_DYNAMIC_INIT_ARG)
+        {
+            playdate->system->logToConsole("Loaded CrankBoy as pdll? Aborting!");
+            return 0;
+        }
+        
         playdate = pd;
 
         int headphone, mic;
@@ -221,6 +229,15 @@ __section__(".text.main") DllExport
 
 __section__(".text.main") int update(void* userdata)
 {
+    CB_poll_buttons();
+
+    if (CB_App->update_override)
+    {
+        CB_App->update_override(CB_App->update_override_ud);
+        DTCM_VERIFY_DEBUG();
+        return 0;
+    }
+
     PlaydateAPI* pd = userdata;
 
 #if DTCM_DEBUG

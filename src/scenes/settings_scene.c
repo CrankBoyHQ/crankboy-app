@@ -264,6 +264,24 @@ static OptionsMenuEntry make_emucore_entry(ce_preference_t* p)
     return e;
 }
 
+static void append_emucore_prefs_for_section(
+    SectionDef* def, struct CB_SettingsScene* scene,
+    OptionsMenuEntry* entries, int* count)
+{
+    if (!def->emucore_merge) return;
+    ce_preference_t** prefs = scene->emu_prefs;
+    if (!prefs) return;
+    int n = (int)cb_nullterm_array_len((void* const*)prefs);
+    for (int k = 0; k < n && *count < MAX_SECTION_ENTRIES; ++k)
+    {
+        ce_preference_t* p = prefs[k];
+        if (p->type != CE_PREFERENCE_STANDARD) continue;
+        ce_preference_t* cat = emu_pref_category(prefs, k);
+        if (cat != def->emucore_category_base) continue;
+        entries[(*count)++] = make_emucore_entry(p);
+    }
+}
+
 static OptionsMenuEntry* build_emucore_category(
     SectionDef* def, struct CB_SettingsScene* scene, int* count)
 {
@@ -409,7 +427,7 @@ CB_SettingsScene* CB_SettingsScene_new(CB_GameScene* gameScene, CB_EmucoreGameSc
                 else
                 {
                     pdll = pdll_open(playdate, core->path,
-                                     PDLL_FILE_PDX | PDLL_FILE_DATA);
+                                     PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
                     we_opened = (pdll != NULL);
                 }
                 if (pdll)
@@ -1580,7 +1598,8 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         }
     }
 
-    if (gameScene || (libraryScene && selectedGame) || scene->emucoreGameScene)
+    if ((gameScene || (libraryScene && selectedGame) || scene->emucoreGameScene)
+        && !CB_App->bundled_rom)
     {
         const char* scope_description;
 
@@ -1632,7 +1651,9 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     }
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
-    *count = i + 1;
+    int n = i + 1;
+    append_emucore_prefs_for_section(def, scene, section, &n);
+    *count = n;
     return section;
 }
 
@@ -2354,7 +2375,9 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
     };
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
-    *count = i + 1;
+    int n = i + 1;
+    append_emucore_prefs_for_section(def, scene, section, &n);
+    *count = n;
     return section;
 }
 
@@ -2517,7 +2540,9 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     }
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
-    *count = i + 1;
+    int n = i + 1;
+    append_emucore_prefs_for_section(def, scene, section, &n);
+    *count = n;
     return section;
 }
 
@@ -2577,6 +2602,110 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
     {
         settingsScene->cursorIndex = 0;
     }
+}
+
+// word-wrap cache
+typedef struct { const char* start; int length; } cb_line_span;
+
+static struct {
+    const char* key_ptr;
+    int         key_width;
+    LCDFont*    key_font;
+    cb_line_span* lines;
+    int         n_lines;
+    int         cap_lines;
+} s_wrap_cache;
+
+static void cb_wrap_emit_line(const char* start, int length)
+{
+    if (s_wrap_cache.n_lines >= s_wrap_cache.cap_lines)
+    {
+        int newcap = s_wrap_cache.cap_lines ? s_wrap_cache.cap_lines * 2 : 16;
+        s_wrap_cache.lines = cb_realloc(s_wrap_cache.lines, newcap * sizeof(cb_line_span));
+        s_wrap_cache.cap_lines = newcap;
+    }
+    s_wrap_cache.lines[s_wrap_cache.n_lines].start  = start;
+    s_wrap_cache.lines[s_wrap_cache.n_lines].length = length;
+    ++s_wrap_cache.n_lines;
+}
+
+static int cb_wrap_measure(LCDFont* font, const char* s, int n)
+{
+    if (n <= 0) return 0;
+    return playdate->graphics->getTextWidth(font, s, n, kUTF8Encoding, 0);
+}
+
+static void cb_wrap_paragraph(const char* p, int len, int max_width, LCDFont* font)
+{
+    if (len <= 0) { cb_wrap_emit_line(p, 0); return; }
+    const char* end = p + len;
+    const char* line_start = p;
+    const char* last_fit_end = p;
+    bool have_fit_word = false;
+
+    while (p < end)
+    {
+        if (*p == ' ')
+        {
+            if (p == line_start) { ++line_start; ++p; continue; }
+            ++p;
+            continue;
+        }
+        const char* word_start = p;
+        while (p < end && *p != ' ') ++p;
+        int trial = cb_wrap_measure(font, line_start, (int)(p - line_start));
+        if (trial <= max_width || !have_fit_word)
+        {
+            last_fit_end = p;
+            have_fit_word = true;
+        }
+        else
+        {
+            cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
+            line_start = word_start;
+            last_fit_end = p;
+            have_fit_word = true;
+        }
+    }
+    if (have_fit_word)
+        cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
+}
+
+static void cb_wrap_rebuild(const char* desc, int max_width, LCDFont* font)
+{
+    s_wrap_cache.n_lines   = 0;   // reuse capacity
+    s_wrap_cache.key_ptr   = desc;
+    s_wrap_cache.key_width = max_width;
+    s_wrap_cache.key_font  = font;
+    if (!desc) return;
+    const char* p = desc;
+    while (1)
+    {
+        const char* nl = strchr(p, '\n');
+        int len = nl ? (int)(nl - p) : (int)strlen(p);
+        cb_wrap_paragraph(p, len, max_width, font);
+        if (!nl) break;
+        p = nl + 1;
+    }
+}
+
+static const cb_line_span* cb_settings_wrap(const char* desc, int max_width, LCDFont* font, int* out_n)
+{
+    if (desc != s_wrap_cache.key_ptr || max_width != s_wrap_cache.key_width ||
+        font != s_wrap_cache.key_font)
+    {
+        cb_wrap_rebuild(desc, max_width, font);
+    }
+    if (out_n) *out_n = s_wrap_cache.n_lines;
+    return s_wrap_cache.lines;
+}
+
+static void cb_wrap_invalidate(void)
+{
+    s_wrap_cache.key_ptr   = NULL;
+    s_wrap_cache.key_width = 0;
+    s_wrap_cache.key_font  = NULL;
+    s_wrap_cache.n_lines   = 0;
 }
 
 static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
@@ -2855,6 +2984,28 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             }
         }
     }
+    else if (cursor_entry->emucore_pref && cursor_entry->max_value > 0 && !cursor_entry->locked)
+    {
+        if (direction == 0)
+            direction = a_pressed;
+
+        if (direction != 0)
+        {
+            ce_preference_t* p = cursor_entry->emucore_pref;
+            unsigned old_value = p->get ? p->get(p) : 0;
+            unsigned new_value =
+                (old_value + (unsigned)((int)cursor_entry->max_value + direction))
+                % cursor_entry->max_value;
+            if (p->set) p->set(p, new_value);
+
+            cb_play_ui_sound(CB_UISound_Confirm);
+
+            if (old_value != new_value && cursor_entry->on_change)
+            {
+                cursor_entry->on_change(cursor_entry, settingsScene, (int)old_value);
+            }
+        }
+    }
 
     // Recalc recommended settings button state when dirty
     if (settingsScene->rec_dirty && settingsScene->rec_entry_index >= 0)
@@ -2932,7 +3083,10 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         }
 
         OptionsMenuEntry* current_entry = &settingsScene->entries[itemIndex];
-        bool is_static_text = (current_entry->pref_var == NULL && current_entry->on_press == NULL);
+        // Static text: no CrankBoy pref, no emucore pref, no action.
+        bool is_static_text =
+            (current_entry->pref_var == NULL && current_entry->emucore_pref == NULL
+             && current_entry->on_press == NULL);
         bool is_locked_option = current_entry->locked;
 
         bool is_functionally_inactive =
@@ -2956,6 +3110,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             if (current_entry->pref_var && *current_entry->pref_var < current_entry->max_value)
             {
                 stateText = current_entry->values[*current_entry->pref_var];
+            }
+            else if (current_entry->emucore_pref && current_entry->emucore_pref->get
+                     && current_entry->max_value > 0)
+            {
+                unsigned v = current_entry->emucore_pref->get(current_entry->emucore_pref);
+                if (v < current_entry->max_value)
+                    stateText = current_entry->values[v];
             }
             else if (current_entry->pref_var == NULL)
             {
@@ -3104,23 +3265,20 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     if (description)
     {
-        char descriptionCopy[512];
-        strncpy(descriptionCopy, description, sizeof(descriptionCopy));
-        descriptionCopy[sizeof(descriptionCopy) - 1] = '\0';
-
-        char* line = strtok(descriptionCopy, "\n");
+        const int wrap_width = LCD_COLUMNS - kDividerX - kRightPanePadding - 4;
+        int n_lines = 0;
+        const cb_line_span* lines =
+            cb_settings_wrap(description, wrap_width, CB_App->labelFont, &n_lines);
 
         int descY = initialY;
         int descLineHeight = playdate->graphics->getFontHeight(CB_App->labelFont) + 2;
-
-        while (line != NULL)
+        for (int li = 0; li < n_lines; ++li)
         {
-            // Draw text in the right pane, with 10px padding from divider
             playdate->graphics->drawText(
-                line, strlen(line), kUTF8Encoding, kDividerX + kRightPanePadding, descY
+                lines[li].start, lines[li].length, kUTF8Encoding,
+                kDividerX + kRightPanePadding, descY
             );
             descY += descLineHeight;
-            line = strtok(NULL, "\n");
         }
 
         // draw save state thumbnail
@@ -3286,6 +3444,8 @@ static void CB_SettingsScene_free(void* object)
         settingsScene->selected_game_settings_path = NULL;
     }
 
+    cb_wrap_invalidate();
+
     if (settingsScene->entries)
         cb_free(settingsScene->entries);
 
@@ -3300,7 +3460,6 @@ static void CB_SettingsScene_free(void* object)
     {
         void (*unload_rom)(void) = pdll_symbol(settingsScene->peek_pdll, "ce_unload_rom");
         if (unload_rom) unload_rom();
-        settingsScene->peek_pdll->flags |= PDLL_NO_TERM;
         pdll_close(settingsScene->peek_pdll);
         settingsScene->peek_pdll = NULL;
     }

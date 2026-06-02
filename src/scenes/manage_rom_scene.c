@@ -133,7 +133,7 @@ static void fetch_core_rom_info(CB_ManageRomScene* self)
     if (!pdll)
     {
         pdll = pdll_open(playdate, core->path,
-            PDLL_FILE_PDX | PDLL_FILE_DATA);
+            PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
         opened_here = (pdll != NULL);
     }
     if (pdll)

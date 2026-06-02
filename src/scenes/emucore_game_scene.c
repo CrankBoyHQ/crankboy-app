@@ -20,7 +20,7 @@ static char* emucore_file_path(CB_EmucoreGameScene* es, const char* subdir, cons
     return path;
 }
 
-// battery-save path for the active save slot, mirroring cb_save_filename():
+// FIXME -- use cb_save_filename():
 static char* emucore_sram_path(CB_EmucoreGameScene* es)
 {
     char suffix[12];
@@ -194,6 +194,24 @@ static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
         es->update_rom();
 }
 
+static void emucore_update_override(void* ud)
+{
+    CB_EmucoreGameScene* es = ud;
+
+    if unlikely(CB_App->scene != es->scene || CB_App->pendingScene || es->go_to_library)
+    {
+        float dt = playdate->system->getElapsedTime();
+        playdate->system->resetElapsedTime();
+        CB_update(dt);
+        return;
+    }
+
+    if likely(es->rom_playing && es->update_rom)
+        es->update_rom();
+
+    playdate->graphics->display();
+}
+
 static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_t arg)
 {
     CB_EmucoreGameScene* es = object;
@@ -202,6 +220,12 @@ static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_
     // (TODO: save to a back-up?)
     if (event == kEventPause || event == kEventLock || event == kEventTerminate)
         emucore_save_sram_if_dirty(es);
+
+    if (event == kEventResume && es->core && es->core->pdll)
+    {
+        void (*full_redraw)(void) = pdll_symbol(es->core->pdll, "ce_full_redraw");
+        if (full_redraw) full_redraw();
+    }
 
     // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead.
     // kEventPause driven by *_menu()
@@ -215,6 +239,12 @@ static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_
 static void CB_EmucoreGameScene_free(void* object)
 {
     CB_EmucoreGameScene* es = object;
+
+    if (CB_App->update_override_ud == es)
+    {
+        CB_App->update_override = NULL;
+        CB_App->update_override_ud = NULL;
+    }
 
     if (es->rom_playing)
     {
@@ -257,6 +287,7 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
     scene->menu = (void*)CB_EmucoreGameScene_menu;
     scene->event = (void*)CB_EmucoreGameScene_event;
     scene->free = (void*)CB_EmucoreGameScene_free;
+    scene->use_user_stack = 0;
     es->scene = scene;
 
     es->rom_path = cb_strdup(rom_path);
@@ -320,5 +351,8 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
         return NULL;
     }
     es->rom_playing = true;
+
+    CB_App->update_override = emucore_update_override;
+    CB_App->update_override_ud = es;
     return es;
 }

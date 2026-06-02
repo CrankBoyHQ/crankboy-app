@@ -120,8 +120,8 @@ const char* get_rom_info(const uint8_t* rom, size_t size);
 size_t ce_get_rom_save_size(const uint8_t* rom, size_t size);
 
 // -- logic (gameplay) --
-bool ce_play();
-void ce_stop(void);
+bool ce_play(void); // begin playing rom
+void ce_stop(void); // end playing rom (cannot be resumed)
 void ce_update(void);
 
 // frontend informs core that playdate frame buffer has been modified and needs a refresh.

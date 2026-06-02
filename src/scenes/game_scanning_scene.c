@@ -339,7 +339,7 @@ static void open_emucore_for_source(CB_GameScanningScene* scanScene, const CB_Sc
     if (src->emucore_index >= 0)
     {
         emucore_t* emucore = &CB_App->cores[src->emucore_index];
-        pdll_t* pdll = pdll_open(playdate, emucore->path, PDLL_FILE_PDX | PDLL_FILE_DATA);
+        pdll_t* pdll = pdll_open(playdate, emucore->path, PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
         if (pdll)
         {
             scanScene->emucore_pdll = pdll;

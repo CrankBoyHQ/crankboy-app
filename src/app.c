@@ -763,10 +763,20 @@ static bool CB_system_slug_claimed(const char* slug)
 
 static void CB_load_core(const char* path)
 {
-    pdll_t* pdll = pdll_open(playdate, path, PDLL_FILE_PDX | PDLL_FILE_DATA);
+    pdll_t* pdll = pdll_open(playdate, path, PDLL_FILE_PDX | PDLL_FILE_DATA, 2);
     if (!pdll)
     {
         playdate->system->logToConsole("CB_load_core: %s", pdll_get_error());
+        return;
+    }
+
+    if (!pdll->getSymbol)
+    {
+        playdate->system->logToConsole(
+            "CB_load_core: '%s' is not a libcrankemu core (no symbol resolver)", path
+        );
+        pdll->flags |= PDLL_NO_TERM;
+        pdll_close(pdll);
         return;
     }
 
@@ -913,9 +923,11 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
 static void CB_load_cores(void)
 {
     const char* dir = global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY;
+    playdate->system->logToConsole("CB_load_cores: dir=%s", dir);
 
     CB_cores_scan scan = {.dir = dir, .items = NULL, .n = 0, .cap = 0};
     cb_listfiles(dir, CB_cores_scan_cb, &scan, 0, kFileRead | kFileReadData);
+    playdate->system->logToConsole("CB_load_cores: scan n=%u", (unsigned)scan.n);
 
     if (scan.n == 0)
         return;
@@ -936,7 +948,9 @@ static void CB_load_cores(void)
 
     for (size_t i = 0; i < scan.n; ++i)
     {
+        playdate->system->logToConsole("CB_load_cores: pre-load[%u] %s", (unsigned)i, scan.items[i].basepath);
         CB_load_core(scan.items[i].basepath);
+        playdate->system->logToConsole("CB_load_cores: post-load[%u]", (unsigned)i);
         cb_free(scan.items[i].basepath);
     }
     cb_free(scan.items);
@@ -944,16 +958,22 @@ static void CB_load_cores(void)
 
 static void non_bundle_init(void)
 {
+    playdate->system->logToConsole("non_bundle_init: start");
     cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+    playdate->system->logToConsole("non_bundle_init: after draw");
     get_homebrew_hub_api();
+    playdate->system->logToConsole("non_bundle_init: after hub api");
 
     CB_App->rhdb_present =
         cb_file_exists_maybe_compressed(ROMHACK_DB_FILE, kFileReadData | kFileRead);
+    playdate->system->logToConsole("non_bundle_init: after rhdb check");
 
     global.shown_intro = true;
     save_global();
+    playdate->system->logToConsole("non_bundle_init: after save_global");
 
     CB_load_cores();
+    playdate->system->logToConsole("non_bundle_init: after CB_load_cores");
 
     CB_FileCopyingScene* copyingScene = CB_FileCopyingScene_new();
     CB_present(copyingScene->scene);
@@ -1225,16 +1245,8 @@ __section__(".rare") static void switchToPendingScene(void)
     }
 }
 
-__section__(".text.main") void CB_update(float dt)
+__section__(".text.main") void CB_poll_buttons(void)
 {
-    CB_App->dt = dt;
-    CB_App->avg_dt_raw = (CB_App->avg_dt_raw * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt;
-    CB_App->avg_dt =
-        (CB_App->avg_dt * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt * CB_App->avg_dt_mult;
-    CB_App->avg_dt_mult = 1.0f;
-
-    CB_App->crankChange = playdate->system->getCrankChange();
-
     PDButtons prev_down = CB_App->buttons_down;
 
     playdate->system->getButtonState(
@@ -1259,6 +1271,20 @@ __section__(".text.main") void CB_update(float dt)
     CB_App->buttons_released &= ~CB_App->buttons_suppress;
     CB_App->buttons_suppress &= CB_App->buttons_down;
     CB_App->buttons_down &= ~CB_App->buttons_suppress;
+}
+
+__section__(".text.main") void CB_update(float dt)
+{
+    CB_App->dt = dt;
+    CB_App->avg_dt_raw = (CB_App->avg_dt_raw * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt;
+    CB_App->avg_dt =
+        (CB_App->avg_dt * FPS_AVG_DECAY) + (1 - FPS_AVG_DECAY) * dt * CB_App->avg_dt_mult;
+    CB_App->avg_dt_mult = 1.0f;
+
+    CB_App->crankChange = playdate->system->getCrankChange();
+
+    // buttons already polled at the top of main.c::update() (so the fast
+    // update_override path sees the same masked state).
 
     if (CB_App->scene)
     {

@@ -120,12 +120,18 @@ void CB_load_emucore(emucore_t* core)
 
     playdate->system->logToConsole("load core: %s", core->id);
 
-    core->pdll = pdll_open(playdate, core->path, PDLL_FILE_PDX | PDLL_FILE_DATA);
+    core->pdll = pdll_open(playdate, core->path,
+                           PDLL_FILE_PDX | PDLL_FILE_DATA, 1 << 16);
     if (!core->pdll)
     {
         playdate->system->logToConsole("CB_load_emucore: %s", pdll_get_error());
         return;
     }
+    // in principle, this can be used to reconcile dynamically linked offsets 
+    // when tracing...
+    playdate->system->logToConsole(
+        "core image base: id=%s base=0x%08lx path=%s", core->id, (unsigned long)(uintptr_t)core->pdll->image, core->path
+    );
     CB_App->active_emucore = (int)(core - CB_App->cores);
 
     CB_ASSERT(CB_App->active_emucore >= 0 && CB_App->active_emucore < CB_App->cores_n);

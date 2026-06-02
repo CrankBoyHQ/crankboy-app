@@ -138,6 +138,10 @@ typedef struct emucore_s {
 
 typedef struct CB_Application
 {
+    // used by some scenes to bypass normal input
+    void (*update_override)(void* ud);
+    void* update_override_ud;
+    
     float dt;
     float avg_dt;       // for fps calculation (scaled by avg_dt_mult)
     float avg_dt_mult;  // reciprocal number of emulated frames last frame
@@ -236,6 +240,7 @@ extern const char* const save_slot_labels[10];
 void CB_init(void);
 void CB_event(PDSystemEvent event, uint32_t arg);
 void CB_update(float dt);
+void CB_poll_buttons(void);
 void CB_present(CB_Scene* scene);
 void CB_quit(void);
 void CB_goToLibrary(void);
