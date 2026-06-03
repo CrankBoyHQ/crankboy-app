@@ -1045,7 +1045,9 @@ static void present_emucore_recovery_modal(void)
 
     const char* options[] = {"Safe Mode", "Purge", "Ignore", NULL};
     CB_Modal* modal = CB_Modal_new(
-        "It looks like CrankBoy failed to properly start last time. Emulation cores could be the problem.\nYou can skip them this launch (Safe Mode), delete them all (Purge), or try to launch normally again (Ignore).",
+        "It looks like CrankBoy failed to properly start last time. Emulation cores could be the "
+        "problem.\nYou can skip them this launch (Safe Mode), delete them all (Purge), or try to "
+        "launch normally again (Ignore).",
         options, emucore_recovery_callback, NULL
     );
     modal->width = 390;

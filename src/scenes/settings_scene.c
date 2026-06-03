@@ -286,7 +286,8 @@ static const char* settings_emu_slug(CB_SettingsScene* s)
         CB_Game* g = (s->libraryScene->listView->selectedItem < s->libraryScene->games->length)
                          ? s->libraryScene->games->items[s->libraryScene->listView->selectedItem]
                          : NULL;
-        if (g && g->names) return g->names->system_slug;
+        if (g && g->names)
+            return g->names->system_slug;
     }
     return NULL;
 }
@@ -301,11 +302,11 @@ static char* settings_emu_game_path(CB_SettingsScene* s)
     return NULL;
 }
 
-static void settings_persist_emucore_pref(
-    CB_SettingsScene* s, ce_preference_t* p, unsigned value)
+static void settings_persist_emucore_pref(CB_SettingsScene* s, ce_preference_t* p, unsigned value)
 {
     const char* slug = settings_emu_slug(s);
-    if (!slug || !p->id) return;
+    if (!slug || !p->id)
+        return;
     char key[96];
     snprintf(key, sizeof(key), "%s:%s", slug, p->id);
     uint32_t flags = p->flags ? p->flags(p) : 0;
@@ -321,7 +322,8 @@ static void settings_persist_emucore_pref(
 
 static void settings_save_emucore_prefs(CB_SettingsScene* s)
 {
-    if (!s->emu_prefs) return;
+    if (!s->emu_prefs)
+        return;
     cb_emucore_prefs_save_to_disk(CB_globalPrefsPath, true);
 
     char* game_path = settings_emu_game_path(s);
@@ -2598,8 +2600,8 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     if (itcm_restart_desc == NULL)
     {
         playdate->system->formatString(
-            &itcm_restart_desc,
-            "%s\n\nYou need to restart the game for these changes to apply.", itcm_base_desc
+            &itcm_restart_desc, "%s\n\nYou need to restart the game for these changes to apply.",
+            itcm_base_desc
         );
     }
 
@@ -3241,8 +3243,10 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             indicate_nondefault =
                 *current_entry->pref_var != preference_default_value[prefvar_index];
         }
-        else if (!is_disabled && current_entry->emucore_pref != NULL &&
-                 !current_entry->suppress_nondefault_indicator)
+        else if (
+            !is_disabled && current_entry->emucore_pref != NULL &&
+            !current_entry->suppress_nondefault_indicator
+        )
         {
             // TODO: cache this any time option is modified.
             ce_preference_t* p = current_entry->emucore_pref;
