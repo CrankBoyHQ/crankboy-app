@@ -142,16 +142,30 @@ build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	python3 scripts/embed_json.py $< $@ baked_$*_json
 
 # Compress recommended settings JSONs and add to pdx
-.PHONY: compress-csettings
-compress-csettings:
+.PHONY: csettings
+csettings:
 	mkdir -p build/csettings
-	find src/csettings -name '*.json' -exec sh -c 'gzip -c "$$1" > "build/csettings/$$(basename "$$1").gz"' _ {} \;
+	for f in src/csettings/*.json; do gzip -c "$$f" > "build/csettings/$$(basename "$$f").gz"; done
 
-.PHONY: build
-build: all compress-csettings
+# Post-pdc steps: copy csettings to PDX and strip baked JSONs from PDX
+define _post_pdc
 	-rm -f $(PRODUCT)/version.json $(PRODUCT)/credits.json
 	mkdir -p $(PRODUCT)/csettings
-	find build/csettings -name '*.json.gz' -exec sh -c 'cp "$$1" "$(PRODUCT)/csettings/"' _ {} \;
+	cp build/csettings/*.json.gz $(PRODUCT)/csettings/
+endef
+
+.PHONY: device simulator
+device: device_bin csettings
+	$(PDC) $(PDCFLAGS) Source $(PRODUCT)
+	$(_post_pdc)
+
+simulator: simulator_bin csettings
+	$(PDC) $(PDCFLAGS) Source $(PRODUCT)
+	$(_post_pdc)
+
+.PHONY: build
+build: all csettings
+	$(_post_pdc)
 
 .DEFAULT_GOAL := build
 
