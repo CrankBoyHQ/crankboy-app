@@ -84,7 +84,7 @@ PREF(prompt_if_cgb_optional, 0)
 PREF(library_launch_animation, 1)
 
 /* --- misc ---
- * itcm:                           0=Off, 1=On (only effective on RevA)
+ * itcm:                           0=Off, 1=On, 2=Auto
  * tcm_lcd:                        0=Off, 1=On
  * uncap_fps:                      0=Off, 1=On
  * display_fps:                    0=Off, 1=On, 2=Playdate

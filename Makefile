@@ -102,8 +102,11 @@ UINCDIR += libs/pdnewlib
 # DTCM_ALLOC: allow allocating variables in DTCM at the low-address end of the region reserved for the stack.
 # ITCM_CORE (requires DTCM_ALLOC, and special link_map.ld): run core interpreter from ITCM.
 # Note: DTCM only active on Rev A regardless.
+# DTCM_PROBE: scan DTCM below the stack for clean (0xA5A5A5A5 = never-touched) pockets.
+#             Found pockets are exposed via dtcm_pocket_alloc() for LUTs, code, etc.
+# DTCM_DEBUG: set >0 to verify DTCM canary on every allocation (slow, debug only).
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
-UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
+UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -DDTCM_PROBE=1
 
 # flags applied to simulator only
 SIMULATOR_FLAGS +=

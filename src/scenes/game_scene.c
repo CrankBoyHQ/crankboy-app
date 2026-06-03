@@ -370,7 +370,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
     uintptr_t core_size = itcm_end - itcm_start;
 
     // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
-    if (!dtcm_enabled() || !preferences_itcm)
+    if (!dtcm_enabled() || preferences_itcm == 0)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
@@ -392,8 +392,30 @@ __section__(".rare") void itcm_core_init(bool cgb)
     // paranoia
     int MARGIN = 4;
 
-    // make region to copy instructions to; ensure it has same cache alignment
-    core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+    // find best-fit DTCM pocket (smallest that fits), fall back to main pool
+    {
+        int best = -1;
+        size_t best_size = 0;
+        for (int i = 0; i < dtcm_num_pockets; i++)
+        {
+            if (!dtcm_pocket_enabled(i))
+                continue;
+            size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
+            if (avail >= core_size + MARGIN)
+            {
+                if (best == -1 || avail < best_size)
+                {
+                    best = i;
+                    best_size = avail;
+                }
+            }
+        }
+        if (best >= 0)
+            core_itcm_reloc =
+                dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
+        else
+            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+    }
     DTCM_VERIFY();
     memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
@@ -687,6 +709,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 #endif
     dtcm_deinit();
     dtcm_init();
+#ifdef DTCM_PROBE
+    if (preferences_itcm == 2)
+        dtcm_probe_lower_bound();
+#endif
 
     DTCM_VERIFY();
 
@@ -3876,6 +3902,7 @@ static void CB_GameScene_free(void* object)
     cb_free(context);
     cb_free(gameScene);
 
+    dtcm_pocket_fill_and_reset();
     dtcm_deinit();
 
     DTCM_VERIFY();

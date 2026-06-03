@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 extern void* dtcm_mempool;
+extern void* dtcm_mempool_start;
 extern bool is_dtcm_init;
 
 void dtcm_set_mempool(void* addr);
@@ -26,6 +27,34 @@ struct dtcm_store_t* dtcm_store(void);
 
 // restores from above, and invalidates the store
 void dtcm_restore(struct dtcm_store_t*);
+
+// probe downward from dtcm_mempool_start to find lowest accessible DTCM address.
+// only available when DTCM_PROBE is defined.
+void dtcm_probe_lower_bound(void);
+
+// lowest accessible DTCM address found by dtcm_probe_lower_bound().
+// NULL until probe runs.
+extern void* dtcm_probe_lowest;
+
+// clean DTCM pockets found by the probe, for data that doesn't need dtcm_store/restore.
+// use dtcm_pocket_alloc(pocket_idx, size) to allocate from one.
+#define DTCM_MAX_POCKETS 5
+
+struct dtcm_pocket_t
+{
+    void* start;
+    void* mempool;
+    void* end;
+    bool init;
+};
+
+extern struct dtcm_pocket_t dtcm_pockets[DTCM_MAX_POCKETS];
+extern int dtcm_num_pockets;
+
+void* dtcm_pocket_alloc(int pocket_idx, size_t size);
+void* dtcm_pocket_alloc_aligned(int pocket_idx, size_t size, size_t alignment);
+bool dtcm_pocket_enabled(int pocket_idx);
+void dtcm_pocket_fill_and_reset(void);
 
 #define DTCM_VERIFY__(f, l) dtcm_verify(f ":" #l)
 #define DTCM_VERIFY_(f, l) DTCM_VERIFY__(f, l)

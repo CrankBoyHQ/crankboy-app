@@ -15,6 +15,82 @@ bool is_dtcm_init = false;
 // can allocate global variables from here+
 void* dtcm_mempool = NULL;
 void* dtcm_mempool_start = NULL;
+void* dtcm_probe_lowest = NULL;
+
+struct dtcm_pocket_t dtcm_pockets[DTCM_MAX_POCKETS];
+int dtcm_num_pockets = 0;
+
+static void dtcm_pocket_init(struct dtcm_pocket_t* p, void* start, size_t size)
+{
+    p->start = start;
+    p->mempool = start;
+    p->end = (void*)((uintptr_t)start + size);
+    p->init = true;
+}
+
+void* dtcm_pocket_alloc(int pocket_idx, size_t size)
+{
+    if (pocket_idx < 0 || pocket_idx >= dtcm_num_pockets)
+        return NULL;
+
+    struct dtcm_pocket_t* p = &dtcm_pockets[pocket_idx];
+    if (!p->init)
+        return NULL;
+
+    void* result = p->mempool;
+    p->mempool = (void*)(size + (uintptr_t)p->mempool);
+
+    if (p->mempool > p->end)
+    {
+        p->mempool = result;
+        return NULL;
+    }
+
+    return result;
+}
+
+void* dtcm_pocket_alloc_aligned(int pocket_idx, size_t size, size_t alignment)
+{
+    if (pocket_idx < 0 || pocket_idx >= dtcm_num_pockets)
+        return NULL;
+
+    struct dtcm_pocket_t* p = &dtcm_pockets[pocket_idx];
+    if (!p->init)
+        return NULL;
+
+    alignment %= 32;
+    while ((uintptr_t)p->mempool % 32 != alignment)
+        p->mempool = (void*)((uintptr_t)p->mempool + 1);
+
+    void* result = p->mempool;
+    p->mempool = (void*)(size + (uintptr_t)p->mempool);
+
+    if (p->mempool > p->end)
+    {
+        p->mempool = result;
+        return NULL;
+    }
+
+    return result;
+}
+
+bool dtcm_pocket_enabled(int pocket_idx)
+{
+    if (pocket_idx < 0 || pocket_idx >= dtcm_num_pockets)
+        return false;
+    return dtcm_pockets[pocket_idx].init;
+}
+
+void dtcm_pocket_fill_and_reset(void)
+{
+    for (int i = 0; i < dtcm_num_pockets; i++)
+    {
+        size_t used = (uintptr_t)dtcm_pockets[i].mempool - (uintptr_t)dtcm_pockets[i].start;
+        if (used > 0)
+            memset(dtcm_pockets[i].start, 0xA5, used);
+        dtcm_pockets[i].mempool = dtcm_pockets[i].start;
+    }
+}
 
 __dtcm_ctrl void* dtcm_alloc(size_t size)
 {
@@ -190,3 +266,118 @@ void dtcm_free(void* ptr)
     void* original_ptr = ((void**)ptr)[-1];
     cb_free(original_ptr);
 }
+
+#ifdef DTCM_PROBE
+
+#define DTCM_PROBE_CANARY 0xD704BEEF
+#define DTCM_PROBE_CLEAN 0xA5A5A5A5
+#define DTCM_PROBE_STEP 256
+#define DTCM_PROBE_MIN_ADDR ((void*)0x20000100)
+
+__attribute__((optimize("O0"), noinline)) void dtcm_probe_lower_bound(void)
+{
+    if (!is_dtcm_init || !dtcm_mempool_start)
+        return;
+
+    playdate->system->logToConsole("DTCM probe: starting downward from %p", dtcm_mempool_start);
+
+    uintptr_t probe = (uintptr_t)dtcm_mempool_start;
+    uintptr_t lowest_ok = probe;
+
+// clean run tracking - top N (currently up to 2)
+#define MAX_RUNS 4
+    uintptr_t run_starts[MAX_RUNS] = {0};
+    unsigned run_sizes[MAX_RUNS] = {0};
+
+    uintptr_t cur_run_start = 0;
+    unsigned cur_run = 0;
+
+#define INSERT_RUN(start, size)                            \
+    do                                                     \
+    {                                                      \
+        for (int _i = 0; _i < MAX_RUNS; _i++)              \
+        {                                                  \
+            if (size > run_sizes[_i])                      \
+            {                                              \
+                for (int _j = MAX_RUNS - 1; _j > _i; _j--) \
+                {                                          \
+                    run_starts[_j] = run_starts[_j - 1];   \
+                    run_sizes[_j] = run_sizes[_j - 1];     \
+                }                                          \
+                run_starts[_i] = start;                    \
+                run_sizes[_i] = size;                      \
+                break;                                     \
+            }                                              \
+        }                                                  \
+    } while (0)
+
+    while (probe > (uintptr_t)DTCM_PROBE_MIN_ADDR)
+    {
+        probe -= DTCM_PROBE_STEP;
+
+        volatile uint32_t* addr = (volatile uint32_t*)probe;
+
+        uint32_t prev = *addr;
+        playdate->system->logToConsole("DTCM probe: %p prev=%08x  ", (void*)probe, (unsigned)prev);
+
+        *addr = DTCM_PROBE_CANARY;
+
+        volatile uint32_t readback = *addr;
+        if (readback != (uint32_t)DTCM_PROBE_CANARY)
+        {
+            *addr = prev;
+            playdate->system->logToConsole(
+                "DTCM probe: MISMATCH at %p (wrote %08x, read %08x) - stopping", (void*)probe,
+                (unsigned)DTCM_PROBE_CANARY, (unsigned)readback
+            );
+            probe += DTCM_PROBE_STEP;
+            break;
+        }
+
+        *addr = prev;
+        lowest_ok = probe;
+        playdate->system->logToConsole("DTCM probe: OK");
+
+        if (prev == DTCM_PROBE_CLEAN)
+        {
+            if (cur_run == 0)
+                cur_run_start = probe;
+            cur_run++;
+        }
+        else
+        {
+            if (cur_run > 0)
+            {
+                INSERT_RUN(cur_run_start, cur_run);
+                cur_run = 0;
+            }
+        }
+    }
+
+    if (cur_run > 0)
+        INSERT_RUN(cur_run_start, cur_run);
+
+#undef INSERT_RUN
+
+    dtcm_probe_lowest = (void*)lowest_ok;
+
+    playdate->system->logToConsole(
+        "DTCM probe: lowest writable = %p (%u bytes below pool)", (void*)lowest_ok,
+        (unsigned)((uintptr_t)dtcm_mempool_start - lowest_ok)
+    );
+
+    // init pockets from top clean runs
+    dtcm_num_pockets = 0;
+    for (int i = 0; i < MAX_RUNS && run_sizes[i] > 0; i++)
+    {
+        size_t size = run_sizes[i] * DTCM_PROBE_STEP;
+        void* low = (void*)(run_starts[i] - (run_sizes[i] - 1) * DTCM_PROBE_STEP);
+        dtcm_pocket_init(&dtcm_pockets[i], low, size);
+        dtcm_num_pockets = i + 1;
+        playdate->system->logToConsole("DTCM pocket[%d] at %p (%u bytes)", i, low, (unsigned)size);
+    }
+    if (dtcm_num_pockets == 0)
+        playdate->system->logToConsole("DTCM probe: no clean pockets found");
+}
+
+#endif
