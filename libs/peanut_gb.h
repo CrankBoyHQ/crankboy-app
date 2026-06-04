@@ -385,6 +385,9 @@ __core_cgb_section("short") static void __gb_write16__cgb(gb_s* restrict gb, u16
 __core_dmg_section("short") static uint16_t __gb_read16__dmg(gb_s* restrict gb, u16 addr);
 __core_cgb_section("short") static uint16_t __gb_read16__cgb(gb_s* restrict gb, u16 addr);
 
+__core_dmg_section("short") static uint32_t __gb_read32__dmg(gb_s* restrict gb, u16 addr);
+__core_cgb_section("short") static uint32_t __gb_read32__cgb(gb_s* restrict gb, u16 addr);
+
 __core_dmg_section("short") static uint16_t __gb_fetch16__dmg(gb_s* restrict gb);
 __core_cgb_section("short") static uint16_t __gb_fetch16__cgb(gb_s* restrict gb);
 
@@ -2399,8 +2402,14 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         case 0x46:
             gb->gb_reg.DMA = (val % 0xF1);
 
-            for (uint8_t i = 0; i < OAM_SIZE; i++)
-                gb->oam[i] = __gb_read_full(gb, (gb->gb_reg.DMA << 8) + i);
+            for (uint8_t i = 0; i < OAM_SIZE; i += 4)
+            {
+                uint32_t v = __gb_read32__cgb(gb, (gb->gb_reg.DMA << 8) + i);
+                gb->oam[i] = v;
+                gb->oam[i + 1] = v >> 8;
+                gb->oam[i + 2] = v >> 16;
+                gb->oam[i + 3] = v >> 24;
+            }
 
             return;
 

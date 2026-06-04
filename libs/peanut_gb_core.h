@@ -183,6 +183,25 @@ __core_section("short") static uint16_t $(__gb_read16)(gb_s* restrict gb, u16 ad
     return v;
 }
 
+__core_section("short") static uint32_t $(__gb_read32)(gb_s* restrict gb, u16 addr)
+{
+    if ((addr & 0xFFF) <= 0xFFC)
+    {
+        uint8_t* ram_region_base = gb->ram_base[addr >> 12];
+        if (ram_region_base)
+        {
+            void* ptr = &ram_region_base[addr];
+            return *(uint32_t*)ptr;
+        }
+    }
+
+    uint32_t v = $(__gb_read)(gb, addr);
+    v |= (uint32_t)$(__gb_read)(gb, addr + 1) << 8;
+    v |= (uint32_t)$(__gb_read)(gb, addr + 2) << 16;
+    v |= (uint32_t)$(__gb_read)(gb, addr + 3) << 24;
+    return v;
+}
+
 __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr, u16 v)
 {
     // Fast path for WRAM
