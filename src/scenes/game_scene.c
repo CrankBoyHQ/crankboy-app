@@ -393,29 +393,30 @@ __section__(".rare") void itcm_core_init(bool cgb)
     int MARGIN = 4;
 
     // find best-fit DTCM pocket (smallest that fits), fall back to main pool
+    int best = -1;
+    size_t best_size = 0;
+
+    for (int i = 0; i < dtcm_num_pockets; i++)
     {
-        int best = -1;
-        size_t best_size = 0;
-        for (int i = 0; i < dtcm_num_pockets; i++)
+        if (!dtcm_pocket_enabled(i))
+            continue;
+        size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
+        if (avail >= core_size + MARGIN)
         {
-            if (!dtcm_pocket_enabled(i))
-                continue;
-            size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
-            if (avail >= core_size + MARGIN)
+            if (best == -1 || avail < best_size)
             {
-                if (best == -1 || avail < best_size)
-                {
-                    best = i;
-                    best_size = avail;
-                }
+                best = i;
+                best_size = avail;
             }
         }
-        if (best >= 0)
-            core_itcm_reloc =
-                dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
-        else
-            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
     }
+
+    if (best >= 0)
+        core_itcm_reloc =
+            dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
+    else
+        core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+
     DTCM_VERIFY();
     memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
@@ -2012,7 +2013,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Frame N+1 (dark) — dark thresholds in normal LUT slots
+                    // Frame N+1 (dark) - dark thresholds in normal LUT slots
                     cgb_blend_stage = 2;
                     gb_recompute_cgb_gray_palettes__to_bright(context->gb);
                     context->gb->lcd = cb_frame_buffer[1];

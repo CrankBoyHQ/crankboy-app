@@ -93,7 +93,7 @@ static void parse_settings_table(
 
 static void parse_one_json(const char* path_arg, FileOptions fopts, RecommendedJsonEntry** registry)
 {
-    // Strip trailing .gz — parse_json auto-detects .json.gz from .json paths
+    // Strip trailing .gz - parse_json auto-detects .json.gz from .json paths
     size_t plen = strlen(path_arg);
     char json_path_buf[256];
     const char* path;
@@ -238,14 +238,14 @@ static const struct ScriptRecommendedSettings* search_registry(
     if (!rom_name || !rom_name[0] || !registry)
         return NULL;
 
-    // Exact match — highest priority
+    // Exact match - highest priority
     for (RecommendedJsonEntry* e = registry; e; e = e->next)
     {
         if (!strcmp(e->rom_name, rom_name))
             return &e->settings;
     }
 
-    // Wildcard match — lower priority
+    // Wildcard match - lower priority
     for (RecommendedJsonEntry* e = registry; e; e = e->next)
     {
         if (wildcard_match(e->rom_name, rom_name))

@@ -1334,7 +1334,7 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     u16 addr_next;
     if (offset == 0)
     {
-        // BIT n,(HL) — combined read+compare in one instruction
+        // BIT n,(HL) - combined read+compare in one instruction
         if (READ8(pc - 2) == 0xCB && (READ8(pc - 1) & 0xC7) == 0x46)
         {
             offset = -2;
