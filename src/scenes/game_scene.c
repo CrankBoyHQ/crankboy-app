@@ -3899,6 +3899,9 @@ static void CB_GameScene_free(void* object)
     cb_free(gameScene->audio_temp_left);
     cb_free(gameScene->audio_temp_right);
 
+    cb_free(context->gb->cgb_bg_palette);
+    cb_free(context->gb->cgb_obj_palette);
+
     cb_free(context);
     cb_free(gameScene);
 
