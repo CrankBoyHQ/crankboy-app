@@ -2004,17 +2004,6 @@ done_instr_timing:
         /* LCD Timing */
         gb->counter.lcd_count += inst_cycles;
 
-        // "Short Line 153" Fix:
-        // On real hardware, during Line 153 (end of VBlank), LY wraps to 0 very early
-        // (after just a few cycles), but the PPU remains in VBlank (Mode 1) for the
-        // rest of the scanline duration (456 cycles).
-        // This allows LY=LYC interrupts for Line 0 to fire *before* the new frame starts.
-        if (gb->lcd_mode == LCD_VBLANK && gb->gb_reg.LY == 153)
-        {
-            gb->gb_reg.LY = 0;
-            $(__gb_update_lyc_and_stat_irq)(gb);
-        }
-
         switch (gb->lcd_mode)
         {
         // Mode 2: OAM Search (80 cycles)
@@ -2165,6 +2154,15 @@ done_instr_timing:
                     gb->gb_reg.LY++;
                     $(__gb_update_lyc_and_stat_irq)(gb);
                 }
+            }
+            // "Short Line 153" Fix: during VBlank line 153, LY wraps to 0 very early
+            // (after just a few cycles), but the PPU remains in VBlank for the full
+            // line duration. Placed inside the case so the check only evaluates
+            // during VBlank steps, not every CPU step.
+            else if (gb->gb_reg.LY == 153)
+            {
+                gb->gb_reg.LY = 0;
+                $(__gb_update_lyc_and_stat_irq)(gb);
             }
             break;
         }
