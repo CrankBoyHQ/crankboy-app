@@ -76,7 +76,13 @@ bool gbScreenRequiresFullRefresh;
 // Frames to lock adaptive frame skip after a state change.
 #define ADAPTIVE_FS_LOCK_FRAMES 90
 #define ADAPTIVE_FS_ACTIVATE_FRAMES 5
-#define ADAPTIVE_FS_DEACTIVATE_FRAMES 15
+
+// --- Probe intervals for deactivation checks ---
+// When under mitigation (interlacing or 30fps), periodically render one
+// unmitigated frame to measure real performance instead of extrapolating
+// from the reduced-workload measurement.
+#define INTERLACE_PROBE_INTERVAL 60
+#define ADAPTIVE_FS_PROBE_INTERVAL 120
 
 CB_GameScene* audioGameScene = NULL;
 
@@ -646,6 +652,11 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->adaptive_fs_headroom_counter = 0;
     gameScene->adaptive_fs_lock_frames = 0;
     gameScene->adaptive_fs_perf_allowed = false;
+
+    gameScene->interlace_probe_cooldown = 0;
+    gameScene->interlace_probe_pending = false;
+    gameScene->adaptive_fs_probe_cooldown = 0;
+    gameScene->adaptive_fs_probe_pending = false;
 
     gameScene->isCurrentlySaving = false;
     gameScene->quitGameModalConfirmOverride = false;
@@ -1651,29 +1662,61 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (!preferences_frame_skip)
                     target_fps = 60.0f;
 
-                float fps = 1.0f / CB_App->avg_dt_raw;
-                float ratio = fps / target_fps;
-
-                if (ratio < INTERLACE_ACTIVATE_RATIO)
+                if (was_interlaced_last_frame)
                 {
-                    gameScene->interlace_slow_frames++;
-                    if (gameScene->interlace_slow_frames >= INTERLACE_SLOW_FRAMES_REQUIRED)
+                    // Probe-based deactivation: when interlacing is active,
+                    // the smoothed FPS always looks good due to reduced workload.
+                    // Instead, periodically render one full frame and check its
+                    // raw timing to decide if we can safely disable interlacing.
+                    if (gameScene->interlace_probe_pending)
+                    {
+                        float probe_fps = 1.0f / CB_App->dt;
+                        float probe_ratio = probe_fps / target_fps;
+                        gameScene->interlace_probe_pending = false;
+                        if (probe_ratio > INTERLACE_DEACTIVATE_RATIO)
+                        {
+                            gameScene->interlace_slow_frames = 0;
+                        }
+                        else
+                        {
+                            activate_dynamic_rate = true;
+                            gameScene->interlace_probe_cooldown = INTERLACE_PROBE_INTERVAL;
+                            gameScene->interlace_slow_frames = 0;
+                        }
+                    }
+                    else if (gameScene->interlace_probe_cooldown > 0)
                     {
                         activate_dynamic_rate = true;
-                        gameScene->interlace_lock_frames_remaining = preferences_frame_skip
-                                                                         ? INTERLACE_LOCK_FRAMES / 2
-                                                                         : INTERLACE_LOCK_FRAMES;
+                        gameScene->interlace_probe_cooldown--;
+                        gameScene->interlace_slow_frames = 0;
+                    }
+                    else
+                    {
+                        gameScene->interlace_probe_pending = true;
                         gameScene->interlace_slow_frames = 0;
                     }
                 }
-                else if (was_interlaced_last_frame && ratio < INTERLACE_DEACTIVATE_RATIO)
-                {
-                    activate_dynamic_rate = true;
-                    gameScene->interlace_slow_frames = 0;
-                }
                 else
                 {
-                    gameScene->interlace_slow_frames = 0;
+                    float fps = 1.0f / CB_App->avg_dt_raw;
+                    float ratio = fps / target_fps;
+
+                    if (ratio < INTERLACE_ACTIVATE_RATIO)
+                    {
+                        gameScene->interlace_slow_frames++;
+                        if (gameScene->interlace_slow_frames >= INTERLACE_SLOW_FRAMES_REQUIRED)
+                        {
+                            activate_dynamic_rate = true;
+                            gameScene->interlace_lock_frames_remaining =
+                                preferences_frame_skip ? INTERLACE_LOCK_FRAMES / 2
+                                                       : INTERLACE_LOCK_FRAMES;
+                            gameScene->interlace_slow_frames = 0;
+                        }
+                    }
+                    else
+                    {
+                        gameScene->interlace_slow_frames = 0;
+                    }
                 }
             }
         }
@@ -1696,21 +1739,32 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
         else if (gameScene->adaptive_fs_perf_allowed)
         {
-            // Currently at 30fps. Switch back to 60fps if
-            // performance has recovered.
-            if (ratio > ADAPTIVE_FS_DEACTIVATE_RATIO)
+            // Probe-based deactivation: at 30fps the smoothed FPS always
+            // looks good because 2 GB frames fit in 33ms. Instead,
+            // periodically render a single GB frame and check raw timing.
+            if (gameScene->adaptive_fs_probe_pending)
             {
-                gameScene->adaptive_fs_headroom_counter++;
-                if (gameScene->adaptive_fs_headroom_counter >= ADAPTIVE_FS_DEACTIVATE_FRAMES)
+                float probe_fps = 1.0f / CB_App->dt;
+                float probe_ratio = probe_fps / 60.0f;
+                gameScene->adaptive_fs_probe_pending = false;
+                if (probe_ratio > ADAPTIVE_FS_DEACTIVATE_RATIO)
                 {
                     gameScene->adaptive_fs_perf_allowed = false;
                     gameScene->adaptive_fs_headroom_counter = 0;
                     gameScene->adaptive_fs_lock_frames = ADAPTIVE_FS_LOCK_FRAMES;
                 }
+                else
+                {
+                    gameScene->adaptive_fs_probe_cooldown = ADAPTIVE_FS_PROBE_INTERVAL;
+                }
+            }
+            else if (gameScene->adaptive_fs_probe_cooldown > 0)
+            {
+                gameScene->adaptive_fs_probe_cooldown--;
             }
             else
             {
-                gameScene->adaptive_fs_headroom_counter = 0;
+                gameScene->adaptive_fs_probe_pending = true;
             }
         }
         else
@@ -2157,7 +2211,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                         gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                        if (scroll_changed || gameScene->adaptive_fs_perf_allowed)
+                        if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                            !gameScene->adaptive_fs_probe_pending)
                         {
                             memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
 
@@ -2226,7 +2281,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
                             run_second_frame =
-                                scroll_changed || gameScene->adaptive_fs_perf_allowed;
+                                (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                                !gameScene->adaptive_fs_probe_pending;
                         }
                         else if (preferences_frame_skip == 1)
                         {
@@ -2371,7 +2427,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                 gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                if (scroll_changed || gameScene->adaptive_fs_perf_allowed)
+                if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                    !gameScene->adaptive_fs_probe_pending)
                 {
                     // Frame N+1 → buffer[1]
                     context->gb->lcd = frame_buffer[1];
@@ -2424,7 +2481,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                     gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                    run_second_frame = scroll_changed || gameScene->adaptive_fs_perf_allowed;
+                    run_second_frame = (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                                       !gameScene->adaptive_fs_probe_pending;
                 }
                 else if (preferences_frame_skip == 1)
                 {

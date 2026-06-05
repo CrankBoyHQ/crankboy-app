@@ -169,6 +169,13 @@ typedef struct CB_GameScene
     int adaptive_fs_lock_frames;
     bool adaptive_fs_perf_allowed;
 
+    // Probe-based deactivation: when under mitigation, periodically render
+    // one unmitigated frame to measure real performance.
+    int interlace_probe_cooldown;
+    bool interlace_probe_pending;
+    int adaptive_fs_probe_cooldown;
+    bool adaptive_fs_probe_pending;
+
     uint32_t patches_hash;
 
     unsigned fade_frames;
