@@ -372,6 +372,7 @@ extern volatile int g_trace_frames_remaining;
 
 __core_cgb static void __gb_check_lyc__cgb(gb_s* gb);
 __core_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);
+__core_cgb static void __gb_update_lyc_and_stat_irq__cgb(gb_s* gb);
 
 __core_dmg static unsigned __gb_run_instruction_micro__dmg(gb_s* gb);
 __core_cgb static unsigned __gb_run_instruction_micro__cgb(gb_s* gb);
@@ -2346,8 +2347,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->lcd_mode = LCD_SEARCH_OAM;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
                 gb->direct.stat_line = 0;
-                __gb_check_lyc__cgb(gb);
-                __gb_update_stat_irq__cgb(gb);
+                __gb_update_lyc_and_stat_irq__cgb(gb);
             }
             return;
         }
@@ -2392,10 +2392,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             gb->gb_reg.LYC = val;
             // Perform an LY=LYC check immediately if the LCD is enabled.
             if (gb->gb_reg.LCDC & LCDC_ENABLE)
-            {
-                __gb_check_lyc__cgb(gb);
-                __gb_update_stat_irq__cgb(gb);
-            }
+                __gb_update_lyc_and_stat_irq__cgb(gb);
             return;
 
         /* DMA Register */

@@ -72,6 +72,31 @@ __core static void $(__gb_check_lyc)(gb_s* gb)
     }
 }
 
+__core static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
+{
+    if (gb->gb_reg.LY == gb->gb_reg.LYC)
+        gb->gb_reg.STAT |= STAT_LYC_COINC;
+    else
+        gb->gb_reg.STAT &= ~STAT_LYC_COINC;
+
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+    {
+        gb->direct.stat_line = 0;
+        return;
+    }
+
+    bool line_is_high =
+        ((gb->gb_reg.STAT & STAT_MODE_0_INTR) && (gb->lcd_mode == LCD_HBLANK)) ||
+        ((gb->gb_reg.STAT & STAT_MODE_1_INTR) && (gb->lcd_mode == LCD_VBLANK)) ||
+        ((gb->gb_reg.STAT & STAT_MODE_2_INTR) && (gb->lcd_mode == LCD_SEARCH_OAM)) ||
+        ((gb->gb_reg.STAT & STAT_LYC_INTR) && (gb->gb_reg.STAT & STAT_LYC_COINC));
+
+    if (!gb->direct.stat_line && line_is_high)
+        gb->gb_reg.IF |= LCDC_INTR;
+
+    gb->direct.stat_line = line_is_high;
+}
+
 __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t addr)
 {
     uint8_t* ram_region_base = gb->ram_base[addr >> 12];
@@ -1987,8 +2012,7 @@ done_instr_timing:
         if (gb->lcd_mode == LCD_VBLANK && gb->gb_reg.LY == 153)
         {
             gb->gb_reg.LY = 0;
-            $(__gb_check_lyc)(gb);
-            $(__gb_update_stat_irq)(gb);
+            $(__gb_update_lyc_and_stat_irq)(gb);
         }
 
         switch (gb->lcd_mode)
@@ -2108,16 +2132,14 @@ done_instr_timing:
 #endif
                     $(__gb_update_stat_irq)(gb);
 
-                    $(__gb_check_lyc)(gb);
-                    $(__gb_update_stat_irq)(gb);
+                    $(__gb_update_lyc_and_stat_irq)(gb);
                 }
                 else
                 {
                     gb->lcd_mode = LCD_SEARCH_OAM;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
-                    $(__gb_check_lyc)(gb);
-                    $(__gb_update_stat_irq)(gb);
+                    $(__gb_update_lyc_and_stat_irq)(gb);
                 }
             }
             break;
@@ -2136,14 +2158,12 @@ done_instr_timing:
 
                     gb->display.window_clear = 0;
 
-                    $(__gb_check_lyc)(gb);
-                    $(__gb_update_stat_irq)(gb);
+                    $(__gb_update_lyc_and_stat_irq)(gb);
                 }
                 else
                 {
                     gb->gb_reg.LY++;
-                    $(__gb_check_lyc)(gb);
-                    $(__gb_update_stat_irq)(gb);
+                    $(__gb_update_lyc_and_stat_irq)(gb);
                 }
             }
             break;
