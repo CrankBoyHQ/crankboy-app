@@ -51,38 +51,39 @@ bool gbScreenRequiresFullRefresh;
 // Upper bound on the number of audio samples we generate per frame.
 #define MAX_AUDIO_SAMPLES_PER_CHUNK ((44100 / 60) * 4)
 
-// --- Parameters for Frame-Time-Based Auto-Interlace System ---
+// --- Auto-Interlace Parameters ---
 
-// Activate interlacing when FPS drops below this fraction of target framerate.
+// Activate interlacing when smoothed FPS drops below this fraction of target.
 #define INTERLACE_ACTIVATE_RATIO 0.95f
 
-// Deactivate interlacing when FPS rises above this fraction of target framerate.
+// Deactivation ratio for probe frames (raw single-frame time vs target).
 #define INTERLACE_DEACTIVATE_RATIO 0.97f
 
-// Frames to lock interlacing on after activation, at 60fps. Halved at 30fps.
-#define INTERLACE_LOCK_FRAMES 30
+// Minimum frames interlacing stays on after activation. Halved at 30fps.
+#define INTERLACE_LOCK_FRAMES 15
 
 // Consecutive slow frames required before activating interlacing.
 #define INTERLACE_SLOW_FRAMES_REQUIRED 5
 
-// --- Parameters for Adaptive Frame Skip System ---
+// Frames between probe attempts when interlacing is active.
+#define INTERLACE_PROBE_INTERVAL 30
 
-// Switch from 60fps to 30fps when FPS drops below this fraction of target.
+// --- Adaptive Frame Skip Parameters ---
+
+// Activate 30fps when smoothed FPS drops below this fraction of 60fps target.
 #define ADAPTIVE_FS_ACTIVATE_RATIO 0.95f
 
-// Switch from 30fps back to 60fps when FPS rises above this fraction of target.
+// Deactivation ratio for probe frames (raw single-frame time vs 60fps).
 #define ADAPTIVE_FS_DEACTIVATE_RATIO 0.97f
 
-// Frames to lock adaptive frame skip after a state change.
-#define ADAPTIVE_FS_LOCK_FRAMES 90
+// Minimum frames 30fps stays on after activation.
+#define ADAPTIVE_FS_LOCK_FRAMES 15
+
+// Consecutive slow frames required before activating 30fps.
 #define ADAPTIVE_FS_ACTIVATE_FRAMES 5
 
-// --- Probe intervals for deactivation checks ---
-// When under mitigation (interlacing or 30fps), periodically render one
-// unmitigated frame to measure real performance instead of extrapolating
-// from the reduced-workload measurement.
-#define INTERLACE_PROBE_INTERVAL 60
-#define ADAPTIVE_FS_PROBE_INTERVAL 120
+// Frames between probe attempts when running at 30fps.
+#define ADAPTIVE_FS_PROBE_INTERVAL 60
 
 CB_GameScene* audioGameScene = NULL;
 
