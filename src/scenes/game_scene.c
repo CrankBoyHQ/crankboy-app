@@ -2059,15 +2059,41 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gb_recompute_cgb_gray_palettes(context->gb);
                     cgb_blend_stage = 1;
 
-                    if (preferences_frame_skip == 2)
+                    if (preferences_frame_skip == 2 && preferences_blend_frames)
                     {
-                        if (preferences_blend_frames)
+                        // --- CGB Adaptive Consecutive-Frame Blending ---
+                        // Frame N (bright)
+                        cgb_blend_stage = 1;
+                        gb_recompute_cgb_gray_palettes(context->gb);
+                        context->gb->lcd = cb_frame_buffer[0];
+                        context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+
+                        bool scroll_changed =
+                            (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                            (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                            (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                            (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+
+                        gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                        gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                        gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                        gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+
+                        if (scroll_changed)
                         {
-                            // --- CGB Adaptive Consecutive-Frame Blending ---
-                            // Frame N (bright)
-                            cgb_blend_stage = 1;
-                            gb_recompute_cgb_gray_palettes(context->gb);
-                            context->gb->lcd = cb_frame_buffer[0];
+                            // Frame N+1 (dark)
+                            cgb_blend_stage = 2;
+                            gb_recompute_cgb_gray_palettes__to_bright(context->gb);
+                            context->gb->lcd = cb_frame_buffer[1];
                             context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                             DTCM_VERIFY_DEBUG();
@@ -2079,106 +2105,61 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
 
-                            bool scroll_changed =
-                                (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                                (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                                (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                                (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                            gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                            gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                            gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                            gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                            if (scroll_changed)
-                            {
-                                // Frame N+1 (dark)
-                                cgb_blend_stage = 2;
-                                gb_recompute_cgb_gray_palettes__to_bright(context->gb);
-                                context->gb->lcd = cb_frame_buffer[1];
-                                context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                                DTCM_VERIFY_DEBUG();
-                                run_frame_function_pointer(context->gb);
-                                DTCM_VERIFY_DEBUG();
-#else
-                                run_frame_function_pointer(context->gb);
-#endif
-                                ++gameScene->next_frames_elapsed;
-                                tick_audio_sync(gameScene);
-
-                                blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                                memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-                            }
-                            else
-                            {
-                                memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
-                            }
+                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                         else
                         {
-                            // --- Adaptive CGB Dual-Output Blending ---
-                            context->gb->lcd = cb_frame_buffer[0];
-                            context->gb->lcd_alt = cb_frame_buffer[1];
-                            context->gb->direct.frame_skip = 0;
-                            context->gb->direct.cgb_dual_output = true;
-
-#ifdef DTCM_ALLOC
-                            DTCM_VERIFY_DEBUG();
-                            run_frame_function_pointer(context->gb);
-                            DTCM_VERIFY_DEBUG();
-#else
-                            run_frame_function_pointer(context->gb);
-#endif
-
-                            context->gb->direct.cgb_dual_output = false;
-                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-
-                            ++gameScene->next_frames_elapsed;
-                            tick_audio_sync(gameScene);
-
-                            bool scroll_changed =
-                                (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                                (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                                (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                                (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                            gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                            gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                            gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                            gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                            if (scroll_changed)
-                            {
-                                context->gb->direct.frame_skip = 1;
-#ifdef DTCM_ALLOC
-                                DTCM_VERIFY_DEBUG();
-                                run_frame_function_pointer(context->gb);
-                                DTCM_VERIFY_DEBUG();
-#else
-                                run_frame_function_pointer(context->gb);
-#endif
-                                ++gameScene->next_frames_elapsed;
-                                tick_audio_sync(gameScene);
-                            }
+                            memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
                         }
                     }
                     else
                     {
-                        // --- Fixed-frame Dual-Output Blending (60fps / 30fps) ---
-                        for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+                        // --- Dual-Output Blending (60fps / 30fps / Adaptive) ---
+                        context->gb->lcd = cb_frame_buffer[0];
+                        context->gb->lcd_alt = cb_frame_buffer[1];
+                        context->gb->direct.frame_skip = 0;
+                        context->gb->direct.cgb_dual_output = true;
+
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+
+                        context->gb->direct.cgb_dual_output = false;
+                        blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                        memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+
+                        bool run_second_frame = false;
+                        if (preferences_frame_skip == 2)
                         {
-                            bool is_shown = (preferences_frame_skip == frame);
-                            context->gb->direct.frame_skip = is_shown ? 0 : 1;
+                            bool scroll_changed =
+                                (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                                (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                                (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                                (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
 
-                            if (is_shown)
-                            {
-                                context->gb->lcd = cb_frame_buffer[0];
-                                context->gb->lcd_alt = cb_frame_buffer[1];
-                                context->gb->direct.cgb_dual_output = true;
-                            }
+                            gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                            gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                            gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                            gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
+                            run_second_frame = scroll_changed;
+                        }
+                        else if (preferences_frame_skip == 1)
+                        {
+                            run_second_frame = true;
+                        }
+
+                        if (run_second_frame)
+                        {
+                            context->gb->direct.frame_skip = 1;
 #ifdef DTCM_ALLOC
                             DTCM_VERIFY_DEBUG();
                             run_frame_function_pointer(context->gb);
@@ -2186,14 +2167,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                             run_frame_function_pointer(context->gb);
 #endif
-
-                            if (is_shown)
-                            {
-                                context->gb->direct.cgb_dual_output = false;
-                                blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                                memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-                            }
-
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
                         }
@@ -2293,16 +2266,39 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 context->gb->lcd = original_lcd;
             }
-            else if (preferences_frame_skip == 2)
+            else if (preferences_frame_skip == 2 && preferences_blend_frames)
             {
-                if (preferences_blend_frames)
-                {
-                    // --- DMG Adaptive Frame Blending ---
-                    static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
-                    uint8_t* original_lcd = context->gb->lcd;
+                // --- DMG Adaptive Frame Blending ---
+                static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
+                uint8_t* original_lcd = context->gb->lcd;
 
-                    // Frame N → buffer[0]
-                    context->gb->lcd = frame_buffer[0];
+                // Frame N → buffer[0]
+                context->gb->lcd = frame_buffer[0];
+                context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+#else
+                run_frame_function_pointer(context->gb);
+#endif
+                ++gameScene->next_frames_elapsed;
+                tick_audio_sync(gameScene);
+
+                bool scroll_changed = (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                                      (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                                      (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                                      (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+
+                gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+
+                if (scroll_changed)
+                {
+                    // Frame N+1 → buffer[1]
+                    context->gb->lcd = frame_buffer[1];
                     context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
@@ -2314,89 +2310,54 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    bool scroll_changed =
-                        (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                        (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                        (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                        (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                    gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                    gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                    gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                    gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                    if (scroll_changed)
-                    {
-                        // Frame N+1 → buffer[1]
-                        context->gb->lcd = frame_buffer[1];
-                        context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                        DTCM_VERIFY_DEBUG();
-                        run_frame_function_pointer(context->gb);
-                        DTCM_VERIFY_DEBUG();
-#else
-                        run_frame_function_pointer(context->gb);
-#endif
-                        ++gameScene->next_frames_elapsed;
-                        tick_audio_sync(gameScene);
-
-                        blend_frames_lut(frame_buffer[0], frame_buffer[1]);
-                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                    }
-                    else
-                    {
-                        memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
-                    }
-
-                    context->gb->lcd = original_lcd;
+                    blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                    memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                 }
                 else
                 {
-                    // run 1 frame, then run 1 more if scrolled
-                    // TODO -- can probably be combined with the 30/60 version below?
-                    context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                    DTCM_VERIFY_DEBUG();
-                    run_frame_function_pointer(context->gb);
-                    DTCM_VERIFY_DEBUG();
-#else
-                    run_frame_function_pointer(context->gb);
-#endif
-                    ++gameScene->next_frames_elapsed;
-                    tick_audio_sync(gameScene);
+                    memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
+                }
 
+                context->gb->lcd = original_lcd;
+            }
+            else
+            {
+                // --- Non-blended logic (60fps / 30fps / Adaptive) ---
+                context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                DTCM_VERIFY_DEBUG();
+                run_frame_function_pointer(context->gb);
+                DTCM_VERIFY_DEBUG();
+#else
+                run_frame_function_pointer(context->gb);
+#endif
+                ++gameScene->next_frames_elapsed;
+                tick_audio_sync(gameScene);
+
+                bool run_second_frame = false;
+                if (preferences_frame_skip == 2)
+                {
                     bool scroll_changed =
                         (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
                         (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
                         (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
                         (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
 
-                    if (scroll_changed)
-                    {
-                        context->gb->direct.frame_skip = 1;
-#ifdef DTCM_ALLOC
-                        DTCM_VERIFY_DEBUG();
-                        run_frame_function_pointer(context->gb);
-                        DTCM_VERIFY_DEBUG();
-#else
-                        run_frame_function_pointer(context->gb);
-#endif
-                        ++gameScene->next_frames_elapsed;
-                        tick_audio_sync(gameScene);
-                    }
-
                     gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
                     gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
                     gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                     gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+
+                    run_second_frame = scroll_changed;
                 }
-            }
-            else
-            {
-                // --- 60fps and non-blended 30fps logic ---
-                for (int frame = 0; frame <= preferences_frame_skip; ++frame)
+                else if (preferences_frame_skip == 1)
                 {
-                    context->gb->direct.frame_skip = (preferences_frame_skip != frame);
+                    run_second_frame = true;
+                }
+
+                if (run_second_frame)
+                {
+                    context->gb->direct.frame_skip = 1;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
