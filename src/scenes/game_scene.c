@@ -68,17 +68,15 @@ bool gbScreenRequiresFullRefresh;
 // --- Parameters for Adaptive Frame Skip System ---
 
 // Switch from 60fps to 30fps when FPS drops below this fraction of target.
-#define ADAPTIVE_FS_ACTIVATE_RATIO 0.94f
+#define ADAPTIVE_FS_ACTIVATE_RATIO 0.95f
 
 // Switch from 30fps back to 60fps when FPS rises above this fraction of target.
-#define ADAPTIVE_FS_DEACTIVATE_RATIO 0.96f
+#define ADAPTIVE_FS_DEACTIVATE_RATIO 0.97f
 
 // Frames to lock adaptive frame skip after a state change.
-#define ADAPTIVE_FS_LOCK_FRAMES 30
-
-// Consecutive frames above/below threshold required to switch state.
+#define ADAPTIVE_FS_LOCK_FRAMES 90
 #define ADAPTIVE_FS_ACTIVATE_FRAMES 5
-#define ADAPTIVE_FS_DEACTIVATE_FRAMES 5
+#define ADAPTIVE_FS_DEACTIVATE_FRAMES 15
 
 CB_GameScene* audioGameScene = NULL;
 
@@ -2088,9 +2086,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (preferences_frame_skip == 1 && preferences_blend_frames)
                 {
                     // --- CGB 30fps Consecutive-Frame Blending ---
-                    // Preserves 30Hz flicker transparency by blending
-                    // alternate emulator frames rather than same frame.
-
                     // Frame N (bright)
                     cgb_blend_stage = 1;
                     gb_recompute_cgb_gray_palettes(context->gb);
@@ -2106,7 +2101,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Frame N+1 (dark) - dark thresholds in normal LUT slots
+                    // Frame N+1 (dark)
                     cgb_blend_stage = 2;
                     gb_recompute_cgb_gray_palettes__to_bright(context->gb);
                     context->gb->lcd = cb_frame_buffer[1];
@@ -2121,7 +2116,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Blend consecutive frames
                     blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
                     memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                 }
@@ -2136,11 +2130,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     if (preferences_frame_skip == 2 && preferences_blend_frames)
                     {
                         // --- CGB Adaptive Consecutive-Frame Blending ---
-                        // Frame N (bright)
-                        cgb_blend_stage = 1;
-                        gb_recompute_cgb_gray_palettes(context->gb);
+                        // Frame N: dual output → buffer[0]=bright, buffer[1]=dark
                         context->gb->lcd = cb_frame_buffer[0];
+                        context->gb->lcd_alt = cb_frame_buffer[1];
                         context->gb->direct.frame_skip = 0;
+                        context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
                         DTCM_VERIFY_DEBUG();
                         run_frame_function_pointer(context->gb);
@@ -2148,6 +2142,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                         run_frame_function_pointer(context->gb);
 #endif
+                        context->gb->direct.cgb_dual_output = false;
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
@@ -2164,11 +2159,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                         if (scroll_changed || gameScene->adaptive_fs_perf_allowed)
                         {
-                            // Frame N+1 (dark)
-                            cgb_blend_stage = 2;
-                            gb_recompute_cgb_gray_palettes__to_bright(context->gb);
-                            context->gb->lcd = cb_frame_buffer[1];
+                            memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
+
+                            // Frame N+1: dual output
+                            context->gb->lcd = cb_frame_buffer[0];
+                            context->gb->lcd_alt = cb_frame_buffer[1];
                             context->gb->direct.frame_skip = 0;
+                            context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
                             DTCM_VERIFY_DEBUG();
                             run_frame_function_pointer(context->gb);
@@ -2176,15 +2173,19 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                             run_frame_function_pointer(context->gb);
 #endif
+                            context->gb->direct.cgb_dual_output = false;
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
 
-                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                            // Blend frame N bright + frame N+1 dark
+                            blend_frames_lut(original_lcd, cb_frame_buffer[1]);
                             memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                         else
                         {
-                            memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
+                            // Blend frame N's own bright + dark (same as dual-output)
+                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                     }
                     else
