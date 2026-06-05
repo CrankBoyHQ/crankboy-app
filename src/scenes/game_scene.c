@@ -191,6 +191,9 @@ uint8_t cgb_gray_lum_min = 0;
 uint8_t cgb_gray_lum_max = 93;
 int8_t cgb_gray_bias = 0;
 
+static uint8_t* rom_pool = NULL;
+static size_t rom_pool_size = 0;
+
 const uint16_t CB_dither_lut_c0[] = {
     (0b1111 << 0) | (0b0111 << 4) | (0b0001 << 8) | (0b0000 << 12),
     (0b1111 << 0) | (0b0101 << 4) | (0b0101 << 8) | (0b0000 << 12),
@@ -1028,7 +1031,22 @@ static uint8_t* read_rom_to_ram(
     *o_rom_size = rom_size;
     playdate->file->seek(rom_file, 0, SEEK_SET);
 
-    uint8_t* rom = cb_malloc(rom_size);
+    uint8_t* rom;
+    if (rom_pool_size >= (size_t)rom_size)
+    {
+        rom = rom_pool;
+        rom_pool = NULL;
+    }
+    else
+    {
+        rom = cb_malloc(rom_size);
+        if (rom)
+        {
+            cb_free(rom_pool);
+            rom_pool = NULL;
+            rom_pool_size = (size_t)rom_size;
+        }
+    }
 
     if (!rom || playdate->file->read(rom_file, rom, rom_size) != rom_size)
     {
@@ -1074,6 +1092,7 @@ static uint8_t* read_rom_to_ram(
             playdate->system->logToConsole("Decompressed ROM: %s", filename);
         }
 
+        rom_pool_size = (size_t)gbz.original_size;
         return decompressed_rom;
     }
     else
@@ -3883,7 +3902,8 @@ static void CB_GameScene_free(void* object)
 
     if (context->rom)
     {
-        cb_free(context->rom);
+        cb_free(rom_pool);
+        rom_pool = context->rom;
     }
 
     if (context->cart_ram)
