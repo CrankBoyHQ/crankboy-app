@@ -3906,6 +3906,9 @@ static void CB_GameScene_free(void* object)
     cb_free(context);
     cb_free(gameScene);
 
+#if ITCM_CORE
+    core_itcm_reloc = NULL;
+#endif
     dtcm_pocket_fill_and_reset();
     dtcm_deinit();
 
