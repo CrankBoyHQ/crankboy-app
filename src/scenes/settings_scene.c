@@ -1936,8 +1936,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         .description =
             "Skips displaying every second frame. Greatly improves performance for most games.\n\n"
             "Can generally be disabled if a game doesn't feature scrolling backgrounds.\n\n"
-            "\"Adaptive\": experimental, switches between 30/60 depending on if the screen is "
-            "scrolling etc.",
+            "\"Adaptive\": switches between 30/60 depending on if the screen is scrolling etc.",
         .pref_var = &preferences_frame_skip,
         .max_value = 3,
         .rebuild_when_changed = 1,

@@ -165,6 +165,10 @@ typedef struct CB_GameScene
     uint8_t adaptive_prev_wx;
     uint8_t adaptive_prev_bgp;
 
+    int adaptive_fs_headroom_counter;
+    int adaptive_fs_lock_frames;
+    bool adaptive_fs_perf_allowed;
+
     uint32_t patches_hash;
 
     unsigned fade_frames;
@@ -184,7 +188,7 @@ bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
 struct CB_Game;
 void show_game_script_info(const char* rompath, const char* name_short);
 
-void cb_render_fps(bool interlace_active);
+void cb_render_fps(bool interlace_active, bool adaptive_fs_active);
 
 void cb_render_boot_fade(unsigned fade_frames, bool fade_white);
 

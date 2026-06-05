@@ -65,6 +65,21 @@ bool gbScreenRequiresFullRefresh;
 // Consecutive slow frames required before activating interlacing.
 #define INTERLACE_SLOW_FRAMES_REQUIRED 5
 
+// --- Parameters for Adaptive Frame Skip System ---
+
+// Switch from 60fps to 30fps when FPS drops below this fraction of target.
+#define ADAPTIVE_FS_ACTIVATE_RATIO 0.94f
+
+// Switch from 30fps back to 60fps when FPS rises above this fraction of target.
+#define ADAPTIVE_FS_DEACTIVATE_RATIO 0.96f
+
+// Frames to lock adaptive frame skip after a state change.
+#define ADAPTIVE_FS_LOCK_FRAMES 30
+
+// Consecutive frames above/below threshold required to switch state.
+#define ADAPTIVE_FS_ACTIVATE_FRAMES 5
+#define ADAPTIVE_FS_DEACTIVATE_FRAMES 5
+
 CB_GameScene* audioGameScene = NULL;
 
 void CB_reset_audio_sync_state(void)
@@ -629,6 +644,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     gameScene->interlace_tendency_counter = 0;
     gameScene->interlace_lock_frames_remaining = 0;
+
+    gameScene->adaptive_fs_headroom_counter = 0;
+    gameScene->adaptive_fs_lock_frames = 0;
+    gameScene->adaptive_fs_perf_allowed = false;
 
     gameScene->isCurrentlySaving = false;
     gameScene->quitGameModalConfirmOverride = false;
@@ -1662,6 +1681,61 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
     }
 
+    // --- Adaptive Frame Skip: Frame-Time Decision ---
+    // Uses CB_App->avg_dt_raw to detect when frame times are too tight
+    // for 60fps, dropping to 30fps to maintain performance.
+    // Mirrors the auto-interlace hysteresis pattern.
+    if (preferences_frame_skip == 2)
+    {
+        float fps = 1.0f / CB_App->avg_dt_raw;
+        float target_fps = (gameScene->next_frames_elapsed == 2) ? 30.0f : 60.0f;
+        float ratio = fps / target_fps;
+
+        if (gameScene->adaptive_fs_lock_frames > 0)
+        {
+            gameScene->adaptive_fs_lock_frames--;
+            gameScene->adaptive_fs_headroom_counter = 0;
+        }
+        else if (gameScene->adaptive_fs_perf_allowed)
+        {
+            // Currently at 30fps. Switch back to 60fps if
+            // performance has recovered.
+            if (ratio > ADAPTIVE_FS_DEACTIVATE_RATIO)
+            {
+                gameScene->adaptive_fs_headroom_counter++;
+                if (gameScene->adaptive_fs_headroom_counter >= ADAPTIVE_FS_DEACTIVATE_FRAMES)
+                {
+                    gameScene->adaptive_fs_perf_allowed = false;
+                    gameScene->adaptive_fs_headroom_counter = 0;
+                    gameScene->adaptive_fs_lock_frames = ADAPTIVE_FS_LOCK_FRAMES;
+                }
+            }
+            else
+            {
+                gameScene->adaptive_fs_headroom_counter = 0;
+            }
+        }
+        else
+        {
+            // Currently at 60fps. Switch to 30fps if frame times
+            // are too tight to sustain 60fps.
+            if (ratio < ADAPTIVE_FS_ACTIVATE_RATIO)
+            {
+                gameScene->adaptive_fs_headroom_counter++;
+                if (gameScene->adaptive_fs_headroom_counter >= ADAPTIVE_FS_ACTIVATE_FRAMES)
+                {
+                    gameScene->adaptive_fs_perf_allowed = true;
+                    gameScene->adaptive_fs_headroom_counter = 0;
+                    gameScene->adaptive_fs_lock_frames = ADAPTIVE_FS_LOCK_FRAMES;
+                }
+            }
+            else
+            {
+                gameScene->adaptive_fs_headroom_counter = 0;
+            }
+        }
+    }
+
     context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
 
     if (activate_dynamic_rate)
@@ -2088,7 +2162,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                         gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                        if (scroll_changed)
+                        if (scroll_changed || gameScene->adaptive_fs_perf_allowed)
                         {
                             // Frame N+1 (dark)
                             cgb_blend_stage = 2;
@@ -2150,7 +2224,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                             gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                            run_second_frame = scroll_changed;
+                            run_second_frame =
+                                scroll_changed || gameScene->adaptive_fs_perf_allowed;
                         }
                         else if (preferences_frame_skip == 1)
                         {
@@ -2295,7 +2370,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                 gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                if (scroll_changed)
+                if (scroll_changed || gameScene->adaptive_fs_perf_allowed)
                 {
                     // Frame N+1 → buffer[1]
                     context->gb->lcd = frame_buffer[1];
@@ -2348,7 +2423,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                     gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                    run_second_frame = scroll_changed;
+                    run_second_frame = scroll_changed || gameScene->adaptive_fs_perf_allowed;
                 }
                 else if (preferences_frame_skip == 1)
                 {
@@ -2659,7 +2734,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_display_fps)
             {
-                cb_render_fps(context->gb->direct.dynamic_rate_enabled);
+                cb_render_fps(
+                    context->gb->direct.dynamic_rate_enabled,
+                    preferences_frame_skip == 2 && gameScene->next_frames_elapsed == 2
+                );
             }
         }
     }
@@ -3993,7 +4071,7 @@ bool cb_boot_fade_initial_white(int boot_fade_pref)
     return init_fade_color[boot_fade_pref] == kColorWhite;
 }
 
-__section__(".text.tick") void cb_render_fps(bool interlace_active)
+__section__(".text.tick") void cb_render_fps(bool interlace_active, bool adaptive_fs_active)
 {
     if (!numbers_bmp)
     {
@@ -4044,6 +4122,11 @@ __section__(".text.tick") void cb_render_fps(bool interlace_active)
     playdate->graphics->setFont(CB_App->labelFont);
     playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
     playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
+    if (adaptive_fs_active)
+    {
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText("a", 1, kUTF8Encoding, 26, 1);
+    }
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
     for (int y = 0; y < height; ++y)
