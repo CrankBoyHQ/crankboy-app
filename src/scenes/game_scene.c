@@ -2847,7 +2847,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
 
             errorMessages[errorMessagesCount++] = "";
-            errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to Library";
+            if (CB_App->bundled_rom)
+            {
+                errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to quit";
+            }
+            else
+            {
+                errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to Library";
+            }
 
             playdate->graphics->clear(kColorWhite);
 

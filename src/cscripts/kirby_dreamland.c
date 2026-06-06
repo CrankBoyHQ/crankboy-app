@@ -23,6 +23,11 @@
 // y speed - d078
 // input - ff8b
 // flags -- ff8f
+// player state flags - ff8e
+
+#define KIRBY_HOLDING_MASK 0x0C
+#define KIRBY_HOLDING_VALUE 0x08
+#define flip_spit_enabled (preferences_script_A == 0)
 
 // custom data for script.
 typedef struct ScriptData
@@ -62,8 +67,8 @@ typedef struct ScriptData
 // this define is used by SCRIPT_BREAKPOINT
 #define USERDATA ScriptData* data
 
-#define ROM_US_EU
-#define ROM_JP
+#define CFG_US 0
+#define CFG_JP 1
 
 static float circle_difference(float a, float b)
 {
@@ -77,7 +82,7 @@ static float circle_difference(float a, float b)
 }
 
 // can also start the game with 'start'
-SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x4096))
+SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x4096), BANK_ADDR(6, 0x4096))
 {
     if ($A == 0x8)
     {
@@ -86,27 +91,27 @@ SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x4096))
 }
 
 // force immediate unpause
-SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x460E))
+SCRIPT_BREAKPOINT(BANK_ADDR(6, 0x460E), BANK_ADDR(6, 0x460E))
 {
     $A = 0x8;
 }
 
 // suck via crank
-SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x437F))
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x437F), BANK_ADDR(1, 0x437C))
 {
     if (data->suck)
         $A |= K_BUTTON_B;
 }
 
 // continue to suck via crank
-SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x479C))
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x479C), BANK_ADDR(1, 0x4799))
 {
     if (data->suck)
         $A |= K_BUTTON_B;
 }
 
 // Start flying via crank
-SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4494))
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4494), BANK_ADDR(1, 0x4491))
 {
     if (data->crank_angle >= 0 && data->crank_hyst >= 0)
     {
@@ -120,7 +125,7 @@ SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x4494))
     }
 }
 
-SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3c8))
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3c8), BANK_ADDR(0, 0x3c8))
 {
     if (data->fly_thrust_enabled && data->fly_thrust < 0)
     {
@@ -128,7 +133,7 @@ SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3c8))
     }
 }
 
-SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3FB))
+SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3FB), BANK_ADDR(0, 0x3FB))
 {
     if (data->fly_thrust_enabled && data->fly_thrust >= 0)
     {
@@ -136,7 +141,7 @@ SCRIPT_BREAKPOINT(BANK_ADDR(0, 0x3FB))
     }
 }
 
-SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x467E))
+SCRIPT_BREAKPOINT(BANK_ADDR(1, 0x467E), BANK_ADDR(1, 0x467B))
 {
     if (data->continue_flying)
     {
@@ -243,13 +248,28 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 
 #define PLACEHOLDER 0x00
 
+    const unsigned config = strcmp(header_name, "KIRBY DREAM LAND") ? CFG_JP : CFG_US;
+
     data->patch_no_door = code_replacement(0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true);
 
-    data->patch_start_flying = code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
+    data->patch_start_flying =
+        (config == CFG_JP)
+            ? code_replacement(1, 0x4495, (0x27, 0x45), (0x97, 0x44), true)
+            : code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
 
-    SET_BREAKPOINTS(!!strcmp(header_name, "KIRBY DREAM LAND"));
+    SET_BREAKPOINTS(config);
 
     return data;
+}
+
+static void on_settings(ScriptData* data)
+{
+    const char* off_on_options[] = {"Reversed", "Normal", NULL};
+    script_custom_setting_add(
+        "Spit Crank",
+        "While Kirby has something inhaled, reverse crank inputs",
+        off_on_options
+    );
 }
 
 static void on_end(gb_s* gb, ScriptData* data)
@@ -315,15 +335,24 @@ static void on_tick(gb_s* gb, ScriptData* data)
         data->crank_hyst = new_crank_angle;
     }
 
+    uint8_t kirby_state = ram_peek(0xFF8E);
+
+    bool ignore_crank = (kirby_state & KIRBY_HOLDING_MASK) == KIRBY_HOLDING_MASK;
+
+    bool flip_spit =
+        flip_spit_enabled && (kirby_state & KIRBY_HOLDING_MASK) == KIRBY_HOLDING_VALUE;
+    float suck_dir = flip_spit ? -1.0f : 1.0f;
+
     // crank to suck
-    if (data->crank_angle >= 0 && data->crank_hyst >= 0)
+    if (!ignore_crank && data->crank_angle >= 0 && data->crank_hyst >= 0)
     {
         if (data->suck ||
-            circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta <=
+            suck_dir *
+                    (circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta) <=
                 -MIN_HYST_CRANK_BEGIN_SUCK)
         {
             data->suck = false;
-            if (data->crank_delta_smooth < -MIN_RATE_CRANK_SUCK)
+            if (suck_dir * data->crank_delta_smooth < -MIN_RATE_CRANK_SUCK)
             {
                 data->suck = true;
             }
@@ -339,9 +368,12 @@ static void on_tick(gb_s* gb, ScriptData* data)
     }
 
     // crank to flap
+    // While spitting (flip_spit) the crank is dedicated to the spit action and
+    // Kirby cannot fly with a full mouth, so suppress flap to avoid the same
+    // forward rotation also triggering flight inputs.
     int fly_thrust;
     bool has_fly_thrust = false;
-    if (($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0)
+    if (!ignore_crank && !flip_spit && ($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0)
     {
         if (data->crank_angle >= 0 && data->crank_hyst >= 0)
         {
@@ -582,17 +614,19 @@ C_SCRIPT{
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
+    .on_settings = (CS_OnSettings)on_settings,
     .on_end = (CS_OnEnd)on_end,
 };
 
 C_SCRIPT{
-    .rom_name = "HOSHI NO KIRBY",
+    .rom_name = "HOSHINOKA-BI",
     .description = DESCRIPTION,
-    .experimental = true,
+    .experimental = false,
     .launch_system = ScriptPreferredLaunchSystem_DMG,
     .launch_color = ScriptPreferredLaunchColor_White,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,
+    .on_settings = (CS_OnSettings)on_settings,
     .on_end = (CS_OnEnd)on_end,
 };
