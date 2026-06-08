@@ -453,20 +453,21 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
     if (pushed & kButtonUp)
     {
+        int maxIndex = self->game->coverPath ? 2 : 1;
         if (self->cursorIndex > 0)
-        {
             self->cursorIndex--;
-            cb_play_ui_sound(CB_UISound_Navigate);
-        }
+        else
+            self->cursorIndex = maxIndex;
+        cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonDown)
     {
         int maxIndex = self->game->coverPath ? 2 : 1;
         if (self->cursorIndex < maxIndex)
-        {
             self->cursorIndex++;
-            cb_play_ui_sound(CB_UISound_Navigate);
-        }
+        else
+            self->cursorIndex = 0;
+        cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonA)
     {
