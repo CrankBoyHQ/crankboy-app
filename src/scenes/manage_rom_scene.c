@@ -333,7 +333,7 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
 
     if (idx == 0)
     {
-        msg = aprintf("Delete this ROM?\n%s", self->basename ? self->basename : "");
+        msg = aprintf("Delete this ROM?\n\n%s", self->basename ? self->basename : "");
         cb = cb_delete_rom_confirmed;
     }
     else if (idx == 1)
@@ -366,8 +366,21 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     cb_free(msg);
     if (modal)
     {
-        modal->width = 280;
-        modal->height = 140;
+        if (idx == 0)
+        {
+            modal->width = 320;
+            modal->height = 170;
+        }
+        else if (idx == 2)
+        {
+            modal->width = 240;
+            modal->height = 120;
+        }
+        else
+        {
+            modal->width = 280;
+            modal->height = 140;
+        }
         CB_presentModal(modal->scene);
     }
 }
