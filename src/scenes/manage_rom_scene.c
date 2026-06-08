@@ -321,6 +321,7 @@ static void delete_cover_confirmed(void* ud, int option)
         }
     }
     cb_clear_global_cover_cache();
+    self->cursorIndex = 1;
 }
 
 static const char* yes_no_options[] = {"No", "Yes", NULL};
