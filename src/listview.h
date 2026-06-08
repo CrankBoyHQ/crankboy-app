@@ -91,6 +91,7 @@ typedef struct
 
     int paddingTop;
     int paddingBottom;
+    int textInset;
 
     float textScrollTime;
     float textScrollPause;

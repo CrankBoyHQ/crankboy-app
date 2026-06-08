@@ -238,7 +238,7 @@ static char* context_top_level_hint(CB_HomebrewHubScene* pds, HomebrewHubContext
 
 static void draw_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, int x, bool active)
 {
-    int left_margin = 4;
+    int left_margin = 0;
     int right_margin = 0;
 
     int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
@@ -248,6 +248,7 @@ static void draw_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, i
     };
 
     context->list->frame = frame;
+    context->list->textInset = 8;
     context->list->needsDisplay = true;
 
     CB_ListView_draw(context->list);
@@ -1051,7 +1052,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
 
         if (context->list)
         {
-            context->list->paddingTop = list_padding_top;
+            context->list->paddingTop = (context->type == HBSCT_LIST_SEARCH) ? 8 : list_padding_top;
             CB_ListView_invalidateLayout(context->list);
         }
 
@@ -1120,7 +1121,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         if (hbs->context_depth > 0)
         {
             HomebrewHubContext* ctx = &hbs->context[hbs->context_depth - 1];
-            if (ctx->type == HBSCT_LIST_SEARCH && ctx->list->selectedItem > 0)
+            if (ctx->type == HBSCT_LIST_SEARCH)
                 base_padding = 15;
         }
         int hint_padding_top = base_padding - (int)(9.0f * hbs->header_animation_p);

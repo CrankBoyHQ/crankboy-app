@@ -169,7 +169,7 @@ static void draw_common(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    int left_margin = 4;
+    int left_margin = 0;
     int right_margin = 0;
 
     int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
@@ -179,6 +179,7 @@ static void draw_common(
     };
 
     context->list->frame = frame;
+    context->list->textInset = 8;
     context->list->needsDisplay = true;
 
     CB_ListView_draw(context->list);
@@ -1057,7 +1058,7 @@ static void context_patch_files_browse_draw(
 
     CB_ListView* listView = context->list;
     int fontHeight = playdate->graphics->getFontHeight(PDS_FONT);
-    int left_margin = 4;
+    int left_margin = listView->textInset;
 
     playdate->graphics->setClipRect(
         listView->frame.x, listView->frame.y, listView->frame.width, listView->frame.height

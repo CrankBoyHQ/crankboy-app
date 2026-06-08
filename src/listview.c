@@ -15,7 +15,6 @@ static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bo
 static void CB_ListItem_super_free(CB_ListItem* item);
 
 static int CB_ListView_rowHeight = 32;
-static int CB_ListView_inset = 4;
 static int CB_ListView_scrollInset = 2;
 static int CB_ListView_scrollIndicatorWidth = 2;
 static int CB_ListView_scrollIndicatorMinHeight = 40;
@@ -71,6 +70,7 @@ CB_ListView* CB_ListView_new(void)
 
     listView->paddingTop = 0;
     listView->paddingBottom = 0;
+    listView->textInset = 4;
 
     listView->hideScrollIndicator = false;
     listView->font = CB_App->subheadFont;
@@ -339,8 +339,8 @@ void CB_ListView_update(CB_ListView* listView)
                 listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
             );
             int availableWidth = listView->scroll.active
-                                     ? listView->frame.width - (CB_ListView_inset * 2)
-                                     : listView->frame.width - CB_ListView_inset -
+                                     ? listView->frame.width - (listView->textInset * 2)
+                                     : listView->frame.width - listView->textInset -
                                            (CB_ListView_scrollInset * 2) -
                                            (CB_ListView_scrollIndicatorWidth * 2);
 
@@ -560,7 +560,7 @@ void CB_ListView_draw(CB_ListView* listView)
                 }
                 else
                 {
-                    int textX = listX + CB_ListView_inset;
+                    int textX = listX + listView->textInset;
                     int textY = rowY + (float)(item->height -
                                                playdate->graphics->getFontHeight(listView->font)) /
                                            2;
@@ -581,7 +581,8 @@ void CB_ListView_draw(CB_ListView* listView)
                         rightSidePadding = 1;
                     }
 
-                    int maxTextWidth = listView->frame.width - CB_ListView_inset - rightSidePadding;
+                    int maxTextWidth =
+                        listView->frame.width - listView->textInset - rightSidePadding;
 
                     if (maxTextWidth < 0)
                     {
