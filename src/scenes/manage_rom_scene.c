@@ -326,15 +326,87 @@ static void delete_cover_confirmed(void* ud, int option)
 
 static const char* yes_no_options[] = {"No", "Yes", NULL};
 
+static int count_wrapped_lines(const char* text, int max_width, LCDFont* font)
+{
+    if (!text || !*text)
+        return 0;
+    int lines = 0;
+    int remaining = (int)strlen(text);
+    const char* p = text;
+
+    while (remaining > 0)
+    {
+        int w = playdate->graphics->getTextWidth(font, p, remaining, kUTF8Encoding, 0);
+        if (w <= max_width)
+        {
+            lines++;
+            break;
+        }
+        int fit = 0;
+        for (int i = 1; i <= remaining; i++)
+        {
+            if (playdate->graphics->getTextWidth(font, p, i, kUTF8Encoding, 0) > max_width)
+                break;
+            fit = i;
+        }
+        int break_at = fit;
+        for (int i = fit; i > 0; i--)
+        {
+            if (p[i - 1] == ' ')
+            {
+                break_at = i;
+                break;
+            }
+        }
+        if (break_at < 1)
+            break_at = (fit > 0) ? fit : 1;
+        lines++;
+        remaining -= break_at;
+        p += break_at;
+        while (remaining > 0 && *p == ' ')
+        {
+            p++;
+            remaining--;
+        }
+    }
+
+    return lines;
+}
+
 static void invoke_action(CB_ManageRomScene* self, int idx)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
     char* msg = NULL;
     CB_ModalCallback cb = NULL;
+    int filename_lines = 1;
 
     if (idx == 0)
     {
-        msg = aprintf("Delete this ROM?\n\n%s", self->basename ? self->basename : "");
+        const char* display_name = self->basename ? self->basename : "";
+        int text_w = 320 - 2 * 24;  // modal width minus margins
+        LCDFont* font = CB_App->bodyFont;
+        filename_lines = count_wrapped_lines(display_name, text_w, font);
+        char* truncated_name = NULL;
+
+        if (filename_lines > 3)
+        {
+            int len = (int)strlen(display_name);
+            while (len > 0)
+            {
+                truncated_name = aprintf("%.*s...", len, display_name);
+                if (count_wrapped_lines(truncated_name, text_w, font) <= 3)
+                    break;
+                cb_free(truncated_name);
+                truncated_name = NULL;
+                len--;
+            }
+            if (truncated_name)
+                display_name = truncated_name;
+            filename_lines = 3;
+        }
+
+        msg = aprintf("Delete this ROM?\n\n%s", display_name);
+        cb_free(truncated_name);
         cb = cb_delete_rom_confirmed;
     }
     else if (idx == 1)
@@ -369,8 +441,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     {
         if (idx == 0)
         {
+            int line_height = playdate->graphics->getFontHeight(CB_App->bodyFont);
+            int text_height = (2 + filename_lines) * line_height;
             modal->width = 320;
-            modal->height = 170;
+            modal->height = 100 + text_height;
         }
         else if (idx == 2)
         {
