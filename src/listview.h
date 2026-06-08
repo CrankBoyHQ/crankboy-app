@@ -62,6 +62,7 @@ typedef struct
     char* title;
     float textScrollOffset;
     bool needsTextScroll;
+    bool is_header;
     union
     {
         void* ptr;

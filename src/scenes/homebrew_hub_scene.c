@@ -199,9 +199,9 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                     }
 
                     return aprintf(
-                        "Title: %s\nDeveloper: %s\nPlatform: %s\nDate: %s",
-                        title ? title : "unknown", developer ? developer : "unknown",
-                        platform ? platform : "unknown", date ? date : "unknown"
+                        "Title: %s\nDev: %s\nType: %s\nDate: %s", title ? title : "unknown",
+                        developer ? developer : "unknown", platform ? platform : "unknown",
+                        date ? date : "unknown"
                     );
                 }
             }
@@ -737,9 +737,10 @@ static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
     CB_ListView_clear(context->list);
 
-    char* label = (hbs->max_pages) ? aprintf("< Page %d of %d >", context->i, hbs->max_pages)
-                                   : aprintf("< Page %d >", context->i);
+    char* label = (hbs->max_pages) ? aprintf("Page %d of %d", context->i, hbs->max_pages)
+                                   : aprintf("Page %d", context->i);
     CB_ListItemButton* itemButton = CB_ListItemButton_new(label);
+    itemButton->is_header = true;
     cb_free(label);
     array_push(context->list->items, itemButton);
 }
@@ -933,7 +934,8 @@ static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform)
 
     http_search(hbs, context->i, platform);
 
-    itemButton = CB_ListItemButton_new("< Page 1 >");
+    itemButton = CB_ListItemButton_new("Page 1");
+    itemButton->is_header = true;
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);
@@ -1113,8 +1115,15 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
         int rightPaneX = kDividerX + kRightPanePadding;
 
-        // Calculate dynamic top padding for the RIGHT hint pane (29px -> 20px)
-        int hint_padding_top = 29 - (int)(9.0f * hbs->header_animation_p);
+        // Calculate dynamic top padding for the RIGHT hint pane (29px -> 15px)
+        int base_padding = 29;
+        if (hbs->context_depth > 0)
+        {
+            HomebrewHubContext* ctx = &hbs->context[hbs->context_depth - 1];
+            if (ctx->type == HBSCT_LIST_SEARCH && ctx->list->selectedItem > 0)
+                base_padding = 15;
+        }
+        int hint_padding_top = base_padding - (int)(9.0f * hbs->header_animation_p);
         int rightPaneY = header_y + hint_padding_top;
 
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);

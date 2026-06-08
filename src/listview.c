@@ -520,52 +520,92 @@ void CB_ListView_draw(CB_ListView* listView)
                     playdate->graphics->setDrawMode(kDrawModeFillBlack);
                 }
 
-                int textX = listX + CB_ListView_inset;
-                int textY =
-                    rowY +
-                    (float)(item->height - playdate->graphics->getFontHeight(listView->font)) / 2;
-
                 playdate->graphics->setFont(listView->font);
 
-                int rightSidePadding;
-
-                if (listView->scroll.indicatorVisible)
+                if (button->is_header)
                 {
-                    // If the scrollbar is visible, the padding must be wide enough
-                    // to contain the scrollbar itself plus its inset.
-                    rightSidePadding = CB_ListView_scrollIndicatorWidth + CB_ListView_scrollInset;
-                }
-                else
-                {
-                    // If no scrollbar, we just need a 1-pixel gap to avoid
-                    // text touching the divider line on the right.
-                    rightSidePadding = 1;
-                }
-
-                int maxTextWidth = listView->frame.width - CB_ListView_inset - rightSidePadding;
-
-                if (maxTextWidth < 0)
-                {
-                    maxTextWidth = 0;
-                }
-
-                playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
-
-                if (selected && button->needsTextScroll)
-                {
-                    int scrolledX = textX - (int)button->textScrollOffset;
-                    playdate->graphics->drawText(
-                        button->title, strlen(button->title), kUTF8Encoding, scrolledX, textY
+                    float nameWidth = playdate->graphics->getTextWidth(
+                        listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
                     );
-                }
-                else
-                {
+                    int textX = listX + listView->frame.width / 2 - nameWidth / 2;
+                    int textY = rowY + (float)(item->height -
+                                               playdate->graphics->getFontHeight(listView->font)) /
+                                           2;
+                    int fontHeight = playdate->graphics->getFontHeight(listView->font);
+                    int lineY = textY + (fontHeight / 2);
+                    int padding = 5;
+
+                    int rightArrowWidth =
+                        playdate->graphics->getTextWidth(listView->font, ">", 1, kUTF8Encoding, 0);
+
+                    playdate->graphics->drawText("‹", 1, kUTF8Encoding, listX + 2, textY + 2);
+                    playdate->graphics->drawText(
+                        "›", 1, kUTF8Encoding, listX + listView->frame.width - rightArrowWidth - 6,
+                        textY + 2
+                    );
+
                     playdate->graphics->drawText(
                         button->title, strlen(button->title), kUTF8Encoding, textX, textY
                     );
-                }
 
-                playdate->graphics->clearClipRect();
+                    playdate->graphics->drawLine(
+                        listX + 16, lineY, textX - padding, lineY, 1,
+                        selected ? kColorWhite : kColorBlack
+                    );
+
+                    playdate->graphics->drawLine(
+                        textX + nameWidth + padding, lineY, listX + listView->frame.width - 20,
+                        lineY, 1, selected ? kColorWhite : kColorBlack
+                    );
+                }
+                else
+                {
+                    int textX = listX + CB_ListView_inset;
+                    int textY = rowY + (float)(item->height -
+                                               playdate->graphics->getFontHeight(listView->font)) /
+                                           2;
+
+                    int rightSidePadding;
+
+                    if (listView->scroll.indicatorVisible)
+                    {
+                        // If the scrollbar is visible, the padding must be wide enough
+                        // to contain the scrollbar itself plus its inset.
+                        rightSidePadding =
+                            CB_ListView_scrollIndicatorWidth + CB_ListView_scrollInset;
+                    }
+                    else
+                    {
+                        // If no scrollbar, we just need a 1-pixel gap to avoid
+                        // text touching the divider line on the right.
+                        rightSidePadding = 1;
+                    }
+
+                    int maxTextWidth = listView->frame.width - CB_ListView_inset - rightSidePadding;
+
+                    if (maxTextWidth < 0)
+                    {
+                        maxTextWidth = 0;
+                    }
+
+                    playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
+
+                    if (selected && button->needsTextScroll)
+                    {
+                        int scrolledX = textX - (int)button->textScrollOffset;
+                        playdate->graphics->drawText(
+                            button->title, strlen(button->title), kUTF8Encoding, scrolledX, textY
+                        );
+                    }
+                    else
+                    {
+                        playdate->graphics->drawText(
+                            button->title, strlen(button->title), kUTF8Encoding, textX, textY
+                        );
+                    }
+
+                    playdate->graphics->clearClipRect();
+                }
 
                 playdate->graphics->setDrawMode(kDrawModeCopy);
             }
