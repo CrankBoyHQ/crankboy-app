@@ -8,16 +8,21 @@
 #include "modal.h"
 #include "settings_scene.h"
 
+#include <math.h>
 #include <string.h>
 
+#define HEADER_ANIMATION_RATE 2.8f
+#define HEADER_HEIGHT 18
 #define INFO_LEFT_X 14
 #define INFO_VALUE_X 105
-#define INFO_TOP_Y 30
-#define INFO_ROW_H 19
-#define ACTION_TOP_Y 148
+#define INFO_TOP_Y 9
+#define INFO_ROW_H 21
+#define ACTION_TOP_Y 141
 #define ACTION_ROW_H 22
-#define ACTION_WIDTH 240
-#define FOOTER_Y 222
+#define ACTION_WIDTH 200
+
+static const uint8_t kDisabledDither[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                                            0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
 
 static const struct
 {
@@ -316,14 +321,6 @@ static void delete_cover_confirmed(void* ud, int option)
         }
     }
     cb_clear_global_cover_cache();
-
-    // cover is gone; drop the 3rd action row
-    if (self->actionCount > 3)
-    {
-        self->actionCount = 3;
-        if (self->cursorIndex >= self->actionCount)
-            self->cursorIndex = self->actionCount - 1;
-    }
 }
 
 static const char* yes_no_options[] = {"No", "Yes", NULL};
@@ -336,14 +333,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
 
     if (idx == 0)
     {
-        self->dismiss = true;
-    }
-    else if (idx == 1)
-    {
         msg = aprintf("Delete this ROM?\n%s", self->basename ? self->basename : "");
         cb = cb_delete_rom_confirmed;
     }
-    else if (idx == 2)
+    else if (idx == 1)
     {
         int sidx = self->save_slot_at_open;
         if (sidx < 0)
@@ -354,8 +347,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
         msg = aprintf("Confirm delete\nsave data for %s?", slot_label);
         cb = clear_save_confirmed;
     }
-    else if (idx == 3)
+    else if (idx == 2)
     {
+        if (!self->game->coverPath)
+            return;
         msg = aprintf("Delete this cover art?");
         cb = delete_cover_confirmed;
     }
@@ -377,7 +372,7 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     }
 }
 
-static void draw_action_row(int y, const char* label, bool selected)
+static void draw_action_row(int y, const char* label, bool selected, bool disabled)
 {
     int x = (LCD_COLUMNS - ACTION_WIDTH) / 2;
     if (selected)
@@ -396,24 +391,50 @@ static void draw_action_row(int y, const char* label, bool selected)
     int tx = x + (ACTION_WIDTH - tw) / 2;
     int ty = y + (ACTION_ROW_H - fh) / 2 + 1;
     playdate->graphics->drawText(label, strlen(label), kUTF8Encoding, tx, ty);
+
+    if (disabled && !selected)
+    {
+        playdate->graphics->fillRect(x, y, ACTION_WIDTH, ACTION_ROW_H, (LCDColor)kDisabledDither);
+    }
+
     playdate->graphics->setDrawMode(kDrawModeCopy);
 }
 
 static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
 {
-    (void)u32enc_dt;
+    float dt = UINT32_AS_FLOAT(u32enc_dt);
     CB_ManageRomScene* self = object;
-    if (CB_App->pendingScene || self->dismiss)
+
+    if (CB_App->pendingScene)
+        return;
+
+    if (self->is_dismissing)
+    {
+        TOWARD(self->header_animation_p, 0.0f, dt * HEADER_ANIMATION_RATE);
+        if (self->header_animation_p == 0.0f)
+        {
+            CB_dismiss(self->scene);
+            return;
+        }
+    }
+    else if (self->dismiss)
     {
         CB_dismiss(self->scene);
         return;
+    }
+    else
+    {
+        TOWARD(self->header_animation_p, 1.0f, dt * HEADER_ANIMATION_RATE);
     }
 
     PDButtons pushed = CB_App->buttons_pressed;
     if (pushed & kButtonB)
     {
         cb_play_ui_sound(CB_UISound_Navigate);
-        self->dismiss = true;
+        if (self->started_without_header)
+            self->is_dismissing = true;
+        else
+            self->dismiss = true;
         return;
     }
     if (pushed & kButtonUp)
@@ -426,7 +447,8 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
     if (pushed & kButtonDown)
     {
-        if (self->cursorIndex < self->actionCount - 1)
+        int maxIndex = self->game->coverPath ? 2 : 1;
+        if (self->cursorIndex < maxIndex)
         {
             self->cursorIndex++;
             cb_play_ui_sound(CB_UISound_Navigate);
@@ -438,22 +460,79 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    // ----- draw -----
-    playdate->graphics->clear(kColorWhite);
+    // compute filename scroll offset
+    float filename_scroll_offset = 0.0f;
+    if (self->basename)
+    {
+        playdate->graphics->setFont(CB_App->bodyFont);
+        int text_width = playdate->graphics->getTextWidth(
+            CB_App->bodyFont, self->basename, strlen(self->basename), kUTF8Encoding, 0
+        );
+        int available = LCD_COLUMNS - INFO_VALUE_X;
+        if (text_width > available)
+        {
+            self->filename_scroll_time += dt;
+            float maxOffset = text_width - available + 5;
+            float pauseAtStart = 0.7f;
+            float pauseAtEnd = 1.5f;
+            float scrollDuration = CB_MAX(maxOffset / 50.0f, 0.75f);
+            float scrollBackDuration = CB_MAX(scrollDuration * (2.0f / 3.0f), 0.75f);
+            float totalCycle = pauseAtStart + scrollDuration + pauseAtEnd + scrollBackDuration;
+            float t = fmodf(self->filename_scroll_time, totalCycle);
 
-    // title
-    playdate->graphics->setFont(CB_App->subheadFont);
-    const char* title = "- Manage ROM -";
-    int tw = playdate->graphics->getTextWidth(
-        CB_App->subheadFont, title, strlen(title), kUTF8Encoding, 0
-    );
-    playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, (LCD_COLUMNS - tw) / 2, 8);
+            if (t < pauseAtStart)
+                filename_scroll_offset = 0.0f;
+            else if (t < pauseAtStart + scrollDuration)
+                filename_scroll_offset =
+                    cb_easeInOutQuad((t - pauseAtStart) / scrollDuration) * maxOffset;
+            else if (t < pauseAtStart + scrollDuration + pauseAtEnd)
+                filename_scroll_offset = maxOffset;
+            else
+                filename_scroll_offset =
+                    maxOffset -
+                    cb_easeInOutQuad(
+                        (t - (pauseAtStart + scrollDuration + pauseAtEnd)) / scrollBackDuration
+                    ) * maxOffset;
+        }
+    }
+
+    // ----- draw -----
+    int header_y = self->header_animation_p * HEADER_HEIGHT + 0.5f;
+    playdate->graphics->clear(kColorWhite);
 
     // info rows
     playdate->graphics->setFont(CB_App->bodyFont);
-    int y = INFO_TOP_Y;
+    int y = INFO_TOP_Y + header_y;
 
-    draw_info_row(y, "Filename:", self->basename ? self->basename : "");
+    // filename with scroll if needed
+    playdate->graphics->drawText("Filename:", 9, kUTF8Encoding, INFO_LEFT_X, y);
+    if (self->basename)
+    {
+        playdate->graphics->setFont(CB_App->bodyFont);
+        int text_width = playdate->graphics->getTextWidth(
+            CB_App->bodyFont, self->basename, strlen(self->basename), kUTF8Encoding, 0
+        );
+        int available = LCD_COLUMNS - INFO_VALUE_X;
+        if (text_width > available)
+        {
+            playdate->graphics->setClipRect(INFO_VALUE_X, y, available, INFO_ROW_H);
+            playdate->graphics->drawText(
+                self->basename, strlen(self->basename), kUTF8Encoding,
+                INFO_VALUE_X - (int)filename_scroll_offset, y
+            );
+            playdate->graphics->clearClipRect();
+        }
+        else
+        {
+            playdate->graphics->drawText(
+                self->basename, strlen(self->basename), kUTF8Encoding, INFO_VALUE_X, y
+            );
+        }
+    }
+    else
+    {
+        playdate->graphics->drawText("N/A", 3, kUTF8Encoding, INFO_VALUE_X, y);
+    }
     y += INFO_ROW_H;
 
     const bool is_gb = self->game->names && self->game->names->system_slug &&
@@ -562,15 +641,33 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
 
     // action rows
     static const char* action_labels[] = {
-        "Back",
         "Delete ROM",
         "Clear save data",
         "Delete cover art",
     };
     for (int i = 0; i < self->actionCount; ++i)
     {
-        int ay = ACTION_TOP_Y + i * (ACTION_ROW_H + 2);
-        draw_action_row(ay, action_labels[i], i == self->cursorIndex);
+        int ay = ACTION_TOP_Y + header_y + i * (ACTION_ROW_H + 2);
+        bool disabled = (i == 2 && !self->game->coverPath);
+        draw_action_row(ay, action_labels[i], i == self->cursorIndex, disabled);
+    }
+
+    if (header_y > 0)
+    {
+        LCDFont* font = CB_App->labelFont;
+        const char* name = self->header_name;
+        playdate->graphics->setFont(font);
+        int nameWidth =
+            playdate->graphics->getTextWidth(font, name, strlen(name), kUTF8Encoding, 0);
+        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
+        int fontHeight = playdate->graphics->getFontHeight(font);
+        int vertical_offset = string_has_descenders(name) ? 1 : 2;
+        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
+
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
+        playdate->graphics->setDrawMode(kDrawModeFillWhite);
+        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 }
 
@@ -589,7 +686,40 @@ static void CB_ManageRomScene_free(void* object)
     cb_free(self);
 }
 
-CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
+static void CB_ManageRomScene_didSelectSettings(void* userdata)
+{
+    CB_ManageRomScene* self = userdata;
+    if (self->started_without_header)
+        self->is_dismissing = true;
+    else
+        self->dismiss = true;
+}
+
+static void CB_ManageRomScene_didSelectLibrary(void* userdata)
+{
+    CB_ManageRomScene* self = userdata;
+    if (self->scene->parentScene && self->scene->parentScene->id &&
+        strcmp(self->scene->parentScene->id, "settings") == 0)
+    {
+        CB_SettingsScene* parent = self->scene->parentScene->managedObject;
+        if (parent)
+            parent->shouldDismiss = true;
+    }
+    if (self->started_without_header)
+        self->is_dismissing = true;
+    else
+        self->dismiss = true;
+}
+
+static void CB_ManageRomScene_menu(void* object)
+{
+    CB_ManageRomScene* self = object;
+    playdate->system->removeAllMenuItems();
+    playdate->system->addMenuItem("library", CB_ManageRomScene_didSelectLibrary, self);
+    playdate->system->addMenuItem("settings", CB_ManageRomScene_didSelectSettings, self);
+}
+
+CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
 {
     if (!game)
         return NULL;
@@ -600,8 +730,13 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
     memset(self, 0, sizeof(*self));
 
     self->game = game;
+    self->header_animation_p = initial_header_p;
+    self->started_without_header = (initial_header_p < 1.0f);
+    self->is_dismissing = false;
+    strncpy(self->header_name, "Manage ROM", sizeof(self->header_name) - 1);
+    self->header_name[sizeof(self->header_name) - 1] = '\0';
     self->cursorIndex = 0;
-    self->actionCount = (game->coverPath) ? 4 : 3;
+    self->actionCount = 3;
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
@@ -627,6 +762,7 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game)
     scene->managedObject = self;
     scene->update = CB_ManageRomScene_update;
     scene->free = CB_ManageRomScene_free;
+    scene->menu = (void*)CB_ManageRomScene_menu;
     self->scene = scene;
 
     return self;

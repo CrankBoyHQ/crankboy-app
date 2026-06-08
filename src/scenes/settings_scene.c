@@ -191,9 +191,9 @@ static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsSce
 
 static void open_manage_rom(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
 {
-    (void)settingsScene;
     cb_play_ui_sound(CB_UISound_Confirm);
-    CB_ManageRomScene* s = CB_ManageRomScene_new((CB_Game*)option->ud);
+    CB_ManageRomScene* s =
+        CB_ManageRomScene_new((CB_Game*)option->ud, settingsScene->header_animation_p);
     if (s)
         CB_presentModal(s->scene);
 }
