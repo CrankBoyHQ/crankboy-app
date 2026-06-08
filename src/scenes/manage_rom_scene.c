@@ -11,11 +11,11 @@
 #include <string.h>
 
 #define INFO_LEFT_X 14
-#define INFO_VALUE_X 130
+#define INFO_VALUE_X 105
 #define INFO_TOP_Y 30
 #define INFO_ROW_H 19
 #define ACTION_TOP_Y 148
-#define ACTION_ROW_H 20
+#define ACTION_ROW_H 22
 #define ACTION_WIDTH 240
 #define FOOTER_Y 222
 
@@ -394,7 +394,7 @@ static void draw_action_row(int y, const char* label, bool selected)
         playdate->graphics->getTextWidth(CB_App->bodyFont, label, strlen(label), kUTF8Encoding, 0);
     int fh = playdate->graphics->getFontHeight(CB_App->bodyFont);
     int tx = x + (ACTION_WIDTH - tw) / 2;
-    int ty = y + (ACTION_ROW_H - fh) / 2;
+    int ty = y + (ACTION_ROW_H - fh) / 2 + 1;
     playdate->graphics->drawText(label, strlen(label), kUTF8Encoding, tx, ty);
     playdate->graphics->setDrawMode(kDrawModeCopy);
 }
@@ -459,7 +459,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     const bool is_gb = self->game->names && self->game->names->system_slug &&
                        strcmp(self->game->names->system_slug, GB_SYSTEM_SLUG) == 0;
 
-    draw_info_row(y, "Compressed:", self->compressed ? "Yes" : "No");
+    draw_info_row(y, "Format:", self->compressed ? "compressed" : "uncompressed");
     y += INFO_ROW_H;
 
     {
