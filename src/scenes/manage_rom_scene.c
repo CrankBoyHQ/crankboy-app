@@ -14,7 +14,7 @@
 #define HEADER_ANIMATION_RATE 2.8f
 #define HEADER_HEIGHT 18
 #define INFO_LEFT_X 14
-#define INFO_VALUE_X 105
+#define INFO_VALUE_X 100
 #define INFO_TOP_Y 9
 #define INFO_ROW_H 21
 #define ACTION_TOP_Y 141
