@@ -199,7 +199,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                     }
 
                     return aprintf(
-                        "Title: %s\nDev: %s\nType: %s\nDate: %s", title ? title : "unknown",
+                        "Title: %s\nDev: %s\nPlatform: %s\nDate: %s", title ? title : "unknown",
                         developer ? developer : "unknown", platform ? platform : "unknown",
                         date ? date : "unknown"
                     );
