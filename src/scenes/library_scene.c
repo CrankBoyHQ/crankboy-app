@@ -28,9 +28,6 @@
 
 #include <string.h>
 
-#define HOLD_TIME 1.09f
-#define DELETE_COVER_HOLD_TIME 5.09f
-
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void CB_LibraryScene_free(void* object);
 static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
@@ -327,43 +324,6 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     );
 
     cb_free(url_path);
-}
-
-static void CB_LibraryScene_deleteCoverConfirmed(void* ud, int option)
-{
-    if (option == 1)
-    {
-        CB_Game* game = ud;
-        CB_LibraryScene* libraryScene = (CB_LibraryScene*)CB_App->scene->managedObject;
-
-        if (game && game->coverPath)
-        {
-            playdate->file->unlink(game->coverPath, 0);
-
-            cb_free(game->coverPath);
-            game->coverPath = NULL;
-
-            if (CB_App->coverCache)
-            {
-                for (int i = CB_App->coverCache->length - 1; i >= 0; i--)
-                {
-                    CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
-                    if (strcmp(entry->rom_path, game->fullpath) == 0)
-                    {
-                        array_remove_at(CB_App->coverCache, i);
-                        cb_free(entry->rom_path);
-                        cb_free(entry->compressed_data);
-                        cb_free(entry);
-                        break;
-                    }
-                }
-            }
-
-            cb_clear_global_cover_cache();
-            libraryScene->showCrc = false;
-            libraryScene->scene->forceFullRefresh = true;
-        }
-    }
 }
 
 static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
@@ -1136,11 +1096,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->initialLoadComplete = false;
     libraryScene->coverDownloadState = COVER_DOWNLOAD_IDLE;
     libraryScene->activeCoverDownloadConnection = NULL;
-    libraryScene->showCrc = false;
     libraryScene->isReloading = library_was_initialized_once;
     library_was_initialized_once = true;
-    libraryScene->bButtonHoldTimer = 0.0f;
-    libraryScene->deleteCoverModalShown = false;
     libraryScene->update_modal_shown = false;
     libraryScene->migration_modal_shown = false;
     libraryScene->decompression_buffer = NULL;
@@ -1376,59 +1333,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
-    // B-button long press detection for showing CRC and delete modal
-    PDButtons current_buttons;
-    playdate->system->getButtonState(&current_buttons, NULL, NULL);
-    if (current_buttons & kButtonB)
-    {
-        libraryScene->bButtonHoldTimer += dt;
-        bool hasCover = (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS);
-
-        if (hasCover)
-        {
-            // After 1 second, show CRC
-            if (libraryScene->bButtonHoldTimer >= HOLD_TIME && !libraryScene->showCrc)
-            {
-                libraryScene->showCrc = true;
-                libraryScene->scene->forceFullRefresh = true;
-                cb_play_ui_sound(CB_UISound_Confirm);
-            }
-
-            // After 5 seconds, show delete confirmation modal
-            if (libraryScene->bButtonHoldTimer >= DELETE_COVER_HOLD_TIME &&
-                !libraryScene->deleteCoverModalShown)
-            {
-                libraryScene->deleteCoverModalShown = true;
-
-                int selectedItem = libraryScene->listView->selectedItem;
-                if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
-                {
-                    CB_Game* game = libraryScene->games->items[selectedItem];
-
-                    // Make sure there is a cover to delete
-                    if (game->coverPath)
-                    {
-                        const char* options[] = {"No", "Yes", NULL};
-                        CB_Modal* modal = CB_Modal_new(
-                            "Delete this cover art?", options, CB_LibraryScene_deleteCoverConfirmed,
-                            game
-                        );
-                        modal->width = 240;
-                        CB_presentModal(modal->scene);
-                    }
-                }
-            }
-        }
-    }
-    else
-    {
-        if (libraryScene->bButtonHoldTimer > 0.0f)
-        {
-            libraryScene->bButtonHoldTimer = 0.0f;
-            libraryScene->deleteCoverModalShown = false;
-        }
-    }
-
     if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
     {
         coverDownloadAnimationTimer += dt;
@@ -1485,31 +1389,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             bool hasCover = (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS);
             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
-            // A cover is present and we're showing the CRC
-            // A short press restorex the cover.
-            if (hasCover && libraryScene->showCrc)
-            {
-                libraryScene->showCrc = false;
-                libraryScene->scene->forceFullRefresh = true;
-                cb_play_ui_sound(CB_UISound_Navigate);
-            }
-            // A cover is missing, but we can download it.
-            else if (
-                !hasCover && hasDBMatch && libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE
-            )
+            if (!hasCover && hasDBMatch && libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE)
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
                 CB_LibraryScene_startCoverDownload(libraryScene);
-            }
-            // No cover and no DB match. Toggle CRC display.
-            else if (
-                (!hasCover && !hasDBMatch) ||
-                libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB
-            )
-            {
-                libraryScene->showCrc = !libraryScene->showCrc;
-                libraryScene->scene->forceFullRefresh = true;
-                cb_play_ui_sound(CB_UISound_Navigate);
             }
         }
     }
@@ -1594,7 +1477,6 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
         if (selectionChanged)
         {
-            libraryScene->showCrc = false;
 
             // Reset download state when user navigates away
             if (libraryScene->activeCoverDownloadConnection)
@@ -1827,57 +1709,18 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                 if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
                     CB_App->coverArtCache.art.bitmap != NULL)
                 {
-                    CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                    playdate->graphics->setFont(CB_App->bodyFont);
+                    int panel_content_width = rightPanelWidth - 1;
+                    int coverX = leftPanelWidth + 1 +
+                                 (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
+                    int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
 
-                    if (libraryScene->showCrc)
-                    {
-                        char message[32];
-                        if (selectedGame->names->crc32 != 0)
-                        {
-                            snprintf(
-                                message, sizeof(message), "%08lX",
-                                (unsigned long)selectedGame->names->crc32
-                            );
-                        }
-                        else
-                        {
-                            snprintf(message, sizeof(message), "No CRC found");
-                        }
-
-                        int panel_content_width = rightPanelWidth - 1;
-                        int textWidth = playdate->graphics->getTextWidth(
-                            CB_App->bodyFont, message, strlen(message), kUTF8Encoding, 0
-                        );
-                        int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
-                        int textY =
-                            (screenHeight - playdate->graphics->getFontHeight(CB_App->bodyFont)) /
-                            2;
-
-                        playdate->graphics->fillRect(
-                            leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorWhite
-                        );
-                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                        playdate->graphics->drawText(
-                            message, strlen(message), kUTF8Encoding, textX, textY
-                        );
-                    }
-                    else
-                    {
-                        int panel_content_width = rightPanelWidth - 1;
-                        int coverX =
-                            leftPanelWidth + 1 +
-                            (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
-                        int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
-
-                        playdate->graphics->fillRect(
-                            leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
-                        );
-                        playdate->graphics->setDrawMode(kDrawModeCopy);
-                        playdate->graphics->drawBitmap(
-                            CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
-                        );
-                    }
+                    playdate->graphics->fillRect(
+                        leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
+                    );
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                    playdate->graphics->drawBitmap(
+                        CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
+                    );
                 }
                 else
                 {
@@ -1931,24 +1774,6 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                 // Use the full string for width calculation to prevent jitter
                                 width_calc_string = "Downloading cover...";
                             }
-                            else if (
-                                libraryScene->coverDownloadState == COVER_DOWNLOAD_NO_GAME_IN_DB &&
-                                libraryScene->showCrc
-                            )
-                            {
-                                CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                                if (selectedGame->names->crc32 != 0)
-                                {
-                                    snprintf(
-                                        message, sizeof(message), "%08lX",
-                                        (unsigned long)selectedGame->names->crc32
-                                    );
-                                }
-                                else
-                                {
-                                    snprintf(message, sizeof(message), "No CRC found");
-                                }
-                            }
                             else
                             {
                                 const char* defaultMessage =
@@ -1994,28 +1819,9 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                             }
                             else
                             {
-                                if (libraryScene->showCrc)
-                                {
-                                    if (selectedGame->names->crc32 != 0)
-                                    {
-                                        snprintf(
-                                            middle_message, sizeof(middle_message), "%08lX",
-                                            (unsigned long)selectedGame->names->crc32
-                                        );
-                                    }
-                                    else
-                                    {
-                                        snprintf(
-                                            middle_message, sizeof(middle_message), "No CRC found"
-                                        );
-                                    }
-                                }
-                                else
-                                {
-                                    snprintf(
-                                        middle_message, sizeof(middle_message), "No database match"
-                                    );
-                                }
+                                snprintf(
+                                    middle_message, sizeof(middle_message), "No database match"
+                                );
                             }
 
                             // Common messages for the footer

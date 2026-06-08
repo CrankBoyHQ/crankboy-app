@@ -79,11 +79,8 @@ typedef struct CB_LibraryScene
     char* coverDownloadMessage;
     HTTPSafe* activeCoverDownloadConnection;
 
-    bool showCrc;
     bool isReloading;
     int progress_max_width;
-    float bButtonHoldTimer;
-    bool deleteCoverModalShown;
     bool update_modal_shown;
     bool migration_modal_shown;
 
