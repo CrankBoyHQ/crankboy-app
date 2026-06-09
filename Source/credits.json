@@ -85,7 +85,8 @@
             "lz4",
             "uzlib",
             "pdboot",
-            "pdll"
+            "pdll",
+            "nayuki/qrcodegen"
         ]
     },
     {
@@ -97,6 +98,7 @@
             "MIT License",
             "",
             "Copyright © 2024-2026, CrankBoy contributors",
+            "Copyright © 2025, Project Nayuki",
             "Copyright © 2023-2024, Risolvi Productions",
             "Copyright © 2023, Paul Sorensen",
             "Copyright © 2018-2022, Mahyar Koshkouei",

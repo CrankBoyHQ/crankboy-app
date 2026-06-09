@@ -376,6 +376,15 @@ static inline float toward(float x, float dst, float step)
 
 LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h);
 
+// generates a QR code for the text, fitting the max dimensions.
+// quiet_zone_16: size of blank margin area, in sixteenths.
+// pass -1 for default.
+// if pixel_precise is false, the returned image may be smaller than
+// the max dimensions.
+LCDBitmap* cb_generate_qr_bitmap(
+    const char* text, int max_w, int max_h, bool pixel_precise, int quiet_zone_16
+);
+
 // returns NULL-terminated list of subimages
 LCDBitmap** split_subimages(LCDBitmap* image, int w, int h, size_t* out_size);
 

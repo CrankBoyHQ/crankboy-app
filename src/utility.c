@@ -15,6 +15,7 @@
 #include "scenes/library_scene.h"
 
 #include <ctype.h>
+#include <nayuki/qrcodegen.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -359,6 +360,111 @@ LCDBitmap* subimage(LCDBitmap* image, int x, int y, int w, int h)
 
     playdate->graphics->popContext();
 
+    return out;
+}
+
+#define CB_QR_QUIET_ZONE_16 (4 * 16)
+
+LCDBitmap* cb_generate_qr_bitmap(
+    const char* text, int max_w, int max_h, bool pixel_precise, int quiet_zone_16
+)
+{
+    if (!text || max_w <= 0 || max_h <= 0)
+        return NULL;
+
+    if (quiet_zone_16 < 0)
+        quiet_zone_16 = CB_QR_QUIET_ZONE_16;
+
+    uint8_t* qr = cb_malloc(qrcodegen_BUFFER_LEN_MAX);
+    uint8_t* tmp = cb_malloc(qrcodegen_BUFFER_LEN_MAX);
+    if (!qr || !tmp)
+    {
+        cb_free(qr);
+        cb_free(tmp);
+        return NULL;
+    }
+
+    bool ok = qrcodegen_encodeText(
+        text, tmp, qr, qrcodegen_Ecc_LOW, qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
+        qrcodegen_Mask_AUTO, true
+    );
+    cb_free(tmp);
+    if (!ok)
+    {
+        cb_free(qr);
+        return NULL;
+    }
+
+    int qsize = qrcodegen_getSize(qr);
+    int total_16 = qsize * 16 + 2 * quiet_zone_16;
+    int max_side = CB_MIN(max_w, max_h);
+
+    int scale = 0, qz_px = 0, side;
+    if (pixel_precise)
+    {
+        scale = max_side * 16 / total_16;
+        if (scale < 1)
+        {
+            cb_free(qr);
+            return NULL;
+        }
+        qz_px = (quiet_zone_16 * scale + 8) / 16;
+        side = qsize * scale + 2 * qz_px;
+    }
+    else
+    {
+        side = max_side;
+    }
+
+    LCDBitmap* out = playdate->graphics->newBitmap(side, side, kColorWhite);
+    if (!out)
+    {
+        cb_free(qr);
+        return NULL;
+    }
+
+    int w, h, rowbytes;
+    uint8_t* mask;
+    uint8_t* data;
+    playdate->graphics->getBitmapData(out, &w, &h, &rowbytes, &mask, &data);
+
+    if (pixel_precise)
+    {
+        for (int my = 0; my < qsize; ++my)
+        {
+            for (int mx = 0; mx < qsize; ++mx)
+            {
+                if (!qrcodegen_getModule(qr, mx, my))
+                    continue;
+                int x0 = qz_px + mx * scale;
+                int y0 = qz_px + my * scale;
+                for (int yy = y0; yy < y0 + scale; ++yy)
+                {
+                    uint8_t* row = data + yy * rowbytes;
+                    for (int xx = x0; xx < x0 + scale; ++xx)
+                        row[xx >> 3] &= ~(0x80 >> (xx & 7));
+                }
+            }
+        }
+    }
+    else
+    {
+        for (int py = 0; py < side; ++py)
+        {
+            int my16 = py * total_16 / side - quiet_zone_16;
+            int my = (my16 >= 0) ? my16 / 16 : -1;
+            uint8_t* row = data + py * rowbytes;
+            for (int px = 0; px < side; ++px)
+            {
+                int mx16 = px * total_16 / side - quiet_zone_16;
+                int mx = (mx16 >= 0) ? mx16 / 16 : -1;
+                if (qrcodegen_getModule(qr, mx, my))
+                    row[px >> 3] &= ~(0x80 >> (px & 7));
+            }
+        }
+    }
+
+    cb_free(qr);
     return out;
 }
 

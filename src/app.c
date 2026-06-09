@@ -1112,9 +1112,11 @@ void CB_showHelp(bool first_time)
     const char* E = first_time ? "Press Ⓑ to continue." : "";
 #endif
 
+    const char* F = "\n\nYou can find more info on our site:\n[qr]https://crankboy.app";
+
     char* s = aprintf(
-        "%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", B, "\n\n", C1, C2, C3,
-        cb_gb_directory_path(CB_gamesPath), D, E
+        "%s%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", B, "\n\n", C1, C2, C3,
+        cb_gb_directory_path(CB_gamesPath), D, E, F
     );
 
     CB_InfoScene* infoScene = CB_InfoScene_new(title, s);

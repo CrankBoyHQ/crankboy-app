@@ -75,6 +75,7 @@ SRC += main.c
 SRC += libs/lz4/lz4.c
 SRC += libs/miniz/miniz.c
 SRC += libs/miniz/mini_gzip.c
+SRC += libs/nayuki/qrcodegen.c
 
 SRC += libs/pdll/pdll.c
 SRC += libs/pdll/uzlib/tinflate.c

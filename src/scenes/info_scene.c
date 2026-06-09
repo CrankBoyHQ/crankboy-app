@@ -27,6 +27,12 @@
 // Buffer for one line of text when calculating bullet points
 #define LINE_BUF_SIZE 2048
 
+#define QR_LINE_PREFIX "[qr]"
+#define QR_LINE_PREFIX_LEN 4
+#define QR_MAX_SIZE 172      // max QR side, pixels
+#define QR_LABEL_GAP 3
+#define QR_BLOCK_SPACING 6
+
 // Helper to detect if a line is a list item and return its prefix length
 static bool get_list_item_prefix_len(const char* text, int text_len, int* out_prefix_len)
 {
@@ -158,6 +164,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     // --- Calculate total text height ---
     float total_text_height = 0.0f;
     text_ptr = infoScene->text;
+    int qr_index = 0;
 
     while (*text_ptr)
     {
@@ -173,6 +180,30 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
             int safe_len = (line_len < LINE_BUF_SIZE - 1) ? line_len : LINE_BUF_SIZE - 1;
             memcpy(line_buf, text_ptr, safe_len);
             line_buf[safe_len] = '\0';
+
+            if (safe_len > QR_LINE_PREFIX_LEN &&
+                strncmp(line_buf, QR_LINE_PREFIX, QR_LINE_PREFIX_LEN) == 0)
+            {
+                LCDBitmap* bmp =
+                    (qr_index < infoScene->qr_count) ? infoScene->qr_bitmaps[qr_index] : NULL;
+                qr_index++;
+                int qr_w = 0, qr_h = 0;
+                if (bmp)
+                    playdate->graphics->getBitmapData(bmp, &qr_w, &qr_h, NULL, NULL, NULL);
+                (void)qr_w;
+                int label_h = playdate->graphics->getTextHeightForMaxWidth(
+                    font, line_buf + QR_LINE_PREFIX_LEN, safe_len - QR_LINE_PREFIX_LEN, width,
+                    kUTF8Encoding, kWrapWord, tracking, extraLeading
+                );
+                total_text_height += qr_h + QR_LABEL_GAP + label_h + QR_BLOCK_SPACING;
+
+                if (next_newline)
+                {
+                    text_ptr = next_newline + 1;
+                    continue;
+                }
+                break;
+            }
 
             const char* buf_ptr = line_buf;
             int buf_len = safe_len;
@@ -267,6 +298,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     playdate->graphics->setFont(font);
     float current_y = top_margin - infoScene->scroll;
     text_ptr = infoScene->text;
+    qr_index = 0;
 
     while (*text_ptr)
     {
@@ -282,6 +314,41 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
             int safe_len = (line_len < LINE_BUF_SIZE - 1) ? line_len : LINE_BUF_SIZE - 1;
             memcpy(line_buf, text_ptr, safe_len);
             line_buf[safe_len] = '\0';
+
+            if (safe_len > QR_LINE_PREFIX_LEN &&
+                strncmp(line_buf, QR_LINE_PREFIX, QR_LINE_PREFIX_LEN) == 0)
+            {
+                LCDBitmap* bmp =
+                    (qr_index < infoScene->qr_count) ? infoScene->qr_bitmaps[qr_index] : NULL;
+                qr_index++;
+                int qr_w = 0, qr_h = 0;
+                if (bmp)
+                {
+                    playdate->graphics->getBitmapData(bmp, &qr_w, &qr_h, NULL, NULL, NULL);
+                    playdate->graphics->drawBitmap(
+                        bmp, (LCD_COLUMNS - qr_w) / 2, (int)current_y, kBitmapUnflipped
+                    );
+                }
+                current_y += qr_h + QR_LABEL_GAP;
+
+                const char* label = line_buf + QR_LINE_PREFIX_LEN;
+                int label_len = safe_len - QR_LINE_PREFIX_LEN;
+                int label_h = playdate->graphics->getTextHeightForMaxWidth(
+                    font, label, label_len, width, kUTF8Encoding, kWrapWord, tracking, extraLeading
+                );
+                playdate->graphics->drawTextInRect(
+                    label, label_len, kUTF8Encoding, margin, (int)current_y, width, label_h,
+                    kWrapWord, kAlignTextCenter
+                );
+                current_y += label_h + QR_BLOCK_SPACING;
+
+                if (next_newline)
+                {
+                    text_ptr = next_newline + 1;
+                    continue;
+                }
+                break;
+            }
 
             const char* buf_ptr = line_buf;
             int buf_len = safe_len;
@@ -396,6 +463,13 @@ static void CB_InfoScene_free(void* object)
         cb_free(infoScene->text);
     }
 
+    for (int i = 0; i < infoScene->qr_count; ++i)
+    {
+        if (infoScene->qr_bitmaps[i])
+            playdate->graphics->freeBitmap(infoScene->qr_bitmaps[i]);
+    }
+    cb_free(infoScene->qr_bitmaps);
+
     CB_Scene_free(infoScene->scene);
     cb_free(infoScene);
 }
@@ -497,7 +571,9 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
             {
                 const char* tag_start = p;
                 const char* end_bracket = strchr(p + 1, ']');
-                if (end_bracket)
+                // preserve [qr] for renderer later...
+                bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
+                if (end_bracket && !is_qr_tag)
                 {
                     const char* tag_name = p + 1;
                     if (strncasecmp(tag_name, "ul", 2) == 0 ||
@@ -562,7 +638,9 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                 {
                     const char* tag_start = p;
                     const char* end_bracket = strchr(p + 1, ']');
-                    if (end_bracket)
+                    // preserve [qr] verbatim so the renderer can detect it
+                    bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
+                    if (end_bracket && !is_qr_tag)
                     {
                         const char* tag_name = p + 1;
                         if (strncasecmp(tag_name, "ul", 2) == 0 ||
@@ -627,6 +705,36 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
         while (len > 0 && isspace((unsigned char)infoScene->text[len - 1]))
         {
             infoScene->text[--len] = '\0';
+        }
+    }
+
+    if (infoScene->text)
+    {
+        const char* p = infoScene->text;
+        while (*p)
+        {
+            const char* nl = strchr(p, '\n');
+            int len = nl ? (int)(nl - p) : (int)strlen(p);
+            if (len > QR_LINE_PREFIX_LEN && strncmp(p, QR_LINE_PREFIX, QR_LINE_PREFIX_LEN) == 0)
+            {
+                int payload_len = len - QR_LINE_PREFIX_LEN;
+                char* payload = cb_malloc(payload_len + 1);
+                LCDBitmap* bmp = NULL;
+                if (payload)
+                {
+                    memcpy(payload, p + QR_LINE_PREFIX_LEN, payload_len);
+                    payload[payload_len] = '\0';
+                    bmp = cb_generate_qr_bitmap(payload, QR_MAX_SIZE, QR_MAX_SIZE, true, 16 * 3);
+                    cb_free(payload);
+                }
+                infoScene->qr_bitmaps = cb_realloc(
+                    infoScene->qr_bitmaps, sizeof(LCDBitmap*) * (infoScene->qr_count + 1)
+                );
+                infoScene->qr_bitmaps[infoScene->qr_count++] = bmp;
+            }
+            if (!nl)
+                break;
+            p = nl + 1;
         }
     }
 
