@@ -69,6 +69,11 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
             cb_gb_directory_path(CB_coversPath), collect_cover_filenames_callback,
             cacheScene->available_covers, 0
         );
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        playdate->file->listfiles(
+            "packed", collect_cover_filenames_callback, cacheScene->available_covers, 0
+        );
+#endif
 
         if (cacheScene->available_covers->length > 0)
         {
@@ -76,6 +81,19 @@ void CB_CoverCacheScene_update(void* object, uint32_t u32enc_dt)
                 cacheScene->available_covers->items, cacheScene->available_covers->length,
                 sizeof(char*), cb_compare_strings
             );
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+            for (int i = cacheScene->available_covers->length - 1; i > 0; --i)
+            {
+                const char* a = cacheScene->available_covers->items[i];
+                const char* b = cacheScene->available_covers->items[i - 1];
+                if (cb_strcmp(a, b) == 0)
+                {
+                    cb_free(cacheScene->available_covers->items[i]);
+                    array_remove_at(cacheScene->available_covers, i);
+                }
+            }
+#endif
         }
 
         if (CB_App->gameNameCache->length > 0)

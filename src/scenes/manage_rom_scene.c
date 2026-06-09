@@ -373,6 +373,10 @@ static int count_wrapped_lines(const char* text, int max_width, LCDFont* font)
     return lines;
 }
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static bool game_is_packed(CB_Game* game);
+#endif
+
 static void invoke_action(CB_ManageRomScene* self, int idx)
 {
     cb_play_ui_sound(CB_UISound_Confirm);
@@ -382,6 +386,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
 
     if (idx == 0)
     {
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        if (game_is_packed(self->game))
+            return;
+#endif
         const char* display_name = self->basename ? self->basename : "";
         int text_w = 320 - 2 * 24;  // modal width minus margins
         LCDFont* font = CB_App->bodyFont;
@@ -422,6 +430,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     }
     else if (idx == 2)
     {
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        if (game_is_packed(self->game))
+            return;
+#endif
         if (!self->game->coverPath)
             return;
         msg = aprintf("Delete this cover art?");
@@ -458,6 +470,26 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
         }
         CB_presentModal(modal->scene);
     }
+}
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static bool game_is_packed(CB_Game* game)
+{
+    return game && game->fullpath && strncmp(game->fullpath, "packed/", 7) == 0;
+}
+#endif
+
+static bool action_is_disabled(CB_ManageRomScene* self, int idx)
+{
+    if (idx == 2 && !self->game->coverPath)
+        return true;
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    if (idx == 0 && game_is_packed(self->game))
+        return true;
+    if (idx == 2 && game_is_packed(self->game))
+        return true;
+#endif
+    return false;
 }
 
 static void draw_action_row(int y, const char* label, bool selected, bool disabled)
@@ -527,20 +559,28 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
     if (pushed & kButtonUp)
     {
-        int maxIndex = self->game->coverPath ? 2 : 1;
+        int maxIndex = self->actionCount - 1;
+        while (maxIndex > 0 && action_is_disabled(self, maxIndex))
+            maxIndex--;
         if (self->cursorIndex > 0)
             self->cursorIndex--;
         else
             self->cursorIndex = maxIndex;
+        while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex--;
         cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonDown)
     {
-        int maxIndex = self->game->coverPath ? 2 : 1;
+        int maxIndex = self->actionCount - 1;
+        while (maxIndex > 0 && action_is_disabled(self, maxIndex))
+            maxIndex--;
         if (self->cursorIndex < maxIndex)
             self->cursorIndex++;
         else
             self->cursorIndex = 0;
+        while (self->cursorIndex < maxIndex && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex++;
         cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonA)
@@ -737,7 +777,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     for (int i = 0; i < self->actionCount; ++i)
     {
         int ay = ACTION_TOP_Y + header_y + i * (ACTION_ROW_H + 2);
-        bool disabled = (i == 2 && !self->game->coverPath);
+        bool disabled = action_is_disabled(self, i);
         draw_action_row(ay, action_labels[i], i == self->cursorIndex, disabled);
     }
 

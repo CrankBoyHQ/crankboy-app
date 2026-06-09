@@ -140,13 +140,20 @@ static void collect_files_callback(const char* filename, void* userdata)
     if (extension)
     {
         if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
-            !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
-            !strcasecmp(extension, ".pdi") || !strcasecmp(extension, ".gb") ||
-            !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".gbz") ||
-            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state"))
+            !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp"))
         {
             should_copy = true;
         }
+#ifndef CRANKBOY_OFFICIAL_CATALOG
+        else if (
+            !strcasecmp(extension, ".pdi") || !strcasecmp(extension, ".gb") ||
+            !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".gbz") ||
+            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state")
+        )
+        {
+            should_copy = true;
+        }
+#endif
     }
 
     if (should_copy)

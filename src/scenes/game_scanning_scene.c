@@ -10,6 +10,7 @@
 #include "image_conversion_scene.h"
 
 #include <pd_api.h>
+#include <string.h>
 
 struct ScriptInfo;
 
@@ -36,20 +37,32 @@ static char* cache_key(const char* slug, const char* filename)
 }
 
 // stat path and compute its mtime
-static bool stat_rom(const char* fullpath, FileStat* o_stat, uint32_t* o_mtime)
+static bool stat_rom(const char* fullpath, FileStat* o_stat, uint32_t* o_mtime, FileOptions fopts)
 {
-    if (playdate->file->stat(fullpath, o_stat) != 0)
+    if (playdate->file->stat(fullpath, o_stat) == 0)
+    {
+        struct PDDateTime dt = {
+            .year = o_stat->m_year,
+            .month = o_stat->m_month,
+            .day = o_stat->m_day,
+            .hour = o_stat->m_hour,
+            .minute = o_stat->m_minute,
+            .second = o_stat->m_second
+        };
+        *o_mtime = playdate->system->convertDateTimeToEpoch(&dt);
+        return true;
+    }
+
+    SDFile* f = playdate->file->open(fullpath, fopts);
+    if (!f)
         return false;
 
-    struct PDDateTime dt = {
-        .year = o_stat->m_year,
-        .month = o_stat->m_month,
-        .day = o_stat->m_day,
-        .hour = o_stat->m_hour,
-        .minute = o_stat->m_minute,
-        .second = o_stat->m_second
-    };
-    *o_mtime = playdate->system->convertDateTimeToEpoch(&dt);
+    int size = playdate->file->seek(f, 0, SEEK_END);
+    playdate->file->close(f);
+
+    memset(o_stat, 0, sizeof(*o_stat));
+    o_stat->size = size > 0 ? size : 0;
+    *o_mtime = 0;
     return true;
 }
 
@@ -121,19 +134,19 @@ static void fill_basic_names(CB_GameName* newName, const char* filename, const c
     newName->system_slug = cb_strdup(slug);
 }
 
-static void process_one_game(CB_GameScanningScene* scanScene, const char* filename)
+static void process_one_game(
+    CB_GameScanningScene* scanScene, const char* filename, const char* games_dir
+)
 {
     CB_GameName* newName = allocz(CB_GameName);
     fill_basic_names(newName, filename, GB_SYSTEM_SLUG);
 
     char* fullpath;
-    playdate->system->formatString(
-        &fullpath, "%s/%s", cb_gb_directory_path(CB_gamesPath), filename
-    );
+    playdate->system->formatString(&fullpath, "%s/%s", games_dir, filename);
 
     FileStat stat;
     uint32_t m_time;
-    if (!stat_rom(fullpath, &stat, &m_time))
+    if (!stat_rom(fullpath, &stat, &m_time, kFileReadDataOrPacked))
     {
         playdate->system->logToConsole("Failed to stat file: %s", fullpath);
         cb_free(fullpath);
@@ -171,7 +184,7 @@ static void process_one_game(CB_GameScanningScene* scanScene, const char* filena
             crc = gbz_checksum;
             ok = true;
         }
-        else if (cb_calculate_crc32(fullpath, kFileReadDataOrBundle, &crc))
+        else if (cb_calculate_crc32(fullpath, kFileReadDataOrPacked, &crc))
         {
             ok = true;
         }
@@ -226,7 +239,7 @@ static void process_one_emucore_game(
 
     FileStat stat;
     uint32_t m_time;
-    if (!stat_rom(fullpath, &stat, &m_time))
+    if (!stat_rom(fullpath, &stat, &m_time, kFileReadDataOrPacked))
     {
         cb_free(fullpath);
         return;
@@ -292,7 +305,7 @@ static void clear_game_filenames(CB_GameScanningScene* scanScene)
 static CB_ScanSource* scan_source_new(char* games_dir, const char* slug, int emucore_index)
 {
     CB_ScanSource* src = allocz(CB_ScanSource);
-    src->games_dir = games_dir;
+    src->games_dir = cb_strdup(games_dir);
     src->slug = cb_strdup(slug);
     src->emucore_index = emucore_index;
     return src;
@@ -305,8 +318,25 @@ static void scan_source_free(CB_ScanSource* src)
     cb_free(src);
 }
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static void collect_game_filenames_skip_packed_callback(const char* filename, void* userdata)
+{
+    char* packed_path = aprintf("packed/%s", filename);
+    bool in_packed = cb_file_exists(packed_path, kFileRead);
+    cb_free(packed_path);
+    if (!in_packed)
+    {
+        collect_game_filenames_callback(filename, userdata);
+    }
+}
+#endif
+
 static void build_scan_sources(CB_GameScanningScene* scanScene)
 {
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    array_push(scanScene->sources, scan_source_new("packed", GB_SYSTEM_SLUG, -1));
+#endif
+
     array_push(
         scanScene->sources,
         scan_source_new(
@@ -417,9 +447,19 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         if (src->emucore_index < 0)
         {
             // .gb/.gbc/.gbz
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+            bool is_packed = (strcmp(src->games_dir, "packed") == 0);
+            playdate->file->listfiles(
+                src->games_dir,
+                is_packed ? collect_game_filenames_callback
+                          : collect_game_filenames_skip_packed_callback,
+                scanScene->game_filenames, 0
+            );
+#else
             playdate->file->listfiles(
                 src->games_dir, collect_game_filenames_callback, scanScene->game_filenames, 0
             );
+#endif
         }
         else
         {
@@ -460,7 +500,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                     CB_App->subheadFont, "Scanning Games... ", progress_message,
                     scanScene->progress_max_width
                 );
-                process_one_game(scanScene, filename);
+                process_one_game(scanScene, filename, src->games_dir);
             }
             else
             {
@@ -482,6 +522,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
     case kScanningStateDone:
     {
+
         if (scanScene->crc_cache_modified && scanScene->new_cache_entries->length > 0)
         {
             for (int i = 0; i < scanScene->new_cache_entries->length; i++)
@@ -512,9 +553,13 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
 
         bool png_found = false;
-        playdate->file->listfiles(
-            cb_gb_directory_path(CB_coversPath), checkForPngCallback, &png_found, false
-        );
+        {
+            const char* coversPath = cb_gb_directory_path(CB_coversPath);
+            if (coversPath)
+            {
+                playdate->file->listfiles(coversPath, checkForPngCallback, &png_found, false);
+            }
+        }
 
         if (png_found)
         {

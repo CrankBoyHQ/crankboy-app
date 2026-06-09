@@ -268,7 +268,7 @@ ScriptInfo* script_get_info_by_rom_path_(struct ScriptInfoArgs* args)
 
     // first, open the ROM to read the game name
     size_t len;
-    SDFile* file = playdate->file->open(args->game_path, kFileReadDataOrBundle);
+    SDFile* file = playdate->file->open(args->game_path, kFileReadDataOrPacked);
     if (!file)
         return NULL;
 

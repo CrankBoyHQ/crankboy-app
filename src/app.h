@@ -344,4 +344,10 @@ const char* CB_get_forwarded_path(const char* path);
 // for files which should only appear in data unless we're in bundle mode
 #define kFileReadDataOrBundle (CB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+#define kFileReadDataOrPacked (kFileRead | kFileReadData)
+#else
+#define kFileReadDataOrPacked kFileReadDataOrBundle
+#endif
+
 #endif /* app_h */

@@ -1029,7 +1029,7 @@ static uint8_t* read_rom_to_ram(
 {
     *sceneError = CB_GameSceneErrorUndefined;
 
-    SDFile* rom_file = playdate->file->open(filename, kFileReadDataOrBundle);
+    SDFile* rom_file = playdate->file->open(filename, kFileReadDataOrPacked);
 
     if (rom_file == NULL)
     {

@@ -493,24 +493,18 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
         convScene->state = kStateDone;
 
-        // check if any files are in the data directory.
+        // check if any files exist at their listed paths
         for (int i = 0; i < convScene->files_count; ++i)
         {
-            char* fpath =
-                aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), convScene->files[i]);
-            if (fpath)
+            const char* fpath = convScene->files[i];
+            if (cb_file_exists(fpath, kFileReadData))
             {
-                if (cb_file_exists(fpath, kFileReadData))
-                {
-                    convScene->progress_max_width = cb_calculate_progress_max_width(
-                        CB_App->subheadFont, PROGRESS_STYLE_FRACTION, convScene->files_count
-                    );
+                convScene->progress_max_width = cb_calculate_progress_max_width(
+                    CB_App->subheadFont, PROGRESS_STYLE_FRACTION, convScene->files_count
+                );
 
-                    convScene->state = kStateConverting;
-                    cb_free(fpath);
-                    break;
-                }
-                cb_free(fpath);
+                convScene->state = kStateConverting;
+                break;
             }
         }
         break;
@@ -541,9 +535,7 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 fname[len - 1] = '\0';
             }
 
-            char* full_fname = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), fname);
-            int result = process_png(full_fname);
-            cb_free(full_fname);
+            int result = process_png(fname);
 
             if (result >= 0)
             {
@@ -594,17 +586,19 @@ static void on_list_file(const char* fname, void* ud)
 
     if (filename_has_stbi_extension(fname))
     {
+        char* full_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), fname);
         char** new_files =
             cb_realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
 
         if (new_files == NULL)
         {
+            cb_free(full_path);
             playdate->system->error("Out of memory listing files!");
             return;
         }
 
         convScene->files = new_files;
-        convScene->files[convScene->files_count] = cb_strdup(fname);
+        convScene->files[convScene->files_count] = full_path;
 
         if (convScene->files[convScene->files_count] == NULL)
         {
