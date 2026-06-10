@@ -560,12 +560,14 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     if (pushed & kButtonUp)
     {
         int maxIndex = self->actionCount - 1;
-        while (maxIndex > 0 && action_is_disabled(self, maxIndex))
+        while (maxIndex >= 0 && action_is_disabled(self, maxIndex))
             maxIndex--;
         if (self->cursorIndex > 0)
             self->cursorIndex--;
         else
             self->cursorIndex = maxIndex;
+        while (self->cursorIndex < maxIndex && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex++;
         while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
             self->cursorIndex--;
         cb_play_ui_sound(CB_UISound_Navigate);
@@ -573,7 +575,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     if (pushed & kButtonDown)
     {
         int maxIndex = self->actionCount - 1;
-        while (maxIndex > 0 && action_is_disabled(self, maxIndex))
+        while (maxIndex >= 0 && action_is_disabled(self, maxIndex))
             maxIndex--;
         if (self->cursorIndex < maxIndex)
             self->cursorIndex++;
@@ -581,6 +583,8 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             self->cursorIndex = 0;
         while (self->cursorIndex < maxIndex && action_is_disabled(self, self->cursorIndex))
             self->cursorIndex++;
+        while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex--;
         cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonA)
