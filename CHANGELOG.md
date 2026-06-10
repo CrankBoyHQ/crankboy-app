@@ -1,4 +1,4 @@
-# v2.1.0
+# v2.1.0 - (2026-06-10)
 
 Welcome to the new Changelog feature! It's the dawn of a new age...
 
