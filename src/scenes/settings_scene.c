@@ -444,6 +444,7 @@ CB_SettingsScene* CB_SettingsScene_new(
     settingsScene->crankAccumulator = 0.0f;
     settingsScene->shouldDismiss = false;
     settingsScene->shouldReturnToLibrary = false;
+    settingsScene->needsRebuild = false;
 
     // Initialize continuous scrolling variables
     settingsScene->scroll_direction = 0;
@@ -2907,6 +2908,12 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     CB_SettingsScene* settingsScene = object;
     int oldCursorIndex = settingsScene->cursorIndex;
+
+    if (settingsScene->needsRebuild)
+    {
+        settingsScene->needsRebuild = false;
+        CB_SettingsScene_rebuildEntries(settingsScene);
+    }
 
     if (settingsScene->shouldDismiss || settingsScene->shouldReturnToLibrary)
     {

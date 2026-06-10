@@ -42,6 +42,7 @@ typedef struct CB_SettingsScene
     bool shouldReturnToLibrary : 1;
     bool wasAudioLocked : 1;
     bool rec_dirty : 1;
+    bool needsRebuild : 1;
     int rec_entry_index;
 
     int scroll_direction;

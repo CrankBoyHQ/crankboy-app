@@ -299,6 +299,14 @@ static void clear_save_confirmed(void* ud, int option)
 
     preferences_save_slot = saved_slot;
 
+    if (self->scene->parentScene && self->scene->parentScene->id &&
+        strcmp(self->scene->parentScene->id, "settings") == 0)
+    {
+        CB_SettingsScene* parent = self->scene->parentScene->managedObject;
+        if (parent)
+            parent->needsRebuild = true;
+    }
+
     char* base_no_ext = cb_basename(self->game->fullpath, true);
     if (base_no_ext)
     {
