@@ -151,24 +151,30 @@ csettings:
 	mkdir -p build/csettings
 	for f in src/csettings/*.json; do gzip -c "$$f" > "build/csettings/$$(basename "$$f").gz"; done
 
+# Compress CHANGELOG.md and add to pdx
+.PHONY: changelog
+changelog:
+	gzip -c CHANGELOG.md > build/CHANGELOG.md.gz
+
 # Post-pdc steps: copy csettings to PDX and strip baked JSONs from PDX
 define _post_pdc
 	-rm -f $(PRODUCT)/version.json $(PRODUCT)/credits.json
 	mkdir -p $(PRODUCT)/csettings
 	cp build/csettings/*.json.gz $(PRODUCT)/csettings/
+	cp build/CHANGELOG.md.gz $(PRODUCT)/
 endef
 
 .PHONY: device simulator
-device: device_bin csettings
+device: device_bin csettings changelog
 	$(PDC) $(PDCFLAGS) Source $(PRODUCT)
 	$(_post_pdc)
 
-simulator: simulator_bin csettings
+simulator: simulator_bin csettings changelog
 	$(PDC) $(PDCFLAGS) Source $(PRODUCT)
 	$(_post_pdc)
 
 .PHONY: build
-build: all csettings
+build: all csettings changelog
 	$(_post_pdc)
 
 .DEFAULT_GOAL := build
