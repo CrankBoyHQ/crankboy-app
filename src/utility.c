@@ -2212,3 +2212,170 @@ bool wildcard_match(const char* pattern, const char* str)
     }
     return *pattern == '\0' && *str == '\0';
 }
+
+// Strip inline markdown from a single line (already had header/blockquote stripped).
+// Handles **bold**, *italic*, [text](url). Keeps `code` backticks.
+static void strip_inline_markdown(const char* src, char* dst)
+{
+    while (*src)
+    {
+        if (src[0] == '[')
+        {
+            // [text](url) → text
+            const char* start = src + 1;
+            const char* end = strchr(start, ']');
+            if (end)
+            {
+                const char* paren = end + 1;
+                if (*paren == '(')
+                {
+                    const char* close = strchr(paren, ')');
+                    if (close)
+                    {
+                        while (start < end)
+                            *dst++ = *start++;
+                        src = close + 1;
+                        continue;
+                    }
+                }
+            }
+        }
+        else if (src[0] == '*' && src[1] == '*' && src[2] != '\0')
+        {
+            // **bold** → bold
+            const char* end = strstr(src + 2, "**");
+            if (end)
+            {
+                src += 2;
+                while (src < end)
+                    *dst++ = *src++;
+                src = end + 2;
+                continue;
+            }
+        }
+        else if (src[0] == '*' && src[1] != ' ' && src[1] != '*' && src[1] != '\0')
+        {
+            // *italic* → italic (but not bullet "* " or bold "**")
+            const char* end = strchr(src + 1, '*');
+            if (end && end > src + 1)
+            {
+                src++;
+                while (src < end)
+                    *dst++ = *src++;
+                src = end + 1;
+                continue;
+            }
+        }
+
+        *dst++ = *src++;
+    }
+    *dst = '\0';
+}
+
+char* cb_markdown_to_plaintext(const char* md)
+{
+    if (!md)
+        return NULL;
+
+    // worst case: every char copied as-is; add room for a trailing newline per line
+    size_t in_len = strlen(md);
+    char* out = cb_malloc(in_len * 2 + 1);
+    if (!out)
+        return NULL;
+
+    char* dst = out;
+    const char* src = md;
+
+    while (*src)
+    {
+        // find end of current line
+        const char* line_end = strchr(src, '\n');
+        if (!line_end)
+            line_end = src + strlen(src);
+        size_t line_len = (size_t)(line_end - src);
+        if (line_len > 0 && line_end[-1] == '\r')
+            line_len--;
+
+        const char* line = src;
+        size_t skip = 0;
+
+        // strip leading # headers
+        while (skip < line_len && line[skip] == '#')
+            skip++;
+        if (skip > 0 && skip < line_len && line[skip] == ' ')
+            skip++;
+        else
+            skip = 0;  // not a header - reset
+
+        // strip leading >  blockquote
+        if (skip == 0 && line_len >= 2 && line[0] == '>' && line[1] == ' ')
+            skip = 2;
+
+        // horizontal rule - emit blank line
+        if (skip == 0)
+        {
+            bool is_hr = true;
+            for (size_t i = 0; i < line_len; i++)
+            {
+                if (line[i] != '-' && line[i] != '*' && line[i] != '_' && line[i] != ' ')
+                {
+                    is_hr = false;
+                    break;
+                }
+            }
+            if (is_hr && line_len >= 3)
+            {
+                *dst++ = '\n';
+                src = line_end;
+                if (*src == '\n')
+                    src++;
+                continue;
+            }
+        }
+
+        // copy the line (after stripping prefix)
+        const char* line_start = line + skip;
+        size_t remaining = line_len - skip;
+
+        // inline formatting
+        char* temp = cb_malloc(remaining + 1);
+        if (temp)
+        {
+            memcpy(temp, line_start, remaining);
+            temp[remaining] = '\0';
+
+            char* stripped = cb_malloc(strlen(temp) * 2 + 1);
+            if (stripped)
+            {
+                strip_inline_markdown(temp, stripped);
+                // write to output
+                const char* p = stripped;
+                while (*p)
+                    *dst++ = *p++;
+                cb_free(stripped);
+            }
+            else
+            {
+                // fallback: copy raw
+                memcpy(dst, temp, remaining);
+                dst += remaining;
+            }
+            cb_free(temp);
+        }
+        else
+        {
+            // fallback: copy raw
+            memcpy(dst, line_start, remaining);
+            dst += remaining;
+        }
+
+        *dst++ = '\n';
+
+        src = line_end;
+        if (*src == '\n')
+            src++;
+    }
+
+    *dst = '\0';
+    return out;
+}

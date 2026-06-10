@@ -155,7 +155,12 @@ static void display_changelog(struct OptionsMenuEntry* entry, CB_SettingsScene* 
     if (!changelog)
         changelog = cb_strdup("No changelog found.");
 
-    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", changelog);
+    char* plain = cb_markdown_to_plaintext(changelog);
+    cb_free(changelog);
+    if (!plain)
+        return;
+
+    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", plain);
     infoScene->min_dismiss_time = 1.0f;
     infoScene->textIsStatic = false;
     CB_presentModal(infoScene->scene);

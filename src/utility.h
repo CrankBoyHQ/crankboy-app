@@ -482,4 +482,10 @@ char* sanitize_url_path(const char* original);
 
 bool wildcard_match(const char* pattern, const char* str);
 
+// Convert common markdown to plain text suitable for InfoScene display.
+// Strips headers (# ##), bold (**), italic (*), links [text](url),
+// blockquotes (>), and horizontal rules (---). Keeps code backticks.
+// Returns a new malloc'd string.
+char* cb_markdown_to_plaintext(const char* md);
+
 #endif /* utility_h */

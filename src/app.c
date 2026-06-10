@@ -1184,7 +1184,12 @@ static bool show_changelog_if_new(void)
     if (!changelog)
         return false;
 
-    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", changelog);
+    char* plain = cb_markdown_to_plaintext(changelog);
+    cb_free(changelog);
+    if (!plain)
+        return false;
+
+    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", plain);
     infoScene->complete_callback = non_bundle_init;
     infoScene->min_dismiss_time = 1.0f;
     infoScene->textIsStatic = false;
