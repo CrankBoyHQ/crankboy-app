@@ -1171,13 +1171,6 @@ static bool show_changelog_if_new(void)
     if (last_viewed && strcmp(current_build, last_viewed) == 0)
         return false;
 
-    if (!last_viewed)
-    {
-        global.last_viewed_changelog_build = cb_strdup(current_build);
-        save_global();
-        return false;
-    }
-
     size_t clen;
     char* changelog =
         cb_read_entire_file_maybe_compressed("CHANGELOG.md", &clen, kFileRead | kFileReadData);
