@@ -242,6 +242,33 @@ static void script_unlink_cb(const char* filename, void* vd)
     }
 }
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static bool game_is_packed(CB_Game* game)
+{
+    return game && game->fullpath && strncmp(game->fullpath, "packed/", 7) == 0;
+}
+#endif
+
+static bool action_is_disabled(CB_ManageRomScene* self, int idx)
+{
+    if (idx == 2 && !self->game->coverPath)
+        return true;
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    if (idx == 0 && game_is_packed(self->game))
+        return true;
+    if (idx == 2 && game_is_packed(self->game))
+        return true;
+#endif
+    if (idx == 1)
+    {
+        char* sav = cb_save_filename(self->game->fullpath, false);
+        bool exists = sav && cb_file_exists(sav, kFileReadData);
+        cb_free(sav);
+        return !exists;
+    }
+    return false;
+}
+
 static void clear_save_confirmed(void* ud, int option)
 {
     if (option != 1)
@@ -290,26 +317,13 @@ static void clear_save_confirmed(void* ud, int option)
         }
         cb_free(base_no_ext);
     }
-}
 
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-static bool game_is_packed(CB_Game* game)
-{
-    return game && game->fullpath && strncmp(game->fullpath, "packed/", 7) == 0;
-}
-#endif
-
-static bool action_is_disabled(CB_ManageRomScene* self, int idx)
-{
-    if (idx == 2 && !self->game->coverPath)
-        return true;
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-    if (idx == 0 && game_is_packed(self->game))
-        return true;
-    if (idx == 2 && game_is_packed(self->game))
-        return true;
-#endif
-    return false;
+    while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex++;
+    while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex--;
+    if (action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex = -1;
 }
 
 static void delete_cover_confirmed(void* ud, int option)
@@ -344,6 +358,10 @@ static void delete_cover_confirmed(void* ud, int option)
     self->cursorIndex = 1;
     while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
         self->cursorIndex++;
+    while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex--;
+    if (action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex = -1;
 }
 
 static const char* yes_no_options[] = {"No", "Yes", NULL};
@@ -437,6 +455,8 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     }
     else if (idx == 1)
     {
+        if (action_is_disabled(self, 1))
+            return;
         int sidx = self->save_slot_at_open;
         if (sidx < 0)
             sidx = 0;
@@ -555,6 +575,8 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             self->dismiss = true;
         return;
     }
+    if (self->cursorIndex < 0)
+        return;
     if (pushed & kButtonUp)
     {
         int maxIndex = self->actionCount - 1;
@@ -564,10 +586,10 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             self->cursorIndex--;
         else
             self->cursorIndex = maxIndex;
-        while (self->cursorIndex < maxIndex && action_is_disabled(self, self->cursorIndex))
-            self->cursorIndex++;
         while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
             self->cursorIndex--;
+        while (self->cursorIndex < maxIndex && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex++;
         cb_play_ui_sound(CB_UISound_Navigate);
     }
     if (pushed & kButtonDown)
@@ -870,6 +892,8 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     self->actionCount = 3;
     while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
         self->cursorIndex++;
+    if (action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex = -1;
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
