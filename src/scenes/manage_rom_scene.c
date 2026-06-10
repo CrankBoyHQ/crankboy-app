@@ -867,9 +867,9 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     strncpy(self->header_name, "Manage ROM", sizeof(self->header_name) - 1);
     self->header_name[sizeof(self->header_name) - 1] = '\0';
     self->cursorIndex = 0;
+    self->actionCount = 3;
     while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
         self->cursorIndex++;
-    self->actionCount = 3;
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
