@@ -292,6 +292,26 @@ static void clear_save_confirmed(void* ud, int option)
     }
 }
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static bool game_is_packed(CB_Game* game)
+{
+    return game && game->fullpath && strncmp(game->fullpath, "packed/", 7) == 0;
+}
+#endif
+
+static bool action_is_disabled(CB_ManageRomScene* self, int idx)
+{
+    if (idx == 2 && !self->game->coverPath)
+        return true;
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    if (idx == 0 && game_is_packed(self->game))
+        return true;
+    if (idx == 2 && game_is_packed(self->game))
+        return true;
+#endif
+    return false;
+}
+
 static void delete_cover_confirmed(void* ud, int option)
 {
     if (option != 1)
@@ -322,6 +342,8 @@ static void delete_cover_confirmed(void* ud, int option)
     }
     cb_clear_global_cover_cache();
     self->cursorIndex = 1;
+    while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex++;
 }
 
 static const char* yes_no_options[] = {"No", "Yes", NULL};
@@ -372,10 +394,6 @@ static int count_wrapped_lines(const char* text, int max_width, LCDFont* font)
 
     return lines;
 }
-
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-static bool game_is_packed(CB_Game* game);
-#endif
 
 static void invoke_action(CB_ManageRomScene* self, int idx)
 {
@@ -470,26 +488,6 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
         }
         CB_presentModal(modal->scene);
     }
-}
-
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-static bool game_is_packed(CB_Game* game)
-{
-    return game && game->fullpath && strncmp(game->fullpath, "packed/", 7) == 0;
-}
-#endif
-
-static bool action_is_disabled(CB_ManageRomScene* self, int idx)
-{
-    if (idx == 2 && !self->game->coverPath)
-        return true;
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-    if (idx == 0 && game_is_packed(self->game))
-        return true;
-    if (idx == 2 && game_is_packed(self->game))
-        return true;
-#endif
-    return false;
 }
 
 static void draw_action_row(int y, const char* label, bool selected, bool disabled)
@@ -869,6 +867,8 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     strncpy(self->header_name, "Manage ROM", sizeof(self->header_name) - 1);
     self->header_name[sizeof(self->header_name) - 1] = '\0';
     self->cursorIndex = 0;
+    while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
+        self->cursorIndex++;
     self->actionCount = 3;
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
