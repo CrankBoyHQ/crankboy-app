@@ -1137,6 +1137,14 @@ void CB_showHelp(bool first_time)
 
     if (first_time)
     {
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        if (CB_App->pdxBuildNumber)
+        {
+            cb_free(global.last_viewed_changelog_build);
+            global.last_viewed_changelog_build = cb_strdup(CB_App->pdxBuildNumber);
+            save_global();
+        }
+#endif
         infoScene->complete_callback = non_bundle_init;
         infoScene->min_dismiss_time = 1.2f;
     }
