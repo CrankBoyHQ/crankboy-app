@@ -2325,7 +2325,7 @@ char* cb_markdown_to_plaintext(const char* md)
             }
             if (is_hr && line_len >= 3)
             {
-                const char* sep = "\n────────────────\n";
+                const char* sep = "[hr]\n";
                 while (*sep)
                     *dst++ = *sep++;
                 src = line_end;
