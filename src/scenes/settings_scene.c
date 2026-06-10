@@ -19,6 +19,9 @@
 #include "credits_scene.h"
 #include "emucore_game_scene.h"
 #include "homebrew_hub_scene.h"
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+#include "info_scene.h"
+#endif
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
 
@@ -142,6 +145,22 @@ void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsS
 {
     CB_showCredits(settingsScene);
 }
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static void display_changelog(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
+{
+    size_t clen;
+    char* changelog =
+        cb_read_entire_file_maybe_compressed("CHANGELOG.md", &clen, kFileRead | kFileReadData);
+    if (!changelog)
+        changelog = cb_strdup("No changelog found.");
+
+    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", changelog);
+    infoScene->min_dismiss_time = 1.0f;
+    infoScene->textIsStatic = false;
+    CB_presentModal(infoScene->scene);
+}
+#endif
 
 void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
@@ -2667,6 +2686,17 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
             .on_press = display_credits
         };
     }
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    section[++i] = (OptionsMenuEntry){
+        .name = "Changelog",
+        .values = NULL,
+        .description = "View what's new in this version of CrankBoy.",
+        .pref_var = NULL,
+        .max_value = 0,
+        .on_press = display_changelog
+    };
+#endif
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
     int n = i + 1;

@@ -200,6 +200,7 @@ typedef struct CB_Application
 
     // from pdx "bundleID" field (not related to CrankBoy "bundle mode");
     char* pdxBundleID;
+    char* pdxBuildNumber;
 
     char* pdxLaunchPath;  // from system->getLaunchArgs
 

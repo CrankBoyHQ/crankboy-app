@@ -49,6 +49,7 @@ static void read_pdx(void)
     size_t pdxlen;
     char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
     CB_App->pdxBundleID = NULL;
+    CB_App->pdxBuildNumber = NULL;
     if (pdxinfo && pdxlen > 0)
     {
         pdxinfo[pdxlen - 1] = 0;
@@ -64,6 +65,19 @@ static void read_pdx(void)
             CB_App->pdxBundleID = cb_memdup(bundleID, len + 1);
             CB_App->pdxBundleID[len] = 0;
             playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
+        }
+
+        char* bNEq = "buildNumber=";
+        char* buildNumber = strstr(pdxinfo, bNEq);
+        if (buildNumber)
+        {
+            buildNumber += strlen(bNEq);
+            char* nl = strchr(buildNumber, '\n');
+            int len = strlen(buildNumber);
+            if (nl)
+                len = nl - buildNumber;
+            CB_App->pdxBuildNumber = cb_memdup(buildNumber, len + 1);
+            CB_App->pdxBuildNumber[len] = 0;
         }
 
         cb_free(pdxinfo);
@@ -1146,11 +1160,54 @@ static bool games_exist_in_data(void)
     return any_found;
 }
 
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static bool show_changelog_if_new(void)
+{
+    const char* current_build = CB_App->pdxBuildNumber;
+    if (!current_build)
+        return false;
+
+    const char* last_viewed = global.last_viewed_changelog_build;
+    if (last_viewed && strcmp(current_build, last_viewed) == 0)
+        return false;
+
+    if (!last_viewed)
+    {
+        global.last_viewed_changelog_build = cb_strdup(current_build);
+        save_global();
+        return false;
+    }
+
+    size_t clen;
+    char* changelog =
+        cb_read_entire_file_maybe_compressed("CHANGELOG.md", &clen, kFileRead | kFileReadData);
+    if (!changelog)
+        return false;
+
+    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", changelog);
+    infoScene->complete_callback = non_bundle_init;
+    infoScene->min_dismiss_time = 1.0f;
+    infoScene->textIsStatic = false;
+
+    cb_free(global.last_viewed_changelog_build);
+    global.last_viewed_changelog_build = cb_strdup(current_build);
+    save_global();
+
+    CB_presentModal(infoScene->scene);
+
+    return true;
+}
+#endif
+
 static void start_non_bundle_flow(void)
 {
     if (global.shown_intro || cb_file_exists(LAST_SELECTED_FILE, kFileReadData) ||
         games_exist_in_data())
     {
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        if (show_changelog_if_new())
+            return;
+#endif
         non_bundle_init();
     }
     else

@@ -14,6 +14,10 @@ static json_value global_to_json(void)
     json_set_table_value(
         &jv, "cores", json_new_string(global.cores_dir ? global.cores_dir : DEFAULT_CORES_DIRECTORY)
     );
+    if (global.last_viewed_changelog_build)
+        json_set_table_value(
+            &jv, "changelog_build", json_new_string(global.last_viewed_changelog_build)
+        );
 
     return jv;
 }
@@ -26,6 +30,10 @@ static bool global_from_json(json_value jv)
     const char* cores = json_as_string(json_get_table_value(jv, "cores"));
     cb_free((void*)global.cores_dir);
     global.cores_dir = cb_strdup(cores ? cores : DEFAULT_CORES_DIRECTORY);
+
+    const char* changelog_build = json_as_string(json_get_table_value(jv, "changelog_build"));
+    cb_free(global.last_viewed_changelog_build);
+    global.last_viewed_changelog_build = changelog_build ? cb_strdup(changelog_build) : NULL;
 
     return true;
 }
