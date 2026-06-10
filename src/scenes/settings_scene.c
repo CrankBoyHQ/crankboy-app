@@ -1764,7 +1764,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         }
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Settings scope",
+            .name = "Settings Scope",
             .values = settings_scope_labels,
             .description = scope_description,
             .pref_var = &preferences_per_game,
@@ -2729,8 +2729,11 @@ static void switchToSection(CB_SettingsScene* s, int sectionIndex)
     s->topVisibleIndex = 0;
 }
 
+static void cb_wrap_invalidate(void);
+
 static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
 {
+    cb_wrap_invalidate();
     if (settingsScene->entries)
     {
         cb_free(settingsScene->entries);
@@ -2780,6 +2783,14 @@ static struct
     int n_lines;
     int cap_lines;
 } s_wrap_cache;
+
+static void cb_wrap_invalidate(void)
+{
+    s_wrap_cache.key_ptr = NULL;
+    s_wrap_cache.key_width = 0;
+    s_wrap_cache.key_font = NULL;
+    s_wrap_cache.n_lines = 0;
+}
 
 static void cb_wrap_emit_line(const char* start, int length)
 {
@@ -2877,14 +2888,6 @@ static const cb_line_span* cb_settings_wrap(
     if (out_n)
         *out_n = s_wrap_cache.n_lines;
     return s_wrap_cache.lines;
-}
-
-static void cb_wrap_invalidate(void)
-{
-    s_wrap_cache.key_ptr = NULL;
-    s_wrap_cache.key_width = 0;
-    s_wrap_cache.key_font = NULL;
-    s_wrap_cache.n_lines = 0;
 }
 
 static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
