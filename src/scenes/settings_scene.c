@@ -19,9 +19,7 @@
 #include "credits_scene.h"
 #include "emucore_game_scene.h"
 #include "homebrew_hub_scene.h"
-#ifdef CRANKBOY_OFFICIAL_CATALOG
 #include "info_scene.h"
-#endif
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
 
@@ -146,7 +144,6 @@ void display_credits(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsS
     CB_showCredits(settingsScene);
 }
 
-#ifdef CRANKBOY_OFFICIAL_CATALOG
 static void display_changelog(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
     size_t clen;
@@ -170,7 +167,6 @@ static void display_changelog_menu(void* userdata)
 {
     display_changelog(NULL, NULL);
 }
-#endif
 
 void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
 {
@@ -3602,9 +3598,7 @@ static void CB_SettingsScene_menu(void* object)
     else
     {
         playdate->system->addMenuItem("Library", CB_SettingsScene_didSelectBack, settingsScene);
-#ifdef CRANKBOY_OFFICIAL_CATALOG
         playdate->system->addMenuItem("Changelog", display_changelog_menu, NULL);
-#endif
     }
 }
 
