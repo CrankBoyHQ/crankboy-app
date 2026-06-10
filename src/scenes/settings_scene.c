@@ -165,6 +165,11 @@ static void display_changelog(struct OptionsMenuEntry* entry, CB_SettingsScene* 
     infoScene->textIsStatic = false;
     CB_presentModal(infoScene->scene);
 }
+
+static void display_changelog_menu(void* userdata)
+{
+    display_changelog(NULL, NULL);
+}
 #endif
 
 void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* settingsScene)
@@ -2692,17 +2697,6 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         };
     }
 
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-    section[++i] = (OptionsMenuEntry){
-        .name = "Changelog",
-        .values = NULL,
-        .description = "View what's new in this version of CrankBoy.",
-        .pref_var = NULL,
-        .max_value = 0,
-        .on_press = display_changelog
-    };
-#endif
-
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
     int n = i + 1;
     append_emucore_prefs_for_section(def, scene, section, &n);
@@ -3598,6 +3592,9 @@ static void CB_SettingsScene_menu(void* object)
     else
     {
         playdate->system->addMenuItem("Library", CB_SettingsScene_didSelectBack, settingsScene);
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        playdate->system->addMenuItem("Changelog", display_changelog_menu, NULL);
+#endif
     }
 }
 
