@@ -536,7 +536,7 @@ void CB_ListView_draw(CB_ListView* listView)
                     int padding = 5;
 
                     int rightArrowWidth =
-                        playdate->graphics->getTextWidth(listView->font, ">", 1, kUTF8Encoding, 0);
+                        playdate->graphics->getTextWidth(listView->font, "›", 1, kUTF8Encoding, 0);
 
                     playdate->graphics->drawText("‹", 1, kUTF8Encoding, listX + 2, textY + 2);
                     playdate->graphics->drawText(

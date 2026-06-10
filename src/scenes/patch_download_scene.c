@@ -460,22 +460,22 @@ static void context_patch_list_update(
             c->type = PDSCT_PATCH_CHOOSE_INTERACTION;
             CB_ListItemButton* itemButton;
 
-            itemButton = CB_ListItemButton_new("Download files\t>");
+            itemButton = CB_ListItemButton_new("Download files\t›");
             array_push(c->list->items, itemButton);
 
-            itemButton = CB_ListItemButton_new("Patch info\t>");
+            itemButton = CB_ListItemButton_new("Patch info\t›");
             array_push(c->list->items, itemButton);
 
             json_value fs = pds->hack_fs;
 
-            itemButton = CB_ListItemButton_new("Readme\t>");
+            itemButton = CB_ListItemButton_new("Readme\t›");
             itemButton->ud.uint = 0;
             array_push(c->list->items, itemButton);
 
             bool has_changelog = (json_get_table_value(fs, "changelog.txt").type != kJSONNull) ||
                                  (json_get_table_value(fs, "releasenotes.txt").type != kJSONNull);
 
-            itemButton = CB_ListItemButton_new("Changelog\t>");
+            itemButton = CB_ListItemButton_new("Changelog\t›");
             itemButton->ud.uint = has_changelog ? 0 : 1;  // 1 means disabled
             array_push(c->list->items, itemButton);
 
@@ -2009,18 +2009,18 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
 
     context->type = PDSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Manage patches\t>");
+    itemButton = CB_ListItemButton_new("Manage patches\t›");
     itemButton->ud.uint = !pds->has_local_patches;
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Download patches\t>");
+    itemButton = CB_ListItemButton_new("Download patches\t›");
     itemButton->ud.uint = !CB_App->rhdb_present;
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("ROM Info\t>");
+    itemButton = CB_ListItemButton_new("ROM Info\t›");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Parental Lock\t>");
+    itemButton = CB_ListItemButton_new("Parental Lock\t›");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);

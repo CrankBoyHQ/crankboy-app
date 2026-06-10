@@ -992,7 +992,7 @@ static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
 static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
 static const char* article_labels[] = {"Leading", "As-is"};
-static const char* next_scene[] = {">"};
+static const char* next_scene[] = {"›"};
 
 static void update_thumbnail(CB_SettingsScene* settingsScene)
 {
@@ -3370,7 +3370,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             int padding = 5;
 
             int rightArrowWidth =
-                playdate->graphics->getTextWidth(CB_App->bodyFont, ">", 1, kUTF8Encoding, 0);
+                playdate->graphics->getTextWidth(CB_App->bodyFont, "›", 1, kUTF8Encoding, 0);
 
             playdate->graphics->drawText("‹", 1, kUTF8Encoding, 6, y + 2);
             playdate->graphics->drawText(

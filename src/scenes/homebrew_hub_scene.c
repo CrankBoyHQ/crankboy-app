@@ -953,13 +953,13 @@ static bool push_top_level(CB_HomebrewHubScene* hbs)
 
     context->type = HBSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Browse GB games\t>");
+    itemButton = CB_ListItemButton_new("Browse GB games\t›");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Browse CGB games\t>");
+    itemButton = CB_ListItemButton_new("Browse CGB games\t›");
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Parental Lock\t>");
+    itemButton = CB_ListItemButton_new("Parental Lock\t›");
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);
