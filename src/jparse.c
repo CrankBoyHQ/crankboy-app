@@ -351,14 +351,40 @@ __section__(".rare") int write_json_to_disk(const char* path, json_value out)
 {
     json_encoder encoder;
 
-    SDFile* file = playdate->file->open(path, kFileWrite);
-    if (!file)
+    // Write to a temp file first, then rename it over the target.
+    char* tmp_path;
+    playdate->system->formatString(&tmp_path, "%s.tmp", path);
+    if (!tmp_path)
         return -1;
 
-    playdate->json->initEncoder(&encoder, writefile, file, 1);
-    encode_json(&encoder, out);
-    playdate->file->close(file);
-    return 0;
+    SDFile* file = playdate->file->open(tmp_path, kFileWrite);
+    if (file)
+    {
+        playdate->json->initEncoder(&encoder, writefile, file, 1);
+        encode_json(&encoder, out);
+        playdate->file->close(file);
+        playdate->file->unlink(path, 0);
+
+        if (playdate->file->rename(tmp_path, path) == 0)
+        {
+            cb_free(tmp_path);
+            return 0;
+        }
+
+        playdate->system->logToConsole(
+            "write_json_to_disk: rename %s -> %s failed: %s", tmp_path, path,
+            playdate->file->geterr()
+        );
+        playdate->file->unlink(tmp_path, 0);
+    }
+    else
+    {
+        playdate->system->logToConsole(
+            "write_json_to_disk: failed to open tmp %s: %s", tmp_path, playdate->file->geterr()
+        );
+    }
+    cb_free(tmp_path);
+    return -1;
 }
 
 __section__(".rare") json_value json_get_table_value(json_value j, const char* key)

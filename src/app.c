@@ -1003,6 +1003,17 @@ void CB_set_setup_canary(bool value)
         if (root.type != kJSONTable)
             return;
     }
+
+    // Skip write if canary already has the requested value.
+    // This avoids a back-to-back write_json_to_disk call that collides
+    // with the preferences save on the same file.
+    json_value existing = json_get_table_value(root, SETUP_CANARY_KEY);
+    if ((value && existing.type == kJSONTrue) || (!value && existing.type == kJSONFalse))
+    {
+        free_json_data(root);
+        return;
+    }
+
     json_set_table_value(&root, SETUP_CANARY_KEY, json_new_bool(value));
     write_json_to_disk(CB_globalPrefsPath, root);
     free_json_data(root);

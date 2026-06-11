@@ -583,6 +583,12 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     last_scy = -1;
 
+    if (!rom_filename)
+    {
+        playdate->system->logToConsole("ERROR: NULL rom_filename");
+        return NULL;
+    }
+
     playdate->system->logToConsole("ROM: %s", rom_filename);
 
     if (!DTCM_VERIFY_DEBUG())
@@ -676,59 +682,39 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
     if (!CB_App->bundled_rom)
     {
-        // Try loading game-specific preferences
+        // Load game-specific preferences, but preserve always-global values
+        // (these always come from the global preferences file).
         preferences_per_game = 0;
 
-        // Store the global UI sound setting so it isn't overwritten by game-specific settings.
-        void* stored_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
-
-        // FIXME: shouldn't we be using call_with_main_stack for these?
+        void* stored_always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
         call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
 
-        // we always use the per-game save slot, even if global settings are enabled
-        void* stored_save_slot = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
-
-        // If the game-specific settings explicitly says "use Global"
-        // (or there is no game-specific settings file),
-        // load the global preferences file instead.
+        // If the game file doesn't enable per-game scope (or doesn't exist),
+        // load the global preferences for the remaining settings,
+        // but preserve per-game-only values that came from the game file.
         if (preferences_per_game == 0)
         {
+            void* stored_never_global = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
             call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
+            preferences_restore_subset(stored_never_global);
+            cb_free(stored_never_global);
         }
 
-        // re-apply never-global settings
-        if (stored_save_slot)
-        {
-            preferences_restore_subset(stored_save_slot);
-            cb_free(stored_save_slot);
-        }
-
-        // Restore the global UI sound setting after loading any other preferences.
-        if (stored_global)
-        {
-            preferences_restore_subset(stored_global);
-            cb_free(stored_global);
-        }
+        preferences_restore_subset(stored_always_global);
+        cb_free(stored_always_global);
     }
     else
     {
-        void* stored_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
-
+        // Bundled: load game settings, then merge global settings for shared prefs.
+        // Always-globals come from global, never-globals come from the game file.
+        void* stored_always_global = preferences_store_subset(PREFBITS_ALWAYS_GLOBAL);
         call_with_user_stack_1(preferences_read_from_disk, gameScene->settings_filename);
-        void* stored_per_game = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
-
+        void* stored_never_global = preferences_store_subset(PREFBITS_NEVER_GLOBAL);
         call_with_user_stack_1(preferences_read_from_disk, CB_globalPrefsPath);
-
-        if (stored_per_game)
-        {
-            preferences_restore_subset(stored_per_game);
-            cb_free(stored_per_game);
-        }
-        if (stored_global)
-        {
-            preferences_restore_subset(stored_global);
-            cb_free(stored_global);
-        }
+        preferences_restore_subset(stored_never_global);
+        cb_free(stored_never_global);
+        preferences_restore_subset(stored_always_global);
+        cb_free(stored_always_global);
     }
 
     CB_GameScene_generateBitmask();
@@ -1102,8 +1088,8 @@ static uint8_t* read_rom_to_ram(
             );
 
             cb_free(rom);
-            playdate->file->close(rom_file);
             *sceneError = CB_GameSceneErrorLoadingRom;
+            return NULL;
         }
 
         int status = gbz_decompress(rom, rom_size, decompressed_rom, gbz.original_size);
@@ -3983,10 +3969,13 @@ static void CB_GameScene_free(void* object)
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 1.0f);
 
     prefs_locked_by_script = 0;
-    preferences_read_from_disk(CB_globalPrefsPath);
+    preferences_merge_from_disk(CB_globalPrefsPath);
     preferences_per_game = 0;
     preferences_save_state_slot = 0;
-    gb_save_to_disk(context->gb);
+    if (context && gameScene->state == CB_GameSceneStateLoaded)
+    {
+        gb_save_to_disk(context->gb);
+    }
     preferences_save_slot = 0;
 
     if (gameScene->menuImage)
@@ -3998,7 +3987,10 @@ static void CB_GameScene_free(void* object)
 
     CB_Scene_free(gameScene->scene);
 
-    gb_reset(context->gb, context->cgb_mode);
+    if (context)
+    {
+        gb_reset(context->gb, context->cgb_mode);
+    }
 
     cb_free(gameScene->rom_filename);
     cb_free(gameScene->save_filename);
@@ -4006,13 +3998,13 @@ static void CB_GameScene_free(void* object)
     cb_free(gameScene->settings_filename);
     cb_free(gameScene->name_short);
 
-    if (context->rom)
+    if (context && context->rom)
     {
         cb_free(rom_pool);
         rom_pool = context->rom;
     }
 
-    if (context->cart_ram)
+    if (context && context->cart_ram)
     {
         cb_free(context->cart_ram);
     }
@@ -4026,8 +4018,11 @@ static void CB_GameScene_free(void* object)
     cb_free(gameScene->audio_temp_left);
     cb_free(gameScene->audio_temp_right);
 
-    cb_free(context->gb->cgb_bg_palette);
-    cb_free(context->gb->cgb_obj_palette);
+    if (context)
+    {
+        cb_free(context->gb->cgb_bg_palette);
+        cb_free(context->gb->cgb_obj_palette);
+    }
 
     cb_free(context);
     cb_free(gameScene);

@@ -80,6 +80,12 @@ void preferences_read_from_disk(const char* filename);
 
 void preferences_merge_from_disk(const char* filename);
 
+// reads preferences from disk, but leaves the bits in `preserve_mask` unchanged.
+// this wraps the common pattern of: store_subset -> read_from_disk -> restore_subset.
+void preferences_read_from_disk_preserve(
+    const char* filename, preferences_bitfield_t preserve_mask
+);
+
 // returns 0 on failure
 // always leaves emucore prefs as-they-are
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is);

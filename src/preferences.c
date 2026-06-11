@@ -77,6 +77,9 @@ void preferences_init(void)
 
 void preferences_merge_from_disk(const char* filename)
 {
+    if (!filename)
+        return;
+
     json_value j;
     if (!parse_json(filename, &j, kFileReadData))
     {
@@ -86,6 +89,7 @@ void preferences_merge_from_disk(const char* filename)
     if (j.type == kJSONTable)
     {
         JsonObject* obj = j.data.tableval;
+
         for (size_t i = 0; i < obj->n; ++i)
         {
 #define PREF(x, ...)                                      \
@@ -106,8 +110,25 @@ void preferences_merge_from_disk(const char* filename)
 
 void preferences_read_from_disk(const char* filename)
 {
+    if (!filename)
+        return;
+    playdate->system->logToConsole("Load preferences from %s", filename);
     preferences_set_defaults();
     preferences_merge_from_disk(filename);
+}
+
+void preferences_read_from_disk_preserve(const char* filename, preferences_bitfield_t preserve_mask)
+{
+    if (!filename)
+        return;
+
+    void* stored = preferences_store_subset(preserve_mask);
+    preferences_read_from_disk(filename);
+    if (stored)
+    {
+        preferences_restore_subset(stored);
+        cb_free(stored);
+    }
 }
 
 int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leave_as_is)
@@ -146,6 +167,8 @@ int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leav
 
 int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_as_is)
 {
+    if (!filename)
+        return 0;
     return (int)(intptr_t)call_with_main_stack_2(_preferences_save_to_disk, filename, &leave_as_is);
 }
 

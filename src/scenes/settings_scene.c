@@ -925,6 +925,11 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 
     if (!result)
     {
+        playdate->system->logToConsole(
+            "Error saving preferences (per_game=%d, game_path=%s, global_path=%s)",
+            preferences_per_game, game_settings_path ? game_settings_path : "(null)",
+            CB_globalPrefsPath
+        );
         CB_presentModal(CB_Modal_new("Error saving preferences.", NULL, NULL, NULL)->scene);
     }
     else
