@@ -1724,6 +1724,8 @@ char* cb_url_encode_for_github_raw(const char* str)
 
 #define DB_CRC_MASK 0xFC /* should match what's in create_rom_list.py */
 
+static json_value db_shard_cache[DB_CRC_MASK + 1];  // 253 entries, zero-init = all kJSONNull
+
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
 {
     CB_FetchedNames names = {NULL, NULL, 0, false};
@@ -1731,52 +1733,76 @@ CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
     char crc_string_upper[9];
     snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
 
-    char db_filename[32];
-    snprintf(
-        db_filename, sizeof(db_filename), "db/%02lx.json",
-        (unsigned long)((crc >> 24) & DB_CRC_MASK)
-    );
-    char db_filename_compressed[36];
-    snprintf(db_filename_compressed, sizeof(db_filename_compressed), "%s.lz4", db_filename);
-
-    char* json_string = NULL;
-    json_string =
-        cb_read_entire_file_maybe_compressed(db_filename, NULL, kFileRead | kFileReadData);
-
-    if (!json_string)
-    {
-        return names;
-    }
+    unsigned int shard_idx = ((unsigned int)crc >> 24) & DB_CRC_MASK;
 
     json_value db_json;
-    if (!parse_json_string(json_string, &db_json))
+    bool from_cache = false;
+
+    if (db_shard_cache[shard_idx].type == kJSONTable)
     {
-        cb_free(json_string);
-        return names;
+        db_json = db_shard_cache[shard_idx];
+        from_cache = true;
     }
-    cb_free(json_string);
-
-    if (db_json.type == kJSONTable)
+    else
     {
-        json_value game_entry = json_get_table_value(db_json, crc_string_upper);
-        if (game_entry.type == kJSONTable)
-        {
-            json_value short_val = json_get_table_value(game_entry, "short");
-            if (short_val.type == kJSONString && short_val.data.stringval)
-            {
-                names.short_name = cb_strdup(short_val.data.stringval);
-            }
+        char db_filename[32];
+        snprintf(db_filename, sizeof(db_filename), "db/%02x.json", shard_idx);
 
-            json_value long_val = json_get_table_value(game_entry, "long");
-            if (long_val.type == kJSONString && long_val.data.stringval)
-            {
-                names.detailed_name = cb_strdup(long_val.data.stringval);
-            }
+        char* json_string = NULL;
+        json_string =
+            cb_read_entire_file_maybe_compressed(db_filename, NULL, kFileRead | kFileReadData);
+
+        if (!json_string)
+        {
+            return names;
+        }
+
+        if (!parse_json_string(json_string, &db_json))
+        {
+            cb_free(json_string);
+            return names;
+        }
+        cb_free(json_string);
+
+        if (db_json.type != kJSONTable)
+        {
+            free_json_data(db_json);
+            return names;
+        }
+
+        db_shard_cache[shard_idx] = db_json;
+    }
+
+    json_value game_entry = json_get_table_value(db_json, crc_string_upper);
+    if (game_entry.type == kJSONTable)
+    {
+        json_value short_val = json_get_table_value(game_entry, "short");
+        if (short_val.type == kJSONString && short_val.data.stringval)
+        {
+            names.short_name = cb_strdup(short_val.data.stringval);
+        }
+
+        json_value long_val = json_get_table_value(game_entry, "long");
+        if (long_val.type == kJSONString && long_val.data.stringval)
+        {
+            names.detailed_name = cb_strdup(long_val.data.stringval);
         }
     }
 
-    free_json_data(db_json);
+    (void)from_cache;
     return names;
+}
+
+void cb_clear_title_db_cache(void)
+{
+    for (int i = 0; i <= DB_CRC_MASK; ++i)
+    {
+        if (db_shard_cache[i].type != kJSONNull)
+        {
+            free_json_data(db_shard_cache[i]);
+            db_shard_cache[i].type = kJSONNull;
+        }
+    }
 }
 
 static char* articles[] = {", The", ", Las", ", A",   ", Le",  ", La", ", Los", ", An",

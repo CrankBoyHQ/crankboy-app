@@ -17,6 +17,13 @@
 
 #include <stdio.h>
 
+#define BUILD_BATCH_SIZE 10
+#define PRELOAD_HALF 15
+#define PRELOAD_BATCH_SIZE 5
+#define BG_FILL_BATCH_SIZE 2
+#define MAX_COVER_COUNT 200
+#define IDLE_THRESHOLD_MS 2000
+
 typedef enum
 {
     CB_LibrarySceneTabList,
@@ -42,6 +49,8 @@ typedef enum
 typedef enum
 {
     kLibraryStateInit,
+    kLibraryStateBuildGameList,
+    kLibraryStatePreloadCovers,
     kLibraryStateBuildUIList,
     kLibraryStateDone
 } CB_LibraryState;
@@ -55,6 +64,14 @@ typedef struct CB_Game
 
     char* displayName;
     char* sortName;
+
+    void* cover_compressed_data;
+    int cover_compressed_size;
+    int cover_width;
+    int cover_height;
+    int cover_rowbytes;
+    bool cover_has_mask;
+    uint32_t cover_access_counter;
 } CB_Game;
 
 typedef struct CB_LibraryScene
@@ -91,12 +108,32 @@ typedef struct CB_LibraryScene
     int launchAnimShiftRight;
     int launchAnimSideBarWidth;
     bool launchAnimWhiteGap;
+
+    CB_Array* available_covers;
+    int build_game_index;
+
+    void* lz4_state;
+    int preload_cover_index;
+    int preload_cover_total;
+    size_t cover_cache_bytes;
+    int cover_cached_count;
+    uint32_t cover_global_access_counter;
+    uint32_t last_user_input_time_ms;
+    int last_selection_for_idle;
+    int bg_fill_center;
+    int bg_fill_dist;
+    int bg_fill_dir;
 } CB_LibraryScene;
 
 CB_LibraryScene* CB_LibraryScene_new(void);
 
 CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
 void CB_Game_free(CB_Game* game);
+
+void CB_cover_compress(
+    CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
+);
+void CB_cover_free_compressed(CB_Game* game);
 
 // returns true if removal succeeded
 // does not delete game on disk

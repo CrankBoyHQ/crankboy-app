@@ -94,6 +94,9 @@ typedef struct
     // common database name, for thumbnail matching etc.
     char* name_database;
 
+    // full path resolved during scanning, e.g. "packed/file.gb" or "<dir>/file.gb"
+    char* fullpath;
+
     // human-readable variations (all may be NULL except name_filename and
     // name_filename_leading_article)
     char* name_short;
@@ -113,18 +116,6 @@ typedef struct
     CB_LoadedCoverArt art;
     char* rom_path;
 } CB_GlobalCoverCache;
-
-typedef struct
-{
-    char* rom_path;
-    void* compressed_data;
-    int compressed_size;
-    int original_size;
-    int width;
-    int height;
-    int rowbytes;
-    bool has_mask;
-} CB_CoverCacheEntry;
 
 typedef struct emucore_s
 {
@@ -162,7 +153,6 @@ typedef struct CB_Application
     SoundSource* soundSource;
     CB_GlobalCoverCache coverArtCache;
     CB_Array* gameNameCache;
-    CB_Array* coverCache;
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
     bool rhdb_present;
@@ -236,6 +226,9 @@ typedef struct CB_Application
 
     // "safe mode": skip loading emucores this session (set by crash recovery).
     bool skip_emucores;
+
+    // sorted array of char* filenames present in "packed/" (CRANKBOY_OFFICIAL_CATALOG)
+    CB_Array* packed_filenames;
 } CB_Application;
 
 extern CB_Application* CB_App;

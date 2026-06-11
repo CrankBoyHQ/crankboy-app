@@ -3,7 +3,7 @@
 #include "../app.h"
 #include "../pdi.h"
 #include "../utility.h"
-#include "cover_cache_scene.h"
+#include "library_scene.h"
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wdouble-promotion"
@@ -553,8 +553,8 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
 
     case kStateDone:
     {
-        CB_CoverCacheScene* cacheScene = CB_CoverCacheScene_new();
-        CB_present(cacheScene->scene);
+        CB_LibraryScene* libraryScene = CB_LibraryScene_new();
+        CB_present(libraryScene->scene);
         break;
     }
     }

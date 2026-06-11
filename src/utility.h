@@ -287,6 +287,7 @@ static FORCE_INLINE uint32_t reverse_bits_in_each_byte_conditional_u16(uint16_t 
 void draw_spinny(int x, int y, int radius);
 
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc);
+void cb_clear_title_db_cache(void);
 char* cb_url_encode_for_github_raw(const char* str);
 
 char* cb_game_config_path(const char* rom_filename);

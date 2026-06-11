@@ -33,8 +33,182 @@ static void CB_LibraryScene_free(void* object);
 static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
 static void CB_LibraryScene_menu(void* object);
 static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimation);
+
+static void collect_cover_filenames_callback(const char* filename, void* userdata)
+{
+    if (endswithi(filename, ".pdi"))
+    {
+        CB_Array* covers_array = userdata;
+        char* basename_no_ext = cb_basename(filename, true);
+        if (basename_no_ext)
+        {
+            array_push(covers_array, basename_no_ext);
+        }
+    }
+}
+
+static void CB_cover_compress_impl(
+    CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
+)
+{
+    if (!game->coverPath || game->cover_compressed_data)
+        return;
+
+    const char* error = NULL;
+    LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
+
+    if (!coverBitmap)
+        return;
+
+    int width, height, rowbytes;
+    uint8_t *mask_data, *pixel_data;
+    playdate->graphics->getBitmapData(
+        coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
+    );
+
+    bool has_mask = (mask_data != NULL);
+    size_t original_size = rowbytes * height;
+    if (has_mask)
+        original_size *= 2;
+
+    int max_dst_size = LZ4_compressBound(original_size);
+    char* temp_compressed_buffer = cb_malloc(max_dst_size);
+
+    if (temp_compressed_buffer)
+    {
+        uint8_t* uncompressed_buffer = cb_malloc(original_size);
+        if (uncompressed_buffer)
+        {
+            memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
+            if (has_mask)
+            {
+                memcpy(uncompressed_buffer + (rowbytes * height), mask_data, rowbytes * height);
+            }
+
+            int compressed_size = LZ4_compress_fast_extState(
+                lz4_state, (const char*)uncompressed_buffer, temp_compressed_buffer, original_size,
+                max_dst_size, 1
+            );
+
+            cb_free(uncompressed_buffer);
+
+            if (compressed_size > 0)
+            {
+                char* final_buffer = cb_malloc(compressed_size);
+                if (final_buffer)
+                {
+                    memcpy(final_buffer, temp_compressed_buffer, compressed_size);
+
+                    game->cover_compressed_data = final_buffer;
+                    game->cover_compressed_size = compressed_size;
+                    game->cover_width = width;
+                    game->cover_height = height;
+                    game->cover_rowbytes = rowbytes;
+                    game->cover_has_mask = has_mask;
+
+                    if (io_cache_bytes)
+                        *io_cache_bytes += compressed_size;
+                    if (io_cached_count)
+                        *io_cached_count += 1;
+                }
+            }
+        }
+        cb_free(temp_compressed_buffer);
+    }
+
+    playdate->graphics->freeBitmap(coverBitmap);
+}
+
+void CB_cover_compress(CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count)
+{
+    CB_cover_compress_impl(game, lz4_state, io_cache_bytes, io_cached_count);
+}
+
+void CB_cover_free_compressed(CB_Game* game)
+{
+    if (game->cover_compressed_data)
+    {
+        cb_free(game->cover_compressed_data);
+        game->cover_compressed_data = NULL;
+    }
+}
+
+static bool cover_evict_lru(CB_LibraryScene* lib)
+{
+    uint32_t smallest = UINT32_MAX;
+    CB_Game* to_evict = NULL;
+
+    for (int i = 0; i < lib->games->length; i++)
+    {
+        CB_Game* g = lib->games->items[i];
+        if (g->cover_compressed_data && g->cover_access_counter > 0 &&
+            g->cover_access_counter < smallest)
+        {
+            smallest = g->cover_access_counter;
+            to_evict = g;
+        }
+    }
+
+    if (to_evict)
+    {
+        if (lib->cover_cache_bytes >= (size_t)to_evict->cover_compressed_size)
+            lib->cover_cache_bytes -= to_evict->cover_compressed_size;
+        lib->cover_cached_count--;
+        CB_cover_free_compressed(to_evict);
+        return true;
+    }
+    return false;
+}
+
+static void cover_background_fill(CB_LibraryScene* lib)
+{
+    if (lib->cover_cached_count >= MAX_COVER_COUNT)
+    {
+        while (lib->cover_cached_count >= MAX_COVER_COUNT)
+        {
+            if (!cover_evict_lru(lib))
+                break;
+        }
+    }
+
+    if (lib->cover_cached_count >= MAX_COVER_COUNT)
+        return;
+
+    if (lib->bg_fill_center < 0)
+    {
+        lib->bg_fill_center = lib->listView->selectedItem;
+        if (lib->bg_fill_center < 0 || lib->bg_fill_center >= lib->games->length)
+            lib->bg_fill_center = 0;
+        lib->bg_fill_dist = 0;
+        lib->bg_fill_dir = 0;
+    }
+
+    int total = lib->games->length;
+    int found = 0;
+
+    for (int tries = 0; tries < total * 2 && found < BG_FILL_BATCH_SIZE; tries++)
+    {
+        int idx = (lib->bg_fill_dir == 0) ? lib->bg_fill_center + lib->bg_fill_dist
+                                          : lib->bg_fill_center - lib->bg_fill_dist;
+
+        lib->bg_fill_dir = !lib->bg_fill_dir;
+        if (lib->bg_fill_dir == 0)
+            lib->bg_fill_dist++;
+
+        if (idx < 0 || idx >= total)
+            continue;
+
+        CB_Game* g = lib->games->items[idx];
+        if (g->coverPath && !g->cover_compressed_data)
+        {
+            CB_cover_compress_impl(
+                g, lib->lz4_state, &lib->cover_cache_bytes, &lib->cover_cached_count
+            );
+            found++;
+        }
+    }
+}
 static int last_selected_game_index = 0;
-static bool has_loaded_initial_index = false;
 static bool library_was_initialized_once = false;
 static int last_panel_seam = LCD_COLUMNS / 2;
 static CB_LibraryScene* s_active_library_scene = NULL;
@@ -197,6 +371,18 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             cb_free(game->coverPath);
         }
         game->coverPath = cb_strdup(cover_dest_path);
+
+        if (game->cover_compressed_data)
+        {
+            if (libraryScene->cover_cache_bytes >= (size_t)game->cover_compressed_size)
+                libraryScene->cover_cache_bytes -= game->cover_compressed_size;
+            libraryScene->cover_cached_count--;
+        }
+        CB_cover_free_compressed(game);
+        CB_cover_compress(
+            game, libraryScene->lz4_state, &libraryScene->cover_cache_bytes,
+            &libraryScene->cover_cached_count
+        );
 
         if (stillOnSameGame)
         {
@@ -1049,13 +1235,6 @@ CB_LibraryScene* CB_LibraryScene_new(void)
 
     setCrankSoundsEnabled(true);
 
-    if (!has_loaded_initial_index)
-    {
-        last_selected_game_index =
-            (int)(intptr_t)call_with_user_stack_1(load_last_selected_index, CB_App->gameListCache);
-        has_loaded_initial_index = true;
-    }
-
     CB_Scene* scene = CB_Scene_new();
     scene->id = "library";
 
@@ -1077,19 +1256,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->games = CB_App->gameListCache;
     libraryScene->listView = CB_ListView_new();
 
-    int selected_item = 0;
-    if (preferences_library_remember_selection)
-    {
-        selected_item = last_selected_game_index;
-        // Safety check if games were removed
-        if (selected_item < 0 ||
-            (libraryScene->games->length > 0 && selected_item >= libraryScene->games->length))
-        {
-            selected_item = 0;
-        }
-    }
-
-    libraryScene->listView->selectedItem = selected_item;
+    libraryScene->listView->selectedItem = 0;
     libraryScene->tab = CB_LibrarySceneTabList;
     libraryScene->lastSelectedItem = -1;
     libraryScene->last_display_name_mode = combined_display_mode();
@@ -1102,6 +1269,34 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->migration_modal_shown = false;
     libraryScene->decompression_buffer = NULL;
     libraryScene->decompression_buffer_size = 0;
+
+    libraryScene->available_covers = array_new();
+    libraryScene->build_game_index = 0;
+    libraryScene->lz4_state = cb_malloc(LZ4_sizeofState());
+    libraryScene->preload_cover_index = 0;
+    libraryScene->preload_cover_total = 0;
+    libraryScene->cover_cache_bytes = 0;
+    libraryScene->cover_cached_count = 0;
+    libraryScene->cover_global_access_counter = 0;
+    libraryScene->last_user_input_time_ms = 0;
+    libraryScene->last_selection_for_idle = 0;
+    libraryScene->bg_fill_center = -1;
+    libraryScene->bg_fill_dist = 0;
+    libraryScene->bg_fill_dir = 0;
+
+    if (libraryScene->isReloading)
+    {
+        // skip game list build and cover preload on reload
+        // keep current selection
+        int sel = last_selected_game_index;
+        if (sel < 0 || sel >= libraryScene->games->length)
+            sel = 0;
+        libraryScene->listView->selectedItem = sel;
+        libraryScene->build_index = 0;
+        libraryScene->progress_max_width =
+            cb_calculate_progress_max_width(CB_App->subheadFont, PROGRESS_STYLE_PERCENT, 0);
+        libraryScene->state = kLibraryStateBuildUIList;
+    }
 
     cb_clear_global_cover_cache();
 
@@ -1181,10 +1376,174 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
         case kLibraryStateInit:
         {
-            libraryScene->build_index = 0;
+            playdate->file->listfiles(
+                cb_gb_directory_path(CB_coversPath), collect_cover_filenames_callback,
+                libraryScene->available_covers, 0
+            );
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+            playdate->file->listfiles(
+                "packed", collect_cover_filenames_callback, libraryScene->available_covers, 0
+            );
+#endif
+            if (libraryScene->available_covers->length > 0)
+            {
+                qsort(
+                    libraryScene->available_covers->items, libraryScene->available_covers->length,
+                    sizeof(char*), cb_compare_strings
+                );
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+                for (int i = libraryScene->available_covers->length - 1; i > 0; --i)
+                {
+                    const char* a = libraryScene->available_covers->items[i];
+                    const char* b = libraryScene->available_covers->items[i - 1];
+                    if (cb_strcmp(a, b) == 0)
+                    {
+                        cb_free(libraryScene->available_covers->items[i]);
+                        array_remove_at(libraryScene->available_covers, i);
+                    }
+                }
+#endif
+            }
+
+            libraryScene->build_game_index = 0;
             libraryScene->progress_max_width =
                 cb_calculate_progress_max_width(CB_App->subheadFont, PROGRESS_STYLE_PERCENT, 0);
-            libraryScene->state = kLibraryStateBuildUIList;
+            libraryScene->state = kLibraryStateBuildGameList;
+            return;
+        }
+
+        case kLibraryStateBuildGameList:
+        {
+            if (libraryScene->build_game_index < CB_App->gameNameCache->length)
+            {
+                int batch_end = libraryScene->build_game_index + BUILD_BATCH_SIZE;
+                if (batch_end > CB_App->gameNameCache->length)
+                    batch_end = CB_App->gameNameCache->length;
+
+                for (int i = libraryScene->build_game_index; i < batch_end; i++)
+                {
+                    CB_GameName* cachedName = CB_App->gameNameCache->items[i];
+                    CB_Game* game = CB_Game_new(cachedName, libraryScene->available_covers);
+                    array_push(CB_App->gameListCache, game);
+                }
+
+                libraryScene->build_game_index = batch_end;
+
+                char progress_suffix[20];
+                int total = CB_App->gameNameCache->length;
+                int percentage =
+                    (total > 0) ? ((float)libraryScene->build_game_index / total) * 100 : 99;
+                if (percentage >= 100)
+                    percentage = 99;
+                snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
+
+                cb_draw_logo_screen_centered_split(
+                    CB_App->subheadFont, "Building Game List... ", progress_suffix,
+                    libraryScene->progress_max_width
+                );
+            }
+            else
+            {
+                cb_sort_games_array(CB_App->gameListCache);
+                CB_App->gameListCacheIsSorted = true;
+
+                libraryScene->build_index = 0;
+                libraryScene->games = CB_App->gameListCache;
+
+                // restore last-selected position now that the list is built
+                if (preferences_library_remember_selection)
+                {
+                    last_selected_game_index = (int)(intptr_t)call_with_user_stack_1(
+                        load_last_selected_index, CB_App->gameListCache
+                    );
+                    int sel = last_selected_game_index;
+                    if (sel < 0 || sel >= libraryScene->games->length)
+                        sel = 0;
+                    libraryScene->listView->selectedItem = sel;
+                }
+
+                libraryScene->preload_cover_index = 0;
+                libraryScene->preload_cover_total = 0;
+
+                libraryScene->state = kLibraryStatePreloadCovers;
+            }
+            return;
+        }
+
+        case kLibraryStatePreloadCovers:
+        {
+            if (libraryScene->preload_cover_total == 0)
+            {
+                int center = libraryScene->listView->selectedItem;
+                if (center < 0 || center >= libraryScene->games->length)
+                    center = 0;
+
+                libraryScene->last_selection_for_idle = center;
+
+                int start = center - PRELOAD_HALF;
+                if (start < 0)
+                    start = 0;
+                int end = center + PRELOAD_HALF + 1;
+                if (end > libraryScene->games->length)
+                    end = libraryScene->games->length;
+
+                int count = 0;
+                for (int i = start; i < end; i++)
+                {
+                    CB_Game* g = libraryScene->games->items[i];
+                    if (g->coverPath && !g->cover_compressed_data)
+                        count++;
+                }
+                libraryScene->preload_cover_total = count;
+            }
+
+            if (libraryScene->preload_cover_index < libraryScene->preload_cover_total)
+            {
+                int center = libraryScene->listView->selectedItem;
+                int start = center - PRELOAD_HALF;
+                if (start < 0)
+                    start = 0;
+                int end = center + PRELOAD_HALF + 1;
+                if (end > libraryScene->games->length)
+                    end = libraryScene->games->length;
+
+                int batch_end = libraryScene->preload_cover_index + PRELOAD_BATCH_SIZE;
+                if (batch_end > libraryScene->preload_cover_total)
+                    batch_end = libraryScene->preload_cover_total;
+
+                for (int i = start; i < end && libraryScene->preload_cover_index < batch_end; i++)
+                {
+                    CB_Game* g = libraryScene->games->items[i];
+                    if (g->coverPath && !g->cover_compressed_data)
+                    {
+                        CB_cover_compress_impl(
+                            g, libraryScene->lz4_state, &libraryScene->cover_cache_bytes,
+                            &libraryScene->cover_cached_count
+                        );
+                        libraryScene->preload_cover_index++;
+                    }
+                }
+
+                char progress_suffix[20];
+                int pct = (libraryScene->preload_cover_total > 0)
+                              ? ((float)libraryScene->preload_cover_index /
+                                 libraryScene->preload_cover_total) *
+                                    100
+                              : 99;
+                if (pct >= 100)
+                    pct = 99;
+                snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", pct);
+
+                cb_draw_logo_screen_centered_split(
+                    CB_App->subheadFont, "Caching Covers... ", progress_suffix,
+                    libraryScene->progress_max_width
+                );
+            }
+            else
+            {
+                libraryScene->build_index = 0;
+                libraryScene->state = kLibraryStateBuildUIList;
+            }
             return;
         }
 
@@ -1236,11 +1595,23 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 libraryScene->listView->frame.height = playdate->display->getHeight();
                 CB_ListView_reload(libraryScene->listView);
                 libraryScene->state = kLibraryStateDone;
+                libraryScene->last_user_input_time_ms =
+                    playdate->system->getCurrentTimeMilliseconds();
             }
             return;
         }
         case kLibraryStateDone:
             break;
+        }
+    }
+
+    // idle background fill
+    if (libraryScene->state == kLibraryStateDone && libraryScene->initialLoadComplete)
+    {
+        unsigned int now = playdate->system->getCurrentTimeMilliseconds();
+        if (now - libraryScene->last_user_input_time_ms > IDLE_THRESHOLD_MS)
+        {
+            cover_background_fill(libraryScene);
         }
     }
 
@@ -1347,6 +1718,20 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     CB_Scene_update(libraryScene->scene, dt);
 
     PDButtons pressed = CB_App->buttons_pressed;
+
+    if (pressed)
+    {
+        libraryScene->last_user_input_time_ms = playdate->system->getCurrentTimeMilliseconds();
+        libraryScene->bg_fill_center = -1;
+    }
+
+    // also track crank activity
+    float crankChange = playdate->system->getCrankChange();
+    if (crankChange != 0.0f)
+    {
+        libraryScene->last_user_input_time_ms = playdate->system->getCurrentTimeMilliseconds();
+        libraryScene->bg_fill_center = -1;
+    }
 
     if (pressed & kButtonA)
     {
@@ -1509,98 +1894,99 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                 CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
 
                 bool foundInCache = false;
-                if (CB_App->coverCache)
+                if (selectedGame->cover_compressed_data)
                 {
-                    for (int i = 0; i < CB_App->coverCache->length; i++)
+                    int original_size = selectedGame->cover_rowbytes * selectedGame->cover_height;
+                    if (selectedGame->cover_has_mask)
+                        original_size *= 2;
+
+                    if (libraryScene->decompression_buffer_size < (size_t)original_size)
                     {
-                        CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
-                        if (strcmp(entry->rom_path, selectedGame->fullpath) == 0)
+                        libraryScene->decompression_buffer =
+                            cb_realloc(libraryScene->decompression_buffer, original_size);
+                        libraryScene->decompression_buffer_size = original_size;
+                    }
+
+                    char* decompressed_buffer = libraryScene->decompression_buffer;
+                    if (decompressed_buffer)
+                    {
+                        int decompressed_size = LZ4_decompress_safe(
+                            selectedGame->cover_compressed_data, decompressed_buffer,
+                            selectedGame->cover_compressed_size, original_size
+                        );
+                        if (decompressed_size == original_size)
                         {
-                            if (libraryScene->decompression_buffer_size < entry->original_size)
+                            LCDBitmap* new_bitmap = NULL;
+                            if (selectedGame->cover_has_mask)
                             {
-                                libraryScene->decompression_buffer = cb_realloc(
-                                    libraryScene->decompression_buffer, entry->original_size
+                                new_bitmap = playdate->graphics->newBitmap(
+                                    selectedGame->cover_width, selectedGame->cover_height,
+                                    kColorClear
                                 );
-                                libraryScene->decompression_buffer_size = entry->original_size;
+                            }
+                            else
+                            {
+                                new_bitmap = playdate->graphics->newBitmap(
+                                    selectedGame->cover_width, selectedGame->cover_height,
+                                    kColorWhite
+                                );
                             }
 
-                            char* decompressed_buffer = libraryScene->decompression_buffer;
-                            if (decompressed_buffer)
+                            if (new_bitmap)
                             {
-                                int decompressed_size = LZ4_decompress_safe(
-                                    entry->compressed_data, decompressed_buffer,
-                                    entry->compressed_size, entry->original_size
+                                int new_rowbytes;
+                                uint8_t *new_pixel_data, *new_mask_data;
+                                playdate->graphics->getBitmapData(
+                                    new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data,
+                                    &new_pixel_data
                                 );
-                                if (decompressed_size == entry->original_size)
+                                size_t copy_bytes =
+                                    ((size_t)selectedGame->cover_rowbytes < (size_t)new_rowbytes)
+                                        ? selectedGame->cover_rowbytes
+                                        : (size_t)new_rowbytes;
+
+                                uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
+                                uint8_t* dst_ptr = new_pixel_data;
+
+                                for (int y = 0; y < selectedGame->cover_height; ++y)
                                 {
-                                    LCDBitmap* new_bitmap = NULL;
-                                    if (entry->has_mask)
+                                    memcpy(dst_ptr, src_ptr, copy_bytes);
+                                    src_ptr += selectedGame->cover_rowbytes;
+                                    dst_ptr += new_rowbytes;
+                                }
+
+                                if (selectedGame->cover_has_mask && new_mask_data)
+                                {
+                                    dst_ptr = new_mask_data;
+                                    for (int y = 0; y < selectedGame->cover_height; ++y)
                                     {
-                                        new_bitmap = playdate->graphics->newBitmap(
-                                            entry->width, entry->height, kColorClear
-                                        );
-                                    }
-                                    else
-                                    {
-                                        new_bitmap = playdate->graphics->newBitmap(
-                                            entry->width, entry->height, kColorWhite
-                                        );
-                                    }
-
-                                    if (new_bitmap)
-                                    {
-                                        int new_rowbytes;
-                                        uint8_t *new_pixel_data, *new_mask_data;
-                                        playdate->graphics->getBitmapData(
-                                            new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data,
-                                            &new_pixel_data
-                                        );
-                                        size_t copy_bytes = (entry->rowbytes < (size_t)new_rowbytes)
-                                                                ? entry->rowbytes
-                                                                : (size_t)new_rowbytes;
-
-                                        uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
-                                        uint8_t* dst_ptr = new_pixel_data;
-
-                                        for (int y = 0; y < entry->height; ++y)
-                                        {
-                                            memcpy(dst_ptr, src_ptr, copy_bytes);
-                                            src_ptr += entry->rowbytes;
-                                            dst_ptr += new_rowbytes;
-                                        }
-
-                                        if (entry->has_mask && new_mask_data)
-                                        {
-                                            dst_ptr = new_mask_data;
-                                            for (int y = 0; y < entry->height; ++y)
-                                            {
-                                                memcpy(dst_ptr, src_ptr, copy_bytes);
-                                                src_ptr += entry->rowbytes;
-                                                dst_ptr += new_rowbytes;
-                                            }
-                                        }
-
-                                        CB_App->coverArtCache.art.bitmap = new_bitmap;
-                                        CB_App->coverArtCache.art.original_width = entry->width;
-                                        CB_App->coverArtCache.art.original_height = entry->height;
-                                        CB_App->coverArtCache.art.scaled_width = entry->width;
-                                        CB_App->coverArtCache.art.scaled_height = entry->height;
-                                        CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
-                                        CB_App->coverArtCache.rom_path =
-                                            cb_strdup(selectedGame->fullpath);
-                                        foundInCache = true;
+                                        memcpy(dst_ptr, src_ptr, copy_bytes);
+                                        src_ptr += selectedGame->cover_rowbytes;
+                                        dst_ptr += new_rowbytes;
                                     }
                                 }
-                                else
-                                {
-                                    playdate->system->logToConsole(
-                                        "LZ4 decompression failed for %s", entry->rom_path
-                                    );
-                                }
+
+                                CB_App->coverArtCache.art.bitmap = new_bitmap;
+                                CB_App->coverArtCache.art.original_width =
+                                    selectedGame->cover_width;
+                                CB_App->coverArtCache.art.original_height =
+                                    selectedGame->cover_height;
+                                CB_App->coverArtCache.art.scaled_width = selectedGame->cover_width;
+                                CB_App->coverArtCache.art.scaled_height =
+                                    selectedGame->cover_height;
+                                CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
+                                CB_App->coverArtCache.rom_path = cb_strdup(selectedGame->fullpath);
+                                foundInCache = true;
+
+                                selectedGame->cover_access_counter =
+                                    ++libraryScene->cover_global_access_counter;
                             }
-
-                            if (foundInCache)
-                                break;
+                        }
+                        else
+                        {
+                            playdate->system->logToConsole(
+                                "LZ4 decompression failed for %s", selectedGame->fullpath
+                            );
                         }
                     }
                 }
@@ -2131,6 +2517,18 @@ static void CB_LibraryScene_free(void* object)
         cb_free(libraryScene->decompression_buffer);
     }
 
+    if (libraryScene->available_covers)
+    {
+        for (int i = 0; i < libraryScene->available_covers->length; i++)
+            cb_free(libraryScene->available_covers->items[i]);
+        array_free(libraryScene->available_covers);
+    }
+
+    if (libraryScene->lz4_state)
+    {
+        cb_free(libraryScene->lz4_state);
+    }
+
     cb_free(libraryScene);
 }
 
@@ -2182,23 +2580,31 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
 
     char* fullpath_str = NULL;
 
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-    char* packed_path = aprintf("packed/%s", cachedName->filename);
-    bool in_packed = cb_file_exists(packed_path, kFileRead);
-    if (in_packed)
+    if (cachedName->fullpath)
     {
-        fullpath_str = packed_path;
+        fullpath_str = cb_strdup(cachedName->fullpath);
     }
-    else
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    else if (CB_App->packed_filenames && CB_App->packed_filenames->length > 0)
     {
-        cb_free(packed_path);
+        char** found = (char**)bsearch(
+            &cachedName->filename, CB_App->packed_filenames->items,
+            CB_App->packed_filenames->length, sizeof(char*), cb_compare_strings
+        );
+        if (found)
+        {
+            fullpath_str = aprintf("packed/%s", cachedName->filename);
+        }
+    }
 #endif
+
+    if (!fullpath_str)
+    {
         char* games_dir = cb_system_directory_path_for_slug(cachedName->system_slug, CB_gamesPath);
         playdate->system->formatString(&fullpath_str, "%s/%s", games_dir, cachedName->filename);
         cb_free(games_dir);
-#ifdef CRANKBOY_OFFICIAL_CATALOG
     }
-#endif
+
     game->fullpath = fullpath_str;
 
     game->names = cachedName;
@@ -2256,6 +2662,7 @@ void CB_Game_free(CB_Game* game)
 {
     cb_free(game->fullpath);
     cb_free(game->coverPath);
+    CB_cover_free_compressed(game);
     cb_free(game);
 }
 

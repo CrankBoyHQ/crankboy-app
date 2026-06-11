@@ -6,11 +6,17 @@
 #include "../jparse.h"
 #include "../script.h"
 #include "../utility.h"
-#include "cover_cache_scene.h"
 #include "image_conversion_scene.h"
 
-#include <pd_api.h>
 #include <string.h>
+
+#define SCAN_BATCH_SIZE 20
+
+typedef struct CB_LibraryScene
+{
+    CB_Scene* scene;
+} CB_LibraryScene;
+CB_LibraryScene* CB_LibraryScene_new(void);
 
 struct ScriptInfo;
 
@@ -143,13 +149,13 @@ static void process_one_game(
 
     char* fullpath;
     playdate->system->formatString(&fullpath, "%s/%s", games_dir, filename);
+    newName->fullpath = fullpath;
 
     FileStat stat;
     uint32_t m_time;
     if (!stat_rom(fullpath, &stat, &m_time, kFileReadDataOrPacked))
     {
         playdate->system->logToConsole("Failed to stat file: %s", fullpath);
-        cb_free(fullpath);
         free_game_names(newName);
         cb_free(newName);
         return;
@@ -201,7 +207,6 @@ static void process_one_game(
     }
 
     cb_free(key);
-    cb_free(fullpath);
 
     if (!ok)  // couldn't open/checksum the ROM; drop it
     {
@@ -428,6 +433,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
     {
     case kScanningStateInit:
     {
+        cb_clear_title_db_cache();
         build_scan_sources(scanScene);
         scanScene->source_index = 0;
         scanScene->state = kScanningStateListSource;
@@ -455,6 +461,30 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                           : collect_game_filenames_skip_packed_callback,
                 scanScene->game_filenames, 0
             );
+            if (is_packed)
+            {
+                if (CB_App->packed_filenames)
+                {
+                    for (int i = 0; i < CB_App->packed_filenames->length; i++)
+                        cb_free(CB_App->packed_filenames->items[i]);
+                    array_clear(CB_App->packed_filenames);
+                }
+                else
+                {
+                    CB_App->packed_filenames = array_new();
+                }
+                for (int i = 0; i < scanScene->game_filenames->length; i++)
+                    array_push(
+                        CB_App->packed_filenames, cb_strdup(scanScene->game_filenames->items[i])
+                    );
+                if (CB_App->packed_filenames->length > 1)
+                {
+                    qsort(
+                        CB_App->packed_filenames->items, CB_App->packed_filenames->length,
+                        sizeof(char*), cb_compare_strings
+                    );
+                }
+            }
 #else
             playdate->file->listfiles(
                 src->games_dir, collect_game_filenames_callback, scanScene->game_filenames, 0
@@ -473,9 +503,8 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         array_reserve(
             CB_App->gameNameCache, CB_App->gameNameCache->length + scanScene->game_filenames->length
         );
-        scanScene->progress_max_width = cb_calculate_progress_max_width(
-            CB_App->subheadFont, PROGRESS_STYLE_FRACTION, scanScene->game_filenames->length
-        );
+        scanScene->progress_max_width =
+            cb_calculate_progress_max_width(CB_App->subheadFont, PROGRESS_STYLE_PERCENT, 0);
         scanScene->current_index = 0;
         scanScene->state = kScanningStateScanning;
         break;
@@ -487,28 +516,51 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
         if (scanScene->current_index < scanScene->game_filenames->length)
         {
-            const char* filename = scanScene->game_filenames->items[scanScene->current_index];
+            int batch_end = scanScene->current_index + SCAN_BATCH_SIZE;
+            if (batch_end > scanScene->game_filenames->length)
+                batch_end = scanScene->game_filenames->length;
+
+            for (int i = scanScene->current_index; i < batch_end; i++)
+            {
+                const char* filename = scanScene->game_filenames->items[i];
+
+                if (src->emucore_index < 0)
+                {
+                    process_one_game(scanScene, filename, src->games_dir);
+                }
+                else
+                {
+                    process_one_emucore_game(scanScene, filename, src->games_dir, src->slug);
+                }
+            }
+
+            scanScene->current_index = batch_end;
 
             if (src->emucore_index < 0)
             {
                 char progress_message[32];
-                snprintf(
-                    progress_message, sizeof(progress_message), "%d/%d",
-                    scanScene->current_index + 1, scanScene->game_filenames->length
-                );
+                int pct = scanScene->game_filenames->length > 0
+                              ? (int)((float)scanScene->current_index /
+                                      scanScene->game_filenames->length * 100)
+                              : 99;
+                if (pct >= 100)
+                    pct = 99;
+                snprintf(progress_message, sizeof(progress_message), "%d%%", pct);
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+                const char* scan_label = (strcmp(src->games_dir, "packed") == 0)
+                                             ? "Scanning Catalog... "
+                                             : "Scanning Games... ";
+#else
+                const char* scan_label = "Scanning Games... ";
+#endif
                 cb_draw_logo_screen_centered_split(
-                    CB_App->subheadFont, "Scanning Games... ", progress_message,
-                    scanScene->progress_max_width
+                    CB_App->subheadFont, scan_label, progress_message, scanScene->progress_max_width
                 );
-                process_one_game(scanScene, filename, src->games_dir);
             }
             else
             {
                 cb_draw_logo_screen_and_display(CB_App->subheadFont, scanScene->progress_title);
-                process_one_emucore_game(scanScene, filename, src->games_dir, src->slug);
             }
-
-            scanScene->current_index++;
         }
         else
         {
@@ -522,7 +574,6 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
     case kScanningStateDone:
     {
-
         if (scanScene->crc_cache_modified && scanScene->new_cache_entries->length > 0)
         {
             for (int i = 0; i < scanScene->new_cache_entries->length; i++)
@@ -568,8 +619,8 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         }
         else
         {
-            CB_CoverCacheScene* cacheScene = CB_CoverCacheScene_new();
-            CB_present(cacheScene->scene);
+            CB_LibraryScene* libraryScene = CB_LibraryScene_new();
+            CB_present(libraryScene->scene);
         }
         break;
     }

@@ -1231,7 +1231,6 @@ void CB_init(void)
 
     CB_App->gameNameCache = array_new();
     CB_App->gameListCache = array_new();
-    CB_App->coverCache = NULL;
     CB_App->gameListCacheIsSorted = false;
     CB_App->scene = NULL;
 
@@ -1241,6 +1240,8 @@ void CB_init(void)
     CB_App->coverArtCache.art.bitmap = NULL;
 
     CB_App->migration_modal_needed = false;
+
+    CB_App->packed_filenames = NULL;
 
     read_pdx();
 
@@ -1594,6 +1595,7 @@ void free_game_names(const CB_GameName* gameName)
 {
     cb_free(gameName->filename);
     cb_free(gameName->system_slug);
+    cb_free(gameName->fullpath);
     if (gameName->name_database)
         cb_free(gameName->name_database);
     cb_free(gameName->name_short);
@@ -1677,19 +1679,6 @@ void CB_quit(void)
         CB_App->gameListCache = NULL;
     }
 
-    if (CB_App->coverCache)
-    {
-        for (int i = 0; i < CB_App->coverCache->length; i++)
-        {
-            CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
-            cb_free(entry->rom_path);
-            cb_free(entry->compressed_data);
-            cb_free(entry);
-        }
-        array_free(CB_App->coverCache);
-        CB_App->coverCache = NULL;
-    }
-
     if (CB_App->bundled_rom)
     {
         cb_free(CB_App->bundled_rom);
@@ -1708,6 +1697,15 @@ void CB_quit(void)
     script_quit();
     recommended_json_quit();
     version_quit();
+
+    cb_clear_title_db_cache();
+
+    if (CB_App->packed_filenames)
+    {
+        for (int i = 0; i < CB_App->packed_filenames->length; i++)
+            cb_free(CB_App->packed_filenames->items[i]);
+        array_free(CB_App->packed_filenames);
+    }
 
 #ifdef TARGET_PLAYDATE
     pdnewlib_quit();

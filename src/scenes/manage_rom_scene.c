@@ -5,6 +5,7 @@
 #include "../gbz.h"
 #include "../preferences.h"
 #include "../utility.h"
+#include "library_scene.h"
 #include "modal.h"
 #include "settings_scene.h"
 
@@ -352,20 +353,9 @@ static void delete_cover_confirmed(void* ud, int option)
     cb_free(game->coverPath);
     game->coverPath = NULL;
 
-    if (CB_App->coverCache)
+    if (game->cover_compressed_data)
     {
-        for (int i = CB_App->coverCache->length - 1; i >= 0; i--)
-        {
-            CB_CoverCacheEntry* entry = CB_App->coverCache->items[i];
-            if (strcmp(entry->rom_path, game->fullpath) == 0)
-            {
-                array_remove_at(CB_App->coverCache, i);
-                cb_free(entry->rom_path);
-                cb_free(entry->compressed_data);
-                cb_free(entry);
-                break;
-            }
-        }
+        CB_cover_free_compressed(game);
     }
     cb_clear_global_cover_cache();
     self->cursorIndex = 1;

@@ -48,7 +48,6 @@ SRC += src/emucore_prefs.c
 SRC += src/recommended_json.c
 SRC += src/revcheck.c
 SRC += src/scene.c
-SRC += src/scenes/cover_cache_scene.c
 SRC += src/scenes/credits_scene.c
 SRC += src/scenes/file_copying_scene.c
 SRC += src/scenes/patch_download_scene.c
