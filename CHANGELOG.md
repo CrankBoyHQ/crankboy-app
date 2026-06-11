@@ -2,6 +2,10 @@
 
 Welcome to the new Changelog feature! It's the dawn of a new age...
 
+## Startup
+
+- CrankBoy should now start about 8x faster (Coffee break no longer required.)
+
 ## Settings
 
 - Pagination. (Praise be -- we have over 40 settings now.)
