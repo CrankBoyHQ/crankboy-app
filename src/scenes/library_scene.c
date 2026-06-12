@@ -1348,7 +1348,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
         CB_ListItemButton_free(button);
     }
     array_clear(items);
-    array_reserve(items, libraryScene->games->length);
+    (void)array_reserve(items, libraryScene->games->length);
 
     for (int i = 0; i < libraryScene->games->length; i++)
     {

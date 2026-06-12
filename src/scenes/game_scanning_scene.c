@@ -500,7 +500,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             );
         }
 
-        array_reserve(
+        (void)array_reserve(
             CB_App->gameNameCache, CB_App->gameNameCache->length + scanScene->game_filenames->length
         );
         scanScene->progress_max_width =

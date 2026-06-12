@@ -18,7 +18,7 @@ typedef struct
 
 CB_Array* array_new(void);
 
-void array_reserve(CB_Array* array, unsigned int capacity);
+int array_reserve(CB_Array* array, unsigned int capacity);
 
 void array_push(CB_Array* array, void* item);
 void array_clear(CB_Array* array);
