@@ -3679,13 +3679,13 @@ static void CB_SettingsScene_free(void* object)
             unload_rom();
         pdll_close(settingsScene->peek_pdll);
         settingsScene->peek_pdll = NULL;
+        settingsScene->emu_prefs = NULL;  // aliased into now-freed pdll memory
     }
     if (settingsScene->peek_rom)
     {
         cb_free(settingsScene->peek_rom);
         settingsScene->peek_rom = NULL;
     }
-    settingsScene->emu_prefs = NULL;  // aliased into now-freed pdll memory
 
     if (itcm_base_desc)
     {
