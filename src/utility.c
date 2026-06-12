@@ -1903,9 +1903,10 @@ void spoolError(const char* fmt, ...)
     va_end(args);
 
     spoolC++;
-    spoolText = cb_realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
-    if (!spoolText)
+    char* temp = cb_realloc(spoolText, strlen(spoolText) + strlen("\n\n") + strlen(str) + 1);
+    if (!temp)
         return;
+    spoolText = temp;
 
     strcpy(spoolText + strlen(spoolText), "\n\n");
     strcpy(spoolText + strlen(spoolText), str);
