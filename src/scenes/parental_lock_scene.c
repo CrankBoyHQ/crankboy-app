@@ -174,6 +174,13 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
     }
 }
 
+static void CB_ParentalLockScene_free(void* object)
+{
+    CB_ParentalLockScene* parentalLockScene = object;
+    CB_Scene_free(parentalLockScene->scene);
+    cb_free(parentalLockScene);
+}
+
 CB_ParentalLockScene* CB_ParentalLockScene_new(void)
 {
     CB_ParentalLockScene* parentalLockScene = allocz(CB_ParentalLockScene);
@@ -186,6 +193,7 @@ CB_ParentalLockScene* CB_ParentalLockScene_new(void)
     scene->managedObject = parentalLockScene;
 
     scene->update = (void*)CB_ParentalLockScene_update;
+    scene->free = (void*)CB_ParentalLockScene_free;
 
     if (CB_App->parentalLockEngaged)
     {

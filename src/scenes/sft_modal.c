@@ -52,6 +52,7 @@ void CB_SFTModal_free(void* object)
         sft_modal_instance = NULL;
     }
 
+    CB_Scene_free(sftModal->scene);
     cb_free(sftModal);
 }
 
