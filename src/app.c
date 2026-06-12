@@ -866,12 +866,17 @@ static void CB_load_core(const char* path)
             continue;
         }
 
-        core.system_slugs =
-            cb_realloc(core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*));
+        char** new_slugs = cb_realloc(core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*));
+        if (!new_slugs)
+            return;
+        core.system_slugs = new_slugs;
         core.system_slugs[core.n_system_slugs++] = token;
     }
 
-    CB_App->cores = cb_realloc(CB_App->cores, (CB_App->cores_n + 1) * sizeof(emucore_t));
+    emucore_t* new_cores = cb_realloc(CB_App->cores, (CB_App->cores_n + 1) * sizeof(emucore_t));
+    if (!new_cores)
+        return;
+    CB_App->cores = new_cores;
     CB_App->cores[CB_App->cores_n++] = core;
 
     playdate->system->logToConsole(
@@ -929,7 +934,11 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
     if (scan->n == scan->cap)
     {
         scan->cap = scan->cap ? scan->cap * 2 : 8;
-        scan->items = cb_realloc(scan->items, scan->cap * sizeof(CB_core_candidate));
+        CB_core_candidate* new_items =
+            cb_realloc(scan->items, scan->cap * sizeof(CB_core_candidate));
+        if (!new_items)
+            return;
+        scan->items = new_items;
     }
     scan->items[scan->n].basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
     scan->items[scan->n].mtime = mtime;
