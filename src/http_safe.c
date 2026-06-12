@@ -165,6 +165,10 @@ void http_safe_replace_get(
         safe->queued.ud = ud;
         safe->queued.timeout_ms = timeout_ms;
 
+        cb_free(safe->queued.domain);
+        cb_free(safe->queued.path);
+        cb_free(safe->queued.reason);
+
         safe->queued.domain = cb_strdup(domain);
         safe->queued.path = cb_strdup(path);
         safe->queued.reason = cb_strdup(reason);
