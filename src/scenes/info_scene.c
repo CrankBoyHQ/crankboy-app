@@ -765,9 +765,12 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                     bmp = cb_generate_qr_bitmap(payload, QR_MAX_SIZE, QR_MAX_SIZE, true, 16 * 3);
                     cb_free(payload);
                 }
-                infoScene->qr_bitmaps = cb_realloc(
+                LCDBitmap** new_bitmaps = cb_realloc(
                     infoScene->qr_bitmaps, sizeof(LCDBitmap*) * (infoScene->qr_count + 1)
                 );
+                if (!new_bitmaps)
+                    break;
+                infoScene->qr_bitmaps = new_bitmaps;
                 infoScene->qr_bitmaps[infoScene->qr_count++] = bmp;
             }
             if (!nl)
