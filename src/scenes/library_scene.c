@@ -1902,9 +1902,13 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
                     if (libraryScene->decompression_buffer_size < (size_t)original_size)
                     {
-                        libraryScene->decompression_buffer =
+                        char* new_buffer =
                             cb_realloc(libraryScene->decompression_buffer, original_size);
-                        libraryScene->decompression_buffer_size = original_size;
+                        if (new_buffer)
+                        {
+                            libraryScene->decompression_buffer = new_buffer;
+                            libraryScene->decompression_buffer_size = original_size;
+                        }
                     }
 
                     char* decompressed_buffer = libraryScene->decompression_buffer;

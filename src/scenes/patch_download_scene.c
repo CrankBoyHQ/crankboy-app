@@ -571,6 +571,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
     }
 
     pds->pending_download_type = PD_NONE;
+    cb_free(data);
     cb_free(pud);
 }
 
@@ -613,6 +614,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
         pds->post_download_command = PDC_TEXTFILE_SUCCESS;
     }
 
+    cb_free(data);
     cb_free(pud);
 }
 

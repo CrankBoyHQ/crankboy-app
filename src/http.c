@@ -156,6 +156,7 @@ static void http_cleanup(HTTPConnection* connection)
             cb_free(httpud->path);
 
         cb_free(httpud);
+        info->httpud = NULL;
     }
 
     playdate->network->http->close(connection);
@@ -249,8 +250,8 @@ static void readAllData(HTTPConnection* connection)
         {
             struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
-            httpud->data = cb_realloc(httpud->data, httpud->data_len + available + 1);
-            if (httpud->data == NULL)
+            char* new_data = cb_realloc(httpud->data, httpud->data_len + available + 1);
+            if (new_data == NULL)
             {
                 httpud->flags |= HTTP_MEM_ERROR;
                 if (info)
@@ -262,6 +263,7 @@ static void readAllData(HTTPConnection* connection)
                 httpud->cb = NULL;
                 return;
             }
+            httpud->data = new_data;
             int read = playdate->network->http->read(
                 connection, httpud->data + httpud->data_len, available
             );
@@ -329,7 +331,6 @@ static void CB_RequestComplete(HTTPConnection* connection)
         data_stolen = httpud->data;
         data_len = httpud->data_len;
         httpud->data = NULL;
-        // FIXME: when is this freed?
     }
 
     if (info)
@@ -442,6 +443,8 @@ static void CB_Permission(unsigned flags, void* ud)
         cb_free(httpud->domain);
         cb_free(httpud->path);
         cb_free(httpud);
+        if (info)
+            info->httpud = NULL;
     }
 }
 
