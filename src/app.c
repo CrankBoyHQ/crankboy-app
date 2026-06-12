@@ -246,7 +246,10 @@ static int check_is_bundle(void)
 
     json_value jcore = json_get_table_value(jbundle, "core");
     if (jcore.type == kJSONString)
+    {
+        cb_free(CB_App->bundled_core);
         CB_App->bundled_core = cb_strdup(jcore.data.stringval);
+    }
 
     json_value jdevice = json_get_table_value(jbundle, "device");
     if (jdevice.type == kJSONString)
@@ -760,6 +763,7 @@ static void get_homebrew_hub_api(void)
     CB_App->hbStaticPath = staticpath;
     path[0] = 0;
     CB_App->hbApiDomain = domain;
+    CB_App->hbApiBuffer = hbapi;
 
     // playdate->system->logToConsole("%s\n%s\n%s", CB_App->hbApiDomain, CB_App->hbApiPath,
     // CB_App->hbSearchExtraFlags);
@@ -1687,6 +1691,7 @@ void CB_quit(void)
             cb_free(gameName);
         }
         array_free(CB_App->gameNameCache);
+        CB_App->gameNameCache = NULL;
     }
 
     if (CB_App->gameListCache)
@@ -1713,6 +1718,9 @@ void CB_quit(void)
     {
         cb_free(CB_App->bundle_fwd_path);
     }
+
+    cb_free(CB_App->hbApiPath);
+    cb_free(CB_App->hbApiBuffer);
 
     script_quit();
     recommended_json_quit();

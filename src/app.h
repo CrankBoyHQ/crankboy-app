@@ -198,6 +198,7 @@ typedef struct CB_Application
     char* hbApiPath;
     char* hbSearchExtraFlags;
     char* hbStaticPath;
+    char* hbApiBuffer;
 
     bool migration_modal_needed;
 
