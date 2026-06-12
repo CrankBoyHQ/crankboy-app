@@ -106,6 +106,7 @@ ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene
             {
                 playdate->system->error("Script returned NULL from on_begin, indicating an error.");
                 cb_free(state);
+                script_info_free(info);
                 return NULL;
             }
         }
