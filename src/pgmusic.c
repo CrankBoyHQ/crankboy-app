@@ -218,5 +218,7 @@ void pgmusic_update(float dt)
 void pgmusic_end(void)
 {
     playdate->sound->synth->freeSynth(drumSynth);
+    drumSynth = NULL;
     playdate->sound->synth->freeSynth(bassSynth);
+    bassSynth = NULL;
 }
