@@ -146,8 +146,6 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
         }
     }
 
-    free_json_data(jpatches);
-
     if (new_patch_count)
         *new_patch_count = 0;
 
@@ -180,6 +178,7 @@ SoftPatch* list_patches(const char* rom_path, int* new_patch_count)
         }
     }
 
+    free_json_data(jv);
     return acc.list;
 }
 
