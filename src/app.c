@@ -871,15 +871,11 @@ static void CB_load_core(const char* path)
         }
 
         char** new_slugs = cb_realloc(core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*));
-        if (!new_slugs)
-            return;
         core.system_slugs = new_slugs;
         core.system_slugs[core.n_system_slugs++] = token;
     }
 
     emucore_t* new_cores = cb_realloc(CB_App->cores, (CB_App->cores_n + 1) * sizeof(emucore_t));
-    if (!new_cores)
-        return;
     CB_App->cores = new_cores;
     CB_App->cores[CB_App->cores_n++] = core;
 
@@ -940,8 +936,6 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
         scan->cap = scan->cap ? scan->cap * 2 : 8;
         CB_core_candidate* new_items =
             cb_realloc(scan->items, scan->cap * sizeof(CB_core_candidate));
-        if (!new_items)
-            return;
         scan->items = new_items;
     }
     scan->items[scan->n].basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
@@ -1368,18 +1362,7 @@ void CB_init(void)
         }
 
         CB_EmucoreGameScene* es = CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, "Bundled ROM");
-        if (es)
-        {
-            CB_present(es->scene);
-        }
-        else
-        {
-            playdate->system->error(
-                "Failed to launch bundled ROM \"%s\" with core \"%s\"", CB_App->bundled_rom,
-                CB_App->bundled_core
-            );
-            return;
-        }
+        CB_present(es->scene);
     }
     else if (CB_App->bundled_rom)
     {

@@ -661,13 +661,6 @@ bool ft_handle_end(const char* crc_str)
         playdate->file->seek(gbz_file, 0, SEEK_SET);
 
         uint8_t* gbz_data = cb_malloc(gbz_size);
-        if (!gbz_data)
-        {
-            playdate->file->close(gbz_file);
-            serial_send_response("ft:x:nomem");
-            ft_cleanup();
-            return false;
-        }
 
         int bytes_read = playdate->file->read(gbz_file, gbz_data, gbz_size);
         playdate->file->close(gbz_file);
@@ -690,13 +683,6 @@ bool ft_handle_end(const char* crc_str)
         }
 
         uint8_t* decompressed = cb_malloc(header.original_size);
-        if (!decompressed)
-        {
-            cb_free(gbz_data);
-            serial_send_response("ft:x:nomem");
-            ft_cleanup();
-            return false;
-        }
 
         int decompressed_size =
             gbz_decompress(gbz_data, gbz_size, decompressed, header.original_size);

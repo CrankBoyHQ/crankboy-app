@@ -11,7 +11,6 @@
 #define HTTP_ENABLE_ASKED 2 /* does not indicate failure */
 #define HTTP_ENABLE_IN_PROGRESS 4
 #define HTTP_ERROR 8
-#define HTTP_MEM_ERROR 16
 #define HTTP_TIMEOUT 32
 #define HTTP_NON_SUCCESS_STATUS 64
 #define HTTP_UNEXPECTED_CONTENT_TYPE 128

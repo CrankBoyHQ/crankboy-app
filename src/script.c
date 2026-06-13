@@ -369,12 +369,6 @@ void cb_register_all_c_scripts(void)
 void register_c_script(const struct CScriptInfo* info)
 {
     c_scripts = cb_realloc(c_scripts, sizeof(struct CScriptInfo*) * ++c_script_count);
-    if (c_scripts == NULL)
-    {
-        c_script_count = 0;
-        playdate->system->error("Failed to allocate memory for C script list.");
-        return;
-    }
 
     c_scripts[c_script_count - 1] = info;
 }

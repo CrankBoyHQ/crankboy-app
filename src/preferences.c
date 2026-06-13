@@ -124,11 +124,8 @@ void preferences_read_from_disk_preserve(const char* filename, preferences_bitfi
 
     void* stored = preferences_store_subset(preserve_mask);
     preferences_read_from_disk(filename);
-    if (stored)
-    {
-        preferences_restore_subset(stored);
-        cb_free(stored);
-    }
+    preferences_restore_subset(stored);
+    cb_free(stored);
 }
 
 int _preferences_save_to_disk(const char* filename, preferences_bitfield_t* leave_as_is)
@@ -218,8 +215,6 @@ void* preferences_store_subset(preferences_bitfield_t subset)
 #include "prefs.x"
 
     void* data = cb_malloc(sizeof(preferences_bitfield_t) + sizeof(preference_t) * count);
-    if (!data)
-        return NULL;
 
     preferences_bitfield_t* dbits = data;
     *dbits = subset;

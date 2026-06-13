@@ -82,8 +82,6 @@ static void emucore_save_sram_if_dirty(CB_EmucoreGameScene* es)
         return;
 
     uint8_t* buf = cb_malloc(size);
-    if (!buf)
-        return;
     save(buf, size);
 
     char* path = emucore_sram_path(es);
@@ -109,8 +107,6 @@ bool CB_emucore_save_state(CB_EmucoreGameScene* es, unsigned slot)
         return false;
 
     uint8_t* buf = cb_malloc(size);
-    if (!buf)
-        return false;
 
     bool ok = state_save(buf, size);
     if (ok)
@@ -297,8 +293,6 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
 )
 {
     CB_EmucoreGameScene* es = cb_malloc(sizeof(CB_EmucoreGameScene));
-    if (!es)
-        return NULL;
     memset(es, 0, sizeof(*es));
 
     CB_Scene* scene = CB_Scene_new();

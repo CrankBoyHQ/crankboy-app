@@ -68,7 +68,7 @@ void list_patch_cb(const char* filename, void* ud)
     if (ips || bps || ups)
     {
         // add new one
-        acc->list = playdate->system->realloc(acc->list, sizeof(SoftPatch) * (n + 2));
+        acc->list = cb_realloc(acc->list, sizeof(SoftPatch) * (n + 2));
         acc->list[n + 1].fullpath = NULL;  // terminal
         acc->list[n + 1].basename = NULL;  // terminal
 
@@ -195,8 +195,6 @@ void save_patches_state(const char* rom_path, SoftPatch* patches)
         return;
 
     JsonArray* jpatcharray = cb_malloc(sizeof(JsonArray) + len * sizeof(json_value));
-    if (!jpatcharray)
-        return;
     jpatcharray->n = len;
 
     json_value jmanifest = json_new_table();
@@ -310,14 +308,6 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
                 if (new_size < *romsize)
                 {
                     void* resized_rom = cb_realloc(*rom, new_size);
-                    if (!resized_rom && new_size > 0)
-                    {
-                        playdate->system->error(
-                            "IPS patch failed to truncate ROM: not enough memory."
-                        );
-                        cb_free(ips_original_buffer);
-                        return false;
-                    }
                     *rom = resized_rom;
                     *romsize = new_size;
                 }
@@ -491,11 +481,6 @@ static bool apply_ups_patch(void** rom, size_t* romsize, const SoftPatch* patch)
     }
 
     new_rom = cb_malloc(output_size_from_patch);
-    if (!new_rom)
-    {
-        playdate->system->error("Failed to allocate memory for patched ROM.");
-        goto cleanup;
-    }
 
     size_t copy_len = (*romsize < output_size_from_patch) ? *romsize : output_size_from_patch;
     memcpy(new_rom, *rom, copy_len);
@@ -660,11 +645,6 @@ static bool apply_bps_patch(void** rom, size_t* romsize, const SoftPatch* patch)
     }
 
     new_rom = cb_malloc(target_size_from_patch);
-    if (!new_rom)
-    {
-        playdate->system->error("BPS error: Failed to allocate memory for patched ROM.");
-        goto cleanup;
-    }
 
     size_t output_offset = 0;
     size_t source_linear_offset = 0;

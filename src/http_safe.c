@@ -18,18 +18,10 @@ static bool parse_url_safe(const char* url, char** domain, char** path)
 
     size_t domain_len = path_start - domain_start;
     *domain = cb_malloc(domain_len + 1);
-    if (!*domain)
-        return false;
     strncpy(*domain, domain_start, domain_len);
     (*domain)[domain_len] = '\0';
 
     *path = cb_strdup(path_start);
-    if (!*path)
-    {
-        cb_free(*domain);
-        *domain = NULL;
-        return false;
-    }
     return true;
 }
 

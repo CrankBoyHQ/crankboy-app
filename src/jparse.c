@@ -8,12 +8,12 @@ __section__(".rare") void SI_willDecodeSublist(
 {
     if (type == kJSONArray)
     {
-        decoder->userdata = playdate->system->realloc(NULL, sizeof(JsonArray));
+        decoder->userdata = cb_malloc(sizeof(JsonArray));
         memset(decoder->userdata, 0, sizeof(JsonArray));
     }
     else
     {
-        decoder->userdata = playdate->system->realloc(NULL, sizeof(JsonObject));
+        decoder->userdata = cb_malloc(sizeof(JsonObject));
         memset(decoder->userdata, 0, sizeof(JsonObject));
     }
 }
@@ -27,7 +27,7 @@ __section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos,
         n = pos + 1;
     size_t p2n = next_pow2(n);
 
-    array = playdate->system->realloc(array, sizeof(JsonArray) + p2n * sizeof(json_value));
+    array = cb_realloc(array, sizeof(JsonArray) + p2n * sizeof(json_value));
 
     if (value.type == kJSONString)
     {
@@ -51,7 +51,7 @@ __section__(".rare") void SI_didDecodeTableValue(
 
     size_t p2n = next_pow2(n);
 
-    obj = playdate->system->realloc(obj, sizeof(JsonObject) + p2n * sizeof(TableKeyPair));
+    obj = cb_realloc(obj, sizeof(JsonObject) + p2n * sizeof(TableKeyPair));
 
     if (value.type == kJSONString)
     {
@@ -111,15 +111,7 @@ json_value json_new_table(void)
 {
     json_value v;
     v.data.tableval = allocz(JsonObject);
-    if (!v.data.tableval)
-    {
-        v.type = kJSONNull;
-    }
-    else
-    {
-        v.type = kJSONTable;
-    }
-
+    v.type = kJSONTable;
     return v;
 }
 
@@ -164,16 +156,9 @@ bool json_set_table_value(json_value* table, const char* key, json_value value)
     }
 
     char* key2 = cb_strdup(key);
-    if (!key2)
-        return false;
 
     // add new key
     obj = cb_realloc(obj, sizeof(*obj) + sizeof(obj->data[0]) * (obj->n + 1));
-    if (!obj)
-    {
-        cb_free(key2);
-        return false;
-    }
 
     obj->data[obj->n].value = value;
     obj->data[obj->n++].key = key2;

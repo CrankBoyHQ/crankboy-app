@@ -227,8 +227,6 @@ static SectionDef* push_section_def(CB_SettingsScene* scene)
 {
     size_t n = scene->sections_count + 1;
     SectionDef* p = cb_realloc(scene->sections, n * sizeof(SectionDef));
-    if (!p)
-        return NULL;
     scene->sections = p;
     scene->sections_count = n;
     memset(&p[n - 1], 0, sizeof(SectionDef));
@@ -245,8 +243,7 @@ static SectionDef* insert_section_def_at(CB_SettingsScene* scene, size_t at)
 {
     if (at > scene->sections_count)
         at = scene->sections_count;
-    if (!push_section_def(scene))
-        return NULL;
+    push_section_def(scene);
     SectionDef* arr = scene->sections;
     size_t tail = scene->sections_count - 1;
     if (at < tail)

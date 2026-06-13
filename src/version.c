@@ -222,22 +222,19 @@ PendingUpdateInfo* get_pending_update(void)
                 }
 
                 result = cb_malloc(sizeof(PendingUpdateInfo));
-                if (result)
-                {
-                    result->version = cb_strdup(jv_version.data.stringval);
-                    result->url = cb_strdup(jv_url.data.stringval);
-                    result->w = -1;
-                    if (jv_w.type == kJSONInteger && jv_w.data.intval > 0)
-                        result->w = jv_w.data.intval;
+                result->version = cb_strdup(jv_version.data.stringval);
+                result->url = cb_strdup(jv_url.data.stringval);
+                result->w = -1;
+                if (jv_w.type == kJSONInteger && jv_w.data.intval > 0)
+                    result->w = jv_w.data.intval;
 
-                    result->h = -1;
-                    if (jv_h.type == kJSONInteger && jv_h.data.intval > 0)
-                        result->h = jv_h.data.intval;
+                result->h = -1;
+                if (jv_h.type == kJSONInteger && jv_h.data.intval > 0)
+                    result->h = jv_h.data.intval;
 
-                    result->margin = -1;
-                    if (jv_m.type == kJSONInteger && jv_m.data.intval > 0)
-                        result->margin = jv_m.data.intval;
-                }
+                result->margin = -1;
+                if (jv_m.type == kJSONInteger && jv_m.data.intval > 0)
+                    result->margin = jv_m.data.intval;
             }
         }
         free_json_data(jv_root);

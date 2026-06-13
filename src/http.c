@@ -251,18 +251,6 @@ static void readAllData(HTTPConnection* connection)
             struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
             char* new_data = cb_realloc(httpud->data, httpud->data_len + available + 1);
-            if (new_data == NULL)
-            {
-                httpud->flags |= HTTP_MEM_ERROR;
-                if (info)
-                {
-                    info->state = Complete;
-                    info->flags = httpud->flags;
-                }
-                httpud->cb(httpud->flags, NULL, 0, httpud->ud);
-                httpud->cb = NULL;
-                return;
-            }
             httpud->data = new_data;
             int read = playdate->network->http->read(
                 connection, httpud->data + httpud->data_len, available
@@ -454,11 +442,6 @@ http_handle_t http_get(
 )
 {
     struct HTTPUD* httpud = cb_malloc(sizeof(struct HTTPUD));
-    if (!httpud)
-    {
-        cb(HTTP_MEM_ERROR, NULL, 0, ud);
-        return 0;
-    }
 
     struct HttpHandleInfo* info = push_handle();
     CB_ASSERT(info);
@@ -537,15 +520,6 @@ static void CB_SetEnabled(PDNetErr err)
     }
 
     struct CB_UserData_EnableHTTP* cbudhttp = cb_malloc(sizeof(struct CB_UserData_EnableHTTP));
-    if (!cbudhttp)
-    {
-        cb(HTTP_MEM_ERROR, ud);
-        cb_free(_domain);
-        _domain = NULL;
-        cb_free(_reason);
-        _reason = NULL;
-        return;
-    }
 
     cbudhttp->cb = cb;
     cbudhttp->ud = ud;

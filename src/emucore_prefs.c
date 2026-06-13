@@ -56,8 +56,6 @@ static void dict_set(cb_emucore_pref_dict* d, const char* key, unsigned value)
     {
         size_t newcap = d->cap ? d->cap * 2 : 8;
         cb_emucore_pref_entry* p = cb_realloc(d->items, newcap * sizeof(*p));
-        if (!p)
-            return;
         d->items = p;
         d->cap = newcap;
     }

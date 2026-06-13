@@ -27,14 +27,9 @@ int array_reserve(CB_Array* array, unsigned int capacity)
     }
 
     void* new_items = cb_realloc(array->items, capacity * sizeof(void*));
-    if (new_items)
-    {
-        array->items = new_items;
-        array->capacity = capacity;
-        return 1;
-    }
-
-    return 0;
+    array->items = new_items;
+    array->capacity = capacity;
+    return 1;
 }
 
 void array_push(CB_Array* array, void* item)
@@ -42,10 +37,7 @@ void array_push(CB_Array* array, void* item)
     if (array->length == array->capacity)
     {
         unsigned int new_capacity = (array->capacity == 0) ? 8 : array->capacity * 2;
-        if (!array_reserve(array, new_capacity))
-        {
-            return;
-        }
+        array_reserve(array, new_capacity);
     }
 
     array->items[array->length] = item;

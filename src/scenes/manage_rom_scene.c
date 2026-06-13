@@ -871,8 +871,6 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
         return NULL;
 
     CB_ManageRomScene* self = cb_malloc(sizeof(CB_ManageRomScene));
-    if (!self)
-        return NULL;
     memset(self, 0, sizeof(*self));
 
     self->game = game;

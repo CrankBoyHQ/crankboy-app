@@ -404,32 +404,19 @@ typedef struct
     char** names;
     int count;
     int capacity;
-    bool oom;
 } CbLsCtx;
 
 static void cb_ls_collect(const char* filename, void* userdata)
 {
     CbLsCtx* ctx = userdata;
-    if (ctx->oom)
-        return;
     if (ctx->count >= ctx->capacity)
     {
         int new_cap = ctx->capacity ? ctx->capacity * 2 : 16;
         char** grown = cb_realloc(ctx->names, (size_t)new_cap * sizeof(char*));
-        if (!grown)
-        {
-            ctx->oom = true;
-            return;
-        }
         ctx->names = grown;
         ctx->capacity = new_cap;
     }
     char* dup = cb_strdup(filename);
-    if (!dup)
-    {
-        ctx->oom = true;
-        return;
-    }
     ctx->names[ctx->count++] = dup;
 }
 
@@ -478,15 +465,6 @@ static bool serial_cb_ls(const char* const* tokens)
         cb_free(ctx.names);
         return true;
     }
-    if (ctx.oom)
-    {
-        serial_send_response("cb:ls:error:nomem");
-        for (int i = 0; i < ctx.count; i++)
-            cb_free(ctx.names[i]);
-        cb_free(ctx.names);
-        return true;
-    }
-
     // "cb:ls:exists:" is 13 chars; response buffer is 256 incl. NUL, so 255 max line.
     const size_t budget = 255 - 13;
 

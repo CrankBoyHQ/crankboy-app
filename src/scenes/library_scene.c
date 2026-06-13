@@ -74,47 +74,38 @@ static void CB_cover_compress_impl(
     int max_dst_size = LZ4_compressBound(original_size);
     char* temp_compressed_buffer = cb_malloc(max_dst_size);
 
-    if (temp_compressed_buffer)
+    uint8_t* uncompressed_buffer = cb_malloc(original_size);
+    memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
+    if (has_mask)
     {
-        uint8_t* uncompressed_buffer = cb_malloc(original_size);
-        if (uncompressed_buffer)
-        {
-            memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
-            if (has_mask)
-            {
-                memcpy(uncompressed_buffer + (rowbytes * height), mask_data, rowbytes * height);
-            }
-
-            int compressed_size = LZ4_compress_fast_extState(
-                lz4_state, (const char*)uncompressed_buffer, temp_compressed_buffer, original_size,
-                max_dst_size, 1
-            );
-
-            cb_free(uncompressed_buffer);
-
-            if (compressed_size > 0)
-            {
-                char* final_buffer = cb_malloc(compressed_size);
-                if (final_buffer)
-                {
-                    memcpy(final_buffer, temp_compressed_buffer, compressed_size);
-
-                    game->cover_compressed_data = final_buffer;
-                    game->cover_compressed_size = compressed_size;
-                    game->cover_width = width;
-                    game->cover_height = height;
-                    game->cover_rowbytes = rowbytes;
-                    game->cover_has_mask = has_mask;
-
-                    if (io_cache_bytes)
-                        *io_cache_bytes += compressed_size;
-                    if (io_cached_count)
-                        *io_cached_count += 1;
-                }
-            }
-        }
-        cb_free(temp_compressed_buffer);
+        memcpy(uncompressed_buffer + (rowbytes * height), mask_data, rowbytes * height);
     }
+
+    int compressed_size = LZ4_compress_fast_extState(
+        lz4_state, (const char*)uncompressed_buffer, temp_compressed_buffer, original_size,
+        max_dst_size, 1
+    );
+
+    cb_free(uncompressed_buffer);
+
+    if (compressed_size > 0)
+    {
+        char* final_buffer = cb_malloc(compressed_size);
+        memcpy(final_buffer, temp_compressed_buffer, compressed_size);
+
+        game->cover_compressed_data = final_buffer;
+        game->cover_compressed_size = compressed_size;
+        game->cover_width = width;
+        game->cover_height = height;
+        game->cover_rowbytes = rowbytes;
+        game->cover_has_mask = has_mask;
+
+        if (io_cache_bytes)
+            *io_cache_bytes += compressed_size;
+        if (io_cached_count)
+            *io_cached_count += 1;
+    }
+    cb_free(temp_compressed_buffer);
 
     playdate->graphics->freeBitmap(coverBitmap);
 }
@@ -668,15 +659,13 @@ static bool maybe_launch_emucore_game(CB_Game* game)
     {
         CB_InfoScene* info =
             CB_InfoScene_new("No Core", "No emulator core is installed for this game's system.");
-        if (info)
-            CB_presentModal(info->scene);
+        CB_presentModal(info->scene);
         return true;
     }
 
     CB_EmucoreGameScene* es =
         CB_EmucoreGameScene_new(game->fullpath, slug, game->names->name_short_leading_article);
-    if (es)
-        CB_present(es->scene);
+    CB_present(es->scene);
     return true;
 }
 
@@ -1796,12 +1785,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (spool)
         {
             CB_InfoScene* infoScene = CB_InfoScene_new(NULL, NULL);
-            if (!infoScene)
-            {
-                freeSpool();
-                playdate->system->error("Fatal: Out of memory");
-                return;
-            }
 
             char* spooldup = cb_strdup(spool);
             if (spooldup)
@@ -1904,11 +1887,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                     {
                         char* new_buffer =
                             cb_realloc(libraryScene->decompression_buffer, original_size);
-                        if (new_buffer)
-                        {
-                            libraryScene->decompression_buffer = new_buffer;
-                            libraryScene->decompression_buffer_size = original_size;
-                        }
+                        libraryScene->decompression_buffer = new_buffer;
+                        libraryScene->decompression_buffer_size = original_size;
                     }
 
                     char* decompressed_buffer = libraryScene->decompression_buffer;

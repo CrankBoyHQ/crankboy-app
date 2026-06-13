@@ -513,8 +513,6 @@ static void CB_InfoScene_free(void* object)
 CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
 {
     CB_InfoScene* infoScene = cb_malloc(sizeof(CB_InfoScene));
-    if (!infoScene)
-        return NULL;
     memset(infoScene, 0, sizeof(*infoScene));
     playdate->system->getCrankChange();
 
@@ -549,35 +547,32 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
         }
 
         char* cleaned_text = cb_malloc(new_len + 1);
-        if (cleaned_text)
+        char* write_ptr = cleaned_text;
+        is_at_line_start = true;
+        for (const char* read_ptr = infoScene->text; *read_ptr; ++read_ptr)
         {
-            char* write_ptr = cleaned_text;
-            is_at_line_start = true;
-            for (const char* read_ptr = infoScene->text; *read_ptr; ++read_ptr)
+            if (*read_ptr == '\t')
             {
-                if (*read_ptr == '\t')
+                if (!is_at_line_start)
                 {
-                    if (!is_at_line_start)
-                    {
-                        memcpy(write_ptr, "  ", 2);
-                        write_ptr += 2;
-                    }
+                    memcpy(write_ptr, "  ", 2);
+                    write_ptr += 2;
                 }
-                else if (*read_ptr != '\r')
-                {
-                    *write_ptr++ = *read_ptr;
-                }
-
-                if (*read_ptr == '\n')
-                    is_at_line_start = true;
-                else if (!isspace((unsigned char)*read_ptr))
-                    is_at_line_start = false;
             }
-            *write_ptr = '\0';
+            else if (*read_ptr != '\r')
+            {
+                *write_ptr++ = *read_ptr;
+            }
 
-            cb_free(infoScene->text);
-            infoScene->text = cleaned_text;
+            if (*read_ptr == '\n')
+                is_at_line_start = true;
+            else if (!isspace((unsigned char)*read_ptr))
+                is_at_line_start = false;
         }
+        *write_ptr = '\0';
+
+        cb_free(infoScene->text);
+        infoScene->text = cleaned_text;
     }
 
     // --- BBCode Sanitization ---
@@ -661,82 +656,78 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
         }
 
         char* cleaned_text = cb_malloc(new_len + 1);
-        if (cleaned_text)
+        char* write_ptr = cleaned_text;
+        p = infoScene->text;
+        for (int i = 0; i < MAX_LIST_DEPTH; ++i)
+            counter_stack[i] = 1;
+        list_level = 0;
+
+        while (*p)
         {
-            char* write_ptr = cleaned_text;
-            p = infoScene->text;
-            for (int i = 0; i < MAX_LIST_DEPTH; ++i)
-                counter_stack[i] = 1;
-            list_level = 0;
-
-            while (*p)
+            if (*p == '[' && p[1] != '\0')
             {
-                if (*p == '[' && p[1] != '\0')
+                const char* tag_start = p;
+                const char* end_bracket = strchr(p + 1, ']');
+                // preserve [qr] verbatim so the renderer can detect it
+                bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
+                bool is_hr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "hr", 2) == 0);
+                if (end_bracket && !is_qr_tag && !is_hr_tag)
                 {
-                    const char* tag_start = p;
-                    const char* end_bracket = strchr(p + 1, ']');
-                    // preserve [qr] verbatim so the renderer can detect it
-                    bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
-                    bool is_hr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "hr", 2) == 0);
-                    if (end_bracket && !is_qr_tag && !is_hr_tag)
+                    const char* tag_name = p + 1;
+                    if (strncasecmp(tag_name, "ul", 2) == 0 ||
+                        strncasecmp(tag_name, "list", 4) == 0)
                     {
-                        const char* tag_name = p + 1;
-                        if (strncasecmp(tag_name, "ul", 2) == 0 ||
-                            strncasecmp(tag_name, "list", 4) == 0)
-                        {
-                            if (list_level < MAX_LIST_DEPTH - 1)
-                                list_stack[++list_level] = LT_UNORDERED;
-                        }
-                        else if (strncasecmp(tag_name, "ol", 2) == 0)
-                        {
-                            if (list_level < MAX_LIST_DEPTH - 1)
-                            {
-                                list_stack[++list_level] = LT_ORDERED;
-                                counter_stack[list_level] = 1;
-                            }
-                        }
-                        else if (
-                            strncasecmp(tag_name, "/ul", 3) == 0 ||
-                            strncasecmp(tag_name, "/ol", 3) == 0 ||
-                            strncasecmp(tag_name, "/list", 5) == 0
-                        )
-                        {
-                            if (list_level > 0)
-                                list_level--;
-                        }
-                        else if (
-                            strncasecmp(tag_name, "li", 2) == 0 ||
-                            (end_bracket - tag_name == 1 && *tag_name == '*')
-                        )
-                        {
-                            if (list_level > 0)
-                            {
-                                if (list_stack[list_level] == LT_UNORDERED)
-                                {
-                                    memcpy(write_ptr, "- ", 2);
-                                    write_ptr += 2;
-                                }
-                                else
-                                {
-                                    write_ptr +=
-                                        sprintf(write_ptr, "%d. ", counter_stack[list_level]++);
-                                }
-                            }
-                        }
-                        p = end_bracket + 1;
-                        continue;
+                        if (list_level < MAX_LIST_DEPTH - 1)
+                            list_stack[++list_level] = LT_UNORDERED;
                     }
+                    else if (strncasecmp(tag_name, "ol", 2) == 0)
+                    {
+                        if (list_level < MAX_LIST_DEPTH - 1)
+                        {
+                            list_stack[++list_level] = LT_ORDERED;
+                            counter_stack[list_level] = 1;
+                        }
+                    }
+                    else if (
+                        strncasecmp(tag_name, "/ul", 3) == 0 ||
+                        strncasecmp(tag_name, "/ol", 3) == 0 ||
+                        strncasecmp(tag_name, "/list", 5) == 0
+                    )
+                    {
+                        if (list_level > 0)
+                            list_level--;
+                    }
+                    else if (
+                        strncasecmp(tag_name, "li", 2) == 0 ||
+                        (end_bracket - tag_name == 1 && *tag_name == '*')
+                    )
+                    {
+                        if (list_level > 0)
+                        {
+                            if (list_stack[list_level] == LT_UNORDERED)
+                            {
+                                memcpy(write_ptr, "- ", 2);
+                                write_ptr += 2;
+                            }
+                            else
+                            {
+                                write_ptr +=
+                                    sprintf(write_ptr, "%d. ", counter_stack[list_level]++);
+                            }
+                        }
+                    }
+                    p = end_bracket + 1;
+                    continue;
                 }
-                *write_ptr++ = *p++;
             }
-            *write_ptr = '\0';
-
-            cb_free(infoScene->text);
-            infoScene->text = cleaned_text;
+            *write_ptr++ = *p++;
         }
+        *write_ptr = '\0';
+
+        cb_free(infoScene->text);
+        infoScene->text = cleaned_text;
     }
 
-    // Trim any trailing whitespace from the text to prevent calculation errors.
     if (infoScene->text)
     {
         int len = strlen(infoScene->text);
@@ -758,18 +749,13 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                 int payload_len = len - QR_LINE_PREFIX_LEN;
                 char* payload = cb_malloc(payload_len + 1);
                 LCDBitmap* bmp = NULL;
-                if (payload)
-                {
-                    memcpy(payload, p + QR_LINE_PREFIX_LEN, payload_len);
-                    payload[payload_len] = '\0';
-                    bmp = cb_generate_qr_bitmap(payload, QR_MAX_SIZE, QR_MAX_SIZE, true, 16 * 3);
-                    cb_free(payload);
-                }
+                memcpy(payload, p + QR_LINE_PREFIX_LEN, payload_len);
+                payload[payload_len] = '\0';
+                bmp = cb_generate_qr_bitmap(payload, QR_MAX_SIZE, QR_MAX_SIZE, true, 16 * 3);
+                cb_free(payload);
                 LCDBitmap** new_bitmaps = cb_realloc(
                     infoScene->qr_bitmaps, sizeof(LCDBitmap*) * (infoScene->qr_count + 1)
                 );
-                if (!new_bitmaps)
-                    break;
                 infoScene->qr_bitmaps = new_bitmaps;
                 infoScene->qr_bitmaps[infoScene->qr_count++] = bmp;
             }

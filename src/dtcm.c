@@ -106,7 +106,7 @@ __dtcm_ctrl void* dtcm_alloc(size_t size)
     }
 #endif
 
-    return playdate->system->realloc(NULL, size);
+    return cb_malloc(size);
 }
 
 __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
@@ -125,10 +125,6 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
 #endif
 
     void* original_ptr = cb_malloc(size + alignment - 1 + sizeof(void*));
-    if (!original_ptr)
-    {
-        return NULL;
-    }
 
     void* aligned_ptr =
         (void*)(((uintptr_t)original_ptr + sizeof(void*) + alignment - 1) & ~(alignment - 1));

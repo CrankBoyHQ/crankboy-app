@@ -590,13 +590,6 @@ static void on_list_file(const char* fname, void* ud)
         char** new_files =
             cb_realloc(convScene->files, sizeof(char*) * (convScene->files_count + 1));
 
-        if (new_files == NULL)
-        {
-            cb_free(full_path);
-            playdate->system->error("Out of memory listing files!");
-            return;
-        }
-
         convScene->files = new_files;
         convScene->files[convScene->files_count] = full_path;
 

@@ -110,9 +110,6 @@ char* cb_memdup(const char* buff, int len)
         return NULL;
 
     char* copied = cb_malloc(len);
-    if (!copied)
-        return NULL;
-
     memcpy(copied, buff, len);
     return copied;
 }
@@ -124,8 +121,6 @@ char* cb_strdup(const char* string)
 
     size_t len = strlen(string) + 1;
     char* copied = cb_malloc(len);
-    if (!copied)
-        return NULL;
     memcpy(copied, string, len);
     return copied;
 }
@@ -317,12 +312,6 @@ bool cb_calculate_crc32(const char* filepath, FileOptions fopts, uint32_t* o_crc
     uint32_t crc = 0xffffffffL;
     const int buffer_size = 4096;
     unsigned char* buffer = cb_malloc(buffer_size);
-    if (!buffer)
-    {
-        playdate->system->logToConsole("CRC Error: Failed to allocate buffer.");
-        playdate->file->close(file);
-        return false;
-    }
 
     int bytes_read;
     while ((bytes_read = playdate->file->read(file, buffer, buffer_size)) > 0)
@@ -377,12 +366,6 @@ LCDBitmap* cb_generate_qr_bitmap(
 
     uint8_t* qr = cb_malloc(qrcodegen_BUFFER_LEN_MAX);
     uint8_t* tmp = cb_malloc(qrcodegen_BUFFER_LEN_MAX);
-    if (!qr || !tmp)
-    {
-        cb_free(qr);
-        cb_free(tmp);
-        return NULL;
-    }
 
     bool ok = qrcodegen_encodeText(
         text, tmp, qr, qrcodegen_Ecc_LOW, qrcodegen_VERSION_MIN, qrcodegen_VERSION_MAX,
@@ -487,8 +470,6 @@ LCDBitmap** split_subimages(LCDBitmap* image, int w, int h, size_t* out_size)
         return NULL;
 
     LCDBitmap** out = allocza(LCDBitmap*, c + 1);
-    if (!out)
-        return NULL;
 
     for (int y = 0; y < ny; ++y)
     {
@@ -595,8 +576,6 @@ char* cb_strip_extension(const char* path)
     const char* ext = get_extension(path);  // '.' within the final component, or end
     size_t len = (size_t)(ext - path);
     char* result = cb_malloc(len + 1);
-    if (!result)
-        return NULL;
     memcpy(result, path, len);
     result[len] = '\0';
     return result;
@@ -648,11 +627,6 @@ char* cb_basename(const char* filename, bool stripExtension)
     size_t len = end - start;
 
     char* result = cb_malloc(len + 1);
-    if (result == NULL)
-    {
-        return NULL;
-    }
-
     strncpy(result, start, len);
     result[len] = '\0';
 
@@ -1163,17 +1137,25 @@ void cb_draw_logo_screen_centered_split(
 
 void* cb_malloc(size_t size)
 {
-    return playdate->system->realloc(NULL, size);
+    void* p = playdate->system->realloc(NULL, size);
+    if (!p)
+        playdate->system->error("Out of memory");
+    return p;
 }
 
 void* cb_realloc(void* ptr, size_t size)
 {
-    return playdate->system->realloc(ptr, size);
+    void* p = playdate->system->realloc(ptr, size);
+    if (!p)
+        playdate->system->error("Out of memory");
+    return p;
 }
 
 void* cb_calloc(size_t count, size_t size)
 {
-    return memset(cb_malloc(count * size), 0, count * size);
+    void* p = cb_malloc(count * size);
+    memset(p, 0, count * size);
+    return p;
 }
 
 void cb_free(void* ptr)
@@ -1420,8 +1402,6 @@ char* cb_read_partial_file(
     }
 
     dat = cb_malloc(size + !binary);
-    if (!dat)
-        goto fail;
 
     out = dat;
     while (size > 0)
@@ -1486,14 +1466,6 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     }
 
     char* decompressed = cb_malloc(decompressed_size + 1);
-    if (!decompressed)
-    {
-        playdate->system->logToConsole(
-            "Failed to decompress %s: insufficient memory to hold decompressed file", path
-        );
-        cb_free(dat);
-        return NULL;
-    }
 
     struct mini_gzip gz;
     // Subtract 8 bytes for gzip trailer (CRC32 + ISIZE) before calling mini_gz_start
@@ -1699,8 +1671,6 @@ char* cb_url_encode_for_github_raw(const char* str)
 
     size_t new_len = strlen(str) + space_count * 2;
     char* encoded = cb_malloc(new_len + 1);
-    if (!encoded)
-        return NULL;
 
     const char* p_in = str;
     char* p_out = encoded;
@@ -1837,8 +1807,6 @@ char* common_article_form(const char* input)
     // split into A and B at split_pos
     size_t a_len = split_pos - input;
     char* a_part = cb_malloc(a_len + 1);
-    if (!a_part)
-        return cb_strdup(input);
 
     strncpy(a_part, input, a_len);
     a_part[a_len] = '\0';
@@ -1859,11 +1827,6 @@ char* common_article_form(const char* input)
 
             size_t result_len = (article_len - 2) + 1 + new_a_len + b_len;
             char* result = cb_malloc(result_len + 1);
-            if (!result)
-            {
-                cb_free(a_part);
-                return cb_strdup(input);
-            }
 
             char* p = result;
             memcpy(p, articles[i] + 2, article_len - 2);
@@ -1931,9 +1894,6 @@ void freeSpool(void)
 void* mallocz(size_t size)
 {
     void* v = cb_malloc(size);
-    if (!v)
-        return NULL;
-
     memset(v, 0, size);
     return v;
 }
@@ -2010,10 +1970,6 @@ char* sanitize_url_path(const char* original)
     }
 
     char* sanitized = mallocz(new_len + 1);
-    if (sanitized == NULL)
-    {
-        return NULL;
-    }
 
     size_t sanitized_index = 0;
     for (size_t i = 0; i < original_len; i++)
@@ -2201,8 +2157,6 @@ char* url_encode(const char* in)
         if (pass == 0)
         {
             out = cb_malloc(len + 1);
-            if (!out)
-                return NULL;
         }
         else
         {
@@ -2307,9 +2261,6 @@ char* cb_markdown_to_plaintext(const char* md)
     // worst case: every char copied as-is; add room for a trailing newline per line
     size_t in_len = strlen(md);
     char* out = cb_malloc(in_len * 2 + 1);
-    if (!out)
-        return NULL;
-
     char* dst = out;
     const char* src = md;
 
@@ -2368,35 +2319,17 @@ char* cb_markdown_to_plaintext(const char* md)
 
         // inline formatting
         char* temp = cb_malloc(remaining + 1);
-        if (temp)
-        {
-            memcpy(temp, line_start, remaining);
-            temp[remaining] = '\0';
+        memcpy(temp, line_start, remaining);
+        temp[remaining] = '\0';
 
-            char* stripped = cb_malloc(strlen(temp) * 2 + 1);
-            if (stripped)
-            {
-                strip_inline_markdown(temp, stripped);
-                // write to output
-                const char* p = stripped;
-                while (*p)
-                    *dst++ = *p++;
-                cb_free(stripped);
-            }
-            else
-            {
-                // fallback: copy raw
-                memcpy(dst, temp, remaining);
-                dst += remaining;
-            }
-            cb_free(temp);
-        }
-        else
-        {
-            // fallback: copy raw
-            memcpy(dst, line_start, remaining);
-            dst += remaining;
-        }
+        char* stripped = cb_malloc(strlen(temp) * 2 + 1);
+        strip_inline_markdown(temp, stripped);
+        // write to output
+        const char* p = stripped;
+        while (*p)
+            *dst++ = *p++;
+        cb_free(stripped);
+        cb_free(temp);
 
         *dst++ = '\n';
 

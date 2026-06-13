@@ -528,13 +528,6 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
             pds->local_files->count++;
             char** new_files =
                 cb_realloc(pds->local_files->files, sizeof(char*) * pds->local_files->count);
-            if (!new_files)
-            {
-                pds->local_files->count--;
-                pds->post_download_command = PDC_SAVE_FAILED;
-                cb_free(pud);
-                return;
-            }
             pds->local_files->files = new_files;
             pds->local_files->files[pds->local_files->count - 1] = cb_strdup(pds->basename);
 
@@ -1408,11 +1401,6 @@ static void list_local_patches_callback(const char* path, void* userdata)
     {
         file_set->count++;
         char** new_files = cb_realloc(file_set->files, sizeof(char*) * file_set->count);
-        if (!new_files)
-        {
-            file_set->count--;
-            return;
-        }
         file_set->files = new_files;
         file_set->files[file_set->count - 1] = cb_strdup(basename);
     }

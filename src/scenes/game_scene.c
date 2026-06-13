@@ -3690,125 +3690,116 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                 success = true;
                 int size_remaining = file_size;
                 char* buff = cb_malloc(file_size);
-                if (buff == NULL)
+                char* buffptr = buff;
+                while (size_remaining > 0)
                 {
-                    playdate->system->logToConsole("Failed to allocate save state buffer");
-                }
-                else
-                {
-                    char* buffptr = buff;
-                    while (size_remaining > 0)
+                    int read = playdate->file->read(file, buffptr, size_remaining);
+                    if (read == 0)
                     {
-                        int read = playdate->file->read(file, buffptr, size_remaining);
-                        if (read == 0)
-                        {
-                            playdate->system->logToConsole(
-                                "Error, read 0 bytes from save file, \"%s\"\n", state_name
-                            );
-                            success = false;
-                            break;
-                        }
-                        if (read < 0)
-                        {
-                            playdate->system->logToConsole(
-                                "Error reading save file \"%s\": %s\n", state_name,
-                                playdate->file->geterr()
-                            );
-                            success = false;
-                            break;
-                        }
-                        size_remaining -= read;
-                        buffptr += read;
+                        playdate->system->logToConsole(
+                            "Error, read 0 bytes from save file, \"%s\"\n", state_name
+                        );
+                        success = false;
+                        break;
                     }
-
-                    if (success)
+                    if (read < 0)
                     {
-                        struct StateHeader* header = (struct StateHeader*)buff;
+                        playdate->system->logToConsole(
+                            "Error reading save file \"%s\": %s\n", state_name,
+                            playdate->file->geterr()
+                        );
+                        success = false;
+                        break;
+                    }
+                    size_remaining -= read;
+                    buffptr += read;
+                }
 
-                        if (header->script_save_data_size > file_size)
+                if (success)
+                {
+                    struct StateHeader* header = (struct StateHeader*)buff;
+
+                    if (header->script_save_data_size > file_size)
+                    {
+                        success = false;
+                        CB_presentModal(CB_Modal_new(
+                                            "Invalid script custom data size in file", NULL, NULL,
+                                            NULL
+                        )
+                                            ->scene);
+                    }
+                    else
+                    {
+                        unsigned int loaded_timestamp = header->timestamp;
+
+                        if (loaded_timestamp > 0)
                         {
-                            success = false;
-                            CB_presentModal(CB_Modal_new(
-                                                "Invalid script custom data size in file", NULL,
-                                                NULL, NULL
-                            )
-                                                ->scene);
+                            playdate->system->logToConsole(
+                                "Save state had been created at: %u", loaded_timestamp
+                            );
                         }
                         else
                         {
-                            unsigned int loaded_timestamp = header->timestamp;
+                            playdate->system->logToConsole(
+                                "Save state is from an old version (no "
+                                "timestamp)."
+                            );
+                        }
 
-                            if (loaded_timestamp > 0)
+                        const char* res = gb_state_load(
+                            context->gb, buff, file_size - header->script_save_data_size
+                        );
+                        if (res)
+                        {
+                            success = false;
+                            playdate->system->logToConsole("Error loading state! %s", res);
+
+                            char* details = NULL;
+                            playdate->system->formatString(&details, "%s", res);
+
+                            if (details)
                             {
-                                playdate->system->logToConsole(
-                                    "Save state had been created at: %u", loaded_timestamp
-                                );
+                                // First modal: generic message + OK/Details
+                                CB_presentModal(CB_Modal_new(
+                                                    "Failed to load state.", loadStateErrorOptions,
+                                                    CB_LoadStateErrorModalCallback, details
+                                )
+                                                    ->scene);
                             }
                             else
                             {
-                                playdate->system->logToConsole(
-                                    "Save state is from an old version (no "
-                                    "timestamp)."
+                                // Fallback: 1-button modal
+                                CB_presentModal(
+                                    CB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene
                                 );
                             }
-
-                            const char* res = gb_state_load(
-                                context->gb, buff, file_size - header->script_save_data_size
-                            );
-                            if (res)
+                        }
+                        else
+                        {
+                            gameScene->cgb_needs_palette_recompute = true;
+                            if (gameScene->script)
                             {
-                                success = false;
-                                playdate->system->logToConsole("Error loading state! %s", res);
-
-                                char* details = NULL;
-                                playdate->system->formatString(&details, "%s", res);
-
-                                if (details)
+                                const char* scriptbuff =
+                                    buff + file_size - header->script_save_data_size;
+                                if (!script_load_state(
+                                        gameScene->script, (void*)scriptbuff,
+                                        header->script_save_data_size
+                                    ))
                                 {
-                                    // First modal: generic message + OK/Details
+                                    success = false;
+
                                     CB_presentModal(CB_Modal_new(
-                                                        "Failed to load state.",
-                                                        loadStateErrorOptions,
-                                                        CB_LoadStateErrorModalCallback, details
+                                                        "Failed to load script's custom state.",
+                                                        NULL, NULL, NULL
                                     )
                                                         ->scene);
-                                }
-                                else
-                                {
-                                    // Fallback: 1-button modal
-                                    CB_presentModal(
-                                        CB_Modal_new("Failed to load state.", NULL, NULL, NULL)
-                                            ->scene
-                                    );
-                                }
-                            }
-                            else
-                            {
-                                gameScene->cgb_needs_palette_recompute = true;
-                                if (gameScene->script)
-                                {
-                                    const char* scriptbuff =
-                                        buff + file_size - header->script_save_data_size;
-                                    if (!script_load_state(
-                                            gameScene->script, (void*)scriptbuff,
-                                            header->script_save_data_size
-                                        ))
-                                    {
-                                        success = false;
-
-                                        CB_presentModal(CB_Modal_new(
-                                                            "Failed to load script's custom state.",
-                                                            NULL, NULL, NULL
-                                        )
-                                                            ->scene);
-                                    }
                                 }
                             }
                         }
                     }
-
-                    cb_free(buff);
                 }
+
+                cb_free(buff);
             }
         }
         else

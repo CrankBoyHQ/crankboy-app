@@ -189,8 +189,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     force_prefs();
 
     ScriptData* data = allocz(ScriptData);
-    if (!data)
-        return NULL;
 
     const char* err = NULL;
     data->sidebar =
@@ -252,10 +250,9 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
 
     data->patch_no_door = code_replacement(0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true);
 
-    data->patch_start_flying =
-        (config == CFG_JP)
-            ? code_replacement(1, 0x4495, (0x27, 0x45), (0x97, 0x44), true)
-            : code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
+    data->patch_start_flying = (config == CFG_JP)
+                                   ? code_replacement(1, 0x4495, (0x27, 0x45), (0x97, 0x44), true)
+                                   : code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
 
     SET_BREAKPOINTS(config);
 
@@ -266,9 +263,7 @@ static void on_settings(ScriptData* data)
 {
     const char* off_on_options[] = {"Reversed", "Normal", NULL};
     script_custom_setting_add(
-        "Spit Crank",
-        "While Kirby has something inhaled, reverse crank inputs",
-        off_on_options
+        "Spit Crank", "While Kirby has something inhaled, reverse crank inputs", off_on_options
     );
 }
 
@@ -339,17 +334,15 @@ static void on_tick(gb_s* gb, ScriptData* data)
 
     bool ignore_crank = (kirby_state & KIRBY_HOLDING_MASK) == KIRBY_HOLDING_MASK;
 
-    bool flip_spit =
-        flip_spit_enabled && (kirby_state & KIRBY_HOLDING_MASK) == KIRBY_HOLDING_VALUE;
+    bool flip_spit = flip_spit_enabled && (kirby_state & KIRBY_HOLDING_MASK) == KIRBY_HOLDING_VALUE;
     float suck_dir = flip_spit ? -1.0f : 1.0f;
 
     // crank to suck
     if (!ignore_crank && data->crank_angle >= 0 && data->crank_hyst >= 0)
     {
-        if (data->suck ||
-            suck_dir *
-                    (circle_difference(data->crank_hyst, data->crank_angle) + data->crank_delta) <=
-                -MIN_HYST_CRANK_BEGIN_SUCK)
+        if (data->suck || suck_dir * (circle_difference(data->crank_hyst, data->crank_angle) +
+                                      data->crank_delta) <=
+                              -MIN_HYST_CRANK_BEGIN_SUCK)
         {
             data->suck = false;
             if (suck_dir * data->crank_delta_smooth < -MIN_RATE_CRANK_SUCK)
@@ -373,7 +366,8 @@ static void on_tick(gb_s* gb, ScriptData* data)
     // forward rotation also triggering flight inputs.
     int fly_thrust;
     bool has_fly_thrust = false;
-    if (!ignore_crank && !flip_spit && ($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0)
+    if (!ignore_crank && !flip_spit &&
+        ($JOYPAD & (K_BUTTON_UP | K_BUTTON_DOWN) && !data->suck) == 0)
     {
         if (data->crank_angle >= 0 && data->crank_hyst >= 0)
         {

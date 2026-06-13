@@ -235,22 +235,9 @@ CodeReplacement* code_replacement_new(
     }
 
     CodeReplacement* r = allocz(CodeReplacement);
-    if (!r)
-    {
-        script_error("SCRIPT ERROR -- memory allocation failed");
-        return NULL;
-    }
 
     r->tprev = cb_malloc(length);
     r->tval = cb_malloc(length);
-    if (!r->tprev || !r->tval)
-    {
-        cb_free(r->tprev);
-        cb_free(r->tval);
-        cb_free(r);
-        script_error("SCRIPT ERROR -- memory allocation failed");
-        return NULL;
-    }
 
     memcpy(r->tprev, tprev, length);
     memcpy(r->tval, tval, length);

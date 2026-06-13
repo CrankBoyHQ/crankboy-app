@@ -32,7 +32,7 @@ __attribute__((format(printf, 1, 2))) static void ce_fe_set_error(const char* fm
     if (msg)
     {
         playdate->system->logToConsole("emucore: %s", msg);
-        playdate->system->realloc(msg, 0);
+        cb_free(msg);
     }
 }
 
