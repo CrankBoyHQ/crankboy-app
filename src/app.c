@@ -84,12 +84,12 @@ static void read_pdx(void)
     }
 }
 
+static char* fwdpath = NULL;
+
 const char* CB_get_forwarded_path(const char* path)
 {
     if (!CB_App->bundle_fwd_path)
         return path;
-
-    static char* fwdpath = NULL;
 
     if (!path || !path[0])
         return path;
@@ -288,6 +288,7 @@ static int check_is_bundle(void)
                     "\"" PDX_STANDARD_BUNDLE_ID "\".\n"
                 );
                 CB_presentModal(infoScene->scene);
+                free_json_data(jbundle);
                 return -1;
             }
 
@@ -299,6 +300,7 @@ static int check_is_bundle(void)
                     "\"" PDX_CATALOG_BUNDLE_ID "\".\n"
                 );
                 CB_presentModal(infoScene->scene);
+                free_json_data(jbundle);
                 return -1;
             }
         }
@@ -1687,6 +1689,23 @@ void CB_quit(void)
         CB_App->gameListCache = NULL;
     }
 
+    if (CB_App->cores)
+    {
+        for (size_t i = 0; i < CB_App->cores_n; i++)
+        {
+            cb_free(CB_App->cores[i].id);
+            cb_free(CB_App->cores[i].path);
+            cb_free(CB_App->cores[i].core_version);
+            cb_free(CB_App->cores[i].human_name);
+            for (size_t j = 0; j < CB_App->cores[i].n_system_slugs; j++)
+                cb_free(CB_App->cores[i].system_slugs[j]);
+            cb_free(CB_App->cores[i].system_slugs);
+        }
+        cb_free(CB_App->cores);
+        CB_App->cores = NULL;
+        CB_App->cores_n = 0;
+    }
+
     if (CB_App->bundled_rom)
     {
         cb_free(CB_App->bundled_rom);
@@ -1704,6 +1723,9 @@ void CB_quit(void)
 
     cb_free(CB_App->hbApiPath);
     cb_free(CB_App->hbApiBuffer);
+
+    cb_free(fwdpath);
+    fwdpath = NULL;
 
     script_quit();
     recommended_json_quit();

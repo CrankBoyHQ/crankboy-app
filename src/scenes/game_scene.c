@@ -1047,7 +1047,7 @@ static uint8_t* read_rom_to_ram(
     playdate->file->seek(rom_file, 0, SEEK_SET);
 
     uint8_t* rom;
-    if (rom_pool_size >= (size_t)rom_size)
+    if (rom_pool && rom_pool_size >= (size_t)rom_size)
     {
         rom = rom_pool;
         rom_pool = NULL;

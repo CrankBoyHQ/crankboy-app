@@ -141,7 +141,7 @@ size_t script_query_savestate_size(ScriptState* state)
 }
 bool script_save_state(ScriptState* state, uint8_t* out)
 {
-    if (state->c->query_serial_size && state->c->serialize)
+    if (state->c && state->c->query_serial_size && state->c->serialize)
     {
         return state->c->serialize((void*)out, state->ud);
     }
@@ -149,7 +149,7 @@ bool script_save_state(ScriptState* state, uint8_t* out)
 }
 bool script_load_state(ScriptState* state, const uint8_t* in, size_t size)
 {
-    if (state->c->query_serial_size && state->c->deserialize)
+    if (state->c && state->c->query_serial_size && state->c->deserialize)
     {
         return state->c->deserialize((void*)in, size, state->ud);
     }
