@@ -52,7 +52,7 @@ void http_safe_free(HTTPSafe* safe)
 {
     if (safe->handle == 0)
     {
-        free(safe);
+        cb_free(safe);
     }
     else
     {
