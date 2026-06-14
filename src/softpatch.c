@@ -332,14 +332,6 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
         {
             *romsize = offset + length;
             *rom = cb_realloc(*rom, *romsize);
-            if (!*rom)
-            {
-                playdate->system->error(
-                    "IPS patch requires ROM to be resized, but there was not enough memory."
-                );
-                cb_free(ips_original_buffer);
-                return false;
-            }
         }
 
         if (rle)

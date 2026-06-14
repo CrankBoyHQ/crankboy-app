@@ -177,13 +177,6 @@ static __section__(".rare") int parse_json_compressed(
     if (!s)
         return 0;
 
-    if (s[size] != 0)
-    {
-        cb_free(s);
-        playdate->system->logToConsole("Error parsing compressed json: missing null-terminator");
-        return 0;
-    }
-
     int result = parse_json_string(s, out);
 
     cb_free(s);
