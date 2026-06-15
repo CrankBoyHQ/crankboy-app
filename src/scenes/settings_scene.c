@@ -971,7 +971,7 @@ static const char* gb_button_labels_hp[] = {
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
-static const char* audio_sync_labels[] = {"Fast", "Accurate"};
+static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
@@ -1892,7 +1892,7 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
     // Timing
     section[++i] = (OptionsMenuEntry){
         .name = "Timing",
-        .values = audio_sync_labels,
+        .values = fast_accurate_labels,
         .description =
             "Change how audio is timed.\n\n"
             "Fast:\nGood performance. Sound timing is less precise.\n\n"
@@ -2315,10 +2315,9 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     };
 
     // PPU Timing
-    static const char* ppu_timing_labels[] = {"Fast", "Accurate"};
     section[++i] = (OptionsMenuEntry){
         .name = "PPU Timing",
-        .values = ppu_timing_labels,
+        .values = fast_accurate_labels,
         .description =
             "Controls PPU sprite timing accuracy.\n\n"
             "Fast:\nFixed penalty per line. Best performance. Some games may have glitches.\n\n"
@@ -2329,10 +2328,9 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     };
 
     // Sprite Sorting
-    static const char* sprite_sorting_labels[] = {"Fast", "Accurate"};
     section[++i] = (OptionsMenuEntry){
         .name = "Sprite Sorting",
-        .values = sprite_sorting_labels,
+        .values = fast_accurate_labels,
         .description =
             "Controls sprite layering order accuracy.\n\n"
             "Fast:\nIndependent BG check per sprite. Best performance.\n\n"
