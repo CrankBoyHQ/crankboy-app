@@ -1471,6 +1471,103 @@ hle_fail:
 }
 
 /**
+ * Cycles remaining until next PPU mode boundary.
+ */
+__section__(".rare.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
+{
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+        return LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
+
+    switch (gb->lcd_mode)
+    {
+    case LCD_SEARCH_OAM:
+        return PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+    case LCD_TRANSFER:
+        return gb->display.current_mode3_cycles - gb->counter.lcd_count;
+    case LCD_HBLANK:
+        return gb->display.current_mode0_cycles - gb->counter.lcd_count;
+    case LCD_VBLANK:
+        return LCD_LINE_CYCLES - gb->counter.lcd_count;
+    default:
+        return 1;
+    }
+}
+
+/**
+ * Next PPU mode after current. Mirrors core PPU state machine.
+ */
+__section__(".rare.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
+{
+    switch (gb->lcd_mode)
+    {
+    case LCD_SEARCH_OAM:
+        return LCD_TRANSFER;
+    case LCD_TRANSFER:
+        return LCD_HBLANK;
+    case LCD_HBLANK:
+        return (gb->gb_reg.LY + 1 == LCD_HEIGHT) ? LCD_VBLANK : LCD_SEARCH_OAM;
+    case LCD_VBLANK:
+        return (gb->gb_reg.LY == 0) ? LCD_SEARCH_OAM : LCD_VBLANK;
+    default:
+        return LCD_HBLANK;
+    }
+}
+
+/**
+ * PPU read synchronization: peek ahead to the next mode boundary so
+ * polling loops don't miss STAT/LY transitions.
+ */
+__section__(".rare.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
+{
+    uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+
+    if ((int16_t)remaining <= 16)
+    {
+        uint8_t new_stat = (gb->gb_reg.STAT & ~STAT_MODE) | __gb_ppu_next_mode(gb);
+        return new_stat | 0x80;
+    }
+
+    return gb->gb_reg.STAT | 0x80;
+}
+
+__section__(".rare.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
+{
+    switch (gb->lcd_mode)
+    {
+    case LCD_HBLANK:
+    {
+        /* LY increments at end of HBlank */
+        uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+        if ((int16_t)remaining <= 16)
+        {
+            uint8_t next_ly = gb->gb_reg.LY + 1;
+            return (next_ly >= 154) ? 0 : next_ly;
+        }
+        break;
+    }
+    case LCD_VBLANK:
+    {
+        /* Short Line 153: LY wraps to 0 ~4 cycles into the line */
+        if (gb->gb_reg.LY == 153 && gb->counter.lcd_count >= 4)
+            return 0;
+
+        /* During VBlank, LY increments at 456-cycle boundaries */
+        uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+        if ((int16_t)remaining <= 16)
+        {
+            uint8_t next_ly = gb->gb_reg.LY + 1;
+            if (next_ly >= 154)
+                next_ly = 0;
+            return next_ly;
+        }
+        break;
+    }
+    }
+
+    return gb->gb_reg.LY;
+}
+
+/**
  * Internal function used to read bytes.
  */
 __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
@@ -1646,7 +1743,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.LCDC;
 
         case 0x41:
-            return __gb_try_hle(gb, addr, gb->gb_reg.STAT | 0x80);
+            return __gb_try_hle(gb, addr, __gb_read_stat_synced(gb));
 
         case 0x42:
             return gb->gb_reg.SCY;
@@ -1655,7 +1752,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.SCX;
 
         case 0x44:
-            return __gb_try_hle(gb, addr, gb->gb_reg.LY);
+            return __gb_try_hle(gb, addr, __gb_read_ly_synced(gb));
 
         case 0x45:
             return gb->gb_reg.LYC;
@@ -4849,32 +4946,7 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
     }
 
     // PPU event calculation
-    uint16_t ppu_cycles_remaining;
-    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
-    {
-        ppu_cycles_remaining = LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
-    }
-    else
-    {
-        switch (gb->lcd_mode)
-        {
-        case LCD_HBLANK:  // Mode 0
-            ppu_cycles_remaining = gb->display.current_mode0_cycles - gb->counter.lcd_count;
-            break;
-        case LCD_VBLANK:  // Mode 1
-            ppu_cycles_remaining = LCD_LINE_CYCLES - gb->counter.lcd_count;
-            break;
-        case LCD_SEARCH_OAM:  // Mode 2
-            ppu_cycles_remaining = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-            break;
-        case LCD_TRANSFER:  // Mode 3
-            ppu_cycles_remaining = gb->display.current_mode3_cycles - gb->counter.lcd_count;
-            break;
-        default:  // Should not happen
-            ppu_cycles_remaining = 1;
-            break;
-        }
-    }
+    uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
 
     if ((int16_t)ppu_cycles_remaining <= 0)
     {
