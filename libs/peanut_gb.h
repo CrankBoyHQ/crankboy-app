@@ -2299,6 +2299,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         case 0x05:
             gb->gb_reg.TIMA = val;
+            gb->gb_reg.tima_overflow_delay = 0;
             return;
 
         case 0x06:
@@ -2308,15 +2309,24 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         case 0x07:
         {
             uint16_t divider = ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
-            bool old_input =
-                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+            bool old_tac_enable = gb->gb_reg.tac_enable;
+            bool old_input = old_tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
 
             gb->gb_reg.TAC = val;
             __gb_update_tac(gb);
 
-            bool new_input =
-                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
-            if (old_input && !new_input)
+            bool new_tac_enable = gb->gb_reg.tac_enable;
+            bool new_input = new_tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+
+            if (new_tac_enable && old_input && !new_input)
+            {
+                __gb_timer_edge_tick(gb);
+            }
+#if PGB_CGB
+            else if (!gb->is_cgb_mode && !new_tac_enable && old_input)
+#else
+            else if (!new_tac_enable && old_input)
+#endif
             {
                 __gb_timer_edge_tick(gb);
             }
