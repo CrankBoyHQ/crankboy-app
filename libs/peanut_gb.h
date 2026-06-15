@@ -178,6 +178,7 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_2_OAM_CYCLES 80
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
+#define PPU_PEEK_CYCLES 4
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -1521,7 +1522,7 @@ __section__(".rare.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
 {
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
 
-    if ((int16_t)remaining <= 16)
+    if ((int16_t)remaining <= PPU_PEEK_CYCLES)
     {
         uint8_t new_stat = (gb->gb_reg.STAT & ~STAT_MODE) | __gb_ppu_next_mode(gb);
         return new_stat | 0x80;
@@ -1538,7 +1539,7 @@ __section__(".rare.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
     {
         /* LY increments at end of HBlank */
         uint16_t remaining = __gb_ppu_cycles_remaining(gb);
-        if ((int16_t)remaining <= 16)
+        if ((int16_t)remaining <= PPU_PEEK_CYCLES)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;
             return (next_ly >= 154) ? 0 : next_ly;
@@ -1553,7 +1554,7 @@ __section__(".rare.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
 
         /* During VBlank, LY increments at 456-cycle boundaries */
         uint16_t remaining = __gb_ppu_cycles_remaining(gb);
-        if ((int16_t)remaining <= 16)
+        if ((int16_t)remaining <= PPU_PEEK_CYCLES)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;
             if (next_ly >= 154)
