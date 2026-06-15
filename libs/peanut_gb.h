@@ -1543,7 +1543,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                 return 0xFF;
             }
 
-            if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
+            if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08 && gb->cart_ram_bank <= 0x0C)
             {
                 return gb->latched_rtc[gb->cart_ram_bank - 0x08];
             }
@@ -1898,9 +1898,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             }
             else if (gb->mbc == 3)
             {
-                gb->selected_rom_bank = val;
+                gb->selected_rom_bank = val & 0x7F;
                 if (!gb->selected_rom_bank)
-                    gb->selected_rom_bank++;
+                    gb->selected_rom_bank = 1;
             }
             else if (gb->mbc == 5)
             {
@@ -1916,8 +1916,6 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             else if (gb->mbc == 7)
             {
                 gb->selected_rom_bank = val & 0x7F;
-                if (!gb->selected_rom_bank)
-                    gb->selected_rom_bank = 1;
             }
         }
 
@@ -2005,11 +2003,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                     }
                 }
             }
-            else if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08)
+            else if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08 && gb->cart_ram_bank <= 0x0C)
             {
-                size_t idx = gb->cart_ram_bank - 0x08;
-                CB_ASSERT(idx < PEANUT_GB_ARRAYSIZE(gb->cart_rtc));
-                gb->cart_rtc[idx] = val;
+                gb->cart_rtc[gb->cart_ram_bank - 0x08] = val;
             }
             else if (gb->mbc == 7 && addr < 0xB000)
             {
