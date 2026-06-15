@@ -15,8 +15,6 @@
 
 typedef struct ScriptData
 {
-    bool prev_in_game;
-    bool prev_cinematic;
     bool in_game;
     bool cinematic;
     bool logo;
@@ -262,8 +260,6 @@ static ScriptData* on_begin(gb_s* gb, const char* header_name)
     (void)gb;
     (void)header_name;
 
-    force_pref(batching, 0);
-
     ScriptData* data = allocz(ScriptData);
     data->start_armed = true;
     return data;
@@ -288,18 +284,6 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
     data->char_select = is_char_select(gb);
     data->results = is_results(gb);
     data->demo = is_demo_game(gb);
-
-    if (data->in_game != data->prev_in_game)
-    {
-        force_pref(batching, data->in_game ? 1 : 0);
-        data->prev_in_game = data->in_game;
-    }
-
-    if (data->cinematic != data->prev_cinematic)
-    {
-        force_pref(overclock, data->cinematic ? 2 : 0);
-        data->prev_cinematic = data->cinematic;
-    }
 
     if (data->logo || data->cinematic || data->title)
     {

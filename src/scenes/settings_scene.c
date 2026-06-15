@@ -715,7 +715,6 @@ CB_SettingsScene* CB_SettingsScene_new(
     settingsScene->initial_audio_sync = preferences_audio_sync;
     settingsScene->initial_ppu_timing = preferences_ppu_timing;
     settingsScene->initial_sprite_sorting = preferences_sprite_sorting;
-    settingsScene->initial_batching = preferences_batching;
 
     if (gameScene)
     {
@@ -2312,7 +2311,7 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     section[++i] = (OptionsMenuEntry){
         .name = "Behavior",
         .header = 1,
-        .description = "PPU timing, sprite sorting, CPU batching, overclock, and script support."
+        .description = "PPU timing, sprite sorting, overclock, and script support."
     };
 
     // PPU Timing
@@ -2341,22 +2340,6 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .pref_var = &preferences_sprite_sorting,
         .max_value = 2,
     };
-
-    // instruction batching
-    if (!gameScene || !gameScene->context->cgb_mode)
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "Batching",
-            .values = off_on_labels,
-            .description =
-                "Runs multiple CPU instructions per step to improve performance.\n\n"
-                "Leave disabled if a game has glitches or doesn't respond to button input "
-                "correctly.\n\n"
-                "DMG mode only.",
-            .pref_var = &preferences_batching,
-            .max_value = 2,
-        };
-    }
 
     // overclocking
     section[++i] = (OptionsMenuEntry){

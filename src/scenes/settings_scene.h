@@ -57,7 +57,6 @@ typedef struct CB_SettingsScene
     int initial_audio_sync;
     int initial_ppu_timing;
     int initial_sprite_sorting;
-    int initial_batching;
     preference_t* immutable_settings;
 
     // neutrals: neither always-global nor always-local
