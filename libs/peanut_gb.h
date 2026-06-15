@@ -1882,9 +1882,10 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             {
                 if (gb->is_mbc1m)
                 {
-                    uint8_t lo = (val & 0x0F);
+                    uint8_t lo = (val & 0x1F);
                     if (lo == 0x00)
-                        lo = 0x01;  // 00->01 quirk for low nibble
+                        lo = 0x01;  // 00->01 quirk uses full 5-bit register
+                    lo &= 0x0F;
                     gb->selected_rom_bank = (gb->selected_rom_bank & 0x30) | lo;
                 }
                 else
@@ -5066,6 +5067,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->cart_ram_bank = 0;
     gb->enable_cart_ram = 0;
     gb->cart_mode_select = 0;
+    gb->zero_bank_base = 0;
 
     /* Initialize RTC latching values */
     gb->rtc_latch_s1 = 0;
