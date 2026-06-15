@@ -622,6 +622,22 @@ __section__(".text.cb") static void __gb_update_zero_bank_addr(gb_s* gb)
     }
 }
 
+__section__(".text.cb") static void __gb_update_mbc1_zero_bank(gb_s* gb)
+{
+    if (gb->mbc == 1 && gb->cart_mode_select)
+    {
+        if (gb->is_mbc1m)
+            gb->zero_bank_base = ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE;
+        else
+            gb->zero_bank_base = ((gb->cart_ram_bank & 0x03) << 5) * ROM_BANK_SIZE;
+    }
+    else
+    {
+        gb->zero_bank_base = 0;
+    }
+    __gb_update_zero_bank_addr(gb);
+}
+
 __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb)
 {
     // NULL indicates special access, must do _full version
@@ -1926,12 +1942,11 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             {
                 // MBC1M: sets bits 4–5 of the ROM bank (selects the 0x10/0x20/0x30 group)
                 gb->selected_rom_bank = ((val & 3) << 4) | (gb->selected_rom_bank & 0x0F);
-                gb->zero_bank_base = ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE;
-                __gb_update_zero_bank_addr(gb);
             }
 
             gb->selected_rom_bank &= gb->num_rom_banks_mask;
             __gb_update_selected_bank_addr(gb);
+            __gb_update_mbc1_zero_bank(gb);
         }
         else if (gb->mbc == 3)
             gb->cart_ram_bank = val;
@@ -1954,10 +1969,11 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
             gb->rtc_latch_s1 = (val == 0x00);
         }
-        else if (gb->mbc == 1 && !gb->is_mbc1m)
+        else if (gb->mbc == 1)
         {
             gb->cart_mode_select = (val & 1);
             __gb_update_selected_cart_bank_addr(gb);
+            __gb_update_mbc1_zero_bank(gb);
         }
         return;
 
@@ -5422,8 +5438,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->is_mbc1m = __gb_detect_mbc1m(gb);
     if (gb->is_mbc1m)
         gb->cart_mode_select = 0;
-    // Initialize cached base (0 for non-MBC1M)
-    gb->zero_bank_base = (gb->is_mbc1m ? ((gb->cart_ram_bank & 0x03) << 4) * ROM_BANK_SIZE : 0);
 
     gb->direct.sound = ENABLE_SOUND;
     gb->direct.interlace_mask = 0xFF;
