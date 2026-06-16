@@ -49,7 +49,6 @@ static void read_pdx(void)
     size_t pdxlen;
     char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
     CB_App->pdxBundleID = NULL;
-    CB_App->pdxBuildNumber = NULL;
     if (pdxinfo && pdxlen > 0)
     {
         pdxinfo[pdxlen - 1] = 0;
@@ -65,19 +64,6 @@ static void read_pdx(void)
             CB_App->pdxBundleID = cb_memdup(bundleID, len + 1);
             CB_App->pdxBundleID[len] = 0;
             playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
-        }
-
-        char* bNEq = "buildNumber=";
-        char* buildNumber = strstr(pdxinfo, bNEq);
-        if (buildNumber)
-        {
-            buildNumber += strlen(bNEq);
-            char* nl = strchr(buildNumber, '\n');
-            int len = strlen(buildNumber);
-            if (nl)
-                len = nl - buildNumber;
-            CB_App->pdxBuildNumber = cb_memdup(buildNumber, len + 1);
-            CB_App->pdxBuildNumber[len] = 0;
         }
 
         cb_free(pdxinfo);
@@ -1158,11 +1144,14 @@ void CB_showHelp(bool first_time)
     if (first_time)
     {
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-        if (CB_App->pdxBuildNumber)
         {
-            cb_free(global.last_viewed_changelog_build);
-            global.last_viewed_changelog_build = cb_strdup(CB_App->pdxBuildNumber);
-            save_global();
+            const char* version = get_current_version();
+            if (version)
+            {
+                cb_free(global.last_viewed_changelog_build);
+                global.last_viewed_changelog_build = cb_strdup(version);
+                save_global();
+            }
         }
 #endif
         infoScene->complete_callback = non_bundle_init;
@@ -1191,7 +1180,7 @@ static bool games_exist_in_data(void)
 #ifdef CRANKBOY_OFFICIAL_CATALOG
 static bool show_changelog_if_new(void)
 {
-    const char* current_build = CB_App->pdxBuildNumber;
+    const char* current_build = get_current_version();
     if (!current_build)
         return false;
 
