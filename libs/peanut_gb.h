@@ -593,7 +593,10 @@ __section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
 __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     // swappable cartridge ROM bank
-    int32_t offset = ((int)(gb->selected_rom_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
+    int effective_bank = gb->selected_rom_bank;
+    if ((effective_bank & 0x1F) == 0)
+        effective_bank++;
+    int32_t offset = ((int)(effective_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
 
     for (int i = 0; i < 4; ++i)
     {
@@ -619,7 +622,8 @@ __section__(".text.cb") static void __gb_update_zero_bank_addr(gb_s* gb)
 {
     for (int i = 0; i < 4; ++i)
     {
-        gb->rom_bank_base[0][i] = gb->gb_rom + gb->zero_bank_base - 0x0000;
+        gb->rom_bank_base[0][i] =
+            gb->gb_rom + (gb->zero_bank_base & ((gb->num_rom_banks_mask + 1) * ROM_BANK_SIZE - 1));
     }
 }
 
@@ -653,7 +657,10 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb
         {
             gb->selected_cart_bank_addr = NULL;
         }
-        else if ((gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks)
+        else if (
+            (gb->cart_mode_select || gb->mbc != 1) && !gb->is_mbc1m &&
+            gb->cart_ram_bank < gb->num_ram_banks
+        )
         {
             gb->selected_cart_bank_addr = gb->gb_cart_ram + (gb->cart_ram_bank * CRAM_BANK_SIZE);
         }
@@ -1646,7 +1653,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                 return gb->latched_rtc[gb->cart_ram_bank - 0x08];
             }
             else if (
-                (gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks
+                (gb->cart_mode_select || gb->mbc != 1) && !gb->is_mbc1m &&
+                gb->cart_ram_bank < gb->num_ram_banks
             )
             {
                 return gb->gb_cart_ram[addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE)];
@@ -2019,7 +2027,6 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (gb->mbc > 0)
         {
-            gb->selected_rom_bank &= gb->num_rom_banks_mask;
             __gb_update_selected_bank_addr(gb);
             __gb_update_selected_cart_bank_addr(gb);
         }
@@ -2041,7 +2048,6 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->selected_rom_bank = ((val & 3) << 4) | (gb->selected_rom_bank & 0x0F);
             }
 
-            gb->selected_rom_bank &= gb->num_rom_banks_mask;
             __gb_update_selected_bank_addr(gb);
             __gb_update_mbc1_zero_bank(gb);
         }
@@ -2167,7 +2173,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 }
             }
             else if (
-                (gb->cart_mode_select || gb->mbc != 1) && gb->cart_ram_bank < gb->num_ram_banks
+                (gb->cart_mode_select || gb->mbc != 1) && !gb->is_mbc1m &&
+                gb->cart_ram_bank < gb->num_ram_banks
             )
             {
                 size_t idx = addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE);
