@@ -1482,7 +1482,7 @@ hle_fail:
 /**
  * Cycles remaining until next PPU mode boundary.
  */
-__section__(".rare.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
+__section__(".text.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
 {
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
         return LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
@@ -1503,9 +1503,9 @@ __section__(".rare.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
 }
 
 /**
- * Next PPU mode after current. Mirrors core PPU state machine.
+ * Shared: next PPU mode after current. Pure, mirrors core PPU state machine.
  */
-__section__(".rare.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
+__section__(".text.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
 {
     switch (gb->lcd_mode)
     {
@@ -1526,7 +1526,7 @@ __section__(".rare.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
  * PPU read synchronization: peek ahead to the next mode boundary so
  * polling loops don't miss STAT/LY transitions.
  */
-__section__(".rare.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
+__section__(".text.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
 {
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
 
@@ -1539,7 +1539,7 @@ __section__(".rare.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
     return gb->gb_reg.STAT | 0x80;
 }
 
-__section__(".rare.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
+__section__(".text.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
 {
     switch (gb->lcd_mode)
     {
