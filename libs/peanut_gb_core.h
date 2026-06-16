@@ -1628,8 +1628,10 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             cycles += 3;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
             break;
-        case 0x0B:  // CB opcodes
-            return $(__gb_execute_cb)(gb);
+        case 0x0B:  // 0xCB prefix, 0xDB invalid
+            if likely (opcode == 0xCB)
+                return $(__gb_execute_cb)(gb);
+            return __gb_rare_instruction(gb, opcode);
             break;
         case 0x0D:  // call
             if unlikely (op8 & 2)
