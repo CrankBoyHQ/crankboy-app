@@ -56,15 +56,6 @@ typedef int16_t s16;
 #define PGB_CGB 0
 #endif
 
-/**
- * Sound support must be provided by an external library. When audio_read() and
- * audio_write() functions are provided, define ENABLE_SOUND to a non-zero value
- * before including peanut_gb.h in order for these functions to be used.
- */
-#ifndef ENABLE_SOUND
-#define ENABLE_SOUND 1
-#endif
-
 /* Interrupt masks */
 #define VBLANK_INTR 0x01
 #define LCDC_INTR 0x02
@@ -5525,7 +5516,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     if (gb->is_mbc1m)
         gb->cart_mode_select = 0;
 
-    gb->direct.sound = ENABLE_SOUND;
+    gb->direct.sound = 1;
     gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
 
