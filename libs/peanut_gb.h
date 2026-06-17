@@ -1528,6 +1528,9 @@ __section__(".text.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
  */
 __section__(".text.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
 {
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+        return gb->gb_reg.STAT | 0x80;
+
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
 
     if ((int16_t)remaining <= PPU_PEEK_CYCLES)
@@ -1541,6 +1544,9 @@ __section__(".text.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
 
 __section__(".text.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
 {
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+        return gb->gb_reg.LY;
+
     switch (gb->lcd_mode)
     {
     case LCD_HBLANK:
