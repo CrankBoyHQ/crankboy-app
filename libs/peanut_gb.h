@@ -65,11 +65,6 @@ typedef int16_t s16;
 #define ENABLE_SOUND 1
 #endif
 
-/* Enable LCD drawing. On by default. May be turned off for testing purposes. */
-#ifndef ENABLE_LCD
-#define ENABLE_LCD 1
-#endif
-
 /* Interrupt masks */
 #define VBLANK_INTR 0x01
 #define LCDC_INTR 0x02
@@ -225,7 +220,6 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define IO_PLAYDATE_EXTENSION_ACCZ_LO 0x5E
 #define IO_PLAYDATE_EXTENSION_ACCZ_HI 0x5F
 
-#if ENABLE_LCD
 /* Bit mask for the shade of pixel to display */
 #define LCD_COLOUR 0x03
 /**
@@ -242,7 +236,6 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
  * LCD_PALETTE_ALL == 0b11 --> NOT POSSIBLE
  */
 #define LCD_PALETTE_ALL 0x30
-#endif
 
 /**
  * Errors that may occur during emulation.
@@ -2585,7 +2578,6 @@ rare_write:
     __gb_rare_write(gb, addr, val);
 }
 
-#if ENABLE_LCD
 #pragma pack(push, 1)
 struct sprite_data
 {
@@ -2593,7 +2585,6 @@ struct sprite_data
     uint8_t x;
 };
 #pragma pack(pop)
-#endif
 
 __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode);
 
@@ -5631,8 +5622,6 @@ static __section__(".rare") int __gb_try_breakpoint(gb_s* gb)
     return 0;
 }
 
-#if ENABLE_LCD
-
 void gb_init_lcd(gb_s* gb)
 {
     gb->direct.frame_skip = 0;
@@ -5643,14 +5632,6 @@ void gb_init_lcd(gb_s* gb)
 
     return;
 }
-
-#else
-
-void gb_init_lcd(gb_s* gb)
-{
-}
-
-#endif
 
 __section__(".rare") static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8_t opcode)
 {

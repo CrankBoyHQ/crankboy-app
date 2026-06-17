@@ -448,8 +448,6 @@ __core static uint8_t $(__gb_execute_cb)(gb_s* gb)
     return inst_cycles;
 }
 
-#if ENABLE_LCD
-
 __core_section("draw") static void $(__gb_draw_pixel)(uint8_t* line, u8 x, u8 v)
 {
     u8* pix = line + x / LCD_PACKING;
@@ -1210,7 +1208,6 @@ __core_section("short") static u16 $(__gb_add16)(gb_s* restrict gb, u16 a, u16 b
     gb->cpu_reg.f_bits.c = temp >> 16;
     return temp;
 }
-#endif
 
 __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 {
@@ -2085,12 +2082,10 @@ done_instr_timing:
             {
                 gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
-#if ENABLE_LCD
                 if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
                 {
                     $(__gb_draw_line)(gb);
                 }
-#endif
 
                 gb->lcd_mode = LCD_HBLANK;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
