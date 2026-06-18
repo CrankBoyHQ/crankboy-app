@@ -2780,10 +2780,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_display_fps)
             {
-                cb_render_fps(
-                    context->gb->direct.dynamic_rate_enabled,
-                    preferences_frame_skip == 2 && gameScene->next_frames_elapsed == 2
-                );
+                cb_render_fps(context->gb->direct.dynamic_rate_enabled);
             }
         }
     }
@@ -4124,7 +4121,7 @@ bool cb_boot_fade_initial_white(int boot_fade_pref)
     return init_fade_color[boot_fade_pref] == kColorWhite;
 }
 
-__section__(".text.tick") void cb_render_fps(bool interlace_active, bool adaptive_fs_active)
+__section__(".text.tick") void cb_render_fps(bool interlace_active)
 {
     if (!numbers_bmp)
     {
@@ -4175,11 +4172,6 @@ __section__(".text.tick") void cb_render_fps(bool interlace_active, bool adaptiv
     playdate->graphics->setFont(CB_App->labelFont);
     playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
     playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
-    if (adaptive_fs_active)
-    {
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText("a", 1, kUTF8Encoding, 26, 1);
-    }
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
     for (int y = 0; y < height; ++y)
