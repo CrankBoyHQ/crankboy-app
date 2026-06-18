@@ -1,3 +1,15 @@
+# v2.1.1 - (2026-06-18)
+
+# Emulation
+
+- We improved compatibility with more games. (You can finally slay monsters in Wizards & Warriors X)
+
+# Bug Fixes
+
+- Fixed a bug where MBC3 games would freeze (Pokemon Crystal is in the Clear)
+
+---
+
 # v2.1.0 - (2026-06-10)
 
 Welcome to the new Changelog feature! It's the dawn of a new age...
