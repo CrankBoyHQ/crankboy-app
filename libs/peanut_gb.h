@@ -578,8 +578,8 @@ __section__(".text.cb") static void __gb_update_selected_bank_addr(gb_s* gb)
 {
     // swappable cartridge ROM bank
     int effective_bank = gb->selected_rom_bank;
-    // 00->01 quirk: MBC1/2/3 translate bank 0→1; MBC5 allows bank 0
-    if ((gb->mbc == 1 || gb->mbc == 2 || gb->mbc == 3) && (effective_bank & 0x1F) == 0)
+    // 00->01 quirk: MBC1 translates bank 0->1
+    if (gb->mbc == 1 && (effective_bank & 0x1F) == 0)
         effective_bank++;
     int32_t offset = ((int)(effective_bank & gb->num_rom_banks_mask) - 1) * ROM_BANK_SIZE;
 
