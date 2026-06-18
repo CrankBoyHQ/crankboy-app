@@ -71,10 +71,8 @@ enum cgb_support_e
  * 0x2700 is the max we should use. 0x2760 is possible but leaves no
  * headroom if there are any changes to the Playdate OS in the future.
  * 0x2730 is currently used to avoid occasional DTCM crashes on RevA.
- * 0x2730 also seems to crash on some device. So 0x2700 is is.
- * Rev A user need to switch to TCM Auto in the settings to use CGB.
  */
-#define PLAYDATE_STACK_SIZE 0x2700
+#define PLAYDATE_STACK_SIZE 0x2730
 
 #define FPS_AVG_DECAY 0.8f
 
