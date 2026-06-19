@@ -3552,7 +3552,9 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
     }
 
     // we check playtime nonzero so that LCD has been updated at least once
-    uint8_t* lcd = context->gb->lcd;
+    // Use previous_lcd (last complete frame) to avoid corruption from
+    // double-buffered LCD when TCM is enabled.
+    uint8_t* lcd = context->previous_lcd;
     if (success && lcd && gameScene->playtime > 1)
     {
         // save thumbnail, too
