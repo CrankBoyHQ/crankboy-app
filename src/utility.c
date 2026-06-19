@@ -9,13 +9,13 @@
 #include "utility.h"
 
 #include "../libs/miniz/mini_gzip.h"
+#include "../libs/nayuki/qrcodegen.h"
 #include "app.h"
 #include "jparse.h"
 #include "preferences.h"
 #include "scenes/library_scene.h"
 
 #include <ctype.h>
-#include <nayuki/qrcodegen.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
