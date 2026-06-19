@@ -652,11 +652,17 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
         c->freq_counter += c->freq_inc;
         int step_count = 0;
         int32_t step_sum = 0;
-        while (c->freq_counter >= sample_rate)
+        if (c->freq >= 14)
         {
-            c->freq_counter -= sample_rate;
-            if (c->freq < 14)
+            /* LFSR frozen; cap counter to avoid wasted loop spins. */
+            c->freq_counter %= sample_rate;
+        }
+        else
+        {
+            while (c->freq_counter >= sample_rate)
             {
+                c->freq_counter -= sample_rate;
+
                 uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
 
                 c->noise.lfsr_reg >>= 1;
