@@ -120,6 +120,7 @@ __audio static void update_env(chan* c, int sample_rate)
             if (c->volume == 0 || c->volume == MAX_CHAN_VOLUME)
             {
                 c->env.inc = 0;
+                c->env.locked = true;
             }
 #if TARGET_PLAYDATE
             int volume = c->volume;
@@ -133,6 +134,51 @@ __audio static void update_env(chan* c, int sample_rate)
     }
 }
 
+// SameBoy _nrx2_glitch: zombie volume adjustment on NRx2 write while channel active.
+// Handles direction-change inversion and old-step=0->new-step!=0 tick.
+__audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t old_val)
+{
+    bool env_running = (chans[i].env.step != 0);
+    if (env_running)
+        chans[i].env.inc = (new_val & 7) ? 64ul / (uint32_t)(new_val & 7) : 8ul;
+
+    bool should_invert = (new_val & 8) ^ (old_val & 8);
+    bool should_tick = (new_val & 7) && !(old_val & 7) && !chans[i].env.locked;
+
+    // Edge case: both old and new are vol=0, dir=up, step=0, not locked
+    if ((new_val & 0xF) == 8 && (old_val & 0xF) == 8 && !chans[i].env.locked)
+        should_tick = true;
+
+    if (should_invert)
+    {
+        if (new_val & 8)
+        {
+            if (!(old_val & 7) && !chans[i].env.locked)
+                chans[i].volume ^= 0xF;
+            else
+            {
+                chans[i].volume = 0xE - chans[i].volume;
+                chans[i].volume &= 0xF;
+            }
+            should_tick = false;
+        }
+        else
+        {
+            chans[i].volume = 0x10 - chans[i].volume;
+            chans[i].volume &= 0xF;
+        }
+    }
+
+    if (should_tick)
+    {
+        if (new_val & 8)
+            chans[i].volume++;
+        else
+            chans[i].volume--;
+        chans[i].volume &= 0xF;
+    }
+}
+
 __audio static bool calculate_new_sweep_freq(chan* c)
 {
     uint16_t new_freq;
@@ -141,6 +187,8 @@ __audio static bool calculate_new_sweep_freq(chan* c)
     if (!c->sweep_up)
     {
         new_freq = c->sweep.freq - new_freq;
+        if (c->sweep.shift > 0)
+            c->sweep.did_subtract = true;
     }
     else
     {
@@ -245,6 +293,8 @@ __audio static void update_sweep(chan* c, int sample_rate)
         if (!c->sweep_up)
         {
             new_freq = c->sweep.freq - new_freq;
+            if (c->sweep.shift > 0)
+                c->sweep.did_subtract = true;
         }
         else
         {
@@ -266,6 +316,8 @@ __audio static void update_sweep(chan* c, int sample_rate)
             if (!c->sweep_up)
             {
                 second_new_freq = c->sweep.freq - second_new_freq;
+                if (c->sweep.shift > 0)
+                    c->sweep.did_subtract = true;
             }
             else
             {
@@ -344,10 +396,21 @@ __audio static void update_square(
             }
 
             weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
+
+            int32_t target_vol = (int32_t)c->volume << 8;
+            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+            int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
+
             if (c->freq_inc > 0)
-                sample_out = (weighted_sum / (int32_t)c->freq_inc) * c->volume;
+                sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
             else
-                sample_out = c->val * c->volume;
+                sample_out = c->val * effective_volume;
+
+            if (c->sample_surpressed)
+            {
+                sample_out = INT16_MIN / 8;
+                c->sample_surpressed = false;
+            }
         }
         else
         {
@@ -485,6 +548,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
                 weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
                 c->val = (c->val + 1) & 31;
                 c->wave.sample = wave_sample(audio, c->val, c->volume);
+                c->wave.just_read = true;
                 prev_pos = pos;
             }
 
@@ -502,6 +566,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
                 c->freq_counter -= sample_rate;
                 c->val = (c->val + 1) & 31;
                 c->wave.sample = wave_sample(audio, c->val, c->volume);
+                c->wave.just_read = true;
             }
         }
 
@@ -558,26 +623,14 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 {
     chan* c = audio->chans + 3;
 
-    if (!c->powered)
+    if (!c->powered || !c->enabled)
         return;
-    {
-        uint32_t freq = precomputed_noise_freqs[c->noise.lfsr_div][c->freq];
-        set_note_freq(c, freq);
 
-        // A frequency of 0 would cause a division by zero in accurate sound
-        // mode.
-        if (c->freq_inc == 0)
-            return;
-    }
-
-    if (c->freq >= 14)
-    {
-        c->enabled = 0;
-        return;
-    }
+    uint32_t freq = precomputed_noise_freqs[c->noise.lfsr_div][c->freq];
+    set_note_freq(c, freq);
 
     len = update_len(audio, c, len);
-    if (!c->enabled)
+    if (len == 0)
         return;
 
     int sample_replication = get_sample_replication();
@@ -597,27 +650,50 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
         update_env(c, sample_rate);
 
         c->freq_counter += c->freq_inc;
+        int step_count = 0;
+        int32_t step_sum = 0;
         while (c->freq_counter >= sample_rate)
         {
             c->freq_counter -= sample_rate;
-            c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MIN / MAX_CHAN_VOLUME)
-                                             : (VOL_INIT_MAX / MAX_CHAN_VOLUME);
-
-            uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
-
-            c->noise.lfsr_reg >>= 1;
-            c->noise.lfsr_reg |= (xor_res << 14);
-
-            if (c->lfsr_wide)
+            if (c->freq < 14)
             {
-                c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
+                uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
+
+                c->noise.lfsr_reg >>= 1;
+                c->noise.lfsr_reg |= (xor_res << 14);
+
+                if (c->lfsr_narrow)
+                {
+                    c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
+                }
+
+                c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MAX / MAX_CHAN_VOLUME)
+                                                 : (VOL_INIT_MIN / MAX_CHAN_VOLUME);
+                step_count++;
+                step_sum += c->val;
             }
         }
 
         if (c->muted)
             continue;
 
-        int32_t mono_sample = c->val * c->volume;
+        int32_t mono_sample;
+        int32_t effective_volume;
+        if (preferences_sound_mode == 2)
+        {
+            int32_t target_vol = (int32_t)c->volume << 8;
+            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+            effective_volume = (c->envelope_smooth + 128) >> 8;
+        }
+        else
+        {
+            effective_volume = c->volume;
+        }
+
+        if (step_count > 0)
+            mono_sample = (step_sum / step_count) * effective_volume;
+        else
+            mono_sample = c->val * effective_volume;
 #if TARGET_PLAYDATE
         int16_t sample16 = mono_sample / 4;
 
@@ -667,6 +743,14 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     chan* chans = audio->chans;
     chan* c = chans + i;
 
+    // DMG wave RAM corruption on retrigger: must capture before chan_enable.
+    bool wave_was_active = (i == 2) && c->enabled;
+
+    // Digital-zero surpression on first start only (not re-trigger).
+    // Must check c->enabled before chan_enable sets it to 1.
+    if ((i == 0 || i == 1) && preferences_sound_mode == 2)
+        c->sample_surpressed = !c->enabled;
+
     chan_enable(audio, i, 1);
     c->volume = c->volume_init;
 
@@ -678,6 +762,8 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->env.up = val & 0x08 ? 1 : 0;
         c->env.inc = c->env.step ? 64ul / (uint32_t)c->env.step : 8ul;
         c->env.counter = 0;
+        c->env.locked = false;
+        c->freq_counter = 0;
     }
 
     // freq sweep
@@ -707,6 +793,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         }
 
         c->sweep.counter = 0;
+        c->sweep.did_subtract = false;
     }
 
     int len_max = 64;
@@ -714,6 +801,26 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     if (i == 2)
     {  // wave
         len_max = 256;
+        // DMG wave RAM corruption on re-trigger when channel is about to read a sample.
+        if (wave_was_active && c->freq_inc > 0 &&
+            c->freq_counter + c->freq_inc >= (uint32_t)get_audio_sample_rate())
+        {
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            if (!gb->is_cgb_mode)
+            {
+                uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
+                int byte_idx = c->val >> 1;
+                if (byte_idx < 4)
+                {
+                    wave_ram[0] = wave_ram[byte_idx];
+                }
+                else
+                {
+                    int aligned = byte_idx & ~3;
+                    memcpy(wave_ram, wave_ram + aligned, 4);
+                }
+            }
+        }
         c->val = 0;
     }
     else if (i == 3)
@@ -721,6 +828,10 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->noise.lfsr_reg = 0x0000;
         c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
+
+    // Accurate-mode envelope smoothing: init per-channel running average
+    if (preferences_sound_mode == 2)
+        c->envelope_smooth = (int32_t)c->volume << 8;
 
     c->len.inc = 256 | ((uint32_t)(len_max - c->len.load) << 16);
     c->len.counter = 0;
@@ -746,6 +857,70 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
     };
     /* clang-format on */
+
+    /* Wave RAM reads during CH3 playback return the byte currently being read.
+     * On DMG, returns 0xFF unless CPU access coincides with CH3 read cycle (just_read).
+     */
+    if (addr >= 0xFF30 && addr <= 0xFF3F)
+    {
+        chan* c = &audio->chans[2];
+        if (c->powered && c->enabled)
+        {
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            uint8_t wave_idx = c->val >> 1;
+
+            if (!gb->is_cgb_mode)
+            {
+                // DMG: CPU can only read wave RAM during same cycle CH3 reads.
+                if (!c->wave.just_read)
+                    return 0xFF;
+            }
+            c->wave.just_read = false;
+            return audio_mem(audio)[0xFF30 + wave_idx - AUDIO_ADDR_COMPENSATION];
+        }
+    }
+
+    /* PCM12: CH2 (high nibble) + CH1 (low nibble). PCM34: CH4 (high) + CH3 (low).
+     * CGB-only registers; DMG returns open bus (0xFF)).
+     */
+    if (addr == 0xFF76 || addr == 0xFF77)
+    {
+        gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+        if (gb->is_cgb_mode)
+        {
+            int base_ch = (addr == 0xFF76) ? 0 : 2;
+            uint8_t lo = 0, hi = 0;
+
+            for (int ch = base_ch; ch < base_ch + 2; ch++)
+            {
+                chan* c = &audio->chans[ch];
+                uint8_t val = 0;
+                if (c->powered && c->enabled)
+                {
+                    if (ch < 2)
+                    {
+                        val = (c->square.duty & (1 << c->square.duty_counter)) ? c->volume : 0;
+                    }
+                    else if (ch == 2)
+                    {
+                        int idx = c->val >> 1;
+                        uint8_t byte = audio_mem(audio)[0xFF30 + idx - AUDIO_ADDR_COMPENSATION];
+                        uint8_t nibble = (c->val & 1) ? (byte & 0x0F) : (byte >> 4);
+                        val = nibble >> (c->volume & 3);
+                    }
+                    else
+                    {
+                        val = (c->noise.lfsr_reg & 1) ? c->volume : 0;
+                    }
+                }
+                if (ch == base_ch)
+                    lo = val;
+                else
+                    hi = val;
+            }
+            return (hi << 4) | lo;
+        }
+    }
 
     return audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] | ortab[addr - AUDIO_ADDR_COMPENSATION];
 }
@@ -778,26 +953,47 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         return;
     }
 
-    /* Ignore register writes if APU powered off. */
+    /* Ignore register writes if APU powered off, except wave RAM (always accessible). */
     if (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] == 0x00)
+    {
+        /* Wave RAM is writable even with APU off (Pandocs). CH3 can't be active
+         * when APU is off, so no redirect needed.
+         */
+        if (addr >= 0xFF30 && addr <= 0xFF3F)
+        {
+            audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
+        }
         return;
+    }
+
+    /* Wave RAM writes during CH3 playback redirect to the byte CH3 is currently
+     * reading. On DMG, writes are ignored unless coincident with CH3 read cycle.
+     */
+    if (addr >= 0xFF30 && addr <= 0xFF3F)
+    {
+        chan* c = &audio->chans[2];
+        if (c->powered && c->enabled)
+        {
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            if (!gb->is_cgb_mode)
+            {
+                if (!c->wave.just_read)
+                    return;
+            }
+            uint8_t wave_idx = c->val >> 1;
+            audio_mem(audio)[0xFF30 + wave_idx - AUDIO_ADDR_COMPENSATION] = val;
+            return;
+        }
+    }
 
     audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
 
-    if (preferences_sound_mode == 2)
-    {
-        i = (addr - AUDIO_ADDR_COMPENSATION) * 0.2f;
-    }
-    else
-    {
-        i = (addr - AUDIO_ADDR_COMPENSATION) / 5;
-    }
+    i = (addr - AUDIO_ADDR_COMPENSATION) / 5;
 
     switch (addr)
     {
     case 0xFF10:
     {
-        uint8_t old_rate = chans[0].sweep.rate;
         bool old_sweep_up = chans[0].sweep_up;
 
         chans[0].sweep.rate = (val >> 4) & 0x07;
@@ -820,7 +1016,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
                 chan_enable(audio, 0, false);
         }
 
-        if (old_sweep_up == false && chans[0].sweep_up == true && old_rate > 0)
+        if (old_sweep_up == false && chans[0].sweep_up == true && chans[0].sweep.did_subtract)
         {
             chan_enable(audio, 0, false);
         }
@@ -831,39 +1027,30 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     case 0xFF17:
     case 0xFF21:
     {
-        // --- Zombie Mode ---
+        // SameBoy _nrx2_glitch: adjust volume on NRx2 write while channel active.
+        // DMG: 2-pass via 0xFF intermediate. CGB: single pass.
         if (chans[i].powered && chans[i].enabled)
         {
-            uint8_t old_step = chans[i].env.step;
-            bool old_dir_is_up = chans[i].env.up;
-            bool envelope_is_running = (chans[i].env.inc != 0);
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            uint8_t old_val = audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION];
 
-            bool new_dir_is_up = (val & 0x08) != 0;
-
-            if (envelope_is_running)
+            if (!gb->is_cgb_mode)
             {
-                if (old_step == 0)
-                {
-                    chans[i].volume++;
-                }
-                else if (!old_dir_is_up)
-                {
-                    chans[i].volume += 2;
-                }
-
-                if (old_dir_is_up != new_dir_is_up)
-                {
-                    chans[i].volume = 16 - chans[i].volume;
-                }
+                _nrx2_glitch(chans, i, 0xFF, old_val);
+                _nrx2_glitch(chans, i, val, 0xFF);
             }
-            chans[i].volume &= 0x0F;
-            chans[i].env.step = val & 0x07;
+            else
+            {
+                _nrx2_glitch(chans, i, val, old_val);
+            }
         }
 
         chans[i].volume_init = val >> 4;
         chans[i].powered = (val >> 3) != 0;
         chans[i].env.up = (val & 0x08) != 0;
         chans[i].env.step = val & 0x07;
+        chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
+        chans[i].env.counter = 0;
     }
     break;
 
@@ -875,7 +1062,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     case 0xFF16:
     case 0xFF20:
     {
-        static const uint8_t duty_lookup[] = {0x10, 0x30, 0x3C, 0xCF};
+        static const uint8_t duty_lookup[] = {0x80, 0x81, 0xE1, 0x7E};
         chans[i].len.load = val & 0x3f;
         if (i < 2)
         {  // Only for square channels
@@ -914,7 +1101,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
     case 0xFF22:
         chans[3].freq = val >> 4;
-        chans[3].lfsr_wide = (val & 0x08) != 0;
+        chans[3].lfsr_narrow = (val & 0x08) != 0;
         chans[3].noise.lfsr_div = val & 0x07;
         break;
 
@@ -987,7 +1174,7 @@ void audio_init(audio_data* audio)
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8; ++lfsr_selector_idx)
     {
-        uint32_t current_lfsr_div_val = lfsr_selector_idx == 0 ? 8 : lfsr_selector_idx * 16;
+        uint32_t current_lfsr_div_val = lfsr_selector_idx == 0 ? 4 : lfsr_selector_idx * 8;
         for (uint8_t c_freq_shift_val = 0; c_freq_shift_val < 16; ++c_freq_shift_val)
         {
             uint32_t divisor_term = current_lfsr_div_val << c_freq_shift_val;
