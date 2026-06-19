@@ -451,6 +451,7 @@ char* savestate_upgrade_to_v1(char** out, size_t* out_size, char* in, size_t in_
 
     // Note: v1 and v0 are actually identical.
     *out = in;
+    *out_size = in_size;
     return NULL;
 }
 

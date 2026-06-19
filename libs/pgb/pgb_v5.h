@@ -714,29 +714,39 @@ char* PGB_VERSIONED(gb_savestate_upgrade_to)(char** out, const char* in);
 
 char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_size)
 {
-    // First upgrade to v4
-    char* v4_in;
-    size_t v4_size;
-    const char* result = savestate_upgrade_to_v4(&v4_in, &v4_size, in, in_size);
-    if (result)
-        return aprintf("%s", result);
-
-    const StateHeader* v4_header = (const void*)v4_in;
-    if (v4_header->version == PGB_VERSION)
+    const StateHeader* const in_header = (const void*)in;
+    if (in_header->version > PGB_VERSION)
     {
-        *out = v4_in;
+        return aprintf("Save state version too high: v%u", (unsigned)in_header->version);
+    }
+    if (in_header->version == PGB_VERSION)
+    {
+        *out = in;
+        *out_size = in_size;
         return NULL;
     }
 
+    // upgrade to v4 if needed
+    char* const org_in = in;
+    size_t const org_in_size = in_size;
+    if (in_header->version < 4)
+    {
+        const char* result = savestate_upgrade_to_v4(&in, &in_size, org_in, org_in_size);
+        if (result)
+            return aprintf("%s", result);
+    }
+    char* const v4_in = in;
+
+    const StateHeader* const v4_header = (const void*)v4_in;
     const struct gb_s_v4* v4_gb = (const void*)(v4_in + sizeof(StateHeader));
 
     // Allocate v5 state
     size_t v5_gb_size = sizeof(struct gb_s_v5);
-    size_t extra_sz = v4_size - sizeof(StateHeader) - sizeof(struct gb_s_v4);
+    size_t extra_sz = in_size - sizeof(StateHeader) - sizeof(struct gb_s_v4);
     char* v5_org = mallocz(sizeof(StateHeader) + v5_gb_size + extra_sz);
     if (!v5_org)
     {
-        if (v4_in != in)
+        if (v4_in != org_in)
             cb_free(v4_in);
         return aprintf("Out of memory");
     }
@@ -766,6 +776,7 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         size_t pre_sweep_sz = offsetof(typeof(v4_gb->audio.chans[0]), sweep);
         memcpy(&v5_gb->audio.chans[ch], &v4_gb->audio.chans[ch], pre_sweep_sz);
         v5_gb->audio.chans[ch].sample_surpressed = false;
+        v5_gb->audio.chans[ch].env.locked = false;
 
         // Sweep struct fields individually (did_subtract is new)
         v5_gb->audio.chans[ch].sweep.freq = v4_gb->audio.chans[ch].sweep.freq;
@@ -784,6 +795,7 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
             &v5_gb->audio.chans[ch].wave, &v4_gb->audio.chans[ch].wave,
             sizeof(v4_gb->audio.chans[ch].wave)
         );
+        v5_gb->audio.chans[ch].wave.just_read = false;
 
         v5_gb->audio.chans[ch].envelope_smooth = (int32_t)v5_gb->audio.chans[ch].volume << 8;
     }
@@ -811,7 +823,7 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
 
     *out_size = sizeof(StateHeader) + v5_gb_size + extra_sz;
     *out = v5_org;
-    if (v4_in != in)
+    if (v4_in != org_in)
         cb_free(v4_in);
     return NULL;
 }

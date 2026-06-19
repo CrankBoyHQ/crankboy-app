@@ -672,6 +672,7 @@ char* savestate_upgrade_to_v3(char** out, size_t* out_size, char* in, size_t in_
     if (in_header->version == PGB_VERSION)
     {
         *out = in;
+        *out_size = in_size;
         return NULL;
     }
 
