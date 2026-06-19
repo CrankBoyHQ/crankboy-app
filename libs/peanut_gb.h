@@ -701,7 +701,7 @@ __section__(".rare") static uint8_t __gb_detect_mbc1m(const gb_s* gb)
     return 0;
 }
 
-__shell static void __gb_do_hdma(gb_s* gb)
+__core_cgb_section("hdma") static void __gb_do_hdma(gb_s* gb)
 {
     int hdma_remaning = (unsigned)gb->cgb_hdma_len;
 
@@ -884,9 +884,7 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
     }
 }
 
-__section__(".rare.cb") static void __gb_rare_write(
-    gb_s* gb, const uint16_t addr, const uint8_t val
-)
+__shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t val)
 {
     // unused memory area
     if (addr >= 0xFEA0 && addr < 0xFF00)
