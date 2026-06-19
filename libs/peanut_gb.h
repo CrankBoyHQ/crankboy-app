@@ -312,7 +312,6 @@ typedef struct PGB_VERSIONED(chan) chan;
 
 void gb_step_cpu(gb_s* gb);
 void gb_recompute_cgb_gray_palettes(gb_s* gb);
-void gb_recompute_cgb_gray_palettes__to_bright(gb_s* gb);
 
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 bool gb_get_rom_uses_battery(uint8_t* gb_rom);
@@ -882,16 +881,6 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
     {
         __cgb_update_bg_gray_palette(gb, i, lut_offset);
         __cgb_update_obj_gray_palette(gb, i, obj_target);
-    }
-}
-
-__section__(".rare") void gb_recompute_cgb_gray_palettes__to_bright(gb_s* gb)
-{
-    __cgb_scan_luminance_range(gb);
-    for (int i = 0; i < 8; i++)
-    {
-        __cgb_update_bg_gray_palette(gb, i, 0);
-        __cgb_update_obj_gray_palette(gb, i, gb->cgb_obj_palette_gray);
     }
 }
 
