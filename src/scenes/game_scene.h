@@ -150,6 +150,8 @@ typedef struct CB_GameScene
 
     // time since started or last save/load state
     unsigned playtime;
+    // slot last loaded via load_state()
+    unsigned last_loaded_slot;
     bool quitGameModalConfirmOverride : 1;
 
     bool isCurrentlySaving : 1;

@@ -607,6 +607,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     scene->id = "game";
 
     CB_GameScene* gameScene = allocz(CB_GameScene);
+    gameScene->last_loaded_slot = (unsigned)-1;
     gameScene->scene = scene;
     scene->managedObject = gameScene;
 
@@ -3609,6 +3610,39 @@ __section__(".rare") static bool save_state_(CB_GameScene* gameScene, unsigned s
 
         playdate->file->close(file);
     }
+    else if (success && gameScene->last_loaded_slot != (unsigned)-1)
+    {
+        // playtime hasn't advanced (likely just loaded a state).
+        // Reuse thumbnail from the savegame that was last loaded.
+        char* src_thumb_name = NULL;
+        playdate->system->formatString(
+            &src_thumb_name, "%s/%s.%u.thumb", cb_gb_directory_path(CB_statesPath),
+            gameScene->base_filename, gameScene->last_loaded_slot
+        );
+
+        SDFile* src = playdate->file->open(src_thumb_name, kFileReadData);
+        if (src)
+        {
+            int thumb_size = SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8);
+            uint8_t* thumb_buf = cb_malloc(thumb_size);
+            if (thumb_buf)
+            {
+                int read = playdate->file->read(src, thumb_buf, thumb_size);
+                if (read == thumb_size)
+                {
+                    SDFile* dst = playdate->file->open(thumb_name, kFileWrite);
+                    if (dst)
+                    {
+                        playdate->file->write(dst, thumb_buf, thumb_size);
+                        playdate->file->close(dst);
+                    }
+                }
+                cb_free(thumb_buf);
+            }
+            playdate->file->close(src);
+        }
+        cb_free(src_thumb_name);
+    }
 
 cleanup:
     if (path_prefix)
@@ -3811,6 +3845,9 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                         }
                     }
                 }
+
+                if (success)
+                    gameScene->last_loaded_slot = slot;
 
                 cb_free(buff);
             }
