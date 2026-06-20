@@ -19,6 +19,35 @@ GROUP(libgcc.a libc.a libm.a)
 	provides extra stability:
 
 	. = ALIGN(0x1000);
+
+	--- ITCM_STEP_PAD tuning ---
+	__gb_step_cpu is the hottest function. Its alignment (addr % 0x1000)
+	dramatically affects FPS due to branch predictor behavior. Changing
+	ANY code in .text.tick, .text.cb, or earlier ITCM subsections shifts
+	its position - can gain or lose 5+ FPS on DMG games like Road Rash.
+
+	The .step subsection (ITCM_STEP_PAD_DMG / ITCM_STEP_PAD_CGB) locks
+	__gb_step_cpu at a known-good offset. Default: 0x40 (tuned for Road
+	Rash on Playdate Rev A).
+
+	To re-tune after significant code changes:
+		make clean && make device STEP=0x000  # baseline
+
+		(test values in 0x40-byte steps, 64 total, modulo 0x1000):
+
+			0x000 0x040 0x080 0x0C0 0x100 0x140 0x180 0x1C0
+			0x200 0x240 0x280 0x2C0 0x300 0x340 0x380 0x3C0
+			0x400 0x440 0x480 0x4C0 0x500 0x540 0x580 0x5C0
+			0x600 0x640 0x680 0x6C0 0x700 0x740 0x780 0x7C0
+			0x800 0x840 0x880 0x8C0 0x900 0x940 0x980 0x9C0
+			0xA00 0xA40 0xA80 0xAC0 0xB00 0xB40 0xB80 0xBC0
+			0xC00 0xC40 0xC80 0xCC0 0xD00 0xD40 0xD80 0xDC0
+			0xE00 0xE40 0xE80 0xEC0 0xF00 0xF40 0xF80 0xFC0
+
+		(find peak FPS, update linker default)
+
+	Standard build uses linker default (no STEP= needed):
+	  make device
 */
 
 SECTIONS
@@ -67,6 +96,10 @@ SECTIONS
 			. = ALIGN(32);
 			*(.itcm.dmg.micro)
 			*(.itcm.dmg.hdma)
+			. = ALIGN(32);
+			ITCM_STEP_PAD_DMG = DEFINED(ITCM_STEP_PAD_DMG) ? ITCM_STEP_PAD_DMG : 0x40;
+			. += ITCM_STEP_PAD_DMG;
+			*(.itcm.dmg.step)
 			*(.itcm.dmg.*)
         __itcm_dmg_end = .;
 
@@ -84,6 +117,10 @@ SECTIONS
 			. = ALIGN(32);
 			*(.itcm.cgb.micro)
 			*(.itcm.cgb.hdma)
+			. = ALIGN(32);
+			ITCM_STEP_PAD_CGB = DEFINED(ITCM_STEP_PAD_CGB) ? ITCM_STEP_PAD_CGB : 0x40;
+			. += ITCM_STEP_PAD_CGB;
+			*(.itcm.cgb.step)
 			*(.itcm.cgb.*)
         __itcm_cgb_end = .;
 

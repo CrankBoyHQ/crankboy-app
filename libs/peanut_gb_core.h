@@ -1712,7 +1712,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 /**
  * Internal function used to step the CPU.
  */
-__core unsigned int $(__gb_step_cpu)(gb_s* gb)
+__core_section("step") unsigned int $(__gb_step_cpu)(gb_s* gb)
 {
     unsigned inst_cycles = 16;
 
