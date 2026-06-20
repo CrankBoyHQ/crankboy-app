@@ -2126,19 +2126,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 if (preferences_frame_skip == 1 && preferences_blend_frames)
                 {
-                    // --- CGB 30fps Consecutive-Frame Blending ---
-                    // Build both bright and dark palette LUTs for frame N
+                    // --- CGB 30fps Consecutive-Frame Blending (simple) ---
+                    // Frame N (bright)
                     cgb_blend_stage = 1;
                     gb_recompute_cgb_gray_palettes(context->gb);
-                    cgb_blend_stage = 2;
-                    gb_recompute_cgb_gray_palettes(context->gb);
-                    cgb_blend_stage = 1;
-
-                    // Frame N: dual output -> cb_frame_buffer[0]=bright[N], [1]=dark[N]
                     context->gb->lcd = cb_frame_buffer[0];
-                    context->gb->lcd_alt = cb_frame_buffer[1];
                     context->gb->direct.frame_skip = 0;
-                    context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2146,22 +2139,28 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                     run_frame_function_pointer(context->gb);
 #endif
-                    context->gb->direct.cgb_dual_output = false;
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Build both bright and dark palette LUTs for frame N+1
-                    cgb_blend_stage = 1;
-                    gb_recompute_cgb_gray_palettes(context->gb);
+                    // Frame N+1 (dark, one shade brighter)
+                    // Build stage-2 (dark) LUTs into bright slots (offset 0) so
+                    // renderer reads them without dual_output. +1 bias = lighter.
                     cgb_blend_stage = 2;
-                    gb_recompute_cgb_gray_palettes(context->gb);
+                    __cgb_scan_luminance_range(context->gb);
+                    int8_t saved_bias = cgb_gray_bias;
+                    cgb_gray_bias += 1;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        __cgb_update_bg_gray_palette(context->gb, i, 0);
+                        __cgb_update_obj_gray_palette(
+                            context->gb, i, context->gb->cgb_obj_palette_gray
+                        );
+                    }
+                    cgb_gray_bias = saved_bias;
                     cgb_blend_stage = 1;
 
-                    // Frame N+1: dual output -> cb_frame_buffer[2]=bright[N+1], [3]=dark[N+1]
-                    context->gb->lcd = cb_frame_buffer[2];
-                    context->gb->lcd_alt = cb_frame_buffer[3];
+                    context->gb->lcd = cb_frame_buffer[1];
                     context->gb->direct.frame_skip = 0;
-                    context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2169,19 +2168,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                     run_frame_function_pointer(context->gb);
 #endif
-                    context->gb->direct.cgb_dual_output = false;
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Blend bright[N] with bright[N+1] -> temporal bright blend
-                    blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[2]);
-
-                    // Blend dark[N] with dark[N+1] -> temporal dark blend
-                    blend_frames_lut(cb_frame_buffer[1], cb_frame_buffer[3]);
-
-                    // Blend bright result with dark result -> final output
-                    blend_frames_lut(cb_frame_buffer[2], cb_frame_buffer[3]);
-                    memcpy(original_lcd, cb_frame_buffer[3], LCD_BUFFER_BYTES);
+                    blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                    memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                 }
                 else
                 {
