@@ -191,6 +191,7 @@ typedef struct CB_GameScene
         int capacity;
         int write_idx;
         int read_idx;
+        int buffer_oldest;
         int count;
         int frame_counter;
         float scrub_accumulator;

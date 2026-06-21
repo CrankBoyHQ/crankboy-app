@@ -4101,6 +4101,7 @@ static void rewind_init(CB_GameScene* gameScene)
     gameScene->rewind.capacity = capacity;
     gameScene->rewind.write_idx = 0;
     gameScene->rewind.read_idx = -1;
+    gameScene->rewind.buffer_oldest = 0;
     gameScene->rewind.count = 0;
     gameScene->rewind.frame_counter = 0;
     gameScene->rewind.scrub_accumulator = 0.0f;
@@ -4122,6 +4123,7 @@ static void rewind_free(CB_GameScene* gameScene)
     gameScene->rewind.count = 0;
     gameScene->rewind.write_idx = 0;
     gameScene->rewind.read_idx = -1;
+    gameScene->rewind.buffer_oldest = 0;
     gameScene->rewind.frame_counter = 0;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
@@ -4145,6 +4147,8 @@ static void rewind_record_state(CB_GameScene* gameScene)
     gameScene->rewind.write_idx = (idx + 1) % gameScene->rewind.capacity;
     if (gameScene->rewind.count < gameScene->rewind.capacity)
         gameScene->rewind.count++;
+    else
+        gameScene->rewind.buffer_oldest = gameScene->rewind.write_idx;
 }
 
 static void rewind_enter_scrubbing(CB_GameScene* gameScene)
@@ -4186,13 +4190,7 @@ static void rewind_step_back(CB_GameScene* gameScene)
 
     CB_GameSceneContext* context = gameScene->context;
 
-    int oldest;
-    if (gameScene->rewind.count == gameScene->rewind.capacity)
-        oldest = gameScene->rewind.write_idx;
-    else
-        oldest = 0;
-
-    if (gameScene->rewind.read_idx == oldest)
+    if (gameScene->rewind.read_idx == gameScene->rewind.buffer_oldest)
         return;
 
     gameScene->rewind.read_idx =
@@ -4252,6 +4250,23 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
 
     gameScene->rewind.active = false;
     gameScene->rewind.scrub_accumulator = 0.0f;
+
+    if (gameScene->rewind.states && gameScene->rewind.count > 0)
+    {
+        int read_idx = gameScene->rewind.read_idx;
+        int capacity = gameScene->rewind.capacity;
+        int oldest = gameScene->rewind.buffer_oldest;
+
+        int kept;
+        if (read_idx >= oldest)
+            kept = read_idx - oldest + 1;
+        else
+            kept = capacity - oldest + read_idx + 1;
+
+        gameScene->rewind.count = kept;
+        gameScene->rewind.write_idx = (read_idx + 1) % capacity;
+    }
+
     gbScreenRequiresFullRefresh = true;
 }
 
