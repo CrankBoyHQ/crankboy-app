@@ -2698,14 +2698,47 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             if (gameScene->rewind.active)
             {
                 int display_height = playdate->display->getHeight();
-                // Scanlines — black line every 3 rows across full width
+                // Scanlines - black line every 3 rows across full width
                 for (int y = 0; y < display_height; y += 3)
                     playdate->graphics->fillRect(0, y, 400, 1, kColorBlack);
-                // VHS noise bands — drawn once per crank step
+                // VHS noise bands - drawn once per crank step
                 if (gameScene->rewind.noise_pending)
                 {
                     rewind_draw_noise_bands();
                     gameScene->rewind.noise_pending = false;
+                }
+                // Seekbar - unrecorded left, recorded right, fill from current
+                if (gameScene->rewind.count > 0)
+                {
+                    int oldest = gameScene->rewind.buffer_oldest;
+                    int read_idx = gameScene->rewind.read_idx;
+                    int cap = gameScene->rewind.capacity;
+                    int count = gameScene->rewind.count;
+                    int pos =
+                        (read_idx >= oldest) ? (read_idx - oldest) : (cap - oldest + read_idx);
+
+                    int bar_x = 40, bar_w = 320, bar_y = display_height - 4;
+
+                    // Top border
+                    playdate->graphics->fillRect(bar_x, bar_y, bar_w, 1, kColorBlack);
+
+                    // Unrecorded - dithered (left, unreachable past)
+                    int unrec_w = (int)((float)(cap - count) / (float)(cap - 1) * (float)bar_w);
+                    for (int x = bar_x; x < bar_x + unrec_w; x += 2)
+                        playdate->graphics->fillRect(x, bar_y + 1, 1, 3, kColorWhite);
+
+                    // Recorded - white background (right)
+                    int rec_x = bar_x + unrec_w;
+                    int rec_w = bar_w - unrec_w;
+                    if (rec_w > 0)
+                        playdate->graphics->fillRect(rec_x, bar_y + 1, rec_w, 3, kColorWhite);
+
+                    // Black fill - from current position to right edge
+                    float frac = (count > 1) ? (float)pos / (float)(count - 1) : 0.0f;
+                    int fill_x = rec_x + (int)(frac * (float)rec_w);
+                    int fill_w = bar_x + bar_w - fill_x;
+                    if (fill_w > 0)
+                        playdate->graphics->fillRect(fill_x, bar_y + 1, fill_w, 3, kColorBlack);
                 }
             }
 
