@@ -2146,6 +2146,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         if (gameScene->rewind.active)
         {
             force_all_lines_dirty = true;
+            playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.0f);
         }
 
         if (!skip_frame)
@@ -4282,6 +4283,11 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.noise_pending = false;
 
     playdate->graphics->clear(game_picture_background_color);
+
+    float volume = 0.0f;
+    if (gameScene->audioEnabled)
+        volume = gameScene->is_stereo ? 0.2f : 0.4f;
+    playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
 
     if (gameScene->rewind.states && gameScene->rewind.count > 0)
     {
