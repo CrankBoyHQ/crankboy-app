@@ -3944,7 +3944,10 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                 }
 
                 if (success)
+                {
                     gameScene->last_loaded_slot = slot;
+                    rewind_free(gameScene);
+                }
 
                 cb_free(buff);
             }
