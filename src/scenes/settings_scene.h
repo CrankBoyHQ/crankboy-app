@@ -81,6 +81,10 @@ typedef struct CB_SettingsScene
     float header_animation_p;
 
     uint8_t thumbnail[SAVE_STATE_THUMBNAIL_H * ((SAVE_STATE_THUMBNAIL_W + 7) / 8)];
+
+    char* save_state_desc;
+    char* load_state_desc;
+    float desc_update_timer;
 } CB_SettingsScene;
 
 CB_SettingsScene* CB_SettingsScene_new(

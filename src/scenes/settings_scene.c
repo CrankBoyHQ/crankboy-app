@@ -50,6 +50,8 @@ extern const uint16_t CB_dither_lut_c1[];
 
 static void update_thumbnail(CB_SettingsScene* settingsScene);
 
+static void cb_wrap_invalidate(void);
+
 static const char* get_settings_game_name(CB_SettingsScene* settingsScene);
 
 static char* itcm_base_desc = NULL;
@@ -78,6 +80,7 @@ typedef struct OptionsMenuEntry
     unsigned max_value;
 
     bool locked : 1;
+    bool dimmed : 1;
     bool show_value_only_on_hover : 1;
     bool suppress_nondefault_indicator : 1;
     bool thumbnail : 1;
@@ -975,8 +978,8 @@ static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
 static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
-static const char* slot_labels[] = {"[slot 0]", "[slot 1]", "[slot 2]", "[slot 3]", "[slot 4]",
-                                    "[slot 5]", "[slot 6]", "[slot 7]", "[slot 8]", "[slot 9]"};
+static const char* slot_labels[] = {"Slot 0", "Slot 1", "Slot 2", "Slot 3", "Slot 4",
+                                    "Slot 5", "Slot 6", "Slot 7", "Slot 8", "Slot 9"};
 const char* const save_slot_labels[10] = {
     "Slot A", "Slot B", "Slot C", "Slot D", "Slot E",
     "Slot F", "Slot G", "Slot H", "Slot I", "Slot K",
@@ -1006,6 +1009,112 @@ static void update_thumbnail(CB_SettingsScene* settingsScene)
     {
         memset(settingsScene->thumbnail, 0xFF, sizeof(settingsScene->thumbnail));
     }
+}
+
+static OptionsMenuEntry* find_load_state_entry(CB_SettingsScene* settingsScene)
+{
+    int count = settingsScene->totalMenuItemCount;
+    for (int i = 0; i < count; ++i)
+    {
+        if (settingsScene->entries[i].name && !strcmp(settingsScene->entries[i].name, "Load state"))
+            return &settingsScene->entries[i];
+    }
+    return NULL;
+}
+
+static void update_state_descriptions(CB_SettingsScene* settingsScene)
+{
+    cb_wrap_invalidate();
+    CB_GameScene* gameScene = settingsScene->gameScene;
+    if (!gameScene)
+        return;
+
+    int slot = preferences_save_state_slot;
+    unsigned timestamp = get_save_state_timestamp(gameScene, slot);
+    unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
+    bool has_save = (timestamp != 0 && timestamp <= now);
+    unsigned age = now - timestamp;
+    char* allocated_time = NULL;
+    const char* human_time;
+    if (has_save)
+    {
+        if (age < 10)
+            human_time = "just now";
+        else
+            human_time = allocated_time = en_human_time(age);
+    }
+    else
+    {
+        human_time = NULL;
+    }
+
+    cb_free(settingsScene->save_state_desc);
+    settingsScene->save_state_desc = NULL;
+    cb_free(settingsScene->load_state_desc);
+    settingsScene->load_state_desc = NULL;
+
+    if (has_save)
+    {
+        const char* save_fmt;
+        const char* load_fmt;
+        if (age < 10)
+        {
+            save_fmt = "Overwrite snapshot from\njust now.";
+            load_fmt = "Restore snapshot from\njust now.";
+        }
+        else
+        {
+            save_fmt = NULL;  // formatString will be used
+            load_fmt = NULL;
+        }
+
+        if (save_fmt)
+        {
+            settingsScene->save_state_desc = cb_strdup(save_fmt);
+            settingsScene->load_state_desc = cb_strdup(load_fmt);
+        }
+        else
+        {
+            playdate->system->formatString(
+                &settingsScene->save_state_desc, "Overwrite snapshot from\n%s ago.", human_time
+            );
+            playdate->system->formatString(
+                &settingsScene->load_state_desc, "Restore snapshot from\n%s ago.", human_time
+            );
+        }
+    }
+
+    cb_free(allocated_time);
+
+    int count = settingsScene->totalMenuItemCount;
+    for (int i = 0; i < count; ++i)
+    {
+        OptionsMenuEntry* entry = &settingsScene->entries[i];
+        if (entry->name && !strcmp(entry->name, "Save state"))
+        {
+            entry->description =
+                has_save ? settingsScene->save_state_desc
+                         : "Create a snapshot of this moment, which can be resumed later.";
+            break;
+        }
+    }
+
+    OptionsMenuEntry* load_entry = find_load_state_entry(settingsScene);
+    if (load_entry)
+    {
+        load_entry->dimmed = !has_save;
+        load_entry->description =
+            has_save ? settingsScene->load_state_desc : "Restore a previously created snapshot.";
+    }
+}
+
+static void settings_post_action_save_state_slot_change(
+    OptionsMenuEntry* e, CB_SettingsScene* settingsScene, int prev_val
+)
+{
+    (void)e;
+    (void)prev_val;
+    update_state_descriptions(settingsScene);
 }
 
 static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
@@ -1042,6 +1151,10 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
             modal->width = 324;
             CB_presentModal(modal->scene);
         }
+
+        // After saving, the slot now has a state - unlock Load state
+        update_state_descriptions(settingsScene);
+        settingsScene->desc_update_timer = 0.0f;
     }
 
     update_thumbnail(settingsScene);
@@ -1261,10 +1374,14 @@ static void settings_action_load_state_possibly_warn(
 )
 {
     CB_GameScene* gameScene = e->ud;
+
+    unsigned timestamp = get_save_state_timestamp(gameScene, preferences_save_state_slot);
+    if (timestamp == 0)
+        return;
+
     if (gameScene->cartridge_has_battery)
     {
         const char* options[] = {"Cancel", "Load", NULL};
-        unsigned timestamp = get_save_state_timestamp(gameScene, preferences_save_state_slot);
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
 
         int h = 234;
@@ -1590,28 +1707,30 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         section[++i] = (OptionsMenuEntry){
             .name = "Save state",
             .values = slot_labels,
-            .description = "Create a snapshot of this moment, which can be resumed later.",
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .show_value_only_on_hover = 1,
             .suppress_nondefault_indicator = 1,
             .thumbnail = 1,
             .on_press = settings_action_save_state_possibly_warn,
+            .on_change = settings_post_action_save_state_slot_change,
             .ud = gameScene,
         };
 
-        section[++i] = (OptionsMenuEntry){
-            .name = "Load state",
-            .values = slot_labels,
-            .description = "Restore the previously created snapshot.",
-            .pref_var = &preferences_save_state_slot,
-            .max_value = SAVE_STATE_SLOT_COUNT,
-            .show_value_only_on_hover = 1,
-            .suppress_nondefault_indicator = 1,
-            .thumbnail = 1,
-            .on_press = settings_action_load_state_possibly_warn,
-            .ud = gameScene,
-        };
+        {
+            section[++i] = (OptionsMenuEntry){
+                .name = "Load state",
+                .values = slot_labels,
+                .pref_var = &preferences_save_state_slot,
+                .max_value = SAVE_STATE_SLOT_COUNT,
+                .show_value_only_on_hover = 1,
+                .suppress_nondefault_indicator = 1,
+                .thumbnail = 1,
+                .on_press = settings_action_load_state_possibly_warn,
+                .on_change = settings_post_action_save_state_slot_change,
+                .ud = gameScene,
+            };
+        }
     }
     else if (scene->emucoreGameScene)
     {
@@ -2707,6 +2826,8 @@ static void switchToSection(CB_SettingsScene* s, int sectionIndex)
 
     s->cursorIndex = 0;
     s->topVisibleIndex = 0;
+
+    update_state_descriptions(s);
 }
 
 static void cb_wrap_invalidate(void);
@@ -2714,6 +2835,10 @@ static void cb_wrap_invalidate(void);
 static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
 {
     cb_wrap_invalidate();
+    cb_free(settingsScene->save_state_desc);
+    settingsScene->save_state_desc = NULL;
+    cb_free(settingsScene->load_state_desc);
+    settingsScene->load_state_desc = NULL;
     if (settingsScene->entries)
     {
         cb_free(settingsScene->entries);
@@ -2743,6 +2868,8 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
     {
         settingsScene->cursorIndex = 0;
     }
+
+    update_state_descriptions(settingsScene);
 }
 
 // word-wrap cache
@@ -2901,6 +3028,17 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     CB_GameScene* gameScene = settingsScene->gameScene;
+
+    if (gameScene)
+    {
+        settingsScene->desc_update_timer += dt;
+        if (settingsScene->desc_update_timer >= 15.0f)
+        {
+            settingsScene->desc_update_timer = 0.0f;
+            if (get_save_state_timestamp(gameScene, preferences_save_state_slot))
+                update_state_descriptions(settingsScene);
+        }
+    }
 
     float header_target = CB_App->bundled_rom ? 0.0f : (float)preferences_per_game;
     TOWARD(settingsScene->header_animation_p, header_target, dt * HEADER_ANIMATION_RATE);
@@ -3264,10 +3402,12 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             (current_entry->pref_var == NULL && current_entry->emucore_pref == NULL &&
              current_entry->on_press == NULL);
         bool is_locked_option = current_entry->locked;
+        bool is_dimmed_option = current_entry->dimmed;
 
         bool is_functionally_inactive =
             (current_entry->pref_var != NULL && current_entry->max_value == 0);
-        bool is_disabled = is_static_text || is_locked_option || is_functionally_inactive;
+        bool is_disabled =
+            is_static_text || is_locked_option || is_dimmed_option || is_functionally_inactive;
         bool indicate_nondefault = false;
         bool is_selected = itemIndex == settingsScene->cursorIndex;
         int prefvar_index = prefvar_to_index(current_entry->pref_var);
@@ -3639,6 +3779,11 @@ static void CB_SettingsScene_free(void* object)
     }
 
     cb_wrap_invalidate();
+
+    cb_free(settingsScene->save_state_desc);
+    settingsScene->save_state_desc = NULL;
+    cb_free(settingsScene->load_state_desc);
+    settingsScene->load_state_desc = NULL;
 
     if (settingsScene->entries)
         cb_free(settingsScene->entries);
