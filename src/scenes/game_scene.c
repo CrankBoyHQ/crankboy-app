@@ -461,12 +461,18 @@ void itcm_core_init(bool cgb)
 }
 #endif
 
+#define REWIND_MAX_MEMORY (4 * 1024 * 1024)
+#define REWIND_MAX_STATES 60
+#define REWIND_CAPTURE_INTERVAL 10
+#define REWIND_ANGLE_STEP 15.0f
+
 static void rewind_init(CB_GameScene* gameScene);
 static void rewind_free(CB_GameScene* gameScene);
 static void rewind_record_state(CB_GameScene* gameScene);
 static void rewind_step_back(CB_GameScene* gameScene);
 static void rewind_step_forward(CB_GameScene* gameScene);
 static void rewind_enter_scrubbing(CB_GameScene* gameScene);
+static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
 
 static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
@@ -1553,15 +1559,15 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
         float crank_change = playdate->system->getCrankChange();
         gameScene->rewind.scrub_accumulator += crank_change;
 
-        while (gameScene->rewind.scrub_accumulator >= 10.0f)
+        while (gameScene->rewind.scrub_accumulator >= REWIND_ANGLE_STEP)
         {
             rewind_step_forward(gameScene);
-            gameScene->rewind.scrub_accumulator -= 10.0f;
+            gameScene->rewind.scrub_accumulator -= REWIND_ANGLE_STEP;
         }
-        while (gameScene->rewind.scrub_accumulator <= -10.0f)
+        while (gameScene->rewind.scrub_accumulator <= -REWIND_ANGLE_STEP)
         {
             rewind_step_back(gameScene);
-            gameScene->rewind.scrub_accumulator += 10.0f;
+            gameScene->rewind.scrub_accumulator += REWIND_ANGLE_STEP;
         }
     }
 
@@ -2680,10 +2686,24 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_crank_mode == CRANK_MODE_REWIND && !context->gb->is_cgb_mode &&
                 gameScene->rewind.states && !gameScene->rewind.active &&
-                gameScene->rewind.frame_counter >= 10)
+                gameScene->rewind.frame_counter >= REWIND_CAPTURE_INTERVAL)
             {
                 rewind_record_state(gameScene);
                 gameScene->rewind.frame_counter = 0;
+            }
+
+            if (gameScene->rewind.active)
+            {
+                int display_height = playdate->display->getHeight();
+                // Scanlines — black line every 3 rows across full width
+                for (int y = 0; y < display_height; y += 3)
+                    playdate->graphics->fillRect(0, y, 400, 1, kColorBlack);
+                // VHS noise bands — drawn once per crank step
+                if (gameScene->rewind.noise_pending)
+                {
+                    rewind_draw_noise_bands();
+                    gameScene->rewind.noise_pending = false;
+                }
             }
 
             // Always request the update loop to run at 30 FPS.
@@ -4052,10 +4072,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     }
 }
 
-#define REWIND_MAX_MEMORY (4 * 1024 * 1024)
-#define REWIND_MAX_STATES 60
-#define REWIND_CAPTURE_INTERVAL 10
-
 static void rewind_init(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
@@ -4106,6 +4122,7 @@ static void rewind_init(CB_GameScene* gameScene)
     gameScene->rewind.frame_counter = 0;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
+    gameScene->rewind.noise_pending = false;
 }
 
 static void rewind_free(CB_GameScene* gameScene)
@@ -4127,6 +4144,7 @@ static void rewind_free(CB_GameScene* gameScene)
     gameScene->rewind.frame_counter = 0;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
+    gameScene->rewind.noise_pending = false;
     gameScene->rewind.state_size = 0;
 }
 
@@ -4176,8 +4194,19 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
             context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
             LCD_BUFFER_BYTES
         );
-        gbScreenRequiresFullRefresh = true;
-        gameScene->cgb_needs_palette_recompute = true;
+    }
+}
+
+static void rewind_draw_noise_bands(void)
+{
+    int display_h = playdate->display->getHeight();
+    int num_bands = 3 + rand() % 5;
+    for (int i = 0; i < num_bands; i++)
+    {
+        int y = rand() % display_h;
+        int band_h = 1 + rand() % 2;
+        for (int x = 40; x < 360; x += 4)
+            playdate->graphics->fillRect(x, y, 3, band_h, (rand() & 1) ? kColorBlack : kColorWhite);
     }
 }
 
@@ -4206,9 +4235,8 @@ static void rewind_step_back(CB_GameScene* gameScene)
             context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
             LCD_BUFFER_BYTES
         );
-        gbScreenRequiresFullRefresh = true;
-        gameScene->cgb_needs_palette_recompute = true;
     }
+    gameScene->rewind.noise_pending = true;
 }
 
 static void rewind_step_forward(CB_GameScene* gameScene)
@@ -4238,9 +4266,8 @@ static void rewind_step_forward(CB_GameScene* gameScene)
             context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
             LCD_BUFFER_BYTES
         );
-        gbScreenRequiresFullRefresh = true;
-        gameScene->cgb_needs_palette_recompute = true;
     }
+    gameScene->rewind.noise_pending = true;
 }
 
 static void rewind_exit_scrubbing(CB_GameScene* gameScene)
@@ -4250,6 +4277,9 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
 
     gameScene->rewind.active = false;
     gameScene->rewind.scrub_accumulator = 0.0f;
+    gameScene->rewind.noise_pending = false;
+
+    playdate->graphics->clear(game_picture_background_color);
 
     if (gameScene->rewind.states && gameScene->rewind.count > 0)
     {
@@ -4268,6 +4298,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     }
 
     gbScreenRequiresFullRefresh = true;
+    gameScene->scene->forceFullRefresh = true;
 }
 
 static void CB_GameScene_free(void* object)
