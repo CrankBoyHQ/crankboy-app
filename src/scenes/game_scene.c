@@ -474,6 +474,8 @@ static void rewind_step_forward(CB_GameScene* gameScene);
 static void rewind_enter_scrubbing(CB_GameScene* gameScene);
 static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
+static void rewind_dmg_save(gb_s* gb, uint8_t* out);
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in);
 
 static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
@@ -4082,11 +4084,8 @@ static void rewind_init(CB_GameScene* gameScene)
     if (gameScene->script)
         return;
 
-    size_t state_size = gb_get_state_size(context->gb);
-    if (state_size == 0)
-        return;
-
-    state_size += LCD_BUFFER_BYTES;
+    size_t state_size =
+        sizeof(gb_s) + WRAM_SIZE + VRAM_SIZE + LCD_BUFFER_BYTES + context->gb->gb_cart_ram_size;
 
     int capacity = REWIND_MAX_STATES;
     size_t total_memory = (size_t)capacity * state_size;
@@ -4156,17 +4155,47 @@ static void rewind_record_state(CB_GameScene* gameScene)
     CB_GameSceneContext* context = gameScene->context;
     int idx = gameScene->rewind.write_idx;
 
-    gb_state_save(context->gb, (char*)gameScene->rewind.states[idx]);
-    memcpy(
-        gameScene->rewind.states[idx] + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
-        context->gb->lcd, LCD_BUFFER_BYTES
-    );
+    rewind_dmg_save(context->gb, gameScene->rewind.states[idx]);
 
     gameScene->rewind.write_idx = (idx + 1) % gameScene->rewind.capacity;
     if (gameScene->rewind.count < gameScene->rewind.capacity)
         gameScene->rewind.count++;
     else
         gameScene->rewind.buffer_oldest = gameScene->rewind.write_idx;
+}
+
+static void rewind_dmg_save(gb_s* gb, uint8_t* out)
+{
+    uint8_t* p = out;
+    memcpy(p, gb, sizeof(gb_s));
+    p += sizeof(gb_s);
+    memcpy(p, gb->wram, WRAM_SIZE);
+    p += WRAM_SIZE;
+    memcpy(p, gb->vram, VRAM_SIZE);
+    p += VRAM_SIZE;
+    if (gb->gb_cart_ram_size > 0)
+    {
+        memcpy(p, gb->gb_cart_ram, gb->gb_cart_ram_size);
+        p += gb->gb_cart_ram_size;
+    }
+    memcpy(p, gb->lcd, LCD_BUFFER_BYTES);
+}
+
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in)
+{
+    const uint8_t* p = in;
+    memcpy(gb, p, sizeof(gb_s));
+    p += sizeof(gb_s);
+    memcpy(gb->wram, p, WRAM_SIZE);
+    p += WRAM_SIZE;
+    memcpy(gb->vram, p, VRAM_SIZE);
+    p += VRAM_SIZE;
+    if (gb->gb_cart_ram_size > 0)
+    {
+        memcpy(gb->gb_cart_ram, p, gb->gb_cart_ram_size);
+        p += gb->gb_cart_ram_size;
+    }
+    memcpy(gb->lcd, p, LCD_BUFFER_BYTES);
 }
 
 static void rewind_enter_scrubbing(CB_GameScene* gameScene)
@@ -4185,16 +4214,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
 
     uint8_t* buf = gameScene->rewind.states[newest];
-    const char* result = gb_state_load(
-        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
-    );
-    if (!result)
-    {
-        memcpy(
-            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
-            LCD_BUFFER_BYTES
-        );
-    }
+    rewind_dmg_load(context->gb, buf);
 }
 
 static void rewind_draw_noise_bands(void)
@@ -4226,16 +4246,7 @@ static void rewind_step_back(CB_GameScene* gameScene)
         (gameScene->rewind.read_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    const char* result = gb_state_load(
-        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
-    );
-    if (!result)
-    {
-        memcpy(
-            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
-            LCD_BUFFER_BYTES
-        );
-    }
+    rewind_dmg_load(context->gb, buf);
     gameScene->rewind.noise_pending = true;
 }
 
@@ -4257,16 +4268,7 @@ static void rewind_step_forward(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = (gameScene->rewind.read_idx + 1) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    const char* result = gb_state_load(
-        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
-    );
-    if (!result)
-    {
-        memcpy(
-            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
-            LCD_BUFFER_BYTES
-        );
-    }
+    rewind_dmg_load(context->gb, buf);
     gameScene->rewind.noise_pending = true;
 }
 
