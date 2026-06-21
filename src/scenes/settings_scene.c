@@ -971,7 +971,9 @@ static const char* gb_button_labels_hp[] = {
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
     "Start+A+B", "Select+A+B",     "All"
 };
-static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
+static const char* crank_mode_labels[] = {
+    "Start/Select", "Turbo A/B", "Turbo B/A", "None", "Rewind"
+};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
@@ -2226,9 +2228,10 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
             "Start/Select:\nBack = Start, Front = Select\n\n"
             "See 'Down' option below.\n\n"
             "Turbo A/B:\nCW = A, CCW = B\n\n"
-            "Turbo B/A:\nCW = B, CCW = A",
+            "Turbo B/A:\nCW = B, CCW = A\n\n"
+            "Rewind (DMG only):\nCW = step forward, CCW = step back.\nDock crank to resume.",
         .pref_var = &preferences_crank_mode,
-        .max_value = 4,
+        .max_value = 5,
         .rebuild_when_changed = 1,
         .on_press = NULL
     };

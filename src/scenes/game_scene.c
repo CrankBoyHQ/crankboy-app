@@ -461,6 +461,14 @@ void itcm_core_init(bool cgb)
 }
 #endif
 
+static void rewind_init(CB_GameScene* gameScene);
+static void rewind_free(CB_GameScene* gameScene);
+static void rewind_record_state(CB_GameScene* gameScene);
+static void rewind_step_back(CB_GameScene* gameScene);
+static void rewind_step_forward(CB_GameScene* gameScene);
+static void rewind_enter_scrubbing(CB_GameScene* gameScene);
+static void rewind_exit_scrubbing(CB_GameScene* gameScene);
+
 static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
@@ -1540,6 +1548,22 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
             gameScene->crank_turbo_accumulator += 45.0f;
         }
     }
+    else if (preferences_crank_mode == CRANK_MODE_REWIND)
+    {
+        float crank_change = playdate->system->getCrankChange();
+        gameScene->rewind.scrub_accumulator += crank_change;
+
+        while (gameScene->rewind.scrub_accumulator >= 10.0f)
+        {
+            rewind_step_forward(gameScene);
+            gameScene->rewind.scrub_accumulator -= 10.0f;
+        }
+        while (gameScene->rewind.scrub_accumulator <= -10.0f)
+        {
+            rewind_step_back(gameScene);
+            gameScene->rewind.scrub_accumulator += 10.0f;
+        }
+    }
 
     // playdate extension IO registers
     uint16_t crank16 = (angle / 360.0f) * 0x10000;
@@ -1582,7 +1606,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     setCrankSoundsEnabled(
         !preferences_crank_dock_button && !preferences_crank_undock_button &&
-        preferences_crank_mode != CRANK_MODE_START_SELECT
+        preferences_crank_mode != CRANK_MODE_START_SELECT &&
+        preferences_crank_mode != CRANK_MODE_REWIND
     );
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -1822,6 +1847,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     if (!crank_docked)
     {
+        if (preferences_crank_mode == CRANK_MODE_REWIND)
+        {
+            rewind_enter_scrubbing(gameScene);
+        }
         crank_update(gameScene, &progress);
     }
     else
@@ -1831,6 +1860,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             preferences_crank_mode == CRANK_MODE_TURBO_CW)
         {
             gameScene->crank_turbo_accumulator = 0.0f;
+        }
+        if (gameScene->rewind.active)
+        {
+            rewind_exit_scrubbing(gameScene);
         }
         context->gb->direct.crank_menu_delta = 0;
         context->gb->direct.crank_menu_accumulation = 0x8000;
@@ -2087,110 +2120,75 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
         gameScene->next_frames_elapsed = 0;
 
+        if (gameScene->rewind.active && preferences_crank_mode != CRANK_MODE_REWIND)
+        {
+            rewind_exit_scrubbing(gameScene);
+        }
+
+        if (gameScene->rewind.states && preferences_crank_mode != CRANK_MODE_REWIND)
+        {
+            rewind_free(gameScene);
+        }
+
+        if (preferences_crank_mode == CRANK_MODE_REWIND && !gameScene->rewind.states)
+        {
+            rewind_init(gameScene);
+        }
+
+        if (gameScene->rewind.active)
+        {
+            force_all_lines_dirty = true;
+        }
+
         if (!skip_frame)
         {
-            CB_ASSERT(context == context->gb->direct.priv);
+            if (!gameScene->rewind.active)
+            {
+                CB_ASSERT(context == context->gb->direct.priv);
 
-            gb_s* tmp_gb = context->gb;
+                gb_s* tmp_gb = context->gb;
 
 #ifdef TARGET_SIMULATOR
-            pthread_mutex_lock(&audio_mutex);
+                pthread_mutex_lock(&audio_mutex);
 #endif
 
-            // Static buffer for the !dtcm_enabled path to prevent stack overflow on the simulator.
-            static char stack_gb_data[sizeof(gb_s)];
+                // Static buffer for the !dtcm_enabled path to prevent stack overflow on the
+                // simulator.
+                static char stack_gb_data[sizeof(gb_s)];
 
-            if (!dtcm_enabled())
-            {
-                gameScene->audioLocked = 1;
-                memcpy(stack_gb_data, tmp_gb, sizeof(gb_s));
-                context->gb = (void*)stack_gb_data;
-                gameScene->audioLocked = 0;
-            }
-
-            void* gb_run_frame_ =
-                (context->gb->is_cgb_mode) ? gb_run_frame__cgb : gb_run_frame__dmg;
-#ifdef DTCM_ALLOC
-            void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
-#else
-            void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
-#endif
-
-            if (context->gb->is_cgb_mode)
-            {
-                // --- CGB Dual-Output Blending ---
-                cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
-                static clalign uint8_t cb_frame_buffer[4][LCD_BUFFER_BYTES];
-
-                uint8_t* original_lcd = context->gb->lcd;
-                uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
-
-                if (preferences_frame_skip == 1 && preferences_blend_frames)
+                if (!dtcm_enabled())
                 {
-                    // --- CGB 30fps Consecutive-Frame Blending (simple) ---
-                    // Frame N (bright)
-                    cgb_blend_stage = 1;
-                    gb_recompute_cgb_gray_palettes(context->gb);
-                    context->gb->lcd = cb_frame_buffer[0];
-                    context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                    DTCM_VERIFY_DEBUG();
-                    run_frame_function_pointer(context->gb);
-                    DTCM_VERIFY_DEBUG();
-#else
-                    run_frame_function_pointer(context->gb);
-#endif
-                    ++gameScene->next_frames_elapsed;
-                    tick_audio_sync(gameScene);
-
-                    // Frame N+1 (dark, one shade brighter)
-                    // Build stage-2 (dark) LUTs into bright slots (offset 0) so
-                    // renderer reads them without dual_output. +1 bias = lighter.
-                    cgb_blend_stage = 2;
-                    __cgb_scan_luminance_range(context->gb);
-                    int8_t saved_bias = cgb_gray_bias;
-                    cgb_gray_bias += 1;
-                    for (int i = 0; i < 8; i++)
-                    {
-                        __cgb_update_bg_gray_palette(context->gb, i, 0);
-                        __cgb_update_obj_gray_palette(
-                            context->gb, i, context->gb->cgb_obj_palette_gray
-                        );
-                    }
-                    cgb_gray_bias = saved_bias;
-                    cgb_blend_stage = 1;
-
-                    context->gb->lcd = cb_frame_buffer[1];
-                    context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                    DTCM_VERIFY_DEBUG();
-                    run_frame_function_pointer(context->gb);
-                    DTCM_VERIFY_DEBUG();
-#else
-                    run_frame_function_pointer(context->gb);
-#endif
-                    ++gameScene->next_frames_elapsed;
-                    tick_audio_sync(gameScene);
-
-                    blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                    memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+                    gameScene->audioLocked = 1;
+                    memcpy(stack_gb_data, tmp_gb, sizeof(gb_s));
+                    context->gb = (void*)stack_gb_data;
+                    gameScene->audioLocked = 0;
                 }
-                else
-                {
-                    cgb_blend_stage = 1;
-                    gb_recompute_cgb_gray_palettes(context->gb);
-                    cgb_blend_stage = 2;
-                    gb_recompute_cgb_gray_palettes(context->gb);
-                    cgb_blend_stage = 1;
 
-                    if (preferences_frame_skip == 2 && preferences_blend_frames)
+                void* gb_run_frame_ =
+                    (context->gb->is_cgb_mode) ? gb_run_frame__cgb : gb_run_frame__dmg;
+#ifdef DTCM_ALLOC
+                void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN(gb_run_frame_);
+#else
+                void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
+#endif
+
+                if (context->gb->is_cgb_mode)
+                {
+                    // --- CGB Dual-Output Blending ---
+                    cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
+                    static clalign uint8_t cb_frame_buffer[4][LCD_BUFFER_BYTES];
+
+                    uint8_t* original_lcd = context->gb->lcd;
+                    uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
+
+                    if (preferences_frame_skip == 1 && preferences_blend_frames)
                     {
-                        // --- CGB Adaptive Consecutive-Frame Blending ---
-                        // Frame N: dual output -> buffer[0]=bright, buffer[1]=dark
+                        // --- CGB 30fps Consecutive-Frame Blending (simple) ---
+                        // Frame N (bright)
+                        cgb_blend_stage = 1;
+                        gb_recompute_cgb_gray_palettes(context->gb);
                         context->gb->lcd = cb_frame_buffer[0];
-                        context->gb->lcd_alt = cb_frame_buffer[1];
                         context->gb->direct.frame_skip = 0;
-                        context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
                         DTCM_VERIFY_DEBUG();
                         run_frame_function_pointer(context->gb);
@@ -2198,27 +2196,53 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                         run_frame_function_pointer(context->gb);
 #endif
-                        context->gb->direct.cgb_dual_output = false;
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
-                        bool scroll_changed =
-                            (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                            (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                            (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                            (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                        gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                        gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                        gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                        gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                        if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                            !gameScene->adaptive_fs_probe_pending)
+                        // Frame N+1 (dark, one shade brighter)
+                        // Build stage-2 (dark) LUTs into bright slots (offset 0) so
+                        // renderer reads them without dual_output. +1 bias = lighter.
+                        cgb_blend_stage = 2;
+                        __cgb_scan_luminance_range(context->gb);
+                        int8_t saved_bias = cgb_gray_bias;
+                        cgb_gray_bias += 1;
+                        for (int i = 0; i < 8; i++)
                         {
-                            memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
+                            __cgb_update_bg_gray_palette(context->gb, i, 0);
+                            __cgb_update_obj_gray_palette(
+                                context->gb, i, context->gb->cgb_obj_palette_gray
+                            );
+                        }
+                        cgb_gray_bias = saved_bias;
+                        cgb_blend_stage = 1;
 
-                            // Frame N+1: dual output
+                        context->gb->lcd = cb_frame_buffer[1];
+                        context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+
+                        blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                        memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+                    }
+                    else
+                    {
+                        cgb_blend_stage = 1;
+                        gb_recompute_cgb_gray_palettes(context->gb);
+                        cgb_blend_stage = 2;
+                        gb_recompute_cgb_gray_palettes(context->gb);
+                        cgb_blend_stage = 1;
+
+                        if (preferences_frame_skip == 2 && preferences_blend_frames)
+                        {
+                            // --- CGB Adaptive Consecutive-Frame Blending ---
+                            // Frame N: dual output -> buffer[0]=bright, buffer[1]=dark
                             context->gb->lcd = cb_frame_buffer[0];
                             context->gb->lcd_alt = cb_frame_buffer[1];
                             context->gb->direct.frame_skip = 0;
@@ -2234,43 +2258,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
 
-                            // Blend frame N bright + frame N+1 dark
-                            blend_frames_lut(original_lcd, cb_frame_buffer[1]);
-                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-                        }
-                        else
-                        {
-                            // Blend frame N's own bright + dark (same as dual-output)
-                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-                        }
-                    }
-                    else
-                    {
-                        // --- Dual-Output Blending (60fps / 30fps / Adaptive) ---
-                        context->gb->lcd = cb_frame_buffer[0];
-                        context->gb->lcd_alt = cb_frame_buffer[1];
-                        context->gb->direct.frame_skip = 0;
-                        context->gb->direct.cgb_dual_output = true;
-
-#ifdef DTCM_ALLOC
-                        DTCM_VERIFY_DEBUG();
-                        run_frame_function_pointer(context->gb);
-                        DTCM_VERIFY_DEBUG();
-#else
-                        run_frame_function_pointer(context->gb);
-#endif
-
-                        context->gb->direct.cgb_dual_output = false;
-                        blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
-                        memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
-
-                        ++gameScene->next_frames_elapsed;
-                        tick_audio_sync(gameScene);
-
-                        bool run_second_frame = false;
-                        if (preferences_frame_skip == 2)
-                        {
                             bool scroll_changed =
                                 (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
                                 (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
@@ -2282,109 +2269,183 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                             gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                            run_second_frame =
-                                (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                                !gameScene->adaptive_fs_probe_pending;
-                        }
-                        else if (preferences_frame_skip == 1)
-                        {
-                            run_second_frame = true;
-                        }
+                            if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                                !gameScene->adaptive_fs_probe_pending)
+                            {
+                                memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
 
-                        if (run_second_frame)
-                        {
-                            context->gb->direct.frame_skip = 1;
+                                // Frame N+1: dual output
+                                context->gb->lcd = cb_frame_buffer[0];
+                                context->gb->lcd_alt = cb_frame_buffer[1];
+                                context->gb->direct.frame_skip = 0;
+                                context->gb->direct.cgb_dual_output = true;
 #ifdef DTCM_ALLOC
-                            DTCM_VERIFY_DEBUG();
-                            run_frame_function_pointer(context->gb);
-                            DTCM_VERIFY_DEBUG();
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
 #else
-                            run_frame_function_pointer(context->gb);
+                                run_frame_function_pointer(context->gb);
 #endif
-                            ++gameScene->next_frames_elapsed;
-                            tick_audio_sync(gameScene);
-                        }
-                    }
+                                context->gb->direct.cgb_dual_output = false;
+                                ++gameScene->next_frames_elapsed;
+                                tick_audio_sync(gameScene);
 
-                    context->gb->lcd = original_lcd;
-                    context->gb->direct.interlace_mask = saved_interlace_mask;
-                }
-            }
-            else if (preferences_frame_skip == 1 && preferences_blend_frames)
-            {
-                // --- 30fps Frame Blending with Double Buffering ---
-                // Two buffers to avoid memcpy - swap lcd pointer instead
-                static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
-
-                // Save original lcd pointer
-                uint8_t* original_lcd = context->gb->lcd;
-
-                // When interlacing is active in 30fps mode, use synchronized masks:
-                // Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
-                // When composited, they combine into a full-resolution image.
-                uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
-                bool use_synced_interlace = activate_dynamic_rate;
-
-                // 1. Render Frame A into frame_buffer[0]
-                context->gb->lcd = frame_buffer[0];
-                context->gb->direct.frame_skip = 0;
-                if (use_synced_interlace)
-                {
-                    context->gb->direct.interlace_mask = 0x55;  // Even lines: 01010101
-                    // Clear buffer to ensure skipped lines don't contain garbage
-                    memset(frame_buffer[0], 0, LCD_BUFFER_BYTES);
-                }
-#ifdef DTCM_ALLOC
-                DTCM_VERIFY_DEBUG();
-                run_frame_function_pointer(context->gb);
-                DTCM_VERIFY_DEBUG();
-#else
-                run_frame_function_pointer(context->gb);
-#endif
-                ++gameScene->next_frames_elapsed;
-                tick_audio_sync(gameScene);
-
-                // 2. Determine if the screen is static.
-                bool screen_is_static =
-                    (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
-
-                // 3. Render Frame B into frame_buffer[1]
-                context->gb->lcd = frame_buffer[1];
-                context->gb->direct.frame_skip = screen_is_static;
-                if (use_synced_interlace)
-                {
-                    context->gb->direct.interlace_mask = 0xAA;  // Odd lines: 10101010
-                    // Clear buffer to ensure skipped lines don't contain garbage
-                    memset(frame_buffer[1], 0, LCD_BUFFER_BYTES);
-                }
-#ifdef DTCM_ALLOC
-                DTCM_VERIFY_DEBUG();
-                run_frame_function_pointer(context->gb);
-                DTCM_VERIFY_DEBUG();
-#else
-                run_frame_function_pointer(context->gb);
-#endif
-                ++gameScene->next_frames_elapsed;
-                tick_audio_sync(gameScene);
-
-                // Restore original interlace mask for other rendering modes
-                context->gb->direct.interlace_mask = saved_interlace_mask;
-
-                // 4. Blend/composite and copy result back to original lcd buffer
-                if (preferences_blend_frames)
-                {
-                    if (!screen_is_static)
-                    {
-                        if (use_synced_interlace)
-                        {
-                            // Composite interlaced frames instead of blending
-                            composite_interlaced_frames(
-                                frame_buffer[0], frame_buffer[1], original_lcd
-                            );
+                                // Blend frame N bright + frame N+1 dark
+                                blend_frames_lut(original_lcd, cb_frame_buffer[1]);
+                                memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+                            }
+                            else
+                            {
+                                // Blend frame N's own bright + dark (same as dual-output)
+                                blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                                memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+                            }
                         }
                         else
                         {
-                            blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                            // --- Dual-Output Blending (60fps / 30fps / Adaptive) ---
+                            context->gb->lcd = cb_frame_buffer[0];
+                            context->gb->lcd_alt = cb_frame_buffer[1];
+                            context->gb->direct.frame_skip = 0;
+                            context->gb->direct.cgb_dual_output = true;
+
+#ifdef DTCM_ALLOC
+                            DTCM_VERIFY_DEBUG();
+                            run_frame_function_pointer(context->gb);
+                            DTCM_VERIFY_DEBUG();
+#else
+                            run_frame_function_pointer(context->gb);
+#endif
+
+                            context->gb->direct.cgb_dual_output = false;
+                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                            memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
+
+                            ++gameScene->next_frames_elapsed;
+                            tick_audio_sync(gameScene);
+
+                            bool run_second_frame = false;
+                            if (preferences_frame_skip == 2)
+                            {
+                                bool scroll_changed =
+                                    (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                                    (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                                    (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                                    (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+
+                                gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                                gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                                gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                                gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+
+                                run_second_frame =
+                                    (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                                    !gameScene->adaptive_fs_probe_pending;
+                            }
+                            else if (preferences_frame_skip == 1)
+                            {
+                                run_second_frame = true;
+                            }
+
+                            if (run_second_frame)
+                            {
+                                context->gb->direct.frame_skip = 1;
+#ifdef DTCM_ALLOC
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
+#else
+                                run_frame_function_pointer(context->gb);
+#endif
+                                ++gameScene->next_frames_elapsed;
+                                tick_audio_sync(gameScene);
+                            }
+                        }
+
+                        context->gb->lcd = original_lcd;
+                        context->gb->direct.interlace_mask = saved_interlace_mask;
+                    }
+                }
+                else if (preferences_frame_skip == 1 && preferences_blend_frames)
+                {
+                    // --- 30fps Frame Blending with Double Buffering ---
+                    // Two buffers to avoid memcpy - swap lcd pointer instead
+                    static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
+
+                    // Save original lcd pointer
+                    uint8_t* original_lcd = context->gb->lcd;
+
+                    // When interlacing is active in 30fps mode, use synchronized masks:
+                    // Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
+                    // When composited, they combine into a full-resolution image.
+                    uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
+                    bool use_synced_interlace = activate_dynamic_rate;
+
+                    // 1. Render Frame A into frame_buffer[0]
+                    context->gb->lcd = frame_buffer[0];
+                    context->gb->direct.frame_skip = 0;
+                    if (use_synced_interlace)
+                    {
+                        context->gb->direct.interlace_mask = 0x55;  // Even lines: 01010101
+                        // Clear buffer to ensure skipped lines don't contain garbage
+                        memset(frame_buffer[0], 0, LCD_BUFFER_BYTES);
+                    }
+#ifdef DTCM_ALLOC
+                    DTCM_VERIFY_DEBUG();
+                    run_frame_function_pointer(context->gb);
+                    DTCM_VERIFY_DEBUG();
+#else
+                    run_frame_function_pointer(context->gb);
+#endif
+                    ++gameScene->next_frames_elapsed;
+                    tick_audio_sync(gameScene);
+
+                    // 2. Determine if the screen is static.
+                    bool screen_is_static =
+                        (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
+
+                    // 3. Render Frame B into frame_buffer[1]
+                    context->gb->lcd = frame_buffer[1];
+                    context->gb->direct.frame_skip = screen_is_static;
+                    if (use_synced_interlace)
+                    {
+                        context->gb->direct.interlace_mask = 0xAA;  // Odd lines: 10101010
+                        // Clear buffer to ensure skipped lines don't contain garbage
+                        memset(frame_buffer[1], 0, LCD_BUFFER_BYTES);
+                    }
+#ifdef DTCM_ALLOC
+                    DTCM_VERIFY_DEBUG();
+                    run_frame_function_pointer(context->gb);
+                    DTCM_VERIFY_DEBUG();
+#else
+                    run_frame_function_pointer(context->gb);
+#endif
+                    ++gameScene->next_frames_elapsed;
+                    tick_audio_sync(gameScene);
+
+                    // Restore original interlace mask for other rendering modes
+                    context->gb->direct.interlace_mask = saved_interlace_mask;
+
+                    // 4. Blend/composite and copy result back to original lcd buffer
+                    if (preferences_blend_frames)
+                    {
+                        if (!screen_is_static)
+                        {
+                            if (use_synced_interlace)
+                            {
+                                // Composite interlaced frames instead of blending
+                                composite_interlaced_frames(
+                                    frame_buffer[0], frame_buffer[1], original_lcd
+                                );
+                            }
+                            else
+                            {
+                                blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                                memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                            }
+                        }
+                        else
+                        {
                             memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                     }
@@ -2392,48 +2453,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     {
                         memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }
+
+                    context->gb->lcd = original_lcd;
                 }
-                else
+                else if (preferences_frame_skip == 2 && preferences_blend_frames)
                 {
-                    memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                }
+                    // --- DMG Adaptive Frame Blending ---
+                    static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
+                    uint8_t* original_lcd = context->gb->lcd;
 
-                context->gb->lcd = original_lcd;
-            }
-            else if (preferences_frame_skip == 2 && preferences_blend_frames)
-            {
-                // --- DMG Adaptive Frame Blending ---
-                static clalign uint8_t frame_buffer[2][LCD_BUFFER_BYTES];
-                uint8_t* original_lcd = context->gb->lcd;
-
-                // Frame N -> buffer[0]
-                context->gb->lcd = frame_buffer[0];
-                context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                DTCM_VERIFY_DEBUG();
-                run_frame_function_pointer(context->gb);
-                DTCM_VERIFY_DEBUG();
-#else
-                run_frame_function_pointer(context->gb);
-#endif
-                ++gameScene->next_frames_elapsed;
-                tick_audio_sync(gameScene);
-
-                bool scroll_changed = (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                                      (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                                      (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                                      (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                    !gameScene->adaptive_fs_probe_pending)
-                {
-                    // Frame N+1 -> buffer[1]
-                    context->gb->lcd = frame_buffer[1];
+                    // Frame N -> buffer[0]
+                    context->gb->lcd = frame_buffer[0];
                     context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
@@ -2445,33 +2475,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    blend_frames_lut(frame_buffer[0], frame_buffer[1]);
-                    memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                }
-                else
-                {
-                    memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
-                }
-
-                context->gb->lcd = original_lcd;
-            }
-            else
-            {
-                // --- Non-blended logic (60fps / 30fps / Adaptive) ---
-                context->gb->direct.frame_skip = 0;
-#ifdef DTCM_ALLOC
-                DTCM_VERIFY_DEBUG();
-                run_frame_function_pointer(context->gb);
-                DTCM_VERIFY_DEBUG();
-#else
-                run_frame_function_pointer(context->gb);
-#endif
-                ++gameScene->next_frames_elapsed;
-                tick_audio_sync(gameScene);
-
-                bool run_second_frame = false;
-                if (preferences_frame_skip == 2)
-                {
                     bool scroll_changed =
                         (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
                         (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
@@ -2483,17 +2486,36 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
                     gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
 
-                    run_second_frame = (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                                       !gameScene->adaptive_fs_probe_pending;
-                }
-                else if (preferences_frame_skip == 1)
-                {
-                    run_second_frame = true;
-                }
+                    if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                        !gameScene->adaptive_fs_probe_pending)
+                    {
+                        // Frame N+1 -> buffer[1]
+                        context->gb->lcd = frame_buffer[1];
+                        context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
 
-                if (run_second_frame)
+                        blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                    }
+                    else
+                    {
+                        memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
+                    }
+
+                    context->gb->lcd = original_lcd;
+                }
+                else
                 {
-                    context->gb->direct.frame_skip = 1;
+                    // --- Non-blended logic (60fps / 30fps / Adaptive) ---
+                    context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2503,29 +2525,73 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
+
+                    bool run_second_frame = false;
+                    if (preferences_frame_skip == 2)
+                    {
+                        bool scroll_changed =
+                            (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
+                            (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
+                            (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
+                            (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
+
+                        gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
+                        gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
+                        gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
+                        gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
+
+                        run_second_frame =
+                            (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                            !gameScene->adaptive_fs_probe_pending;
+                    }
+                    else if (preferences_frame_skip == 1)
+                    {
+                        run_second_frame = true;
+                    }
+
+                    if (run_second_frame)
+                    {
+                        context->gb->direct.frame_skip = 1;
+#ifdef DTCM_ALLOC
+                        DTCM_VERIFY_DEBUG();
+                        run_frame_function_pointer(context->gb);
+                        DTCM_VERIFY_DEBUG();
+#else
+                        run_frame_function_pointer(context->gb);
+#endif
+                        ++gameScene->next_frames_elapsed;
+                        tick_audio_sync(gameScene);
+                    }
                 }
-            }
 
-            CB_App->avg_dt_mult =
-                (gameScene->next_frames_elapsed == 2 && preferences_display_fps == 1) ? 0.5f : 1.0f;
-            gameScene->playtime += gameScene->next_frames_elapsed;
+                CB_App->avg_dt_mult =
+                    (gameScene->next_frames_elapsed == 2 && preferences_display_fps == 1) ? 0.5f
+                                                                                          : 1.0f;
+                gameScene->playtime += gameScene->next_frames_elapsed;
 
-            if (!dtcm_enabled())
-            {
-                gameScene->audioLocked = 1;
-                memcpy(tmp_gb, context->gb, sizeof(gb_s));
-                context->gb = tmp_gb;
-                gameScene->audioLocked = 0;
-            }
+                if (preferences_crank_mode == CRANK_MODE_REWIND && !context->gb->is_cgb_mode &&
+                    gameScene->rewind.states)
+                {
+                    gameScene->rewind.frame_counter += gameScene->next_frames_elapsed;
+                }
+
+                if (!dtcm_enabled())
+                {
+                    gameScene->audioLocked = 1;
+                    memcpy(tmp_gb, context->gb, sizeof(gb_s));
+                    context->gb = tmp_gb;
+                    gameScene->audioLocked = 0;
+                }
 
 #ifdef TARGET_SIMULATOR
-            pthread_mutex_unlock(&audio_mutex);
+                pthread_mutex_unlock(&audio_mutex);
 #endif
 
-            if (gameScene->cartridge_has_battery)
-            {
-                save_check(context->gb);
-            }
+                if (gameScene->cartridge_has_battery)
+                {
+                    save_check(context->gb);
+                }
+            }  // if (!gameScene->rewind.active)
 
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
@@ -2610,6 +2676,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
                 gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
+            }
+
+            if (preferences_crank_mode == CRANK_MODE_REWIND && !context->gb->is_cgb_mode &&
+                gameScene->rewind.states && !gameScene->rewind.active &&
+                gameScene->rewind.frame_counter >= 10)
+            {
+                rewind_record_state(gameScene);
+                gameScene->rewind.frame_counter = 0;
             }
 
             // Always request the update loop to run at 30 FPS.
@@ -3978,6 +4052,209 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     }
 }
 
+#define REWIND_MAX_MEMORY (4 * 1024 * 1024)
+#define REWIND_MAX_STATES 60
+#define REWIND_CAPTURE_INTERVAL 10
+
+static void rewind_init(CB_GameScene* gameScene)
+{
+    CB_GameSceneContext* context = gameScene->context;
+
+    if (context->gb->is_cgb_mode)
+        return;
+
+    if (gameScene->script)
+        return;
+
+    size_t state_size = gb_get_state_size(context->gb);
+    if (state_size == 0)
+        return;
+
+    state_size += LCD_BUFFER_BYTES;
+
+    int capacity = REWIND_MAX_STATES;
+    size_t total_memory = (size_t)capacity * state_size;
+    if (total_memory > REWIND_MAX_MEMORY)
+    {
+        capacity = (int)(REWIND_MAX_MEMORY / state_size);
+        if (capacity < 2)
+            return;
+    }
+
+    gameScene->rewind.states = cb_malloc((size_t)capacity * sizeof(uint8_t*));
+    if (!gameScene->rewind.states)
+        return;
+
+    memset(gameScene->rewind.states, 0, (size_t)capacity * sizeof(uint8_t*));
+
+    for (int i = 0; i < capacity; i++)
+    {
+        gameScene->rewind.states[i] = cb_malloc(state_size);
+        if (!gameScene->rewind.states[i])
+        {
+            rewind_free(gameScene);
+            return;
+        }
+    }
+
+    gameScene->rewind.state_size = state_size;
+    gameScene->rewind.capacity = capacity;
+    gameScene->rewind.write_idx = 0;
+    gameScene->rewind.read_idx = -1;
+    gameScene->rewind.count = 0;
+    gameScene->rewind.frame_counter = 0;
+    gameScene->rewind.scrub_accumulator = 0.0f;
+    gameScene->rewind.active = false;
+}
+
+static void rewind_free(CB_GameScene* gameScene)
+{
+    if (gameScene->rewind.states)
+    {
+        for (int i = 0; i < gameScene->rewind.capacity; i++)
+        {
+            cb_free(gameScene->rewind.states[i]);
+        }
+        cb_free(gameScene->rewind.states);
+        gameScene->rewind.states = NULL;
+    }
+    gameScene->rewind.capacity = 0;
+    gameScene->rewind.count = 0;
+    gameScene->rewind.write_idx = 0;
+    gameScene->rewind.read_idx = -1;
+    gameScene->rewind.frame_counter = 0;
+    gameScene->rewind.scrub_accumulator = 0.0f;
+    gameScene->rewind.active = false;
+    gameScene->rewind.state_size = 0;
+}
+
+static void rewind_record_state(CB_GameScene* gameScene)
+{
+    if (!gameScene->rewind.states || gameScene->rewind.capacity == 0)
+        return;
+
+    CB_GameSceneContext* context = gameScene->context;
+    int idx = gameScene->rewind.write_idx;
+
+    gb_state_save(context->gb, (char*)gameScene->rewind.states[idx]);
+    memcpy(
+        gameScene->rewind.states[idx] + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
+        context->gb->lcd, LCD_BUFFER_BYTES
+    );
+
+    gameScene->rewind.write_idx = (idx + 1) % gameScene->rewind.capacity;
+    if (gameScene->rewind.count < gameScene->rewind.capacity)
+        gameScene->rewind.count++;
+}
+
+static void rewind_enter_scrubbing(CB_GameScene* gameScene)
+{
+    if (!gameScene->rewind.states || gameScene->rewind.count == 0)
+        return;
+    if (gameScene->rewind.active)
+        return;
+
+    CB_GameSceneContext* context = gameScene->context;
+
+    int newest =
+        (gameScene->rewind.write_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
+    gameScene->rewind.read_idx = newest;
+    gameScene->rewind.active = true;
+    gameScene->rewind.scrub_accumulator = 0.0f;
+
+    uint8_t* buf = gameScene->rewind.states[newest];
+    const char* result = gb_state_load(
+        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
+    );
+    if (!result)
+    {
+        memcpy(
+            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
+            LCD_BUFFER_BYTES
+        );
+        gbScreenRequiresFullRefresh = true;
+        gameScene->cgb_needs_palette_recompute = true;
+    }
+}
+
+static void rewind_step_back(CB_GameScene* gameScene)
+{
+    if (!gameScene->rewind.states || gameScene->rewind.count == 0)
+        return;
+    if (!gameScene->rewind.active)
+        return;
+
+    CB_GameSceneContext* context = gameScene->context;
+
+    int oldest;
+    if (gameScene->rewind.count == gameScene->rewind.capacity)
+        oldest = gameScene->rewind.write_idx;
+    else
+        oldest = 0;
+
+    if (gameScene->rewind.read_idx == oldest)
+        return;
+
+    gameScene->rewind.read_idx =
+        (gameScene->rewind.read_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
+
+    uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
+    const char* result = gb_state_load(
+        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
+    );
+    if (!result)
+    {
+        memcpy(
+            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
+            LCD_BUFFER_BYTES
+        );
+        gbScreenRequiresFullRefresh = true;
+        gameScene->cgb_needs_palette_recompute = true;
+    }
+}
+
+static void rewind_step_forward(CB_GameScene* gameScene)
+{
+    if (!gameScene->rewind.states || gameScene->rewind.count == 0)
+        return;
+
+    if (!gameScene->rewind.active)
+        return;
+
+    CB_GameSceneContext* context = gameScene->context;
+
+    int newest =
+        (gameScene->rewind.write_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
+    if (gameScene->rewind.read_idx == newest)
+        return;
+
+    gameScene->rewind.read_idx = (gameScene->rewind.read_idx + 1) % gameScene->rewind.capacity;
+
+    uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
+    const char* result = gb_state_load(
+        context->gb, (const char*)buf, gameScene->rewind.state_size - LCD_BUFFER_BYTES
+    );
+    if (!result)
+    {
+        memcpy(
+            context->gb->lcd, buf + gameScene->rewind.state_size - LCD_BUFFER_BYTES,
+            LCD_BUFFER_BYTES
+        );
+        gbScreenRequiresFullRefresh = true;
+        gameScene->cgb_needs_palette_recompute = true;
+    }
+}
+
+static void rewind_exit_scrubbing(CB_GameScene* gameScene)
+{
+    if (!gameScene->rewind.active)
+        return;
+
+    gameScene->rewind.active = false;
+    gameScene->rewind.scrub_accumulator = 0.0f;
+    gbScreenRequiresFullRefresh = true;
+}
+
 static void CB_GameScene_free(void* object)
 {
     DTCM_VERIFY();
@@ -4058,6 +4335,8 @@ static void CB_GameScene_free(void* object)
 
     cb_free(gameScene->audio_temp_left);
     cb_free(gameScene->audio_temp_right);
+
+    rewind_free(gameScene);
 
     if (context)
     {

@@ -182,6 +182,20 @@ typedef struct CB_GameScene
 
     unsigned fade_frames;
     bool fade_white;
+
+    // Rewind system (DMG only)
+    struct
+    {
+        uint8_t** states;
+        size_t state_size;
+        int capacity;
+        int write_idx;
+        int read_idx;
+        int count;
+        int frame_counter;
+        float scrub_accumulator;
+        bool active;
+    } rewind;
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);
