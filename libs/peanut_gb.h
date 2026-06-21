@@ -51,11 +51,6 @@ typedef uint32_t u32;
 typedef int8_t s8;
 typedef int16_t s16;
 
-// color game boy support
-#ifndef PGB_CGB
-#define PGB_CGB 0
-#endif
-
 /* Interrupt masks */
 #define VBLANK_INTR 0x01
 #define LCDC_INTR 0x02
@@ -2405,11 +2400,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             {
                 __gb_timer_edge_tick(gb);
             }
-#if PGB_CGB
             else if (!gb->is_cgb_mode && !new_tac_enable && old_input)
-#else
-            else if (!new_tac_enable && old_input)
-#endif
             {
                 __gb_timer_edge_tick(gb);
             }
