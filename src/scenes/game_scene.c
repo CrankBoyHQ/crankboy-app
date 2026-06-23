@@ -325,10 +325,7 @@ static PDMenuItem* frameSkipMenuItem;
 static PDMenuItem* buttonMenuItem = NULL;
 
 static const char* buttonMenuOptions[] = {
-    "Select",
-    "None",
-    "Start",
-    "Both",
+    "Select", "None", "Start", "Both", "Rewind",
 };
 
 static const char* quitGameOptions[] = {"No", "Yes", NULL};
@@ -473,7 +470,7 @@ static void rewind_free(CB_GameScene* gameScene);
 static void rewind_record_state(CB_GameScene* gameScene);
 static void rewind_step_back(CB_GameScene* gameScene);
 static void rewind_step_forward(CB_GameScene* gameScene);
-static void rewind_enter_scrubbing(CB_GameScene* gameScene);
+static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank);
 static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
 static void rewind_dmg_save(gb_s* gb, uint8_t* out);
@@ -1874,7 +1871,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     {
         if (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled)
         {
-            rewind_enter_scrubbing(gameScene);
+            rewind_enter_scrubbing(gameScene, true);
         }
         crank_update(gameScene, &progress);
     }
@@ -2152,6 +2149,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->next_frames_elapsed = 0;
 
         if (gameScene->rewind.active && !preferences_rewind_enabled)
+        {
+            rewind_exit_scrubbing(gameScene);
+        }
+
+        if (gameScene->rewind.active && gameScene->rewind.entered_via_crank &&
+            preferences_crank_mode != CRANK_MODE_REWIND)
         {
             rewind_exit_scrubbing(gameScene);
         }
@@ -3181,7 +3184,15 @@ __section__(".rare") void CB_GameScene_buttonMenuCallback(void* userdata)
     {
         int selected_option = playdate->system->getMenuItemValue(buttonMenuItem);
 
-        if (selected_option != 1)
+        if (selected_option == 4)
+        {
+            if (gameScene->rewind.active)
+                rewind_exit_scrubbing(gameScene);
+            else
+                rewind_enter_scrubbing(gameScene, false);
+            playdate->system->setMenuItemValue(buttonMenuItem, 1);
+        }
+        else if (selected_option != 1)
         {
             gameScene->button_hold_mode = selected_option;
             gameScene->button_hold_frames_remaining = 15;
@@ -3237,7 +3248,8 @@ static void CB_GameScene_menu(void* object)
         !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
-            "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
+            "Button", buttonMenuOptions, preferences_rewind_enabled ? 5 : 4,
+            CB_GameScene_buttonMenuCallback, gameScene
         );
         playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
     }
@@ -4087,6 +4099,15 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
                     gameScene->button_hold_mode = 0;
                 else if (preferences_menu_button == PREF_BUTTON_START_SELECT)
                     gameScene->button_hold_mode = 3;
+                else if (
+                    preferences_menu_button == PREF_BUTTON_REWIND && preferences_rewind_enabled
+                )
+                {
+                    if (gameScene->rewind.active)
+                        rewind_exit_scrubbing(gameScene);
+                    else
+                        rewind_enter_scrubbing(gameScene, false);
+                }
                 gameScene->button_hold_frames_remaining = 15;
             }
         }
@@ -4203,6 +4224,7 @@ static void rewind_init(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
+    gameScene->rewind.entered_via_crank = false;
 }
 
 static void rewind_free(CB_GameScene* gameScene)
@@ -4225,6 +4247,7 @@ static void rewind_free(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
+    gameScene->rewind.entered_via_crank = false;
     gameScene->rewind.state_size = 0;
 }
 
@@ -4279,7 +4302,7 @@ static void rewind_dmg_load(gb_s* gb, const uint8_t* in)
     memcpy(gb->lcd, p, LCD_BUFFER_BYTES);
 }
 
-static void rewind_enter_scrubbing(CB_GameScene* gameScene)
+static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
 {
     if (!gameScene->rewind.states || gameScene->rewind.count == 0)
         return;
@@ -4293,6 +4316,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = newest;
     gameScene->rewind.active = true;
     gameScene->rewind.scrub_accumulator = 0.0f;
+    gameScene->rewind.entered_via_crank = via_crank;
 
     uint8_t* buf = gameScene->rewind.states[newest];
     rewind_dmg_load(context->gb, buf);
@@ -4361,6 +4385,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.active = false;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.noise_pending = false;
+    gameScene->rewind.entered_via_crank = false;
 
     if (preferences_audio_sync == 1)
         CB_reset_audio_sync_state();

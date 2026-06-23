@@ -25,6 +25,7 @@
 #define PREF_BUTTON_START 1
 #define PREF_BUTTON_SELECT 2
 #define PREF_BUTTON_START_SELECT 3
+#define PREF_BUTTON_REWIND 4
 
 // hold+press combos
 #define PREF_BUTTON_HP_DEFAULT 0

@@ -966,7 +966,7 @@ static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
-static const char* menu_button_labels[] = {"Off", "Start", "Select", "Start+Select"};
+static const char* menu_button_labels[] = {"Off", "Start", "Select", "Start+Select", "Rewind"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
@@ -2358,7 +2358,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
             "Quickly open and close the system menu to trigger a button press.\n\n"
             "Open and close within 1 second to activate.",
         .pref_var = &preferences_menu_button,
-        .max_value = 4,
+        .max_value = preferences_rewind_enabled ? 5 : 4,
     };
 
     // lock button override.
@@ -2759,7 +2759,8 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         .values = off_on_labels,
         .description =
             "DMG only. Hold B or Up while cranking to scrub.\n\n"
-            "When enabled, Rewind becomes available as a Crank mode option.",
+            "When enabled, Rewind becomes available as a Crank mode "
+            "option and in the Menu button quick-press action.",
         .pref_var = &preferences_rewind_enabled,
         .max_value = 2,
     };

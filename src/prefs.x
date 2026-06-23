@@ -42,7 +42,7 @@ PREF(dynamic_rate, DYNAMIC_RATE_OFF)
  *                       11=Select+A+B, 12=All
  * hold_b_press_a:       same as above
  * press_a_b:            same as above
- * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select
+ * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select, 4=Rewind
  * lock_button:          0=None, 1=Start, 2=Select, 3=Start+Select, 4=A, 5=B
  */
 PREF(crank_mode, CRANK_MODE_START_SELECT)
