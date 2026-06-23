@@ -85,6 +85,8 @@ bool gbScreenRequiresFullRefresh;
 // Frames between probe attempts when running at 30fps.
 #define ADAPTIVE_FS_PROBE_INTERVAL 60
 
+#define MENU_QUICK_PRESS_THRESHOLD_MS 1000
+
 CB_GameScene* audioGameScene = NULL;
 
 void CB_reset_audio_sync_state(void)
@@ -691,6 +693,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->staticSelectorUIDrawn = false;
 
     gameScene->save_data_loaded_successfully = false;
+
+    gameScene->menu_open_seconds = 0;
+    gameScene->menu_open_ms = 0;
 
     prefs_locked_by_script = 0;
 
@@ -4032,6 +4037,9 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
 
         gameScene->scene->forceFullRefresh = true;
 
+        gameScene->menu_open_seconds =
+            playdate->system->getSecondsSinceEpoch(&gameScene->menu_open_ms);
+
         // fall-through
     case kEventTerminate:
         DTCM_VERIFY();
@@ -4046,6 +4054,24 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     case kEventResume:
         // Re-apply the user's auto-lock preference on resume.
         playdate->system->setAutoLockDisabled(preferences_disable_autolock);
+        if (gameScene->menu_open_seconds > 0)
+        {
+            unsigned now_ms;
+            unsigned now_s = playdate->system->getSecondsSinceEpoch(&now_ms);
+            unsigned elapsed = (now_s - gameScene->menu_open_seconds) * 1000 + (int)now_ms -
+                               (int)gameScene->menu_open_ms;
+
+            if (elapsed < MENU_QUICK_PRESS_THRESHOLD_MS && preferences_menu_button > 0)
+            {
+                if (preferences_menu_button == PREF_BUTTON_START)
+                    gameScene->button_hold_mode = 2;
+                else if (preferences_menu_button == PREF_BUTTON_SELECT)
+                    gameScene->button_hold_mode = 0;
+                else if (preferences_menu_button == PREF_BUTTON_START_SELECT)
+                    gameScene->button_hold_mode = 3;
+                gameScene->button_hold_frames_remaining = 15;
+            }
+        }
         if (gameScene->audioEnabled)
         {
             audioGameScene = gameScene;

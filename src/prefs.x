@@ -42,6 +42,7 @@ PREF(dynamic_rate, DYNAMIC_RATE_OFF)
  *                       11=Select+A+B, 12=All
  * hold_b_press_a:       same as above
  * press_a_b:            same as above
+ * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select
  * lock_button:          0=None, 1=Start, 2=Select, 3=Start+Select, 4=A, 5=B
  */
 PREF(crank_mode, CRANK_MODE_START_SELECT)
@@ -52,6 +53,7 @@ PREF(hold_a_press_b, PREF_BUTTON_HP_DEFAULT)
 PREF(hold_b_press_a, PREF_BUTTON_HP_DEFAULT)
 PREF(press_a_b, PREF_BUTTON_HP_DEFAULT)
 PREF(lock_button, PREF_BUTTON_NONE)
+PREF(menu_button, 0)
 
 /* --- behaviour ---
  * ppu_timing:         0=Fast (fixed), 1=Accurate (dynamic)

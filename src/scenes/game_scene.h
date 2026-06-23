@@ -150,6 +150,10 @@ typedef struct CB_GameScene
 
     // time since started or last save/load state
     unsigned playtime;
+    // epoch seconds when system menu was opened, 0 if not open
+    unsigned menu_open_seconds;
+    // millisecond fraction of menu_open_seconds, 0-999
+    unsigned menu_open_ms;
     // slot last loaded via load_state()
     unsigned last_loaded_slot;
     bool quitGameModalConfirmOverride : 1;

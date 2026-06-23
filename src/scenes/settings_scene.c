@@ -966,6 +966,7 @@ static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
+static const char* menu_button_labels[] = {"Off", "Start", "Select", "Start+Select"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
@@ -2317,6 +2318,17 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .pref_var = &preferences_press_a_b,
         .max_value = 13,
         .on_press = NULL
+    };
+
+    // menu quick-press
+    section[++i] = (OptionsMenuEntry){
+        .name = "⊙",
+        .values = menu_button_labels,
+        .description =
+            "Quickly open and close the system menu to trigger a button press.\n\n"
+            "Open and close within 1 second to activate.",
+        .pref_var = &preferences_menu_button,
+        .max_value = 4,
     };
 
     // lock button override.
