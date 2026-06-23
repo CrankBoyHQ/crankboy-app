@@ -966,7 +966,7 @@ static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
-static const char* menu_button_labels[] = {"Off", "Start", "Select", "Start+Select", "Rewind"};
+static const char* menu_button_labels[] = {"None", "Start", "Select", "Start+Select", "Rewind"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
@@ -2259,10 +2259,8 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     case CRANK_MODE_REWIND:
         section[i].description =
             "Rewind mode.\n\n"
-            "Hold B or Up while turning the crank to scrub gameplay.\n"
-            "CW = step forward, CCW = step back.\n"
-            "Dock crank to resume.\n\n"
-            "Requires Rewind enabled in Misc settings.";
+            "Undock crank to start Rewind. Hold B or Up while turning the crank to scrub. Dock "
+            "crank to resume.";
         break;
     }
 
@@ -2758,9 +2756,11 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         .name = "Rewind",
         .values = off_on_labels,
         .description =
-            "DMG only. Hold B or Up while cranking to scrub.\n\n"
-            "When enabled, Rewind becomes available as a Crank mode "
-            "option and in the Menu button quick-press action.",
+            "DMG only. Rewind up to 10s of gameplay.\n\n"
+            "Hold B or Up while cranking to scrub. Dock crank to exit.\n\n"
+            "When enabled, Rewind becomes available as a Crank option and "
+            "in the Menu button quick-press action. Also available from "
+            "the PD menu (button).",
         .pref_var = &preferences_rewind_enabled,
         .max_value = 2,
     };
