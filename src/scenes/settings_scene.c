@@ -2264,12 +2264,13 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     }
 
     // undock
+    unsigned dock_undock_max = (preferences_crank_mode == CRANK_MODE_REWIND) ? 0 : 4;
     section[++i] = (OptionsMenuEntry){
         .name = "Undock",
         .values = gb_button_labels,
         .description = "Assign a button input for undocking the crank.\n\n",
         .pref_var = &preferences_crank_undock_button,
-        .max_value = 4,
+        .max_value = dock_undock_max,
         .on_press = NULL
     };
 
@@ -2279,7 +2280,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .values = gb_button_labels,
         .description = "Assign a button input for docking the crank.\n\n",
         .pref_var = &preferences_crank_dock_button,
-        .max_value = 4,
+        .max_value = dock_undock_max,
         .on_press = NULL
     };
 
