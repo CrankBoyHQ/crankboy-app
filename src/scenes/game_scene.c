@@ -1865,7 +1865,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->button_hold_frames_remaining = 10;
     }
 
+    bool was_docked = gameScene->crank_was_docked;
     gameScene->crank_was_docked = crank_docked;
+
+    // Dock transition: exit rewind once
+    if (!was_docked && crank_docked && gameScene->rewind.active)
+    {
+        rewind_exit_scrubbing(gameScene);
+    }
 
     if (!crank_docked)
     {
@@ -1882,10 +1889,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             preferences_crank_mode == CRANK_MODE_TURBO_CW)
         {
             gameScene->crank_turbo_accumulator = 0.0f;
-        }
-        if (gameScene->rewind.active)
-        {
-            rewind_exit_scrubbing(gameScene);
         }
         context->gb->direct.crank_menu_delta = 0;
         context->gb->direct.crank_menu_accumulation = 0x8000;
@@ -4094,11 +4097,20 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             if (elapsed < MENU_QUICK_PRESS_THRESHOLD_MS && preferences_menu_button > 0)
             {
                 if (preferences_menu_button == PREF_BUTTON_START)
+                {
                     gameScene->button_hold_mode = 2;
+                    gameScene->button_hold_frames_remaining = 15;
+                }
                 else if (preferences_menu_button == PREF_BUTTON_SELECT)
+                {
                     gameScene->button_hold_mode = 0;
+                    gameScene->button_hold_frames_remaining = 15;
+                }
                 else if (preferences_menu_button == PREF_BUTTON_START_SELECT)
+                {
                     gameScene->button_hold_mode = 3;
+                    gameScene->button_hold_frames_remaining = 15;
+                }
                 else if (
                     preferences_menu_button == PREF_BUTTON_REWIND && preferences_rewind_enabled
                 )
@@ -4108,7 +4120,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
                     else
                         rewind_enter_scrubbing(gameScene, false);
                 }
-                gameScene->button_hold_frames_remaining = 15;
             }
         }
         if (gameScene->audioEnabled)
