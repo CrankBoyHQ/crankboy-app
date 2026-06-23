@@ -1561,7 +1561,7 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
             gameScene->crank_turbo_accumulator += 45.0f;
         }
     }
-    else if (preferences_crank_mode == CRANK_MODE_REWIND)
+    else if (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled)
     {
         PDButtons held;
         playdate->system->getButtonState(&held, NULL, NULL);
@@ -1872,7 +1872,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     if (!crank_docked)
     {
-        if (preferences_crank_mode == CRANK_MODE_REWIND)
+        if (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled)
         {
             rewind_enter_scrubbing(gameScene);
         }
@@ -1943,6 +1943,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
 
     gameScene->selector.index = selectorIndex;
+
+    if (preferences_crank_mode == CRANK_MODE_REWIND && !preferences_rewind_enabled)
+    {
+        preferences_crank_mode = CRANK_MODE_OFF;
+        rewind_free(gameScene);
+    }
 
     gbScreenRequiresFullRefresh = false;
     if (gameScene->model.empty || gameScene->model.state != gameScene->state ||
@@ -2145,17 +2151,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         }
         gameScene->next_frames_elapsed = 0;
 
-        if (gameScene->rewind.active && preferences_crank_mode != CRANK_MODE_REWIND)
+        if (gameScene->rewind.active && !preferences_rewind_enabled)
         {
             rewind_exit_scrubbing(gameScene);
         }
 
-        if (gameScene->rewind.states && preferences_crank_mode != CRANK_MODE_REWIND)
+        if (gameScene->rewind.states && !preferences_rewind_enabled)
         {
             rewind_free(gameScene);
         }
 
-        if (preferences_crank_mode == CRANK_MODE_REWIND && !gameScene->rewind.states)
+        if (preferences_rewind_enabled && !gameScene->rewind.states)
         {
             rewind_init(gameScene);
         }
@@ -2595,7 +2601,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                                                                           : 1.0f;
                 gameScene->playtime += gameScene->next_frames_elapsed;
 
-                if (preferences_crank_mode == CRANK_MODE_REWIND && !context->gb->is_cgb_mode &&
+                if (preferences_rewind_enabled && !context->gb->is_cgb_mode &&
                     gameScene->rewind.states)
                 {
                     gameScene->rewind.frame_counter += gameScene->next_frames_elapsed;
@@ -2704,7 +2710,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
             }
 
-            if (preferences_crank_mode == CRANK_MODE_REWIND && !context->gb->is_cgb_mode &&
+            if (preferences_rewind_enabled && !context->gb->is_cgb_mode &&
                 gameScene->rewind.states && !gameScene->rewind.active &&
                 gameScene->rewind.frame_counter >= REWIND_CAPTURE_INTERVAL)
             {

@@ -2224,18 +2224,47 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     section[++i] = (OptionsMenuEntry){
         .name = "Crank",
         .values = crank_mode_labels,
-        .description =
-            "Assign a (turbo) function to the crank.\n\n"
-            "Start/Select:\nBack = Start, Front = Select\n\n"
-            "See 'Down' option below.\n\n"
-            "Turbo A/B:\nCW = A, CCW = B\n\n"
-            "Turbo B/A:\nCW = B, CCW = A\n\n"
-            "Rewind (DMG only):\nCW = step forward, CCW = step back.\nDock crank to resume.",
         .pref_var = &preferences_crank_mode,
-        .max_value = 5,
+        .max_value = preferences_rewind_enabled ? 5 : 4,
         .rebuild_when_changed = 1,
         .on_press = NULL
     };
+
+    switch (preferences_crank_mode)
+    {
+    case CRANK_MODE_START_SELECT:
+        section[i].description =
+            "Start/Select mode.\n\n"
+            "Turn the crank back to press Select.\n\n"
+            "Turn forward to press Start.\n\n"
+            "See 'Down' for crank-down action.";
+        break;
+    case CRANK_MODE_TURBO_CW:
+        section[i].description =
+            "Turbo A/B mode.\n\n"
+            "CW = turbo-press A.\n"
+            "CCW = turbo-press B.";
+        break;
+    case CRANK_MODE_TURBO_CCW:
+        section[i].description =
+            "Turbo B/A mode.\n\n"
+            "CW = turbo-press B.\n"
+            "CCW = turbo-press A.";
+        break;
+    case CRANK_MODE_OFF:
+        section[i].description =
+            "Assign a function to the crank.\n\n"
+            "Currently: no function.";
+        break;
+    case CRANK_MODE_REWIND:
+        section[i].description =
+            "Rewind mode.\n\n"
+            "Hold B or Up while turning the crank to scrub gameplay.\n"
+            "CW = step forward, CCW = step back.\n"
+            "Dock crank to resume.\n\n"
+            "Requires Rewind enabled in Misc settings.";
+        break;
+    }
 
     // crank down action
     if (preferences_crank_mode == CRANK_MODE_START_SELECT)
@@ -2722,6 +2751,17 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
             "The options marked (W) fade from white.",
         .pref_var = &preferences_boot_fade,
         .max_value = 5,
+    };
+
+    // Rewind
+    section[++i] = (OptionsMenuEntry){
+        .name = "Rewind",
+        .values = off_on_labels,
+        .description =
+            "DMG only. Hold B or Up while cranking to scrub.\n\n"
+            "When enabled, Rewind becomes available as a Crank mode option.",
+        .pref_var = &preferences_rewind_enabled,
+        .max_value = 2,
     };
 
     if (CB_App->bundled_rom)
