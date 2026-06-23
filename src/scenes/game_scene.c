@@ -1563,18 +1563,28 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
     }
     else if (preferences_crank_mode == CRANK_MODE_REWIND)
     {
-        float crank_change = playdate->system->getCrankChange();
-        gameScene->rewind.scrub_accumulator += crank_change;
+        PDButtons held;
+        playdate->system->getButtonState(&held, NULL, NULL);
 
-        while (gameScene->rewind.scrub_accumulator >= REWIND_ANGLE_STEP)
+        float crank_change = playdate->system->getCrankChange();
+        if (held & (kButtonB | kButtonUp))
         {
-            rewind_step_forward(gameScene);
-            gameScene->rewind.scrub_accumulator -= REWIND_ANGLE_STEP;
+            gameScene->rewind.scrub_accumulator += crank_change;
+
+            while (gameScene->rewind.scrub_accumulator >= REWIND_ANGLE_STEP)
+            {
+                rewind_step_forward(gameScene);
+                gameScene->rewind.scrub_accumulator -= REWIND_ANGLE_STEP;
+            }
+            while (gameScene->rewind.scrub_accumulator <= -REWIND_ANGLE_STEP)
+            {
+                rewind_step_back(gameScene);
+                gameScene->rewind.scrub_accumulator += REWIND_ANGLE_STEP;
+            }
         }
-        while (gameScene->rewind.scrub_accumulator <= -REWIND_ANGLE_STEP)
+        else
         {
-            rewind_step_back(gameScene);
-            gameScene->rewind.scrub_accumulator += REWIND_ANGLE_STEP;
+            gameScene->rewind.scrub_accumulator = 0.0f;
         }
     }
 
