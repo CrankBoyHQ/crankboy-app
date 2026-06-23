@@ -4354,6 +4354,9 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.noise_pending = false;
 
+    if (preferences_audio_sync == 1)
+        CB_reset_audio_sync_state();
+
     playdate->graphics->clear(game_picture_background_color);
 
     float volume = 0.0f;
