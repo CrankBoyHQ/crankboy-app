@@ -85,7 +85,7 @@ bool gbScreenRequiresFullRefresh;
 // Frames between probe attempts when running at 30fps.
 #define ADAPTIVE_FS_PROBE_INTERVAL 60
 
-#define MENU_QUICK_PRESS_THRESHOLD_MS 1000
+#define MENU_QUICK_PRESS_THRESHOLD_MS 1200
 
 CB_GameScene* audioGameScene = NULL;
 
