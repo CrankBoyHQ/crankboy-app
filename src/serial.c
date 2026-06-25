@@ -598,7 +598,7 @@ static bool serial_cb_pdxinfo(const char* const* tokens)
 {
     (void)tokens;
     size_t len = 0;
-    char* contents = cb_read_entire_file("pdxinfo", &len, kFileRead);
+    char* contents = cb_read_entire_file("pdxinfo", &len, kFileRead | kFileReadData);
     if (!contents)
     {
         serial_cb_send_fs_error("pdxinfo", "io");

@@ -45,27 +45,39 @@ pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void read_pdx(void)
 {
-    // verify pdxinfo has different bundle ID
     size_t pdxlen;
-    char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead);
+    char* pdxinfo = (void*)cb_read_entire_file("pdxinfo", &pdxlen, kFileRead | kFileReadData);
     CB_App->pdxBundleID = NULL;
     if (pdxinfo && pdxlen > 0)
     {
-        pdxinfo[pdxlen - 1] = 0;
-        char* bundleIDEq = "bundleID=";
-        char* bundleID = strstr(pdxinfo, bundleIDEq);
-        if (bundleID)
+        char* p = pdxinfo;
+        char* end = pdxinfo + pdxlen;
+        while (p < end)
         {
-            bundleID += strlen(bundleIDEq);
-            char* nl = strchr(bundleID, '\n');
-            int len = strlen(bundleID);
-            if (nl)
-                len = nl - bundleID;
-            CB_App->pdxBundleID = cb_memdup(bundleID, len + 1);
-            CB_App->pdxBundleID[len] = 0;
-            playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
-        }
+            char* line = p;
+            while (p < end && *p != '\n' && *p != '\r')
+                p++;
+            char* line_end = p;
+            while (p < end && (*p == '\n' || *p == '\r'))
+                p++;
 
+            char* eq = line;
+            while (eq < line_end && *eq != '=')
+                eq++;
+            if (eq == line_end)
+                continue;
+
+            int key_len = (int)(eq - line);
+            if (key_len == 8 && !strncasecmp(line, "bundleid", 8))
+            {
+                char* value = eq + 1;
+                int value_len = (int)(line_end - value);
+                CB_App->pdxBundleID = cb_memdup(value, value_len + 1);
+                CB_App->pdxBundleID[value_len] = 0;
+                playdate->system->logToConsole("pdxinfo: BundleID=%s", CB_App->pdxBundleID);
+                break;
+            }
+        }
         cb_free(pdxinfo);
     }
 }
