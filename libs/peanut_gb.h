@@ -564,6 +564,7 @@ __section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
     gb->gb_reg.TIMA++;
     if (gb->gb_reg.TIMA == 0x00)
     {
+        gb->gb_reg.IF |= TIMER_INTR;
         gb->gb_reg.tima_overflow_delay = 1;
     }
 }
@@ -1708,6 +1709,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.DIV;
 
         case 0x05:
+            if (gb->gb_reg.tima_overflow_delay)
+                return 0;
             return gb->gb_reg.TIMA;
 
         case 0x06:
@@ -2377,11 +2380,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         case 0x05:
             gb->gb_reg.TIMA = val;
-            gb->gb_reg.tima_overflow_delay = 0;
             return;
 
         case 0x06:
             gb->gb_reg.TMA = val;
+            if (gb->gb_reg.tima_overflow_delay)
+                gb->gb_reg.TIMA = val;
             return;
 
         case 0x07:
