@@ -5682,27 +5682,27 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
     }
     case 0x27:  // daa
     {
-        uint8_t a = gb->cpu_reg.a;
+        uint16_t a = gb->cpu_reg.a;
 
         if (gb->cpu_reg.f_bits.n)
         {
+            if (gb->cpu_reg.f_bits.h)
+                a = (a - 0x06) & 0xFF;
+
             if (gb->cpu_reg.f_bits.c)
                 a -= 0x60;
-
-            if (gb->cpu_reg.f_bits.h)
-                a -= 0x06;
         }
         else
         {
-            if (gb->cpu_reg.f_bits.c || a > 0x99)
-            {
-                a += 0x60;
-                gb->cpu_reg.f_bits.c = 1;
-            }
-
             if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
                 a += 0x06;
+
+            if (gb->cpu_reg.f_bits.c || a > 0x9F)
+                a += 0x60;
         }
+
+        if ((a & 0x100) == 0x100)
+            gb->cpu_reg.f_bits.c = 1;
 
         gb->cpu_reg.a = a;
         gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
