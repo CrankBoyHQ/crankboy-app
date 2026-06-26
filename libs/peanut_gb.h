@@ -2370,6 +2370,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             uint16_t divider = ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
             bool old_input =
                 gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+            if (preferences_sound_mode == 2)
+            {
+                uint8_t div_apu_mask = gb->cgb_fast_mode_active ? 0x20 : 0x10;
+                if (gb->gb_reg.DIV & div_apu_mask)
+                    audio_div_apu_tick(&gb->audio);
+            }
             gb->gb_reg.DIV = 0x00;
             gb->counter.div_count = 0;
             if (old_input)
