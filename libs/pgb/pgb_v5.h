@@ -426,6 +426,10 @@ struct PGB_VERSIONED(gb_s)
 
         uint16_t current_mode3_cycles;
         uint16_t current_mode0_cycles;
+
+        uint8_t oam_latch[OAM_SIZE];
+        uint8_t latched_scx;
+        uint8_t latched_scy;
     } display;
 
     /**

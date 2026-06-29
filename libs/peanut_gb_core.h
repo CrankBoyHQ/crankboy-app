@@ -953,9 +953,9 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         /* Calculate current background line to draw. Constant because
          * this function draws only this one line each time it is
          * called. */
-        const uint8_t bg_y = gb->gb_reg.LY + gb->gb_reg.SCY;
+        const uint8_t bg_y = gb->gb_reg.LY + gb->display.latched_scy;
 
-        uint8_t bg_x = gb->gb_reg.SCX;
+        uint8_t bg_x = gb->display.latched_scx;
 
         uint8_t* vram = gb->vram;
 
@@ -1178,7 +1178,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
         $(__gb_draw_line_sprites)(
-            gb, gb->oam, used_line_priority,
+            gb, gb->display.oam_latch, used_line_priority,
 #if PGB_IS_CGB
             line_cgb_priority, cgb_master_priority,
 #endif
@@ -2068,8 +2068,13 @@ done_instr_timing:
                 gb->lcd_mode = LCD_TRANSFER;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
+                for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
+                    ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
+                gb->display.latched_scx = gb->gb_reg.SCX;
+                gb->display.latched_scy = gb->gb_reg.SCY;
+
                 uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
-                const uint8_t scx_mod8 = gb->gb_reg.SCX & 7;
+                const uint8_t scx_mod8 = gb->display.latched_scx & 7;
 
                 mode3_cycles += scx_mod8;
 
@@ -2100,8 +2105,8 @@ done_instr_timing:
 
                     for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
                     {
-                        const uint8_t y = gb->oam[s * 4];
-                        const uint8_t x = gb->oam[s * 4 + 1];
+                        const uint8_t y = gb->display.oam_latch[s * 4];
+                        const uint8_t x = gb->display.oam_latch[s * 4 + 1];
 
                         // Check if sprite Y intersects current line
                         if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
