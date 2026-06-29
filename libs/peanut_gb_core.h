@@ -1215,7 +1215,13 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
 #define FETCH16(gb) $(__gb_fetch16)(gb)
 
-    u8 opcode = FETCH8(gb);
+    u16 _pc = gb->cpu_reg.pc;
+    u8 opcode;
+    if likely (_pc < 0x8000)
+        opcode = gb->ram_base[_pc >> 12][_pc];
+    else
+        opcode = $(__gb_read)(gb, _pc);
+    gb->cpu_reg.pc++;
     float cycles = 1.0f;  // use fpu register, save space
     unsigned src;
     u8 srcidx;
@@ -2019,8 +2025,18 @@ done_instr_timing:
 #endif
     if (gb->counter.div_count >= div_threshold)
     {
-        gb->gb_reg.DIV += gb->counter.div_count / div_threshold;
-        gb->counter.div_count %= div_threshold;
+#if PGB_IS_CGB
+        if (cgb_fast)
+        {
+            gb->gb_reg.DIV += gb->counter.div_count >> 7;
+            gb->counter.div_count &= 0x7F;
+        }
+        else
+#endif
+        {
+            gb->gb_reg.DIV += gb->counter.div_count >> 8;
+            gb->counter.div_count &= 0xFF;
+        }
     }
 
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
