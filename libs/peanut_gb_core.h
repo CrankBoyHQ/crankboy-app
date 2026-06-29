@@ -1237,12 +1237,14 @@ second_instruction:
 
 dispatch:
 {
+#if CPU_VALIDATE == 0
     if unlikely (gb->gb_halt_bug)
     {
         if (gb->gb_halt_bug == 1)
             gb->cpu_reg.pc = gb->gb_halt_bug_pc;
         gb->gb_halt_bug--;
     }
+#endif
 
     const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
 
@@ -1737,23 +1739,29 @@ dispatch:
     }
 }
 
+#if CPU_VALIDATE == 0
     if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
         gb->gb_ime = 1;
+#endif
 
     if (false)
     {
     inc_dec_hl:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
+#if CPU_VALIDATE == 0
         if (inst == 0)
             goto second_instruction;
+#endif
     }
 
+#if CPU_VALIDATE == 0
     if (inst == 0 && chained)
     {
         inst = 1;
         goto second_instruction;
     }
+#endif
 
     return cycles * 4;
 }
