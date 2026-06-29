@@ -1730,7 +1730,7 @@ __core_section("step") unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
-    for (int _i = 0; _i < 3; _i++)
+    for (int _i = 0; _i < CPU_BATCH_SIZE; _i++)
     {
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
             break;
