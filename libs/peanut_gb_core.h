@@ -1216,10 +1216,29 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 #define FETCH16(gb) $(__gb_fetch16)(gb)
 
     u8 opcode = FETCH8(gb);
-    const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
     float cycles = 1.0f;  // use fpu register, save space
     unsigned src;
     u8 srcidx;
+    bool chained = false;
+    int inst = 0;
+
+    goto dispatch;
+
+second_instruction:
+    inst = 1;
+    opcode = FETCH8(gb);
+    chained = false;
+
+dispatch:
+{
+    if unlikely (gb->gb_halt_bug)
+    {
+        if (gb->gb_halt_bug == 1)
+            gb->cpu_reg.pc = gb->gb_halt_bug_pc;
+        gb->gb_halt_bug--;
+    }
+
+    const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
 
     switch (opcode >> 6)
     {
@@ -1234,7 +1253,10 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         case 0:
         case 8:
             if (opcode == 0)
-                break;           // nop
+            {
+                chained = true;
+                break;  // nop
+            }
             if (opcode == 0x10)  // STOP
             {
 #if PGB_IS_CGB
@@ -1329,7 +1351,8 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             gb->cpu_reg_raw16[reg16] += offset;
             cycles = 2;
         }
-        break;
+            chained = true;
+            break;
 
         // inc/dec 8-bit
         case 4:
@@ -1359,7 +1382,8 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 gb->cpu_reg_raw[reg8] = tmp;
             }
         }
-        break;
+            chained = true;
+            break;
 
         case 6:
         case 14:
@@ -1402,6 +1426,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 gb->cpu_reg.f = 0;
                 gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
                 gb->cpu_reg.a = (v >> 8) & 0xFF;
+                chained = true;
             }
             else if unlikely (opcode == 0x27)
                 return __gb_rare_instruction(gb, opcode);
@@ -1410,18 +1435,21 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 gb->cpu_reg.a ^= 0xFF;
                 gb->cpu_reg.f_bits.n = 1;
                 gb->cpu_reg.f_bits.h = 1;
+                chained = true;
             }
             else if (op8 % 2 == 1)
             {
                 gb->cpu_reg.f_bits.c = 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
+                chained = true;
             }
             else if (op8 % 2 == 0)
             {
                 gb->cpu_reg.f_bits.c ^= 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
+                chained = true;
             }
             break;
 
@@ -1429,6 +1457,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             // add hl, r16
             cycles = 2;
             gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
+            chained = true;
             break;
 
         default:
@@ -1439,6 +1468,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     case 1:
     case 2:
     {
+        chained = true;
         srcidx = (opcode % 8) ^ 1;
         if (srcidx == 7)
         {
@@ -1561,6 +1591,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             {
                 gb->cpu_reg_raw16[op8 / 2] = src;
             }
+            chained = true;
             break;
         case 0x02:
         case 0xA:  // jp [flag]
@@ -1598,6 +1629,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
                 src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
             }
             $(__gb_push16)(gb, src);
+            chained = true;
             break;
         case 0x06:
         case 0x0E:
@@ -1665,6 +1697,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         {
             cycles = 2;
             srcidx = gb->cpu_reg.c;
+            chained = true;
             goto hram_op;
         }
         break;
@@ -1695,17 +1728,27 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
             __builtin_unreachable();
         }
     }
-    break;
-    default:
-        __builtin_unreachable();
     }
+}
+
+    if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+        gb->gb_ime = 1;
 
     if (false)
     {
     inc_dec_hl:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
+        if (inst == 0)
+            goto second_instruction;
     }
+
+    if (inst == 0 && chained)
+    {
+        inst = 1;
+        goto second_instruction;
+    }
+
     return cycles * 4;
 }
 
@@ -1735,14 +1778,6 @@ __core_section("step") unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
             break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
-        if unlikely (gb->gb_halt_bug)
-        {
-            if (gb->gb_halt_bug == 1)
-                gb->cpu_reg.pc = gb->gb_halt_bug_pc;
-            gb->gb_halt_bug--;
-        }
-        if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
-            gb->gb_ime = 1;
     }
 #else
     // run once as each, verify
