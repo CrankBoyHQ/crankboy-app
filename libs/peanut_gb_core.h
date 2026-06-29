@@ -27,8 +27,6 @@
 #include "../src/preferences.h"
 #include "../src/utility.h"
 
-#define GB_RUN_FRAME_MAX_CYCLES (SCREEN_REFRESH_CYCLES * 2.0f)
-
 /**
  * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
  * Note: __cgb and __dmg implementations should be identical
@@ -2257,7 +2255,7 @@ __core void $(gb_run_frame)(gb_s* gb)
     }
 #endif
 
-    while (!gb->gb_frame && total_cycles < GB_RUN_FRAME_MAX_CYCLES)
+    while (!gb->gb_frame && total_cycles < SCREEN_REFRESH_CYCLES)
     {
 #ifdef TARGET_SIMULATOR
         if (trace_this_frame)
