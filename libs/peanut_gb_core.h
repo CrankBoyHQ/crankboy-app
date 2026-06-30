@@ -1208,7 +1208,8 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     else
         opcode = $(__gb_read)(gb, _pc);
     gb->cpu_reg.pc++;
-    float cycles = 1.0f;  // use fpu register, save space
+    unsigned cycles = 4;  // T-cycles (was float M-cycles)
+    unsigned chain_cycles = 0;
     unsigned src;
     u8 srcidx;
     bool chained = false;
@@ -1218,6 +1219,8 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
 second_instruction:
     inst = 1;
+    chain_cycles = cycles;
+    cycles = 4;
     opcode = FETCH8(gb);
     chained = false;
 
@@ -1263,7 +1266,7 @@ dispatch:
                 // A button is pressed, and a direction/action line is selected.
                 if ((gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
                 {
-                    cycles = 1;
+                    cycles = 4;
                     break;
                 }
 #endif
@@ -1289,20 +1292,20 @@ dispatch:
                     gb->gb_reg.DIV = 0;
                 }
 
-                cycles = 1;
+                cycles = 4;
                 break;
             }
             if (opcode < 0x18)
                 return __gb_rare_instruction(gb, opcode);
             {
                 // jr
-                cycles = 2;
+                cycles = 8;
                 bool flag = $(__gb_get_op_flag)(gb, op8);
                 if (opcode == 0x18)
                     flag = 1;
                 if (flag)
                 {
-                    cycles = 3;
+                    cycles = 12;
                     gb->cpu_reg.pc += (s8)FETCH8(gb);
                 }
                 else
@@ -1313,13 +1316,13 @@ dispatch:
             break;
         case 1:
             // LD r16, d16
-            cycles = 3;
+            cycles = 12;
             gb->cpu_reg_raw16[reg16] = FETCH16(gb);
             break;
         case 2:
         case 10:
             // TODO
-            cycles = 2;
+            cycles = 8;
             if (reg16 == 4)
                 reg16 = 2;
 
@@ -1343,7 +1346,7 @@ dispatch:
             // dec r16
             s16 offset = (op8 % 2 == 1) ? 1 : -1;
             gb->cpu_reg_raw16[reg16] += offset;
-            cycles = 2;
+            cycles = 8;
         }
             chained = true;
             break;
@@ -1368,7 +1371,7 @@ dispatch:
 
             if (reg8 == 7)
             {
-                cycles = 3;
+                cycles = 12;
                 $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
             }
             else
@@ -1383,7 +1386,7 @@ dispatch:
         case 14:
             srcidx = 0;
             src = FETCH8(gb);
-            cycles = 2;
+            cycles = 8;
             goto ld_x_x;
             break;
 
@@ -1449,7 +1452,7 @@ dispatch:
 
         case 9:
             // add hl, r16
-            cycles = 2;
+            cycles = 8;
             gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
             chained = true;
             break;
@@ -1467,7 +1470,7 @@ dispatch:
         if (srcidx == 7)
         {
             src = $(__gb_read)(gb, gb->cpu_reg.hl);
-            cycles = 2;
+            cycles = 8;
         }
         else
             src = gb->cpu_reg_raw[srcidx];
@@ -1487,7 +1490,7 @@ dispatch:
                 }
                 else
                 {
-                    cycles++;
+                    cycles += 4;
                     $(__gb_write)(gb, gb->cpu_reg.hl, src);
                 }
             }
@@ -1566,7 +1569,7 @@ dispatch:
         {
         case 0x00:
         case 0x08:  // ret [flag]
-            cycles = 2;
+            cycles = 8;
             if (flag)
             {
                 goto ret;
@@ -1574,7 +1577,7 @@ dispatch:
             break;
         case 0x01:
         case 0x11:  // pop
-            cycles = 3;
+            cycles = 12;
             src = $(__gb_pop16)(gb);
             if (op8 / 2 == 3)
             {
@@ -1589,7 +1592,7 @@ dispatch:
             break;
         case 0x02:
         case 0xA:  // jp [flag]
-            cycles = 3;
+            cycles = 12;
             if (flag)
             {
                 goto jp;
@@ -1602,12 +1605,12 @@ dispatch:
                 return __gb_rare_instruction(gb, opcode);
             }
         jp:
-            cycles = 4;
+            cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
             break;
         case 0x04:
         case 0x0C:  // call [flag]
-            cycles = 3;
+            cycles = 12;
             if (flag)
             {
                 goto call;
@@ -1616,7 +1619,7 @@ dispatch:
             break;
         case 0x05:
         case 0x15:  // push
-            cycles = 4;
+            cycles = 16;
             src = gb->cpu_reg_raw16[op8 / 2];
             if (op8 / 2 == 3)
             {
@@ -1629,7 +1632,7 @@ dispatch:
         case 0x0E:
         case 0x16:
         case 0x1E:  // arith d8
-            cycles = 2;
+            cycles = 8;
             src = FETCH8(gb);
             goto arithmetic;
             break;
@@ -1637,7 +1640,7 @@ dispatch:
         case 0x0F:
         case 0x17:
         case 0x1F:  // rst
-            cycles = 4;
+            cycles = 16;
             $(__gb_push16)(gb, gb->cpu_reg.pc);
             gb->cpu_reg.pc = 8 * (op8 ^ 1);
             break;
@@ -1648,7 +1651,7 @@ dispatch:
                 gb->gb_ime_countdown = 0;
             }
         ret:
-            cycles += 3;
+            cycles += 12;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
@@ -1662,7 +1665,7 @@ dispatch:
                 return __gb_rare_instruction(gb, opcode);
             }
         call:
-            cycles = 6;
+            cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
                 $(__gb_push16)(gb, gb->cpu_reg.pc);
@@ -1671,7 +1674,7 @@ dispatch:
             break;
         case 0x10:  // ld (a8)
         {
-            cycles = 3;
+            cycles = 12;
             // repurpose 'srcidx'
             srcidx = (FETCH8(gb));
         hram_op:;
@@ -1689,7 +1692,7 @@ dispatch:
         break;
         case 0x12:  // ld (C)
         {
-            cycles = 2;
+            cycles = 8;
             srcidx = gb->cpu_reg.c;
             chained = true;
             goto hram_op;
@@ -1706,7 +1709,7 @@ dispatch:
             break;
         case 0x1A:  // ld (a16)
         {
-            cycles = 4;
+            cycles = 16;
             u16 v = FETCH16(gb);
             if (op8 & 2)
             {
@@ -1749,7 +1752,7 @@ dispatch:
     }
 #endif
 
-    return cycles * 4;
+    return cycles + chain_cycles;
 }
 
 /**
