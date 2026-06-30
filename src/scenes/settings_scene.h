@@ -55,7 +55,6 @@ typedef struct CB_SettingsScene
     int initial_headphone_audio;
     int initial_per_game;
     int initial_audio_sync;
-    int initial_sprite_sorting;
     preference_t* immutable_settings;
 
     // neutrals: neither always-global nor always-local

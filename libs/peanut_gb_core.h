@@ -528,16 +528,11 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 
     const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
 
-    const bool accurate = preferences_sprite_sorting != 0;
     uint8_t column_decided[LCD_WIDTH];
-    if (accurate)
-    {
-        for (int x = 0; x < LCD_WIDTH; x++)
-            column_decided[x] = 0;
-    }
+    for (int x = 0; x < LCD_WIDTH; x++)
+        column_decided[x] = 0;
 
-    for (int8_t i = accurate ? 0 : (number_of_sprites - 1);
-         accurate ? (i < number_of_sprites) : (i >= 0); accurate ? i++ : i--)
+    for (int8_t i = 0; i < number_of_sprites; i++)
     {
         uint8_t s_idx = sprites_to_render[i].sprite_number;
         uint8_t s_4 = s_idx * 4;
@@ -591,14 +586,13 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
             if unlikely (disp_x < 0 || disp_x >= LCD_WIDTH)
                 goto next_sprite_pixel;
 
-            if (accurate && column_decided[disp_x])
+            if (column_decided[disp_x])
                 goto next_sprite_pixel;
 
             uint8_t c = (t2_r & 1) << 1 | (t1_r & 1);
             if (c != 0)
             {
-                if (accurate)
-                    column_decided[disp_x] = 1;
+                column_decided[disp_x] = 1;
 
                 int P_segment_index = (unsigned)disp_x >> 5;
                 int P_bit_in_segment = disp_x & 31;

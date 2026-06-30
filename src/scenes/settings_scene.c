@@ -716,7 +716,6 @@ CB_SettingsScene* CB_SettingsScene_new(
     settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
     settingsScene->initial_audio_sync = preferences_audio_sync;
-    settingsScene->initial_sprite_sorting = preferences_sprite_sorting;
 
     if (gameScene)
     {
@@ -2438,19 +2437,6 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .name = "Behavior",
         .header = 1,
         .description = "PPU timing, sprite sorting, overclock, and script support."
-    };
-
-    // PPU Timing
-    // Sprite Sorting
-    section[++i] = (OptionsMenuEntry){
-        .name = "Sprite Sorting",
-        .values = fast_accurate_labels,
-        .description =
-            "Controls sprite layering order accuracy.\n\n"
-            "Fast:\nIndependent BG check per sprite. Best performance.\n\n"
-            "Accurate:\nHardware-accurate sprite-vs-sprite priority. Slightly more overhead.",
-        .pref_var = &preferences_sprite_sorting,
-        .max_value = 2,
     };
 
     // overclocking
