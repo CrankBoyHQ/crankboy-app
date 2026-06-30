@@ -161,10 +161,6 @@ typedef struct CB_GameScene
     bool isCurrentlySaving : 1;
     bool cgb_needs_palette_recompute : 1;
 
-    int interlace_tendency_counter;
-    int interlace_lock_frames_remaining;
-    int interlace_slow_frames;
-
     // Adaptive frame_skip (preferences_frame_skip == 2)
     int adaptive_fs_headroom_counter;
     int adaptive_fs_lock_frames;
@@ -172,10 +168,8 @@ typedef struct CB_GameScene
 
     // Probe-based deactivation: when under mitigation, periodically render
     // one unmitigated frame to measure real performance.
-    int interlace_probe_cooldown;
-    bool interlace_probe_pending;
-    int adaptive_fs_probe_cooldown;
     bool adaptive_fs_probe_pending;
+    int adaptive_fs_probe_cooldown;
 
     uint32_t patches_hash;
 
@@ -213,7 +207,7 @@ bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
 struct CB_Game;
 void show_game_script_info(const char* rompath, const char* name_short);
 
-void cb_render_fps(bool interlace_active);
+void cb_render_fps(void);
 
 void cb_render_boot_fade(unsigned fade_frames, bool fade_white);
 

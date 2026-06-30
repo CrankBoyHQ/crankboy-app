@@ -42,12 +42,10 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Some games don't work correctly. Please report any broken games.
 - Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.
 - Link Cable (and other peripherals) are not supported.
-- The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options. 60 fps interlaced is also possible.
+- The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options.
 - <!--no-userguide--> Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
 
 ## Installing
-
-
 
 ### From GitHub
 

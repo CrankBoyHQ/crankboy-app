@@ -138,7 +138,7 @@ typedef struct CB_Application
     float dt;
     float avg_dt;       // for fps calculation (scaled by avg_dt_mult)
     float avg_dt_mult;  // reciprocal number of emulated frames last frame
-    float avg_dt_raw;   // unscaled dt average for interlace decision
+    float avg_dt_raw;   // unscaled dt average for adaptive frame skip
     float crankChange;
     CB_Scene* scene;
     CB_Scene* pendingScene;

@@ -828,18 +828,6 @@ __core_section("draw") static void __cgb_draw_tile_strip(
 // renders one scanline
 __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 {
-    if (gb->direct.dynamic_rate_enabled)
-    {
-        if (((gb->direct.interlace_mask >> (gb->gb_reg.LY % 8)) & 1) == 0)
-        {
-            if ((gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.LY >= gb->gb_reg.WY))
-            {
-                gb->display.window_clear++;
-            }
-            return;
-        }
-    }
-
     __builtin_prefetch(&gb->gb_reg.LCDC, 0);
     __builtin_prefetch(&gb->gb_reg.WX, 0);
     __builtin_prefetch(&gb->gb_reg.BGP, 0);

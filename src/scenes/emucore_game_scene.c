@@ -222,7 +222,7 @@ static void emucore_update_override(void* ud)
     }
 
     if (preferences_display_fps)
-        cb_render_fps(false);
+        cb_render_fps();
 
     playdate->graphics->display();
 }

@@ -51,23 +51,6 @@ bool gbScreenRequiresFullRefresh;
 // Upper bound on the number of audio samples we generate per frame.
 #define MAX_AUDIO_SAMPLES_PER_CHUNK ((44100 / 60) * 4)
 
-// --- Auto-Interlace Parameters ---
-
-// Activate interlacing when smoothed FPS drops below this fraction of target.
-#define INTERLACE_ACTIVATE_RATIO 0.95f
-
-// Deactivation ratio for probe frames (raw single-frame time vs target).
-#define INTERLACE_DEACTIVATE_RATIO 0.97f
-
-// Minimum frames interlacing stays on after activation. Halved at 30fps.
-#define INTERLACE_LOCK_FRAMES 15
-
-// Consecutive slow frames required before activating interlacing.
-#define INTERLACE_SLOW_FRAMES_REQUIRED 5
-
-// Frames between probe attempts when interlacing is active.
-#define INTERLACE_PROBE_INTERVAL 30
-
 // --- Adaptive Frame Skip Parameters ---
 
 // Activate 30fps when smoothed FPS drops below this fraction of 60fps target.
@@ -669,15 +652,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->crank_turbo_b_active = false;
     gameScene->crank_was_docked = playdate->system->isCrankDocked();
 
-    gameScene->interlace_tendency_counter = 0;
-    gameScene->interlace_lock_frames_remaining = 0;
-
     gameScene->adaptive_fs_headroom_counter = 0;
     gameScene->adaptive_fs_lock_frames = 0;
     gameScene->adaptive_fs_perf_allowed = false;
 
-    gameScene->interlace_probe_cooldown = 0;
-    gameScene->interlace_probe_pending = false;
     gameScene->adaptive_fs_probe_cooldown = 0;
     gameScene->adaptive_fs_probe_pending = false;
 
@@ -1454,27 +1432,6 @@ static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t
     }
 }
 
-// Composite interlaced frames: take even lines from frame_a, odd lines from frame_b
-static __section__(".text.tick") void composite_interlaced_frames(
-    uint8_t* frame_a, uint8_t* frame_b, uint8_t* dest
-)
-{
-    for (int y = 0; y < LCD_HEIGHT; y++)
-    {
-        // Even lines (0, 2, 4...) come from frame_a at position y
-        // Odd lines (1, 3, 5...) come from frame_b at position y
-        uint8_t* src_ptr =
-            ((y & 1) == 0) ? &frame_a[y * LCD_WIDTH_PACKED] : &frame_b[y * LCD_WIDTH_PACKED];
-        uint32_t* src_32 = (uint32_t*)src_ptr;
-        uint32_t* dest_32 = (uint32_t*)&dest[y * LCD_WIDTH_PACKED];
-
-        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
-        {
-            dest_32[x] = src_32[x];
-        }
-    }
-}
-
 static void save_check(gb_s* gb);
 
 __section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
@@ -1652,113 +1609,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     float progress = 0.5f;
 
-    /*
-     * =========================================================================
-     * Dynamic Rate Control with Ratio-Based Auto Interlacing
-     * =========================================================================
-     *
-     * Interlace lines are skipped when the framerate drops below a target.
-     * The "Auto" mode compares FPS against the current target (60 or 30 FPS):
-     *   - <95% of target -> consecutive slow-frame counter increments
-     *   - ≥ slow-frames threshold -> interlacing activates (with lock)
-     *   - 95%–97% of target -> hysteresis, holds current state
-     *   - >97% of target -> resets counter, stays off
-     *
-     * Works identically in 60 FPS mode and 30 FPS + frame blending mode.
-     */
-
-    bool activate_dynamic_rate = false;
-    bool was_interlaced_last_frame = context->gb->direct.dynamic_rate_enabled;
-
-    bool allow_interlace =
-        preferences_frame_skip == 0 || (preferences_frame_skip == 1 && preferences_blend_frames);
-
-    if (allow_interlace)
-    {
-        if (preferences_dynamic_rate == DYNAMIC_RATE_ON)
-        {
-            activate_dynamic_rate = true;
-            gameScene->interlace_lock_frames_remaining = 0;
-            gameScene->interlace_slow_frames = 0;
-        }
-        else if (preferences_dynamic_rate == DYNAMIC_RATE_AUTO)
-        {
-            if (gameScene->interlace_lock_frames_remaining > 0)
-            {
-                activate_dynamic_rate = true;
-                gameScene->interlace_lock_frames_remaining--;
-                gameScene->interlace_slow_frames = 0;
-            }
-            else
-            {
-                float target_fps = 30.0f;
-                if (!preferences_frame_skip)
-                    target_fps = 60.0f;
-
-                if (was_interlaced_last_frame)
-                {
-                    // Probe-based deactivation: when interlacing is active,
-                    // the smoothed FPS always looks good due to reduced workload.
-                    // Instead, periodically render one full frame and check its
-                    // raw timing to decide if we can safely disable interlacing.
-                    if (gameScene->interlace_probe_pending)
-                    {
-                        float probe_fps = 1.0f / CB_App->dt;
-                        float probe_ratio = probe_fps / target_fps;
-                        gameScene->interlace_probe_pending = false;
-                        if (probe_ratio > INTERLACE_DEACTIVATE_RATIO)
-                        {
-                            gameScene->interlace_slow_frames = 0;
-                        }
-                        else
-                        {
-                            activate_dynamic_rate = true;
-                            gameScene->interlace_probe_cooldown = INTERLACE_PROBE_INTERVAL;
-                            gameScene->interlace_slow_frames = 0;
-                        }
-                    }
-                    else if (gameScene->interlace_probe_cooldown > 0)
-                    {
-                        activate_dynamic_rate = true;
-                        gameScene->interlace_probe_cooldown--;
-                        gameScene->interlace_slow_frames = 0;
-                    }
-                    else
-                    {
-                        gameScene->interlace_probe_pending = true;
-                        gameScene->interlace_slow_frames = 0;
-                    }
-                }
-                else
-                {
-                    float fps = 1.0f / CB_App->avg_dt_raw;
-                    float ratio = fps / target_fps;
-
-                    if (ratio < INTERLACE_ACTIVATE_RATIO)
-                    {
-                        gameScene->interlace_slow_frames++;
-                        if (gameScene->interlace_slow_frames >= INTERLACE_SLOW_FRAMES_REQUIRED)
-                        {
-                            activate_dynamic_rate = true;
-                            gameScene->interlace_lock_frames_remaining =
-                                preferences_frame_skip ? INTERLACE_LOCK_FRAMES / 2
-                                                       : INTERLACE_LOCK_FRAMES;
-                            gameScene->interlace_slow_frames = 0;
-                        }
-                    }
-                    else
-                    {
-                        gameScene->interlace_slow_frames = 0;
-                    }
-                }
-            }
-        }
-    }
-
     // --- Adaptive Frame Skip: Frame-Time Decision ---
     // Uses CB_App->avg_dt_raw to detect when frame times are too tight
     // for 60fps, dropping to 30fps to maintain performance.
-    // Mirrors the auto-interlace hysteresis pattern.
     if (preferences_frame_skip == 2)
     {
         float fps = 1.0f / CB_App->avg_dt_raw;
@@ -1819,19 +1672,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 gameScene->adaptive_fs_headroom_counter = 0;
             }
         }
-    }
-
-    context->gb->direct.dynamic_rate_enabled = activate_dynamic_rate;
-
-    if (activate_dynamic_rate)
-    {
-        static int frame_i;
-        frame_i++;
-        context->gb->direct.interlace_mask = 0b101010101010 >> (frame_i & 1);
-    }
-    else
-    {
-        context->gb->direct.interlace_mask = 0xFF;
     }
 
     gameScene->selector.startPressed = false;
@@ -2215,7 +2055,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     static clalign uint8_t cb_frame_buffer[4][LCD_BUFFER_BYTES];
 
                     uint8_t* original_lcd = context->gb->lcd;
-                    uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
 
                     if (preferences_frame_skip == 1 && preferences_blend_frames)
                     {
@@ -2376,7 +2215,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         }
 
                         context->gb->lcd = original_lcd;
-                        context->gb->direct.interlace_mask = saved_interlace_mask;
                     }
                 }
                 else if (preferences_frame_skip == 1 && preferences_blend_frames)
@@ -2388,21 +2226,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     // Save original lcd pointer
                     uint8_t* original_lcd = context->gb->lcd;
 
-                    // When interlacing is active in 30fps mode, use synchronized masks:
-                    // Frame A renders even lines (0x55), Frame B renders odd lines (0xAA).
-                    // When composited, they combine into a full-resolution image.
-                    uint8_t saved_interlace_mask = context->gb->direct.interlace_mask;
-                    bool use_synced_interlace = activate_dynamic_rate;
-
                     // 1. Render Frame A into frame_buffer[0]
                     context->gb->lcd = frame_buffer[0];
                     context->gb->direct.frame_skip = 0;
-                    if (use_synced_interlace)
-                    {
-                        context->gb->direct.interlace_mask = 0x55;  // Even lines: 01010101
-                        // Clear buffer to ensure skipped lines don't contain garbage
-                        memset(frame_buffer[0], 0, LCD_BUFFER_BYTES);
-                    }
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2420,12 +2246,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     // 3. Render Frame B into frame_buffer[1]
                     context->gb->lcd = frame_buffer[1];
                     context->gb->direct.frame_skip = screen_is_static;
-                    if (use_synced_interlace)
-                    {
-                        context->gb->direct.interlace_mask = 0xAA;  // Odd lines: 10101010
-                        // Clear buffer to ensure skipped lines don't contain garbage
-                        memset(frame_buffer[1], 0, LCD_BUFFER_BYTES);
-                    }
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2436,26 +2256,13 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // Restore original interlace mask for other rendering modes
-                    context->gb->direct.interlace_mask = saved_interlace_mask;
-
                     // 4. Blend/composite and copy result back to original lcd buffer
                     if (preferences_blend_frames)
                     {
                         if (!screen_is_static)
                         {
-                            if (use_synced_interlace)
-                            {
-                                // Composite interlaced frames instead of blending
-                                composite_interlaced_frames(
-                                    frame_buffer[0], frame_buffer[1], original_lcd
-                                );
-                            }
-                            else
-                            {
-                                blend_frames_lut(frame_buffer[0], frame_buffer[1]);
-                                memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                            }
+                            blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                         }
                         else
                         {
@@ -2906,7 +2713,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (preferences_display_fps)
             {
-                cb_render_fps(context->gb->direct.dynamic_rate_enabled);
+                cb_render_fps();
             }
         }
     }
@@ -4578,7 +4385,7 @@ bool cb_boot_fade_initial_white(int boot_fade_pref)
     return init_fade_color[boot_fade_pref] == kColorWhite;
 }
 
-__section__(".text.tick") void cb_render_fps(bool interlace_active)
+__section__(".text.tick") void cb_render_fps(void)
 {
     if (!numbers_bmp)
     {
@@ -4627,9 +4434,6 @@ __section__(".text.tick") void cb_render_fps(bool interlace_active)
         return;
 
     playdate->graphics->setFont(CB_App->labelFont);
-    playdate->graphics->setDrawMode(interlace_active ? kDrawModeFillWhite : kDrawModeCopy);
-    playdate->graphics->drawText("i", 1, kUTF8Encoding, 26, 1);
-    playdate->graphics->setDrawMode(kDrawModeCopy);
 
     for (int y = 0; y < height; ++y)
     {

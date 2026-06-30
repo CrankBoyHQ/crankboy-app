@@ -978,7 +978,6 @@ static const char* crank_mode_labels[] = {
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
-static const char* dynamic_rate_labels[] = {"Off", "On", "Auto"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
 static const char* slot_labels[] = {"Slot 0", "Slot 1", "Slot 2", "Slot 3", "Slot 4",
@@ -2058,8 +2057,8 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
 
 /*
  * Display
- *  30 FPS mode, Frame blending, Interlacing,
- *  Dither, First scaling line, Stabilization
+ *  30 FPS mode, Frame blending, Dither,
+ *  First scaling line, Stabilization
  */
 static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
@@ -2113,40 +2112,6 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
             .description = "Only available when 30 FPS or Adaptive mode is enabled.\n",
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
-            .on_press = NULL,
-        };
-    }
-
-    // dynamic rate adjustment
-    if (preferences_frame_skip == 0 || (preferences_frame_skip == 1 && preferences_blend_frames))
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "Interlacing",
-            .values = dynamic_rate_labels,
-            .description =
-                "Skips lines to keep the framerate smooth.\n\n"
-                "Off:\nFull quality, no skipping.\n\n"
-                "On:\nAlways on for a reliable speed boost.\n\n"
-                "Auto:\nRecommended. Skips lines only when needed.",
-            .pref_var = &preferences_dynamic_rate,
-            .max_value = 3,
-            .rebuild_when_changed = 1,
-            .on_press = NULL,
-        };
-    }
-    else
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "Interlacing",
-            .values = dynamic_rate_labels,
-            .description =
-                "Only available in:\n\n"
-                "- 60 FPS mode\n"
-                "- 30 FPS mode with enabled\n"
-                "    frame blending",
-            .pref_var = &preferences_dynamic_rate,
-            .max_value = 0,
-            .rebuild_when_changed = 1,
             .on_press = NULL,
         };
     }

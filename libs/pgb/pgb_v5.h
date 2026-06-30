@@ -441,12 +441,8 @@ struct PGB_VERSIONED(gb_s)
      */
     struct
     {
-        /* Set to enable interlacing. Interlacing will start immediately
-         * (at the next line drawing).
-         */
         uint8_t frame_skip : 1;
         uint8_t sound : 1;
-        uint8_t dynamic_rate_enabled : 1;
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
         uint8_t crank_docked : 1;
@@ -460,9 +456,6 @@ struct PGB_VERSIONED(gb_s)
 
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
-
-        // where this is 0, skip the line
-        uint8_t interlace_mask;
 
         union
         {

@@ -11,10 +11,6 @@
 
 #include <stdint.h>
 
-#define DYNAMIC_RATE_OFF 0
-#define DYNAMIC_RATE_ON 1
-#define DYNAMIC_RATE_AUTO 2
-
 #define CRANK_MODE_START_SELECT 0
 #define CRANK_MODE_TURBO_CW 1
 #define CRANK_MODE_TURBO_CCW 2

@@ -5500,7 +5500,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
         gb->cart_mode_select = 0;
 
     gb->direct.sound = 1;
-    gb->direct.interlace_mask = 0xFF;
     gb->direct.enable_xram = 0;
 
     // gb_cart_ram_size is set later, in read_cart_ram_file (a required initialization step)
