@@ -208,12 +208,6 @@ struct PGB_VERSIONED(chan)
     };
 
     int32_t envelope_smooth;
-
-    /* Accurate-mode frame sequencer dividers. Tick at 64 Hz (envelope) / 128 Hz
-     * (sweep). Loaded from env.step / sweep.rate on trigger, decremented at
-     * the corresponding DIV-APU step. When zero, tick and reload. */
-    uint8_t env_divider;
-    uint8_t sweep_divider;
 };
 
 struct PGB_VERSIONED(audio_data)
@@ -230,10 +224,6 @@ struct PGB_VERSIONED(audio_data)
     /* Set when APU powers on while DIV bit 4/5 is high. The first falling
      * edge tick is skipped (hardware glitch). */
     bool skip_next_apu_tick : 1;
-
-    /* Audio thread's cached copy of div_apu_step. Used to detect pending
-     * ticks that need to be flushed before generating audio samples. */
-    uint8_t audio_step;
 
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
