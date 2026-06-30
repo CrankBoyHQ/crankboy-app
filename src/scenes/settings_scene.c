@@ -716,7 +716,6 @@ CB_SettingsScene* CB_SettingsScene_new(
     settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
     settingsScene->initial_audio_sync = preferences_audio_sync;
-    settingsScene->initial_ppu_timing = preferences_ppu_timing;
     settingsScene->initial_sprite_sorting = preferences_sprite_sorting;
 
     if (gameScene)
@@ -2442,18 +2441,6 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     };
 
     // PPU Timing
-    section[++i] = (OptionsMenuEntry){
-        .name = "PPU Timing",
-        .values = fast_accurate_labels,
-        .description =
-            "Controls PPU sprite timing accuracy.\n\n"
-            "Fast:\nFixed penalty per line. Best performance. Some games may have glitches.\n\n"
-            "Accurate:\nDynamic calculation. Most faithful to hardware.\n"
-            "May impact performance in sprite-heavy scenes.",
-        .pref_var = &preferences_ppu_timing,
-        .max_value = 2,
-    };
-
     // Sprite Sorting
     section[++i] = (OptionsMenuEntry){
         .name = "Sprite Sorting",

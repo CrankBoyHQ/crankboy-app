@@ -54,13 +54,11 @@ PREF(lock_button, PREF_BUTTON_NONE)
 PREF(menu_button, 0)
 
 /* --- behaviour ---
- * ppu_timing:         0=Fast (fixed), 1=Accurate (dynamic)
  * sprite_sorting:     0=Fast, 1=Accurate
  * overclock:          0=Off, 1=x2, 2=x4
  * script_support:     0=Off, 1=On
  * disable_autolock:   0=Off, 1=On
  */
-PREF(ppu_timing, 1)
 PREF(sprite_sorting, 0)
 PREF(overclock, 0)
 PREF(script_support, !!(CB_App->bundled_rom))

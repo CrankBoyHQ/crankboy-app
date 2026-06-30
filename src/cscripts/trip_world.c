@@ -204,7 +204,6 @@ static void on_end(gb_s* gb, ScriptData* data)
 static const struct ScriptRecommendedSetting trip_recommended[] = {
     {PREFBIT_frame_skip, 2},
     {PREFBIT_blend_frames, 1},
-    {PREFBIT_ppu_timing, 0},
     RECOMMENDED_SETTINGS_END,
 };
 
