@@ -65,14 +65,12 @@ enum cgb_support_e
 
 /*
  * Defines the main stack size. This value provides a necessary safety
- * margin to prevent intermittent crashes. It was increased to 0x2700
- * initially to ensure stable CGB emulation.
+ * margin to prevent intermittent crashes.
  *
  * 0x2700 is the max we should use. 0x2760 is possible but leaves no
  * headroom if there are any changes to the Playdate OS in the future.
- * 0x2730 is currently used to avoid occasional DTCM crashes on RevA.
  */
-#define PLAYDATE_STACK_SIZE 0x2730
+#define PLAYDATE_STACK_SIZE 0x2700
 
 #define FPS_AVG_DECAY 0.8f
 

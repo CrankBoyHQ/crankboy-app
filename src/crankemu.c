@@ -49,7 +49,7 @@ static void ce_fe_get_buttons(PDButtons* o_down, PDButtons* o_pressed, PDButtons
 static const ce_frontend_settings_t* ce_fe_settings(void)
 {
     static ce_frontend_settings_t settings;
-    settings.itcm_allowed = (preferences_itcm >= 1);
+    settings.itcm_allowed = (preferences_itcm != 0);
     settings.turbo = (preferences_uncap_fps != 0);
     return &settings;
 }

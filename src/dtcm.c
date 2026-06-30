@@ -263,8 +263,6 @@ void dtcm_free(void* ptr)
     cb_free(original_ptr);
 }
 
-#ifdef DTCM_PROBE
-
 #define DTCM_PROBE_CANARY 0xD704BEEF
 #define DTCM_PROBE_CLEAN 0xA5A5A5A5
 #define DTCM_PROBE_STEP 256
@@ -375,5 +373,3 @@ __attribute__((optimize("O0"), noinline)) void dtcm_probe_lower_bound(void)
     if (dtcm_num_pockets == 0)
         playdate->system->logToConsole("DTCM probe: no clean pockets found");
 }
-
-#endif

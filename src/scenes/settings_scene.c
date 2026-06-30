@@ -954,11 +954,6 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
-#ifdef DTCM_PROBE
-static const char* tcm_labels[] = {"Off", "On", "Auto"};
-#else
-static const char* tcm_labels[] = {"Off", "On"};
-#endif
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "Brighter"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
@@ -2713,22 +2708,12 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     // itcm accel
     if (itcm_base_desc == NULL)
     {
-#ifdef DTCM_PROBE
-        playdate->system->formatString(
-            &itcm_base_desc,
-            "Improves performance by running the emulator core from the stack.\n\n"
-            "\"Auto\" probes free DTCM for best-fit placement (unstable).\n\n"
-            "Works with Rev A.\n(Your device: %s)",
-            pd_rev_description
-        );
-#else
         playdate->system->formatString(
             &itcm_base_desc,
             "Improves performance by running the emulator core from the stack.\n\n"
             "Works with Rev A.\n(Your device: %s)",
             pd_rev_description
         );
-#endif
     }
 
     if (itcm_restart_desc == NULL)
@@ -2740,13 +2725,9 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
 
     section[++i] = (OptionsMenuEntry){
         .name = "TCM Accel.",
-        .values = tcm_labels,
+        .values = off_on_labels,
         .pref_var = &preferences_itcm,
-#ifdef DTCM_PROBE
-        .max_value = 3,
-#else
         .max_value = 2,
-#endif
         .on_press = NULL
     };
 

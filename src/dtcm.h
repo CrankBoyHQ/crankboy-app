@@ -29,7 +29,6 @@ struct dtcm_store_t* dtcm_store(void);
 void dtcm_restore(struct dtcm_store_t*);
 
 // probe downward from dtcm_mempool_start to find lowest accessible DTCM address.
-// only available when DTCM_PROBE is defined.
 void dtcm_probe_lower_bound(void);
 
 // lowest accessible DTCM address found by dtcm_probe_lower_bound().
