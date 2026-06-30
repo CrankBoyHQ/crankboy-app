@@ -217,14 +217,6 @@ struct PGB_VERSIONED(audio_data)
     uint8_t* audio_mem;
     struct PGB_VERSIONED(chan) chans[4];
 
-    /* DIV-APU frame sequencer step (0-7). Clocked at 512 Hz by DIV bit 4
-     * falling edges. Gates envelope (step 7), sweep (2,6), length (0,2,4,6). */
-    uint8_t div_apu_step;
-
-    /* Set when APU powers on while DIV bit 4/5 is high. The first falling
-     * edge tick is skipped (hardware glitch). */
-    bool skip_next_apu_tick : 1;
-
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
     int32_t capacitor_r;

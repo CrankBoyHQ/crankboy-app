@@ -50,13 +50,6 @@ void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val);
 void audio_init(audio_data* audio);
 
 /**
- * Advance the DIV-APU frame sequencer by one step. Called by the CPU when the
- * DIV register's relevant bit falls (bit 4 on DMG / CGB normal-speed, bit 5
- * on CGB double-speed), which occurs at 512 Hz under normal operation.
- */
-__shell void audio_div_apu_tick(audio_data* audio);
-
-/**
  * Playdate audio callback function.
  */
 int audio_callback(void* context, int16_t* left, int16_t* right, int len);

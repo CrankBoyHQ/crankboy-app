@@ -2034,41 +2034,14 @@ done_instr_timing:
 #if PGB_IS_CGB
         if (cgb_fast)
         {
-            uint8_t old_div = gb->gb_reg.DIV;
-            uint8_t div_inc = gb->counter.div_count >> 7;
-            gb->gb_reg.DIV += div_inc;
+            gb->gb_reg.DIV += gb->counter.div_count >> 7;
             gb->counter.div_count &= 0x7F;
-
-            if (preferences_sound_mode == 2)
-            {
-                uint8_t check = old_div;
-                while (div_inc--)
-                {
-                    check++;
-                    if ((check & 0x20) == 0 && ((check - 1) & 0x20) != 0)
-                        audio_div_apu_tick(&gb->audio);
-                }
-            }
         }
         else
 #endif
         {
-            uint8_t old_div = gb->gb_reg.DIV;
-            uint8_t div_inc = gb->counter.div_count >> 8;
-            gb->gb_reg.DIV += div_inc;
+            gb->gb_reg.DIV += gb->counter.div_count >> 8;
             gb->counter.div_count &= 0xFF;
-
-            if (preferences_sound_mode == 2)
-            {
-                unsigned mask = 0x10u;
-                uint8_t check = old_div;
-                while (div_inc--)
-                {
-                    check++;
-                    if ((check & mask) == 0 && ((check - 1) & mask) != 0)
-                        audio_div_apu_tick(&gb->audio);
-                }
-            }
         }
     }
 
