@@ -2072,6 +2072,8 @@ done_instr_timing:
         }
     }
 
+    gb->counter.lcd_count += inst_cycles;
+
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
     {
         gb->counter.lcd_off_count += inst_cycles;
@@ -2079,185 +2081,198 @@ done_instr_timing:
         {
             gb->counter.lcd_off_count -= LCD_FRAME_CYCLES;
             gb->gb_frame = 1;
-            uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
-            uint32_t fill_word = (uint32_t)fill * 0x01010101u;
-            for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-                ((uint32_t*)gb->lcd)[i] = fill_word;
+            if (!gb->direct.frame_skip)
+            {
+                uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
+                uint32_t fill_word = (uint32_t)fill * 0x01010101u;
+                for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                    ((uint32_t*)gb->lcd)[i] = fill_word;
+            }
         }
     }
     else
     {
         /* LCD Timing */
-        gb->counter.lcd_count += inst_cycles;
-
-        switch (gb->lcd_mode)
+        bool ticked;
+        do
         {
-        // Mode 2: OAM Search (80 cycles)
-        // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current line.
-        case LCD_SEARCH_OAM:
-            if (gb->counter.lcd_count >= PPU_MODE_2_OAM_CYCLES)
+            ticked = false;
+            switch (gb->lcd_mode)
             {
-                gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
-                gb->lcd_mode = LCD_TRANSFER;
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
+            // Mode 2: OAM Search (80 cycles)
+            // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current line.
+            case LCD_SEARCH_OAM:
+                if (gb->counter.lcd_count >= PPU_MODE_2_OAM_CYCLES)
+                {
+                    gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
+                    gb->lcd_mode = LCD_TRANSFER;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
-                for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
-                    ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
-                gb->display.latched_scx = gb->gb_reg.SCX;
-                gb->display.latched_scy = gb->gb_reg.SCY;
+                    for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
+                        ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
+                    gb->display.latched_scx = gb->gb_reg.SCX;
+                    gb->display.latched_scy = gb->gb_reg.SCY;
 
-                uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
-                const uint8_t scx_mod8 = gb->display.latched_scx & 7;
+                    uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
+                    const uint8_t scx_mod8 = gb->display.latched_scx & 7;
 
-                mode3_cycles += scx_mod8;
+                    mode3_cycles += scx_mod8;
 
-                bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
-                                   (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->gb_reg.WY);
+                    bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
+                                       (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->gb_reg.WY);
 #if PGB_IS_DMG
-                win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
+                    win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
 #endif
-                if (win_visible)
-                {
-                    mode3_cycles += 6;
-                }
-
-                // PPU Timing: Fast (fixed) vs Accurate (dynamic)
-                // Fast mode uses average penalty, accurate checks each sprite
-                if (preferences_ppu_timing == 0)
-                {
-                    // Fast mode: fixed penalty assuming ~3 sprites per line
-                    // Average penalty per sprite is ~8 cycles
-                    mode3_cycles += 8 * 3;
-                }
-                else
-                {
-                    // Accurate mode: dynamic calculation per sprite
-                    uint8_t sprites_found = 0;
-                    const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-                    static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
-
-                    for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
+                    if (win_visible)
                     {
-                        const uint8_t y = gb->display.oam_latch[s * 4];
-                        const uint8_t x = gb->display.oam_latch[s * 4 + 1];
+                        mode3_cycles += 6;
+                    }
 
-                        // Check if sprite Y intersects current line
-                        if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
+                    // PPU Timing: Fast (fixed) vs Accurate (dynamic)
+                    // Fast mode uses average penalty, accurate checks each sprite
+                    if (preferences_ppu_timing == 0)
+                    {
+                        // Fast mode: fixed penalty assuming ~3 sprites per line
+                        // Average penalty per sprite is ~8 cycles
+                        mode3_cycles += 8 * 3;
+                    }
+                    else
+                    {
+                        // Accurate mode: dynamic calculation per sprite
+                        uint8_t sprites_found = 0;
+                        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+                        static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
+
+                        for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE;
+                             s++)
                         {
-                            // Exception: OAM X=0 always incurs the max 11-dot penalty
-                            if (x == 0)
+                            const uint8_t y = gb->display.oam_latch[s * 4];
+                            const uint8_t x = gb->display.oam_latch[s * 4 + 1];
+
+                            // Check if sprite Y intersects current line
+                            if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
                             {
-                                mode3_cycles += 11;
+                                // Exception: OAM X=0 always incurs the max 11-dot penalty
+                                if (x == 0)
+                                {
+                                    mode3_cycles += 11;
+                                }
+                                else
+                                {
+                                    const uint8_t alignment = (scx_mod8 + x) & 7;
+                                    mode3_cycles += sprite_penalty_lut[alignment];
+                                }
+                                sprites_found++;
                             }
-                            else
-                            {
-                                const uint8_t alignment = (scx_mod8 + x) & 7;
-                                mode3_cycles += sprite_penalty_lut[alignment];
-                            }
-                            sprites_found++;
                         }
                     }
+
+                    gb->display.current_mode3_cycles =
+                        MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
+                    gb->display.current_mode0_cycles =
+                        LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
+
+                    $(__gb_update_stat_irq)(gb);
+                    ticked = true;
                 }
+                break;
 
-                gb->display.current_mode3_cycles = MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
-                gb->display.current_mode0_cycles =
-                    LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
-
-                $(__gb_update_stat_irq)(gb);
-            }
-            break;
-
-        // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
-        case LCD_TRANSFER:
-            if (gb->counter.lcd_count >= gb->display.current_mode3_cycles)
-            {
-                gb->counter.lcd_count -= gb->display.current_mode3_cycles;
-
-                if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
+            // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
+            case LCD_TRANSFER:
+                if (gb->counter.lcd_count >= gb->display.current_mode3_cycles)
                 {
-                    $(__gb_draw_line)(gb);
-                }
+                    gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
-                gb->lcd_mode = LCD_HBLANK;
-                gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
-                $(__gb_update_stat_irq)(gb);
+                    if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
+                    {
+                        $(__gb_draw_line)(gb);
+                    }
+
+                    gb->lcd_mode = LCD_HBLANK;
+                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
+                    $(__gb_update_stat_irq)(gb);
 #if PGB_IS_CGB
-                if (gb->cgb_hdma_active)
-                    __gb_do_hdma(gb);
-#endif
-            }
-            break;
-
-        // Mode 0: H-Blank (remaining cycles of the 456 total)
-        // The PPU is idle until the end of the scanline.
-        case LCD_HBLANK:
-            if (gb->counter.lcd_count >= gb->display.current_mode0_cycles)
-            {
-                gb->counter.lcd_count -= gb->display.current_mode0_cycles;
-                gb->gb_reg.LY++;
-
-                if (gb->gb_reg.LY == LCD_HEIGHT)
-                {
-                    gb->lcd_mode = LCD_VBLANK;
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
-                    gb->gb_frame = 1;
-                    gb->gb_reg.IF |= VBLANK_INTR;
-
-#if PGB_IS_CGB
-                    // FIXME: is this correct?
-                    while (gb->cgb_hdma_active)
+                    if (gb->cgb_hdma_active)
                         __gb_do_hdma(gb);
 #endif
-                    $(__gb_update_stat_irq)(gb);
-
-                    $(__gb_update_lyc_and_stat_irq)(gb);
+                    ticked = true;
                 }
-                else
+                break;
+
+            // Mode 0: H-Blank (remaining cycles of the 456 total)
+            // The PPU is idle until the end of the scanline.
+            case LCD_HBLANK:
+                if (gb->counter.lcd_count >= gb->display.current_mode0_cycles)
                 {
-                    gb->lcd_mode = LCD_SEARCH_OAM;
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
-
-                    $(__gb_update_lyc_and_stat_irq)(gb);
-                }
-            }
-            break;
-
-        // Mode 1: V-Blank (10 lines, 4560 cycles total)
-        // The PPU is idle, giving the CPU time to update VRAM.
-        case LCD_VBLANK:
-            if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
-            {
-                gb->counter.lcd_count -= LCD_LINE_CYCLES;
-
-                if (gb->gb_reg.LY == 0)
-                {
-                    gb->lcd_mode = LCD_SEARCH_OAM;
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
-
-                    gb->display.window_clear = 0;
-
-                    $(__gb_update_lyc_and_stat_irq)(gb);
-                }
-                else
-                {
+                    gb->counter.lcd_count -= gb->display.current_mode0_cycles;
                     gb->gb_reg.LY++;
-                    $(__gb_update_lyc_and_stat_irq)(gb);
+
+                    if (gb->gb_reg.LY == LCD_HEIGHT)
+                    {
+                        gb->lcd_mode = LCD_VBLANK;
+                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
+                        gb->gb_frame = 1;
+                        gb->gb_reg.IF |= VBLANK_INTR;
+
+#if PGB_IS_CGB
+                        // FIXME: is this correct?
+                        while (gb->cgb_hdma_active)
+                            __gb_do_hdma(gb);
+#endif
+                        $(__gb_update_stat_irq)(gb);
+
+                        $(__gb_update_lyc_and_stat_irq)(gb);
+                    }
+                    else
+                    {
+                        gb->lcd_mode = LCD_SEARCH_OAM;
+                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                        $(__gb_update_lyc_and_stat_irq)(gb);
+                    }
+                    ticked = true;
                 }
+                break;
+
+            // Mode 1: V-Blank (10 lines, 4560 cycles total)
+            // The PPU is idle, giving the CPU time to update VRAM.
+            case LCD_VBLANK:
+                if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
+                {
+                    gb->counter.lcd_count -= LCD_LINE_CYCLES;
+
+                    if (gb->gb_reg.LY == 0)
+                    {
+                        gb->lcd_mode = LCD_SEARCH_OAM;
+                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                        gb->display.window_clear = 0;
+
+                        $(__gb_update_lyc_and_stat_irq)(gb);
+                    }
+                    else
+                    {
+                        gb->gb_reg.LY++;
+                        $(__gb_update_lyc_and_stat_irq)(gb);
+                    }
+                    ticked = true;
+                }
+                // "Short Line 153" Fix: during VBlank line 153, LY wraps to 0 very early
+                // (after just a few cycles), but the PPU remains in VBlank for the full
+                // line duration. Placed inside the case so the check only evaluates
+                // during VBlank steps, not every CPU step.
+                else if (gb->gb_reg.LY == 153)
+                {
+                    gb->gb_reg.LY = 0;
+                    $(__gb_update_lyc_and_stat_irq)(gb);
+                    ticked = true;
+                }
+                break;
             }
-            // "Short Line 153" Fix: during VBlank line 153, LY wraps to 0 very early
-            // (after just a few cycles), but the PPU remains in VBlank for the full
-            // line duration. Placed inside the case so the check only evaluates
-            // during VBlank steps, not every CPU step.
-            else if (gb->gb_reg.LY == 153)
-            {
-                gb->gb_reg.LY = 0;
-                $(__gb_update_lyc_and_stat_irq)(gb);
-            }
-            break;
-        }
+        } while (ticked);
     }
-}
     return inst_cycles;
+}
 }
 
 __core void $(gb_run_frame)(gb_s* gb)
