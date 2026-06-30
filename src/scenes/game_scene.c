@@ -2294,18 +2294,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
 
-                            bool scroll_changed =
-                                (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                                (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                                (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                                (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                            gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                            gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                            gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                            gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                            if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                            if (gameScene->adaptive_fs_perf_allowed &&
                                 !gameScene->adaptive_fs_probe_pending)
                             {
                                 memcpy(original_lcd, cb_frame_buffer[0], LCD_BUFFER_BYTES);
@@ -2363,20 +2352,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             bool run_second_frame = false;
                             if (preferences_frame_skip == 2)
                             {
-                                bool scroll_changed =
-                                    (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                                    (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                                    (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                                    (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                                gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                                gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                                gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                                gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                                run_second_frame =
-                                    (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                                    !gameScene->adaptive_fs_probe_pending;
+                                run_second_frame = gameScene->adaptive_fs_perf_allowed &&
+                                                   !gameScene->adaptive_fs_probe_pending;
                             }
                             else if (preferences_frame_skip == 1)
                             {
@@ -2511,18 +2488,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    bool scroll_changed =
-                        (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                        (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                        (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                        (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                    gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                    gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                    gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                    gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                    if ((scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
+                    if (gameScene->adaptive_fs_perf_allowed &&
                         !gameScene->adaptive_fs_probe_pending)
                     {
                         // Frame N+1 -> buffer[1]
@@ -2565,20 +2531,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     bool run_second_frame = false;
                     if (preferences_frame_skip == 2)
                     {
-                        bool scroll_changed =
-                            (context->gb->gb_reg.SCX != gameScene->adaptive_prev_scx) ||
-                            (context->gb->gb_reg.SCY != gameScene->adaptive_prev_scy) ||
-                            (context->gb->gb_reg.WX != gameScene->adaptive_prev_wx) ||
-                            (context->gb->gb_reg.BGP != gameScene->adaptive_prev_bgp);
-
-                        gameScene->adaptive_prev_scx = context->gb->gb_reg.SCX;
-                        gameScene->adaptive_prev_scy = context->gb->gb_reg.SCY;
-                        gameScene->adaptive_prev_wx = context->gb->gb_reg.WX;
-                        gameScene->adaptive_prev_bgp = context->gb->gb_reg.BGP;
-
-                        run_second_frame =
-                            (scroll_changed || gameScene->adaptive_fs_perf_allowed) &&
-                            !gameScene->adaptive_fs_probe_pending;
+                        run_second_frame = gameScene->adaptive_fs_perf_allowed &&
+                                           !gameScene->adaptive_fs_probe_pending;
                     }
                     else if (preferences_frame_skip == 1)
                     {

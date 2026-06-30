@@ -166,11 +166,6 @@ typedef struct CB_GameScene
     int interlace_slow_frames;
 
     // Adaptive frame_skip (preferences_frame_skip == 2)
-    uint8_t adaptive_prev_scx;
-    uint8_t adaptive_prev_scy;
-    uint8_t adaptive_prev_wx;
-    uint8_t adaptive_prev_bgp;
-
     int adaptive_fs_headroom_counter;
     int adaptive_fs_lock_frames;
     bool adaptive_fs_perf_allowed;
