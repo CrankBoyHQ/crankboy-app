@@ -108,17 +108,6 @@ UINCDIR += libs/pdnewlib
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
 UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays -DDTCM_PROBE=1
 
-# Tune __gb_step_cpu alignment (see link_map.ld header).
-#   make device                                  -> linker defaults (0x40 for both)
-#   make device STEP_DMG=0x200                   -> override DMG only
-#   make device STEP_DMG=0x040 STEP_CGB=0x200    -> different per mode
-ifdef STEP_DMG
-  LDFLAGS += -Wl,--defsym,ITCM_STEP_PAD_DMG=$(STEP_DMG)
-endif
-ifdef STEP_CGB
-  LDFLAGS += -Wl,--defsym,ITCM_STEP_PAD_CGB=$(STEP_CGB)
-endif
-
 # flags applied to simulator only
 SIMULATOR_FLAGS +=
 

@@ -1758,7 +1758,7 @@ dispatch:
 /**
  * Internal function used to step the CPU.
  */
-__core_section("step") unsigned int $(__gb_step_cpu)(gb_s* gb)
+__core unsigned int $(__gb_step_cpu)(gb_s* gb)
 {
     unsigned inst_cycles = 16;
 
