@@ -2434,9 +2434,21 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Behavior",
-        .header = 1,
-        .description = "PPU timing, sprite sorting, overclock, and script support."
+        .name = "Behavior", .header = 1, .description = "Rewind, overclock, and script support."
+    };
+
+    // Rewind
+    section[++i] = (OptionsMenuEntry){
+        .name = "Rewind",
+        .values = off_on_labels,
+        .description =
+            "DMG only. Rewind up to 10s of gameplay.\n\n"
+            "Hold B or Up while cranking to scrub. Dock crank to exit.\n\n"
+            "When enabled, Rewind becomes available as a Crank option and "
+            "in the Menu button quick-press action. Also available from "
+            "the PD menu (button).",
+        .pref_var = &preferences_rewind_enabled,
+        .max_value = 2,
     };
 
     // overclocking
@@ -2687,20 +2699,6 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
             "The options marked (W) fade from white.",
         .pref_var = &preferences_boot_fade,
         .max_value = 5,
-    };
-
-    // Rewind
-    section[++i] = (OptionsMenuEntry){
-        .name = "Rewind",
-        .values = off_on_labels,
-        .description =
-            "DMG only. Rewind up to 10s of gameplay.\n\n"
-            "Hold B or Up while cranking to scrub. Dock crank to exit.\n\n"
-            "When enabled, Rewind becomes available as a Crank option and "
-            "in the Menu button quick-press action. Also available from "
-            "the PD menu (button).",
-        .pref_var = &preferences_rewind_enabled,
-        .max_value = 2,
     };
 
     if (CB_App->bundled_rom)
