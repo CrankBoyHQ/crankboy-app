@@ -24,7 +24,7 @@ PREF(headphone_audio, 1)
  * dither_line:     0 = Off (used for scripting), 1 = Line 1, 2= Line 2, 3 = Line 3
  * dither_stable:   0=Off, 1=On
  */
-PREF(frame_skip, 2)
+PREF(frame_skip, 1)
 PREF(blend_frames, 0)
 PREF(dither_pattern, 0)
 PREF(dither_line, 2)
