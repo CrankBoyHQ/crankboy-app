@@ -175,6 +175,7 @@ struct PGB_VERSIONED(chan)
     unsigned sweep_up : 1;
     unsigned len_enabled : 1;
     unsigned sample_surpressed : 1;
+    unsigned env_pending : 1;
 
     uint8_t volume : 4;
     uint8_t volume_init : 4;
@@ -208,6 +209,12 @@ struct PGB_VERSIONED(chan)
     };
 
     int32_t envelope_smooth;
+
+    /* Accurate-mode frame sequencer dividers. Tick at 64 Hz (envelope) / 128 Hz
+     * (sweep). Loaded from env.step / sweep.rate on trigger, decremented at
+     * the corresponding DIV-APU step. When zero, tick and reload. */
+    uint8_t env_divider;
+    uint8_t sweep_divider;
 };
 
 struct PGB_VERSIONED(audio_data)
@@ -216,6 +223,14 @@ struct PGB_VERSIONED(audio_data)
     int vol_r : 4;
     uint8_t* audio_mem;
     struct PGB_VERSIONED(chan) chans[4];
+
+    /* DIV-APU frame sequencer step (0-7). Clocked at 512 Hz by DIV bit 4
+     * falling edges. Gates envelope (step 7), sweep (2,6), length (0,2,4,6). */
+    uint8_t div_apu_step;
+
+    /* Set when APU powers on while DIV bit 4/5 is high. The first falling
+     * edge tick is skipped (hardware glitch). */
+    bool skip_next_apu_tick : 1;
 
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
@@ -828,6 +843,7 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         size_t pre_sweep_sz = offsetof(typeof(v4_gb->audio.chans[0]), sweep);
         memcpy(&v5_gb->audio.chans[ch], &v4_gb->audio.chans[ch], pre_sweep_sz);
         v5_gb->audio.chans[ch].sample_surpressed = false;
+        v5_gb->audio.chans[ch].env_pending = false;
         v5_gb->audio.chans[ch].env.locked = false;
 
         // Sweep struct fields individually (did_subtract is new)

@@ -108,8 +108,155 @@ static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enab
     audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] = val;
 }
 
+__shell void audio_div_apu_tick(audio_data* audio)
+{
+    if (audio->skip_next_apu_tick)
+    {
+        audio->skip_next_apu_tick = false;
+        return;
+    }
+
+    uint8_t step = (audio->div_apu_step + 1) & 7;
+    audio->div_apu_step = step;
+
+    if (preferences_sound_mode != 2)
+        return;
+
+    chan* chans = audio->chans;
+
+    /* Length timer: 256 Hz (steps 0, 2, 4, 6). */
+    if ((step & 1) == 0)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            chan* c = chans + i;
+            if (!c->enabled || !c->len_enabled)
+                continue;
+            uint16_t remaining = (uint16_t)(c->len.inc >> 16);
+            if (remaining == 0)
+                continue;
+            remaining--;
+            c->len.inc = (c->len.inc & 0xFFFF) | ((uint32_t)remaining << 16);
+            if (remaining == 0)
+                chan_enable(audio, i, 0);
+        }
+    }
+
+    /* Sweep: 128 Hz (steps 2, 6). Channel 1 only.
+     * Timer runs when enabled flag is set (pace != 0 || shift != 0).
+     * Period 0 is treated as 8 per hardware. */
+    if (step == 2 || step == 6)
+    {
+        chan* c = chans + 0;
+        if (c->enabled && (c->sweep.rate != 0 || c->sweep.shift != 0))
+        {
+            c->sweep_divider--;
+            if (c->sweep_divider == 0)
+            {
+                uint8_t sweep_period = c->sweep.rate ? c->sweep.rate : 8;
+                c->sweep_divider = sweep_period;
+
+                if (c->sweep.rate != 0 && c->sweep.shift > 0)
+                {
+                    uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
+                    if (!c->sweep_up)
+                    {
+                        new_freq = c->sweep.freq - new_freq;
+                        c->sweep.did_subtract = true;
+                    }
+                    else
+                        new_freq = c->sweep.freq + new_freq;
+
+                    if (new_freq > 2047)
+                    {
+                        c->enabled = 0;
+                        goto sweep_done;
+                    }
+
+                    c->freq = new_freq;
+                    c->sweep.freq = new_freq;
+
+                    /* Pandocs: double calculation for overflow check. */
+                    uint16_t second = c->sweep.freq >> c->sweep.shift;
+                    if (!c->sweep_up)
+                    {
+                        second = c->sweep.freq - second;
+                        c->sweep.did_subtract = true;
+                    }
+                    else
+                        second = c->sweep.freq + second;
+
+                    if (second > 2047)
+                        c->enabled = 0;
+                }
+            }
+        }
+    sweep_done:;
+    }
+
+    /* Process pending envelope ticks from previous step-7 events.
+     * Hardware delays volume change by ~1/2 DIV-APU cycle via
+     * the secondary event (rising edge) after countdown hits 0. */
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == 2)
+                continue;
+            chan* c = chans + i;
+            if (!c->enabled || !c->env_pending)
+                continue;
+            c->env_pending = false;
+
+            if (c->env.locked)
+                continue;
+
+            c->volume += c->env.up ? 1 : -1;
+            if (c->volume == 0 || c->volume == MAX_CHAN_VOLUME)
+                c->env.locked = true;
+#if TARGET_PLAYDATE
+            int vol = c->volume;
+            asm volatile("usat %0, #4, %0" : "+r"(vol));
+            c->volume = vol;
+#else
+            c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
+#endif
+        }
+    }
+
+    /* Envelope: 64 Hz (step 7). Decrement divider; when zero,
+     * set pending (volume changes on next tick). */
+    if (step == 7)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == 2)
+                continue;
+            chan* c = chans + i;
+            if (!c->enabled || c->env.step == 0 || c->env.locked)
+                continue;
+
+            c->env_divider--;
+            if (c->env_divider == 0)
+            {
+                c->env_divider = c->env.step;
+                c->env_pending = true;
+            }
+        }
+    }
+}
+
+/* No-op: frame sequencer ticks are processed on the CPU thread
+ * via audio_div_apu_tick(). Audio thread only reads channel state. */
+static void flush_apu_ticks(audio_data* audio)
+{
+    (void)audio;
+}
+
 __audio static void update_env(chan* c, int sample_rate)
 {
+    if (preferences_sound_mode == 2)
+        return;
+
     c->env.counter += c->env.inc;
 
     while (c->env.counter > sample_rate)
@@ -219,6 +366,18 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
     if (!c->len_enabled || c->len.inc == 0)
         return len;
 
+    if (preferences_sound_mode == 2)
+    {
+        int remaining = (int)(c->len.inc >> 16);
+        if (remaining == 0)
+            return 0;
+        int sample_rate = get_audio_sample_rate();
+        int max_len = (remaining * sample_rate + 255) / 256;
+        if (max_len < len)
+            return max_len;
+        return len;
+    }
+
     int tick_rate = (int)(c->len.inc & 0xFFFF);
     int ticks_needed = (int)(c->len.inc >> 16);
 
@@ -282,6 +441,9 @@ __audio static void update_sweep(chan* c, int sample_rate)
     {
         return;
     }
+
+    if (preferences_sound_mode == 2)
+        return;
 
     c->sweep.counter += c->sweep.inc;
 
@@ -751,6 +913,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
     // DMG wave RAM corruption on retrigger: must capture before chan_enable.
     bool wave_was_active = (i == 2) && c->enabled;
+    bool was_enabled = c->enabled;
 
     // Digital-zero surpression on first start only (not re-trigger).
     // Must check c->enabled before chan_enable sets it to 1.
@@ -767,9 +930,18 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->env.step = val & 0x07;
         c->env.up = val & 0x08 ? 1 : 0;
         c->env.inc = c->env.step ? 64ul / (uint32_t)c->env.step : 8ul;
-        c->env.counter = 0;
         c->env.locked = false;
+        c->env_pending = false;
         c->freq_counter = 0;
+
+        if (preferences_sound_mode == 2 && c->env.step > 0)
+        {
+            c->env_divider = c->env.step;
+        }
+        else
+        {
+            c->env.counter = 0;
+        }
     }
 
     // freq sweep
@@ -800,6 +972,11 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.counter = 0;
         c->sweep.did_subtract = false;
+
+        if (preferences_sound_mode == 2 && (c->sweep.rate > 0 || c->sweep.shift > 0))
+        {
+            c->sweep_divider = c->sweep.rate ? c->sweep.rate : 8;
+        }
     }
 
     int len_max = 64;
@@ -839,8 +1016,26 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     if (preferences_sound_mode == 2)
         c->envelope_smooth = (int32_t)c->volume << 8;
 
-    c->len.inc = 256 | ((uint32_t)(len_max - c->len.load) << 16);
-    c->len.counter = 0;
+    // Accurate mode: only reload length if channel was disabled (length had expired).
+    // Hardware: trigger resets length only when the counter has already hit zero.
+    // Fast mode: always reload length for simplicity.
+    if (preferences_sound_mode != 2 || !was_enabled)
+    {
+        int load = len_max - c->len.load;
+
+        if (preferences_sound_mode == 2)
+        {
+            uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+            bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
+
+            // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
+            if (next_doesnt_clock_len && c->len_enabled && load == len_max)
+                load = len_max - 1;
+        }
+
+        c->len.inc = 256 | ((uint32_t)load << 16);
+        c->len.counter = 0;
+    }
 }
 
 /**
@@ -945,6 +1140,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
     if (addr == 0xFF26)
     {
+        bool was_on = (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] & 0x80) != 0;
         audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val & 0x80;
         /* On APU power off, clear all registers apart from wave RAM. */
         if ((val & 0x80) == 0)
@@ -955,6 +1151,15 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
             chans[2].enabled = false;
             chans[2].wave.sample = 0;
             chans[3].enabled = false;
+            audio->div_apu_step = 0;
+            audio->skip_next_apu_tick = false;
+        }
+        else if (!was_on)
+        {
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            uint8_t mask = gb->cgb_fast_mode_active ? 0x20 : 0x10;
+            if (gb->gb_reg.DIV & mask)
+                audio->skip_next_apu_tick = true;
         }
         return;
     }
@@ -1002,17 +1207,19 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
     {
         bool old_sweep_up = chans[0].sweep_up;
 
-        chans[0].sweep.rate = (val >> 4) & 0x07;
+        uint8_t new_rate = (val >> 4) & 0x07;
         chans[0].sweep_up = !(val & 0x08);
         chans[0].sweep.shift = val & 0x07;
 
-        if (chans[0].sweep.rate == 0)
+        if (new_rate == 0)
         {
+            chans[0].sweep.rate = 0;
             chans[0].sweep.inc = 0;
         }
         else
         {
-            chans[0].sweep.inc = 128 / chans[0].sweep.rate;
+            chans[0].sweep.rate = new_rate;
+            chans[0].sweep.inc = preferences_sound_mode == 2 ? 0 : 128 / new_rate;
         }
 
         if (chans[0].sweep_up && chans[0].sweep.shift > 0)
@@ -1025,6 +1232,15 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         if (old_sweep_up == false && chans[0].sweep_up == true && chans[0].sweep.did_subtract)
         {
             chan_enable(audio, 0, false);
+        }
+
+        /* Reload sweep divider when NR10 is written mid-playback.
+         * Hardware: timer period 0 is treated as 8. */
+        if (preferences_sound_mode == 2 && chans[0].enabled)
+        {
+            uint8_t pace = chans[0].sweep.rate;
+            if (pace != 0 || chans[0].sweep.shift != 0)
+                chans[0].sweep_divider = pace ? pace : 8;
         }
     }
     break;
@@ -1057,6 +1273,12 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         chans[i].env.step = val & 0x07;
         chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
         chans[i].env.counter = 0;
+
+        /* Reload envelope divider when NRx2 is written mid-playback. */
+        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env.step > 0)
+        {
+            chans[i].env_divider = chans[i].env.step;
+        }
     }
     break;
 
@@ -1100,10 +1322,32 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         chans[i].freq |= ((val & 0x07) << 8);
         /* Intentional fall-through. */
     case 0xFF23:
+    {
+        bool old_len_enabled = chans[i].len_enabled;
         chans[i].len_enabled = val & 0x40 ? 1 : 0;
-        if (val & 0x80)
+        bool trigger = val & 0x80;
+
+        if (preferences_sound_mode == 2)
+        {
+            uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+            bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
+
+            if (next_doesnt_clock_len && !old_len_enabled && chans[i].len_enabled)
+            {
+                int remaining = (int)(chans[i].len.inc >> 16);
+                if (remaining > 0)
+                {
+                    chans[i].len.inc -= (1 << 16);
+                    if (((chans[i].len.inc >> 16) == 0) && !trigger)
+                        chan_enable(audio, i, 0);
+                }
+            }
+        }
+
+        if (trigger)
             chan_trigger(audio, i);
-        break;
+    }
+    break;
 
     case 0xFF22:
         chans[3].freq = val >> 4;
@@ -1142,6 +1386,8 @@ void audio_init(audio_data* audio)
     audio->capacitor_l = 0.0f;
     audio->capacitor_r = 0.0f;
 #endif
+    audio->div_apu_step = 0;
+    audio->skip_next_apu_tick = false;
 
     // NRx4 registers ($FF14/$FF19/$FF1E/$FF23) are set to $3F instead of the Pan Docs
     // post-boot-rom value $BF. The difference is bit 7 (channel trigger): the real boot
@@ -1507,6 +1753,8 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         int16_t* left_ptr = left;
         int16_t* right_ptr = gameScene->is_stereo ? right : left;
         int remaining_len = len;
+
+        flush_apu_ticks(audio);
 
         while (remaining_len > 0)
         {
