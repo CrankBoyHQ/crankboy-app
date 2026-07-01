@@ -161,7 +161,7 @@ __shell void audio_div_apu_tick(audio_data* audio)
                     uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
                     if (!c->sweep_up)
                     {
-                        new_freq = c->sweep.freq - new_freq;
+                        new_freq = c->sweep.freq - new_freq + 1;
                         c->sweep.did_subtract = true;
                     }
                     else
@@ -194,9 +194,31 @@ __shell void audio_div_apu_tick(audio_data* audio)
     sweep_done:;
     }
 
-    /* Process pending envelope ticks from previous step-7 events.
-     * Hardware delays volume change by ~1/2 DIV-APU cycle via
-     * the secondary event (rising edge) after countdown hits 0. */
+    // Process pending envelope ticks from previous step-7 events.
+    // Hardware delays volume change by ~1/2 DIV-APU cycle via
+    // the secondary event (rising edge) after countdown hits 0.
+    if (step == 7)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == 2)
+                continue;
+            chan* c = chans + i;
+            if (!c->enabled || c->env.step == 0 || c->env.locked)
+                continue;
+
+            c->env_divider--;
+            if (c->env_divider == 0)
+            {
+                c->env_divider = c->env.step;
+                c->env_pending = true;
+            }
+        }
+    }
+
+    // Process pending envelope ticks from previous step-7 events.
+    // Hardware delays volume change by ~1/2 DIV-APU cycle via
+    // the secondary event (rising edge) after countdown hits 0.
     {
         for (int i = 0; i < 4; i++)
         {
@@ -220,27 +242,6 @@ __shell void audio_div_apu_tick(audio_data* audio)
 #else
             c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
 #endif
-        }
-    }
-
-    /* Envelope: 64 Hz (step 7). Decrement divider; when zero,
-     * set pending (volume changes on next tick). */
-    if (step == 7)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (i == 2)
-                continue;
-            chan* c = chans + i;
-            if (!c->enabled || c->env.step == 0 || c->env.locked)
-                continue;
-
-            c->env_divider--;
-            if (c->env_divider == 0)
-            {
-                c->env_divider = c->env.step;
-                c->env_pending = true;
-            }
         }
     }
 }
@@ -333,7 +334,7 @@ __audio static bool calculate_new_sweep_freq(chan* c)
 
     if (!c->sweep_up)
     {
-        new_freq = c->sweep.freq - new_freq;
+        new_freq = c->sweep.freq - new_freq + 1;
         if (c->sweep.shift > 0)
             c->sweep.did_subtract = true;
     }
@@ -454,7 +455,7 @@ __audio static void update_sweep(chan* c, int sample_rate)
         uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
         if (!c->sweep_up)
         {
-            new_freq = c->sweep.freq - new_freq;
+            new_freq = c->sweep.freq - new_freq + 1;
             if (c->sweep.shift > 0)
                 c->sweep.did_subtract = true;
         }
@@ -1016,10 +1017,14 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     if (preferences_sound_mode == 2)
         c->envelope_smooth = (int32_t)c->volume << 8;
 
-    // Accurate mode: only reload length if channel was disabled (length had expired).
-    // Hardware: trigger resets length only when the counter has already hit zero.
+    // Accurate mode: only reload length if the counter has already hit zero.
+    // Hardware: trigger resets the length timer only when it expired.
+    // The obscure length clocking in NRx4 writes can decrement the counter
+    // to 0 without disabling the channel (when trigger is also set), so
+    // check the remaining count directly, not just the enabled flag.
     // Fast mode: always reload length for simplicity.
-    if (preferences_sound_mode != 2 || !was_enabled)
+    bool len_expired = ((c->len.inc >> 16) == 0);
+    if (preferences_sound_mode != 2 || !was_enabled || len_expired)
     {
         int load = len_max - c->len.load;
 
@@ -1274,8 +1279,10 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
         chans[i].env.counter = 0;
 
-        /* Reload envelope divider when NRx2 is written mid-playback. */
-        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env.step > 0)
+        // Reload envelope divider when NRx2 is written mid-playback,
+        // but only while the envelope clock is active (env_pending set).
+        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env_pending &&
+            chans[i].env.step > 0)
         {
             chans[i].env_divider = chans[i].env.step;
         }
