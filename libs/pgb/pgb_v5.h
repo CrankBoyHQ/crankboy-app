@@ -751,20 +751,52 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     StateHeader* v5_header = (StateHeader*)v5_org;
     struct gb_s_v5* v5_gb = (struct gb_s_v5*)(v5_org + sizeof(StateHeader));
 
-    // Copy v4→v5: layout identical except sweep.did_subtract added to each channel.
+    // Copy v4->v5: layout identical except sweep.did_subtract added to each channel.
     // The sweep struct growth per channel cascades through the chan array, so we
     // copy each channel's fields individually around the sweep struct.
 
-    // Copy all gb_s fields before audio_data (same layout in v4/v5)
+    // Region 1: everything from gb_rom through lcd_alt - identical layout in v4/v5
+    set_fields(v5_gb, v4_gb, gb_rom, lcd_alt);
+
+    // display struct - v5 appends oam_latch + latched_scx + latched_scy at end.
+    // Existing fields are at same offsets; copy only what v4 had, rest stays zero.
+    memcpy(&v5_gb->display, &v4_gb->display, sizeof(v4_gb->display));
+
+    // direct struct - v4 had dynamic_rate_enabled and interlace_mask, removed in v5.
+    // Copy bitfields individually so compiler handles bit-shift of remaining fields.
     {
-        size_t sz = offsetof(typeof(*v4_gb), audio);
-        memcpy(v5_gb, v4_gb, sz);
+        v5_gb->direct.frame_skip = v4_gb->direct.frame_skip;
+        v5_gb->direct.sound = v4_gb->direct.sound;
+        v5_gb->direct.sram_updated = v4_gb->direct.sram_updated;
+        v5_gb->direct.sram_dirty = v4_gb->direct.sram_dirty;
+        v5_gb->direct.crank_docked = v4_gb->direct.crank_docked;
+        v5_gb->direct.enable_xram = v4_gb->direct.enable_xram;
+        v5_gb->direct.ignore_cgb_check = v4_gb->direct.ignore_cgb_check;
+        v5_gb->direct.stat_line = v4_gb->direct.stat_line;
+        v5_gb->direct.has_read_accelerometer_this_frame =
+            v4_gb->direct.has_read_accelerometer_this_frame;
+        v5_gb->direct.cgb_dual_output = v4_gb->direct.cgb_dual_output;
+        v5_gb->direct.joypad_interrupt_delay = v4_gb->direct.joypad_interrupt_delay;
+        v5_gb->direct.ext_crank_menu_indexing = v4_gb->direct.ext_crank_menu_indexing;
+
+        // interlace_mask removed - skip; copy remaining fields via pointer offsets
+        {
+            size_t v4_tail_off = (uintptr_t)&v4_gb->direct.joypad - (uintptr_t)&v4_gb->direct;
+            size_t v5_tail_off = (uintptr_t)&v5_gb->direct.joypad - (uintptr_t)&v5_gb->direct;
+            size_t tail_sz = sizeof(v4_gb->direct) - v4_tail_off;
+            memcpy(
+                (char*)&v5_gb->direct + v5_tail_off, (char*)&v4_gb->direct + v4_tail_off, tail_sz
+            );
+        }
     }
 
-    // audio.vol_l and audio.vol_r are bitfields — copy individually
+    // Region 3: gb_cart_ram_size through zero32 - identical relative layout
+    set_fields(v5_gb, v4_gb, gb_cart_ram_size, zero32);
+
+    // audio.vol_l and audio.vol_r are bitfields - copy individually
     v5_gb->audio.vol_l = v4_gb->audio.vol_l;
     v5_gb->audio.vol_r = v4_gb->audio.vol_r;
-    // audio.audio_mem is a pointer — skip, restored by state_load
+    // audio.audio_mem is a pointer - skip, restored by state_load
 
     // Per-channel copy: memcpy fields before sweep (same layout), then
     // sweep fields individually, then fields after sweep (same layout)
@@ -783,16 +815,11 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         v5_gb->audio.chans[ch].sweep.counter = v4_gb->audio.chans[ch].sweep.counter;
         v5_gb->audio.chans[ch].sweep.inc = v4_gb->audio.chans[ch].sweep.inc;
 
-        // Fields after sweep: union (square/noise/wave) — same layout, different anonymous types
+        // Copy union as raw bytes (noise is largest member).
         memcpy(
             &v5_gb->audio.chans[ch].noise, &v4_gb->audio.chans[ch].noise,
             sizeof(v4_gb->audio.chans[ch].noise)
         );
-        memcpy(
-            &v5_gb->audio.chans[ch].wave, &v4_gb->audio.chans[ch].wave,
-            sizeof(v4_gb->audio.chans[ch].wave)
-        );
-        v5_gb->audio.chans[ch].wave.just_read = false;
 
         v5_gb->audio.chans[ch].envelope_smooth = (int32_t)v5_gb->audio.chans[ch].volume << 8;
     }
@@ -800,12 +827,6 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     // audio fields after chans: capacitor_l, capacitor_r
     v5_gb->audio.capacitor_l = v4_gb->audio.capacitor_l;
     v5_gb->audio.capacitor_r = v4_gb->audio.capacitor_r;
-
-    // Copy block 3: everything after audio to end of gb_s
-    size_t after_audio_v4 = offsetof(typeof(*v4_gb), audio) + sizeof(v4_gb->audio);
-    size_t after_audio_v5 = offsetof(typeof(*v5_gb), audio) + sizeof(v5_gb->audio);
-    size_t tail_sz = sizeof(*v4_gb) - after_audio_v4;
-    memcpy((char*)v5_gb + after_audio_v5, (char*)v4_gb + after_audio_v4, tail_sz);
 
     // Copy header and extra data
     memcpy(v5_header, v4_header, sizeof(StateHeader));
