@@ -308,7 +308,10 @@ static PDMenuItem* frameSkipMenuItem;
 static PDMenuItem* buttonMenuItem = NULL;
 
 static const char* buttonMenuOptions[] = {
-    "Select", "None", "Start", "Both", "Rewind",
+    "Select",
+    "None",
+    "Start",
+    "Both",
 };
 
 static const char* quitGameOptions[] = {"No", "Yes", NULL};
@@ -469,7 +472,7 @@ static void rewind_free(CB_GameScene* gameScene);
 static void rewind_record_state(CB_GameScene* gameScene);
 static void rewind_step_back(CB_GameScene* gameScene);
 static void rewind_step_forward(CB_GameScene* gameScene);
-static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank);
+static void rewind_enter_scrubbing(CB_GameScene* gameScene);
 static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
 static void rewind_dmg_save(gb_s* gb, uint8_t* out);
@@ -1528,10 +1531,7 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
             gameScene->crank_turbo_accumulator += 45.0f;
         }
     }
-    else if (
-        (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled) ||
-        gameScene->rewind.active
-    )
+    else if (gameScene->rewind.active)
     {
         PDButtons held;
         playdate->system->getButtonState(&held, NULL, NULL);
@@ -1599,8 +1599,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     setCrankSoundsEnabled(
         !preferences_crank_dock_button && !preferences_crank_undock_button &&
-        preferences_crank_mode != CRANK_MODE_START_SELECT &&
-        preferences_crank_mode != CRANK_MODE_REWIND
+        preferences_crank_mode != CRANK_MODE_START_SELECT
     );
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -1698,8 +1697,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     bool crank_docked = playdate->system->isCrankDocked();
 
+    // Undock + B/Up = enter rewind (universal, bypasses scripts/settings)
+    if (gameScene->crank_was_docked && !crank_docked && preferences_rewind_enabled &&
+        !gameScene->rewind.active)
+    {
+        PDButtons held;
+        playdate->system->getButtonState(&held, NULL, NULL);
+        if (held & (kButtonB | kButtonUp))
+            rewind_enter_scrubbing(gameScene);
+    }
+
     if (preferences_crank_undock_button && gameScene->crank_was_docked && !crank_docked &&
-        preferences_crank_mode != CRANK_MODE_REWIND)
+        !gameScene->rewind.active)
     {
         if (preferences_crank_undock_button == PREF_BUTTON_START)
             gameScene->button_hold_mode = 2;
@@ -1710,7 +1719,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->button_hold_frames_remaining = 10;
     }
     if (preferences_crank_dock_button && !gameScene->crank_was_docked && crank_docked &&
-        preferences_crank_mode != CRANK_MODE_REWIND)
+        !gameScene->rewind.active)
     {
         if (preferences_crank_dock_button == PREF_BUTTON_START)
             gameScene->button_hold_mode = 2;
@@ -1719,16 +1728,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         else if (preferences_crank_dock_button == PREF_BUTTON_START_SELECT)
             gameScene->button_hold_mode = 3;
         gameScene->button_hold_frames_remaining = 10;
-    }
-
-    // Undock + B/Up = enter rewind (universal, bypasses scripts/settings)
-    if (gameScene->crank_was_docked && !crank_docked && preferences_rewind_enabled &&
-        !gameScene->rewind.active)
-    {
-        PDButtons held;
-        playdate->system->getButtonState(&held, NULL, NULL);
-        if (held & (kButtonB | kButtonUp))
-            rewind_enter_scrubbing(gameScene, false);
     }
 
     bool was_docked = gameScene->crank_was_docked;
@@ -1742,10 +1741,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     if (!crank_docked)
     {
-        if (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled)
-        {
-            rewind_enter_scrubbing(gameScene, true);
-        }
         crank_update(gameScene, &progress);
     }
     else
@@ -1809,12 +1804,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     }
 
     gameScene->selector.index = selectorIndex;
-
-    if (preferences_crank_mode == CRANK_MODE_REWIND && !preferences_rewind_enabled)
-    {
-        preferences_crank_mode = CRANK_MODE_OFF;
-        rewind_free(gameScene);
-    }
 
     gbScreenRequiresFullRefresh = false;
     if (gameScene->model.empty || gameScene->model.state != gameScene->state ||
@@ -2017,12 +2006,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->next_frames_elapsed = 0;
 
         if (gameScene->rewind.active && !preferences_rewind_enabled)
-        {
-            rewind_exit_scrubbing(gameScene);
-        }
-
-        if (gameScene->rewind.active && gameScene->rewind.entered_via_crank &&
-            preferences_crank_mode != CRANK_MODE_REWIND)
         {
             rewind_exit_scrubbing(gameScene);
         }
@@ -2976,15 +2959,7 @@ __section__(".rare") void CB_GameScene_buttonMenuCallback(void* userdata)
     {
         int selected_option = playdate->system->getMenuItemValue(buttonMenuItem);
 
-        if (selected_option == 4)
-        {
-            if (gameScene->rewind.active)
-                rewind_exit_scrubbing(gameScene);
-            else
-                rewind_enter_scrubbing(gameScene, false);
-            playdate->system->setMenuItemValue(buttonMenuItem, 1);
-        }
-        else if (selected_option != 1)
+        if (selected_option != 1)
         {
             gameScene->button_hold_mode = selected_option;
             gameScene->button_hold_frames_remaining = 15;
@@ -3040,8 +3015,7 @@ static void CB_GameScene_menu(void* object)
         !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
         buttonMenuItem = playdate->system->addOptionsMenuItem(
-            "Button", buttonMenuOptions, preferences_rewind_enabled ? 5 : 4,
-            CB_GameScene_buttonMenuCallback, gameScene
+            "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
         );
         playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
     }
@@ -3900,15 +3874,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
                     gameScene->button_hold_mode = 3;
                     gameScene->button_hold_frames_remaining = 15;
                 }
-                else if (
-                    preferences_menu_button == PREF_BUTTON_REWIND && preferences_rewind_enabled
-                )
-                {
-                    if (gameScene->rewind.active)
-                        rewind_exit_scrubbing(gameScene);
-                    else
-                        rewind_enter_scrubbing(gameScene, false);
-                }
             }
         }
         if (gameScene->audioEnabled)
@@ -4021,7 +3986,6 @@ static void rewind_init(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
-    gameScene->rewind.entered_via_crank = false;
 }
 
 static void rewind_free(CB_GameScene* gameScene)
@@ -4044,7 +4008,6 @@ static void rewind_free(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
-    gameScene->rewind.entered_via_crank = false;
     gameScene->rewind.state_size = 0;
 }
 
@@ -4100,7 +4063,7 @@ static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target)
     gb->lcd = lcd_target;
 }
 
-static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
+static void rewind_enter_scrubbing(CB_GameScene* gameScene)
 {
     if (!gameScene->rewind.states || gameScene->rewind.count == 0)
         return;
@@ -4114,7 +4077,6 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
     gameScene->rewind.read_idx = newest;
     gameScene->rewind.active = true;
     gameScene->rewind.scrub_accumulator = 0.0f;
-    gameScene->rewind.entered_via_crank = via_crank;
 
     uint8_t* buf = gameScene->rewind.states[newest];
     rewind_dmg_load(context->gb, buf, lcd_sources[0]);
@@ -4185,7 +4147,6 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.active = false;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.noise_pending = false;
-    gameScene->rewind.entered_via_crank = false;
 
     if (preferences_audio_sync == 1)
         CB_reset_audio_sync_state();

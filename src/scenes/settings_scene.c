@@ -959,15 +959,13 @@ static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
-static const char* menu_button_labels[] = {"None", "Start", "Select", "Start+Select", "Rewind"};
+static const char* menu_button_labels[] = {"None", "Start", "Select", "Start+Select"};
 static const char* gb_button_labels_hp[] = {
     "Default",   "Start",          "Select",  "Start+Select", "Start+A",
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
     "Start+A+B", "Select+A+B",     "All"
 };
-static const char* crank_mode_labels[] = {
-    "Start/Select", "Turbo A/B", "Turbo B/A", "None", "Rewind"
-};
+static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
 static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
@@ -2130,7 +2128,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         .description =
             "Due to the 3:5 ratio between the GB's and Playdate's vertical resolutions, 1 in every "
             "3 scanlines must be vertically squished.\n\n"
-            "This means there are three choices for which lines are to be the ones to squish.\n\n"
+            "This means there are three choices for which lines are to be the ones to squish."
             "If text is uneven, try adjusting this.",
         .pref_var = &preferences_dither_line,
         .max_value = 3,
@@ -2183,7 +2181,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .name = "Crank",
         .values = crank_mode_labels,
         .pref_var = &preferences_crank_mode,
-        .max_value = preferences_rewind_enabled ? 5 : 4,
+        .max_value = 4,
         .rebuild_when_changed = 1,
         .on_press = NULL
     };
@@ -2214,12 +2212,6 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
             "Assign a function to the crank.\n\n"
             "Currently: no function.";
         break;
-    case CRANK_MODE_REWIND:
-        section[i].description =
-            "Rewind mode.\n\n"
-            "Undock crank to start Rewind. Hold B or Up while turning the crank to scrub. Dock "
-            "crank to resume.";
-        break;
     }
 
     // crank down action
@@ -2249,13 +2241,12 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     }
 
     // undock
-    unsigned dock_undock_max = (preferences_crank_mode == CRANK_MODE_REWIND) ? 0 : 4;
     section[++i] = (OptionsMenuEntry){
         .name = "Undock",
         .values = gb_button_labels,
         .description = "Assign a button input for undocking the crank.\n\n",
         .pref_var = &preferences_crank_undock_button,
-        .max_value = dock_undock_max,
+        .max_value = 4,
         .on_press = NULL
     };
 
@@ -2265,7 +2256,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .values = gb_button_labels,
         .description = "Assign a button input for docking the crank.\n\n",
         .pref_var = &preferences_crank_dock_button,
-        .max_value = dock_undock_max,
+        .max_value = 4,
         .on_press = NULL
     };
 
@@ -2314,7 +2305,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
             "Quickly open and close the system menu to trigger a button press.\n\n"
             "Open and close within 1 second to activate.",
         .pref_var = &preferences_menu_button,
-        .max_value = preferences_rewind_enabled ? 5 : 4,
+        .max_value = 4,
     };
 
     // lock button override.
@@ -2437,11 +2428,11 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .name = "Rewind",
         .values = off_on_labels,
         .description =
-            "DMG only. Rewind up to 10s of gameplay.\n\n"
-            "Hold B or Up while cranking to scrub. Dock crank to exit.\n\n"
-            "When enabled, Rewind becomes available as a Crank option and "
-            "in the Menu button quick-press action. Also available from "
-            "the PD menu (button).",
+            "Rewind up to 10 seconds of gameplay.\n\n"
+            "Hold B or Up and undock the crank to enter rewind.\n\n"
+            "Hold B or Up while cranking to scrub.\n\n"
+            "Release B or Up then dock the crank to exit.\n\n"
+            "DMG only.",
         .pref_var = &preferences_rewind_enabled,
         .max_value = 2,
     };

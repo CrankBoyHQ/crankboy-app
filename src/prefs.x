@@ -31,7 +31,7 @@ PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))
 
 /* --- input ---
- * crank_mode:           0=Start/Select, 1=Turbo A/B, 2=Turbo B/A, 3=None, 4=Rewind
+ * crank_mode:           0=Start/Select, 1=Turbo A/B, 2=Turbo B/A, 3=None
  * crank_down_action:    0=None, 1=Select+Start
  * crank_undock_button:  0=None, 1=Start, 2=Select, 3=Start+Select
  * crank_dock_button:    same as above
@@ -40,7 +40,7 @@ PREF(dither_stable, (pd_rev != PD_REV_A))
  *                       11=Select+A+B, 12=All
  * hold_b_press_a:       same as above
  * press_a_b:            same as above
- * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select, 4=Rewind
+ * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select
  * lock_button:          0=None, 1=Start, 2=Select, 3=Start+Select, 4=A, 5=B
  */
 PREF(crank_mode, CRANK_MODE_START_SELECT)
