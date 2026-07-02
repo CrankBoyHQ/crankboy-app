@@ -1721,6 +1721,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gameScene->button_hold_frames_remaining = 10;
     }
 
+    // Undock + B/Up = enter rewind (universal, bypasses scripts/settings)
+    if (gameScene->crank_was_docked && !crank_docked && preferences_rewind_enabled &&
+        !gameScene->rewind.active)
+    {
+        PDButtons held;
+        playdate->system->getButtonState(&held, NULL, NULL);
+        if (held & (kButtonB | kButtonUp))
+            rewind_enter_scrubbing(gameScene, false);
+    }
+
     bool was_docked = gameScene->crank_was_docked;
     gameScene->crank_was_docked = crank_docked;
 
