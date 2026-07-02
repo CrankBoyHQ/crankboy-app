@@ -5073,6 +5073,7 @@ __section__(".rare") const char* gb_state_load(gb_s* gb, const char* const in, s
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
+    __gb_update_map_pointers(gb);
 
     return NULL;
 }
