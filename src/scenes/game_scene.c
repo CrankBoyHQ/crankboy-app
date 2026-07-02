@@ -1452,7 +1452,7 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
 
     float angle = fmaxf(0, fminf(360, playdate->system->getCrankAngle()));
 
-    if (preferences_crank_mode == CRANK_MODE_START_SELECT)
+    if (preferences_crank_mode == CRANK_MODE_START_SELECT && !gameScene->rewind.active)
     {
         gameScene->selector.startPressed = false;
         gameScene->selector.selectPressed = false;
@@ -1492,8 +1492,9 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
         }
     }
     else if (
-        preferences_crank_mode == CRANK_MODE_TURBO_CW ||
-        preferences_crank_mode == CRANK_MODE_TURBO_CCW
+        (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
+         preferences_crank_mode == CRANK_MODE_TURBO_CCW) &&
+        !gameScene->rewind.active
     )  // Turbo mode
     {
         float crank_change = playdate->system->getCrankChange();
@@ -1527,7 +1528,10 @@ __section__(".text.tick") __space static void crank_update(CB_GameScene* gameSce
             gameScene->crank_turbo_accumulator += 45.0f;
         }
     }
-    else if (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled)
+    else if (
+        (preferences_crank_mode == CRANK_MODE_REWIND && preferences_rewind_enabled) ||
+        gameScene->rewind.active
+    )
     {
         PDButtons held;
         playdate->system->getButtonState(&held, NULL, NULL);
@@ -1838,9 +1842,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
     if likely (gameScene->state == CB_GameSceneStateLoaded)
     {
-        bool shouldDisplayStartSelectUI = (!playdate->system->isCrankDocked() &&
-                                           preferences_crank_mode == CRANK_MODE_START_SELECT) ||
-                                          (gameScene->button_hold_frames_remaining > 0);
+        bool shouldDisplayStartSelectUI =
+            (!playdate->system->isCrankDocked() &&
+             preferences_crank_mode == CRANK_MODE_START_SELECT && !gameScene->rewind.active) ||
+            (gameScene->button_hold_frames_remaining > 0);
 
         static bool wasSelectorVisible = false;
         if (shouldDisplayStartSelectUI != wasSelectorVisible)
@@ -2517,7 +2522,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     int pos =
                         (read_idx >= oldest) ? (read_idx - oldest) : (cap - oldest + read_idx);
 
-                    int bar_x = 40, bar_w = 320, bar_y = display_height - 4;
+                    int bar_x = (int)game_picture_x_offset;
+                    int bar_w = LCD_COLUMNS - 2 * CB_LCD_X;
+                    int bar_y = display_height - 4;
 
                     // Top border
                     playdate->graphics->fillRect(bar_x, bar_y, bar_w, 1, kColorBlack);
@@ -2618,8 +2625,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
 
                 // Draw the "Turbo" indicator if needed.
-                if (preferences_crank_mode == CRANK_MODE_TURBO_CW ||
-                    preferences_crank_mode == CRANK_MODE_TURBO_CCW)
+                if ((preferences_crank_mode == CRANK_MODE_TURBO_CW ||
+                     preferences_crank_mode == CRANK_MODE_TURBO_CCW) &&
+                    !gameScene->rewind.active)
                 {
                     playdate->graphics->setFont(CB_App->labelFont);
                     playdate->graphics->setDrawMode(
@@ -3965,9 +3973,6 @@ static void rewind_init(CB_GameScene* gameScene)
     if (context->gb->is_cgb_mode)
         return;
 
-    if (gameScene->script)
-        return;
-
     size_t state_size =
         sizeof(gb_s) + WRAM_SIZE + VRAM_SIZE + LCD_BUFFER_BYTES + context->gb->gb_cart_ram_size;
 
@@ -4107,12 +4112,14 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
 static void rewind_draw_noise_bands(void)
 {
     int display_h = playdate->display->getHeight();
+    int gb_x = (int)game_picture_x_offset;
+    int gb_w = LCD_COLUMNS - 2 * CB_LCD_X;
     int num_bands = 3 + rand() % 5;
     for (int i = 0; i < num_bands; i++)
     {
         int y = rand() % display_h;
         int band_h = 1 + rand() % 2;
-        for (int x = 40; x < 360; x += 4)
+        for (int x = gb_x; x < gb_x + gb_w; x += 4)
             playdate->graphics->fillRect(x, y, 3, band_h, (rand() & 1) ? kColorBlack : kColorWhite);
     }
 }
