@@ -473,7 +473,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank);
 static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
 static void rewind_dmg_save(gb_s* gb, uint8_t* out);
-static void rewind_dmg_load(gb_s* gb, const uint8_t* in);
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target);
 
 static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
@@ -1989,7 +1989,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->overclock = (unsigned)(preferences_overclock);
         context->gb->cgb_speed_permitted = preferences_cgb_speed == 0;
         context->gb->hle_enabled = (preferences_hle == 1) && context->cgb_mode;
-        context->gb->lcd = lcd_sources[preferences_tcm_lcd];
+        context->gb->lcd = lcd_sources[gameScene->rewind.active ? 0 : preferences_tcm_lcd];
 
         if (gbScreenRequiresFullRefresh)
         {
@@ -4072,7 +4072,7 @@ static void rewind_dmg_save(gb_s* gb, uint8_t* out)
     memcpy(p, gb->lcd, LCD_BUFFER_BYTES);
 }
 
-static void rewind_dmg_load(gb_s* gb, const uint8_t* in)
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target)
 {
     const uint8_t* p = in;
     memcpy(gb, p, sizeof(gb_s));
@@ -4086,7 +4086,8 @@ static void rewind_dmg_load(gb_s* gb, const uint8_t* in)
         memcpy(gb->gb_cart_ram, p, gb->gb_cart_ram_size);
         p += gb->gb_cart_ram_size;
     }
-    memcpy(gb->lcd, p, LCD_BUFFER_BYTES);
+    memcpy(lcd_target, p, LCD_BUFFER_BYTES);
+    gb->lcd = lcd_target;
 }
 
 static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
@@ -4106,7 +4107,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene, bool via_crank)
     gameScene->rewind.entered_via_crank = via_crank;
 
     uint8_t* buf = gameScene->rewind.states[newest];
-    rewind_dmg_load(context->gb, buf);
+    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
 }
 
 static void rewind_draw_noise_bands(void)
@@ -4140,7 +4141,7 @@ static void rewind_step_back(CB_GameScene* gameScene)
         (gameScene->rewind.read_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    rewind_dmg_load(context->gb, buf);
+    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
     gameScene->rewind.noise_pending = true;
 }
 
@@ -4162,7 +4163,7 @@ static void rewind_step_forward(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = (gameScene->rewind.read_idx + 1) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    rewind_dmg_load(context->gb, buf);
+    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
     gameScene->rewind.noise_pending = true;
 }
 
