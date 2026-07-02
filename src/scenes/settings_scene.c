@@ -2429,9 +2429,9 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .values = off_on_labels,
         .description =
             "Rewind up to 10 seconds of gameplay.\n\n"
-            "Hold B or Up and undock the crank to enter rewind.\n\n"
-            "Hold B or Up while cranking to scrub.\n\n"
-            "Release B or Up then dock the crank to exit.\n\n"
+            "Hold Ⓑ or Up and undock the crank to enter rewind.\n\n"
+            "Hold Ⓑ or Up while cranking to scrub.\n\n"
+            "Release Ⓑ or Up then dock the crank to exit.\n\n"
             "DMG only.",
         .pref_var = &preferences_rewind_enabled,
         .max_value = 2,
