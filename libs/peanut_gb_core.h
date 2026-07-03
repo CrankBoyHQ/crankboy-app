@@ -1978,7 +1978,7 @@ done_instr_timing:
     /* Handle delayed TIMA reload from the previous cycle. */
     if (gb->gb_reg.tima_overflow_delay)
     {
-        gb->gb_reg.TIMA = gb->gb_reg.TMA;
+        gb->gb_reg.IF |= TIMER_INTR;
         gb->gb_reg.tima_overflow_delay = 0;
     }
 
@@ -1997,7 +1997,7 @@ done_instr_timing:
 
             if (gb->gb_reg.TIMA == 0x00)
             {
-                gb->gb_reg.IF |= TIMER_INTR;
+                gb->gb_reg.TIMA = gb->gb_reg.TMA;
                 gb->gb_reg.tima_overflow_delay = 1;
             }
         }

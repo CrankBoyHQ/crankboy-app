@@ -569,7 +569,7 @@ __section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
     gb->gb_reg.TIMA++;
     if (gb->gb_reg.TIMA == 0x00)
     {
-        gb->gb_reg.IF |= TIMER_INTR;
+        gb->gb_reg.TIMA = gb->gb_reg.TMA;
         gb->gb_reg.tima_overflow_delay = 1;
     }
 }
