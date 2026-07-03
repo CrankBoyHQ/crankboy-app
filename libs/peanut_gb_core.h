@@ -601,7 +601,7 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
                 if (cgb_master_priority)
                     bg_cgb_priority = ~(line_cgb_priority[P_segment_index] >> P_bit_in_segment) & 1;
                 if (!(bg_cgb_priority ||
-                      ((OF & OBJ_PRIORITY) &&
+                      (cgb_master_priority && (OF & OBJ_PRIORITY) &&
                        !((line_priority[P_segment_index] >> P_bit_in_segment) & 1))))
 #else
                 uint8_t bg_is_transparent =
@@ -928,7 +928,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     } while (0)
 
     /* If background is enabled, draw it. */
+#if PGB_IS_CGB
+    if (wx > 0)
+#else
     if ((gb->gb_reg.LCDC & LCDC_BG_ENABLE) && wx > 0)
+#endif
     {
         /* Calculate current background line to draw. Constant because
          * this function draws only this one line each time it is
@@ -1144,21 +1148,15 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     }
 #endif
 
-    uint32_t* used_line_priority = line_priority;
-
 #if PGB_IS_CGB
     bool cgb_master_priority = !!(gb->gb_reg.LCDC & LCDC_CGB_MASTER_PRIORITY);
-    if (!cgb_master_priority)
-    {
-        used_line_priority = gb->zero32;
-    }
 #endif
 
     // draw sprites
     if (gb->gb_reg.LCDC & LCDC_OBJ_ENABLE)
     {
         $(__gb_draw_line_sprites)(
-            gb, gb->display.oam_latch, used_line_priority,
+            gb, gb->display.oam_latch, line_priority,
 #if PGB_IS_CGB
             line_cgb_priority, cgb_master_priority,
 #endif
