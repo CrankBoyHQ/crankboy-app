@@ -5366,6 +5366,51 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
     memset(gb->vram, 0x00, VRAM_SIZE_CGB);
     memset(gb->wram, 0x00, WRAM_SIZE_CGB);
+
+    // Load Nintendo logo tiles into VRAM from ROM header (0x0104-0x0133).
+    // The boot ROM normally handles this during the logo scroll animation.
+    {
+        const uint8_t* logo = &gb->gb_rom[0x0104];
+        for (int i = 0; i < 48; i++)
+        {
+            uint8_t byte = logo[i];
+
+            uint8_t hi = (byte >> 4) & 0x0F;
+            hi = ((hi & 8) ? 0xC0 : 0) | ((hi & 4) ? 0x30 : 0) | ((hi & 2) ? 0x0C : 0) |
+                 ((hi & 1) ? 0x03 : 0);
+
+            uint8_t lo = byte & 0x0F;
+            lo = ((lo & 8) ? 0xC0 : 0) | ((lo & 4) ? 0x30 : 0) | ((lo & 2) ? 0x0C : 0) |
+                 ((lo & 1) ? 0x03 : 0);
+
+            int offs = 0x10 + i * 8;
+            gb->vram[offs] = reverse_bits_u8(hi);
+            gb->vram[offs + 2] = reverse_bits_u8(hi);
+            gb->vram[offs + 4] = reverse_bits_u8(lo);
+            gb->vram[offs + 6] = reverse_bits_u8(lo);
+        }
+
+        // Trademark symbol tile at VRAM+0x190 (tile index 25)
+        static const uint8_t trademark[] = {0x3C, 0x42, 0xB9, 0xA5, 0xB9, 0xA5, 0x42, 0x3C};
+        for (int row = 0; row < 8; row++)
+        {
+            gb->vram[0x190 + row * 2] = reverse_bits_u8(trademark[row]);
+        }
+
+        // Set up background tilemap (SCRN0 at VRAM+0x1800)
+        // matches boot ROM logo scroll layout
+        // Trademark at row 8, col 16
+        gb->vram[0x1800 + 8 * 32 + 16] = 0x19;
+
+        // Logo tiles: 12 tiles per row, 2 rows
+        for (int row = 1; row >= 0; row--)
+        {
+            for (int col = 11; col >= 0; col--)
+            {
+                gb->vram[0x1800 + (8 + row) * 32 + 4 + col] = 1 + row * 12 + col;
+            }
+        }
+    }
 }
 
 /**
