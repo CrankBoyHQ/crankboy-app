@@ -766,8 +766,20 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     // New field not in v4
     v5_gb->cgb_speed_switch_halt_period = 0;
 
-    // Remainder: cgb_ff7x through lcd_alt - identical relative layout
-    set_fields(v5_gb, v4_gb, cgb_ff7x, lcd_alt);
+    // Remainder: cgb_ff7x through cgb_hdma_dst
+    set_fields(v5_gb, v4_gb, cgb_ff7x, cgb_hdma_dst);
+
+    // Bitfields same in both but can't use set_fields (no &/sizeof on bitfield)
+    v5_gb->cgb_hdma_len = v4_gb->cgb_hdma_len;
+    v5_gb->cgb_hdma_active = v4_gb->cgb_hdma_active;
+
+    // New DMA state machine fields not in v4
+    v5_gb->dma_active = false;
+    v5_gb->dma_src = 0;
+    v5_gb->dma_dest = 0;
+
+    // cgb_bg_palette through lcd_alt (same relative layout in both)
+    set_fields(v5_gb, v4_gb, cgb_bg_palette, lcd_alt);
 
     // display struct - v5 appends oam_latch + latched_scx + latched_scy at end.
     // Existing fields are at same offsets; copy only what v4 had, rest stays zero.
