@@ -2505,16 +2505,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         /* DMA Register */
         case 0x46:
             gb->gb_reg.DMA = val;
-
-            for (uint8_t i = 0; i < OAM_SIZE; i += 4)
-            {
-                uint32_t v = __gb_read32__cgb(gb, (gb->gb_reg.DMA << 8) + i);
-                gb->oam[i] = v;
-                gb->oam[i + 1] = v >> 8;
-                gb->oam[i + 2] = v >> 16;
-                gb->oam[i + 3] = v >> 24;
-            }
-
+            gb->dma_src = ((uint16_t)val) << 8;
+            gb->dma_dest = 0;
+            gb->dma_active = true;
             return;
 
         /* DMG Palette Registers */
@@ -5200,6 +5193,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.LY = 146;
         gb->gb_reg.LYC = 0x00;
         gb->gb_reg.DMA = 0x00;
+        gb->dma_active = false;
+        gb->dma_dest = 0xA0;
         __gb_write_full(gb, 0xFF47, 0xFC);
         __gb_write_full(gb, 0xFF48, 0xFF);
         __gb_write_full(gb, 0xFF49, 0xFF);
@@ -5345,6 +5340,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.LY = 144;
         gb->gb_reg.LYC = 0x00;
         gb->gb_reg.DMA = 0xFF;
+        gb->dma_active = false;
+        gb->dma_dest = 0xA0;
         __gb_write_full(gb, 0xFF47, 0xFC);
         __gb_write_full(gb, 0xFF48, 0xFF);
         __gb_write_full(gb, 0xFF49, 0xFF);

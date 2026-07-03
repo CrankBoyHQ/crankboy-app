@@ -314,6 +314,10 @@ struct PGB_VERSIONED(gb_s)
     uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
+    bool dma_active : 1;
+    uint16_t dma_src;
+    uint8_t dma_dest;
+
     uint8_t* cgb_bg_palette;
     uint8_t* cgb_obj_palette;
     uint8_t cgb_bg_palette_gray[8];

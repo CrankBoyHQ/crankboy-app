@@ -1925,6 +1925,21 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     }
 #endif
 
+    /* OAM DMA transfer: 1 byte per M-cycle (4 T-cycles) */
+    if (gb->dma_active && !gb->gb_halt && !gb->gb_stop)
+    {
+        unsigned dma_bytes = inst_cycles >> 2;
+
+        while (dma_bytes > 0 && gb->dma_dest < 0xA0)
+        {
+            gb->oam[gb->dma_dest++] = $(__gb_read)(gb, gb->dma_src++);
+            dma_bytes--;
+        }
+
+        if (gb->dma_dest >= 0xA0)
+            gb->dma_active = false;
+    }
+
     // cycles are halved/quartered during overclocked vblank
     if (gb->lcd_mode == LCD_VBLANK)
     {
