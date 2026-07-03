@@ -95,6 +95,10 @@ typedef int16_t s16;
  * 4194304 / 16384 = 256 clock cycles for one increment. */
 #define DIV_CYCLES 256
 
+/* CGB speed switch halt period.
+ * Per Pandocs 2050 M-cycles = 8200 T-cycles. */
+#define CGB_SPEED_SWITCH_HALT_T_CYCLES 8200
+
 /* Serial clock locked to 8192Hz on DMG.
  * 4194304 / (8192 / 8) = 4096 clock cycles for sending 1 byte. */
 #define SERIAL_CYCLES 4096
@@ -2764,10 +2768,13 @@ _0x10:
     // CGB speed switch
     if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
     {
-        gb->cgb_fast_mode = !gb->cgb_fast_mode;
-        gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
         gb->cgb_fast_mode_armed = false;
         gb->gb_reg.DIV = 0;
+
+        gb->cgb_fast_mode = !gb->cgb_fast_mode;
+        gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+        gb->gb_halt = 1;
+        gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
         goto exit;
     }
 
@@ -4841,6 +4848,7 @@ __shell static void __gb_interrupt(gb_s* gb)
 {
     gb->gb_halt = 0;
     gb->gb_stop = 0;
+    gb->cgb_speed_switch_halt_period = 0;
 
     if (gb->gb_ime)
     {
@@ -4967,6 +4975,17 @@ __shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
 
     // ensure positive
     cycles = (cycles < 16) ? 16 : cycles;
+
+    if (gb->cgb_speed_switch_halt_period)
+    {
+        uint32_t max_cycles = gb->cgb_speed_switch_halt_period;
+        if (cycles > max_cycles)
+            cycles = max_cycles;
+
+        gb->cgb_speed_switch_halt_period = max_cycles - cycles;
+        if (gb->cgb_speed_switch_halt_period == 0)
+            gb->gb_halt = 0;
+    }
 
     return (uint16_t)cycles;
 }
@@ -5526,6 +5545,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && cgb_mode;
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
+    gb->cgb_speed_switch_halt_period = 0;
     gb->cgb_wram_bank = 0;
     gb->cgb_ff6c = 0;
     gb->cgb_ff75 = 0;
@@ -5695,10 +5715,13 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         // CGB speed switch
         if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
         {
-            gb->cgb_fast_mode = !gb->cgb_fast_mode;
-            gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
             gb->cgb_fast_mode_armed = false;
             gb->gb_reg.DIV = 0;
+
+            gb->cgb_fast_mode = !gb->cgb_fast_mode;
+            gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+            gb->gb_halt = 1;
+            gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
             return cycles;
         }
 

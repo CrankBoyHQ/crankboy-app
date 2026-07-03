@@ -306,6 +306,7 @@ struct PGB_VERSIONED(gb_s)
     bool cgb_speed_permitted : 1;
     bool hle_enabled : 1;
     uint8_t hle_ioaddr;
+    uint16_t cgb_speed_switch_halt_period;
 
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
@@ -755,8 +756,14 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     // The sweep struct growth per channel cascades through the chan array, so we
     // copy each channel's fields individually around the sweep struct.
 
-    // Region 1: everything from gb_rom through lcd_alt - identical layout in v4/v5
-    set_fields(v5_gb, v4_gb, gb_rom, lcd_alt);
+    // Region 1: everything from gb_rom through hle_ioaddr - identical layout in v4/v5
+    set_fields(v5_gb, v4_gb, gb_rom, hle_ioaddr);
+
+    // New field not in v4
+    v5_gb->cgb_speed_switch_halt_period = 0;
+
+    // Remainder: cgb_ff7x through lcd_alt - identical relative layout
+    set_fields(v5_gb, v4_gb, cgb_ff7x, lcd_alt);
 
     // display struct - v5 appends oam_latch + latched_scx + latched_scy at end.
     // Existing fields are at same offsets; copy only what v4 had, rest stays zero.
