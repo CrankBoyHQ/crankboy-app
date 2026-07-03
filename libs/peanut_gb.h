@@ -2440,6 +2440,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->lcd_mode = LCD_HBLANK;
                 gb->gb_reg.STAT &= ~(STAT_MODE | STAT_LYC_COINC);
                 gb->direct.stat_line = 0;
+                gb->display.window_clear = 0;
                 __gb_check_lyc__cgb(gb);
             }
             else if (!was_enabled && is_enabled)
