@@ -2500,7 +2500,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         /* DMA Register */
         case 0x46:
-            gb->gb_reg.DMA = (val % 0xF1);
+            gb->gb_reg.DMA = val;
 
             for (uint8_t i = 0; i < OAM_SIZE; i += 4)
             {
