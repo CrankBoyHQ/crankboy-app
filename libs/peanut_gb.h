@@ -5166,7 +5166,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.P1 = 0xCF;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7F;
-        gb->gb_reg.DIV = 0x26;
+        gb->gb_reg.DIV = 0xAC;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
@@ -5175,7 +5175,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.STAT = 0x85;
         gb->gb_reg.SCY = 0x00;
         gb->gb_reg.SCX = 0x00;
-        gb->gb_reg.LY = 144;
+        gb->gb_reg.LY = 146;
         gb->gb_reg.LYC = 0x00;
         gb->gb_reg.DMA = 0x00;
         __gb_write_full(gb, 0xFF47, 0xFC);
@@ -5246,8 +5246,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         }
         memset(gb->cgb_obj_palette_gray_alt, 0, sizeof(gb->cgb_obj_palette_gray_alt));
 
-        /* CGB internal timer is 0x267C */
-        gb->counter.div_count = 0x7C;
+        /* CGB internal timer is 0xAC28 */
+        gb->counter.div_count = 0x28;
         gb->lcd_mode = LCD_VBLANK;
     }
     else
@@ -5269,7 +5269,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.P1 = 0xCF;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7E;
-        gb->gb_reg.DIV = 0xAB;
+        gb->gb_reg.DIV = 0xBD;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
@@ -5330,8 +5330,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.WX = 0x00;
         gb->gb_reg.IE = 0x00;
 
-        /* DMG internal timer is 0xABCC */
-        gb->counter.div_count = 0xCC;
+        /* DMG internal timer is 0xBD20 */
+        gb->counter.div_count = 0x20;
         gb->lcd_mode = LCD_VBLANK;
 
         // F-1 Pole Position checks the value at 0xFF80 and enters an

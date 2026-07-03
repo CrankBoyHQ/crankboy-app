@@ -1988,10 +1988,8 @@ done_instr_timing:
         uint16_t tima_threshold = gb->gb_reg.tac_cycles;
 #if PGB_IS_CGB
         tima_threshold >>= cgb_fast;
-        gb->counter.tima_count += (inst_cycles << !cgb_fast);
-#else
-        gb->counter.tima_count += inst_cycles;
 #endif
+        gb->counter.tima_count += inst_cycles;
         while (gb->counter.tima_count >= tima_threshold)
         {
             gb->counter.tima_count -= tima_threshold;
@@ -2010,10 +2008,9 @@ done_instr_timing:
     uint16_t div_threshold = DIV_CYCLES;
 #if PGB_IS_CGB
     div_threshold >>= cgb_fast;
-    gb->counter.div_count += (inst_cycles << !cgb_fast);
-#else
-    gb->counter.div_count += inst_cycles;
 #endif
+    gb->counter.div_count += inst_cycles;
+
     if (gb->counter.div_count >= div_threshold)
     {
 #if PGB_IS_CGB
