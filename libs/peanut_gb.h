@@ -2781,6 +2781,8 @@ _0x10:
     }
 
     // 3. Check for Pending Interrupts
+    gb->gb_reg.DIV = 0;
+
     if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
     {
         if (gb->gb_ime == 0)
@@ -2799,7 +2801,6 @@ _0x10:
     {
         /* 4. Normal STOP Operation: Enter low-power STOP mode. */
         gb->gb_stop = 1;
-        gb->gb_reg.DIV = 0;
     }
     goto exit;
 }
@@ -5711,6 +5712,8 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         }
 
         // 3. Check for Pending Interrupts / STOP Bug
+        gb->gb_reg.DIV = 0;
+
         if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
         {
             if (gb->gb_ime == 0)
@@ -5726,7 +5729,6 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         {
             /* 4. Normal STOP Operation: Enter low-power STOP mode. */
             gb->gb_stop = 1;
-            gb->gb_reg.DIV = 0;
         }
 
         return cycles;

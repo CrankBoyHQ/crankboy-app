@@ -1262,6 +1262,8 @@ dispatch:
                 }
 #endif
 
+                gb->gb_reg.DIV = 0;
+
                 if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
                 {
                     if (gb->gb_ime == 0)
@@ -1280,7 +1282,6 @@ dispatch:
                     // NORMAL OPERATION: Enter low-power STOP mode.
                     gb->cpu_reg.pc++;
                     gb->gb_stop = 1;
-                    gb->gb_reg.DIV = 0;
                 }
 
                 cycles = 4;
