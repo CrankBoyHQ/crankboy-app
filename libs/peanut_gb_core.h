@@ -1755,7 +1755,9 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     unsigned inst_cycles = 16;
 
     /* Handle interrupts */
-    if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+    if unlikely (
+        (gb->gb_ime || gb->gb_halt || gb->gb_stop) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+    )
     {
         __gb_interrupt(gb);
     }

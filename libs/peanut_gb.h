@@ -4840,6 +4840,7 @@ exit:
 __shell static void __gb_interrupt(gb_s* gb)
 {
     gb->gb_halt = 0;
+    gb->gb_stop = 0;
 
     if (gb->gb_ime)
     {
