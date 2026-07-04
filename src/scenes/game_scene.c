@@ -333,7 +333,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
 
     if (gameScene->audioEnabled)
     {
-        float volume = use_stereo ? 0.2f : 0.4f;
+        float volume = use_stereo ? 0.35f : 0.5f;
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
     }
 
@@ -930,7 +930,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (desiredAudioEnabled)
     {
-        float volume = gameScene->is_stereo ? 0.2f : 0.4f;
+        float volume = gameScene->is_stereo ? 0.35f : 0.5f;
         playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
         context->gb->direct.sound = 1;
         audioGameScene = gameScene;
@@ -4206,7 +4206,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
 
     float volume = 0.0f;
     if (gameScene->audioEnabled)
-        volume = gameScene->is_stereo ? 0.2f : 0.4f;
+        volume = gameScene->is_stereo ? 0.35f : 0.5f;
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
 
     if (gameScene->rewind.states && gameScene->rewind.count > 0)
