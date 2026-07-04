@@ -197,28 +197,6 @@ __shell void audio_div_apu_tick(audio_data* audio)
     // Process pending envelope ticks from previous step-7 events.
     // Hardware delays volume change by ~1/2 DIV-APU cycle via
     // the secondary event (rising edge) after countdown hits 0.
-    if (step == 7)
-    {
-        for (int i = 0; i < 4; i++)
-        {
-            if (i == 2)
-                continue;
-            chan* c = chans + i;
-            if (!c->enabled || c->env.step == 0 || c->env.locked)
-                continue;
-
-            c->env_divider--;
-            if (c->env_divider == 0)
-            {
-                c->env_divider = c->env.step;
-                c->env_pending = true;
-            }
-        }
-    }
-
-    // Process pending envelope ticks from previous step-7 events.
-    // Hardware delays volume change by ~1/2 DIV-APU cycle via
-    // the secondary event (rising edge) after countdown hits 0.
     {
         for (int i = 0; i < 4; i++)
         {
@@ -242,6 +220,27 @@ __shell void audio_div_apu_tick(audio_data* audio)
 #else
             c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
 #endif
+        }
+    }
+
+    // Envelope: 64 Hz (step 7). Decrement divider; when zero,
+    // set pending (volume changes on next tick).
+    if (step == 7)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            if (i == 2)
+                continue;
+            chan* c = chans + i;
+            if (!c->enabled || c->env.step == 0 || c->env.locked)
+                continue;
+
+            c->env_divider--;
+            if (c->env_divider == 0)
+            {
+                c->env_divider = c->env.step;
+                c->env_pending = true;
+            }
         }
     }
 }

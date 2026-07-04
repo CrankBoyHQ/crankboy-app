@@ -2039,7 +2039,8 @@ done_instr_timing:
             if (preferences_sound_mode == 2)
             {
                 uint8_t check = old_div;
-                while (div_inc--)
+                uint8_t remaining = div_inc;
+                while (remaining--)
                 {
                     check++;
                     if ((check & 0x20) == 0 && ((check - 1) & 0x20) != 0)
@@ -2059,7 +2060,8 @@ done_instr_timing:
             {
                 unsigned mask = 0x10u;
                 uint8_t check = old_div;
-                while (div_inc--)
+                uint8_t remaining = div_inc;
+                while (remaining--)
                 {
                     check++;
                     if ((check & mask) == 0 && ((check - 1) & mask) != 0)
