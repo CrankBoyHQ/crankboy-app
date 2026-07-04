@@ -2542,8 +2542,10 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         /* DMA Register */
         case 0x46:
-            gb->gb_reg.DMA = val;
-            gb->dma_src = ((uint16_t)val) << 8;
+            /* val % 0xF1: removing this causes visible gfx glitches.
+             * Undocumented but required for compatibility. */
+            gb->gb_reg.DMA = (val % 0xF1);
+            gb->dma_src = ((uint16_t)(val % 0xF1)) << 8;
             gb->dma_dest = 0;
             gb->dma_active = true;
             return;
