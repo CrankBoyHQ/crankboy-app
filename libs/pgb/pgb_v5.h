@@ -836,17 +836,47 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     v5_gb->audio.vol_r = v4_gb->audio.vol_r;
     // audio.audio_mem is a pointer - skip, restored by state_load
 
-    // Per-channel copy: memcpy fields before sweep (same layout), then
-    // sweep fields individually, then fields after sweep (same layout)
+    // Per-channel copy: bitfield layout differs between v4 and v5
+    // because lfsr_wide changed from uint8_t:1 to unsigned:1, and
+    // sample_surpressed/env_pending added. Raw memcpy would place bits
+    // at wrong positions. Copy every field individually.
     for (int ch = 0; ch < 4; ch++)
     {
-        size_t pre_sweep_sz = offsetof(typeof(v4_gb->audio.chans[0]), sweep);
-        memcpy(&v5_gb->audio.chans[ch], &v4_gb->audio.chans[ch], pre_sweep_sz);
+        // Bitfields before sweep (individually to handle layout change)
+        v5_gb->audio.chans[ch].enabled = v4_gb->audio.chans[ch].enabled;
+        v5_gb->audio.chans[ch].powered = v4_gb->audio.chans[ch].powered;
+        v5_gb->audio.chans[ch].on_left = v4_gb->audio.chans[ch].on_left;
+        v5_gb->audio.chans[ch].on_right = v4_gb->audio.chans[ch].on_right;
+        v5_gb->audio.chans[ch].muted = v4_gb->audio.chans[ch].muted;
+        v5_gb->audio.chans[ch].lfsr_narrow = v4_gb->audio.chans[ch].lfsr_wide;
+        v5_gb->audio.chans[ch].sweep_up = v4_gb->audio.chans[ch].sweep_up;
+        v5_gb->audio.chans[ch].len_enabled = v4_gb->audio.chans[ch].len_enabled;
         v5_gb->audio.chans[ch].sample_surpressed = false;
         v5_gb->audio.chans[ch].env_pending = false;
-        v5_gb->audio.chans[ch].env.locked = false;
 
-        // Sweep struct fields individually (did_subtract is new)
+        // Scalar fields before sweep
+        v5_gb->audio.chans[ch].volume = v4_gb->audio.chans[ch].volume;
+        v5_gb->audio.chans[ch].volume_init = v4_gb->audio.chans[ch].volume_init;
+        v5_gb->audio.chans[ch].freq = v4_gb->audio.chans[ch].freq;
+        v5_gb->audio.chans[ch].freq_counter = v4_gb->audio.chans[ch].freq_counter;
+        v5_gb->audio.chans[ch].freq_inc = v4_gb->audio.chans[ch].freq_inc;
+        v5_gb->audio.chans[ch].val = v4_gb->audio.chans[ch].val;
+
+        // len struct (identical layout in v4/v5)
+        memcpy(
+            &v5_gb->audio.chans[ch].len, &v4_gb->audio.chans[ch].len,
+            sizeof(v4_gb->audio.chans[ch].len)
+        );
+
+        // env struct (locked added in v5)
+        v5_gb->audio.chans[ch].env.step = v4_gb->audio.chans[ch].env.step;
+        v5_gb->audio.chans[ch].env.up = v4_gb->audio.chans[ch].env.up;
+        v5_gb->audio.chans[ch].env.locked = false;
+        v5_gb->audio.chans[ch].env.counter = v4_gb->audio.chans[ch].env.counter;
+        v5_gb->audio.chans[ch].env.inc = v4_gb->audio.chans[ch].env.inc;
+
+        // Sweep struct fields individually (did_subtract is new,
+        // struct larger in v5 so cannot raw-copy)
         v5_gb->audio.chans[ch].sweep.freq = v4_gb->audio.chans[ch].sweep.freq;
         v5_gb->audio.chans[ch].sweep.rate = v4_gb->audio.chans[ch].sweep.rate;
         v5_gb->audio.chans[ch].sweep.shift = v4_gb->audio.chans[ch].sweep.shift;
@@ -854,12 +884,17 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         v5_gb->audio.chans[ch].sweep.counter = v4_gb->audio.chans[ch].sweep.counter;
         v5_gb->audio.chans[ch].sweep.inc = v4_gb->audio.chans[ch].sweep.inc;
 
-        // Copy union as raw bytes (noise is largest member).
+        // Copy union as raw bytes (noise is largest member in both,
+        // union size unchanged at 3 bytes)
         memcpy(
             &v5_gb->audio.chans[ch].noise, &v4_gb->audio.chans[ch].noise,
             sizeof(v4_gb->audio.chans[ch].noise)
         );
+        // New wave field; ch2 is the wave channel
+        if (ch == 2)
+            v5_gb->audio.chans[ch].wave.just_read = false;
 
+        // Compute envelope_smooth from correctly-migrated volume
         v5_gb->audio.chans[ch].envelope_smooth = (int32_t)v5_gb->audio.chans[ch].volume << 8;
 
         // New accurate-mode frame sequencer dividers not in v4
