@@ -1,30 +1,33 @@
-# v2.2.0 - (2026-07-02)
+# v2.2.0 - (2026-07-04)
 
 It's Rewind Time.
 
 ## Rewind
 
-- Crank backwards to rewind gameplay! (DMG games only for now.)
-- VHS-style effects make it feel like you're actually scrubbing a tape.
-- Can be enabled in the Behaviour settings.
+- Crank backwards to rewind gameplay! (DMG-only for now.)
+- Hold Ⓑ or Up while cranking to scrub through time.
+- VHS-style scanlines and noise -- like fighting with a VCR in 1989.
+- Seekbar shows exactly where in time you are.
+- Enable in Behaviour settings.
 
 ## Menu
 
-- Quick-press the Menu button to act as Start/Select
+- Quick-press Menu button can act as Start/Select. (Your right thumb just got a promotion.)
 
 ## Emulation
 
-- More games work correctly now.
-- Audio emulation has been improved.
-- Better performance all around -- we removed some settings you don't need to worry about.
+- Audio overhauled across all channels. (Less crackle, more chiptune.)
+- Countless timing and accuracy fixes. More games work. More sound plays right.
+- Removed interlacing and legacy fast-modes -- the accurate defaults are faster now anyway. (Fewer knobs, better results.)
 
 ## Scripts
 
-- New: Beatmania GB (forced to CGB mode for better compatibility).
+- New: Beatmania GB (forced to CGB mode).
 
 ## Bug Fixes
 
-- Save states load reliably now.
+- Save states load reliably. -- We tested it this time. (Mostly.)
+- Various crash and stability fixes throughout.
 
 # v2.1.1 - (2026-06-18)
 
