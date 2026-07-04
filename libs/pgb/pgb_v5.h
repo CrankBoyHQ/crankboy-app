@@ -861,11 +861,19 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         );
 
         v5_gb->audio.chans[ch].envelope_smooth = (int32_t)v5_gb->audio.chans[ch].volume << 8;
+
+        // New accurate-mode frame sequencer dividers not in v4
+        v5_gb->audio.chans[ch].env_divider = 0;
+        v5_gb->audio.chans[ch].sweep_divider = 0;
     }
 
     // audio fields after chans: capacitor_l, capacitor_r
     v5_gb->audio.capacitor_l = v4_gb->audio.capacitor_l;
     v5_gb->audio.capacitor_r = v4_gb->audio.capacitor_r;
+
+    // New DIV-APU frame sequencer state not in v4
+    v5_gb->audio.div_apu_step = 0;
+    v5_gb->audio.skip_next_apu_tick = false;
 
     // Copy header and extra data
     memcpy(v5_header, v4_header, sizeof(StateHeader));
