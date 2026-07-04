@@ -1023,7 +1023,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     // check the remaining count directly, not just the enabled flag.
     // Fast mode: always reload length for simplicity.
     bool len_expired = ((c->len.inc >> 16) == 0);
-    if (preferences_sound_mode != 2 || !was_enabled || len_expired)
+    if (i == 3 || preferences_sound_mode != 2 || !was_enabled || len_expired)
     {
         int load = len_max - c->len.load;
 
