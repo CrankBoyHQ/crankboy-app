@@ -18,17 +18,19 @@ PREF(sample_rate, 0)
 PREF(headphone_audio, 1)
 
 /* --- display ---
- * frame_skip:      0=Off, 1=On, 2=Adaptive
- * blend_frames:    0=Off, 1=On
- * dither_pattern:  0=Staggered, 1=Grid, 2=Staggered (L), 3=Grid (L), 4=Staggered (D), 5=Grid (D)
- * dither_line:     0 = Off (used for scripting), 1 = Line 1, 2= Line 2, 3 = Line 3
- * dither_stable:   0=Off, 1=On
+ *  frame_skip:      0=Off, 1=On, 2=Adaptive
+ *  blend_frames:    0=Off, 1=On
+ *  dither_pattern:  0=Staggered, 1=Grid, 2=Staggered (L), 3=Grid (L), 4=Staggered (D), 5=Grid (D)
+ *  dither_line:     0 = Off (used for scripting), 1 = Line 1, 2= Line 2, 3 = Line 3
+ *  dither_stable:   0=Off, 1=On
+ *  ghosting:         0=Off, 1=Uniform (50/50), 2=Interlaced (scanline)
  */
 PREF(frame_skip, 1)
 PREF(blend_frames, 0)
 PREF(dither_pattern, 0)
 PREF(dither_line, 2)
 PREF(dither_stable, (pd_rev != PD_REV_A))
+PREF(ghosting, 0)
 
 /* --- input ---
  * crank_mode:           0=Start/Select, 1=Turbo A/B, 2=Turbo B/A, 3=None

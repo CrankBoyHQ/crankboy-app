@@ -819,6 +819,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
+                memset(context->ghost_prev_lcd, 0, sizeof(context->ghost_prev_lcd));
+                context->ghost_frame_parity = false;
                 gameScene->state = CB_GameSceneStateLoaded;
 
                 playdate->system->logToConsole("gb context initialized.");
@@ -1445,6 +1447,22 @@ static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t
         frame_a += LCD_WIDTH_PACKED;
         frame_b_and_dest += LCD_WIDTH_PACKED;
     }
+}
+
+// LCD ghosting blend LUTs: index = (prev & 3) | ((cur & 3) << 2)
+static const uint8_t ghost_simple_lut[16] = {0, 0, 1, 1, 0, 1, 1, 2, 1, 1, 2, 2, 1, 2, 2, 3};
+static const uint8_t ghost_prev_weighted_lut[16] = {0, 0, 1, 2, 0, 1, 1, 2, 0, 1, 2, 2, 1, 1, 2, 3};
+static const uint8_t ghost_cur_weighted_lut[16] = {0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3};
+
+static inline uint8_t ghost_blend_byte(uint8_t prev, uint8_t cur, const uint8_t* lut)
+{
+    uint8_t r = 0;
+    for (int s = 0; s < 8; s += 2)
+    {
+        int idx = ((prev >> s) & 3) | (((cur >> s) & 3) << 2);
+        r |= lut[idx] << s;
+    }
+    return r;
 }
 
 static void save_check(gb_s* gb);
@@ -2399,6 +2417,39 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     save_check(context->gb);
                 }
             }  // if (!gameScene->rewind.active)
+
+            // Ghosting: temporal blend with previous frame
+            if (preferences_ghosting > 0 && !gameScene->rewind.active)
+            {
+                bool parity = context->ghost_frame_parity;
+                context->ghost_frame_parity = !parity;
+
+                uint8_t* prev = context->ghost_prev_lcd;
+                uint8_t* cur = context->gb->lcd;
+
+                for (int y = 0; y < LCD_HEIGHT; y++)
+                {
+                    const uint8_t* lut;
+                    if (preferences_ghosting == 2)
+                        lut = ((y ^ parity) & 1) ? ghost_cur_weighted_lut : ghost_prev_weighted_lut;
+                    else
+                        lut = ghost_simple_lut;
+
+                    if (y + 1 < LCD_HEIGHT)
+                    {
+                        __builtin_prefetch(cur + LCD_WIDTH_PACKED, 1, 0);
+                        __builtin_prefetch(prev + LCD_WIDTH_PACKED, 0, 0);
+                    }
+
+                    for (int x = 0; x < LCD_WIDTH_PACKED; x++)
+                    {
+                        uint8_t a = *cur;   // current (unblended)
+                        uint8_t b = *prev;  // previous frame
+                        *cur++ = ghost_blend_byte(a, b, lut);
+                        *prev++ = a;  // store unblended for next frame
+                    }
+                }
+            }
 
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
