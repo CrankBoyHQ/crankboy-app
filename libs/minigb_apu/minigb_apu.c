@@ -495,14 +495,82 @@ __audio static void update_sweep(chan* c, int sample_rate)
     }
 }
 
+/* Output constant DC offset for a disabled channel with DAC on.
+ * Hardware: disabled generator outputs digital 0 = analog +1. */
+__audio static void output_disabled_dc(
+    audio_data* restrict audio, chan* c, int16_t* left, int16_t* right, int len
+)
+{
+    int32_t dc = VOL_INIT_MAX / MAX_CHAN_VOLUME;  // digital 0
+    int sr = get_sample_replication();
+#if TARGET_PLAYDATE
+    int16_t final_vol_l = c->on_left * audio->vol_l;
+    int16_t final_vol_r = c->on_right * audio->vol_r;
+    int16_t sample16 = (int16_t)((dc * MAX_CHAN_VOLUME) / 4);
+    uint32_t packed_sample = (uint32_t)((uint16_t)sample16) | ((uint32_t)sample16 << 16);
+    uint32_t packed_vols;
+    asm volatile("pkhbt %0, %1, %2, lsl #16"
+                 : "=r"(packed_vols)
+                 : "r"(final_vol_l), "r"(final_vol_r));
+    for (uint_fast16_t i = 0; i < len; i += sr)
+    {
+        if (left == right)
+        {
+            int32_t stereo_sum;
+            asm volatile("smuad %0, %1, %2"
+                         : "=r"(stereo_sum)
+                         : "r"(packed_sample), "r"(packed_vols));
+            left[i] += (int16_t)(stereo_sum >> 1);
+        }
+        else
+        {
+            int32_t left_contrib, right_contrib;
+            asm volatile("smulbb %0, %1, %2"
+                         : "=r"(left_contrib)
+                         : "r"(packed_sample), "r"(packed_vols));
+            asm volatile("smultt %0, %1, %2"
+                         : "=r"(right_contrib)
+                         : "r"(packed_sample), "r"(packed_vols));
+            left[i] += (int16_t)left_contrib;
+            right[i] += (int16_t)right_contrib;
+        }
+    }
+#else
+    int32_t dc_scaled = dc * MAX_CHAN_VOLUME / 4;
+    for (uint_fast16_t i = 0; i < len; i += sr)
+    {
+        if (left == right)
+        {
+            int32_t left_contrib = dc_scaled * c->on_left * audio->vol_l;
+            int32_t right_contrib = dc_scaled * c->on_right * audio->vol_r;
+            left[i] += (left_contrib + right_contrib) / 2;
+        }
+        else
+        {
+            left[i] += dc_scaled * c->on_left * audio->vol_l;
+            right[i] += dc_scaled * c->on_right * audio->vol_r;
+        }
+    }
+#endif
+}
+
 __audio static void update_square(
     audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
 )
 {
     chan* c = audio->chans + ch2;
 
-    if (!c->powered || !c->enabled)
+    if (!c->powered)
         return;
+
+    if (!c->enabled)
+    {
+        if (preferences_sound_mode == 2)
+        {
+            output_disabled_dc(audio, c, left, right, len);
+        }
+        return;
+    }
 
     uint32_t freq = DMG_CLOCK_FREQ_U / ((2048 - c->freq) << 5);
     set_note_freq(c, freq);
@@ -667,8 +735,17 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 {
     chan* c = audio->chans + 2;
 
-    if (!c->powered || !c->enabled)
+    if (!c->powered)
         return;
+
+    if (!c->enabled)
+    {
+        if (preferences_sound_mode == 2)
+        {
+            output_disabled_dc(audio, c, left, right, len);
+        }
+        return;
+    }
 
     uint32_t freq = (DMG_CLOCK_FREQ_U / 64) / (2048 - c->freq);
     set_note_freq(c, freq);
@@ -785,8 +862,17 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 {
     chan* c = audio->chans + 3;
 
-    if (!c->powered || !c->enabled)
+    if (!c->powered)
         return;
+
+    if (!c->enabled)
+    {
+        if (preferences_sound_mode == 2)
+        {
+            output_disabled_dc(audio, c, left, right, len);
+        }
+        return;
+    }
 
     uint32_t freq = precomputed_noise_freqs[c->noise.lfsr_div][c->freq];
     set_note_freq(c, freq);
