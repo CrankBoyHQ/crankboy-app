@@ -28,6 +28,7 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     force_pref(crank_mode, CRANK_MODE_OFF);
     force_pref(crank_dock_button, PREF_BUTTON_NONE);
     force_pref(crank_undock_button, PREF_BUTTON_NONE);
+    force_pref(blend_frames, true);
 
     game_picture_background_color = kColorBlack;
     int s = script_load_tiles12(SCRIPT_ASSETS_DIR "glyph12", data->glyphs12, 0x60);
@@ -203,7 +204,6 @@ static void on_end(gb_s* gb, ScriptData* data)
 
 static const struct ScriptRecommendedSetting trip_recommended[] = {
     {PREFBIT_frame_skip, 2},
-    {PREFBIT_blend_frames, 1},
     RECOMMENDED_SETTINGS_END,
 };
 

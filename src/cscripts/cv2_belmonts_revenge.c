@@ -99,7 +99,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
         }
     }
 
-    force_pref(frame_skip, 2);
     force_pref(blend_frames, true);
     force_pref(dither_stable, false);
 
