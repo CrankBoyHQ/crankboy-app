@@ -46,7 +46,7 @@
 #define __audio
 #else
 #define __audio \
-    __attribute__((optimize("Os"))) __attribute__((section(".audio"))) __attribute__((short_call))
+    __attribute__((optimize("O3"))) __attribute__((section(".audio"))) __attribute__((short_call))
 #endif
 
 #if TARGET_PLAYDATE
