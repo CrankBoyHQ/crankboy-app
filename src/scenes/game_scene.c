@@ -821,7 +821,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-                memset(context->ghost_prev_lcd, 0, sizeof(context->ghost_prev_lcd));
+                memset(context->ghost_accum, 0, sizeof(context->ghost_accum));
                 context->ghost_frame_parity = false;
                 gameScene->state = CB_GameSceneStateLoaded;
 
@@ -1451,22 +1451,6 @@ static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t
         frame_a += LCD_WIDTH_PACKED;
         frame_b_and_dest += LCD_WIDTH_PACKED;
     }
-}
-
-// LCD ghosting blend LUTs: index = (prev & 3) | ((cur & 3) << 2)
-static const uint8_t ghost_simple_lut[16] = {0, 0, 1, 1, 0, 1, 1, 2, 1, 1, 2, 2, 1, 2, 2, 3};
-static const uint8_t ghost_prev_weighted_lut[16] = {0, 0, 1, 2, 0, 1, 1, 2, 0, 1, 2, 2, 1, 1, 2, 3};
-static const uint8_t ghost_cur_weighted_lut[16] = {0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3};
-
-static inline uint8_t ghost_blend_byte(uint8_t prev, uint8_t cur, const uint8_t* lut)
-{
-    uint8_t r = 0;
-    for (int s = 0; s < 8; s += 2)
-    {
-        int idx = ((prev >> s) & 3) | (((cur >> s) & 3) << 2);
-        r |= lut[idx] << s;
-    }
-    return r;
 }
 
 static void save_check(gb_s* gb);
@@ -2422,35 +2406,86 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }  // if (!gameScene->rewind.active)
 
-            // Ghosting: temporal blend with previous frame
-            if (preferences_ghosting > 0 && !gameScene->rewind.active)
+            // Ghosting: EMA temporal persistence (non-linear, shared per-byte alpha)
+            if (preferences_ghosting > 0 && !gameScene->rewind.active &&
+                (preferences_frame_skip == 0 || !preferences_blend_frames))
             {
                 bool parity = context->ghost_frame_parity;
                 context->ghost_frame_parity = !parity;
 
-                uint8_t* prev = context->ghost_prev_lcd;
+                uint8_t* accum = context->ghost_accum;
                 uint8_t* cur = context->gb->lcd;
 
                 for (int y = 0; y < LCD_HEIGHT; y++)
                 {
-                    const uint8_t* lut;
-                    if (preferences_ghosting == 2)
-                        lut = ((y ^ parity) & 1) ? ghost_cur_weighted_lut : ghost_prev_weighted_lut;
-                    else
-                        lut = ghost_simple_lut;
+                    uint8_t bias = ((y ^ parity) & 1) ? 16 : 0;
 
                     if (y + 1 < LCD_HEIGHT)
                     {
                         __builtin_prefetch(cur + LCD_WIDTH_PACKED, 1, 0);
-                        __builtin_prefetch(prev + LCD_WIDTH_PACKED, 0, 0);
+                        __builtin_prefetch(accum + LCD_WIDTH, 0, 0);
                     }
 
                     for (int x = 0; x < LCD_WIDTH_PACKED; x++)
                     {
-                        uint8_t a = *cur;   // current (unblended)
-                        uint8_t b = *prev;  // previous frame
-                        *cur++ = ghost_blend_byte(a, b, lut);
-                        *prev++ = a;  // store unblended for next frame
+                        uint8_t byte = *cur;
+
+                        uint8_t cv0 = ((byte >> 0) & 3) * 85;
+                        uint8_t cv1 = ((byte >> 2) & 3) * 85;
+                        uint8_t cv2 = ((byte >> 4) & 3) * 85;
+                        uint8_t cv3 = ((byte >> 6) & 3) * 85;
+
+                        uint8_t a0 = accum[0];
+                        uint8_t a1 = accum[1];
+                        uint8_t a2 = accum[2];
+                        uint8_t a3 = accum[3];
+
+                        uint8_t d, md = 0;
+                        d = cv0 > a0 ? cv0 - a0 : a0 - cv0;
+                        if (d > md)
+                            md = d;
+                        d = cv1 > a1 ? cv1 - a1 : a1 - cv1;
+                        if (d > md)
+                            md = d;
+                        d = cv2 > a2 ? cv2 - a2 : a2 - cv2;
+                        if (d > md)
+                            md = d;
+                        d = cv3 > a3 ? cv3 - a3 : a3 - cv3;
+                        if (d > md)
+                            md = d;
+
+                        // Skip blend if all accumulators already settled
+                        if (md == 0)
+                        {
+                            accum += 4;
+                            *cur++ = byte;
+                            continue;
+                        }
+
+                        uint8_t alpha = 16 + ((md * 5) >> 3) + bias;
+                        uint8_t inv = 256 - alpha;
+
+                        uint8_t out = 0;
+                        uint16_t v;
+
+                        v = ((uint16_t)cv0 * alpha + (uint16_t)a0 * inv) >> 8;
+                        out |= (uint8_t)(v >> 6) << 0;
+                        accum[0] = (uint8_t)v;
+
+                        v = ((uint16_t)cv1 * alpha + (uint16_t)a1 * inv) >> 8;
+                        out |= (uint8_t)(v >> 6) << 2;
+                        accum[1] = (uint8_t)v;
+
+                        v = ((uint16_t)cv2 * alpha + (uint16_t)a2 * inv) >> 8;
+                        out |= (uint8_t)(v >> 6) << 4;
+                        accum[2] = (uint8_t)v;
+
+                        v = ((uint16_t)cv3 * alpha + (uint16_t)a3 * inv) >> 8;
+                        out |= (uint8_t)(v >> 6) << 6;
+                        accum[3] = (uint8_t)v;
+
+                        accum += 4;
+                        *cur++ = out;
                     }
                 }
             }

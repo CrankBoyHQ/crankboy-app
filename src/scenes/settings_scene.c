@@ -980,7 +980,6 @@ const char* const save_slot_labels[10] = {
 static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
                                               "Grid (L)",  "Staggered (D)", "Grid (D)"};
 static const char* overclock_labels[] = {"Off", "x2", "x4"};
-static const char* ghosting_labels[] = {"Off", "Uniform", "Interlaced"};
 static const char* dither_line_labels[] = {"1", "2", "3"};
 static const char* settings_scope_labels[] = {"Global", "Game"};
 static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
@@ -2109,18 +2108,33 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     }
 
     // Ghosting
-    section[++i] = (OptionsMenuEntry){
-        .name = "Ghosting",
-        .values = ghosting_labels,
-        .description =
-            "Simulates the Game Boy LCD persistence.\n\n"
-            "Uniform:\n50/50 blend with previous frame.\n\n"
-            "Interlaced:\nAlternating scanline bias matching the LCD interlaced refresh.",
-        .pref_var = &preferences_ghosting,
-        .max_value = 3,
-        .rebuild_when_changed = 0,
-        .on_press = NULL,
-    };
+    if (preferences_blend_frames && preferences_frame_skip != 0)
+    {
+        section[++i] = (OptionsMenuEntry){
+            .name = "LCD Ghosting",
+            .values = off_on_labels,
+            .description =
+                "Simulates the Game Boy LCD persistence.\n\n"
+                "Not available when Frame Blending is active.",
+            .pref_var = &preferences_ghosting,
+            .max_value = 0,
+            .on_press = NULL,
+        };
+    }
+    else
+    {
+        section[++i] = (OptionsMenuEntry){
+            .name = "LCD Ghosting",
+            .values = off_on_labels,
+            .description =
+                "Simulates the Game Boy LCD persistence.\n\n"
+                "Blends frames with alternating scanline response "
+                "to match the LCD interlaced refresh.",
+            .pref_var = &preferences_ghosting,
+            .max_value = 2,
+            .on_press = NULL,
+        };
+    }
 
     // dither
     section[++i] = (OptionsMenuEntry){

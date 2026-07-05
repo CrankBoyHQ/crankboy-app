@@ -80,7 +80,7 @@ typedef struct CB_GameSceneContext
     bool cgb_mode;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
-    clalign uint8_t ghost_prev_lcd[LCD_BUFFER_BYTES];
+    clalign uint8_t ghost_accum[LCD_HEIGHT * LCD_WIDTH];  // 8-bit EMA per pixel
     bool ghost_frame_parity;
 } CB_GameSceneContext;
 
