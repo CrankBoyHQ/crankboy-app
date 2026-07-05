@@ -2114,7 +2114,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
             .name = "LCD Ghosting",
             .values = off_on_labels,
             .description =
-                "Simulates the Game Boy LCD persistence.\n\n"
+                "Mimics the Game Boy LCD's slow pixel decay.\n\n"
                 "Not available when Frame Blending is active.",
             .pref_var = &preferences_ghosting,
             .max_value = 0,
@@ -2127,9 +2127,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
             .name = "LCD Ghosting",
             .values = off_on_labels,
             .description =
-                "Simulates the Game Boy LCD persistence.\n\n"
-                "Blends frames with alternating scanline response "
-                "to match the LCD interlaced refresh.",
+                "Mimics the Game Boy LCD's slow pixel decay.\n\n"
+                "Alternates scanlines between current and previous frames, recreating the LCD's "
+                "slow pixel fade.",
             .pref_var = &preferences_ghosting,
             .max_value = 2,
             .on_press = NULL,
