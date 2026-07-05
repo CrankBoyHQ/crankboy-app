@@ -1,4 +1,4 @@
-# v2.2.0 - (2026-07-04)
+# v2.2.0 - (2026-07-05)
 
 It's Rewind Time.
 
@@ -19,6 +19,10 @@ It's Rewind Time.
 - Audio overhauled across all channels. (Less crackle, more chiptune.)
 - Countless timing and accuracy fixes. More games work. More sound plays right.
 - Removed interlacing and legacy fast-modes -- the accurate defaults are faster now anyway. (Fewer knobs, better results.)
+
+## Display
+
+- LCD Ghosting -- mimics the slow pixel response of a real Game Boy screen. (In case you find the Playdate display too crisp.)
 
 ## Scripts
 
