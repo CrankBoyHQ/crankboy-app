@@ -2630,6 +2630,22 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     if (fill_w > 0)
                         playdate->graphics->fillRect(fill_x, bar_y + 1, fill_w, 3, kColorBlack);
                 }
+
+                if (gameScene->rewind.show_help)
+                {
+                    const char* text = "Hold UP or Ⓑ and crank.";
+                    int tw = playdate->graphics->getTextWidth(
+                        CB_App->labelFont, text, strlen(text), kUTF8Encoding, 0
+                    );
+                    int fh = playdate->graphics->getFontHeight(CB_App->labelFont);
+                    int tx = (int)game_picture_x_offset + LCD_COLUMNS - 2 * CB_LCD_X - tw - 6;
+                    int ty = (int)game_picture_y_top + 10;
+                    playdate->graphics->fillRect(tx - 2, ty - 2, tw + 4, fh + 4, kColorBlack);
+                    playdate->graphics->setFont(CB_App->labelFont);
+                    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+                    playdate->graphics->drawText(text, strlen(text), kUTF8Encoding, tx, ty + 1);
+                    playdate->graphics->setDrawMode(kDrawModeCopy);
+                }
             }
 
             // Always request the update loop to run at 30 FPS.
@@ -4076,6 +4092,8 @@ static void rewind_init(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
+    gameScene->rewind.show_help = true;
+    gameScene->rewind.help_step_count = 0;
 }
 
 static void rewind_free(CB_GameScene* gameScene)
@@ -4205,6 +4223,9 @@ static void rewind_step_back(CB_GameScene* gameScene)
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
     rewind_dmg_load(context->gb, buf, lcd_sources[0]);
     gameScene->rewind.noise_pending = true;
+
+    if (gameScene->rewind.show_help && ++gameScene->rewind.help_step_count >= 3)
+        gameScene->rewind.show_help = false;
 }
 
 static void rewind_step_forward(CB_GameScene* gameScene)
@@ -4237,6 +4258,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.active = false;
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.noise_pending = false;
+    gameScene->rewind.help_step_count = 0;
 
     if (preferences_audio_sync == 1)
         CB_reset_audio_sync_state();

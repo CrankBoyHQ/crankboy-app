@@ -192,6 +192,8 @@ typedef struct CB_GameScene
         float scrub_accumulator;
         bool active;
         bool noise_pending;
+        bool show_help;
+        int help_step_count;
     } rewind;
 } CB_GameScene;
 
