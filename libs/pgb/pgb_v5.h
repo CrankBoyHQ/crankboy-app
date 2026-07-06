@@ -214,7 +214,6 @@ struct PGB_VERSIONED(chan)
      * (sweep). Loaded from env.step / sweep.rate on trigger, decremented at
      * the corresponding DIV-APU step. When zero, tick and reload. */
     uint8_t env_divider;
-    uint8_t sweep_divider;
 };
 
 struct PGB_VERSIONED(audio_data)
@@ -897,9 +896,8 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
         // Compute envelope_smooth from correctly-migrated volume
         v5_gb->audio.chans[ch].envelope_smooth = (int32_t)v5_gb->audio.chans[ch].volume << 8;
 
-        // New accurate-mode frame sequencer dividers not in v4
+        // New accurate-mode frame sequencer divider not in v4
         v5_gb->audio.chans[ch].env_divider = 0;
-        v5_gb->audio.chans[ch].sweep_divider = 0;
     }
 
     // audio fields after chans: capacitor_l, capacitor_r

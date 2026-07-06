@@ -142,58 +142,6 @@ __shell void audio_div_apu_tick(audio_data* audio)
         }
     }
 
-    /* Sweep: 128 Hz (steps 2, 6). Channel 1 only.
-     * Timer runs when enabled flag is set (pace != 0 || shift != 0).
-     * Period 0 is treated as 8 per hardware. */
-    if (step == 2 || step == 6)
-    {
-        chan* c = chans + 0;
-        if (c->enabled && (c->sweep.rate != 0 || c->sweep.shift != 0))
-        {
-            c->sweep_divider--;
-            if (c->sweep_divider == 0)
-            {
-                uint8_t sweep_period = c->sweep.rate ? c->sweep.rate : 8;
-                c->sweep_divider = sweep_period;
-
-                if (c->sweep.rate != 0 && c->sweep.shift > 0)
-                {
-                    uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
-                    if (!c->sweep_up)
-                    {
-                        new_freq = c->sweep.freq - new_freq + 1;
-                        c->sweep.did_subtract = true;
-                    }
-                    else
-                        new_freq = c->sweep.freq + new_freq;
-
-                    if (new_freq > 2047)
-                    {
-                        c->enabled = 0;
-                        goto sweep_done;
-                    }
-
-                    c->freq = new_freq;
-                    c->sweep.freq = new_freq;
-
-                    /* Pandocs: double calculation for overflow check. */
-                    uint16_t second = c->sweep.freq >> c->sweep.shift;
-                    if (!c->sweep_up)
-                    {
-                        second = c->sweep.freq - second;
-                        c->sweep.did_subtract = true;
-                    }
-                    else
-                        second = c->sweep.freq + second;
-
-                    if (second > 2047)
-                        c->enabled = 0;
-                }
-            }
-        }
-    sweep_done:;
-    }
-
     // Process pending envelope ticks from previous step-7 events.
     // Hardware delays volume change by ~1/2 DIV-APU cycle via
     // the secondary event (rising edge) after countdown hits 0.
@@ -333,7 +281,7 @@ __audio static bool calculate_new_sweep_freq(chan* c)
 
     if (!c->sweep_up)
     {
-        new_freq = c->sweep.freq - new_freq + 1;
+        new_freq = c->sweep.freq - new_freq;
         if (c->sweep.shift > 0)
             c->sweep.did_subtract = true;
     }
@@ -442,9 +390,6 @@ __audio static void update_sweep(chan* c, int sample_rate)
         return;
     }
 
-    if (preferences_sound_mode == 2)
-        return;
-
     c->sweep.counter += c->sweep.inc;
 
     while (c->sweep.counter > sample_rate)
@@ -454,7 +399,7 @@ __audio static void update_sweep(chan* c, int sample_rate)
         uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
         if (!c->sweep_up)
         {
-            new_freq = c->sweep.freq - new_freq + 1;
+            new_freq = c->sweep.freq - new_freq;
             if (c->sweep.shift > 0)
                 c->sweep.did_subtract = true;
         }
@@ -600,11 +545,23 @@ __audio static void update_square(
                  : "r"(final_vol_l), "r"(final_vol_r));
 #endif
 
+    uint16_t last_freq = 0;
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
         update_env(c, sample_rate);
         if (!ch2)
             update_sweep(c, sample_rate);
+
+        if (!ch2 && preferences_sound_mode == 2)
+        {
+            if (c->freq != last_freq)
+            {
+                last_freq = c->freq;
+                uint32_t new_freq = DMG_CLOCK_FREQ_U / ((2048 - last_freq) << 5);
+                set_note_freq(c, new_freq);
+                c->freq_inc *= 8;
+            }
+        }
 
         int32_t sample_out;
 
@@ -1058,11 +1015,6 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.counter = 0;
         c->sweep.did_subtract = false;
-
-        if (preferences_sound_mode == 2 && (c->sweep.rate > 0 || c->sweep.shift > 0))
-        {
-            c->sweep_divider = c->sweep.rate ? c->sweep.rate : 8;
-        }
     }
 
     int len_max = 64;
@@ -1309,7 +1261,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         else
         {
             chans[0].sweep.rate = new_rate;
-            chans[0].sweep.inc = preferences_sound_mode == 2 ? 0 : 128 / new_rate;
+            chans[0].sweep.inc = 128 / new_rate;
         }
 
         if (chans[0].sweep_up && chans[0].sweep.shift > 0)
@@ -1322,15 +1274,6 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         if (old_sweep_up == false && chans[0].sweep_up == true && chans[0].sweep.did_subtract)
         {
             chan_enable(audio, 0, false);
-        }
-
-        /* Reload sweep divider when NR10 is written mid-playback.
-         * Hardware: timer period 0 is treated as 8. */
-        if (preferences_sound_mode == 2 && chans[0].enabled)
-        {
-            uint8_t pace = chans[0].sweep.rate;
-            if (pace != 0 || chans[0].sweep.shift != 0)
-                chans[0].sweep_divider = pace ? pace : 8;
         }
     }
     break;
