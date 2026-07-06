@@ -1,28 +1,28 @@
-# v2.2.0 - (2026-07-05)
+# v2.2.0 - (2026-07-06)
 
-It's Rewind Time.
+Be kind, rewind ~ every game is now Crankin'.
 
 ## Rewind
 
-- Crank backwards to rewind gameplay! (DMG-only for now.)
+- Rewind feature is optional and must first be enabled in the Behaviour settings. (Small perf cost, shouldn't affect most games)
 - Hold Ⓑ or Up while cranking to scrub through time.
-- VHS-style scanlines and noise -- like fighting with a VCR in 1989.
-- Seekbar shows exactly where in time you are.
-- Enable in Behaviour settings.
+- Seekbar at the bottom of the screen shows your current time.
+- Dock crank to exit rewind mode.
+- VHS-style effect like it's 1989.
 
 ## Menu
 
-- Quick-press Menu button can act as Start/Select. (Your right thumb just got a promotion.)
+- Can now map "quickly open and close the quick-menu" to start/select. (It's quick!)
 
 ## Emulation
 
-- Audio overhauled across all channels. (Less crackle, more chiptune.)
-- Countless timing and accuracy fixes. More games work. More sound plays right.
-- Removed interlacing and legacy fast-modes -- the accurate defaults are faster now anyway. (Fewer knobs, better results.)
+- Audio overhauled across all sound channels. Should be a bit less crackle-y now.
+- Numerous timing and accuracy fixes. Most instances where music played back at the wrong speed should be resolved now.
+- Removed interlacing and legacy "fast" settings, which had poor results anyway; the accurate defaults are faster now anyway.
 
 ## Display
 
-- LCD Ghosting -- mimics the slow pixel response of a real Game Boy screen. (In case you find the Playdate display too crisp.)
+- "LCD Ghosting" setting mimics the slow pixel response of a real GB screen. (Just in case you find the Playdate display too crisp.) This is important for some games which have sprites that flicker rapidly to simulate transparency.
 
 ## Scripts
 
@@ -30,8 +30,8 @@ It's Rewind Time.
 
 ## Bug Fixes
 
-- Save states load reliably. -- We tested it this time. (Mostly.)
-- Various crash and stability fixes throughout.
+- Save states load reliably. Pretty reliably. (You should still make back-ups sometimes!)
+- Various crash and stability fixes.
 
 # v2.1.1 - (2026-06-18)
 
