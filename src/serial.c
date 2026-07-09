@@ -3,6 +3,7 @@
 #include "app.h"
 #include "ft.h"
 #include "revcheck.h"
+#include "scenes/game_scene.h"
 #include "scenes/library_scene.h"
 #include "scenes/sft_modal.h"
 #include "utility.h"
@@ -717,6 +718,105 @@ static bool serial_cb_games(const char* const* tokens)
     return true;
 }
 
+static CB_GameScene* serial_find_game_scene(void)
+{
+    for (CB_Scene* s = CB_App->scene; s; s = s->parentScene)
+    {
+        if (s->id && strcmp(s->id, "game") == 0)
+            return s->managedObject;
+    }
+    return NULL;
+}
+
+static gb_s* serial_find_gb(void)
+{
+    CB_GameScene* gameScene = serial_find_game_scene();
+    return (gameScene && gameScene->context) ? gameScene->context->gb : NULL;
+}
+
+bool load_state(CB_GameScene* gameScene, unsigned slot);
+
+// Handle cb:gbload command - Load a savestate slot (debugging)
+// Format: cb:gbload:<slot>
+static bool serial_cb_gbload(const char* const* tokens)
+{
+    CB_GameScene* gameScene = serial_find_game_scene();
+    if (!gameScene)
+    {
+        serial_send_response("cb:gbload:error:noscene");
+        return true;
+    }
+    unsigned slot = tokens[2] ? strtoul(tokens[2], NULL, 10) : 0;
+    serial_send_response("cb:gbload:%s", load_state(gameScene, slot) ? "ok" : "fail");
+    return true;
+}
+
+// Handle cb:gb command - Dump live emulator CPU/IO state (debugging)
+// Format: cb:gb
+static bool serial_cb_gb(const char* const* tokens)
+{
+    (void)tokens;
+
+    gb_s* gb = serial_find_gb();
+    if (!gb)
+    {
+        serial_send_response("cb:gb:error:noscene");
+        return true;
+    }
+    serial_send_response(
+        "cb:gb:pc=%04x sp=%04x af=%04x bc=%04x de=%04x hl=%04x bank=%02x "
+        "halt=%u stop=%u hle=%u ime=%u haltbug=%u "
+        "IE=%02x hramIE=%02x IF=%02x LCDC=%02x STAT=%02x LY=%02x LYC=%02x "
+        "TAC=%02x TIMA=%02x TMA=%02x P1=%02x joypad=%02x "
+        "lcdmode=%u lcden=%u wrambank=%u vrambank=%u",
+        gb->cpu_reg.pc, gb->cpu_reg.sp, gb->cpu_reg.af, gb->cpu_reg.bc, gb->cpu_reg.de,
+        gb->cpu_reg.hl, gb->selected_rom_bank, gb->gb_halt, gb->gb_stop, gb->gb_hle, gb->gb_ime,
+        gb->gb_halt_bug, gb->gb_reg.IE, gb->hram[0xFF], gb->gb_reg.IF, gb->gb_reg.LCDC,
+        gb->gb_reg.STAT, gb->gb_reg.LY, gb->gb_reg.LYC, gb->gb_reg.TAC, gb->gb_reg.TIMA,
+        gb->gb_reg.TMA, gb->gb_reg.P1, gb->direct.joypad, gb->lcd_mode, gb->lcd_master_enable,
+        gb->cgb_wram_bank, gb->cgb_vram_bank
+    );
+    return true;
+}
+
+// Handle cb:gbmem command - Peek emulated memory (debugging)
+// Format: cb:gbmem:<hexaddr>:<hexlen, max 64>
+static bool serial_cb_gbmem(const char* const* tokens)
+{
+    gb_s* gb = serial_find_gb();
+    if (!gb || !tokens[2] || !tokens[3])
+    {
+        serial_send_response("cb:gbmem:error");
+        return true;
+    }
+    unsigned addr = strtoul(tokens[2], NULL, 16);
+    unsigned len = strtoul(tokens[3], NULL, 16);
+    if (len > 64)
+        len = 64;
+
+    char buf[64 * 3 + 1];
+    size_t off = 0;
+    for (unsigned i = 0; i < len; ++i)
+    {
+        unsigned a = (addr + i) & 0xFFFF;
+        int v = -1;
+        if (a >= 0xFF00)
+            v = gb->hram[a % 0x100];
+        else if (a >= 0xFE00 && a < 0xFEA0)
+            v = gb->oam[a - 0xFE00];
+        else if (a >= 0xC000 && a < 0xE000)
+            v = gb->wram[(a - 0xC000) + ((a >= 0xD000) ? (gb->cgb_wram_bank - 1) * 0x1000 : 0)];
+        else if (a >= 0x8000 && a < 0xA000)
+            v = -1;  // vram is bit-reversed; skip
+        else if (a < 0x8000)
+            v = gb->gb_rom[(a < 0x4000) ? (gb->zero_bank_base + a)
+                                        : ((unsigned)gb->selected_rom_bank * 0x4000 + (a - 0x4000))];
+        off += snprintf(buf + off, sizeof(buf) - off, " %02x", v & 0xFF);
+    }
+    serial_send_response("cb:gbmem:%04x:%s", addr, buf);
+    return true;
+}
+
 // Handle cb: command - Routes to subcommands (restart, ping, sft)
 // Format: cb:<subcommand>
 static bool serial_cb_handler(const char* const* tokens)
@@ -795,6 +895,18 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "fwdinstall") == 0)
     {
         return serial_cb_fwdinstall(tokens);
+    }
+    else if (strcmp(subcmd, "gb") == 0)
+    {
+        return serial_cb_gb(tokens);
+    }
+    else if (strcmp(subcmd, "gbmem") == 0)
+    {
+        return serial_cb_gbmem(tokens);
+    }
+    else if (strcmp(subcmd, "gbload") == 0)
+    {
+        return serial_cb_gbload(tokens);
     }
 
     return false;
