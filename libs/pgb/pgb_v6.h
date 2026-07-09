@@ -1,13 +1,11 @@
 #include "pgb_common.h"
 
-/* DEVELOPMENT VERSION RANGE: (v2.0.0, v2.1.0] */
-
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
 // Bump PGB_VERSION and replace savestate_upgrade_to_*
 
 // Compatability version (for save state upgrading).
-#define PGB_VERSION 3
+#define PGB_VERSION 6
 
 struct PGB_VERSIONED(gb_breakpoint)
 {
@@ -151,6 +149,7 @@ struct PGB_VERSIONED(chan_vol_env)
 {
     uint8_t step : 3;
     unsigned up : 1;
+    unsigned locked : 1;  // set when volume hits boundary (0 or MAX), cleared on trigger
     uint32_t counter;
     uint32_t inc;
 };
@@ -160,6 +159,7 @@ struct PGB_VERSIONED(chan_freq_sweep)
     uint16_t freq;
     uint8_t rate;
     uint8_t shift;
+    unsigned did_subtract : 1;
     uint32_t counter;
     uint32_t inc;
 };
@@ -171,9 +171,11 @@ struct PGB_VERSIONED(chan)
     unsigned on_left : 1;
     unsigned on_right : 1;
     unsigned muted : 1;
-    uint8_t lfsr_wide : 1;
+    unsigned lfsr_narrow : 1;
     unsigned sweep_up : 1;
     unsigned len_enabled : 1;
+    unsigned sample_surpressed : 1;
+    unsigned env_pending : 1;
 
     uint8_t volume : 4;
     uint8_t volume_init : 4;
@@ -202,8 +204,16 @@ struct PGB_VERSIONED(chan)
         struct
         {
             int8_t sample;
+            bool just_read;  // transient: CH3 just read sample, gates DMG wave RAM CPU access
         } wave;
     };
+
+    int32_t envelope_smooth;
+
+    /* Accurate-mode frame sequencer dividers. Tick at 64 Hz (envelope) / 128 Hz
+     * (sweep). Loaded from env.step / sweep.rate on trigger, decremented at
+     * the corresponding DIV-APU step. When zero, tick and reload. */
+    uint8_t env_divider;
 };
 
 struct PGB_VERSIONED(audio_data)
@@ -212,6 +222,14 @@ struct PGB_VERSIONED(audio_data)
     int vol_r : 4;
     uint8_t* audio_mem;
     struct PGB_VERSIONED(chan) chans[4];
+
+    /* DIV-APU frame sequencer step (0-7). Clocked at 512 Hz by DIV bit 4
+     * falling edges. Gates envelope (step 7), sweep (2,6), length (0,2,4,6). */
+    uint8_t div_apu_step;
+
+    /* Set when APU powers on while DIV bit 4/5 is high. The first falling
+     * edge tick is skipped (hardware glitch). */
+    bool skip_next_apu_tick : 1;
 
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
@@ -246,16 +264,11 @@ struct PGB_VERSIONED(gb_s)
     void (*gb_serial_tx)(struct PGB_VERSIONED(gb_s) *, const uint8_t tx);
     enum gb_serial_rx_ret_e (*gb_serial_rx)(struct PGB_VERSIONED(gb_s) *, uint8_t* rx);
 
-    // shortcut to swappable bank (addr - 0x4000 offset built in)
-    uint8_t* selected_bank_addr;
-
-    // precomputed gb_rom + zero_bank_base
-    uint8_t* gb_zero_bank;
-
     struct
     {
         uint8_t gb_halt : 1;
         uint8_t gb_stop : 1;
+        uint8_t gb_hle : 1;  // cpu suspended during high-level emulation of a routine
         uint8_t gb_ime : 1;
         uint8_t gb_ime_countdown : 2;
         uint8_t is_cgb_mode : 1;
@@ -271,9 +284,12 @@ struct PGB_VERSIONED(gb_s)
 #define LCD_SEARCH_OAM 2
 #define LCD_TRANSFER 3
         uint8_t lcd_mode : 2;
-        uint8_t lcd_blank : 1;
+        uint8_t lcd_blank : 1; /* UNUSED */
         uint8_t lcd_master_enable : 1;
+        uint8_t gb_halt_bug : 2;
     };
+
+    uint16_t gb_halt_bug_pc;
 
     uint32_t zero_bank_base;  // base for 0000–3FFF; 0 for all non-MBC1M
 
@@ -293,11 +309,18 @@ struct PGB_VERSIONED(gb_s)
 
     // 1-7, cgb only
     bool cgb_fast_mode_armed : 1;
+
     uint8_t cgb_wram_bank : 3;
     uint8_t cgb_ff75 : 3;
-    bool cgb_fast_mode : 1;
+    bool cgb_fast_mode : 1;  // source-of-truth
     uint8_t cgb_ff6c : 1;
+
     uint8_t cgb_vram_bank : 1;
+    bool cgb_fast_mode_active : 1;  // temp. as above, but settings-affected
+    bool cgb_speed_permitted : 1;
+    bool hle_enabled : 1;
+    uint8_t hle_ioaddr;
+    uint16_t cgb_speed_switch_halt_period;
 
     uint8_t cgb_ff7x[3];
     uint16_t cgb_hdma_src;
@@ -305,11 +328,21 @@ struct PGB_VERSIONED(gb_s)
     uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
 
+    bool dma_active : 1;
+    uint16_t dma_src;
+    uint8_t dma_dest;
+
+    uint8_t* cgb_bg_palette;
+    uint8_t* cgb_obj_palette;
+    uint8_t cgb_bg_palette_gray[8];
+    uint8_t cgb_obj_palette_gray[8];
+    uint8_t cgb_obj_palette_gray_alt[8];
+    uint8_t cgb_bg_palette_index;
+    uint8_t cgb_obj_palette_index;
+
     uint8_t printer_stub_state;
     uint16_t printer_data_len;
     uint8_t printer_last_cmd;
-
-    uint8_t* selected_cart_bank_addr;
 
     /* Number of ROM banks in cartridge. */
     uint16_t num_rom_banks_mask;
@@ -371,19 +404,32 @@ struct PGB_VERSIONED(gb_s)
     struct PGB_VERSIONED(gb_registers_s) gb_reg;
     struct PGB_VERSIONED(count_s) counter;
 
-    /* Pre-computed base pointers to avoid subtractions in memory access. */
-    uint8_t* wram_base[2];
-    uint8_t* wram_hi_base;
-    uint8_t* echo_ram_base;
+    /* Pre-computed base pointers. Includes subtraction of region start address.*/
+    union
+    {
+        // Addressable as ram_base[addr >> 12][addr]
+        uint8_t* ram_base[16];
+        struct
+        {
+            /*0-7*/ uint8_t* rom_bank_base[2][4];
+            /*8-9*/ uint8_t* _unused_vram[2];       // unused (see note on vram)
+            /*A-B*/ uint8_t* _unused_cart_base[2];  // unused (need to set sram dirty bit) -- TODO
+            /*C-D*/ uint8_t* wram_base[2];
+            /*E  */ uint8_t* echo_ram_base;  // section E only
+            /*F  */ uint8_t* _unused_io;
+        };
+    };
     uint8_t* vram_base;  // see note about vram
+    uint8_t* selected_cart_bank_addr;
 
     /* TODO: Allow implementation to allocate WRAM, VRAM and Frame Buffer. */
     uint8_t* wram;  // wram[WRAM_SIZE_CGB];
     uint8_t* vram;  // vram[VRAM_SIZE_CGB]; /* NOTE: tile data (0-0x1800) is stored in reverse bit
                     // order. */
-    uint8_t hram[HRAM_SIZE];  // note: includes both registers and hram for some reason
+    uint8_t hram[HRAM_SIZE];  // note: includes registers as well as hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
+    uint8_t* lcd_alt;
 
     struct
     {
@@ -399,6 +445,10 @@ struct PGB_VERSIONED(gb_s)
 
         uint16_t current_mode3_cycles;
         uint16_t current_mode0_cycles;
+
+        uint8_t oam_latch[OAM_SIZE];
+        uint8_t latched_scx;
+        uint8_t latched_scy;
     } display;
 
     /**
@@ -410,33 +460,21 @@ struct PGB_VERSIONED(gb_s)
      */
     struct
     {
-        /* Set to enable interlacing. Interlacing will start immediately
-         * (at the next line drawing).
-         */
         uint8_t frame_skip : 1;
         uint8_t sound : 1;
-        uint8_t dynamic_rate_enabled : 1;
         uint8_t sram_updated : 1;
         uint8_t sram_dirty : 1;
         uint8_t crank_docked : 1;
-        uint8_t joypad_interrupts : 1;
         uint8_t enable_xram : 1;
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
-        uint8_t* oam_ghost_buffer;
-        uint8_t blend_rect_x_min;
-        uint8_t blend_rect_y_min;
-        uint8_t blend_rect_x_max;
-        uint8_t blend_rect_y_max;
+        uint8_t cgb_dual_output : 1;
 
         int joypad_interrupt_delay;
 
         // if set, causes crank register to behave as delta-menu-selection instead
         uint8_t ext_crank_menu_indexing : 1;
-
-        // where this is 0, skip the line
-        uint8_t interlace_mask;
 
         union
         {
@@ -485,11 +523,6 @@ struct PGB_VERSIONED(gb_s)
     // extended ram feature offered by crankboy
     uint8_t* xram;
 
-    // always 32 zero bytes. Useful hack to implement CGB LCDC priority
-    // bit, but can be used for other things
-    // (so long as nothing writes anything non-zero here.)
-    uint32_t zero32[5];
-
     // NOTE: this MUST be the last member of gb_s.
     // sometimes we perform memory operations on the whole gb struct except for
     // audio.
@@ -501,7 +534,7 @@ FORCE_INLINE uint32_t PGB_VERSIONED(gb_get_state_size)(const struct PGB_VERSIONE
 {
     return sizeof(struct StateHeader) + sizeof(*gb) + ROM_HEADER_SIZE  // for safe-keeping
            + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + gb->gb_cart_ram_size +
-           MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint));
+           MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint)) + 128;
 
     // skipped: lcd; rom
 }
@@ -511,6 +544,12 @@ FORCE_INLINE void PGB_VERSIONED(gb_state_save)(struct PGB_VERSIONED(gb_s) * gb, 
     // gb
     memcpy(out, gb, sizeof(*gb));
     out += sizeof(*gb);
+
+    // CGB palette data (heap allocated, not in struct)
+    memcpy(out, gb->cgb_bg_palette, 64);
+    out += 64;
+    memcpy(out, gb->cgb_obj_palette, 64);
+    out += 64;
 
     // rom header (so we know the associated rom for this state)
     memcpy(out, gb->gb_rom + ROM_HEADER_START, ROM_HEADER_SIZE);
@@ -557,6 +596,11 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     struct PGB_VERSIONED(gb_s)* in_gb = (void*)in;
     in += sizeof(*gb);
+
+    // CGB palette data appended after struct
+    const char* in_palettes = in;
+    in += 128;
+
     size_t state_size = PGB_VERSIONED(gb_get_state_size)(in_gb);
 
     if (size != state_size)
@@ -579,26 +623,43 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
 
     // -- we're in the clear now --
 
+    memcpy(gb->cgb_bg_palette, in_palettes, 64);
+    memcpy(gb->cgb_obj_palette, in_palettes + 64, 64);
+
     void* preserved_fields[] = {
         &gb->gb_rom,
         &gb->wram,
         &gb->vram,
         &gb->gb_cart_ram,
         &gb->breakpoints,
-        &gb->direct.oam_ghost_buffer,
         &gb->lcd,
+        &gb->lcd_alt,
         &gb->direct.priv,
         &gb->gb_error,
         &gb->gb_serial_tx,
         &gb->gb_serial_rx,
-        &gb->wram_base[0],
-        &gb->wram_base[1],
-        &gb->echo_ram_base,
         &gb->vram_base,
-        &gb->gb_zero_bank,
         &gb->xram,
         &gb->display.bg_map_base,
-        &gb->display.window_map_base
+        &gb->display.window_map_base,
+        &gb->ram_base[0],
+        &gb->ram_base[1],
+        &gb->ram_base[2],
+        &gb->ram_base[3],
+        &gb->ram_base[4],
+        &gb->ram_base[5],
+        &gb->ram_base[6],
+        &gb->ram_base[7],
+        &gb->ram_base[8],
+        &gb->ram_base[9],
+        &gb->ram_base[10],
+        &gb->ram_base[11],
+        &gb->ram_base[12],
+        &gb->ram_base[13],
+        &gb->ram_base[14],
+        &gb->ram_base[15],
+        &gb->cgb_bg_palette,
+        &gb->cgb_obj_palette,
     };
 
     void* preserved_data[sizeof(preserved_fields)];
@@ -640,6 +701,9 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     // memcpy(gb->breakpoints, in, MAX_BREAKPOINTS * sizeof(gb_breakpoint));
     in += MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint));
 
+    // IE reads go through the hram mirror; heal states with a stale one
+    gb->hram[0xFF] = gb->gb_reg.IE;
+
     // clear caches and other presentation-layer data
     memset(gb->lcd, 0, LCD_BUFFER_BYTES);
 
@@ -652,7 +716,7 @@ char* PGB_VERSIONED(gb_savestate_upgrade_to)(char** out, const char* in);
 
 #ifdef PGB_SAVESTATE_UPGRADE_IMPL
 
-#include "pgb_v2.h"
+#include "pgb_v5.h"
 
 // in: points to a StateHeader which is followed by the rest of the save state.
 // out: points to a StateHeader*, which will point to either:
@@ -664,7 +728,7 @@ char* PGB_VERSIONED(gb_savestate_upgrade_to)(char** out, const char* in);
 // if NULL is returned, `out` MUST be non-null.
 // if non-NULL is returned, caller needn't free anything.
 
-char* savestate_upgrade_to_v3(char** out, size_t* out_size, char* in, size_t in_size)
+char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_size)
 {
     const StateHeader* const in_header = (const void*)in;
     if (in_header->version > PGB_VERSION)
@@ -678,69 +742,54 @@ char* savestate_upgrade_to_v3(char** out, size_t* out_size, char* in, size_t in_
         return NULL;
     }
 
-    // upgrade `in` to v1 if needed
+    // upgrade to v5 if needed
     char* const org_in = in;
     size_t const org_in_size = in_size;
-    if (in_header->version < 2)
+    if (in_header->version < 5)
     {
-        const char* result = savestate_upgrade_to_v2(&in, &in_size, org_in, org_in_size);
+        const char* result = savestate_upgrade_to_v5(&in, &in_size, org_in, org_in_size);
         if (result)
             return aprintf("%s", result);
     }
-    char* const v2_in = in;
+    char* const v5_in = in;
 
-#define DEFINE(type, name, src)    \
-    type* const name = (void*)src; \
-    src += sizeof(type);
+    const StateHeader* const v5_header = (const void*)v5_in;
+    const struct gb_s_v5* v5_gb = (const void*)(v5_in + sizeof(StateHeader));
 
-    DEFINE(const StateHeader, v2_header, in);
-    DEFINE(const struct gb_s_v2, v2_gb, in);
-
-    char* v3_org = mallocz(sizeof(StateHeader) + sizeof(struct gb_s_v3));
-    if (!v3_org)
+    size_t v6_gb_size = sizeof(struct gb_s_v6);
+    size_t extra_sz = in_size - sizeof(StateHeader) - sizeof(struct gb_s_v5);
+    char* v6_org = mallocz(sizeof(StateHeader) + v6_gb_size + extra_sz);
+    if (!v6_org)
     {
-        if (v2_in != org_in)
-            cb_free(v2_in);
+        if (v5_in != org_in)
+            cb_free(v5_in);
         return aprintf("Out of memory");
     }
-    char* v3 = v3_org;
 
-    DEFINE(StateHeader, v3_header, v3);
-    DEFINE(struct gb_s_v3, v3_gb, v3);
+    StateHeader* v6_header = (StateHeader*)v6_org;
+    struct gb_s_v6* v6_gb = (struct gb_s_v6*)(v6_org + sizeof(StateHeader));
 
-    memcpy(v3_header, v2_header, sizeof(StateHeader));
-    v3_header->version = PGB_VERSION;
-    v3_header->gb_s_size = sizeof(struct PGB_VERSIONED(gb_s));
+    // v6 removes the unused zero32 field (was between xram and audio);
+    // the layout is otherwise identical to v5
+    set_fields(v6_gb, v5_gb, gb_rom, xram);
+    CB_ASSERT(sizeof(v6_gb->audio) == sizeof(v5_gb->audio));
+    memcpy(&v6_gb->audio, &v5_gb->audio, sizeof(v6_gb->audio));
 
-    set_fields(v3_gb, v2_gb, gb_rom, audio);
+    memcpy(v6_header, v5_header, sizeof(StateHeader));
+    v6_header->version = PGB_VERSION;
+    v6_header->gb_s_size = v6_gb_size;
 
-    // now that we have the data in the struct, we can resize
-    *out_size = gb_get_state_size_v3(v3_gb);
-    char* v3_realloc = cb_realloc(v3_org, *out_size);
-    if (!v3_realloc)
-    {
-        if (v2_in != org_in)
-            cb_free(v2_in);
-        cb_free(v3_org);
-        return aprintf("Out of memory");
-    }
-    v3_org = v3_realloc;
+    if (extra_sz)
+        memcpy(
+            v6_org + sizeof(StateHeader) + v6_gb_size,
+            v5_in + sizeof(StateHeader) + sizeof(struct gb_s_v5), extra_sz
+        );
 
-    // copy remaining data
-    memcpy(
-        v3_org + sizeof(StateHeader) + sizeof(struct gb_s_v3),
-        org_in + sizeof(StateHeader) + sizeof(struct gb_s_v1),
-        ROM_HEADER_SIZE  // for safe-keeping
-            + WRAM_SIZE_CGB + VRAM_SIZE_CGB + XRAM_SIZE + v2_gb->gb_cart_ram_size +
-            MAX_BREAKPOINTS * sizeof(struct PGB_VERSIONED(gb_breakpoint))
-    );
-
-    *out = v3_org;
-    if (v2_in != org_in)
-        cb_free(v2_in);
+    *out_size = sizeof(StateHeader) + v6_gb_size + extra_sz;
+    *out = v6_org;
+    if (v5_in != org_in)
+        cb_free(v5_in);
     return NULL;
-
-#undef DEFINE
 }
 
 #endif

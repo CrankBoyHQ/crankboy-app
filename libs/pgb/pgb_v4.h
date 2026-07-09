@@ -1,5 +1,7 @@
 #include "pgb_common.h"
 
+/* DEVELOPMENT VERSION RANGE: (v2.1.0, v2.2.0] */
+
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
 // Bump PGB_VERSION and replace savestate_upgrade_to_*
@@ -581,10 +583,8 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     in += sizeof(*gb);
 
     // CGB palette data appended after struct
-    memcpy(gb->cgb_bg_palette, in, 64);
-    in += 64;
-    memcpy(gb->cgb_obj_palette, in, 64);
-    in += 64;
+    const char* in_palettes = in;
+    in += 128;
 
     size_t state_size = PGB_VERSIONED(gb_get_state_size)(in_gb);
 
@@ -607,6 +607,9 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     in += ROM_HEADER_SIZE;
 
     // -- we're in the clear now --
+
+    memcpy(gb->cgb_bg_palette, in_palettes, 64);
+    memcpy(gb->cgb_obj_palette, in_palettes + 64, 64);
 
     void* preserved_fields[] = {
         &gb->gb_rom,
@@ -769,51 +772,59 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
     v4_gb->lcd_blank = 0; /* UNUSED */
     set_field(v4_gb, v3_gb, lcd_master_enable);
 
-    {
-        size_t sz = (uintptr_t)&v3_gb->cgb_ff7x[0] - (uintptr_t)&v3_gb->zero_bank_base;
-        memcpy(&v4_gb->zero_bank_base, &v3_gb->zero_bank_base, sz);
-    }
+    set_fields(v4_gb, v3_gb, zero_bank_base, mbc);
+    set_field(v4_gb, v3_gb, cart_ram);
+    set_field(v4_gb, v3_gb, cart_battery);
+    set_field(v4_gb, v3_gb, enable_cart_ram);
+    set_field(v4_gb, v3_gb, cart_mode_select);
+    set_field(v4_gb, v3_gb, overclock);
+    set_field(v4_gb, v3_gb, is_mbc1m);
+    set_field(v4_gb, v3_gb, cgb_fast_mode_armed);
+    set_field(v4_gb, v3_gb, cgb_wram_bank);
+    set_field(v4_gb, v3_gb, cgb_ff75);
+    set_field(v4_gb, v3_gb, cgb_fast_mode);
+    set_field(v4_gb, v3_gb, cgb_ff6c);
+    set_field(v4_gb, v3_gb, cgb_vram_bank);
+    
+    // semi-transient data, okay to recompute later
+    v4_gb->cgb_fast_mode_active = v3_gb->cgb_fast_mode;
+    v4_gb->cgb_speed_permitted = 0;
+    v4_gb->hle_enabled = 0;
+    v4_gb->hle_ioaddr = 0;
 
-    {
-        size_t sz = (uintptr_t)&v3_gb->printer_stub_state - (uintptr_t)&v3_gb->cgb_ff7x[0];
-        memcpy(&v4_gb->cgb_ff7x[0], &v3_gb->cgb_ff7x[0], sz);
-    }
+    memcpy(v4_gb->cgb_ff7x, v3_gb->cgb_ff7x, sizeof(v4_gb->cgb_ff7x));
+    set_fields(v4_gb, v3_gb, cgb_hdma_src, cgb_hdma_dst);
+    set_field(v4_gb, v3_gb, cgb_hdma_len);
+    set_field(v4_gb, v3_gb, cgb_hdma_active);
+    set_field(v4_gb, v3_gb, printer_stub_state);
+    set_field(v4_gb, v3_gb, printer_data_len);
+    set_field(v4_gb, v3_gb, printer_last_cmd);
 
-    {
-        size_t sz = (uintptr_t)&v3_gb->printer_last_cmd + sizeof(v3_gb->printer_last_cmd) -
-                    (uintptr_t)&v3_gb->printer_stub_state;
-        memcpy(&v4_gb->printer_stub_state, &v3_gb->printer_stub_state, sz);
-    }
     set_fields(v4_gb, v3_gb, num_rom_banks_mask, counter);
 
-    memcpy(
-        &v4_gb->hram, &v3_gb->hram,
-        offsetof(typeof(*v4_gb), lcd_alt) - offsetof(typeof(*v4_gb), hram)
-    );
-    // lcd_alt is new in v4, restored from live gb_s by preserved_fields
+    set_fields(v4_gb, v3_gb, hram, oam);
+
+    // bugfix for exg's broken zelda state
+    v4_gb->hram[0xFF] = v4_gb->gb_reg.IE;
+
+    CB_ASSERT(sizeof(v4_gb->display) == sizeof(v3_gb->display));
     memcpy(&v4_gb->display, &v3_gb->display, sizeof(v4_gb->display));
 
-    // hram[0xFF] = IE (0xFFFF).
-    v4_gb->hram[0xFF] = v3_gb->gb_reg.IE;
+    set_field(v4_gb, v3_gb, direct.frame_skip);
+    set_field(v4_gb, v3_gb, direct.sound);
+    set_field(v4_gb, v3_gb, direct.dynamic_rate_enabled);
+    set_field(v4_gb, v3_gb, direct.sram_updated);
+    set_field(v4_gb, v3_gb, direct.sram_dirty);
+    set_field(v4_gb, v3_gb, direct.crank_docked);
+    set_field(v4_gb, v3_gb, direct.enable_xram);
+    set_field(v4_gb, v3_gb, direct.ignore_cgb_check);
+    set_field(v4_gb, v3_gb, direct.stat_line);
+    set_field(v4_gb, v3_gb, direct.has_read_accelerometer_this_frame);
+    v4_gb->direct.cgb_dual_output = 0;
+    set_field(v4_gb, v3_gb, direct.joypad_interrupt_delay);
+    set_field(v4_gb, v3_gb, direct.ext_crank_menu_indexing);
 
     {
-        v4_gb->direct.frame_skip = v3_gb->direct.frame_skip;
-        v4_gb->direct.sound = v3_gb->direct.sound;
-        v4_gb->direct.dynamic_rate_enabled = v3_gb->direct.dynamic_rate_enabled;
-        v4_gb->direct.sram_updated = v3_gb->direct.sram_updated;
-        v4_gb->direct.sram_dirty = v3_gb->direct.sram_dirty;
-        v4_gb->direct.crank_docked = v3_gb->direct.crank_docked;
-        // joypad_interrupts removed in v4, skip
-        v4_gb->direct.enable_xram = v3_gb->direct.enable_xram;
-        v4_gb->direct.ignore_cgb_check = v3_gb->direct.ignore_cgb_check;
-        v4_gb->direct.stat_line = v3_gb->direct.stat_line;
-        v4_gb->direct.has_read_accelerometer_this_frame =
-            v3_gb->direct.has_read_accelerometer_this_frame;
-        v4_gb->direct.cgb_dual_output = 0;
-        // oam_ghost_buffer and blend_rect_* removed in v4, skip
-        v4_gb->direct.joypad_interrupt_delay = v3_gb->direct.joypad_interrupt_delay;
-        v4_gb->direct.ext_crank_menu_indexing = v3_gb->direct.ext_crank_menu_indexing;
-        // Tail from interlace_mask onwards has identical layout
         size_t v4_off = (uintptr_t)&v4_gb->direct.interlace_mask - (uintptr_t)&v4_gb->direct;
         size_t v3_off = (uintptr_t)&v3_gb->direct.interlace_mask - (uintptr_t)&v3_gb->direct;
         size_t tail_sz = sizeof(v4_gb->direct) - v4_off;

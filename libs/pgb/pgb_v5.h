@@ -1,5 +1,7 @@
 #include "pgb_common.h"
 
+/* DEVELOPMENT VERSION RANGE: (v2.2.0, TBD] */
+
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
 // Bump PGB_VERSION and replace savestate_upgrade_to_*
@@ -603,10 +605,8 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     in += sizeof(*gb);
 
     // CGB palette data appended after struct
-    memcpy(gb->cgb_bg_palette, in, 64);
-    in += 64;
-    memcpy(gb->cgb_obj_palette, in, 64);
-    in += 64;
+    const char* in_palettes = in;
+    in += 128;
 
     size_t state_size = PGB_VERSIONED(gb_get_state_size)(in_gb);
 
@@ -629,6 +629,9 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
     in += ROM_HEADER_SIZE;
 
     // -- we're in the clear now --
+
+    memcpy(gb->cgb_bg_palette, in_palettes, 64);
+    memcpy(gb->cgb_obj_palette, in_palettes + 64, 64);
 
     void* preserved_fields[] = {
         &gb->gb_rom,
