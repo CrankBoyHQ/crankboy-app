@@ -1720,11 +1720,6 @@ dispatch:
     }
 }
 
-#if CPU_VALIDATE == 0
-    if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
-        gb->gb_ime = 1;
-#endif
-
     if (false)
     {
     inc_dec_hl:
@@ -1732,13 +1727,19 @@ dispatch:
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
 #if CPU_VALIDATE == 0
         if (inst == 0)
+        {
+            if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+                return cycles;
             goto second_instruction;
+        }
 #endif
     }
 
 #if CPU_VALIDATE == 0
     if (inst == 0 && chained)
     {
+        if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
+            return cycles;
         inst = 1;
         goto second_instruction;
     }
@@ -1775,6 +1776,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
             break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
+        if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+            gb->gb_ime = 1;
     }
 #else
     // run once as each, verify
