@@ -1,3 +1,9 @@
+# v2.2.1 - (2026-07-09)
+
+## Bug Fixes
+
+- Fixes a rare issue, where games could freeze.
+
 # v2.2.0 - (2026-07-06)
 
 Be kind, rewind ~ every game is now Crankin'.
