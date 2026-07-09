@@ -615,6 +615,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
         &gb->gb_cart_ram,
         &gb->breakpoints,
         &gb->lcd,
+        &gb->lcd_alt,
         &gb->direct.priv,
         &gb->gb_error,
         &gb->gb_serial_tx,
@@ -787,13 +788,34 @@ char* savestate_upgrade_to_v4(char** out, size_t* out_size, char* in, size_t in_
 
     memcpy(
         &v4_gb->hram, &v3_gb->hram,
-        offsetof(typeof(*v4_gb), direct) - offsetof(typeof(*v4_gb), hram)
+        offsetof(typeof(*v4_gb), lcd_alt) - offsetof(typeof(*v4_gb), hram)
     );
+    // lcd_alt is new in v4, restored from live gb_s by preserved_fields
+    memcpy(&v4_gb->display, &v3_gb->display, sizeof(v4_gb->display));
+
+    // hram[0xFF] = IE (0xFFFF).
+    v4_gb->hram[0xFF] = v3_gb->gb_reg.IE;
 
     {
+        v4_gb->direct.frame_skip = v3_gb->direct.frame_skip;
+        v4_gb->direct.sound = v3_gb->direct.sound;
+        v4_gb->direct.dynamic_rate_enabled = v3_gb->direct.dynamic_rate_enabled;
+        v4_gb->direct.sram_updated = v3_gb->direct.sram_updated;
+        v4_gb->direct.sram_dirty = v3_gb->direct.sram_dirty;
+        v4_gb->direct.crank_docked = v3_gb->direct.crank_docked;
+        // joypad_interrupts removed in v4, skip
+        v4_gb->direct.enable_xram = v3_gb->direct.enable_xram;
+        v4_gb->direct.ignore_cgb_check = v3_gb->direct.ignore_cgb_check;
+        v4_gb->direct.stat_line = v3_gb->direct.stat_line;
+        v4_gb->direct.has_read_accelerometer_this_frame =
+            v3_gb->direct.has_read_accelerometer_this_frame;
+        v4_gb->direct.cgb_dual_output = 0;
+        // oam_ghost_buffer and blend_rect_* removed in v4, skip
+        v4_gb->direct.joypad_interrupt_delay = v3_gb->direct.joypad_interrupt_delay;
+        v4_gb->direct.ext_crank_menu_indexing = v3_gb->direct.ext_crank_menu_indexing;
+        // Tail from interlace_mask onwards has identical layout
         size_t v4_off = (uintptr_t)&v4_gb->direct.interlace_mask - (uintptr_t)&v4_gb->direct;
         size_t v3_off = (uintptr_t)&v3_gb->direct.interlace_mask - (uintptr_t)&v3_gb->direct;
-        memcpy(&v4_gb->direct, &v3_gb->direct, v4_off);
         size_t tail_sz = sizeof(v4_gb->direct) - v4_off;
         memcpy((char*)&v4_gb->direct + v4_off, (char*)&v3_gb->direct + v3_off, tail_sz);
     }

@@ -637,6 +637,7 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
         &gb->gb_cart_ram,
         &gb->breakpoints,
         &gb->lcd,
+        &gb->lcd_alt,
         &gb->direct.priv,
         &gb->gb_error,
         &gb->gb_serial_tx,
@@ -780,8 +781,13 @@ char* savestate_upgrade_to_v5(char** out, size_t* out_size, char* in, size_t in_
     // New field not in v4
     v5_gb->cgb_speed_switch_halt_period = 0;
 
-    // Remainder: cgb_ff7x through cgb_hdma_dst
-    set_fields(v5_gb, v4_gb, cgb_ff7x, cgb_hdma_dst);
+    // Remainder: cgb_ff7x through cgb_hdma_dst - individual assignment
+    // because cgb_speed_switch_halt_period inserted before cgb_ff7x changes alignment
+    v5_gb->cgb_ff7x[0] = v4_gb->cgb_ff7x[0];
+    v5_gb->cgb_ff7x[1] = v4_gb->cgb_ff7x[1];
+    v5_gb->cgb_ff7x[2] = v4_gb->cgb_ff7x[2];
+    v5_gb->cgb_hdma_src = v4_gb->cgb_hdma_src;
+    v5_gb->cgb_hdma_dst = v4_gb->cgb_hdma_dst;
 
     // Bitfields same in both but can't use set_fields (no &/sizeof on bitfield)
     v5_gb->cgb_hdma_len = v4_gb->cgb_hdma_len;
