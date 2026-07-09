@@ -3,8 +3,7 @@
 [![Static Badge](https://img.shields.io/badge/Catalog%20-%20Available%20-%20%2330d030?logo=macys)](https://play.date/games/crankboy/)
 [![Nightly Build](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml/badge.svg)](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml)
 [![Matrix](<https://img.shields.io/matrix/crankboy-dev%3Amatrix.org?logo=element&label=Chat%20(Matrix%2FElement)>)](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org)
-[![Discord (Community Chat)](https://img.shields.io/badge/Chat%20-%20Community%20-%20%237289da?logo=discord&logoColor=white)
-](https://discord.com/channels/675983554655551509/1398373474711371967)
+[![Discord (Community Chat)](https://img.shields.io/badge/Chat%20-%20Community%20-%20%237289da?logo=discord&logoColor=white)](https://discord.com/channels/675983554655551509/1398373474711371967)
 [![Discord (Dev Chat)](https://img.shields.io/badge/Chat%20-%20Dev%20-%20%237289da?logo=discord&logoColor=white)
 ](https://discord.com/channels/675983554655551509/1378119815641694278)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
@@ -31,7 +30,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Support for softpatching `.bps`, `.ips` & `.ups` patch files. Instead of making a bunch of copies of a ROM for all the different ROM hacks you'd like to apply to it, you can use a single clean ROM and several patch files, each of which you can toggle from the settings. [Instructions below](#softpatching).
     - Conveniently browse and download ROM hacks directly from within CrankBoy.
 - ROMs can access Playdate features [via IO registers](./gb-extensions.md) and are also [scriptable with C](src/cscripts/kirby_dreamland.c) -- you can add native crank controls to a game if you have the technical know-how.
-- <!--no-userguide--> Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below.
+- Can be installed in "bundle" mode, containing just a single ROM. This lets you have your ROM(s) visible directly from the Playdate menu, instead of having to open the emulator. You can also **release your own Game Boy ROM as a Playdate game** this way. See "[Bundle Mode](#bundle-mode)," below. <!--no-userguide-->
 - \[[Catalog version](https://play.date/games/crankboy/)\] Automatic updates.
 - \[[Catalog version](https://play.date/games/crankboy/)\] 4 included ROMs by homebrew developers.
 
@@ -43,7 +42,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.
 - Link Cable (and other peripherals) are not supported.
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options.
-- <!--no-userguide--> Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu.
+- Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu. <!--no-userguide-->
 
 ## Installing
 
@@ -61,11 +60,6 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
     1. Connect your Playdate to a computer (or other device) by USB and unlock it.
     2. Put the Playdate into Data Disk mode (hold LEFT + MENU + POWER for 10 seconds).
     3. Copy the `pdx`to the `Games` folder.
-- **Simulator sideload**
-    1. Download the Simulator build for your OS (Linux or macOS -- Windows is [not yet supported](https://github.com/CrankBoyHQ/crankboy-app/issues/43).)
-    2. Connect your Playdate to your computer via USB and unlock it.
-    3. Open the `pdx` in the Simulator.
-    4. Press `Alt+U` on Linux or `⌘+U` on macOS.
 
 ### Installing ROMs <!--userguide:##-->
 
@@ -76,9 +70,11 @@ There are two methods for installing ROMs on CrankBoy. Choose whichever is more 
 - Connect your Playdate to a computer (or another device) by USB, press and hold `LEFT` + `MENU` + `LOCK` at the same time for 5 seconds. Or from the app launcher, go to `Settings > System > Reboot to Data Disk`.
 - Place the ROMs in this directory: `/Shared/Emulation/gb/games/`
 - ROM filenames must end with `.gb`, `.gbc`, or (if [compressed](#tips)) `.gbz`
-- Cover art can be placed manually in `/Shared/Emulation/gb/covers/`. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, `.bmp`, or `.pdi`. The resolution should be 240x240 pixels. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
+- Cover art can be placed manually in `/Shared/Emulation/gb/covers/`. The file name should match that of the corresponding ROM except for the file extension, which should be one of `.png`, `.jpg`, `.bmp`, or `.pdi`. The image should be 240 pixels (or less) in width, and exactly 240 pixels in height. CrankBoy will automatically convert the image to a Playdate-format `.pdi` image the next time it is launched.
 
 #### PDX
+
+You can install ROMs to your device by adding ROM files directly into to the PDX, then installing the PDX as normal.
 
 - Add your ROMs (`.gb` or `.gbc`) to the PDX zip file.
     - On **macOS**, _control-/right-click_ on `CrankBoy.pdx.zip` and select `Show Package Contents`; macOS will
