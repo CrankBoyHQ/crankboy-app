@@ -44,7 +44,6 @@ typedef struct CB_HomebrewHubScene
 {
     CB_Scene* scene;
     CB_Game* game;
-    struct CB_SettingsScene* settingsScene;
 
     float header_animation_p;
     bool started_without_header;

@@ -599,6 +599,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
+    
+    clear_last_selected_preference();
 
     last_scy = -1;
 

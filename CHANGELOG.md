@@ -1,4 +1,9 @@
-# v2.2.2 - (2026-07-10)
+# v2.2.2 - 
+
+## UI Changes
+
+- Moved "Get ROMs..." to the main library menu.
+- Forgets last-selected-preference when starting or exiting a game
 
 ## Combo Inputs
 

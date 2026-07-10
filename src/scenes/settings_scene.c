@@ -18,7 +18,6 @@
 #include "../utility.h"
 #include "credits_scene.h"
 #include "emucore_game_scene.h"
-#include "homebrew_hub_scene.h"
 #include "info_scene.h"
 #include "manage_rom_scene.h"
 #include "patch_download_scene.h"
@@ -133,6 +132,11 @@ static void* last_selected_preference;
 static char last_selected_emucore_id[64];
 static unsigned last_selected_preference_time;
 
+void clear_last_selected_preference(void)
+{
+    last_selected_preference = NULL;
+}
+
 static bool entry_matches_last_selected(const OptionsMenuEntry* e)
 {
     if (last_selected_preference && e->pref_var == last_selected_preference)
@@ -179,34 +183,6 @@ void display_script_info(struct OptionsMenuEntry* entry, CB_SettingsScene* setti
     {
         show_game_script_info(gameScene->rom_filename, gameScene->name_short);
     }
-}
-
-static void open_homebrew_hub(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
-{
-    cb_play_ui_sound(CB_UISound_Confirm);
-
-    // In Game scope: header starts visible (1.0) and fades out in hub
-    // In Global scope: no header (0.0), direct switch
-    float initial_header_p = preferences_per_game ? 1.0f : 0.0f;
-
-    const char* header_name = NULL;
-    if (preferences_per_game && settingsScene->libraryScene)
-    {
-        CB_Game* selectedGame =
-            (settingsScene->libraryScene->listView->selectedItem <
-             settingsScene->libraryScene->games->length)
-                ? settingsScene->libraryScene->games
-                      ->items[settingsScene->libraryScene->listView->selectedItem]
-                : NULL;
-        if (selectedGame)
-        {
-            header_name = selectedGame->names->name_short_leading_article;
-        }
-    }
-
-    CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(initial_header_p, header_name);
-    s->settingsScene = settingsScene;
-    CB_presentModal(s->scene);
 }
 
 static void open_patches(OptionsMenuEntry* option, CB_SettingsScene* settingsScene)
@@ -692,7 +668,22 @@ CB_SettingsScene* CB_SettingsScene_new(
     cb_free(emu_pref_cat_assigned);
 
     if (settingsScene->sections_count > 0)
-        switchToSection(settingsScene, 0);
+    {
+        // open to "General" pane; fall back to "Library" if no "General" pane.
+        int initial_section = 0;
+        if (strcmp(settingsScene->sections[0].name, "General") != 0)
+        {
+            for (size_t j = 0; j < settingsScene->sections_count; j++)
+            {
+                if (strcmp(settingsScene->sections[j].name, "Library") == 0)
+                {
+                    initial_section = (int)j;
+                    break;
+                }
+            }
+        }
+        switchToSection(settingsScene, initial_section);
+    }
     else
         settingsScene->entries = NULL;
 
@@ -1667,7 +1658,7 @@ static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count)
 
 /*
  * General
- *  Save state, Load state, Get ROMs, Patches,
+ *  Save state, Load state, Patches,
  *  Manage ROM, Save Data, Settings scope,
  *  Apply recommended
  */
@@ -1694,10 +1685,10 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
                 "All other sections respect the current scope setting.";
         else if (selectedGame)
             general_desc =
-                "Download ROMs, manage patches, save data, and settings scope.\n\n"
+                "Manage patches, save data, and settings scope.\n\n"
                 "All other sections respect the current scope setting.";
         else
-            general_desc = "Download \"homebrew\" games for free from Homebrew Hub.";
+            general_desc = "Manage settings scope.";
 
         section[++i] =
             (OptionsMenuEntry){.name = "General", .header = 1, .description = general_desc};
@@ -1769,34 +1760,19 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         };
     }
 
-    if (libraryScene)
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "Get ROMs",
-            .description =
-                "Download \"homebrew\" games for free from Homebrew Hub (hh.gbdev.io).\n\n"
-                "This feature is still experimental and could crash, or downloads could silently "
-                "fail.\n\n"
-                "Requires internet.\n\n"
-                "Parental lock is available.",
-            .values = next_scene,
-            .max_value = 0,
-            .on_press = open_homebrew_hub,
-            .ud = NULL
-        };
-
-        if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
-        {
-            section[i].locked = true;
-            section[i].description =
-                "Homebrew Hub API not found. Check this pdx file:\n" HOMEBREW_HUB_API_FILE;
-        }
-    }
-
     if (libraryScene && selectedGame)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Patches",
+            .name = "Manage ROM",
+            .description = "View ROM info and delete the ROM, save data, or cover art.",
+            .values = next_scene,
+            .max_value = 0,
+            .on_press = open_manage_rom,
+            .ud = selectedGame
+        };
+
+        section[++i] = (OptionsMenuEntry){
+            .name = "Patches/Hacks",
             .description =
                 "Manage and download game patches, also known as ROM hacks.\n\n"
                 "Remember to verify that a hack is compatible with your ROM before applying it.\n\n"
@@ -1804,15 +1780,6 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
-            .ud = selectedGame
-        };
-
-        section[++i] = (OptionsMenuEntry){
-            .name = "Manage ROM",
-            .description = "View ROM info and delete the ROM, save data, or cover art.",
-            .values = next_scene,
-            .max_value = 0,
-            .on_press = open_manage_rom,
             .ud = selectedGame
         };
 
@@ -1916,6 +1883,12 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
     int n = i + 1;
     append_emucore_prefs_for_section(def, scene, section, &n);
+    if (n <= 1)
+    {
+        cb_free(section);
+        *count = 0;
+        return NULL;
+    }
     *count = n;
     return section;
 }

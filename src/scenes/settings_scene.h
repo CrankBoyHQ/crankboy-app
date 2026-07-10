@@ -99,4 +99,6 @@ static inline CB_SettingsScene* CB_SettingsScene_new_userstack(
         CB_SettingsScene_new, gameScene, emucoreGameScene, libraryScene
     );
 }
+
+void clear_last_selected_preference(void);
 #endif /* settings_scene_h */

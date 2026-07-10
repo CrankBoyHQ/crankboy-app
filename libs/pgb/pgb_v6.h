@@ -1,5 +1,7 @@
 #include "pgb_common.h"
 
+/* DEVELOPMENT VERSION RANGE: (v2.2.1, TBD] */
+
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
 // Bump PGB_VERSION and replace savestate_upgrade_to_*

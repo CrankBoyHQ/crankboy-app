@@ -23,6 +23,7 @@
 #include "credits_scene.h"
 #include "emucore_game_scene.h"
 #include "game_scene.h"
+#include "homebrew_hub_scene.h"
 #include "info_scene.h"
 #include "settings_scene.h"
 
@@ -1212,6 +1213,8 @@ __section__(".rare") static void CB_LibraryScene_event(
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_ASSERT(!CB_App->bundled_rom);
+    
+    clear_last_selected_preference();
 
     // setup completed without crashing
     CB_set_setup_canary(false);
@@ -1278,7 +1281,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
         // skip game list build and cover preload on reload
         // keep current selection
         int sel = last_selected_game_index;
-        if (sel < 0 || sel >= libraryScene->games->length)
+        if (sel < 0 || sel > libraryScene->games->length)
             sel = 0;
         libraryScene->listView->selectedItem = sel;
         libraryScene->build_index = 0;
@@ -1345,6 +1348,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
         CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
         array_push(items, itemButton);
     }
+    array_push(items, CB_ListItemButton_new("Get ROMs..."));
 
     CB_ListView_reload(libraryScene->listView);
 }
@@ -1572,7 +1576,9 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
             else
             {
-                if (libraryScene->listView->items->length > 0)
+                array_push(libraryScene->listView->items, CB_ListItemButton_new("Get ROMs..."));
+
+                if (libraryScene->games->length > 0)
                 {
                     libraryScene->tab = CB_LibrarySceneTabList;
                 }
@@ -1725,7 +1731,28 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (pressed & kButtonA)
     {
         int selectedItem = libraryScene->listView->selectedItem;
-        if (selectedItem >= 0 && selectedItem < libraryScene->listView->items->length)
+        if (selectedItem == libraryScene->games->length)
+        {
+            cb_play_ui_sound(CB_UISound_Confirm);
+            last_selected_game_index = selectedItem;
+
+            if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
+            {
+                CB_presentModal(
+                    CB_Modal_new(
+                        "Homebrew Hub API not found. Check this pdx file:\n" HOMEBREW_HUB_API_FILE,
+                        NULL, NULL, NULL
+                    )
+                        ->scene
+                );
+            }
+            else
+            {
+                CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(0.0f, NULL);
+                CB_presentModal(s->scene);
+            }
+        }
+        else if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
             cb_play_ui_sound(CB_UISound_Confirm);
 
@@ -2307,12 +2334,40 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                         }
                     }
                 }
+            }
+            else if (selectedIndex == libraryScene->games->length)
+            {
+                static const char* text =
+                    "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
+                    "This feature is still experimental.\n\n"
+                    "Parental lock is available.";
 
-                // Draw separator line
-                playdate->graphics->drawLine(
-                    leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
+                LCDFont* font = CB_App->subheadFont;
+                int margin = 6;
+                int textX = leftPanelWidth + 1 + margin;
+                int textWidth = rightPanelWidth - 1 - margin * 2;
+
+                playdate->graphics->setFont(font);
+                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+
+                int textHeight = playdate->graphics->getTextHeightForMaxWidth(
+                    font, text, strlen(text), textWidth, kUTF8Encoding, kWrapWord, 0, 0
+                );
+                int textY = (screenHeight - textHeight) / 2;
+                if (textY < 0)
+                    textY = 0;
+
+                playdate->graphics->drawTextInRect(
+                    text, strlen(text), kUTF8Encoding, textX, textY, textWidth,
+                    screenHeight - textY, kWrapWord, kAlignTextCenter
                 );
             }
+
+            // Draw separator line
+            playdate->graphics->drawLine(
+                leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
+            );
+
             playdate->graphics->setDrawOffset(0, 0);
         }
     }
