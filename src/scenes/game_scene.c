@@ -1924,6 +1924,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
 
+        bool ab_combo_was_active = gameScene->press_a_b_hold || gameScene->hold_a_press_b ||
+                                   gameScene->hold_b_press_a;
+
         if likely ((CB_App->buttons_down & (kButtonA | kButtonB)) != (kButtonA | kButtonB))
         {
             gameScene->press_a_b_hold = false;
@@ -1991,6 +1994,70 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 context->gb->direct.joypad_bits.start = 0;
             if ((buttons & 8))
                 context->gb->direct.joypad_bits.select = 0;
+        }
+
+        if unlikely (gameScene->hold_ab_release)
+        {
+            PDButtons remaining = (gameScene->hold_ab_release == 1) ? kButtonB : kButtonA;
+            if (CB_App->buttons_pressed)
+                gameScene->hold_ab_release_frames = 0;
+            else if (gameScene->hold_ab_release_frames > 0)
+                --gameScene->hold_ab_release_frames;
+            if ((CB_App->buttons_down & (kButtonA | kButtonB) & ~remaining) ||
+                (CB_App->buttons_pressed & remaining) ||
+                (!(CB_App->buttons_down & remaining) && gameScene->hold_ab_release_frames == 0))
+            {
+                gameScene->hold_ab_release = 0;
+            }
+        }
+
+        if unlikely (!gameScene->hold_ab_release &&
+                     (CB_App->buttons_released & (kButtonA | kButtonB)))
+        {
+            PDButtons released = CB_App->buttons_released & (kButtonA | kButtonB);
+            PDButtons held =
+                CB_App->buttons_down & ~CB_App->buttons_pressed & (kButtonA | kButtonB);
+
+            preference_t value = PREF_BUTTON_ABR_DEFAULT;
+            uint8_t which = 0;
+
+            if (released == (kButtonA | kButtonB) || (released == kButtonA && held == kButtonB))
+            {
+                value = preferences_hold_ab_release_a;
+                which = 1;
+            }
+            else if (released == kButtonB && held == kButtonA)
+            {
+                value = preferences_hold_ab_release_b;
+                which = 2;
+            }
+
+            if (value == PREF_BUTTON_ABR_DEFAULT && ab_combo_was_active)
+            {
+                value = PREF_BUTTON_ABR_NONE;
+            }
+
+            if (which && value != PREF_BUTTON_ABR_DEFAULT)
+            {
+                gameScene->hold_ab_release = which;
+                gameScene->hold_ab_release_value = value;
+                gameScene->hold_ab_release_frames = 4;
+            }
+        }
+
+        if unlikely (gameScene->hold_ab_release)
+        {
+            // bit 0: start, bit 1: select, bit 2: hold the unreleased button
+            static const unsigned char abrelease_button_matrix[] = {0, 4, 0, 1, 2, 3, 5, 6, 7};
+            unsigned buttons = abrelease_button_matrix[gameScene->hold_ab_release_value];
+            if (buttons & 1)
+                context->gb->direct.joypad_bits.start = 0;
+            if (buttons & 2)
+                context->gb->direct.joypad_bits.select = 0;
+            if (gameScene->hold_ab_release == 1)
+                context->gb->direct.joypad_bits.b = !(buttons & 4);
+            else
+                context->gb->direct.joypad_bits.a = !(buttons & 4);
         }
 
         context->gb->overclock = (unsigned)(preferences_overclock);
@@ -3910,6 +3977,7 @@ __section__(".rare") static bool CB_GameScene_lock(void* object)
 {
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
+    gameScene->hold_ab_release_frames = 0;
 
     if (preferences_lock_button != PREF_BUTTON_NONE)
     {
@@ -3938,6 +4006,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         playdate->system->setAutoLockDisabled(0);
 
         gameScene->lock_button_hold_frames_remaining = 0;
+        gameScene->hold_ab_release_frames = 0;
 
         gameScene->scene->forceFullRefresh = true;
 

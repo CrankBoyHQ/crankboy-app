@@ -1,3 +1,14 @@
+# v2.2.2 - (2026-07-10)
+
+## Combo Inputs
+
+- Fixed behaviour when Ⓐ›Ⓑ or Ⓑ›Ⓐ mappings contained Ⓐ/Ⓑ
+- Added mappings for releasing Ⓑ+Ⓐ
+
+## Bug Fixes
+
+- Fixed rare glitches when loading save states from older versions of CrankBoy.
+
 # v2.2.1 - (2026-07-09)
 
 ## Bug Fixes

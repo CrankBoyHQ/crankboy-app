@@ -965,6 +965,14 @@ static const char* gb_button_labels_hp[] = {
     "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
     "Start+A+B", "Select+A+B",     "All"
 };
+static const char* gb_button_labels_ab_release_a[] = {
+    "Default", "B",       "None",     "Start",    "Select",
+    "Start+Select", "Start+B", "Select+B", "Start+Select+B",
+};
+static const char* gb_button_labels_ab_release_b[] = {
+    "Default", "A",       "None",     "Start",    "Select",
+    "Start+Select", "Start+A", "Select+A", "Start+Select+A",
+};
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
@@ -2291,7 +2299,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
 
     // A->B
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ › Ⓑ",
+        .name = "Ⓐ › ⧂",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement button input for holding Ⓐ and then pressing Ⓑ.\n\n"
@@ -2303,7 +2311,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
 
     // B->A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓑ › Ⓐ",
+        .name = "Ⓑ › ⧂",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement button input for holding Ⓑ and then pressing Ⓐ.\n\n"
@@ -2312,10 +2320,10 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .max_value = 13,
         .on_press = NULL
     };
-
-    // B+A
+    
+        // B+A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ + Ⓑ",
+        .name = "Ⓑ + Ⓐ",
         .values = gb_button_labels_hp,
         .description =
             "Assign a replacement button input when simultaneously pressing both Ⓐ and Ⓑ.\n\n"
@@ -2323,6 +2331,32 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
             "on exactly the same frame, which is quite precise!",
         .pref_var = &preferences_press_a_b,
         .max_value = 13,
+        .on_press = NULL
+    };
+    
+    // AB->A
+    section[++i] = (OptionsMenuEntry){
+        .name = "⧂ › Ⓐ",
+        .values = gb_button_labels_ab_release_b,
+        .description =
+            "Assign a replacement button input for holding both Ⓐ and Ⓑ then releasing Ⓑ.\n\n"
+            "If A is omitted here, then the A input is suppressed until next released.\n\n"
+            "Default: maps to A normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)",
+        .pref_var = &preferences_hold_ab_release_b,
+        .max_value = 9,
+        .on_press = NULL
+    };
+    
+    // AB->B
+    section[++i] = (OptionsMenuEntry){
+        .name = "⧂ › Ⓑ",
+        .values = gb_button_labels_ab_release_a,
+        .description =
+            "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both simultaneously).\n\n"
+            "If B is omitted here, then the B input is suppressed until next released.\n\n"
+            "Default: maps to B normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)",
+        .pref_var = &preferences_hold_ab_release_a,
+        .max_value = 9,
         .on_press = NULL
     };
 
