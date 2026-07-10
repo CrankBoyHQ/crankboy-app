@@ -1969,8 +1969,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if unlikely (gameScene->hold_a_press_b)
         {
-            context->gb->direct.joypad_bits.a = 1;
             unsigned buttons = holdpress_button_matrix[preferences_hold_a_press_b];
+            if (!(buttons & 1))
+                context->gb->direct.joypad_bits.a = 1;
             if (!(buttons & 2))
                 context->gb->direct.joypad_bits.b = 1;
             if ((buttons & 4))
@@ -1981,10 +1982,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if unlikely (gameScene->hold_b_press_a)
         {
-            context->gb->direct.joypad_bits.b = 1;
             unsigned buttons = holdpress_button_matrix[preferences_hold_b_press_a];
             if (!(buttons & 1))
                 context->gb->direct.joypad_bits.a = 1;
+            if (!(buttons & 2))
+                context->gb->direct.joypad_bits.b = 1;
             if ((buttons & 4))
                 context->gb->direct.joypad_bits.start = 0;
             if ((buttons & 8))
