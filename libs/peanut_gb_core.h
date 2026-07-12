@@ -1246,49 +1246,9 @@ dispatch:
                 break;  // nop
             }
             if (opcode == 0x10)  // STOP
-            {
-#if PGB_IS_CGB
-                // TODO: investigate if this would be a perf boost for DMG too
-                return __gb_rare_instruction(gb, opcode);
-#endif
-
-#if PGB_IS_DMG
-                // We check for the button-press glitch on DMG.
-                // A button is pressed, and a direction/action line is selected.
-                if ((gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
-                {
-                    cycles = 4;
-                    break;
-                }
-#endif
-
-                gb->gb_reg.DIV = 0;
-
-                if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
-                {
-                    if (gb->gb_ime == 0)
-                    {
-                        /* HALT Bug: pc fails to increment correctly.
-                         * PC is already at the operand address (NOP),
-                         * so it will re-execute the byte after the opcode. */
-                    }
-                    else
-                    {
-                        gb->cpu_reg.pc++;
-                    }
-                }
-                else
-                {
-                    // NORMAL OPERATION: Enter low-power STOP mode.
-                    gb->cpu_reg.pc++;
-                    gb->gb_stop = 1;
-                }
-
-                cycles = 4;
-                break;
-            }
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             if (opcode < 0x18)
-                return __gb_rare_instruction(gb, opcode);
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             {
                 // jr
                 cycles = 8;
@@ -1501,7 +1461,7 @@ dispatch:
             {
                 if unlikely (srcidx == 7)
                 {
-                    return __gb_rare_instruction(gb, opcode);
+                    return chain_cycles + __gb_rare_instruction(gb, opcode);
                 }
                 else
                 {
@@ -1617,7 +1577,7 @@ dispatch:
         case 0x03:  // jp
             if unlikely (opcode == 0xD3)
             {
-                return __gb_rare_instruction(gb, opcode);
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         jp:
             chained = true;
@@ -1674,13 +1634,13 @@ dispatch:
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
             if likely (opcode == 0xCB)
-                return $(__gb_execute_cb)(gb);
-            return __gb_rare_instruction(gb, opcode);
+                return chain_cycles + $(__gb_execute_cb)(gb);
+            return chain_cycles + __gb_rare_instruction(gb, opcode);
             break;
         case 0x0D:  // call
             if unlikely (op8 & 2)
             {
-                return __gb_rare_instruction(gb, opcode);
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         call:
             chained = true;
@@ -1736,7 +1696,7 @@ dispatch:
         case 0x1C:
         case 0x1D:  // illegal
         case 0x18:  // SP+8
-            return __gb_rare_instruction(gb, opcode);
+            return chain_cycles + __gb_rare_instruction(gb, opcode);
             break;
         case 0x1A:  // ld (a16)
         {
