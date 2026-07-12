@@ -268,7 +268,12 @@ void dtcm_free(void* ptr)
 #define DTCM_PROBE_STEP 256
 #define DTCM_PROBE_MIN_ADDR ((void*)0x20000100)
 
-__attribute__((optimize("O0"), noinline)) void dtcm_probe_lower_bound(void)
+#ifdef TARGET_SIMULATOR
+__attribute__((noinline))
+#else
+__attribute__((optimize("O0"), noinline))
+#endif
+void dtcm_probe_lower_bound(void)
 {
     if (!is_dtcm_init || !dtcm_mempool_start)
         return;
