@@ -1305,6 +1305,7 @@ dispatch:
                     gb->cpu_reg.pc++;
                 }
             }
+            chained = true;
             break;
         case 1:
             // LD r16, d16
@@ -1619,6 +1620,7 @@ dispatch:
                 return __gb_rare_instruction(gb, opcode);
             }
         jp:
+            chained = true;
             cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
             break;
@@ -1667,6 +1669,8 @@ dispatch:
         ret:
             cycles += 12;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
+            if (opcode != 0xD9)
+                chained = true;
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
             if likely (opcode == 0xCB)
@@ -1679,6 +1683,7 @@ dispatch:
                 return __gb_rare_instruction(gb, opcode);
             }
         call:
+            chained = true;
             cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
