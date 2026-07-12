@@ -5794,35 +5794,6 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 
         return cycles;
     }
-    case 0x27:  // daa
-    {
-        uint16_t a = gb->cpu_reg.a;
-
-        if (gb->cpu_reg.f_bits.n)
-        {
-            if (gb->cpu_reg.f_bits.h)
-                a = (a - 0x06) & 0xFF;
-
-            if (gb->cpu_reg.f_bits.c)
-                a -= 0x60;
-        }
-        else
-        {
-            if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
-                a += 0x06;
-
-            if (gb->cpu_reg.f_bits.c || a > 0x9F)
-                a += 0x60;
-        }
-
-        if ((a & 0x100) == 0x100)
-            gb->cpu_reg.f_bits.c = 1;
-
-        gb->cpu_reg.a = a;
-        gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
-        gb->cpu_reg.f_bits.h = 0;
-    }
-        return 1 * 4;
     case 0x76:
         if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
         {
@@ -5881,16 +5852,10 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
             return 4 * 4;
         }
     }
-    case 0xE9:
-        gb->cpu_reg.pc = gb->cpu_reg.hl;
-        return 4;
     case 0xF3:
         gb->gb_ime = 0;
         gb->gb_ime_countdown = 0;
         return 1 * 4;
-    case 0xF9:
-        gb->cpu_reg.sp = gb->cpu_reg.hl;
-        return 2 * 4;
     case 0xFB:
         gb->gb_ime_countdown = 2;
         return 1 * 4;

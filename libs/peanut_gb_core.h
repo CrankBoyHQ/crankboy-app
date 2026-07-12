@@ -1417,8 +1417,30 @@ dispatch:
                 gb->cpu_reg.a = (v >> 8) & 0xFF;
                 chained = true;
             }
-            else if unlikely (opcode == 0x27)
-                return __gb_rare_instruction(gb, opcode);
+            else if unlikely (opcode == 0x27)  // daa
+            {
+                u16 a = gb->cpu_reg.a;
+                if (gb->cpu_reg.f_bits.n)
+                {
+                    if (gb->cpu_reg.f_bits.h)
+                        a = (a - 0x06) & 0xFF;
+                    if (gb->cpu_reg.f_bits.c)
+                        a -= 0x60;
+                }
+                else
+                {
+                    if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
+                        a += 0x06;
+                    if (gb->cpu_reg.f_bits.c || a > 0x9F)
+                        a += 0x60;
+                }
+                if ((a & 0x100) == 0x100)
+                    gb->cpu_reg.f_bits.c = 1;
+                gb->cpu_reg.a = a;
+                gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
+                gb->cpu_reg.f_bits.h = 0;
+                chained = true;
+            }
             else if (opcode == 0x2F)
             {
                 gb->cpu_reg.a ^= 0xFF;
@@ -1690,13 +1712,25 @@ dispatch:
             goto hram_op;
         }
         break;
+        case 0x19:  // pc/sp hl (0xE9 JP HL, 0xF9 LD SP, HL)
+            if (opcode == 0xF9)
+            {
+                gb->cpu_reg.sp = gb->cpu_reg.hl;
+                cycles = 8;
+            }
+            else  // 0xE9
+            {
+                gb->cpu_reg.pc = gb->cpu_reg.hl;
+                cycles = 4;
+            }
+            chained = true;
+            break;
         case 0x13:
         case 0x1B:  // di/ei
         case 0x14:
         case 0x1C:
         case 0x1D:  // illegal
         case 0x18:  // SP+8
-        case 0x19:  // pc/sp hl
             return __gb_rare_instruction(gb, opcode);
             break;
         case 0x1A:  // ld (a16)
