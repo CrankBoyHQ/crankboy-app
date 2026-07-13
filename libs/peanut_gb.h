@@ -4889,6 +4889,10 @@ __shell static void __gb_interrupt(gb_s* gb)
         gb->gb_ime = 0;
         gb->gb_ime_countdown = 0;
 
+        /* Save IF before push - protects against SP overlapping IF register
+         * (SP == 0xFF10 or 0xFF11) which corrupts IF via the push. */
+        uint8_t pending_if = gb->gb_reg.IF;
+
         /* Push Program Counter */
         if (gb->is_cgb_mode)
             __gb_push16__cgb(gb, gb->cpu_reg.pc);
@@ -4896,31 +4900,33 @@ __shell static void __gb_interrupt(gb_s* gb)
             __gb_push16__dmg(gb, gb->cpu_reg.pc);
 
         /* Call interrupt handler if required. */
-        if (gb->gb_reg.IF & gb->gb_reg.IE & VBLANK_INTR)
+        if (pending_if & gb->gb_reg.IE & VBLANK_INTR)
         {
             gb->cpu_reg.pc = VBLANK_INTR_ADDR;
-            gb->gb_reg.IF ^= VBLANK_INTR;
+            pending_if ^= VBLANK_INTR;
         }
-        else if (gb->gb_reg.IF & gb->gb_reg.IE & LCDC_INTR)
+        else if (pending_if & gb->gb_reg.IE & LCDC_INTR)
         {
             gb->cpu_reg.pc = LCDC_INTR_ADDR;
-            gb->gb_reg.IF ^= LCDC_INTR;
+            pending_if ^= LCDC_INTR;
         }
-        else if (gb->gb_reg.IF & gb->gb_reg.IE & TIMER_INTR)
+        else if (pending_if & gb->gb_reg.IE & TIMER_INTR)
         {
             gb->cpu_reg.pc = TIMER_INTR_ADDR;
-            gb->gb_reg.IF ^= TIMER_INTR;
+            pending_if ^= TIMER_INTR;
         }
-        else if (gb->gb_reg.IF & gb->gb_reg.IE & SERIAL_INTR)
+        else if (pending_if & gb->gb_reg.IE & SERIAL_INTR)
         {
             gb->cpu_reg.pc = SERIAL_INTR_ADDR;
-            gb->gb_reg.IF ^= SERIAL_INTR;
+            pending_if ^= SERIAL_INTR;
         }
-        else if (gb->gb_reg.IF & gb->gb_reg.IE & CONTROL_INTR)
+        else if (pending_if & gb->gb_reg.IE & CONTROL_INTR)
         {
             gb->cpu_reg.pc = CONTROL_INTR_ADDR;
-            gb->gb_reg.IF ^= CONTROL_INTR;
+            pending_if ^= CONTROL_INTR;
         }
+
+        gb->gb_reg.IF = pending_if | 0xE0;
     }
 }
 
