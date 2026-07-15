@@ -30,10 +30,6 @@ static const uint8_t white_transparent_dither[16] = {
     0, 0, 0, 0, 0, 0, 0, 0, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55
 };
 
-typedef struct
-{
-    CB_PatchDownloadScene* pds;
-} PatchDownloadUD;
 typedef void (*context_update_fn)(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, float dt
 );
@@ -210,7 +206,16 @@ static json_value get_nth_patch_for_game(CB_PatchDownloadScene* pds, int n, int*
 
 static void on_permission_granted_for_download(unsigned flags, void* ud)
 {
-    CB_PatchDownloadScene* pds = ud;
+    PatchDownloadUD* eud = ud;
+    CB_PatchDownloadScene* pds = eud->pds;
+
+    if (!pds)
+    {
+        cb_free(eud);
+        return;
+    }
+
+    pds->permission_ud = NULL;
 
     if ((flags & ~HTTP_ENABLE_ASKED) != 0)
     {
@@ -240,6 +245,7 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
+        cb_free(eud);
         return;
     }
 
@@ -263,6 +269,7 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
 
     cb_free(pds->pending_http_path);
     pds->pending_http_path = NULL;
+    cb_free(eud);
 }
 
 static void initiate_download_with_permission_check(
@@ -277,7 +284,11 @@ static void initiate_download_with_permission_check(
     pds->pending_download_type = type;
     pds->http_in_progress = 1;
 
-    enable_http(pds->domain, purpose, on_permission_granted_for_download, pds);
+    PatchDownloadUD* eud = cb_malloc(sizeof(PatchDownloadUD));
+    eud->pds = pds;
+    pds->permission_ud = eud;
+
+    enable_http(pds->domain, purpose, on_permission_granted_for_download, eud);
 }
 
 static char* get_path_to_selected_item(CB_PatchDownloadScene* pds, int depth)
@@ -1353,6 +1364,12 @@ static void pop_context(CB_PatchDownloadScene* pds)
 
 void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 {
+    if (pds->permission_ud)
+    {
+        pds->permission_ud->pds = NULL;
+        pds->permission_ud = NULL;
+    }
+
     playdate->system->setAutoLockDisabled(false);
 
     if (pds->active_http_connection)

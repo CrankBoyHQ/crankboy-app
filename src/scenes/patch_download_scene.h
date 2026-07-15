@@ -6,6 +6,8 @@
 
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
 
+typedef struct PatchDownloadUD PatchDownloadUD;
+
 struct CB_SettingsScene;
 
 typedef enum PatchDownloadSceneContextType
@@ -101,6 +103,7 @@ typedef struct CB_PatchDownloadScene
 
     float option_hold_time;
     http_handle_t active_http_connection;
+    PatchDownloadUD* permission_ud;
     char header_name[17];
     PatchDownloadContext context[CB_PATCHDOWNLOAD_STACK_MAX_DEPTH];
 
@@ -109,6 +112,11 @@ typedef struct CB_PatchDownloadScene
     int loading_anim_step;
 
 } CB_PatchDownloadScene;
+
+typedef struct PatchDownloadUD
+{
+    CB_PatchDownloadScene* pds;
+} PatchDownloadUD;
 
 CB_PatchDownloadScene* CB_PatchDownloadScene_new(
     CB_Game* game, struct CB_SettingsScene* settingsScene, float initial_header_p
