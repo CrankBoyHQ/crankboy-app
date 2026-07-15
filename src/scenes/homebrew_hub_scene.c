@@ -1243,6 +1243,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
         pop_context(hbs);
     }
     cb_free(hbs->target_rom_path);
+    cb_free(hbs->target_cover_art_path);
     if (hbs->download_image)
         playdate->graphics->freeBitmap(hbs->download_image);
     cb_free(hbs->cached_hint);
