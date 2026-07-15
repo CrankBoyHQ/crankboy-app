@@ -696,11 +696,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->audio_temp_capacity = MAX_AUDIO_SAMPLES_PER_CHUNK;
     gameScene->audio_temp_left = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
     gameScene->audio_temp_right = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
-    if (!gameScene->audio_temp_left || !gameScene->audio_temp_right)
-    {
-        playdate->system->logToConsole("Failed to allocate audio scratch buffers.");
-        gameScene->audio_temp_capacity = 0;
-    }
 
     gameScene->crank_turbo_accumulator = 0.0f;
     gameScene->crank_turbo_a_active = false;
