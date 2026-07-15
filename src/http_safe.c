@@ -44,6 +44,9 @@ void http_safe_free(HTTPSafe* safe)
 {
     if (safe->handle == 0)
     {
+        cb_free(safe->queued.domain);
+        cb_free(safe->queued.path);
+        cb_free(safe->queued.reason);
         cb_free(safe);
     }
     else
