@@ -360,6 +360,7 @@ static void confirm_download(CB_HomebrewHubScene* hbs, int option)
         );
     }
     cb_free(hbs->urlpath);
+    hbs->urlpath = NULL;
 }
 
 static void context_list_files_update(
@@ -1244,6 +1245,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
     }
     cb_free(hbs->target_rom_path);
     cb_free(hbs->target_cover_art_path);
+    cb_free(hbs->urlpath);
     if (hbs->download_image)
         playdate->graphics->freeBitmap(hbs->download_image);
     cb_free(hbs->cached_hint);
