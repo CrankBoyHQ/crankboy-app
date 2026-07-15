@@ -1383,6 +1383,7 @@ void CB_PatchDownloadScene_free(CB_PatchDownloadScene* pds)
 
     free_json_data(pds->rhdb);
 
+    cb_free(pds->pending_http_path);
     cb_free(pds);
 }
 
