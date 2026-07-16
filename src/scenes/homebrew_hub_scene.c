@@ -1270,7 +1270,7 @@ static void CB_HomebrewHubScene_menu(void* object)
 {
     CB_HomebrewHubScene* hbs = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("settings", CB_HomebrewHubScene_didSelectSettings, hbs);
+    playdate->system->addMenuItem(T(pdmenu_settings), CB_HomebrewHubScene_didSelectSettings, hbs);
 }
 
 CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name)

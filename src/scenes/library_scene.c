@@ -1219,7 +1219,7 @@ static void library_push_get_roms_item(CB_ListView* listView)
 {
     if (!homebrew_hub_available())
         return;
-    array_push(listView->items, CB_ListItemButton_new("Get ROMs..."));
+    array_push(listView->items, CB_ListItemButton_new(T(Library_GetRoms)));
 }
 
 CB_LibraryScene* CB_LibraryScene_new(void)
@@ -2528,7 +2528,7 @@ static void CB_LibraryScene_menu(void* object)
 {
     playdate->system->addMenuItem("Credits", CB_showCredits, object);
     playdate->system->addMenuItem("Help", (void*)CB_showHelp, 0);
-    playdate->system->addMenuItem("Settings", CB_LibraryScene_showSettings, object);
+    playdate->system->addMenuItem(T(pdmenu_settings), CB_LibraryScene_showSettings, object);
 }
 
 static void CB_LibraryScene_free(void* object)

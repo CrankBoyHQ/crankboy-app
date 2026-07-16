@@ -159,6 +159,8 @@ static char* parse_escaped_value(const char* start)
     return out;
 }
 
+static PDLanguage language_override = kPDLanguageSystem;
+
 // check for CLI arg and launch path, as well as bundle mode
 // FIXME: ugly that we have this all in one function~
 static int check_is_bundle(void)
@@ -187,6 +189,15 @@ static int check_is_bundle(void)
         if (strstr(arg, "--update-forwarder"))
         {
             CB_App->forceUpdateForwarder = true;
+        }
+        
+        if (strstr(arg, "language=en"))
+        {
+            language_override = kPDLanguageEnglish;
+        }
+        else if (strstr(arg, "language=jp"))
+        {
+            language_override = kPDLanguageJapanese;
         }
 
         const char* device_arg = strstr(arg, "device=");
@@ -1272,7 +1283,7 @@ void CB_init(void)
 
     load_assets();
     
-    CB_load_strings(kPDLanguageSystem);
+    CB_load_strings(language_override);
 
     if (!CB_App->bundled_rom)
     {

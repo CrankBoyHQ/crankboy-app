@@ -861,8 +861,8 @@ static void CB_ManageRomScene_menu(void* object)
 {
     CB_ManageRomScene* self = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("library", CB_ManageRomScene_didSelectLibrary, self);
-    playdate->system->addMenuItem("settings", CB_ManageRomScene_didSelectSettings, self);
+    playdate->system->addMenuItem(T(pdmenu_library), CB_ManageRomScene_didSelectLibrary, self);
+    playdate->system->addMenuItem(T(pdmenu_settings), CB_ManageRomScene_didSelectSettings, self);
 }
 
 CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)

@@ -87,6 +87,7 @@ SRC += build/baked_version_json.c
 SRC += build/baked_credits_json.c
 SRC += build/baked_en_strings.c
 SRC += build/baked_jp_strings.c
+SRC += src/l10n/l10n.c
 
 ASRC = setup.s
 
@@ -145,7 +146,7 @@ build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	python3 scripts/embed_json.py $< $@ baked_$*_json
 	
 build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
-	xxd -i -n baked_$*_strings $< > $@
+	xxd -i -n baked_$*_strings $< | sed 's/^unsigned/const unsigned/' > $@
 
 # Compress recommended settings JSONs and add to pdx
 .PHONY: csettings

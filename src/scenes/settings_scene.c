@@ -124,7 +124,7 @@ static OptionsMenuEntry* build_misc(SectionDef*, struct CB_SettingsScene*, int* 
 const static SectionDef section_defs_base[] = {
     {"General", build_general, true},    {"Script", build_script, false},
     {"Audio", build_audio, false},       {"Display", build_display, false},
-    {"Input", build_input, false},       {"Game Boy Color", build_cgb, false},
+    {"Input", build_input, false},       {"CGB", build_cgb, false},
     {"Behavior", build_behavior, false}, {"Library", build_library, true},
     {"Miscellaneous", build_misc, true},
 };
@@ -1137,7 +1137,7 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
         const char* options[] = {"Game", "Settings", NULL, NULL};
         if (!CB_App->bundled_rom)
         {
-            options[2] = "Library";
+            options[2] = T(pdmenu_library);
         }
         CB_Modal* modal = CB_Modal_new(
             "State saved. Return to:", options, state_action_modal_callback, settingsScene
@@ -1695,7 +1695,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
             general_desc = "Manage settings scope.";
 
         section[++i] =
-            (OptionsMenuEntry){.name = "General", .header = 1, .description = general_desc};
+            (OptionsMenuEntry){.name = T(sethdr_general), .header = 1, .description = general_desc};
     }
 
     if (gameScene)
@@ -2667,7 +2667,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Miscellaneous",
+        .name = T(sethdr_misc),
         .header = 1,
         .description = "FPS display, turbo speed, boot fade, TCM Acceleration, and more."
     };
@@ -3733,7 +3733,7 @@ static void CB_SettingsScene_menu(void* object)
     }
     else
     {
-        playdate->system->addMenuItem("Library", CB_SettingsScene_didSelectBack, settingsScene);
+        playdate->system->addMenuItem(T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene);
         playdate->system->addMenuItem("Changelog", display_changelog_menu, NULL);
     }
 }

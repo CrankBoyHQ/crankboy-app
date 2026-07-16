@@ -3170,14 +3170,14 @@ static void CB_GameScene_menu(void* object)
     {
         if (!CB_App->bundled_rom)
         {
-            playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
+            playdate->system->addMenuItem(T(pdmenu_library), CB_GameScene_didSelectLibrary, gameScene);
         }
         return;
     }
 
     if (!CB_App->bundled_rom)
     {
-        playdate->system->addMenuItem("Library", CB_GameScene_didSelectLibrary, gameScene);
+        playdate->system->addMenuItem(T(pdmenu_library), CB_GameScene_didSelectLibrary, gameScene);
     }
     if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
     {
@@ -3185,7 +3185,7 @@ static void CB_GameScene_menu(void* object)
         // best not find out.
         if (gameScene->state == CB_GameSceneStateLoaded)
         {
-            playdate->system->addMenuItem("Settings", CB_GameScene_showSettings, gameScene);
+            playdate->system->addMenuItem(T(pdmenu_settings), CB_GameScene_showSettings, gameScene);
         }
     }
     else

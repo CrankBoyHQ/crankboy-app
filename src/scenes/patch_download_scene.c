@@ -108,8 +108,8 @@ static void CB_PatchDownloadScene_menu(void* object)
 {
     CB_PatchDownloadScene* pds = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("library", CB_PatchDownloadScene_didSelectLibrary, pds);
-    playdate->system->addMenuItem("settings", CB_PatchDownloadScene_didSelectSettings, pds);
+    playdate->system->addMenuItem(T(pdmenu_library), CB_PatchDownloadScene_didSelectLibrary, pds);
+    playdate->system->addMenuItem(T(pdmenu_settings), CB_PatchDownloadScene_didSelectSettings, pds);
 }
 
 static void check_for_patches_callback(const char* path, void* userdata)

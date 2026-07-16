@@ -164,8 +164,8 @@ static void CB_EmucoreGameScene_menu(void* object)
 {
     CB_EmucoreGameScene* es = object;
     if (!CB_App->bundled_rom)
-        playdate->system->addMenuItem("Library", CB_EmucoreGameScene_didSelectLibrary, es);
-    playdate->system->addMenuItem("Settings", CB_EmucoreGameScene_didSelectSettings, es);
+        playdate->system->addMenuItem(T(pdmenu_library), CB_EmucoreGameScene_didSelectLibrary, es);
+    playdate->system->addMenuItem(T(pdmenu_settings), CB_EmucoreGameScene_didSelectSettings, es);
 
     // emucore can provide an entry too
     if (es->core && es->core->pdll && es->core->pdll->eventHandler)
