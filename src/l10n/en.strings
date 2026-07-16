@@ -3,6 +3,7 @@
 "sethdr_script" = "Script"
 "sethdr_audio" = "Audio"
 "sethdr_display" = "Display"
+"setdsc_display" = "Frame rate, dither pattern, scaling, and visual stabilization"
 "sethdr_input" = "Input"
 "sethdr_cgb_catalog" = "CGB (GB Color)"
 "sethdr_cgb" = "Game Boy Color"

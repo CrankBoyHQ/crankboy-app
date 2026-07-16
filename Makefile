@@ -148,6 +148,30 @@ build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
 	xxd -i -n baked_$*_strings $< | sed 's/^unsigned/const unsigned/' > $@
 
+JP_TTF  = assets/fonts/LINESeed/LINESeedJP-Bold.ttf
+JP_LIST = build/glyphs-jp.txt
+
+$(JP_LIST): src/l10n/jp.strings scripts/list_jp_glyphs.py | MKOBJDIR
+	python3 scripts/list_jp_glyphs.py src/l10n/jp.strings $@
+
+FONT_STAMP = build/fonts.stamp
+
+$(FONT_STAMP): $(JP_LIST) $(JP_TTF) scripts/insert_glyphs.py $(wildcard assets/fonts/*.fnt assets/fonts/*.png) | MKOBJDIR
+	cp assets/fonts/*.fnt assets/fonts/*.png Source/fonts/
+	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-11-Medium-table-22-22.png Source/fonts/Roobert-11-Medium.fnt --beta-gumi=18
+	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-20-Medium-table-32-32.png Source/fonts/Roobert-20-Medium.fnt --beta-gumi=21
+	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Asheville-Sans-14-Bold-table-20-20.png Source/fonts/Asheville-Sans-14-Bold.fnt --beta-gumi=16
+	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Nontendo-Bold-table-10-13.png Source/fonts/Nontendo-Bold.fnt --beta-gumi=12
+	touch $@
+
+.PHONY: fonts
+fonts: $(FONT_STAMP)
+
+# fonts must be produced before pdc packages Source
+all: | fonts
+device: | fonts
+simulator: | fonts
+
 # Compress recommended settings JSONs and add to pdx
 .PHONY: csettings
 csettings:

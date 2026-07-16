@@ -1,5 +1,7 @@
 # v2.2.2 - 
 
+こんいちは! This version introduces WIP Japanese language support.
+
 ## Combo Inputs
 
 - Fixed behaviour when Ⓐ›Ⓑ or Ⓑ›Ⓐ mappings contained Ⓐ/Ⓑ

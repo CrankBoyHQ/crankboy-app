@@ -1928,7 +1928,7 @@ static OptionsMenuEntry* build_script(SectionDef* def, CB_SettingsScene* scene, 
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Script",
+        .name = T(sethdr_script),
         .header = 1,
         .description = "Game-specific settings provided by a custom script for this ROM."
     };
@@ -1969,7 +1969,7 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Audio",
+        .name = T(sethdr_audio),
         .header = 1,
         .description = "Sound quality, timing accuracy, sample rate, and headphone output."
     };
@@ -2048,9 +2048,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Display",
+        .name = T(sethdr_display),
         .header = 1,
-        .description = "Frame rate, dither pattern, scaling, and visual stabilization."
+        .description = T(setdsc_display)
     };
 
     // frame skip
@@ -2185,7 +2185,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Input",
+        .name = T(sethdr_input),
         .header = 1,
         .description = "Crank function, dock and undock mapping, and button remapping."
     };
@@ -2460,7 +2460,7 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Behavior", .header = 1, .description = "Rewind, overclock, and script support."
+        .name = T(sethdr_behavior), .header = 1, .description = "Rewind, overclock, and script support."
     };
 
     // Rewind
@@ -2556,7 +2556,7 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Library",
+        .name = T(sethdr_library),
         .header = 1,
         .description =
             "Game list appearance, sorting, launch behavior, and CGB prompt options.\n\n"
@@ -2917,13 +2917,36 @@ static void cb_wrap_emit_line(const char* start, int length)
     ++s_wrap_cache.n_lines;
 }
 
+// U+200B zero-width space (for cjk rendering especially)
+static bool cb_is_zwsp(const char* p, const char* end)
+{
+    return end - p >= 3 && (unsigned char)p[0] == 0xE2 && (unsigned char)p[1] == 0x80 &&
+           (unsigned char)p[2] == 0x8B;
+}
+
+static int cb_strip_zwsp(char* dst, const char* src, int n)
+{
+    const char* end = src + n;
+    int out = 0;
+    while (src < end)
+    {
+        if (cb_is_zwsp(src, end))
+        {
+            src += 3;
+            continue;
+        }
+        dst[out++] = *src++;
+    }
+    return out;
+}
+
 static int cb_wrap_measure(LCDFont* font, const char* s, int n)
 {
     if (n <= 0)
         return 0;
     static char buf[LINE_BUF_SIZE];
     int safe_len = (n < (int)(sizeof(buf) - 1)) ? n : (int)(sizeof(buf) - 1);
-    memcpy(buf, s, safe_len);
+    safe_len = cb_strip_zwsp(buf, s, safe_len);
     buf[safe_len] = '\0';
     return playdate->graphics->getTextWidth(font, buf, safe_len, kUTF8Encoding, 0);
 }
@@ -2947,8 +2970,13 @@ static void cb_wrap_paragraph(const char* p, int len, int max_width, LCDFont* fo
             ++p;
             continue;
         }
+        if (cb_is_zwsp(p, end))
+        {
+            p += 3;
+            continue;
+        }
         const char* word_start = p;
-        while (p < end && *p != ' ')
+        while (p < end && *p != ' ' && !cb_is_zwsp(p, end))
             ++p;
         int trial = cb_wrap_measure(font, line_start, (int)(p - line_start));
         if (trial <= max_width || !have_fit_word)
@@ -3619,7 +3647,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
             int safe_len = (lines[li].length < (int)(sizeof(line_buf) - 1))
                                ? lines[li].length
                                : (int)(sizeof(line_buf) - 1);
-            memcpy(line_buf, lines[li].start, safe_len);
+            safe_len = cb_strip_zwsp(line_buf, lines[li].start, safe_len);
             line_buf[safe_len] = '\0';
             playdate->graphics->drawText(
                 line_buf, safe_len, kUTF8Encoding, kDividerX + kRightPanePadding, descY

@@ -7,8 +7,12 @@
 /Source/pdex.elf
 /Source/pdex.so
 /Source/scripts/
+/Source/fonts/*-table-*.png
+/Source/fonts/*.fnt
 .vscode
 *.zip
+
+__pycache__
 
 # symbol file, for manually checking alignment
 syms*.txt
