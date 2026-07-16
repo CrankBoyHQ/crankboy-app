@@ -10,6 +10,8 @@
 
 #include "../libs/libcrankemu/libcrankemu.h"
 #include "../libs/pdll/pdll.h"
+#include "pd_api/pd_api_sys.h"
+#include "utility.h"
 
 #ifdef TARGET_PLAYDATE
 #include "../libs/pdnewlib/pdnewlib.h"
@@ -1269,6 +1271,8 @@ void CB_init(void)
     check_is_bundle();
 
     load_assets();
+    
+    CB_load_strings(kPDLanguageSystem);
 
     if (!CB_App->bundled_rom)
     {

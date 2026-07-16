@@ -82,9 +82,11 @@ SRC += libs/pdll/uzlib/tinfzlib.c
 SRC += libs/pdll/uzlib/adler32.c
 SRC += libs/pdll/uzlib/crc32.c
 
-# Baked JSON (generated from Source/*.json; see rules below)
+# Baked data files (generated from Source/*.json; see rules below)
 SRC += build/baked_version_json.c
 SRC += build/baked_credits_json.c
+SRC += build/baked_en_strings.c
+SRC += build/baked_jp_strings.c
 
 ASRC = setup.s
 
@@ -141,6 +143,9 @@ PDCFLAGS += --quiet
 # bake Source/*.json into C source
 build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	python3 scripts/embed_json.py $< $@ baked_$*_json
+	
+build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
+	xxd -i -n baked_$*_strings $< > $@
 
 # Compress recommended settings JSONs and add to pdx
 .PHONY: csettings

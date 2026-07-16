@@ -446,6 +446,9 @@ bool endswithi(const char* str, const char* suffix);
 
 void setCrankSoundsEnabled(bool enabled);
 
+// get localized text
+const char* l10n(const char* key);
+
 // queue an error to show the user later
 void spoolError(const char* fmt, ...);
 
