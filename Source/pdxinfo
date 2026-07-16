@@ -5,3 +5,5 @@ bundleID=app.crankboyhq.crankboy
 version=2.2.1
 buildNumber=20260709
 imagePath=launcher
+menuTitleFont=/System/Fonts/Roobert-20-Medium-extended
+menuMessageFont=/System/Fonts/Roobert-11-Medium-extended
