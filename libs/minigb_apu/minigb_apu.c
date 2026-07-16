@@ -1481,7 +1481,11 @@ void audio_init(audio_data* audio)
     }
 }
 
+/* completely disables audio subsystem, important for multithreading reasons */
 int audio_enabled;
+
+/* cpu-visible audio state still updated, but most of it is skipped */
+int audio_muted;
 
 #if TARGET_PLAYDATE
 __attribute__((always_inline)) static inline void replicate_samples_optimized(
@@ -1639,7 +1643,7 @@ __attribute__((always_inline)) static inline void clear_audio_buffers(
  */
 __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len)
 {
-    if (!audio_enabled)
+    if (!audio_enabled || audio_muted)
         return 0;
 
     DTCM_VERIFY_DEBUG();

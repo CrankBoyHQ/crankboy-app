@@ -316,35 +316,52 @@ static const char* buttonMenuOptions[] = {
 
 static const char* quitGameOptions[] = {"No", "Yes", NULL};
 
-void reconfigure_audio_source(CB_GameScene* gameScene, int headphones)
+void reconfigure_audio_source(CB_GameScene* gameScene)
 {
     if (!gameScene)
         return;
+    
+    int headphones;
+    playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
 
     bool use_stereo = (headphones || gameScene->is_mirroring) ? preferences_headphone_audio : 0;
 
+    static bool sound_source_stereo;
+    bool source_unchanged = CB_App->soundSource != NULL && sound_source_stereo == use_stereo;
+
+    gameScene->is_stereo = use_stereo;
+
+    gameScene->audioEnabled = (preferences_sound_mode > 0) && playdate->system->getVolume() > 0.00f;
+    audio_muted = !gameScene->audioEnabled;
+    
     playdate->system->logToConsole(
-        "Reconfiguring audio. Headphones: %s, Mirroring: %s, New mode: %s",
+        "Reconfiguring audio. Muted: %s, Headphones: %s, Mirroring: %s, New mode: %s",
+        (audio_muted ? "Yes" : "No"),
         (headphones ? "Yes" : "No"), (gameScene->is_mirroring ? "Yes" : "No"),
         (use_stereo ? "Stereo" : "Mono")
     );
 
-    gameScene->is_stereo = use_stereo;
-
+    float volume = 0.0f;
     if (gameScene->audioEnabled)
     {
-        float volume = use_stereo ? 0.35f : 0.5f;
+        volume = use_stereo ? 0.35f : 0.5f;
         if (preferences_sound_mode == 2 && gameScene->context->gb->is_cgb_mode)
             volume *= 1.5f;
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
     }
+    playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
 
-    if (CB_App->soundSource != NULL)
+    audioGameScene = gameScene;
+
+    if (!source_unchanged)
     {
-        playdate->sound->removeSource(CB_App->soundSource);
-    }
+        if (CB_App->soundSource != NULL)
+        {
+            playdate->sound->removeSource(CB_App->soundSource);
+        }
 
-    CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
+        CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
+        sound_source_stereo = use_stereo;
+    }
 
     if (headphones)
     {
@@ -655,7 +672,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         .empty = true
     };
 
-    gameScene->audioEnabled = (preferences_sound_mode > 0);
+    gameScene->audioEnabled = false;
     gameScene->audioLocked = false;
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
@@ -696,6 +713,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->menu_open_ms = 0;
 
     prefs_locked_by_script = 0;
+    
+    audio_enabled = 1;
 
     // Global settings are loaded by default. Check for a game-specific file.
     gameScene->settings_filename = cb_game_config_path(rom_filename);
@@ -761,7 +780,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     memset(context->gb, 0, sizeof(gb_s));
     DTCM_VERIFY();
 
-    audio_enabled = 1;
     context->scene = gameScene;
     context->rom = NULL;
     context->cart_ram = NULL;
@@ -924,29 +942,12 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 
     if (audio_settings_changed)
     {
-        int headphones = 0;
-        playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
-        reconfigure_audio_source(gameScene, headphones);
+        reconfigure_audio_source(gameScene);
     }
 
-    bool desiredAudioEnabled = (preferences_sound_mode > 0);
-    gameScene->audioEnabled = desiredAudioEnabled;
+    CB_ASSERT(audioGameScene == gameScene);
 
-    if (desiredAudioEnabled)
-    {
-        float volume = gameScene->is_stereo ? 0.35f : 0.5f;
-        if (preferences_sound_mode == 2 && gameScene->context->gb->is_cgb_mode)
-            volume *= 1.5f;
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
-        context->gb->direct.sound = 1;
-        audioGameScene = gameScene;
-    }
-    else
-    {
-        playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), 0.0f);
-        context->gb->direct.sound = 1;
-        audioGameScene = NULL;
-    }
+    context->gb->direct.sound = 1;
 
     // If the buffered audio sync is NOT the active mode, we MUST ensure
     // its buffer is cleared. This handles the case where a user disables
@@ -1625,9 +1626,15 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     if (CB_App->mirror_active != gameScene->is_mirroring)
     {
         gameScene->is_mirroring = CB_App->mirror_active;
-        int headphones;
-        playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
-        reconfigure_audio_source(gameScene, headphones);
+        reconfigure_audio_source(gameScene);
+    }
+
+    // system volume can change without any event reaching us
+    bool desiredAudioEnabled =
+        (preferences_sound_mode > 0) && playdate->system->getVolume() > 0.00f;
+    if (desiredAudioEnabled != gameScene->audioEnabled)
+    {
+        reconfigure_audio_source(gameScene);
     }
 
     float progress = 0.5f;
@@ -4029,6 +4036,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     case kEventResume:
         // Re-apply the user's auto-lock preference on resume.
         playdate->system->setAutoLockDisabled(preferences_disable_autolock);
+        reconfigure_audio_source(gameScene);
         if (gameScene->menu_open_seconds > 0)
         {
             unsigned now_ms;
@@ -4057,8 +4065,6 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         }
         if (gameScene->audioEnabled)
         {
-            audioGameScene = gameScene;
-
             // If the buffered audio sync is the active mode upon leaving the settings,
             // we MUST reset our timing baseline. This recalibrates our sample counter
             // against the hardware clock, closing the "time gap" that was created
@@ -4383,7 +4389,7 @@ static void CB_GameScene_free(void* object)
             playdate->sound->removeSource(CB_App->soundSource);
             CB_App->soundSource = NULL;
         }
-
+    
         if (preferences_audio_sync == 1)
         {
             CB_reset_audio_sync_state();

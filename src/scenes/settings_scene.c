@@ -77,6 +77,9 @@ typedef struct OptionsMenuEntry
     // used for standard prefs.x preferences
     preference_t* pref_var;
     unsigned max_value;
+    
+    /* values with a 1 here are skipped over, not normally accessible. */
+    uint64_t disabled_entries;
 
     bool locked : 1;
     bool dimmed : 1;
@@ -135,6 +138,7 @@ static unsigned last_selected_preference_time;
 void clear_last_selected_preference(void)
 {
     last_selected_preference = NULL;
+    last_selected_emucore_id[0] = '\0';
 }
 
 static bool entry_matches_last_selected(const OptionsMenuEntry* e)
@@ -1975,10 +1979,10 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
         .values = sound_mode_labels,
         .description =
             "Accurate:\nHighest quality sound.\n\n"
-            "Fast:\nGood balance of quality and speed.\n\n"
-            "Off:\nNo audio for best performance.",
+            "Fast:\nGood balance of quality and speed.",
         .pref_var = &preferences_sound_mode,
         .max_value = 3,
+        .disabled_entries = (1 << 0), /* 'Off' removed */
         .on_press = NULL,
     };
 
@@ -3270,10 +3274,18 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         if (direction != 0)
         {
             // increment/decrement the setting
-            int old_value = *cursor_entry->pref_var;
+            const int old_value = *cursor_entry->pref_var;
 
-            *cursor_entry->pref_var =
-                (old_value + direction + cursor_entry->max_value) % cursor_entry->max_value;
+            for (int i = 0; i < cursor_entry->max_value; ++i)
+            {
+                *cursor_entry->pref_var = (*cursor_entry->pref_var + direction + cursor_entry->max_value) % cursor_entry->max_value;
+
+                // can't land on a disabled entry
+                if (((cursor_entry->disabled_entries >> *cursor_entry->pref_var) & 1) == 0)
+                {
+                    break;
+                }
+            }
 
             cb_play_ui_sound(CB_UISound_Confirm);
 

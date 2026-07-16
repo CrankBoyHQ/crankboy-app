@@ -1,14 +1,15 @@
 # v2.2.2 - 
 
-## UI Changes
-
-- Moved "Get ROMs..." to the main library menu.
-- Forgets last-selected-preference when starting or exiting a game
-
 ## Combo Inputs
 
 - Fixed behaviour when Ⓐ›Ⓑ or Ⓑ›Ⓐ mappings contained Ⓐ/Ⓑ
 - Added mappings for releasing Ⓑ+Ⓐ
+
+## Misc
+
+- Moved "Get ROMs..." to the main library menu.
+- Forgets last-selected-preference when starting or exiting a game
+- Audio can no longer be set to "OFF". Instead, muting the system enables the fast path.
 
 ## Bug Fixes
 

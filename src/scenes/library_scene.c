@@ -1210,6 +1210,18 @@ __section__(".rare") static void CB_LibraryScene_event(
     }
 }
 
+static bool homebrew_hub_available(void)
+{
+    return CB_App->hbApiDomain && CB_App->hbApiPath;
+}
+
+static void library_push_get_roms_item(CB_ListView* listView)
+{
+    if (!homebrew_hub_available())
+        return;
+    array_push(listView->items, CB_ListItemButton_new("Get ROMs..."));
+}
+
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_ASSERT(!CB_App->bundled_rom);
@@ -1281,7 +1293,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
         // skip game list build and cover preload on reload
         // keep current selection
         int sel = last_selected_game_index;
-        if (sel < 0 || sel > libraryScene->games->length)
+        int max_sel = libraryScene->games->length - (homebrew_hub_available() ? 0 : 1);
+        if (sel < 0 || sel > max_sel)
             sel = 0;
         libraryScene->listView->selectedItem = sel;
         libraryScene->build_index = 0;
@@ -1348,7 +1361,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
         CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
         array_push(items, itemButton);
     }
-    array_push(items, CB_ListItemButton_new("Get ROMs..."));
+    library_push_get_roms_item(libraryScene->listView);
 
     CB_ListView_reload(libraryScene->listView);
 }
@@ -1576,9 +1589,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
             else
             {
-                array_push(libraryScene->listView->items, CB_ListItemButton_new("Get ROMs..."));
+                library_push_get_roms_item(libraryScene->listView);
 
-                if (libraryScene->games->length > 0)
+                // full-screen instructions only when there is nothing to list at all
+                if (libraryScene->listView->items->length > 0)
                 {
                     libraryScene->tab = CB_LibrarySceneTabList;
                 }
@@ -1733,21 +1747,12 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         int selectedItem = libraryScene->listView->selectedItem;
         if (selectedItem == libraryScene->games->length)
         {
-            cb_play_ui_sound(CB_UISound_Confirm);
-            last_selected_game_index = selectedItem;
+            // no "Get ROMs..." row without the API
+            if (homebrew_hub_available())
+            {
+                cb_play_ui_sound(CB_UISound_Confirm);
+                last_selected_game_index = selectedItem;
 
-            if (!CB_App->hbApiDomain || !CB_App->hbApiPath)
-            {
-                CB_presentModal(
-                    CB_Modal_new(
-                        "Homebrew Hub API not found. Check this pdx file:\n" HOMEBREW_HUB_API_FILE,
-                        NULL, NULL, NULL
-                    )
-                        ->scene
-                );
-            }
-            else
-            {
                 CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(0.0f, NULL);
                 CB_presentModal(s->scene);
             }
@@ -2337,10 +2342,9 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             }
             else if (selectedIndex == libraryScene->games->length)
             {
-                static const char* text =
-                    "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
-                    "This feature is still experimental.\n\n"
-                    "Parental lock is available.";
+                const char* text = "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
+                                   "This feature is still experimental.\n\n"
+                                   "Parental lock is available.";
 
                 LCDFont* font = CB_App->subheadFont;
                 int margin = 6;

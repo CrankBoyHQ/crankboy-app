@@ -33,6 +33,7 @@ typedef struct audio_data audio_data;
 
 // master audio control
 extern int audio_enabled;
+extern int audio_muted;
 
 /**
  * Read audio register at given address "addr".

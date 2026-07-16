@@ -1393,7 +1393,7 @@ void CB_headphone_state_changed(int headphone, int mic)
 {
     if (audioGameScene)
     {
-        reconfigure_audio_source(audioGameScene, headphone);
+        reconfigure_audio_source(audioGameScene);
     }
 }
 

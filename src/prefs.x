@@ -7,10 +7,12 @@ PREF(save_slot, 0)        // (never visible in Bundle mode; only visible in libr
 PREF(save_state_slot, 0)  // (has two corresponding settings)
 
 /* --- audio ---
- * sound_mode:      0=Off, 1=Fast, 2=Accurate
+ * sound_mode:      0=Off^, 1=Fast, 2=Accurate
  * audio_sync:      0=Fast, 1=Accurate
  * sample_rate:     0=High, 1=Medium, 2=Low
  * headphone_audio: 0=Mono, 1=Stereo
+ *
+ * ^: not accessible to user
  */
 PREF(sound_mode, 2)
 PREF(audio_sync, 0)

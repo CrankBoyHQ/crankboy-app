@@ -205,7 +205,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
 void CB_GameScene_didSelectLibrary(void* userdata);
 void CB_reset_audio_sync_state(void);
 
-void reconfigure_audio_source(CB_GameScene* gameScene, int headphones);
+void reconfigure_audio_source(CB_GameScene* gameScene);
 
 unsigned get_save_state_timestamp(CB_GameScene* gameScene, unsigned slot);
 bool load_state_thumbnail(CB_GameScene* gameScene, unsigned slot, uint8_t* out);
