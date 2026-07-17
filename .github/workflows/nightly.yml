@@ -330,8 +330,8 @@ jobs:
             # Install Python dependencies for build scripts
             - name: Install Python Dependencies
               run: |
-                python3 -m venv .venv
-                .venv/bin/pip install -r scripts/requirements.txt
+                  python3 -m venv .venv
+                  .venv/bin/pip install -r scripts/requirements.txt
 
             # Step 5: Build Universal Project (Device & Simulator)
             - name: Build Universal Project (Device & Simulator)
@@ -420,6 +420,8 @@ jobs:
                       mingw-w64-x86_64-cmake
                       mingw-w64-x86_64-pkg-config
                       mingw-w64-x86_64-zlib
+                      mingw-w64-x86_64-python-pillow
+                      mingw-w64-x86_64-python-fonttools
                       make
                       unzip
                       p7zip
@@ -488,11 +490,6 @@ jobs:
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
                   sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
 
-            - name: Install Python Dependencies
-              run: |
-                python -m venv .venv
-                .venv/bin/pip install -r scripts/requirements.txt
-
             - name: Build Universal Project (Device & Simulator) for Windows
               run: |
                   export PLAYDATE_SDK_PATH="$(pwd)/PlaydateSDK"
@@ -516,6 +513,7 @@ jobs:
                       libs/lz4/lz4.c libs/miniz/miniz.c libs/miniz/mini_gzip.c \
                       libs/pdll/pdll.c libs/nayuki/qrcodegen.c \
                       build/baked_version_json.c build/baked_credits_json.c \
+                      build/baked_en_strings.c build/baked_jp_strings.c \
                       "$PLAYDATE_SDK_PATH/C_API/buildsupport/setup.c"
 
                   # Copy DLL to existing .pdx folder (which now contains device binary)
