@@ -249,7 +249,9 @@ jobs:
 
             # Install Python dependencies for build scripts
             - name: Install Python Dependencies
-              run: python3 -m pip install -r scripts/requirements.txt
+              run: |
+                python3 -m venv .venv
+                .venv/bin/pip install -r scripts/requirements.txt
 
             # Step 4: Build Universal Project (Device & Simulator)
             - name: Build Universal Project (Device & Simulator)
