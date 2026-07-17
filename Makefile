@@ -107,7 +107,7 @@ UINCDIR += libs/pdnewlib
 # Note: DTCM only active on Rev A regardless.
 # DTCM_DEBUG: set >0 to verify DTCM canary on every allocation (slow, debug only).
 # -fstack-usage: Add this to measure the stack usage (only for debugging)
-UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -falign-loops=32 -fprefetch-loop-arrays
+UDEFS += -DDTCM_ALLOC -DITCM_CORE -DDTCM_DEBUG=0 -DLZ4_MEMORY_USAGE=12 -falign-loops=32 -fprefetch-loop-arrays
 
 # flags applied to simulator only
 SIMULATOR_FLAGS +=
