@@ -949,7 +949,9 @@ static void load_map_halftiles(ScriptData* data, int area_idx)
         if (room->area != area_idx)
             continue;
         size_t tile_present_size = (room->w + 2) * (get_room_h(room) + 2);
-        uint8_t tile_present[tile_present_size];
+        if (tile_present_size > 1024)
+            continue;
+        uint8_t tile_present[1024];
         memset(tile_present, 0, tile_present_size);
 
         size_t offset = room->data_offset;
