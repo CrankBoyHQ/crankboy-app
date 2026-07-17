@@ -158,8 +158,6 @@ For developers new to Playdate, please be aware that you will need to [compile C
 
 Come chat with us on the [Playdate Developer Forum](https://devforum.play.date/t/60-fps-gameboy-emulation/22865) or on [Discord](https://discord.com/channels/675983554655551509/1378119815641694278). Even if you're not an expert at emulation coding, we could still use some visual assets, look-and-feel, UI, UX, and so on to make the app feel more cute and at-home on a cozy device like Playdate.
 
-For coders: we could use help with setting up a [Windows simulator build CI](https://github.com/CrankBoyHQ/crankboy-app/issues/43).
-
 CrankBoy uses a heavily modified version of Peanut-GB. Various [advanced optimization techniques](https://devforum.play.date/t/dirty-optimization-secrets-c-for-playdate/23011) were used to tailor the performance to the Playdate. If you wish to work on adding features to the emulator core itself, you may want to glance at those optimization techniques since it explains some of the unusual design choices made.
 
 #### Development Tips
@@ -174,6 +172,14 @@ After cloning the repository, please enable the clang-format git hook by running
 
 ```bash
 git config core.hooksPath githooks
+```
+
+Some build scripts require Python dependencies. Set up a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r scripts/requirements.txt
 ```
 
 For convenience, you can use the CLI arg `rom=<path/to/rom>` (where path is relative to the game's data directory) to launch a rom in bundled mode directly.

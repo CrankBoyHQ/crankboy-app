@@ -24,6 +24,9 @@ disasm*.txt
 *.gb
 *.gbc
 
+# Python venv
+.venv/
+
 # clangd
 .clangd
 .cache

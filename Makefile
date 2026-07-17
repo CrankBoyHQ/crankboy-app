@@ -3,7 +3,7 @@ STACK_SIZE     = 61800
 
 PRODUCT = CrankBoy.pdx
 
-# Note: to rebuild db/*.json database, run python3 scripts/create_rom_list.py
+# Note: to rebuild db/*.json database, run $(PYTHON) scripts/create_rom_list.py
 
 SDK = ${PLAYDATE_SDK_PATH}
 ifeq ($(SDK),)
@@ -128,22 +128,48 @@ override LDSCRIPT=./link_map.ld
 
 include $(SDK)/C_API/buildsupport/common.mk
 
-# Update pdxinfo from version.json (unless bundle.json present)
-PYTHON := $(shell command -v python3b 2>/dev/null)
+# Auto-detect Python: use project venv if present, otherwise system python3
+PYTHON := $(shell \
+    if [ -x .venv/bin/python3 ]; then \
+        echo .venv/bin/python3; \
+    else \
+        command -v python3 2>/dev/null || echo python3; \
+    fi)
 
+# Update pdxinfo from version.json (unless bundle.json present)
 ifneq ("$(wildcard Source/bundle.json)","")
-ifdef PYTHON
-    $(shell python3 scripts/update_version.py Source/pdxinfo Source/version.json Source/pdxinfo)
-else
-    $(info WARNING: python3 required to update pdxinfo from version.json)
+    $(shell $(PYTHON) scripts/update_version.py Source/pdxinfo Source/version.json Source/pdxinfo)
 endif
-endif
+
+# Fail early if Python deps missing (blocks parallel C compilation)
+.PHONY: check_python_deps
+check_python_deps:
+	@$(PYTHON) -c "import fontTools; from PIL import Image" 2>/dev/null || { \
+	    if [ ! -d .venv ]; then \
+	        echo "ERROR: Python deps missing (fonttools, Pillow)."; \
+	        echo ""; \
+	        echo "First-time setup:"; \
+	        echo "  python3 -m venv .venv"; \
+	        echo "  .venv/bin/pip install -r scripts/requirements.txt"; \
+	    else \
+	        echo "ERROR: Python deps missing in .venv (fonttools, Pillow)."; \
+	        echo ""; \
+	        echo "Run:"; \
+	        echo "  .venv/bin/pip install -r scripts/requirements.txt"; \
+	    fi; \
+	    echo ""; \
+	    exit 1; \
+	}
+
+# Make device and simulator build depend on Python dep check
+device_bin: check_python_deps
+simulator_bin: check_python_deps
 
 PDCFLAGS += --quiet
 
 # bake Source/*.json into C source
 build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
-	python3 scripts/embed_json.py $< $@ baked_$*_json
+	$(PYTHON) scripts/embed_json.py $< $@ baked_$*_json
 	
 build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
 	xxd -i -n baked_$*_strings $< | sed 's/^unsigned/const unsigned/' > $@
@@ -152,16 +178,32 @@ JP_TTF  = assets/fonts/LINESeed/LINESeedJP-Bold.ttf
 JP_LIST = build/glyphs-jp.txt
 
 $(JP_LIST): src/l10n/jp.strings scripts/list_jp_glyphs.py | MKOBJDIR
-	python3 scripts/list_jp_glyphs.py src/l10n/jp.strings $@
+	$(PYTHON) scripts/list_jp_glyphs.py src/l10n/jp.strings $@
 
 FONT_STAMP = build/fonts.stamp
 
 $(FONT_STAMP): $(JP_LIST) $(JP_TTF) scripts/insert_glyphs.py $(wildcard assets/fonts/*.fnt assets/fonts/*.png) | MKOBJDIR
+	@$(PYTHON) -c "import fontTools; from PIL import Image" 2>/dev/null || { \
+	    if [ ! -d .venv ]; then \
+	        echo "ERROR: Python deps missing (fonttools, Pillow)."; \
+	        echo ""; \
+	        echo "First-time setup:"; \
+	        echo "  python3 -m venv .venv"; \
+	        echo "  .venv/bin/pip install -r scripts/requirements.txt"; \
+	    else \
+	        echo "ERROR: Python deps missing in .venv (fonttools, Pillow)."; \
+	        echo ""; \
+	        echo "Run:"; \
+	        echo "  .venv/bin/pip install -r scripts/requirements.txt"; \
+	    fi; \
+	    echo ""; \
+	    exit 1; \
+	}
 	cp assets/fonts/*.fnt assets/fonts/*.png Source/fonts/
-	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-11-Medium-table-22-22.png Source/fonts/Roobert-11-Medium.fnt --beta-gumi=18
-	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-20-Medium-table-32-32.png Source/fonts/Roobert-20-Medium.fnt --beta-gumi=21
-	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Asheville-Sans-14-Bold-table-20-20.png Source/fonts/Asheville-Sans-14-Bold.fnt --beta-gumi=16
-	python3 scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Nontendo-Bold-table-10-13.png Source/fonts/Nontendo-Bold.fnt --beta-gumi=12
+	$(PYTHON) scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-11-Medium-table-22-22.png Source/fonts/Roobert-11-Medium.fnt --beta-gumi=18
+	$(PYTHON) scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Roobert-20-Medium-table-32-32.png Source/fonts/Roobert-20-Medium.fnt --beta-gumi=21
+	$(PYTHON) scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Asheville-Sans-14-Bold-table-20-20.png Source/fonts/Asheville-Sans-14-Bold.fnt --beta-gumi=16
+	$(PYTHON) scripts/insert_glyphs.py $(JP_LIST) $(JP_TTF) Source/fonts/Nontendo-Bold-table-10-13.png Source/fonts/Nontendo-Bold.fnt --beta-gumi=12
 	touch $@
 
 .PHONY: fonts

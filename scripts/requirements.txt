@@ -1,0 +1,3 @@
+# Dependencies for build scripts (insert_glyphs.py)
+fonttools>=4.0
+pillow>=10.0

@@ -122,6 +122,10 @@ jobs:
                   echo "Contents of pdxinfo after update:"
                   cat Source/pdxinfo
 
+            # Install Python dependencies for build scripts
+            - name: Install Python Dependencies
+              run: python3 -m pip install -r scripts/requirements.txt
+
             # Step 6: Build the Project for Device
             - name: Build Project for Device
               run: make -j$(nproc) device
@@ -232,6 +236,10 @@ jobs:
                   echo "Contents of pdxinfo after update:"
                   cat Source/pdxinfo
 
+            # Install Python dependencies for build scripts
+            - name: Install Python Dependencies
+              run: python3 -m pip install -r scripts/requirements.txt
+
             # Step 6: Build a universal .pdx for both Device and Simulator
             - name: Build Universal Project (Device & Simulator)
               run: make -j$(nproc)
@@ -318,6 +326,10 @@ jobs:
                   CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
                   sed -i '' -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+
+            # Install Python dependencies for build scripts
+            - name: Install Python Dependencies
+              run: python3 -m pip install -r scripts/requirements.txt
 
             # Step 5: Build Universal Project (Device & Simulator)
             - name: Build Universal Project (Device & Simulator)
@@ -471,6 +483,9 @@ jobs:
                   CURRENT_VERSION=$(grep '^version=' Source/pdxinfo | cut -d '=' -f 2)
                   NEW_VERSION="${CURRENT_VERSION}.${DATE_STAMP}"
                   sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
+
+            - name: Install Python Dependencies
+              run: python -m pip install -r scripts/requirements.txt
 
             - name: Build Universal Project (Device & Simulator) for Windows
               run: |
