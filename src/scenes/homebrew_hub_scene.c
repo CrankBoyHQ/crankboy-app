@@ -870,7 +870,9 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
     bool has_playable = false;
 
     JsonArray* a = v.data.arrayval;
-    bool include[a->n];
+    bool* include = cb_malloc(a->n * sizeof(bool));
+    if (!include)
+        return false;
     for (int i = 0; i < a->n; ++i)
     {
         json_value jf = a->data[i];
@@ -888,12 +890,18 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
     }
 
     if (!has_playable)
+    {
+        cb_free(include);
         return false;
+    }
 
     CB_ListItemButton* itemButton;
     HomebrewHubContext* context = push_context(hbs);
     if (!context)
+    {
+        cb_free(include);
         return false;
+    }
     context->type = HBSCT_LIST_FILES;
     context->j = entry;
     context->show_image = true;
@@ -918,6 +926,7 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
 
     CB_ListView_reload(context->list);
 
+    cb_free(include);
     return true;
 }
 

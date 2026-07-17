@@ -18,6 +18,7 @@
  */
 
 #define TOKEN_MAX 8
+#define SERIAL_CMD_MAX 384
 
 // Main ft (file transfer) command handler
 // Commands:
@@ -809,8 +810,9 @@ static bool serial_cb_gbmem(const char* const* tokens)
         else if (a >= 0x8000 && a < 0xA000)
             v = -1;  // vram is bit-reversed; skip
         else if (a < 0x8000)
-            v = gb->gb_rom[(a < 0x4000) ? (gb->zero_bank_base + a)
-                                        : ((unsigned)gb->selected_rom_bank * 0x4000 + (a - 0x4000))];
+            v = gb->gb_rom
+                    [(a < 0x4000) ? (gb->zero_bank_base + a)
+                                  : ((unsigned)gb->selected_rom_bank * 0x4000 + (a - 0x4000))];
         off += snprintf(buf + off, sizeof(buf) - off, " %02x", v & 0xFF);
     }
     serial_send_response("cb:gbmem:%04x:%s", addr, buf);
@@ -995,18 +997,23 @@ void CB_on_serial_message(const char* data)
         if (space)
         {
             size_t command_len = space - data;
-            char cmd[command_len + 1];
+            if (command_len > SERIAL_CMD_MAX)
+                command_len = SERIAL_CMD_MAX;
+            char cmd[SERIAL_CMD_MAX + 1];
             memcpy(cmd, data, command_len);
             cmd[command_len] = 0;
             CB_serial_command(cmd);
-            data += command_len + 1;
+            data = space + 1;
         }
         else
         {
             // Make a mutable copy of the final command
             size_t len = strlen(data);
-            char cmd[len + 1];
-            memcpy(cmd, data, len + 1);
+            if (len > SERIAL_CMD_MAX)
+                len = SERIAL_CMD_MAX;
+            char cmd[SERIAL_CMD_MAX + 1];
+            memcpy(cmd, data, len);
+            cmd[len] = 0;
             CB_serial_command(cmd);
             return;
         }
