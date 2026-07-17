@@ -123,8 +123,17 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
 
 static void tick_audio_sync(CB_GameScene* gameScene)
 {
-    if (!gameScene || !gameScene->audioEnabled || gameScene->audioLocked ||
-        preferences_audio_sync != 1)
+    if (!gameScene || gameScene->audioLocked)
+    {
+        return;
+    }
+
+    if (audio_muted && gameScene->context && gameScene->context->gb)
+    {
+        audio_tick_env_fast(&gameScene->context->gb->audio);
+    }
+
+    if (!gameScene->audioEnabled || preferences_audio_sync != 1)
     {
         return;
     }
@@ -320,7 +329,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
 {
     if (!gameScene)
         return;
-    
+
     int headphones;
     playdate->sound->getHeadphoneState(&headphones, NULL, CB_headphone_state_changed);
 
@@ -331,14 +340,19 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
 
     gameScene->is_stereo = use_stereo;
 
+    bool was_muted = audio_muted;
     gameScene->audioEnabled = (preferences_sound_mode > 0) && playdate->system->getVolume() > 0.00f;
     audio_muted = !gameScene->audioEnabled;
-    
+
+    if (was_muted && !audio_muted && preferences_audio_sync == 1)
+    {
+        CB_reset_audio_sync_state();
+    }
+
     playdate->system->logToConsole(
         "Reconfiguring audio. Muted: %s, Headphones: %s, Mirroring: %s, New mode: %s",
-        (audio_muted ? "Yes" : "No"),
-        (headphones ? "Yes" : "No"), (gameScene->is_mirroring ? "Yes" : "No"),
-        (use_stereo ? "Stereo" : "Mono")
+        (audio_muted ? "Yes" : "No"), (headphones ? "Yes" : "No"),
+        (gameScene->is_mirroring ? "Yes" : "No"), (use_stereo ? "Stereo" : "Mono")
     );
 
     float volume = 0.0f;
@@ -359,7 +373,8 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
             playdate->sound->removeSource(CB_App->soundSource);
         }
 
-        CB_App->soundSource = playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
+        CB_App->soundSource =
+            playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
         sound_source_stereo = use_stereo;
     }
 
@@ -616,7 +631,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
-    
+
     clear_last_selected_preference();
 
     last_scy = -1;
@@ -713,7 +728,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->menu_open_ms = 0;
 
     prefs_locked_by_script = 0;
-    
+
     audio_enabled = 1;
 
     // Global settings are loaded by default. Check for a game-specific file.
@@ -1933,8 +1948,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
 
-        bool ab_combo_was_active = gameScene->press_a_b_hold || gameScene->hold_a_press_b ||
-                                   gameScene->hold_b_press_a;
+        bool ab_combo_was_active =
+            gameScene->press_a_b_hold || gameScene->hold_a_press_b || gameScene->hold_b_press_a;
 
         if likely ((CB_App->buttons_down & (kButtonA | kButtonB)) != (kButtonA | kButtonB))
         {
@@ -2020,8 +2035,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
 
-        if unlikely (!gameScene->hold_ab_release &&
-                     (CB_App->buttons_released & (kButtonA | kButtonB)))
+        if unlikely (
+            !gameScene->hold_ab_release && (CB_App->buttons_released & (kButtonA | kButtonB))
+        )
         {
             PDButtons released = CB_App->buttons_released & (kButtonA | kButtonB);
             PDButtons held =
@@ -4389,7 +4405,7 @@ static void CB_GameScene_free(void* object)
             playdate->sound->removeSource(CB_App->soundSource);
             CB_App->soundSource = NULL;
         }
-    
+
         if (preferences_audio_sync == 1)
         {
             CB_reset_audio_sync_state();

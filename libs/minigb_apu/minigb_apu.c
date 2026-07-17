@@ -200,13 +200,8 @@ static void flush_apu_ticks(audio_data* audio)
     (void)audio;
 }
 
-__audio static void update_env(chan* c, int sample_rate)
+static void process_env_counter(chan* c, int sample_rate)
 {
-    if (preferences_sound_mode == 2)
-        return;
-
-    c->env.counter += c->env.inc;
-
     while (c->env.counter > sample_rate)
     {
         if (c->env.step)
@@ -218,15 +213,24 @@ __audio static void update_env(chan* c, int sample_rate)
                 c->env.locked = true;
             }
 #if TARGET_PLAYDATE
-            int volume = c->volume;
-            asm volatile("usat %0, #4, %0" : "+r"(volume));
-            c->volume = volume;
+            int vol = c->volume;
+            asm volatile("usat %0, #4, %0" : "+r"(vol));
+            c->volume = vol;
 #else
             c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
 #endif
         }
         c->env.counter -= sample_rate;
     }
+}
+
+__audio static void update_env(chan* c, int sample_rate)
+{
+    if (preferences_sound_mode == 2)
+        return;
+
+    c->env.counter += c->env.inc;
+    process_env_counter(c, sample_rate);
 }
 
 // SameBoy _nrx2_glitch: zombie volume adjustment on NRx2 write while channel active.
@@ -305,6 +309,30 @@ __audio static bool calculate_new_sweep_freq(chan* c)
     return false;  // Channel still active
 }
 
+static bool process_len_counter(audio_data* audio, chan* c, int i, int samples, int sample_rate)
+{
+    if (!c->enabled || !c->len_enabled || c->len.inc == 0)
+        return false;
+    if (preferences_sound_mode == 2)
+        return false;
+
+    int tick_rate = (int)(c->len.inc & 0xFFFF);
+    int ticks_needed = (int)(c->len.inc >> 16);
+    if (ticks_needed <= 0)
+        return false;
+
+    c->len.counter += (uint32_t)samples * (uint32_t)tick_rate;
+    uint32_t ticks_total = c->len.counter / (uint32_t)sample_rate;
+
+    if (ticks_total >= (uint32_t)ticks_needed)
+    {
+        c->len.counter = 0;
+        chan_enable(audio, i, 0);
+        return true;
+    }
+    return false;
+}
+
 // returns sample index at which to stop outputting in channel
 __audio static int update_len(audio_data* restrict audio, chan* c, int len)
 {
@@ -326,42 +354,28 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
         return len;
     }
 
-    int tick_rate = (int)(c->len.inc & 0xFFFF);
-    int ticks_needed = (int)(c->len.inc >> 16);
-
-    if (ticks_needed <= 0)
-        return len;
-
     int sample_rate = get_audio_sample_rate();
+    int i = (int)(c - audio->chans);
     uint32_t counter_before = c->len.counter;
-    uint32_t counter_after = counter_before + (uint32_t)len * (uint32_t)tick_rate;
 
-    uint32_t ticks_total = counter_after / (uint32_t)sample_rate;
-
-    if (ticks_total < (uint32_t)ticks_needed)
+    if (process_len_counter(audio, c, i, len, sample_rate))
     {
-        c->len.counter = counter_after;
-        return len;
+        int ticks_needed = (int)(c->len.inc >> 16);
+        int tick_rate = (int)(c->len.inc & 0xFFFF);
+        uint32_t target = (uint32_t)ticks_needed * (uint32_t)sample_rate;
+        int tr;
+        if (counter_before >= target)
+            tr = 0;
+        else
+        {
+            uint32_t needed = target - counter_before;
+            tr = (int)((needed + (uint32_t)tick_rate - 1) / (uint32_t)tick_rate);
+        }
+        if (tr > len)
+            tr = len;
+        return tr;
     }
-
-    uint32_t target = (uint32_t)ticks_needed * (uint32_t)sample_rate;
-    int tr;
-    if (counter_before >= target)
-    {
-        tr = 0;
-    }
-    else
-    {
-        uint32_t needed = target - counter_before;
-        tr = (int)((needed + (uint32_t)tick_rate - 1) / (uint32_t)tick_rate);
-    }
-
-    if (tr > len)
-        tr = len;
-
-    c->len.counter = 0;
-    chan_enable(audio, (int)(c - audio->chans), 0);
-    return tr;
+    return len;
 }
 
 // This function is only for the "Accurate" mode.
@@ -383,42 +397,17 @@ __audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
     }
 }
 
-__audio static void update_sweep(chan* c, int sample_rate)
+static void process_sweep_counter(chan* c, int sample_rate)
 {
-    if (c->sweep.rate == 0)
-    {
-        return;
-    }
-
-    c->sweep.counter += c->sweep.inc;
-
     while (c->sweep.counter > sample_rate)
     {
         c->sweep.counter -= sample_rate;
 
-        uint16_t new_freq = c->sweep.freq >> c->sweep.shift;
-        if (!c->sweep_up)
-        {
-            new_freq = c->sweep.freq - new_freq;
-            if (c->sweep.shift > 0)
-                c->sweep.did_subtract = true;
-        }
-        else
-        {
-            new_freq = c->sweep.freq + new_freq;
-        }
-
-        if (new_freq > 2047)
-        {
-            c->enabled = 0;
+        if (calculate_new_sweep_freq(c))
             return;
-        }
 
         if (c->sweep.shift > 0)
         {
-            c->freq = new_freq;
-            c->sweep.freq = new_freq;
-
             uint16_t second_new_freq = c->sweep.freq >> c->sweep.shift;
             if (!c->sweep_up)
             {
@@ -436,6 +425,51 @@ __audio static void update_sweep(chan* c, int sample_rate)
                 c->enabled = 0;
                 return;
             }
+        }
+    }
+}
+
+__audio static void update_sweep(chan* c, int sample_rate)
+{
+    if (c->sweep.rate == 0)
+    {
+        return;
+    }
+
+    c->sweep.counter += c->sweep.inc;
+    process_sweep_counter(c, sample_rate);
+}
+
+void audio_tick_env_fast(audio_data* audio)
+{
+    int sample_rate = get_audio_sample_rate();
+    int samples_per_frame = sample_rate / 60;
+    bool is_accurate = (preferences_sound_mode == 2);
+
+    for (int i = 0; i < 4; ++i)
+    {
+        chan* c = &audio->chans[i];
+        if (!c->enabled)
+            continue;
+
+        if (!is_accurate)
+        {
+            process_len_counter(audio, c, i, samples_per_frame, sample_rate);
+
+            if (!c->enabled)
+                continue;
+
+            if (i != 2)
+            {
+                c->env.counter += c->env.inc * samples_per_frame;
+                process_env_counter(c, sample_rate);
+            }
+        }
+
+        if (i == 0 && c->sweep.rate != 0)
+        {
+            c->sweep.counter += c->sweep.inc * samples_per_frame;
+            process_sweep_counter(c, sample_rate);
         }
     }
 }
