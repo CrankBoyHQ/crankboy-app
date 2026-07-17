@@ -333,6 +333,7 @@ jobs:
                       p7zip
                       python
                       python-pip
+                      vim
                       curl
                       tar
                       git
