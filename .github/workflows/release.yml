@@ -329,6 +329,7 @@ jobs:
                       unzip
                       p7zip
                       python
+                      python-pip
                       curl
                       tar
                       git
@@ -386,7 +387,9 @@ jobs:
                   echo "PLAYDATE_SDK_PATH=$(pwd)/PlaydateSDK" >> $GITHUB_ENV
 
             - name: Install Python Dependencies
-              run: python -m pip install -r scripts/requirements.txt
+              run: |
+                python -m venv .venv
+                .venv/bin/pip install -r scripts/requirements.txt
 
             - name: Build Universal Project (Device & Simulator) for Windows
               run: |

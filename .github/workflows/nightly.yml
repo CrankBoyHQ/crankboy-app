@@ -423,6 +423,7 @@ jobs:
                       unzip
                       p7zip
                       python
+                      python-pip
                       curl
                       tar
                       git
@@ -487,7 +488,9 @@ jobs:
                   sed -i -e "s/^version=.*/version=$NEW_VERSION/" -e "s/^buildNumber=.*/buildNumber=$DATE_STAMP/" Source/pdxinfo
 
             - name: Install Python Dependencies
-              run: python -m pip install -r scripts/requirements.txt
+              run: |
+                python -m venv .venv
+                .venv/bin/pip install -r scripts/requirements.txt
 
             - name: Build Universal Project (Device & Simulator) for Windows
               run: |
