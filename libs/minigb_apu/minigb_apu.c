@@ -278,7 +278,7 @@ __audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t ol
     }
 }
 
-__audio static bool calculate_new_sweep_freq(chan* c)
+__audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
 {
     uint16_t new_freq;
     new_freq = c->sweep.freq >> c->sweep.shift;
@@ -296,7 +296,7 @@ __audio static bool calculate_new_sweep_freq(chan* c)
 
     if (new_freq > 2047)
     {
-        c->enabled = 0;
+        chan_enable(audio, i, 0);
         return true;
     }
 
@@ -397,13 +397,13 @@ __audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
     }
 }
 
-static void process_sweep_counter(chan* c, int sample_rate)
+static void process_sweep_counter(audio_data* audio, chan* c, int i, int sample_rate)
 {
     while (c->sweep.counter > sample_rate)
     {
         c->sweep.counter -= sample_rate;
 
-        if (calculate_new_sweep_freq(c))
+        if (calculate_new_sweep_freq(audio, c, i))
             return;
 
         if (c->sweep.shift > 0)
@@ -422,14 +422,14 @@ static void process_sweep_counter(chan* c, int sample_rate)
 
             if (second_new_freq > 2047)
             {
-                c->enabled = 0;
+                chan_enable(audio, i, 0);
                 return;
             }
         }
     }
 }
 
-__audio static void update_sweep(chan* c, int sample_rate)
+__audio static void update_sweep(audio_data* audio, chan* c, int i, int sample_rate)
 {
     if (c->sweep.rate == 0)
     {
@@ -437,7 +437,7 @@ __audio static void update_sweep(chan* c, int sample_rate)
     }
 
     c->sweep.counter += c->sweep.inc;
-    process_sweep_counter(c, sample_rate);
+    process_sweep_counter(audio, c, i, sample_rate);
 }
 
 void audio_tick_env_fast(audio_data* audio)
@@ -469,7 +469,7 @@ void audio_tick_env_fast(audio_data* audio)
         if (i == 0 && c->sweep.rate != 0)
         {
             c->sweep.counter += c->sweep.inc * samples_per_frame;
-            process_sweep_counter(c, sample_rate);
+            process_sweep_counter(audio, c, 0, sample_rate);
         }
     }
 }
@@ -584,7 +584,7 @@ __audio static void update_square(
     {
         update_env(c, sample_rate);
         if (!ch2)
-            update_sweep(c, sample_rate);
+            update_sweep(audio, c, ch2, sample_rate);
 
         if (!ch2 && preferences_sound_mode == 2)
         {
@@ -1041,7 +1041,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         if (c->sweep.shift > 0)
         {
-            if (calculate_new_sweep_freq(c))
+            if (calculate_new_sweep_freq(audio, c, i))
             {
                 return;
             }
