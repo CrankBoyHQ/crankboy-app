@@ -190,7 +190,7 @@ static int check_is_bundle(void)
         {
             CB_App->forceUpdateForwarder = true;
         }
-        
+
         if (strstr(arg, "language=en"))
         {
             language_override = kPDLanguageEnglish;
@@ -469,11 +469,7 @@ static void fwd_copy_recursive_cb(const char* filename, void* vd)
     if (len == 0)
         return;
 
-    char name[len + 1];
-    memcpy(name, filename, len);
-    name[len] = 0;
-
-    char* child = aprintf("%s/%s", ud->src_dir, name);
+    char* child = aprintf("%s/%.*s", ud->src_dir, (int)len, filename);
     if (!child)
     {
         ud->result = false;
@@ -1282,7 +1278,7 @@ void CB_init(void)
     check_is_bundle();
 
     load_assets();
-    
+
     CB_load_strings(language_override);
 
     if (!CB_App->bundled_rom)
