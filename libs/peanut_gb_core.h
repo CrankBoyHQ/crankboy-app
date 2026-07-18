@@ -444,6 +444,8 @@ __core static uint8_t $(__gb_execute_cb)(gb_s* gb)
     return inst_cycles;
 }
 
+#if !PGB_IS_PEDANTIC
+
 __core_section("draw") static void $(__gb_draw_pixel)(uint8_t* line, u8 x, u8 v)
 {
     u8* pix = line + x / LCD_PACKING;
@@ -1072,7 +1074,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         }
 #endif
 
-#if PGB_IS_DMG
+#if !PGB_IS_CGB
         unsigned bank_offset = 0;
         uint8_t tile_hi = vram_line_tiles[0];
         uint16_t vram_tile_data_hi = vram_tile_data
@@ -1082,7 +1084,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 
         int subx = bg_x % 8;
 
-#if PGB_IS_DMG
+#if !PGB_IS_CGB
         // first part of window is obscured
         vram_tile_data_hi &= (0xFFFF) << subx;
         vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
@@ -1165,6 +1167,8 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
 #undef CGB_LUT_DARK
 #endif
 
+#endif /* !PGB_IS_PEDANTIC */
+
 __core_section("short") static bool $(__gb_get_op_flag)(gb_s* restrict gb, uint8_t op8)
 {
     op8 %= 4;
@@ -1188,41 +1192,93 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
 #define FETCH16(gb) $(__gb_fetch16)(gb)
 
-    u16 _pc = gb->cpu_reg.pc;
     u8 opcode;
-    if likely (_pc < 0x8000)
-        opcode = gb->ram_base[_pc >> 12][_pc];
-    else
-        opcode = $(__gb_read)(gb, _pc);
-    gb->cpu_reg.pc++;
-    unsigned cycles = 4;  // T-cycles (was float M-cycles)
-    unsigned chain_cycles = 0;
-    unsigned src;
-    u8 srcidx;
     
     // bit 0: chained;
     // bit 1: second instruction
+    // bit 2: chained jump (requires refetch)
     int insflag = 0;
+    
+#if PGB_IS_PEDANTIC
+    #define CHAIN_JUMP insflag |= 1;
+#else
+    /* two instructions need at most 6 bytes */
+    const int FETCH_BYTE_COUNT = 6;
 
-    goto dispatch;
+    u16 _pc = gb->cpu_reg.pc;
 
-second_instruction:
-    chain_cycles = cycles;
-    cycles = 4;
+    // if these fail, we need to check more conditions
+    CB_ASSERT(gb->ram_base[0] == gb->ram_base[1]);
+    CB_ASSERT(gb->ram_base[0] == gb->ram_base[2]);
+    CB_ASSERT(gb->ram_base[0] == gb->ram_base[3]);
+    CB_ASSERT(gb->ram_base[4] == gb->ram_base[5]);
+    CB_ASSERT(gb->ram_base[4] == gb->ram_base[6]);
+    CB_ASSERT(gb->ram_base[4] == gb->ram_base[7]);
+    
+    if unlikely (gb->gb_halt_bug)
+    {
+        return __gb_run_instruction_micro__pedantic(gb);
+    }
+    
+    if likely (_pc < 0x8000)
+    {
+        if ((_pc & 0x3FFF) >= 0x4000 - FETCH_BYTE_COUNT)
+        {
+            return __gb_run_instruction_micro__pedantic(gb);
+        }
+    }
+    else if likely(_pc >= 0xC000 && _pc < 0xD000)
+    {
+        if ((_pc & 0x0FFF) >= 0x1000 - FETCH_BYTE_COUNT)
+        {
+            return __gb_run_instruction_micro__pedantic(gb);
+        }
+    }
+    else
+    {
+        return __gb_run_instruction_micro__pedantic(gb);
+    }
+
+    #undef FETCH8
+    #undef FETCH16
+    #define FETCH8(gb) ({uint32_t __v = _fetch & 0xFF; _fetch >>= 8; (gb)->cpu_reg.pc++; __v; })
+    #define FETCH16(gb) \
+        ({uint32_t __v = _fetch & 0xFFFF; _fetch >>= 16; (gb)->cpu_reg.pc += 2; __v; })
+    
+    // this fetch implementation doesn't work with jumps
+    #define CHAIN_JUMP insflag |= 5;
+    uint32_t _fetch = *(uint32_t*)(gb->ram_base[_pc >> 12] + _pc);
+#endif
+
     opcode = FETCH8(gb);
-    insflag = 2;
-
-dispatch:
-{
-#if CPU_VALIDATE == 0
+    
+    #if CPU_VALIDATE == 0 && PGB_IS_PEDANTIC
     if unlikely (gb->gb_halt_bug)
     {
         if (gb->gb_halt_bug == 1)
             gb->cpu_reg.pc = gb->gb_halt_bug_pc;
         gb->gb_halt_bug--;
     }
-#endif
+    #endif
+    
+    unsigned cycles = 4;  // T-cycles (was float M-cycles)
+    unsigned chain_cycles = 0;
+    unsigned src;
+    u8 srcidx;
 
+    goto dispatch;
+
+second_instruction:
+    chain_cycles = cycles;
+    cycles = 4;
+    #if !PGB_IS_PEDANTIC
+    _fetch = *(uint32_t*)(gb->ram_base[gb->cpu_reg.pc >> 12] + gb->cpu_reg.pc);
+    #endif
+    opcode = FETCH8(gb);
+    insflag = 2;
+
+dispatch:
+{
     const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
 
     switch (opcode >> 6)
@@ -1242,10 +1298,12 @@ dispatch:
                 insflag |= 1;
                 break;  // nop
             }
-            if (opcode == 0x10)  // STOP
+            else if (opcode < 0x18)
+            {
+                // STOP or LD (a16), SP
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
-            if (opcode < 0x18)
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
+            }
+            else
             {
                 // jr
                 cycles = 8;
@@ -1255,14 +1313,16 @@ dispatch:
                 if (flag)
                 {
                     cycles = 12;
-                    gb->cpu_reg.pc += (s8)FETCH8(gb);
+                    s8 jr_offset = (s8)FETCH8(gb);
+                    gb->cpu_reg.pc += jr_offset;
                 }
                 else
                 {
                     gb->cpu_reg.pc++;
                 }
+                
+                CHAIN_JUMP;
             }
-            insflag |= 1;
             break;
         case 1:
             // LD r16, d16
@@ -1577,9 +1637,9 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         jp:
-            insflag |= 1;
             cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
+            CHAIN_JUMP;
             break;
         case 0x04:
         case 0x0C:  // call [flag]
@@ -1622,12 +1682,13 @@ dispatch:
             {
                 gb->gb_ime = 1;
                 gb->gb_ime_countdown = 0;
+                goto ret_common;
             }
         ret:
+            CHAIN_JUMP;
+        ret_common:
             cycles += 12;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
-            if (opcode != 0xD9)
-                insflag |= 1;
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
             if likely (opcode == 0xCB)
@@ -1640,7 +1701,7 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         call:
-            insflag |= 1;
+            CHAIN_JUMP;
             cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
@@ -1679,13 +1740,14 @@ dispatch:
             {
                 gb->cpu_reg.sp = gb->cpu_reg.hl;
                 cycles = 8;
+                insflag |= 1;
             }
             else  // 0xE9
             {
                 gb->cpu_reg.pc = gb->cpu_reg.hl;
                 cycles = 4;
+                CHAIN_JUMP;
             }
-            insflag |= 1;
             break;
         case 0x13:
         case 0x1B:  // di/ei
@@ -1721,27 +1783,50 @@ dispatch:
     inc_dec_hl:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
-#if CPU_VALIDATE == 0
-        if ((insflag & 2) == 0)
-        {
-            if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-                return cycles;
-            goto second_instruction;
-        }
-#endif
+        insflag |= 1;
     }
 
 #if CPU_VALIDATE == 0
-    if (insflag == 1)
+    if ((insflag & 3) == 1)
     {
         if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
             return cycles;
+            
+        #if PGB_IS_PEDANTIC
+        // technically redundant -- halt bug can't be set for the second instruction anyway
+        if unlikely(gb->gb_halt_bug) return cycles;
+        #endif
+        
+        #if !PGB_IS_PEDANTIC
+        if unlikely(insflag & 4)
+        {
+            _pc = gb->cpu_reg.pc;
+            if likely (_pc < 0x8000)
+            {
+                if ((_pc & 0x3FFF) >= 0x4000 - 3)
+                {
+                    return cycles;
+                }
+            }
+            else
+            {
+                return cycles;
+            }
+        }
+        #endif
+        
         goto second_instruction;
     }
 #endif
 
+    #undef FETCH8
+    #undef FETCH16
+    #undef CHAIN_JUMP
+
     return cycles + chain_cycles;
 }
+
+#if !PGB_IS_PEDANTIC
 
 /**
  * Internal function used to step the CPU.
@@ -2419,5 +2504,7 @@ __core_section("fb") void $(update_fb_dirty_lines)(
         markUpdatedRows(current_line_pd_top_y, current_line_pd_top_y + row_height_on_playdate - 1);
     }
 }
+
+#endif /* !PGB_IS_PEDANTIC */
 
 #undef PGB_TEMPLATE
