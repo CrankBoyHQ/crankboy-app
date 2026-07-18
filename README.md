@@ -156,7 +156,7 @@ For developers new to Playdate, please be aware that you will need to [compile C
 
 ## Contributions
 
-Come chat with us on the [Playdate Developer Forum](https://devforum.play.date/t/60-fps-gameboy-emulation/22865) or on [Discord](https://discord.com/channels/675983554655551509/1378119815641694278). Even if you're not an expert at emulation coding, we could still use some visual assets, look-and-feel, UI, UX, and so on to make the app feel more cute and at-home on a cozy device like Playdate.
+Come chat with us on the [Playdate Developer Forum](https://devforum.play.date/t/60-fps-gameboy-emulation/22865), [Discord](https://discord.com/channels/675983554655551509/1378119815641694278), or [Matrix](https://matrix.to/#/!ULiZfDdeDpdQkmZgtc:matrix.org?via=matrix.org). Even if you're not an expert at emulation coding, we could still use some visual assets, look-and-feel, UI, UX, and so on to make the app feel more cute and at-home on a cozy device like Playdate.
 
 CrankBoy uses a heavily modified version of Peanut-GB. Various [advanced optimization techniques](https://devforum.play.date/t/dirty-optimization-secrets-c-for-playdate/23011) were used to tailor the performance to the Playdate. If you wish to work on adding features to the emulator core itself, you may want to glance at those optimization techniques since it explains some of the unusual design choices made.
 
