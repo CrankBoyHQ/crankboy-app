@@ -328,34 +328,30 @@ extern volatile int g_trace_frames_remaining;
 
 // relocatable and tightly-packed interpreter code
 #ifdef TARGET_SIMULATOR
-    #define __core_dmg
-    #define __core_dmg_section(x)
-    #define __core_cgb
-    #define __core_cgb_section(x)
-    #define __core_pedantic
-    #define __core_pedantic_section(x)
+#define __core_dmg
+#define __core_dmg_section(x)
+#define __core_cgb
+#define __core_cgb_section(x)
 #else
-    #ifdef ITCM_CORE
-        #define __core_dmg                                                        \
-            __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg"))) \
-            __attribute__((short_call))
-        #define __core_dmg_section(x)                                                \
-            __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg." x))) \
-            __attribute__((short_call))
-        #define __core_cgb                                                        \
-            __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb"))) \
-            __attribute__((short_call))
-        #define __core_cgb_section(x)                                                \
-            __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb." x))) \
-            __attribute__((short_call))
-    #else
-        #define __core_dmg __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.dmg")))
-        #define __core_dmg_section(x) __core_dmg
-        #define __core_cgb __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.cgb")))
-        #define __core_cgb_section(x) __core_cgb
-    #endif
-    #define __core_pedantic __shell
-    #define __core_pedantic_section(x) __shell
+#ifdef ITCM_CORE
+#define __core_dmg                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg"))) \
+    __attribute__((short_call))
+#define __core_dmg_section(x)                                                \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.dmg." x))) \
+    __attribute__((short_call))
+#define __core_cgb                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb"))) \
+    __attribute__((short_call))
+#define __core_cgb_section(x)                                                \
+    __attribute__((optimize("Os"))) __attribute__((section(".itcm.cgb." x))) \
+    __attribute__((short_call))
+#else
+#define __core_dmg __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.dmg")))
+#define __core_dmg_section(x) __core_dmg
+#define __core_cgb __attribute__((optimize("Os"))) __attribute__((section(".text.itcm.cgb")))
+#define __core_cgb_section(x) __core_cgb
+#endif
 #endif
 
 __core_cgb static void __gb_check_lyc__cgb(gb_s* gb);
@@ -5880,34 +5876,11 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 #define $_(x, y) $__(x, y)
 #define $(x) $_(x, PGB_TEMPLATE)
 
-// --------- PEDANTIC (non-itcm) ------------
-/* Used in rare circumstances by both cgb and dmg cores,
- * when the assumptions behind certain optimizations fall through.
- * For example, when running instructions from ram instead of rom. 
- * Not all functions in __pedantic are actually valid to call. */
-
-#define PGB_TEMPLATE pedantic
-#define PGB_IS_DMG 0
-#define PGB_IS_CGB 0
-#define PGB_IS_PEDANTIC 1
-
-#define __core __core_pedantic
-#define __core_section(x) __core_pedantic_section(x)
-
-#include "peanut_gb_core.h"
-
-#undef __core
-#undef __core_section
-#undef PGB_IS_DMG
-#undef PGB_IS_CGB
-#undef PGB_IS_PEDANTIC
-
 // ------------ DMG ------------
 
 #define PGB_TEMPLATE dmg
 #define PGB_IS_DMG 1
 #define PGB_IS_CGB 0
-#define PGB_IS_PEDANTIC 0
 
 #define __core __core_dmg
 #define __core_section(x) __core_dmg_section(x)
@@ -5918,14 +5891,12 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 #undef __core_section
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
-#undef PGB_IS_PEDANTIC
 
 // ------------ CGB ------------
 
 #define PGB_TEMPLATE cgb
 #define PGB_IS_DMG 0
 #define PGB_IS_CGB 1
-#define PGB_IS_PEDANTIC 0
 #define __core __core_cgb
 #define __core_section(x) __core_cgb_section(x)
 
@@ -5935,7 +5906,6 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 #undef __core_section
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
-#undef PGB_IS_PEDANTIC
 
 // -----------------------------
 
