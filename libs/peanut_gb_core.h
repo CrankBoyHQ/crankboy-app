@@ -29,7 +29,6 @@
 
 /**
  * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
- * Note: __cgb and __dmg implementations should be identical
  */
 __core static void $(__gb_update_stat_irq)(gb_s* gb)
 {
@@ -57,8 +56,7 @@ __core static void $(__gb_update_stat_irq)(gb_s* gb)
 
 /**
  * Internal function to check for LY=LYC coincidence and update STAT.
- * Note: __cgb and __dmg versions should have the same implementation;
- * this is used outside of core.
+ * Note: this is used outside of core.
  */
 __core static void $(__gb_check_lyc)(gb_s* gb)
 {
@@ -1000,9 +998,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         uint16_t vram_tile_data_hi = vram_tile_data
             [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
              (8 * (unsigned)tile_hi)];
-#endif
 
-#if PGB_IS_DMG
         for (int x = 0; x < (wx + 7) / 8; ++x)
         {
             uint8_t* out = pixels + (x % 2) + (x / 2) * 4;
@@ -1203,17 +1199,18 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     unsigned chain_cycles = 0;
     unsigned src;
     u8 srcidx;
-    bool chained = false;
-    int inst = 0;
+    
+    // bit 0: chained;
+    // bit 1: second instruction
+    int insflag = 0;
 
     goto dispatch;
 
 second_instruction:
-    inst = 1;
     chain_cycles = cycles;
     cycles = 4;
     opcode = FETCH8(gb);
-    chained = false;
+    insflag = 2;
 
 dispatch:
 {
@@ -1242,7 +1239,7 @@ dispatch:
         case 8:
             if (opcode == 0)
             {
-                chained = true;
+                insflag |= 1;
                 break;  // nop
             }
             if (opcode == 0x10)  // STOP
@@ -1265,7 +1262,7 @@ dispatch:
                     gb->cpu_reg.pc++;
                 }
             }
-            chained = true;
+            insflag |= 1;
             break;
         case 1:
             // LD r16, d16
@@ -1301,7 +1298,7 @@ dispatch:
             gb->cpu_reg_raw16[reg16] += offset;
             cycles = 8;
         }
-            chained = true;
+            insflag |= 1;
             break;
 
         // inc/dec 8-bit
@@ -1332,7 +1329,7 @@ dispatch:
                 gb->cpu_reg_raw[reg8] = tmp;
             }
         }
-            chained = true;
+            insflag |= 1;
             break;
 
         case 6:
@@ -1376,7 +1373,7 @@ dispatch:
                 gb->cpu_reg.f = 0;
                 gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
                 gb->cpu_reg.a = (v >> 8) & 0xFF;
-                chained = true;
+                insflag |= 1;
             }
             else if unlikely (opcode == 0x27)  // daa
             {
@@ -1400,28 +1397,28 @@ dispatch:
                 gb->cpu_reg.a = a;
                 gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
                 gb->cpu_reg.f_bits.h = 0;
-                chained = true;
+                insflag |= 1;
             }
             else if (opcode == 0x2F)
             {
                 gb->cpu_reg.a ^= 0xFF;
                 gb->cpu_reg.f_bits.n = 1;
                 gb->cpu_reg.f_bits.h = 1;
-                chained = true;
+                insflag |= 1;
             }
             else if (op8 % 2 == 1)
             {
                 gb->cpu_reg.f_bits.c = 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
-                chained = true;
+                insflag |= 1;
             }
             else if (op8 % 2 == 0)
             {
                 gb->cpu_reg.f_bits.c ^= 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
-                chained = true;
+                insflag |= 1;
             }
             break;
 
@@ -1429,7 +1426,7 @@ dispatch:
             // add hl, r16
             cycles = 8;
             gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
-            chained = true;
+            insflag |= 1;
             break;
 
         default:
@@ -1440,7 +1437,7 @@ dispatch:
     case 1:
     case 2:
     {
-        chained = true;
+        insflag |= 1;
         srcidx = (opcode % 8) ^ 1;
         if (srcidx == 7)
         {
@@ -1563,7 +1560,7 @@ dispatch:
             {
                 gb->cpu_reg_raw16[op8 / 2] = src;
             }
-            chained = true;
+            insflag |= 1;
             break;
         case 0x02:
         case 0xA:  // jp [flag]
@@ -1580,7 +1577,7 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         jp:
-            chained = true;
+            insflag |= 1;
             cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
             break;
@@ -1602,7 +1599,7 @@ dispatch:
                 src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
             }
             $(__gb_push16)(gb, src);
-            chained = true;
+            insflag |= 1;
             break;
         case 0x06:
         case 0x0E:
@@ -1630,7 +1627,7 @@ dispatch:
             cycles += 12;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
             if (opcode != 0xD9)
-                chained = true;
+                insflag |= 1;
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
             if likely (opcode == 0xCB)
@@ -1643,7 +1640,7 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         call:
-            chained = true;
+            insflag |= 1;
             cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
@@ -1673,7 +1670,7 @@ dispatch:
         {
             cycles = 8;
             srcidx = gb->cpu_reg.c;
-            chained = true;
+            insflag |= 1;
             goto hram_op;
         }
         break;
@@ -1688,7 +1685,7 @@ dispatch:
                 gb->cpu_reg.pc = gb->cpu_reg.hl;
                 cycles = 4;
             }
-            chained = true;
+            insflag |= 1;
             break;
         case 0x13:
         case 0x1B:  // di/ei
@@ -1725,7 +1722,7 @@ dispatch:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
 #if CPU_VALIDATE == 0
-        if (inst == 0)
+        if ((insflag & 2) == 0)
         {
             if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
                 return cycles;
@@ -1735,11 +1732,10 @@ dispatch:
     }
 
 #if CPU_VALIDATE == 0
-    if (inst == 0 && chained)
+    if (insflag == 1)
     {
         if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
             return cycles;
-        inst = 1;
         goto second_instruction;
     }
 #endif
