@@ -76,6 +76,7 @@ PREF(rewind_enabled, 0)
  * library_remember_selection: 0=Off, 1=On
  * prompt_if_cgb_optional:     0=No, 1=Yes, 2=Always
  * library_launch_animation:   0=Off, 1=On
+ * show_bundled_games:         0=Hide, 1=Show (catalog only)
  */
 PREF(display_name_mode, 0)
 PREF(display_article, 0)
@@ -83,6 +84,7 @@ PREF(display_sort, 1)
 PREF(library_remember_selection, 1)
 PREF(prompt_if_cgb_optional, 0)
 PREF(library_launch_animation, 1)
+PREF(show_bundled_games, 1)
 
 /* --- misc ---
  * itcm:                           0=Off, 1=On

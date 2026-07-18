@@ -77,7 +77,7 @@ typedef struct OptionsMenuEntry
     // used for standard prefs.x preferences
     preference_t* pref_var;
     unsigned max_value;
-    
+
     /* values with a 1 here are skipped over, not normally accessible. */
     uint64_t disabled_entries;
 
@@ -961,11 +961,11 @@ static const char* gb_button_labels_hp[] = {
     "Start+A+B", "Select+A+B",     "All"
 };
 static const char* gb_button_labels_ab_release_a[] = {
-    "Default", "B",       "None",     "Start",    "Select",
+    "Default",      "B",       "None",     "Start",          "Select",
     "Start+Select", "Start+B", "Select+B", "Start+Select+B",
 };
 static const char* gb_button_labels_ab_release_b[] = {
-    "Default", "A",       "None",     "Start",    "Select",
+    "Default",      "A",       "None",     "Start",          "Select",
     "Start+Select", "Start+A", "Select+A", "Start+Select+A",
 };
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
@@ -989,6 +989,7 @@ static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
 static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
 static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
 static const char* article_labels[] = {"Leading", "As-is"};
+static const char* show_hide_labels[] = {"Hide", "Show"};
 static const char* next_scene[] = {"›"};
 
 static void update_thumbnail(CB_SettingsScene* settingsScene)
@@ -2048,9 +2049,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_display),
-        .header = 1,
-        .description = T(setdsc_display)
+        .name = T(sethdr_display), .header = 1, .description = T(setdsc_display)
     };
 
     // frame skip
@@ -2297,8 +2296,8 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .max_value = 13,
         .on_press = NULL
     };
-    
-        // B+A
+
+    // B+A
     section[++i] = (OptionsMenuEntry){
         .name = "Ⓑ + Ⓐ",
         .values = gb_button_labels_hp,
@@ -2310,7 +2309,7 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .max_value = 13,
         .on_press = NULL
     };
-    
+
     // AB->A
     section[++i] = (OptionsMenuEntry){
         .name = "⧂ › Ⓐ",
@@ -2318,20 +2317,23 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .description =
             "Assign a replacement button input for holding both Ⓐ and Ⓑ then releasing Ⓑ.\n\n"
             "If A is omitted here, then the A input is suppressed until next released.\n\n"
-            "Default: maps to A normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)",
+            "Default: maps to A normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings "
+            "above)",
         .pref_var = &preferences_hold_ab_release_b,
         .max_value = 9,
         .on_press = NULL
     };
-    
+
     // AB->B
     section[++i] = (OptionsMenuEntry){
         .name = "⧂ › Ⓑ",
         .values = gb_button_labels_ab_release_a,
         .description =
-            "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both simultaneously).\n\n"
+            "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both "
+            "simultaneously).\n\n"
             "If B is omitted here, then the B input is suppressed until next released.\n\n"
-            "Default: maps to B normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)",
+            "Default: maps to B normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings "
+            "above)",
         .pref_var = &preferences_hold_ab_release_a,
         .max_value = 9,
         .on_press = NULL
@@ -2460,7 +2462,9 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_behavior), .header = 1, .description = "Rewind, overclock, and script support."
+        .name = T(sethdr_behavior),
+        .header = 1,
+        .description = "Rewind, overclock, and script support."
     };
 
     // Rewind
@@ -2641,6 +2645,18 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .max_value = 3,
         .on_press = NULL
     };
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    section[++i] = (OptionsMenuEntry){
+        .name = "Bundled Games",
+        .values = show_hide_labels,
+        .description =
+            "Show or hide games that are bundled with CrankBoy in the library.\n\n"
+            "Requires restart to apply.",
+        .pref_var = &preferences_show_bundled_games,
+        .max_value = 2,
+    };
+#endif
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
     int n = i + 1;
@@ -3306,7 +3322,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
             for (int i = 0; i < cursor_entry->max_value; ++i)
             {
-                *cursor_entry->pref_var = (*cursor_entry->pref_var + direction + cursor_entry->max_value) % cursor_entry->max_value;
+                *cursor_entry->pref_var =
+                    (*cursor_entry->pref_var + direction + cursor_entry->max_value) %
+                    cursor_entry->max_value;
 
                 // can't land on a disabled entry
                 if (((cursor_entry->disabled_entries >> *cursor_entry->pref_var) & 1) == 0)
@@ -3761,7 +3779,9 @@ static void CB_SettingsScene_menu(void* object)
     }
     else
     {
-        playdate->system->addMenuItem(T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene);
+        playdate->system->addMenuItem(
+            T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene
+        );
         playdate->system->addMenuItem("Changelog", display_changelog_menu, NULL);
     }
 }

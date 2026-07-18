@@ -4,6 +4,7 @@
 #include "../../libs/pdll/pdll.h"
 #include "../app.h"
 #include "../jparse.h"
+#include "../preferences.h"
 #include "../script.h"
 #include "../utility.h"
 #include "image_conversion_scene.h"
@@ -339,7 +340,8 @@ static void collect_game_filenames_skip_packed_callback(const char* filename, vo
 static void build_scan_sources(CB_GameScanningScene* scanScene)
 {
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-    array_push(scanScene->sources, scan_source_new("packed", GB_SYSTEM_SLUG, -1));
+    if (preferences_show_bundled_games)
+        array_push(scanScene->sources, scan_source_new("packed", GB_SYSTEM_SLUG, -1));
 #endif
 
     array_push(
