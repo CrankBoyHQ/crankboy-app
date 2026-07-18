@@ -827,19 +827,25 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     __builtin_prefetch(&gb->gb_reg.BGP, 0);
     __builtin_prefetch(&gb->gb_reg.WY, 0);
 
-    uint8_t* pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
+    uint8_t* dest_pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
+    
+    // render line to stack-buffer, then copy to dest
+    uint32_t line_stage[LCD_WIDTH_PACKED / 4];
+    uint8_t* pixels = (uint8_t*)line_stage;
     uint32_t line_priority[((LCD_WIDTH + 31) / 32)];
 #if PGB_IS_CGB
     uint32_t line_cgb_priority[((LCD_WIDTH + 31) / 32)];
-    uint8_t* pixels_alt =
+    uint32_t line_stage_alt[LCD_WIDTH_PACKED / 4];
+    uint8_t* dest_pixels_alt =
         gb->direct.cgb_dual_output ? &gb->lcd_alt[gb->gb_reg.LY * LCD_WIDTH_PACKED] : NULL;
+    uint8_t* pixels_alt = dest_pixels_alt ? (uint8_t*)line_stage_alt : NULL;
 #else
     uint8_t* pixels_alt = NULL;
 #endif
 
     const uint32_t line_priority_len = PEANUT_GB_ARRAYSIZE(line_priority);
 
-    __builtin_prefetch(pixels, 1);
+    __builtin_prefetch(dest_pixels, 1);
 
     for (int i = 0; i < line_priority_len; ++i)
     {
@@ -1160,6 +1166,18 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             pixels, pixels_alt
         );
     }
+
+    uint32_t* restrict line_out = (uint32_t*)(void*)dest_pixels;
+    for (int i = 0; i < LCD_WIDTH_PACKED / 4; ++i)
+        line_out[i] = line_stage[i];
+#if PGB_IS_CGB
+    if (dest_pixels_alt)
+    {
+        uint32_t* restrict line_out_alt = (uint32_t*)(void*)dest_pixels_alt;
+        for (int i = 0; i < LCD_WIDTH_PACKED / 4; ++i)
+            line_out_alt[i] = line_stage_alt[i];
+    }
+#endif
 }
 
 #if PGB_IS_CGB
