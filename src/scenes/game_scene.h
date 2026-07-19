@@ -80,8 +80,7 @@ typedef struct CB_GameSceneContext
     bool cgb_mode;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
-    clalign uint8_t ghost_accum[LCD_HEIGHT * LCD_WIDTH];  // 8-bit EMA per pixel
-    bool ghost_frame_parity;
+    clalign uint8_t ghost_raw_prev[LCD_BUFFER_BYTES];  // raw frame N-1 for ghost blend
 } CB_GameSceneContext;
 
 struct ScriptState;
@@ -145,7 +144,7 @@ typedef struct CB_GameScene
     bool press_a_b_hold;
     bool hold_a_press_b;
     bool hold_b_press_a;
-    uint8_t hold_ab_release;  // 0: none, 1: released A, 2: released B
+    uint8_t hold_ab_release;        // 0: none, 1: released A, 2: released B
     uint8_t hold_ab_release_value;  // resolved PREF_BUTTON_ABR_* mapping
     uint8_t hold_ab_release_frames;
 

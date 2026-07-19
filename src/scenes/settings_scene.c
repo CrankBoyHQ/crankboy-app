@@ -2072,7 +2072,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         section[++i] = (OptionsMenuEntry){
             .name = "Frame Blending",
             .values = off_on_labels,
-            .description = "Only available when 30 FPS or Adaptive mode is enabled.\n",
+            .description =
+                "Blends two consecutive frames with dithering to reproduce the Game Boy's "
+                "flicker-based transparency effects.",
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -2084,7 +2086,10 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         section[++i] = (OptionsMenuEntry){
             .name = "Frame Blending",
             .values = off_on_labels,
-            .description = "Only available when 30 FPS or Adaptive mode is enabled.\n",
+            .description =
+                "Blends two consecutive frames with dithering to reproduce the Game Boy's "
+                "flicker-based transparency effects.\n\n"
+                "Only available in 30 FPS or Adaptive mode.",
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
             .on_press = NULL,
@@ -2092,14 +2097,14 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     }
 
     // Ghosting
-    if (preferences_blend_frames && preferences_frame_skip != 0)
+    if (preferences_blend_frames && preferences_frame_skip == 1)
     {
         section[++i] = (OptionsMenuEntry){
             .name = "LCD Ghosting",
             .values = off_on_labels,
             .description =
                 "Mimics the Game Boy LCD's slow pixel decay.\n\n"
-                "Not available when Frame Blending is active.",
+                "Not available when 30 FPS Mode and Frame Blending is active at the same time.",
             .pref_var = &preferences_ghosting,
             .max_value = 0,
             .on_press = NULL,

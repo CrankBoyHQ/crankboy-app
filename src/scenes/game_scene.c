@@ -851,8 +851,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-                memset(context->ghost_accum, 0, sizeof(context->ghost_accum));
-                context->ghost_frame_parity = false;
+                memset(context->ghost_raw_prev, 0, sizeof(context->ghost_raw_prev));
                 gameScene->state = CB_GameSceneStateLoaded;
 
                 playdate->system->logToConsole("gb context initialized.");
@@ -2495,87 +2494,41 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }  // if (!gameScene->rewind.active)
 
-            // Ghosting: EMA temporal persistence (non-linear, shared per-byte alpha)
+            // Ghosting: blend current frame with previous to simulate LCD persistence
             if (preferences_ghosting > 0 && !gameScene->rewind.active &&
-                (preferences_frame_skip == 0 || !preferences_blend_frames))
+                !context->gb->is_cgb_mode &&
+                !(gameScene->next_frames_elapsed == 2 && preferences_blend_frames))
             {
-                bool parity = context->ghost_frame_parity;
-                context->ghost_frame_parity = !parity;
-
-                uint8_t* accum = context->ghost_accum;
-                uint8_t* cur = context->gb->lcd;
+                uint8_t* restrict lcd = context->gb->lcd;
+                uint8_t* restrict raw_prev = context->ghost_raw_prev;
 
                 for (int y = 0; y < LCD_HEIGHT; y++)
                 {
-                    uint8_t bias = ((y ^ parity) & 1) ? 16 : 0;
+                    uint8_t saved_row[LCD_WIDTH_PACKED];
+                    memcpy(saved_row, lcd, LCD_WIDTH_PACKED);
 
-                    if (y + 1 < LCD_HEIGHT)
+                    int y_parity = y & 1;
+                    uint32_t* prev32 = (uint32_t*)raw_prev;
+                    uint32_t* lcd32 = (uint32_t*)lcd;
+
+                    for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
                     {
-                        __builtin_prefetch(cur + LCD_WIDTH_PACKED, 1, 0);
-                        __builtin_prefetch(accum + LCD_WIDTH, 0, 0);
+                        uint32_t a = prev32[x];
+                        uint32_t b = lcd32[x];
+
+                        uint8_t b0 = blend_byte(a & 0xFF, b & 0xFF, y_parity);
+                        uint8_t b1 = blend_byte((a >> 8) & 0xFF, (b >> 8) & 0xFF, y_parity);
+                        uint8_t b2 = blend_byte((a >> 16) & 0xFF, (b >> 16) & 0xFF, y_parity);
+                        uint8_t b3 = blend_byte((a >> 24) & 0xFF, (b >> 24) & 0xFF, y_parity);
+
+                        lcd32[x] =
+                            b0 | ((uint32_t)b1 << 8) | ((uint32_t)b2 << 16) | ((uint32_t)b3 << 24);
                     }
 
-                    for (int x = 0; x < LCD_WIDTH_PACKED; x++)
-                    {
-                        uint8_t byte = *cur;
+                    memcpy(raw_prev, saved_row, LCD_WIDTH_PACKED);
 
-                        uint8_t cv0 = ((byte >> 0) & 3) * 85;
-                        uint8_t cv1 = ((byte >> 2) & 3) * 85;
-                        uint8_t cv2 = ((byte >> 4) & 3) * 85;
-                        uint8_t cv3 = ((byte >> 6) & 3) * 85;
-
-                        uint8_t a0 = accum[0];
-                        uint8_t a1 = accum[1];
-                        uint8_t a2 = accum[2];
-                        uint8_t a3 = accum[3];
-
-                        uint8_t d, md = 0;
-                        d = cv0 > a0 ? cv0 - a0 : a0 - cv0;
-                        if (d > md)
-                            md = d;
-                        d = cv1 > a1 ? cv1 - a1 : a1 - cv1;
-                        if (d > md)
-                            md = d;
-                        d = cv2 > a2 ? cv2 - a2 : a2 - cv2;
-                        if (d > md)
-                            md = d;
-                        d = cv3 > a3 ? cv3 - a3 : a3 - cv3;
-                        if (d > md)
-                            md = d;
-
-                        // Skip blend if all accumulators already settled
-                        if (md == 0)
-                        {
-                            accum += 4;
-                            *cur++ = byte;
-                            continue;
-                        }
-
-                        uint8_t alpha = 16 + ((md * 5) >> 3) + bias;
-                        uint8_t inv = 256 - alpha;
-
-                        uint8_t out = 0;
-                        uint16_t v;
-
-                        v = ((uint16_t)cv0 * alpha + (uint16_t)a0 * inv) >> 8;
-                        out |= (uint8_t)(v >> 6) << 0;
-                        accum[0] = (uint8_t)v;
-
-                        v = ((uint16_t)cv1 * alpha + (uint16_t)a1 * inv) >> 8;
-                        out |= (uint8_t)(v >> 6) << 2;
-                        accum[1] = (uint8_t)v;
-
-                        v = ((uint16_t)cv2 * alpha + (uint16_t)a2 * inv) >> 8;
-                        out |= (uint8_t)(v >> 6) << 4;
-                        accum[2] = (uint8_t)v;
-
-                        v = ((uint16_t)cv3 * alpha + (uint16_t)a3 * inv) >> 8;
-                        out |= (uint8_t)(v >> 6) << 6;
-                        accum[3] = (uint8_t)v;
-
-                        accum += 4;
-                        *cur++ = out;
-                    }
+                    lcd += LCD_WIDTH_PACKED;
+                    raw_prev += LCD_WIDTH_PACKED;
                 }
             }
 
@@ -3181,7 +3134,9 @@ static void CB_GameScene_menu(void* object)
     {
         if (!CB_App->bundled_rom)
         {
-            playdate->system->addMenuItem(T(pdmenu_library), CB_GameScene_didSelectLibrary, gameScene);
+            playdate->system->addMenuItem(
+                T(pdmenu_library), CB_GameScene_didSelectLibrary, gameScene
+            );
         }
         return;
     }
