@@ -5858,13 +5858,6 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
             return 4 * 4;
         }
     }
-    case 0xF3:
-        gb->gb_ime = 0;
-        gb->gb_ime_countdown = 0;
-        return 1 * 4;
-    case 0xFB:
-        gb->gb_ime_countdown = 2;
-        return 1 * 4;
     default:
         return __gb_invalid_instruction(gb, opcode);
     }

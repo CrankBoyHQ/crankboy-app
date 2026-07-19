@@ -1706,8 +1706,17 @@ dispatch:
             }
             chained = true;
             break;
-        case 0x13:
-        case 0x1B:  // di/ei
+        case 0x13:  // DI
+            chained = true;
+            cycles = 4;
+            gb->gb_ime = 0;
+            gb->gb_ime_countdown = 0;
+            break;
+        case 0x1B:  // EI
+            chained = true;
+            cycles = 4;
+            gb->gb_ime_countdown = 2;
+            break;
         case 0x14:
         case 0x1C:
         case 0x1D:  // illegal
@@ -1755,6 +1764,8 @@ dispatch:
     {
         if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
             return cycles;
+        if (gb->gb_ime_countdown > 1)
+            gb->gb_ime_countdown = 1;
         inst = 1;
         goto second_instruction;
     }
