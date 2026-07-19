@@ -1631,6 +1631,7 @@ dispatch:
         case 0x0F:
         case 0x17:
         case 0x1F:  // rst
+            chained = true;
             cycles = 16;
             $(__gb_push16)(gb, gb->cpu_reg.pc);
             gb->cpu_reg.pc = 8 * (op8 ^ 1);
