@@ -1218,17 +1218,17 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     unsigned src;
     u8 srcidx;
     
-    // bit 0: chained;
-    // bit 1: second instruction
-    int insflag = 0;
+    bool chained = false;
+    int inst = 0;
 
     goto dispatch;
 
 second_instruction:
+    inst = 1;
     chain_cycles = cycles;
     cycles = 4;
     opcode = FETCH8(gb);
-    insflag = 2;
+    chained = false;
 
 dispatch:
 {
@@ -1257,7 +1257,7 @@ dispatch:
         case 8:
             if (opcode == 0)
             {
-                insflag |= 1;
+                chained = true;
                 break;  // nop
             }
             if (opcode == 0x10)  // STOP
@@ -1280,7 +1280,7 @@ dispatch:
                     gb->cpu_reg.pc++;
                 }
             }
-            insflag |= 1;
+            chained = true;
             break;
         case 1:
             // LD r16, d16
@@ -1316,7 +1316,7 @@ dispatch:
             gb->cpu_reg_raw16[reg16] += offset;
             cycles = 8;
         }
-            insflag |= 1;
+            chained = true;
             break;
 
         // inc/dec 8-bit
@@ -1347,7 +1347,7 @@ dispatch:
                 gb->cpu_reg_raw[reg8] = tmp;
             }
         }
-            insflag |= 1;
+            chained = true;
             break;
 
         case 6:
@@ -1391,7 +1391,7 @@ dispatch:
                 gb->cpu_reg.f = 0;
                 gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
                 gb->cpu_reg.a = (v >> 8) & 0xFF;
-                insflag |= 1;
+                chained = true;
             }
             else if unlikely (opcode == 0x27)  // daa
             {
@@ -1415,28 +1415,28 @@ dispatch:
                 gb->cpu_reg.a = a;
                 gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
                 gb->cpu_reg.f_bits.h = 0;
-                insflag |= 1;
+                chained = true;
             }
             else if (opcode == 0x2F)
             {
                 gb->cpu_reg.a ^= 0xFF;
                 gb->cpu_reg.f_bits.n = 1;
                 gb->cpu_reg.f_bits.h = 1;
-                insflag |= 1;
+                chained = true;
             }
             else if (op8 % 2 == 1)
             {
                 gb->cpu_reg.f_bits.c = 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
-                insflag |= 1;
+                chained = true;
             }
             else if (op8 % 2 == 0)
             {
                 gb->cpu_reg.f_bits.c ^= 1;
                 gb->cpu_reg.f_bits.n = 0;
                 gb->cpu_reg.f_bits.h = 0;
-                insflag |= 1;
+                chained = true;
             }
             break;
 
@@ -1444,7 +1444,7 @@ dispatch:
             // add hl, r16
             cycles = 8;
             gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
-            insflag |= 1;
+            chained = true;
             break;
 
         default:
@@ -1455,7 +1455,7 @@ dispatch:
     case 1:
     case 2:
     {
-        insflag |= 1;
+        chained = true;
         srcidx = (opcode % 8) ^ 1;
         if (srcidx == 7)
         {
@@ -1578,7 +1578,7 @@ dispatch:
             {
                 gb->cpu_reg_raw16[op8 / 2] = src;
             }
-            insflag |= 1;
+            chained = true;
             break;
         case 0x02:
         case 0xA:  // jp [flag]
@@ -1595,7 +1595,7 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         jp:
-            insflag |= 1;
+            chained = true;
             cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
             break;
@@ -1617,7 +1617,7 @@ dispatch:
                 src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
             }
             $(__gb_push16)(gb, src);
-            insflag |= 1;
+            chained = true;
             break;
         case 0x06:
         case 0x0E:
@@ -1640,12 +1640,13 @@ dispatch:
             {
                 gb->gb_ime = 1;
                 gb->gb_ime_countdown = 0;
+                goto ret_common;
             }
         ret:
+            chained = true;
+        ret_common:
             cycles += 12;
             gb->cpu_reg.pc = $(__gb_pop16)(gb);
-            if (opcode != 0xD9)
-                insflag |= 1;
             break;
         case 0x0B:  // 0xCB prefix, 0xDB invalid
             if likely (opcode == 0xCB)
@@ -1658,7 +1659,7 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         call:
-            insflag |= 1;
+            chained = true;
             cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
@@ -1688,7 +1689,7 @@ dispatch:
         {
             cycles = 8;
             srcidx = gb->cpu_reg.c;
-            insflag |= 1;
+            chained = true;
             goto hram_op;
         }
         break;
@@ -1703,7 +1704,7 @@ dispatch:
                 gb->cpu_reg.pc = gb->cpu_reg.hl;
                 cycles = 4;
             }
-            insflag |= 1;
+            chained = true;
             break;
         case 0x13:
         case 0x1B:  // di/ei
@@ -1740,7 +1741,7 @@ dispatch:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
 #if CPU_VALIDATE == 0
-        if ((insflag & 2) == 0)
+        if (inst == 0)
         {
             if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
                 return cycles;
@@ -1750,10 +1751,11 @@ dispatch:
     }
 
 #if CPU_VALIDATE == 0
-    if (insflag == 1)
+    if (inst == 0 && chained)
     {
         if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
             return cycles;
+        inst = 1;
         goto second_instruction;
     }
 #endif
