@@ -2492,8 +2492,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }  // if (!gameScene->rewind.active)
 
             // Ghosting: blend current frame with previous to simulate LCD persistence
-            if (preferences_ghosting > 0 && !gameScene->rewind.active &&
-                !context->gb->is_cgb_mode &&
+            if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode &&
                 !(gameScene->next_frames_elapsed == 2 && preferences_blend_frames))
             {
                 uint8_t* restrict lcd = context->gb->lcd;
@@ -2527,6 +2526,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     lcd += LCD_WIDTH_PACKED;
                     raw_prev += LCD_WIDTH_PACKED;
                 }
+            }
+            else if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode)
+            {
+                memcpy(context->ghost_raw_prev, context->gb->lcd, LCD_BUFFER_BYTES);
             }
 
             // --- Conditional Screen Update (Drawing) Logic ---

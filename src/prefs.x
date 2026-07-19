@@ -25,7 +25,7 @@ PREF(headphone_audio, 1)
  *  dither_pattern:  0=Staggered, 1=Grid, 2=Staggered (L), 3=Grid (L), 4=Staggered (D), 5=Grid (D)
  *  dither_line:     0 = Off (used for scripting), 1 = Line 1, 2= Line 2, 3 = Line 3
  *  dither_stable:   0=Off, 1=On
- *  ghosting:         0=Off, 1=On (EMA with interlaced scanline persistence)
+ *  ghosting:        0=Off, 1=On
  */
 PREF(frame_skip, 1)
 PREF(blend_frames, 0)
