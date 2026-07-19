@@ -3800,14 +3800,7 @@ static void CB_SettingsScene_free(void* object)
 
     if (settingsScene->gameScene)
     {
-        bool audio_settings_changed =
-            (settingsScene->initial_sound_mode != preferences_sound_mode) ||
-            (settingsScene->initial_sample_rate != preferences_sample_rate) ||
-            (settingsScene->initial_headphone_audio != preferences_headphone_audio) ||
-            (settingsScene->initial_audio_sync != preferences_audio_sync);
-
-        // Apply any changed settings (this will reconfigure the sound source if needed).
-        CB_GameScene_apply_settings(settingsScene->gameScene, audio_settings_changed);
+        CB_GameScene_apply_settings(settingsScene->gameScene);
 
         // If the buffered audio sync is the active mode upon leaving the settings,
         // we MUST reset our timing baseline. This recalibrates our sample counter

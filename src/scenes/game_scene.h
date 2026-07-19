@@ -200,7 +200,7 @@ typedef struct CB_GameScene
 } CB_GameScene;
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);
-void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed);
+void CB_GameScene_apply_settings(CB_GameScene* gameScene);
 void CB_GameScene_didSelectLibrary(void* userdata);
 void CB_reset_audio_sync_state(void);
 

@@ -846,7 +846,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
                 DTCM_VERIFY();
 
                 audio_init(&context->gb->audio);
-                CB_GameScene_apply_settings(gameScene, true);
+                CB_GameScene_apply_settings(gameScene);
                 CB_reset_audio_sync_state();
 
                 gb_init_lcd(context->gb);
@@ -940,7 +940,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     return gameScene;
 }
 
-void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_changed)
+void CB_GameScene_apply_settings(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
 
@@ -949,10 +949,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene, bool audio_settings_ch
     if (context->cgb_mode)
         gameScene->cgb_needs_palette_recompute = true;
 
-    if (audio_settings_changed)
-    {
-        reconfigure_audio_source(gameScene);
-    }
+    reconfigure_audio_source(gameScene);
 
     CB_ASSERT(audioGameScene == gameScene);
 
