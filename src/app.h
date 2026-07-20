@@ -70,7 +70,7 @@ enum cgb_support_e
  * 0x2700 is the max we should use. 0x2760 is possible but leaves no
  * headroom if there are any changes to the Playdate OS in the future.
  */
-#define PLAYDATE_STACK_SIZE 0x2700
+#define PLAYDATE_STACK_SIZE 0x2740
 
 #define FPS_AVG_DECAY 0.8f
 
