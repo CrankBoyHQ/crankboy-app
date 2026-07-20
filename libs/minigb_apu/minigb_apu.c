@@ -1353,6 +1353,10 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
     case 0xFF1C:
         chans[i].volume = chans[i].volume_init = (val >> 5) & 0x03;
+        if (chans[i].powered && chans[i].enabled)
+        {
+            chans[i].wave.sample = wave_sample(audio, chans[i].val, chans[i].volume);
+        }
         break;
 
     case 0xFF11:
