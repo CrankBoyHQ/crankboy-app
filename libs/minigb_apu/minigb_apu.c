@@ -1384,9 +1384,42 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         break;
 
     case 0xFF1A:
+    {
+        bool dac_was_on = chans[i].powered;
         chans[i].powered = (val & 0x80) != 0;
+
+        if (!chans[i].powered && dac_was_on && chans[i].enabled)
+        {
+            bool about_to_read =
+                (chans[i].freq_inc > 0 &&
+                 chans[i].freq_counter + chans[i].freq_inc >= (uint32_t)get_audio_sample_rate());
+
+            uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
+            uint8_t corrupt_byte;
+            bool do_corrupt = false;
+
+            if (about_to_read)
+            {
+                gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+                corrupt_byte = wave_ram[gb->pc & 0xF];
+                do_corrupt = true;
+            }
+            else if (chans[i].wave.just_read)
+            {
+                corrupt_byte = wave_ram[0xFF1A & 0xF];
+                do_corrupt = true;
+            }
+
+            if (do_corrupt)
+            {
+                int8_t nibble = (int8_t)(corrupt_byte >> 4) - 8;
+                chans[i].wave.sample = chans[i].volume ? (nibble >> (chans[i].volume - 1)) : 0;
+            }
+        }
+
         chan_enable(audio, i, val & 0x80);
         break;
+    }
 
     case 0xFF14:
     case 0xFF19:
