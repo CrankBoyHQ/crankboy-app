@@ -1064,7 +1064,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
             if (!gb->is_cgb_mode)
             {
                 uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
-                int byte_idx = c->val >> 1;
+                int byte_idx = ((c->val + 1) >> 1) & 0xF;
                 if (byte_idx < 4)
                 {
                     wave_ram[0] = wave_ram[byte_idx];
