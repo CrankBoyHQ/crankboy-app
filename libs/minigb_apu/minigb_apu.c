@@ -731,6 +731,14 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
     if (!c->enabled)
     {
+        if (preferences_sound_mode == 2 && c->powered && c->wave.pulsed)
+        {
+            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+            uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
+            uint8_t corrupt_byte = wave_ram[gb->cpu_reg.pc & 0xF];
+            int8_t nibble = (int8_t)(corrupt_byte >> 4) - 8;
+            c->wave.sample = c->volume ? (nibble >> (c->volume - 1)) : 0;
+        }
         if (preferences_sound_mode == 2)
         {
             output_disabled_dc(audio, c, left, right, len);
@@ -1077,6 +1085,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
             }
         }
         c->val = 0;
+        c->wave.pulsed = true;
     }
     else if (i == 3)
     {  // noise
@@ -1226,6 +1235,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
             chans[1].enabled = false;
             chans[2].enabled = false;
             chans[2].wave.sample = 0;
+            chans[2].wave.pulsed = false;
             chans[3].enabled = false;
             audio->div_apu_step = 0;
             audio->skip_next_apu_tick = false;
@@ -1390,6 +1400,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
 
         if (!chans[i].powered && dac_was_on && chans[i].enabled)
         {
+            chans[i].wave.pulsed = false;
             bool about_to_read =
                 (chans[i].freq_inc > 0 &&
                  chans[i].freq_counter + chans[i].freq_inc >= (uint32_t)get_audio_sample_rate());
@@ -1401,7 +1412,7 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
             if (about_to_read)
             {
                 gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
-                corrupt_byte = wave_ram[gb->pc & 0xF];
+                corrupt_byte = wave_ram[gb->cpu_reg.pc & 0xF];
                 do_corrupt = true;
             }
             else if (chans[i].wave.just_read)

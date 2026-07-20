@@ -207,6 +207,7 @@ struct PGB_VERSIONED(chan)
         {
             int8_t sample;
             bool just_read;  // transient: CH3 just read sample, gates DMG wave RAM CPU access
+            bool pulsed;     // set on trigger, cleared on DAC disable; gates bugged read path
         } wave;
     };
 
