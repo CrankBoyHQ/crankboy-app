@@ -8,6 +8,7 @@
 
 #include "../gbz.h"
 #include "../preferences.h"
+#include "../revcheck.h"
 
 #include <pd_api.h>
 #include <pd_api/pd_api_gfx.h>
@@ -411,8 +412,8 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
     uintptr_t core_size = itcm_end - itcm_start;
 
-    // ITCM seems to crash Rev B (not anymore it seems), so we leave this is an option
-    if (!dtcm_enabled() || preferences_itcm == 0)
+    // Rev A benefits from DTCM relocation; Rev B/unknown/emulator skip it.
+    if (!dtcm_enabled() || pd_rev != PD_REV_A)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
@@ -462,9 +463,24 @@ __section__(".rare") void itcm_core_init(bool cgb)
         playdate->system->logToConsole(
             "itcm_core_init: %s no pocket fits %u bytes", cgb ? "CGB" : "DMG", core_size + MARGIN
         );
-        core_itcm_reloc = itcm_start;
-        core_itcm_offset = 0;
-        return;
+
+        // fallback to main DTCM pool (gap between mempool and stack)
+        uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
+        uintptr_t avail = sp - (uintptr_t)dtcm_mempool;
+        if (avail >= core_size + MARGIN + 0x100)
+        {
+            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+        }
+        else
+        {
+            playdate->system->logToConsole(
+                "itcm_core_init: %s main pool gap %u < %u, keeping ITCM in place",
+                cgb ? "CGB" : "DMG", (unsigned)avail, (unsigned)(core_size + MARGIN + 0x100)
+            );
+            core_itcm_reloc = itcm_start;
+            core_itcm_offset = 0;
+            return;
+        }
     }
 
     DTCM_VERIFY();
