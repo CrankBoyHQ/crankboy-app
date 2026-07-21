@@ -101,9 +101,11 @@ PREF(ui_sounds, 1)
 PREF(boot_fade, 1)
 
 /* --- phony ---
+ * tcm_crashed:                    0=Ok, 1=Armed (crash canary, not a real setting)
  * script_has_prompted:            0=No, 1=Yes (not a real setting)
  * recommended_settings_ignored:   0=No, 1=Yes (not a real setting)
  */
+PREF(tcm_crashed, 0)
 PREF(script_has_prompted, 0)
 PREF(recommended_settings_ignored, 0)
 

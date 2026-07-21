@@ -413,7 +413,8 @@ __section__(".rare") void itcm_core_init(bool cgb)
     uintptr_t core_size = itcm_end - itcm_start;
 
     // Rev A benefits from DTCM relocation; Rev B/unknown/emulator skip it.
-    if (!dtcm_enabled() || pd_rev != PD_REV_A)
+    // Also skip if TCM was disabled this session due to a previous crash.
+    if (!dtcm_enabled() || pd_rev != PD_REV_A || CB_App->skip_tcm)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
@@ -872,6 +873,14 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
             }
 
             itcm_core_init(context->gb->is_cgb_mode);
+
+#if ITCM_CORE
+            if (core_itcm_offset != 0)
+            {
+                preferences_tcm_crashed = 1;
+                preferences_save_to_disk(CB_globalPrefsPath, 0);
+            }
+#endif
         }
         else
         {
@@ -4352,6 +4361,14 @@ static void CB_GameScene_free(void* object)
     DTCM_VERIFY();
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
+
+#if ITCM_CORE
+    if (preferences_tcm_crashed == 1)
+    {
+        preferences_tcm_crashed = 0;
+        preferences_save_to_disk(CB_globalPrefsPath, 0);
+    }
+#endif
 
     playdate->system->setAutoLockDisabled(0);
     playdate->system->setPeripheralsEnabled(kNone);

@@ -225,6 +225,9 @@ typedef struct CB_Application
     // "safe mode": skip loading emucores this session (set by crash recovery).
     bool skip_emucores;
 
+    // skip TCM acceleration this session (set by crash recovery).
+    bool skip_tcm;
+
     // sorted array of char* filenames present in "packed/" (CRANKBOY_OFFICIAL_CATALOG)
     CB_Array* packed_filenames;
 } CB_Application;
