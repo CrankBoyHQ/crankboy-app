@@ -434,45 +434,37 @@ __section__(".rare") void itcm_core_init(bool cgb)
     // paranoia
     int MARGIN = 4;
 
-    if (cgb)
-    {
-        // CGB: probe for clean DTCM pockets, find best fit
-        dtcm_probe_lower_bound();
-        int best = -1;
-        size_t best_size = 0;
+    // probe for clean DTCM pockets, find best fit
+    dtcm_probe_lower_bound();
+    int best = -1;
+    size_t best_size = 0;
 
-        for (int i = 0; i < dtcm_num_pockets; i++)
+    for (int i = 0; i < dtcm_num_pockets; i++)
+    {
+        if (!dtcm_pocket_enabled(i))
+            continue;
+        size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
+        if (avail >= core_size + MARGIN)
         {
-            if (!dtcm_pocket_enabled(i))
-                continue;
-            size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
-            if (avail >= core_size + MARGIN)
+            if (best == -1 || avail < best_size)
             {
-                if (best == -1 || avail < best_size)
-                {
-                    best = i;
-                    best_size = avail;
-                }
+                best = i;
+                best_size = avail;
             }
         }
-
-        if (best >= 0)
-            core_itcm_reloc =
-                dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
-        else
-        {
-            playdate->system->logToConsole(
-                "itcm_core_init: CGB no pocket fits %u bytes", core_size + MARGIN
-            );
-            core_itcm_reloc = itcm_start;
-            core_itcm_offset = 0;
-            return;
-        }
     }
+
+    if (best >= 0)
+        core_itcm_reloc =
+            dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
     else
     {
-        // DMG: use default DTCM allocation
-        core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+        playdate->system->logToConsole(
+            "itcm_core_init: %s no pocket fits %u bytes", cgb ? "CGB" : "DMG", core_size + MARGIN
+        );
+        core_itcm_reloc = itcm_start;
+        core_itcm_offset = 0;
+        return;
     }
 
     DTCM_VERIFY();
