@@ -826,7 +826,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     __builtin_prefetch(&gb->gb_reg.WY, 0);
 
     uint8_t* dest_pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
-    
+
     // render line to stack-buffer, then copy to dest
     uint32_t line_stage[LCD_WIDTH_PACKED / 4];
     uint8_t* pixels = (uint8_t*)line_stage;
@@ -1217,7 +1217,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     unsigned chain_cycles = 0;
     unsigned src;
     u8 srcidx;
-    
+
     bool chained = false;
     int inst = 0;
 
@@ -2066,7 +2066,7 @@ done_instr_timing:
             gb->gb_reg.DIV += div_inc;
             gb->counter.div_count &= 0x7F;
 
-            if (preferences_sound_mode == 2)
+            if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
             {
                 uint8_t check = old_div;
                 uint8_t remaining = div_inc;
@@ -2086,7 +2086,7 @@ done_instr_timing:
             gb->gb_reg.DIV += div_inc;
             gb->counter.div_count &= 0xFF;
 
-            if (preferences_sound_mode == 2)
+            if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
             {
                 unsigned mask = 0x10u;
                 uint8_t check = old_div;
