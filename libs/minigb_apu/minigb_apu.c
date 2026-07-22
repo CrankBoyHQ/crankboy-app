@@ -90,6 +90,8 @@ static inline int get_audio_sample_rate(void)
  */
 static uint32_t precomputed_noise_freqs[8][16];
 
+__audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i);
+
 __audio static void set_note_freq(chan* c, const uint32_t freq)
 {
     /* Lowest expected value of freq is 64. */
@@ -190,6 +192,41 @@ __shell void audio_div_apu_tick(audio_data* audio)
                 c->env_pending = true;
             }
         }
+    }
+
+    // Sweep: 128 Hz (steps 2, 6). Decrement divider; when zero, recalculate.
+    if (step == 2 || step == 6)
+    {
+        chan* c0 = chans + 0;
+        if (c0->enabled && c0->sweep.enabled && c0->sweep.rate > 0)
+        {
+            c0->sweep.divider--;
+            if (c0->sweep.divider == 0)
+            {
+                c0->sweep.divider = c0->sweep.rate;
+
+                if (calculate_new_sweep_freq(audio, c0, 0))
+                    goto sweep_done;
+
+                if (c0->sweep.shift > 0)
+                {
+                    uint16_t second;
+                    second = c0->sweep.freq >> c0->sweep.shift;
+                    if (!c0->sweep_up)
+                    {
+                        second = c0->sweep.freq - second;
+                        c0->sweep.did_subtract = true;
+                    }
+                    else
+                    {
+                        second = c0->sweep.freq + second;
+                    }
+                    if (second > 2047)
+                        chan_enable(audio, 0, 0);
+                }
+            }
+        }
+    sweep_done:;
     }
 }
 
@@ -431,6 +468,9 @@ static void process_sweep_counter(audio_data* audio, chan* c, int i, int sample_
 
 __audio static void update_sweep(audio_data* audio, chan* c, int i, int sample_rate)
 {
+    if (preferences_sound_mode == 2)
+        return;
+
     if (c->sweep.rate == 0)
     {
         return;
@@ -466,7 +506,7 @@ void audio_tick_env_fast(audio_data* audio)
             }
         }
 
-        if (i == 0 && c->sweep.rate != 0)
+        if (!is_accurate && i == 0 && c->sweep.rate != 0)
         {
             c->sweep.counter += c->sweep.inc * samples_per_frame;
             process_sweep_counter(audio, c, 0, sample_rate);
@@ -1047,6 +1087,9 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.inc = (128 / period);
 
+        c->sweep.enabled = (c->sweep.rate != 0) || (c->sweep.shift != 0);
+        c->sweep.divider = c->sweep.rate ? c->sweep.rate : 8;
+
         if (c->sweep.shift > 0)
         {
             if (calculate_new_sweep_freq(audio, c, i))
@@ -1301,11 +1344,15 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         {
             chans[0].sweep.rate = 0;
             chans[0].sweep.inc = 0;
+            chans[0].sweep.enabled = false;
+            chans[0].sweep.divider = 0;
         }
         else
         {
             chans[0].sweep.rate = new_rate;
             chans[0].sweep.inc = 128 / new_rate;
+            chans[0].sweep.enabled = (new_rate != 0) || (chans[0].sweep.shift != 0);
+            chans[0].sweep.divider = new_rate;
         }
 
         if (chans[0].sweep_up && chans[0].sweep.shift > 0)

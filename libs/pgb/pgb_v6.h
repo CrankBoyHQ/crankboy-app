@@ -162,8 +162,10 @@ struct PGB_VERSIONED(chan_freq_sweep)
     uint8_t rate;
     uint8_t shift;
     unsigned did_subtract : 1;
+    unsigned enabled : 1;
     uint32_t counter;
     uint32_t inc;
+    uint8_t divider;
 };
 
 struct PGB_VERSIONED(chan)
@@ -773,10 +775,65 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     struct gb_s_v6* v6_gb = (struct gb_s_v6*)(v6_org + sizeof(StateHeader));
 
     // v6 removes the unused zero32 field (was between xram and audio);
-    // the layout is otherwise identical to v5
+    // layout is identical except sweep struct grew (enabled + divider fields)
     set_fields(v6_gb, v5_gb, gb_rom, xram);
-    CB_ASSERT(sizeof(v6_gb->audio) == sizeof(v5_gb->audio));
-    memcpy(&v6_gb->audio, &v5_gb->audio, sizeof(v6_gb->audio));
+
+    v6_gb->audio.vol_l = v5_gb->audio.vol_l;
+    v6_gb->audio.vol_r = v5_gb->audio.vol_r;
+    v6_gb->audio.audio_mem = NULL;
+    v6_gb->audio.div_apu_step = v5_gb->audio.div_apu_step;
+    v6_gb->audio.skip_next_apu_tick = v5_gb->audio.skip_next_apu_tick;
+    v6_gb->audio.capacitor_l = v5_gb->audio.capacitor_l;
+    v6_gb->audio.capacitor_r = v5_gb->audio.capacitor_r;
+
+    for (int ch = 0; ch < 4; ch++)
+    {
+        v6_gb->audio.chans[ch].enabled = v5_gb->audio.chans[ch].enabled;
+        v6_gb->audio.chans[ch].powered = v5_gb->audio.chans[ch].powered;
+        v6_gb->audio.chans[ch].on_left = v5_gb->audio.chans[ch].on_left;
+        v6_gb->audio.chans[ch].on_right = v5_gb->audio.chans[ch].on_right;
+        v6_gb->audio.chans[ch].muted = v5_gb->audio.chans[ch].muted;
+        v6_gb->audio.chans[ch].lfsr_narrow = v5_gb->audio.chans[ch].lfsr_narrow;
+        v6_gb->audio.chans[ch].sweep_up = v5_gb->audio.chans[ch].sweep_up;
+        v6_gb->audio.chans[ch].len_enabled = v5_gb->audio.chans[ch].len_enabled;
+        v6_gb->audio.chans[ch].sample_surpressed = v5_gb->audio.chans[ch].sample_surpressed;
+        v6_gb->audio.chans[ch].env_pending = v5_gb->audio.chans[ch].env_pending;
+        v6_gb->audio.chans[ch].volume = v5_gb->audio.chans[ch].volume;
+        v6_gb->audio.chans[ch].volume_init = v5_gb->audio.chans[ch].volume_init;
+        v6_gb->audio.chans[ch].freq = v5_gb->audio.chans[ch].freq;
+        v6_gb->audio.chans[ch].freq_counter = v5_gb->audio.chans[ch].freq_counter;
+        v6_gb->audio.chans[ch].freq_inc = v5_gb->audio.chans[ch].freq_inc;
+        v6_gb->audio.chans[ch].val = v5_gb->audio.chans[ch].val;
+
+        v6_gb->audio.chans[ch].len.load = v5_gb->audio.chans[ch].len.load;
+        v6_gb->audio.chans[ch].len.counter = v5_gb->audio.chans[ch].len.counter;
+        v6_gb->audio.chans[ch].len.inc = v5_gb->audio.chans[ch].len.inc;
+
+        v6_gb->audio.chans[ch].env.step = v5_gb->audio.chans[ch].env.step;
+        v6_gb->audio.chans[ch].env.up = v5_gb->audio.chans[ch].env.up;
+        v6_gb->audio.chans[ch].env.locked = v5_gb->audio.chans[ch].env.locked;
+        v6_gb->audio.chans[ch].env.counter = v5_gb->audio.chans[ch].env.counter;
+        v6_gb->audio.chans[ch].env.inc = v5_gb->audio.chans[ch].env.inc;
+
+        v6_gb->audio.chans[ch].sweep.freq = v5_gb->audio.chans[ch].sweep.freq;
+        v6_gb->audio.chans[ch].sweep.rate = v5_gb->audio.chans[ch].sweep.rate;
+        v6_gb->audio.chans[ch].sweep.shift = v5_gb->audio.chans[ch].sweep.shift;
+        v6_gb->audio.chans[ch].sweep.did_subtract = v5_gb->audio.chans[ch].sweep.did_subtract;
+        v6_gb->audio.chans[ch].sweep.counter = v5_gb->audio.chans[ch].sweep.counter;
+        v6_gb->audio.chans[ch].sweep.inc = v5_gb->audio.chans[ch].sweep.inc;
+        v6_gb->audio.chans[ch].sweep.enabled = false;
+        v6_gb->audio.chans[ch].sweep.divider = 0;
+
+        memcpy(
+            &v6_gb->audio.chans[ch].noise, &v5_gb->audio.chans[ch].noise,
+            sizeof(v5_gb->audio.chans[ch].noise)
+        );
+        if (ch == 2)
+            v6_gb->audio.chans[ch].wave.pulsed = false;
+
+        v6_gb->audio.chans[ch].envelope_smooth = v5_gb->audio.chans[ch].envelope_smooth;
+        v6_gb->audio.chans[ch].env_divider = v5_gb->audio.chans[ch].env_divider;
+    }
 
     memcpy(v6_header, v5_header, sizeof(StateHeader));
     v6_header->version = PGB_VERSION;
