@@ -145,8 +145,10 @@ __shell void audio_div_apu_tick(audio_data* audio)
     }
 
     // Process pending envelope ticks from previous step-7 events.
-    // Hardware delays volume change by ~1/2 DIV-APU cycle via
-    // the secondary event (rising edge) after countdown hits 0.
+    // Hardware delays volume change by ~1/2 DIV-APU cycle: the envelope
+    // clock goes high when the divider hits 0; volume changes when the
+    // clock falls on the next DIV-APU tick. The lock state (should_lock)
+    // is computed at clock rise and applied at clock fall.
     {
         for (int i = 0; i < 4; i++)
         {
@@ -157,8 +159,16 @@ __shell void audio_div_apu_tick(audio_data* audio)
                 continue;
             c->env_pending = false;
 
-            if (c->env.locked)
+            if (!c->env.clock)
                 continue;
+
+            c->env.clock = false;
+
+            if (c->env.locked)
+            {
+                c->env.locked = c->env.should_lock;
+                continue;
+            }
 
             c->volume += c->env.up ? 1 : -1;
             if (c->volume == 0 || c->volume == MAX_CHAN_VOLUME)
@@ -174,7 +184,7 @@ __shell void audio_div_apu_tick(audio_data* audio)
     }
 
     // Envelope: 64 Hz (step 7). Decrement divider; when zero,
-    // set pending (volume changes on next tick).
+    // raise the envelope clock (volume change deferred to next tick).
     if (step == 7)
     {
         for (int i = 0; i < 4; i++)
@@ -182,13 +192,20 @@ __shell void audio_div_apu_tick(audio_data* audio)
             if (i == 2)
                 continue;
             chan* c = chans + i;
-            if (!c->enabled || c->env.step == 0 || c->env.locked)
+            if (!c->enabled || c->env.step == 0)
+                continue;
+            if (c->env.clock)
+                continue;
+            if (c->env.locked)
                 continue;
 
             c->env_divider--;
             if (c->env_divider == 0)
             {
                 c->env_divider = c->env.step;
+                c->env.clock = true;
+                c->env.should_lock =
+                    (c->volume == MAX_CHAN_VOLUME && c->env.up) || (c->volume == 0 && !c->env.up);
                 c->env_pending = true;
             }
         }
@@ -1056,12 +1073,17 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->env.up = val & 0x08 ? 1 : 0;
         c->env.inc = c->env.step ? 64ul / (uint32_t)c->env.step : 8ul;
         c->env.locked = false;
+        c->env.should_lock = false;
+        c->env.clock = false;
         c->env_pending = false;
         c->freq_counter = 0;
 
         if (preferences_sound_mode == 2 && c->env.step > 0)
         {
             c->env_divider = c->env.step;
+            uint8_t next_step = (audio->div_apu_step + 1) & 7;
+            if (next_step == 7)
+                c->env_divider++;
         }
         else
         {
@@ -1398,12 +1420,16 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
         chans[i].env.counter = 0;
 
-        // Reload envelope divider when NRx2 is written mid-playback,
-        // but only while the envelope clock is active (env_pending set).
-        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env_pending &&
+        // Reload divider and recompute lock state when NRx2 is written
+        // while the envelope clock is high (pending volume change).
+        // The zombie NRx2 write may have changed volume or direction
+        // via _nrx2_glitch, so should_lock must be recalculated.
+        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env.clock &&
             chans[i].env.step > 0)
         {
             chans[i].env_divider = chans[i].env.step;
+            chans[i].env.should_lock = (chans[i].volume == MAX_CHAN_VOLUME && chans[i].env.up) ||
+                                       (chans[i].volume == 0 && !chans[i].env.up);
         }
     }
     break;

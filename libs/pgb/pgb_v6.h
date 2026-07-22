@@ -151,7 +151,9 @@ struct PGB_VERSIONED(chan_vol_env)
 {
     uint8_t step : 3;
     unsigned up : 1;
-    unsigned locked : 1;  // set when volume hits boundary (0 or MAX), cleared on trigger
+    unsigned locked : 1;       // envelope locked after volume hits 0 or MAX
+    unsigned should_lock : 1;  // computed when clock rises, applied when clock falls
+    unsigned clock : 1;        // high between divider->0 and volume change
     uint32_t counter;
     uint32_t inc;
 };
@@ -812,6 +814,8 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
         v6_gb->audio.chans[ch].env.step = v5_gb->audio.chans[ch].env.step;
         v6_gb->audio.chans[ch].env.up = v5_gb->audio.chans[ch].env.up;
         v6_gb->audio.chans[ch].env.locked = v5_gb->audio.chans[ch].env.locked;
+        v6_gb->audio.chans[ch].env.should_lock = false;
+        v6_gb->audio.chans[ch].env.clock = false;
         v6_gb->audio.chans[ch].env.counter = v5_gb->audio.chans[ch].env.counter;
         v6_gb->audio.chans[ch].env.inc = v5_gb->audio.chans[ch].env.inc;
 
