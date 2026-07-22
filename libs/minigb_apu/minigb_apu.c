@@ -1162,30 +1162,24 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     if (preferences_sound_mode == 2)
         c->envelope_smooth = (int32_t)c->volume << 8;
 
-    // Accurate mode: only reload length if the counter has already hit zero.
-    // Hardware: trigger resets the length timer only when it expired.
-    // The obscure length clocking in NRx4 writes can decrement the counter
-    // to 0 without disabling the channel (when trigger is also set), so
-    // check the remaining count directly, not just the enabled flag.
-    // Fast mode: always reload length for simplicity.
-    bool len_expired = ((c->len.inc >> 16) == 0);
-    if (i == 3 || preferences_sound_mode != 2 || !was_enabled || len_expired)
+    // Always reload length on trigger. Hardware restarts the length
+    // timer on every channel trigger. Accurate mode also applies the
+    // obscure max-1 reload (63 vs 64) when the next DIV-APU step
+    // doesn't clock the length counter.
+    int load = len_max - c->len.load;
+
+    if (preferences_sound_mode == 2)
     {
-        int load = len_max - c->len.load;
+        uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+        bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-        if (preferences_sound_mode == 2)
-        {
-            uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
-            bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
-
-            // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
-            if (next_doesnt_clock_len && c->len_enabled && load == len_max)
-                load = len_max - 1;
-        }
-
-        c->len.inc = 256 | ((uint32_t)load << 16);
-        c->len.counter = 0;
+        // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
+        if (next_doesnt_clock_len && c->len_enabled && load == len_max)
+            load = len_max - 1;
     }
+
+    c->len.inc = 256 | ((uint32_t)load << 16);
+    c->len.counter = 0;
 }
 
 /**
