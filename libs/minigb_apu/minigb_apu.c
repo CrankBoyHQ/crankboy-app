@@ -1366,15 +1366,19 @@ void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t 
         {
             chans[0].sweep.rate = 0;
             chans[0].sweep.inc = 0;
-            chans[0].sweep.enabled = false;
+            chans[0].sweep.enabled = (chans[0].sweep.shift != 0);
             chans[0].sweep.divider = 0;
         }
         else
         {
+            bool was_zero = (chans[0].sweep.rate == 0);
             chans[0].sweep.rate = new_rate;
             chans[0].sweep.inc = 128 / new_rate;
-            chans[0].sweep.enabled = (new_rate != 0) || (chans[0].sweep.shift != 0);
-            chans[0].sweep.divider = new_rate;
+            chans[0].sweep.enabled = true;
+            if (was_zero)
+                chans[0].sweep.divider = new_rate;
+            // else: divider not reset; hardware loads new pace on
+            // sweep iteration completion (when divider hits 0).
         }
 
         if (chans[0].sweep_up && chans[0].sweep.shift > 0)
