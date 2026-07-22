@@ -72,6 +72,17 @@ void audio_update_wave(audio_data* restrict audio, int16_t* left, int16_t* right
 void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len);
 
 /**
+ * Generate audio samples with accurate frame-sequencer tracking.
+ * Breaks the batch into sub-chunks aligned to the DIV-APU tick rate
+ * (512 Hz) and advances the frame sequencer between sub-chunks so
+ * envelope, sweep, and length counters update at hardware-correct
+ * rates even when generating large batches for ring-buffer sync.
+ */
+__shell void audio_generate_accurate(
+    audio_data* restrict audio, int16_t* left, int16_t* right, int len
+);
+
+/**
  * Advance envelope and sweep state by one frame's worth of samples
  * (audio_sample_rate / 60). No-op in Accurate mode (sound_mode == 2)
  * where the CPU thread handles this via audio_div_apu_tick().

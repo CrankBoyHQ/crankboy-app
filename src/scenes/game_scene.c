@@ -105,10 +105,15 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
     if (gameScene->is_stereo)
         memset(temp_right, 0, bytes_to_zero);
 
-    audio_update_wave(audio, temp_left, temp_right, samples_to_generate);
-    audio_update_square(audio, temp_left, temp_right, 0, samples_to_generate);
-    audio_update_square(audio, temp_left, temp_right, 1, samples_to_generate);
-    audio_update_noise(audio, temp_left, temp_right, samples_to_generate);
+    if (preferences_sound_mode == 2)
+        audio_generate_accurate(audio, temp_left, temp_right, samples_to_generate);
+    else
+    {
+        audio_update_wave(audio, temp_left, temp_right, samples_to_generate);
+        audio_update_square(audio, temp_left, temp_right, 0, samples_to_generate);
+        audio_update_square(audio, temp_left, temp_right, 1, samples_to_generate);
+        audio_update_noise(audio, temp_left, temp_right, samples_to_generate);
+    }
 
     uint32_t write_pos_local = atomic_load(&g_audio_sync_buffer.write_pos);
     for (int i = 0; i < samples_to_generate; ++i)

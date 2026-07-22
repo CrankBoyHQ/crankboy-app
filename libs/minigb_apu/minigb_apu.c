@@ -1991,3 +1991,37 @@ void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* righ
 {
     update_noise(audio, left, right, len);
 }
+
+__shell void audio_generate_accurate(
+    audio_data* restrict audio, int16_t* left, int16_t* right, int len
+)
+{
+    int sample_rate = get_audio_sample_rate();
+    int samples_per_tick = sample_rate / 512;
+    int samples_per_tick_rem = sample_rate % 512;
+    int tick_accum = 0;
+    int generated = 0;
+
+    while (generated < len)
+    {
+        int chunk = samples_per_tick;
+        tick_accum += samples_per_tick_rem;
+        if (tick_accum >= 512)
+        {
+            tick_accum -= 512;
+            chunk += 1;
+        }
+        if (generated + chunk > len)
+            chunk = len - generated;
+
+        update_wave(audio, left + generated, right + generated, chunk);
+        update_square(audio, left + generated, right + generated, 0, chunk);
+        update_square(audio, left + generated, right + generated, 1, chunk);
+        update_noise(audio, left + generated, right + generated, chunk);
+
+        generated += chunk;
+
+        if (generated < len)
+            audio_div_apu_tick(audio);
+    }
+}
