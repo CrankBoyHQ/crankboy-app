@@ -3927,6 +3927,7 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                         }
                         else
                         {
+                            audio_reset_replay_state(&context->gb->audio);
                             gameScene->cgb_needs_palette_recompute = true;
                             if (gameScene->script)
                             {

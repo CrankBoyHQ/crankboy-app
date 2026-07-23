@@ -85,9 +85,8 @@ struct PGB_VERSIONED(count_s)
     uint_fast16_t serial_count;  /* Serial Counter */
     uint_fast32_t lcd_off_count; /* Cycles LCD has been disabled */
     uint_fast32_t apu_count;     /* Cycle counter for APU write timestamps.
-                                  * Normalised to constant 4.19 MHz clock
-                                  * (CPU cycles >> doubleSpeed). Reset each
-                                  * frame. */
+                                  * Normalised by inst_cycles >>= doubleSpeed
+                                  * in done_instr_timing. Reset per frame. */
 };
 
 struct PGB_VERSIONED(gb_registers_s)
@@ -244,17 +243,18 @@ struct PGB_VERSIONED(audio_data)
 
     /* Per-frame register write events for cycle-accurate replay. */
     uint8_t apu_event_count;
-    struct {
+    struct
+    {
         uint32_t apu_count;
         uint16_t addr;
-        uint8_t  val;
+        uint8_t val;
     } apu_events[128];
 
     /* Pre-frame channel snapshot for event replay. */
     struct PGB_VERSIONED(chan) pre_frame_chans[4];
-    uint8_t  pre_frame_div_apu_step;
-    bool     pre_frame_skip_apu_tick;
-    bool     pre_frame_valid;
+    uint8_t pre_frame_div_apu_step;
+    bool pre_frame_skip_apu_tick;
+    bool pre_frame_valid;
 
 #if TARGET_PLAYDATE
     int32_t capacitor_l;

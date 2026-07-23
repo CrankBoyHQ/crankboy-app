@@ -1599,7 +1599,7 @@ void audio_init(audio_data* audio)
     audio->div_apu_step = 0;
     audio->skip_next_apu_tick = false;
     audio->apu_event_count = 0;
-    audio->pre_frame_valid = false;
+    audio->pre_frame_valid = true;
 
     memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
 
@@ -1658,6 +1658,12 @@ void audio_init(audio_data* audio)
             }
         }
     }
+}
+
+void audio_reset_replay_state(audio_data* audio)
+{
+    audio->apu_event_count = 0;
+    audio->pre_frame_valid = false;
 }
 
 /* completely disables audio subsystem, important for multithreading reasons */
@@ -2044,6 +2050,8 @@ __shell void audio_generate_accurate(
                 audio->skip_next_apu_tick = audio->pre_frame_skip_apu_tick;
             }
 
+            audio->pre_frame_valid = false;
+
             int samples_per_tick = sample_rate / 512;
             int samples_per_tick_rem = sample_rate % 512;
             int tick_accum = 0;
@@ -2144,14 +2152,14 @@ __shell void audio_generate_accurate(
             memcpy(audio->pre_frame_chans, saved_chans, sizeof(audio->pre_frame_chans));
             audio->pre_frame_div_apu_step = saved_step;
             audio->pre_frame_skip_apu_tick = saved_skip;
-            audio->pre_frame_valid = true;
-
-            audio->apu_event_count = 0;
+            audio->pre_frame_valid = false;
 
             left += frame_samples;
             right += frame_samples;
             len -= frame_samples;
         }
+
+        audio->apu_event_count = 0;
     }
 
     int sample_rate = get_audio_sample_rate();

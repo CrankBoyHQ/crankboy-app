@@ -85,6 +85,8 @@ __shell void audio_generate_accurate(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len
 );
 
+__shell void audio_reset_replay_state(audio_data* audio);
+
 /**
  * Advance envelope and sweep state by one frame's worth of samples
  * (audio_sample_rate / 60). No-op in Accurate mode (sound_mode == 2)
