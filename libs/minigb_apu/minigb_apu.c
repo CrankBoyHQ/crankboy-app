@@ -110,6 +110,18 @@ static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enab
     audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] = val;
 }
 
+__shell void audio_div_apu_tick(audio_data* audio);
+
+__shell void __apu_div_tick_detect(audio_data* audio, uint8_t old_div, uint8_t inc, unsigned mask)
+{
+    while (inc--)
+    {
+        old_div++;
+        if ((old_div & mask) == 0 && ((old_div - 1) & mask) != 0)
+            audio_div_apu_tick(audio);
+    }
+}
+
 __shell void audio_div_apu_tick(audio_data* audio)
 {
     if (audio->skip_next_apu_tick)

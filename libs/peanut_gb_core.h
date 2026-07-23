@@ -2067,16 +2067,7 @@ done_instr_timing:
             gb->counter.div_count &= 0x7F;
 
             if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
-            {
-                uint8_t check = old_div;
-                uint8_t remaining = div_inc;
-                while (remaining--)
-                {
-                    check++;
-                    if ((check & 0x20) == 0 && ((check - 1) & 0x20) != 0)
-                        audio_div_apu_tick(&gb->audio);
-                }
-            }
+                __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x20u);
         }
         else
 #endif
@@ -2087,17 +2078,7 @@ done_instr_timing:
             gb->counter.div_count &= 0xFF;
 
             if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
-            {
-                unsigned mask = 0x10u;
-                uint8_t check = old_div;
-                uint8_t remaining = div_inc;
-                while (remaining--)
-                {
-                    check++;
-                    if ((check & mask) == 0 && ((check - 1) & mask) != 0)
-                        audio_div_apu_tick(&gb->audio);
-                }
-            }
+                __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x10u);
         }
     }
 

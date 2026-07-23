@@ -58,6 +58,8 @@ void audio_init(audio_data* audio);
  */
 __shell void audio_div_apu_tick(audio_data* audio);
 
+__shell void __apu_div_tick_detect(audio_data* audio, uint8_t old_div, uint8_t inc, unsigned mask);
+
 /**
  * Playdate audio callback function.
  */
