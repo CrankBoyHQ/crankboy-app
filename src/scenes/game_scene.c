@@ -441,10 +441,10 @@ __section__(".rare") void itcm_core_init(bool cgb)
     // paranoia
     int MARGIN = 4;
 
-    // probe for clean DTCM pockets, find best fit
+    // probe for clean DTCM pockets, choose the one with the most slack
     dtcm_probe_lower_bound();
     int best = -1;
-    size_t best_size = 0;
+    size_t best_slack = 0;
 
     for (int i = 0; i < dtcm_num_pockets; i++)
     {
@@ -453,10 +453,11 @@ __section__(".rare") void itcm_core_init(bool cgb)
         size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
         if (avail >= core_size + MARGIN)
         {
-            if (best == -1 || avail < best_size)
+            size_t slack = avail - (core_size + MARGIN);
+            if (best == -1 || slack > best_slack)
             {
                 best = i;
-                best_size = avail;
+                best_slack = slack;
             }
         }
     }
