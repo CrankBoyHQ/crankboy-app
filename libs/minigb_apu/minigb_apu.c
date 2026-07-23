@@ -2038,11 +2038,6 @@ __shell void audio_generate_accurate(
 
         if (frame_samples > 0)
         {
-            struct PGB_VERSIONED(chan) saved_chans[4];
-            memcpy(saved_chans, audio->chans, sizeof(saved_chans));
-            uint8_t saved_step = audio->div_apu_step;
-            bool saved_skip = audio->skip_next_apu_tick;
-
             if (audio->pre_frame_valid)
             {
                 memcpy(audio->chans, audio->pre_frame_chans, sizeof(audio->chans));
@@ -2145,15 +2140,6 @@ __shell void audio_generate_accurate(
                 offset += rem;
             }
 
-            memcpy(audio->chans, saved_chans, sizeof(saved_chans));
-            audio->div_apu_step = saved_step;
-            audio->skip_next_apu_tick = saved_skip;
-
-            memcpy(audio->pre_frame_chans, saved_chans, sizeof(audio->pre_frame_chans));
-            audio->pre_frame_div_apu_step = saved_step;
-            audio->pre_frame_skip_apu_tick = saved_skip;
-            audio->pre_frame_valid = false;
-
             left += frame_samples;
             right += frame_samples;
             len -= frame_samples;
@@ -2190,4 +2176,9 @@ __shell void audio_generate_accurate(
         if (generated < len)
             audio_div_apu_tick(audio);
     }
+
+    memcpy(audio->pre_frame_chans, audio->chans, sizeof(audio->pre_frame_chans));
+    audio->pre_frame_div_apu_step = audio->div_apu_step;
+    audio->pre_frame_skip_apu_tick = audio->skip_next_apu_tick;
+    audio->pre_frame_valid = true;
 }
