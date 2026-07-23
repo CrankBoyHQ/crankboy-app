@@ -1276,8 +1276,18 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
  *              This is not checked in this function.
  * \param val   Byte to write at address.
  */
-void audio_write(audio_data* restrict audio, const uint16_t addr, const uint8_t val)
+void audio_write(
+    audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
+)
 {
+    if (audio->pre_frame_valid && audio->apu_event_count < 128 && preferences_sound_mode == 2 &&
+        preferences_audio_sync == 1)
+    {
+        audio->apu_events[audio->apu_event_count].apu_count = apu_count;
+        audio->apu_events[audio->apu_event_count].addr = addr;
+        audio->apu_events[audio->apu_event_count].val = val;
+        audio->apu_event_count++;
+    }
     /* Find sound channel corresponding to register address. */
     uint_fast8_t i;
     chan* chans = audio->chans;
@@ -1576,6 +1586,10 @@ void audio_init(audio_data* audio)
 #endif
     audio->div_apu_step = 0;
     audio->skip_next_apu_tick = false;
+    audio->apu_event_count = 0;
+    audio->pre_frame_valid = false;
+
+    memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
 
     // NRx4 registers ($FF14/$FF19/$FF1E/$FF23) are set to $3F instead of the Pan Docs
     // post-boot-rom value $BF. The difference is bit 7 (channel trigger): the real boot
@@ -1595,7 +1609,7 @@ void audio_init(audio_data* audio)
         /* clang-format on */
 
         for (uint_fast8_t i = 0; i < sizeof(regs_init); ++i)
-            audio_write(audio, 0xFF10 + i, regs_init[i]);
+            audio_write(audio, 0xFF10 + i, regs_init[i], 0);
     }
 
     /* Initialise Wave Pattern RAM. */
@@ -1609,7 +1623,7 @@ void audio_init(audio_data* audio)
         /* clang-format on */
 
         for (uint_fast8_t i = 0; i < sizeof(wave_init); ++i)
-            audio_write(audio, 0xFF30 + i, wave_init[i]);
+            audio_write(audio, 0xFF30 + i, wave_init[i], 0);
     }
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8; ++lfsr_selector_idx)
@@ -1990,6 +2004,144 @@ __shell void audio_generate_accurate(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len
 )
 {
+    if (audio->apu_event_count)
+    {
+        uint32_t end_count = 0;
+        for (uint8_t i = 0; i < audio->apu_event_count; i++)
+            if (audio->apu_events[i].apu_count > end_count)
+                end_count = audio->apu_events[i].apu_count;
+
+        int sample_rate = get_audio_sample_rate();
+        int frame_samples = (int)((uint64_t)end_count * sample_rate / 4194304);
+        if (frame_samples > len)
+            frame_samples = len;
+        if (frame_samples < 0)
+            frame_samples = 0;
+
+        if (frame_samples > 0)
+        {
+            struct PGB_VERSIONED(chan) saved_chans[4];
+            memcpy(saved_chans, audio->chans, sizeof(saved_chans));
+            uint8_t saved_step = audio->div_apu_step;
+            bool saved_skip = audio->skip_next_apu_tick;
+
+            if (audio->pre_frame_valid)
+            {
+                memcpy(audio->chans, audio->pre_frame_chans, sizeof(audio->chans));
+                audio->div_apu_step = audio->pre_frame_div_apu_step;
+                audio->skip_next_apu_tick = audio->pre_frame_skip_apu_tick;
+            }
+
+            int samples_per_tick = sample_rate / 512;
+            int samples_per_tick_rem = sample_rate % 512;
+            int tick_accum = 0;
+            int offset = 0;
+            uint32_t prev_count = 0;
+
+            for (uint8_t i = 0; i < audio->apu_event_count; i++)
+            {
+                uint32_t delta = audio->apu_events[i].apu_count - prev_count;
+                int seg = (int)((uint64_t)delta * sample_rate / 4194304);
+                if (seg > 0 && offset + seg > frame_samples)
+                    seg = frame_samples - offset;
+                if (seg < 0)
+                    seg = 0;
+
+                if (seg > 0)
+                {
+                    int generated = 0;
+                    while (generated < seg)
+                    {
+                        int chunk = samples_per_tick;
+                        tick_accum += samples_per_tick_rem;
+                        if (tick_accum >= 512)
+                        {
+                            tick_accum -= 512;
+                            chunk++;
+                        }
+                        if (generated + chunk > seg)
+                            chunk = seg - generated;
+
+                        update_wave(
+                            audio, left + offset + generated, right + offset + generated, chunk
+                        );
+                        update_square(
+                            audio, left + offset + generated, right + offset + generated, 0, chunk
+                        );
+                        update_square(
+                            audio, left + offset + generated, right + offset + generated, 1, chunk
+                        );
+                        update_noise(
+                            audio, left + offset + generated, right + offset + generated, chunk
+                        );
+
+                        generated += chunk;
+                        if (generated < seg)
+                            audio_div_apu_tick(audio);
+                    }
+                    offset += seg;
+                }
+
+                audio_write(
+                    audio, audio->apu_events[i].addr, audio->apu_events[i].val,
+                    audio->apu_events[i].apu_count
+                );
+                prev_count = audio->apu_events[i].apu_count;
+            }
+
+            int rem = frame_samples - offset;
+            if (rem > 0)
+            {
+                int generated = 0;
+                while (generated < rem)
+                {
+                    int chunk = samples_per_tick;
+                    tick_accum += samples_per_tick_rem;
+                    if (tick_accum >= 512)
+                    {
+                        tick_accum -= 512;
+                        chunk++;
+                    }
+                    if (generated + chunk > rem)
+                        chunk = rem - generated;
+
+                    update_wave(
+                        audio, left + offset + generated, right + offset + generated, chunk
+                    );
+                    update_square(
+                        audio, left + offset + generated, right + offset + generated, 0, chunk
+                    );
+                    update_square(
+                        audio, left + offset + generated, right + offset + generated, 1, chunk
+                    );
+                    update_noise(
+                        audio, left + offset + generated, right + offset + generated, chunk
+                    );
+
+                    generated += chunk;
+                    if (generated < rem)
+                        audio_div_apu_tick(audio);
+                }
+                offset += rem;
+            }
+
+            memcpy(audio->chans, saved_chans, sizeof(saved_chans));
+            audio->div_apu_step = saved_step;
+            audio->skip_next_apu_tick = saved_skip;
+
+            memcpy(audio->pre_frame_chans, saved_chans, sizeof(audio->pre_frame_chans));
+            audio->pre_frame_div_apu_step = saved_step;
+            audio->pre_frame_skip_apu_tick = saved_skip;
+            audio->pre_frame_valid = true;
+
+            audio->apu_event_count = 0;
+
+            left += frame_samples;
+            right += frame_samples;
+            len -= frame_samples;
+        }
+    }
+
     int sample_rate = get_audio_sample_rate();
     int samples_per_tick = sample_rate / 512;
     int samples_per_tick_rem = sample_rate % 512;

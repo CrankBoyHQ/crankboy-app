@@ -42,8 +42,9 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr);
 
 /**
  * Write "val" to audio register at given address "addr".
+ * apu_count is the emulator cycle counter, resets per frame.
  */
-void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val);
+void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val, uint32_t apu_count);
 
 /**
  * Initialise audio driver.

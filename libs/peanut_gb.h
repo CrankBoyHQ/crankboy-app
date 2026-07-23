@@ -2246,7 +2246,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         {
             if (gb->direct.sound)
             {
-                audio_write(&gb->audio, addr, val);
+                audio_write(&gb->audio, addr, val, gb->counter.apu_count);
             }
             else
             {

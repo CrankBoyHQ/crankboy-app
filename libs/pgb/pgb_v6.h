@@ -84,6 +84,10 @@ struct PGB_VERSIONED(count_s)
     uint_fast16_t tima_count;    /* Timer Counter */
     uint_fast16_t serial_count;  /* Serial Counter */
     uint_fast32_t lcd_off_count; /* Cycles LCD has been disabled */
+    uint_fast32_t apu_count;     /* Cycle counter for APU write timestamps.
+                                  * Normalised to constant 4.19 MHz clock
+                                  * (CPU cycles >> doubleSpeed). Reset each
+                                  * frame. */
 };
 
 struct PGB_VERSIONED(gb_registers_s)
@@ -237,6 +241,20 @@ struct PGB_VERSIONED(audio_data)
     /* Set when APU powers on while DIV bit 4/5 is high. The first falling
      * edge tick is skipped (hardware glitch). */
     bool skip_next_apu_tick : 1;
+
+    /* Per-frame register write events for cycle-accurate replay. */
+    uint8_t apu_event_count;
+    struct {
+        uint32_t apu_count;
+        uint16_t addr;
+        uint8_t  val;
+    } apu_events[128];
+
+    /* Pre-frame channel snapshot for event replay. */
+    struct PGB_VERSIONED(chan) pre_frame_chans[4];
+    uint8_t  pre_frame_div_apu_step;
+    bool     pre_frame_skip_apu_tick;
+    bool     pre_frame_valid;
 
 #if TARGET_PLAYDATE
     int32_t capacitor_l;
@@ -838,6 +856,9 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
         v6_gb->audio.chans[ch].envelope_smooth = v5_gb->audio.chans[ch].envelope_smooth;
         v6_gb->audio.chans[ch].env_divider = v5_gb->audio.chans[ch].env_divider;
     }
+
+    v6_gb->audio.apu_event_count = 0;
+    v6_gb->audio.pre_frame_valid = false;
 
     memcpy(v6_header, v5_header, sizeof(StateHeader));
     v6_header->version = PGB_VERSION;

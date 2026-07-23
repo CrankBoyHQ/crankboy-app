@@ -2102,6 +2102,7 @@ done_instr_timing:
     }
 
     gb->counter.lcd_count += inst_cycles;
+    gb->counter.apu_count += inst_cycles;
 
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
     {
@@ -2301,6 +2302,7 @@ __core void $(gb_run_frame)(gb_s* gb)
 #endif
 
     gb->gb_frame = 0;
+    gb->counter.apu_count = 0;
 
     unsigned int total_cycles = 0;
 
