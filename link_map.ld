@@ -60,13 +60,10 @@ SECTIONS
 			*(.itcm.dmg)
 			. = ALIGN(32);
 			*(.itcm.dmg.draw)
-			. = ALIGN(32); . += 0x12;
-			*(.itcm.dmg.fb)
 			. = ALIGN(32); . += 0x6;
 			*(.itcm.dmg.cb)
 			. = ALIGN(32);
 			*(.itcm.dmg.micro)
-			*(.itcm.dmg.hdma)
 			*(.itcm.dmg.*)
         __itcm_dmg_end = .;
 
@@ -77,13 +74,10 @@ SECTIONS
 			*(.itcm.cgb)
 			. = ALIGN(32);
 			*(.itcm.cgb.draw)
-			. = ALIGN(32); . += 0x12;
-			*(.itcm.cgb.fb)
 			. = ALIGN(32); . += 0x6;
 			*(.itcm.cgb.cb)
 			. = ALIGN(32);
 			*(.itcm.cgb.micro)
-			*(.itcm.cgb.hdma)
 			*(.itcm.cgb.*)
         __itcm_cgb_end = .;
 

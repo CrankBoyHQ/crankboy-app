@@ -2544,11 +2544,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 last_scy = scy;
             }
 
-            void (*gb_fast_memcpy_64_)(void* restrict _dst, const void* restrict _src, size_t len) =
-                context->gb->is_cgb_mode ? gb_fast_memcpy_64__cgb : gb_fast_memcpy_64__dmg;
-
-            gb_fast_memcpy_64_ = ITCM_CORE_FN(gb_fast_memcpy_64_);
-
             for (int y = 0; y < LCD_HEIGHT; y++)
             {
                 uint64_t* cur = (uint64_t*)&current_lcd[y * LCD_WIDTH_PACKED];
@@ -2576,18 +2571,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 {
                     line_has_changed[y >> 4] |= (1 << (y & 0xF));
 
-                    gb_fast_memcpy_64_(prv, cur, LCD_WIDTH_PACKED);
+                    gb_fast_memcpy_64(prv, cur, LCD_WIDTH_PACKED);
                 }
             }
-
-            void (*update_fb_dirty_lines_)(
-                uint8_t* restrict framebuffer, uint8_t* restrict lcd,
-                const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows,
-                int scy, bool stable_scaling_enabled, uint8_t* restrict dither_lut0,
-                uint8_t* restrict dither_lut1
-            ) = context->gb->is_cgb_mode ? update_fb_dirty_lines__cgb : update_fb_dirty_lines__dmg;
-
-            update_fb_dirty_lines_ = ITCM_CORE_FN(update_fb_dirty_lines_);
 
             uint8_t* dither_lut0 = CB_dither_lut_row0;
             uint8_t* dither_lut1 = CB_dither_lut_row1;
@@ -2600,7 +2586,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }
 
-            update_fb_dirty_lines_(
+            update_fb_dirty_lines(
                 playdate->graphics->getFrame(), current_lcd, line_has_changed,
                 playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, dither_lut0,
                 dither_lut1
@@ -2608,7 +2594,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
-                gb_fast_memcpy_64_(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
+                gb_fast_memcpy_64(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
             }
 
             if (preferences_rewind_enabled && !context->gb->is_cgb_mode &&
