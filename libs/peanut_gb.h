@@ -163,7 +163,7 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_2_OAM_CYCLES 80
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
-#define PPU_PEEK_CYCLES 12
+#define PPU_PEEK_CYCLES 24
 #define CPU_BATCH_SIZE 3
 
 /* VRAM Locations */
