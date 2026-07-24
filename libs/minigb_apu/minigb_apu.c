@@ -1589,6 +1589,10 @@ void audio_init(audio_data* audio)
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
     chans[0].square.duty_counter = 2;
+    chans[0].freq_counter = 0x7F9;
+    chans[0].enabled = 1;
+    chans[0].powered = 1;
+    chans[3].noise.lfsr_reg = 0x7FFF;
 
 #if TARGET_PLAYDATE
     audio->capacitor_l = 0;
