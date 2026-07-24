@@ -5311,6 +5311,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
         /* CGB internal timer is 0xAC28 */
         gb->counter.div_count = 0x28;
+        gb->counter.lcd_count = 0;
         gb->lcd_mode = LCD_VBLANK;
     }
     else
@@ -5380,10 +5381,11 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF3F, 0x48);
 
         gb->gb_reg.LCDC = 0x91;
-        gb->gb_reg.STAT = 0x85;  // Mode 1 (VBlank)
+        gb->gb_reg.STAT =
+            0x85;  // Mode reads VBlank (quirk), actual PPU is HBlank - corrects within a few lines
         gb->gb_reg.SCY = 0x00;
         gb->gb_reg.SCX = 0x00;
-        gb->gb_reg.LY = 144;
+        gb->gb_reg.LY = 0;
         gb->gb_reg.LYC = 0x00;
         gb->gb_reg.DMA = 0xFF;
         gb->dma_active = false;
@@ -5398,7 +5400,10 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         // DMG internal timer: DIV=0xAB, sub-tick=0xCC
         // (204 T-cycles per dmg-timing-spec post-boot)
         gb->counter.div_count = 0xCC;
-        gb->lcd_mode = LCD_VBLANK;
+        gb->display.current_mode3_cycles = 172;
+        gb->display.current_mode0_cycles = 204;
+        gb->counter.lcd_count = 144;
+        gb->lcd_mode = LCD_HBLANK;
 
         // F-1 Pole Position checks the value at 0xFF80 and enters an
         // infinite rst loop if it's zero. Real hardware boot ROM leaves
@@ -5407,7 +5412,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     }
 
     /* Common state for all modes */
-    gb->counter.lcd_count = 0;
     gb->counter.tima_count = 0;
     gb->counter.serial_count = 0;
     gb->counter.lcd_off_count = 0;
