@@ -460,26 +460,12 @@ __section__(".rare") void itcm_core_init(bool cgb)
     else
     {
         playdate->system->logToConsole(
-            "itcm_core_init: %s no pocket fits %u bytes", cgb ? "CGB" : "DMG", core_size + MARGIN
+            "itcm_core_init: %s no pocket fits %u bytes, keeping ITCM in place",
+            cgb ? "CGB" : "DMG", core_size + MARGIN
         );
-
-        // fallback to main DTCM pool (gap between mempool and stack)
-        uintptr_t sp = (uintptr_t)__builtin_frame_address(0);
-        uintptr_t avail = sp - (uintptr_t)dtcm_mempool;
-        if (avail >= core_size + MARGIN + 0x100)
-        {
-            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
-        }
-        else
-        {
-            playdate->system->logToConsole(
-                "itcm_core_init: %s main pool gap %u < %u, keeping ITCM in place",
-                cgb ? "CGB" : "DMG", (unsigned)avail, (unsigned)(core_size + MARGIN + 0x100)
-            );
-            core_itcm_reloc = itcm_start;
-            core_itcm_offset = 0;
-            return;
-        }
+        core_itcm_reloc = itcm_start;
+        core_itcm_offset = 0;
+        return;
     }
 
     DTCM_VERIFY();
