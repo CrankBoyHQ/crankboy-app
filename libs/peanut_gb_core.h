@@ -1710,13 +1710,17 @@ dispatch:
             }
             chained = true;
             break;
-        case 0x13:  // DI
+        case 0x13:  // DI (0xF3), 0xE3 invalid
+            if unlikely (opcode != 0xF3)
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             chained = true;
             cycles = 4;
             gb->gb_ime = 0;
             gb->gb_ime_countdown = 0;
             break;
-        case 0x1B:  // EI
+        case 0x1B:  // EI (0xFB), 0xEB invalid
+            if unlikely (opcode != 0xFB)
+                return chain_cycles + __gb_rare_instruction(gb, opcode);
             chained = true;
             cycles = 4;
             gb->gb_ime_countdown = 2;
