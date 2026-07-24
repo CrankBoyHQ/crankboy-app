@@ -1981,21 +1981,25 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
         .pref_var = &preferences_sound_mode,
         .max_value = 3,
         .disabled_entries = (1 << 0), /* 'Off' removed */
-        .on_press = NULL,
+        .rebuild_when_changed = 1,
     };
+
+    if (preferences_sound_mode == 2)
+        preferences_sample_rate = 0;
 
     // sample rate
     section[++i] = (OptionsMenuEntry){
         .name = "Sample Rate",
         .values = sample_rate_labels,
-        .description =
-            "Adjusts audio quality.\nHigher values may impact performance.\n\n"
-            "High:\nBest quality (44.1 kHz)\n\n"
-            "Medium:\nGood quality (22.1 kHz)\n\n"
-            "Low:\nReduced quality (14.7 kHz)",
+        .description = (preferences_sound_mode == 2)
+                           ? "Accurate sound mode requires High sample rate."
+                           : "Adjusts audio quality.\nHigher values may impact performance.\n\n"
+                             "High:\nBest quality (44.1 kHz)\n\n"
+                             "Medium:\nGood quality (22.1 kHz)\n\n"
+                             "Low:\nReduced quality (14.7 kHz)",
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
-        .on_press = NULL,
+        .locked = (preferences_sound_mode == 2),
     };
 
     // Mono/Stereo

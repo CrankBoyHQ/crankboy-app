@@ -74,10 +74,14 @@ static inline int16_t clamp16(float s)
 }
 #endif
 
+static inline int get_effective_sample_rate(void)
+{
+    return (preferences_sound_mode == 2) ? 0 : preferences_sample_rate;
+}
+
 static inline int get_sample_replication(void)
 {
-    // preferences_sample_rate: 0 -> 1 (44.1kHz), 1 -> 2 (22.05kHz)
-    return preferences_sample_rate + 1;
+    return get_effective_sample_rate() + 1;
 }
 
 static inline int get_audio_sample_rate(void)
@@ -1713,11 +1717,11 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         {
 #if TARGET_PLAYDATE
             int cgb_idx = gameScene->context->gb->is_cgb_mode;
-            int16_t charge_factor = get_charge_factors_q15[cgb_idx][preferences_sample_rate];
+            int16_t charge_factor = get_charge_factors_q15[cgb_idx][get_effective_sample_rate()];
             high_pass_filter_fixed_asm(left, right, len, audio, charge_factor);
 #else
             int cgb_idx = gameScene->context->gb->is_cgb_mode;
-            float charge_factor = get_charge_factors[cgb_idx][preferences_sample_rate];
+            float charge_factor = get_charge_factors[cgb_idx][get_effective_sample_rate()];
             for (int i = 0; i < len; i++)
             {
                 float in_l = left[i];
