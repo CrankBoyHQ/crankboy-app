@@ -1588,6 +1588,7 @@ void audio_init(audio_data* audio)
     memset(chans, 0, 4 * sizeof(chan));
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
+    chans[0].square.duty_counter = 2;
 
 #if TARGET_PLAYDATE
     audio->capacitor_l = 0;
@@ -1596,7 +1597,8 @@ void audio_init(audio_data* audio)
     audio->capacitor_l = 0.0f;
     audio->capacitor_r = 0.0f;
 #endif
-    audio->div_apu_step = 0;
+    audio->div_apu_step = 3;
+    audio->pre_frame_div_apu_step = 3;
     audio->skip_next_apu_tick = false;
     audio->apu_event_count = 0;
     audio->pre_frame_valid = true;
