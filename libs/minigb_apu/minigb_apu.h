@@ -87,13 +87,6 @@ __shell void audio_generate_accurate(
 
 __shell void audio_reset_replay_state(audio_data* audio);
 
-/**
- * Advance envelope and sweep state by one frame's worth of samples
- * (audio_sample_rate / 60). No-op in Accurate mode (sound_mode == 2)
- * where the CPU thread handles this via audio_div_apu_tick().
- */
-void audio_tick_env_fast(audio_data* audio);
-
 unsigned audio_get_state_size(void);
 void audio_state_save(void* buff);
 void audio_state_load(const void* buff);

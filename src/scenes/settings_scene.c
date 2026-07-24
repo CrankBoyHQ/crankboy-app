@@ -707,7 +707,6 @@ CB_SettingsScene* CB_SettingsScene_new(
     settingsScene->initial_sample_rate = preferences_sample_rate;
     settingsScene->initial_headphone_audio = preferences_headphone_audio;
     settingsScene->initial_per_game = preferences_per_game;
-    settingsScene->initial_audio_sync = preferences_audio_sync;
 
     if (gameScene)
     {
@@ -968,7 +967,6 @@ static const char* gb_button_labels_ab_release_b[] = {
 static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
 static const char* crank_down_action_labels[] = {"None", "Select+Start"};
 static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
-static const char* fast_accurate_labels[] = {"Fast", "Accurate"};
 static const char* fps_labels[] = {"Off", "On", "Playdate"};
 static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
 static const char* slot_labels[] = {"Slot 0", "Slot 1", "Slot 2", "Slot 3", "Slot 4",
@@ -1969,32 +1967,21 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
     section[++i] = (OptionsMenuEntry){
         .name = T(sethdr_audio),
         .header = 1,
-        .description = "Sound quality, timing accuracy, sample rate, and headphone output."
+        .description = "Sound quality, sample rate, and headphone output."
     };
 
     section[++i] = (OptionsMenuEntry){
         .name = "Sound",
         .values = sound_mode_labels,
         .description =
-            "Accurate:\nHighest quality sound.\n\n"
-            "Fast:\nGood balance of quality and speed.",
+            "Fast:\nGood performance. Sound timing is less precise.\n\n"
+            "Accurate:\nMost faithful audio. Uses a buffer to ensure correct sound pitch and "
+            "speed.\n"
+            "Minor performance cost.",
         .pref_var = &preferences_sound_mode,
         .max_value = 3,
         .disabled_entries = (1 << 0), /* 'Off' removed */
         .on_press = NULL,
-    };
-
-    // Timing
-    section[++i] = (OptionsMenuEntry){
-        .name = "Timing",
-        .values = fast_accurate_labels,
-        .description =
-            "Change how audio is timed.\n\n"
-            "Fast:\nGood performance. Sound timing is less precise.\n\n"
-            "Accurate:\nMost faithful audio. Uses a buffer to ensure sound pitch and speed are "
-            "perfect. Comes at a minor performance cost.",
-        .pref_var = &preferences_audio_sync,
-        .max_value = 2,
     };
 
     // sample rate
@@ -3766,7 +3753,7 @@ static void CB_SettingsScene_free(void* object)
         // we MUST reset our timing baseline. This recalibrates our sample counter
         // against the hardware clock, closing the "time gap" that was created
         // while the settings menu was open.
-        if (preferences_audio_sync == 1)
+        if (preferences_sound_mode == 2)
         {
             CB_reset_audio_sync_state();
         }

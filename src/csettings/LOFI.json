@@ -2,7 +2,6 @@
     "message": "Audio apps require accurate timing.\n\nChoose Apply to use the recommended settings.",
     "settings": {
         "sound_mode": 2,
-        "audio_sync": 1,
         "sample_rate": 0,
         "headphone_audio": 1,
         "frame_skip": 1,
@@ -10,8 +9,5 @@
         "overclock": 0,
         "disable_autolock": 1,
         "uncap_fps": 0
-    },
-    "settings_A": {
-        "itcm": 1
     }
 }

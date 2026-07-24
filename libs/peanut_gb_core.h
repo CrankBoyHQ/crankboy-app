@@ -2081,7 +2081,7 @@ done_instr_timing:
             gb->gb_reg.DIV += div_inc;
             gb->counter.div_count &= 0x7F;
 
-            if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
+            if (preferences_sound_mode == 1)
                 __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x20u);
         }
         else
@@ -2092,7 +2092,7 @@ done_instr_timing:
             gb->gb_reg.DIV += div_inc;
             gb->counter.div_count &= 0xFF;
 
-            if (preferences_sound_mode == 2 && preferences_audio_sync != 1)
+            if (preferences_sound_mode == 1)
                 __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x10u);
         }
     }

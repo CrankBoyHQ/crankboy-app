@@ -133,9 +133,6 @@ __shell void audio_div_apu_tick(audio_data* audio)
     uint8_t step = (audio->div_apu_step + 1) & 7;
     audio->div_apu_step = step;
 
-    if (preferences_sound_mode != 2)
-        return;
-
     chan* chans = audio->chans;
 
     /* Length timer: 256 Hz (steps 0, 2, 4, 6). */
@@ -259,48 +256,6 @@ __shell void audio_div_apu_tick(audio_data* audio)
     }
 }
 
-/* No-op: frame sequencer ticks are processed on the CPU thread
- * via audio_div_apu_tick(). Audio thread only reads channel state. */
-static void flush_apu_ticks(audio_data* audio)
-{
-    (void)audio;
-}
-
-static void process_env_counter(chan* c, int sample_rate)
-{
-    while (c->env.counter > sample_rate)
-    {
-        if (c->env.step)
-        {
-            c->volume += c->env.up ? 1 : -1;
-            if (c->volume == 0 || c->volume == MAX_CHAN_VOLUME)
-            {
-                c->env.inc = 0;
-                c->env.locked = true;
-            }
-#if TARGET_PLAYDATE
-            int vol = c->volume;
-            asm volatile("usat %0, #4, %0" : "+r"(vol));
-            c->volume = vol;
-#else
-            c->volume = MAX(0, MIN(MAX_CHAN_VOLUME, c->volume));
-#endif
-        }
-        c->env.counter -= sample_rate;
-    }
-}
-
-__audio static void update_env(chan* c, int sample_rate)
-{
-    if (preferences_sound_mode == 2)
-        return;
-
-    c->env.counter += c->env.inc;
-    process_env_counter(c, sample_rate);
-}
-
-// SameBoy _nrx2_glitch: zombie volume adjustment on NRx2 write while channel active.
-// Handles direction-change inversion and old-step=0->new-step!=0 tick.
 __audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t old_val)
 {
     bool env_running = (chans[i].env.step != 0);
@@ -375,30 +330,6 @@ __audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
     return false;  // Channel still active
 }
 
-static bool process_len_counter(audio_data* audio, chan* c, int i, int samples, int sample_rate)
-{
-    if (!c->enabled || !c->len_enabled || c->len.inc == 0)
-        return false;
-    if (preferences_sound_mode == 2)
-        return false;
-
-    int tick_rate = (int)(c->len.inc & 0xFFFF);
-    int ticks_needed = (int)(c->len.inc >> 16);
-    if (ticks_needed <= 0)
-        return false;
-
-    c->len.counter += (uint32_t)samples * (uint32_t)tick_rate;
-    uint32_t ticks_total = c->len.counter / (uint32_t)sample_rate;
-
-    if (ticks_total >= (uint32_t)ticks_needed)
-    {
-        c->len.counter = 0;
-        chan_enable(audio, i, 0);
-        return true;
-    }
-    return false;
-}
-
 // returns sample index at which to stop outputting in channel
 __audio static int update_len(audio_data* restrict audio, chan* c, int len)
 {
@@ -408,39 +339,13 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
     if (!c->len_enabled || c->len.inc == 0)
         return len;
 
-    if (preferences_sound_mode == 2)
-    {
-        int remaining = (int)(c->len.inc >> 16);
-        if (remaining == 0)
-            return 0;
-        int sample_rate = get_audio_sample_rate();
-        int max_len = (remaining * sample_rate + 255) / 256;
-        if (max_len < len)
-            return max_len;
-        return len;
-    }
-
+    int remaining = (int)(c->len.inc >> 16);
+    if (remaining == 0)
+        return 0;
     int sample_rate = get_audio_sample_rate();
-    int i = (int)(c - audio->chans);
-    uint32_t counter_before = c->len.counter;
-
-    if (process_len_counter(audio, c, i, len, sample_rate))
-    {
-        int ticks_needed = (int)(c->len.inc >> 16);
-        int tick_rate = (int)(c->len.inc & 0xFFFF);
-        uint32_t target = (uint32_t)ticks_needed * (uint32_t)sample_rate;
-        int tr;
-        if (counter_before >= target)
-            tr = 0;
-        else
-        {
-            uint32_t needed = target - counter_before;
-            tr = (int)((needed + (uint32_t)tick_rate - 1) / (uint32_t)tick_rate);
-        }
-        if (tr > len)
-            tr = len;
-        return tr;
-    }
+    int max_len = (remaining * sample_rate + 255) / 256;
+    if (max_len < len)
+        return max_len;
     return len;
 }
 
@@ -460,86 +365,6 @@ __audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
     {
         *pos = c->freq_inc;
         return false;
-    }
-}
-
-static void process_sweep_counter(audio_data* audio, chan* c, int i, int sample_rate)
-{
-    while (c->sweep.counter > sample_rate)
-    {
-        c->sweep.counter -= sample_rate;
-
-        if (calculate_new_sweep_freq(audio, c, i))
-            return;
-
-        if (c->sweep.shift > 0)
-        {
-            uint16_t second_new_freq = c->sweep.freq >> c->sweep.shift;
-            if (!c->sweep_up)
-            {
-                second_new_freq = c->sweep.freq - second_new_freq;
-                if (c->sweep.shift > 0)
-                    c->sweep.did_subtract = true;
-            }
-            else
-            {
-                second_new_freq = c->sweep.freq + second_new_freq;
-            }
-
-            if (second_new_freq > 2047)
-            {
-                chan_enable(audio, i, 0);
-                return;
-            }
-        }
-    }
-}
-
-__audio static void update_sweep(audio_data* audio, chan* c, int i, int sample_rate)
-{
-    if (preferences_sound_mode == 2)
-        return;
-
-    if (c->sweep.rate == 0)
-    {
-        return;
-    }
-
-    c->sweep.counter += c->sweep.inc;
-    process_sweep_counter(audio, c, i, sample_rate);
-}
-
-void audio_tick_env_fast(audio_data* audio)
-{
-    int sample_rate = get_audio_sample_rate();
-    int samples_per_frame = sample_rate / 60;
-    bool is_accurate = (preferences_sound_mode == 2);
-
-    for (int i = 0; i < 4; ++i)
-    {
-        chan* c = &audio->chans[i];
-        if (!c->enabled)
-            continue;
-
-        if (!is_accurate)
-        {
-            process_len_counter(audio, c, i, samples_per_frame, sample_rate);
-
-            if (!c->enabled)
-                continue;
-
-            if (i != 2)
-            {
-                c->env.counter += c->env.inc * samples_per_frame;
-                process_env_counter(c, sample_rate);
-            }
-        }
-
-        if (!is_accurate && i == 0 && c->sweep.rate != 0)
-        {
-            c->sweep.counter += c->sweep.inc * samples_per_frame;
-            process_sweep_counter(audio, c, 0, sample_rate);
-        }
     }
 }
 
@@ -613,10 +438,7 @@ __audio static void update_square(
 
     if (!c->enabled)
     {
-        if (preferences_sound_mode == 2)
-        {
-            output_disabled_dc(audio, c, left, right, len);
-        }
+        output_disabled_dc(audio, c, left, right, len);
         return;
     }
 
@@ -626,12 +448,6 @@ __audio static void update_square(
 
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
-
-    if (preferences_sound_mode != 2)
-    {
-        if (c->freq_inc == 0)
-            return;
-    }
 
     if (c->freq_inc / 8 > (uint32_t)sample_rate / 2)
         return;
@@ -651,11 +467,7 @@ __audio static void update_square(
     uint16_t last_freq = 0;
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
-        update_env(c, sample_rate);
         if (!ch2)
-            update_sweep(audio, c, ch2, sample_rate);
-
-        if (!ch2 && preferences_sound_mode == 2)
         {
             if (c->freq != last_freq)
             {
@@ -668,61 +480,35 @@ __audio static void update_square(
 
         int32_t sample_out;
 
-        if (preferences_sound_mode == 2)
+        uint32_t pos = 0;
+        uint32_t prev_pos = 0;
+        int32_t weighted_sum = 0;
+
+        while (update_freq(c, &pos, sample_rate))
         {
-            // --- ACCURATE MODE ---
-            uint32_t pos = 0;
-            uint32_t prev_pos = 0;
-            int32_t weighted_sum = 0;
-
-            while (update_freq(c, &pos, sample_rate))
-            {
-                c->square.duty_counter = (c->square.duty_counter + 1) & 7;
-                weighted_sum += (int32_t)(pos - prev_pos) * c->val;
-                c->val = (c->square.duty & (1 << c->square.duty_counter))
-                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
-                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-                prev_pos = pos;
-            }
-
-            weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
-
-            int32_t target_vol = (int32_t)c->volume << 8;
-            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
-            int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
-
-            if (c->freq_inc > 0)
-                sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
-            else
-                sample_out = c->val * effective_volume;
-
-            if (c->sample_surpressed)
-            {
-                sample_out = INT16_MIN / 8;
-                c->sample_surpressed = false;
-            }
+            c->square.duty_counter = (c->square.duty_counter + 1) & 7;
+            weighted_sum += (int32_t)(pos - prev_pos) * c->val;
+            c->val = (c->square.duty & (1 << c->square.duty_counter))
+                         ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                         : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+            prev_pos = pos;
         }
-        else
-        {
-            // --- FAST MODE ---
-            c->freq_counter += c->freq_inc;
-            int step_count = 0;
-            int32_t step_sum = 0;
-            while (c->freq_counter >= sample_rate)
-            {
-                c->freq_counter -= sample_rate;
-                c->square.duty_counter = (c->square.duty_counter + 1) & 7;
-                c->val = (c->square.duty & (1 << c->square.duty_counter))
-                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
-                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-                step_count++;
-                step_sum += c->val;
-            }
 
-            if (step_count >= 3)
-                sample_out = (step_sum / step_count) * c->volume;
-            else
-                sample_out = c->val * c->volume;
+        weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
+
+        int32_t target_vol = (int32_t)c->volume << 8;
+        c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+        int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
+
+        if (c->freq_inc > 0)
+            sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
+        else
+            sample_out = c->val * effective_volume;
+
+        if (c->sample_surpressed)
+        {
+            sample_out = INT16_MIN / 8;
+            c->sample_surpressed = false;
         }
 
         if (c->muted)
@@ -800,7 +586,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
     if (!c->enabled)
     {
-        if (preferences_sound_mode == 2 && c->powered && c->wave.pulsed)
+        if (c->powered && c->wave.pulsed)
         {
             gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
             uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
@@ -808,10 +594,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
             int8_t nibble = (int8_t)(corrupt_byte >> 4) - 8;
             c->wave.sample = c->volume ? (nibble >> (c->volume - 1)) : 0;
         }
-        if (preferences_sound_mode == 2)
-        {
-            output_disabled_dc(audio, c, left, right, len);
-        }
+        output_disabled_dc(audio, c, left, right, len);
         return;
     }
 
@@ -821,9 +604,6 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
 
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
-
-    if (c->freq_inc == 0 && preferences_sound_mode != 2)
-        return;
 
     if (c->freq_inc / 32 > (uint32_t)sample_rate / 2)
         return;
@@ -843,42 +623,22 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     {
         int32_t sample_out;
 
-        if (preferences_sound_mode == 2)
-        {
-            // --- ACCURATE MODE ---
-            uint32_t pos = 0;
-            uint32_t prev_pos = 0;
-            int32_t weighted_sum = 0;
+        uint32_t pos = 0;
+        uint32_t prev_pos = 0;
+        int32_t weighted_sum = 0;
 
-            while (update_freq(c, &pos, sample_rate))
-            {
-                weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
-                c->val = (c->val + 1) & 31;
-                c->wave.sample = wave_sample(audio, c->val, c->volume);
-                c->wave.just_read = true;
-                prev_pos = pos;
-            }
-
-            weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->wave.sample;
-            int32_t avg =
-                (c->freq_inc > 0) ? (weighted_sum / (int32_t)c->freq_inc) : c->wave.sample;
-            sample_out = avg * (INT16_MAX / 32);
-        }
-        else
+        while (update_freq(c, &pos, sample_rate))
         {
-            // --- FAST MODE ---
-            c->freq_counter += c->freq_inc;
-            while (c->freq_counter >= sample_rate)
-            {
-                c->freq_counter -= sample_rate;
-                c->val = (c->val + 1) & 31;
-                c->wave.sample = wave_sample(audio, c->val, c->volume);
-                c->wave.just_read = true;
-            }
+            weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
+            c->val = (c->val + 1) & 31;
+            c->wave.sample = wave_sample(audio, c->val, c->volume);
+            c->wave.just_read = true;
+            prev_pos = pos;
         }
 
-        if (preferences_sound_mode != 2)
-            sample_out = (int32_t)c->wave.sample * (INT16_MAX / 32);
+        weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->wave.sample;
+        int32_t avg = (c->freq_inc > 0) ? (weighted_sum / (int32_t)c->freq_inc) : c->wave.sample;
+        sample_out = avg * (INT16_MAX / 32);
 
         if (c->muted)
             sample_out = 0;
@@ -935,10 +695,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
     if (!c->enabled)
     {
-        if (preferences_sound_mode == 2)
-        {
-            output_disabled_dc(audio, c, left, right, len);
-        }
+        output_disabled_dc(audio, c, left, right, len);
         return;
     }
 
@@ -963,8 +720,6 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
-        update_env(c, sample_rate);
-
         c->freq_counter += c->freq_inc;
         int step_count = 0;
         int32_t step_sum = 0;
@@ -1000,17 +755,9 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
             continue;
 
         int32_t mono_sample;
-        int32_t effective_volume;
-        if (preferences_sound_mode == 2)
-        {
-            int32_t target_vol = (int32_t)c->volume << 8;
-            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
-            effective_volume = (c->envelope_smooth + 128) >> 8;
-        }
-        else
-        {
-            effective_volume = c->volume;
-        }
+        int32_t target_vol = (int32_t)c->volume << 8;
+        c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+        int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
 
         if (step_count > 0)
             mono_sample = (step_sum / step_count) * effective_volume;
@@ -1071,7 +818,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
     // Digital-zero surpression on first start only (not re-trigger).
     // Must check c->enabled before chan_enable sets it to 1.
-    if ((i == 0 || i == 1) && preferences_sound_mode == 2)
+    if ((i == 0 || i == 1))
         c->sample_surpressed = !c->enabled;
 
     chan_enable(audio, i, 1);
@@ -1091,7 +838,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         if (i != 3)
             c->freq_counter = 0;
 
-        if (preferences_sound_mode == 2 && c->env.step > 0)
+        if (c->env.step > 0)
         {
             c->env_divider = c->env.step;
             uint8_t next_step = (audio->div_apu_step + 1) & 7;
@@ -1124,7 +871,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.enabled = (c->sweep.rate != 0) || (c->sweep.shift != 0);
         c->sweep.divider = c->sweep.rate ? c->sweep.rate : 8;
-        if (preferences_sound_mode == 2 && c->sweep.rate > 0)
+        if (c->sweep.rate > 0)
         {
             uint8_t next_step = (audio->div_apu_step + 1) & 7;
             if (next_step == 2 || next_step == 6)
@@ -1177,9 +924,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
 
-    // Accurate-mode envelope smoothing: init per-channel running average
-    if (preferences_sound_mode == 2)
-        c->envelope_smooth = (int32_t)c->volume << 8;
+    c->envelope_smooth = (int32_t)c->volume << 8;
 
     // Always reload length on trigger. Hardware restarts the length
     // timer on every channel trigger. Accurate mode also applies the
@@ -1187,15 +932,12 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     // doesn't clock the length counter.
     int load = len_max - c->len.load;
 
-    if (preferences_sound_mode == 2)
-    {
-        uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
-        bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
+    uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+    bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-        // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
-        if (next_doesnt_clock_len && c->len_enabled && load == len_max)
-            load = len_max - 1;
-    }
+    // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
+    if (next_doesnt_clock_len && c->len_enabled && load == len_max)
+        load = len_max - 1;
 
     c->len.inc = 256 | ((uint32_t)load << 16);
     c->len.counter = 0;
@@ -1299,8 +1041,7 @@ void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
-    if (audio->pre_frame_valid && audio->apu_event_count < 128 && preferences_sound_mode == 2 &&
-        preferences_audio_sync == 1)
+    if (audio->pre_frame_valid && audio->apu_event_count < 128 && preferences_sound_mode == 2)
     {
         audio->apu_events[audio->apu_event_count].apu_count = apu_count;
         audio->apu_events[audio->apu_event_count].addr = addr;
@@ -1460,8 +1201,7 @@ void audio_write(
         // while the envelope clock is high (pending volume change).
         // The zombie NRx2 write may have changed volume or direction
         // via _nrx2_glitch, so should_lock must be recalculated.
-        if (preferences_sound_mode == 2 && chans[i].enabled && chans[i].env.clock &&
-            chans[i].env.step > 0)
+        if (chans[i].enabled && chans[i].env.clock && chans[i].env.step > 0)
         {
             chans[i].env_divider = chans[i].env.step;
             chans[i].env.should_lock = (chans[i].volume == MAX_CHAN_VOLUME && chans[i].env.up) ||
@@ -1552,21 +1292,17 @@ void audio_write(
         bool old_len_enabled = chans[i].len_enabled;
         chans[i].len_enabled = val & 0x40 ? 1 : 0;
         bool trigger = val & 0x80;
+        uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+        bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-        if (preferences_sound_mode == 2)
+        if (next_doesnt_clock_len && !old_len_enabled && chans[i].len_enabled)
         {
-            uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
-            bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
-
-            if (next_doesnt_clock_len && !old_len_enabled && chans[i].len_enabled)
+            int remaining = (int)(chans[i].len.inc >> 16);
+            if (remaining > 0)
             {
-                int remaining = (int)(chans[i].len.inc >> 16);
-                if (remaining > 0)
-                {
-                    chans[i].len.inc -= (1 << 16);
-                    if (((chans[i].len.inc >> 16) == 0) && !trigger)
-                        chan_enable(audio, i, 0);
-                }
+                chans[i].len.inc -= (1 << 16);
+                if (((chans[i].len.inc >> 16) == 0) && !trigger)
+                    chan_enable(audio, i, 0);
             }
         }
 
@@ -1883,7 +1619,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     pthread_mutex_lock(&audio_mutex);
 #endif
 
-    if (preferences_audio_sync == 1)
+    if (preferences_sound_mode == 2)
     {
         uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
         uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
@@ -1920,8 +1656,6 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         int16_t* left_ptr = left;
         int16_t* right_ptr = gameScene->is_stereo ? right : left;
         int remaining_len = len;
-
-        flush_apu_ticks(audio);
 
         while (remaining_len > 0)
         {
@@ -1971,7 +1705,6 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     }
 
     // --- High-Pass Filter ---
-    if (preferences_sound_mode == 2)
     {
         bool dacs_enabled = audio->chans[0].powered || audio->chans[1].powered ||
                             audio->chans[2].powered || audio->chans[3].powered;

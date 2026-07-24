@@ -130,16 +130,9 @@ static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generat
 static void tick_audio_sync(CB_GameScene* gameScene)
 {
     if (!gameScene || gameScene->audioLocked)
-    {
         return;
-    }
 
-    if (audio_muted && gameScene->context && gameScene->context->gb)
-    {
-        audio_tick_env_fast(&gameScene->context->gb->audio);
-    }
-
-    if (!gameScene->audioEnabled || preferences_audio_sync != 1)
+    if (!gameScene->audioEnabled || preferences_sound_mode != 2)
     {
         return;
     }
@@ -350,7 +343,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
     gameScene->audioEnabled = (preferences_sound_mode > 0) && playdate->system->getVolume() > 0.00f;
     audio_muted = !gameScene->audioEnabled;
 
-    if (was_muted && !audio_muted && preferences_audio_sync == 1)
+    if (was_muted && !audio_muted && preferences_sound_mode == 2)
     {
         CB_reset_audio_sync_state();
     }
@@ -365,7 +358,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
     if (gameScene->audioEnabled)
     {
         volume = use_stereo ? 0.35f : 0.5f;
-        if (preferences_sound_mode == 2 && gameScene->context->gb->is_cgb_mode)
+        if (preferences_sound_mode != 0 && gameScene->context->gb->is_cgb_mode)
             volume *= 1.5f;
     }
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
@@ -981,7 +974,7 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     // If the buffered audio sync is NOT the active mode, we MUST ensure
     // its buffer is cleared. This handles the case where a user disables
     // the feature mid-game, preventing stale audio from persisting.
-    if (preferences_audio_sync != 1)
+    if (preferences_sound_mode != 2)
     {
         CB_reset_audio_sync_state();
         memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
@@ -3030,7 +3023,7 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
     {
         // With audio sync enabled, idle-saving can cause audio under-runs.
         // In this case, we rely on saving when the menu is opened or the system is locked.
-        if (preferences_audio_sync != 1 && frames_since_sram_update >= CB_IDLE_FRAMES_BEFORE_SAVE)
+        if (preferences_sound_mode != 2 && frames_since_sram_update >= CB_IDLE_FRAMES_BEFORE_SAVE)
         {
             playdate->system->logToConsole("Saving (idle detected)");
             gb_save_to_disk(gb);
@@ -4059,7 +4052,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             // we MUST reset our timing baseline. This recalibrates our sample counter
             // against the hardware clock, closing the "time gap" that was created
             // while the device was locked or the system menu was open.
-            if (preferences_audio_sync == 1)
+            if (preferences_sound_mode == 2)
             {
                 CB_reset_audio_sync_state();
             }
@@ -4329,7 +4322,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.noise_pending = false;
     gameScene->rewind.help_step_count = 0;
 
-    if (preferences_audio_sync == 1)
+    if (preferences_sound_mode == 2)
         CB_reset_audio_sync_state();
 
     playdate->graphics->clear(game_picture_background_color);
@@ -4338,7 +4331,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     if (gameScene->audioEnabled)
     {
         volume = gameScene->is_stereo ? 0.35f : 0.5f;
-        if (preferences_sound_mode == 2 && gameScene->context->gb->is_cgb_mode)
+        if (preferences_sound_mode != 0 && gameScene->context->gb->is_cgb_mode)
             volume *= 1.5f;
     }
     playdate->sound->channel->setVolume(playdate->sound->getDefaultChannel(), volume);
@@ -4388,7 +4381,7 @@ static void CB_GameScene_free(void* object)
             CB_App->soundSource = NULL;
         }
 
-        if (preferences_audio_sync == 1)
+        if (preferences_sound_mode == 2)
         {
             CB_reset_audio_sync_state();
             memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
