@@ -1753,7 +1753,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         case 0x05:
             if (gb->gb_reg.tima_overflow_delay)
-                return 0;
+                return gb->gb_reg.TMA;
             return gb->gb_reg.TIMA;
 
         case 0x06:
@@ -4911,6 +4911,12 @@ __shell static void __gb_interrupt(gb_s* gb)
             __gb_push16__cgb(gb, gb->cpu_reg.pc);
         else
             __gb_push16__dmg(gb, gb->cpu_reg.pc);
+
+        /* IE push bug: if SP overlapped $FFFF during push, the IE register
+         * was updated mid-dispatch. The priority chain must re-evaluate
+         * with the possibly-changed IE. */
+        if (gb->cpu_reg.sp == 0xFFFE || gb->cpu_reg.sp == 0xFFFF)
+            pending_if &= gb->gb_reg.IE;
 
         /* Call interrupt handler if required. */
         if (pending_if & gb->gb_reg.IE & VBLANK_INTR)

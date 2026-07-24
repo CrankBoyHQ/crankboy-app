@@ -1790,6 +1790,14 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         (gb->gb_ime || gb->gb_halt || gb->gb_stop) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
     )
     {
+        /* Timer-sourced HALT wake takes 6 M-cycles (all other sources: 5).
+         * The timer's CLK9-aligned DFF misses one setup window. */
+        if (gb->gb_halt && !gb->gb_ime)
+        {
+            uint8_t pending = gb->gb_reg.IF & gb->gb_reg.IE;
+            if (pending && !(pending & (VBLANK_INTR | LCDC_INTR)))
+                inst_cycles += 4;
+        }
         __gb_interrupt(gb);
     }
 
