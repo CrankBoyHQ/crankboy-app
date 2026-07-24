@@ -5180,7 +5180,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 {
     gb->gb_halt = 0;
     gb->gb_halt_bug = 0;
-    gb->gb_ime = 1;
+    gb->gb_ime = 0;
 
     /* Initialise MBC values. */
     gb->selected_rom_bank = 1;
@@ -5332,7 +5332,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.P1 = 0xCF;
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7E;
-        gb->gb_reg.DIV = 0xBD;
+        gb->gb_reg.DIV = 0xAB;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
@@ -5395,8 +5395,9 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.WX = 0x00;
         gb->gb_reg.IE = 0x00;
 
-        /* DMG internal timer is 0xBD20 */
-        gb->counter.div_count = 0x20;
+        // DMG internal timer: DIV=0xAB, sub-tick=0xCC
+        // (204 T-cycles per dmg-timing-spec post-boot)
+        gb->counter.div_count = 0xCC;
         gb->lcd_mode = LCD_VBLANK;
 
         // F-1 Pole Position checks the value at 0xFF80 and enters an
