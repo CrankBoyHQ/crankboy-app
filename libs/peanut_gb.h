@@ -1527,6 +1527,20 @@ __section__(".text.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
 }
 
 /**
+ * Synchronized PPU mode: if within PPU_PEEK_CYCLES of next mode
+ * boundary, return the next mode instead of current. Prevents
+ * false-positive VRAM/OAM access locks when instructions span
+ * mode transitions.
+ */
+__section__(".text.cb") static uint8_t __gb_ppu_mode_synced(gb_s* gb)
+{
+    uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+    if ((int16_t)remaining <= PPU_PEEK_CYCLES)
+        return __gb_ppu_next_mode(gb);
+    return gb->lcd_mode;
+}
+
+/**
  * PPU read synchronization: peek ahead to the next mode boundary so
  * polling loops don't miss STAT/LY transitions.
  */
@@ -1610,7 +1624,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
     case 0x8:
     case 0x9:
-        if (gb->lcd_mode == LCD_TRANSFER)
+        if (__gb_ppu_mode_synced(gb) == LCD_TRANSFER)
             return 0xFF;
         if (addr < 0x1800 + VRAM_ADDR)
             return reverse_bits_u8(gb->vram_base[addr]);
@@ -1684,7 +1698,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         if (addr < UNUSED_ADDR)
         {
-            if (gb->lcd_mode >= LCD_SEARCH_OAM && gb->lcd_mode <= LCD_TRANSFER)
+            uint8_t mode = __gb_ppu_mode_synced(gb);
+            if (mode >= LCD_SEARCH_OAM && mode <= LCD_TRANSFER)
                 return 0xFF;
             return gb->oam[addr - OAM_ADDR];
         }
@@ -2101,7 +2116,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
     case 0x8:
     case 0x9:
-        if (gb->lcd_mode == LCD_TRANSFER)
+        if (__gb_ppu_mode_synced(gb) == LCD_TRANSFER)
             return;
         if (addr < 0x1800 + VRAM_ADDR)
             gb->vram_base[addr] = reverse_bits_u8(val);
@@ -2236,7 +2251,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (addr < UNUSED_ADDR)
         {
-            if (gb->lcd_mode >= LCD_SEARCH_OAM && gb->lcd_mode <= LCD_TRANSFER)
+            uint8_t mode = __gb_ppu_mode_synced(gb);
+            if (mode >= LCD_SEARCH_OAM && mode <= LCD_TRANSFER)
                 return;
             gb->oam[addr - OAM_ADDR] = val;
             return;
