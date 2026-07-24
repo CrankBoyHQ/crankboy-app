@@ -1124,6 +1124,12 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.enabled = (c->sweep.rate != 0) || (c->sweep.shift != 0);
         c->sweep.divider = c->sweep.rate ? c->sweep.rate : 8;
+        if (preferences_sound_mode == 2 && c->sweep.rate > 0)
+        {
+            uint8_t next_step = (audio->div_apu_step + 1) & 7;
+            if (next_step == 2 || next_step == 6)
+                c->sweep.divider++;
+        }
 
         if (c->sweep.shift > 0)
         {
