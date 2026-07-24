@@ -1097,42 +1097,6 @@ static void present_emucore_recovery_modal(void)
     CB_presentModal(modal->scene);
 }
 
-static void tcm_recovery_callback(void* ud, int option)
-{
-    (void)ud;
-    if (option == 0)
-    {
-        CB_App->skip_tcm = true;
-        playdate->system->logToConsole("TCM crash recovery: skip TCM this session");
-    }
-    else
-    {
-        playdate->system->logToConsole("TCM crash recovery: retry with TCM");
-    }
-    preferences_tcm_crashed = 0;
-    preferences_save_to_disk(CB_globalPrefsPath, 0);
-}
-
-static void present_tcm_recovery_modal(void)
-{
-    CB_Scene* bootScene = CB_Scene_new();
-    bootScene->managedObject = bootScene;
-    bootScene->update = boot_recovery_scene_update;
-    bootScene->use_user_stack = 0;
-    CB_App->scene = bootScene;
-
-    const char* options[] = {"Skip TCM", "Ignore", NULL};
-    CB_Modal* modal = CB_Modal_new(
-        "CrankBoy crashed last session. TCM acceleration may be the cause.\n\n"
-        "You can skip it this launch (\"Skip\") or try again (\"Ignore\").",
-        options, tcm_recovery_callback, NULL
-    );
-    modal->width = 380;
-    modal->height = 194;
-    modal->margin = 11;
-    CB_presentModal(modal->scene);
-}
-
 static void non_bundle_init(void)
 {
     playdate->system->logToConsole("non_bundle_init: start");
@@ -1336,13 +1300,7 @@ void CB_init(void)
         bool setup_crashed = read_setup_canary();
         CB_set_setup_canary(true);
 
-        // TCM crash recovery takes priority - TCM was armed, so crash is TCM-related.
-        if (preferences_tcm_crashed == 1)
-        {
-            present_tcm_recovery_modal();
-        }
-        // Otherwise, if setup didn't reach the library last session, offer emucore recovery.
-        else if (setup_crashed && cb_emucores_exist())
+        if (setup_crashed && cb_emucores_exist())
         {
             present_emucore_recovery_modal();
         }
