@@ -487,6 +487,11 @@ __section__(".rare") void itcm_core_init(bool cgb)
     memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
     core_itcm_offset = core_itcm_reloc - itcm_start;
+
+    // Crash-recovery canary before anything uses relocated core.
+    preferences_tcm_crashed = 1;
+    preferences_save_to_disk(CB_globalPrefsPath, 0);
+
     playdate->system->logToConsole(
         "itcm start: %p, end %p: (%s)", itcm_start, itcm_end, cgb ? "cgb" : "dmg"
     );
@@ -872,14 +877,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
             }
 
             itcm_core_init(context->gb->is_cgb_mode);
-
-#if ITCM_CORE
-            if (core_itcm_offset != 0)
-            {
-                preferences_tcm_crashed = 1;
-                preferences_save_to_disk(CB_globalPrefsPath, 0);
-            }
-#endif
         }
         else
         {
