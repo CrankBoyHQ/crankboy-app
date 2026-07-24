@@ -1795,7 +1795,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_halt && !gb->gb_ime)
         {
             uint8_t pending = gb->gb_reg.IF & gb->gb_reg.IE;
-            if (pending && !(pending & (VBLANK_INTR | LCDC_INTR)))
+            if (pending & TIMER_INTR)
                 inst_cycles += 4;
         }
         __gb_interrupt(gb);
@@ -2172,11 +2172,6 @@ done_instr_timing:
                                 if (sprites_found > 0 && x == last_penalty_x)
                                 {
                                     mode3_cycles += 6;
-                                }
-                                else if (x == 0)
-                                {
-                                    // Exception: OAM X=0 always incurs the max 11-dot penalty
-                                    mode3_cycles += 11;
                                 }
                                 else
                                 {

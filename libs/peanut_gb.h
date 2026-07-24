@@ -2503,7 +2503,6 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->lcd_mode = LCD_SEARCH_OAM;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
                 gb->direct.stat_line = 0;
-                gb->direct.wy_latched = 0;
                 gb->direct.first_scanline_besu_skip = 1;
                 __gb_update_lyc_and_stat_irq__cgb(gb);
             }
