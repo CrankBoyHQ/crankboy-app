@@ -1646,7 +1646,7 @@ void audio_init(audio_data* audio)
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8; ++lfsr_selector_idx)
     {
-        uint32_t current_lfsr_div_val = lfsr_selector_idx == 0 ? 4 : lfsr_selector_idx * 8;
+        uint32_t current_lfsr_div_val = (lfsr_selector_idx + 1) * 8u;
         for (uint8_t c_freq_shift_val = 0; c_freq_shift_val < 16; ++c_freq_shift_val)
         {
             uint32_t divisor_term = current_lfsr_div_val << c_freq_shift_val;
