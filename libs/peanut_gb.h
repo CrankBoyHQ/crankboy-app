@@ -917,6 +917,10 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
     }
 }
 
+static uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
+static uint8_t __gb_ppu_next_mode(gb_s* gb);
+static uint8_t __gb_ppu_mode_synced(gb_s* gb);
+
 __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t val)
 {
     // unused memory area
@@ -1032,7 +1036,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x69:  // BCPD (CGB BG Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (gb->lcd_mode != LCD_TRANSFER)
+                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
                 {
                     uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
@@ -1052,7 +1056,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (gb->lcd_mode != LCD_TRANSFER)
+                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
                 {
                     uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
@@ -1161,7 +1165,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x69:  // BCPD (CGB BG Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (gb->lcd_mode != LCD_TRANSFER)
+                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
                     return gb->cgb_bg_palette[gb->cgb_bg_palette_index & 0x3F];
                 return 0xFF;
             }
@@ -1173,7 +1177,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (gb->lcd_mode != LCD_TRANSFER)
+                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
                     return gb->cgb_obj_palette[gb->cgb_obj_palette_index & 0x3F];
                 return 0xFF;
             }
@@ -2535,7 +2539,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             // Required for games like Road Rash and F-1 Racing.
             if (!gb->is_cgb_mode && (gb->gb_reg.LCDC & LCDC_ENABLE))
             {
-                if (gb->lcd_mode != LCD_TRANSFER || (gb->gb_reg.STAT & STAT_LYC_COINC))
+                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER || (gb->gb_reg.STAT & STAT_LYC_COINC))
                 {
                     gb->gb_reg.IF |= LCDC_INTR;
                 }
