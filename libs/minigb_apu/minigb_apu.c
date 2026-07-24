@@ -1088,7 +1088,8 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->env.should_lock = false;
         c->env.clock = false;
         c->env_pending = false;
-        c->freq_counter = 0;
+        if (i != 3)
+            c->freq_counter = 0;
 
         if (preferences_sound_mode == 2 && c->env.step > 0)
         {
