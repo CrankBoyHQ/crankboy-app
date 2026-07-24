@@ -2183,7 +2183,8 @@ done_instr_timing:
                     }
 
                     bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
-                                       (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->gb_reg.WY);
+                                       (gb->gb_reg.WX <= 166) &&
+                                       (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY);
 #if PGB_IS_DMG
                     win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
 #endif
@@ -2196,6 +2197,8 @@ done_instr_timing:
                         MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
                     gb->display.current_mode0_cycles =
                         LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
+                    if (besu_skip)
+                        gb->display.current_mode0_cycles -= 2;
 
                     $(__gb_update_stat_irq)(gb);
                     ticked = true;
@@ -2240,6 +2243,17 @@ done_instr_timing:
                         gb->gb_reg.IF |= VBLANK_INTR;
                         gb->direct.wy_latched = 0;
 
+                        // VBlank entry STAT glitch (Case 1): if LYC and Mode 1
+                        // interrupts are both enabled, the LYC leg drops (fast)
+                        // before Mode 1 rises (slow), creating a brief through-zero.
+                        if ((gb->gb_reg.STAT & STAT_LYC_COINC) &&
+                            (gb->gb_reg.STAT & STAT_LYC_INTR) &&
+                            (gb->gb_reg.STAT & STAT_MODE_1_INTR))
+                        {
+                            gb->gb_reg.IF |= LCDC_INTR;
+                            gb->direct.stat_line = 1;
+                        }
+
 #if PGB_IS_CGB
                         // FIXME: is this correct?
                         while (gb->cgb_hdma_active)
@@ -2271,6 +2285,16 @@ done_instr_timing:
                     {
                         gb->lcd_mode = LCD_SEARCH_OAM;
                         gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                        // VBlank exit STAT glitch (Case 4): if Mode 1 and Mode 2
+                        // interrupts are both enabled, Mode 1 drops (fast) before
+                        // Mode 2 rises (slow), creating a brief through-zero.
+                        if ((gb->gb_reg.STAT & STAT_MODE_1_INTR) &&
+                            (gb->gb_reg.STAT & STAT_MODE_2_INTR))
+                        {
+                            gb->gb_reg.IF |= LCDC_INTR;
+                            gb->direct.stat_line = 1;
+                        }
 
                         gb->display.window_clear = 0;
 
