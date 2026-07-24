@@ -493,6 +493,8 @@ struct PGB_VERSIONED(gb_s)
         uint8_t enable_xram : 1;
         uint8_t ignore_cgb_check : 1;
         uint8_t stat_line : 1;
+        uint8_t wy_latched : 1;
+        uint8_t first_scanline_besu_skip : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
         uint8_t cgb_dual_output : 1;
 

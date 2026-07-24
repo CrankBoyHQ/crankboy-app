@@ -862,8 +862,11 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
         // non-CGB mode: window is also disabled if BG is disabled
         (gb->gb_reg.LCDC & LCDC_BG_ENABLE) &&
 #endif
-        (gb->gb_reg.LY >= gb->gb_reg.WY) && (gb->gb_reg.WX < LCD_WIDTH + 7))
+        (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY) &&
+        (gb->gb_reg.WX < LCD_WIDTH + 7))
     {
+        if (!gb->direct.wy_latched && gb->gb_reg.LY >= gb->gb_reg.WY)
+            gb->direct.wy_latched = 1;
         if (gb->gb_reg.WX == 166)
         {
             // WX=166 is unreliable and can corrupt the next scanline.
@@ -2119,15 +2122,65 @@ done_instr_timing:
                     gb->lcd_mode = LCD_TRANSFER;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
-                    for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
-                        ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
-                    gb->display.latched_scx = gb->gb_reg.SCX;
-                    gb->display.latched_scy = gb->gb_reg.SCY;
-
                     uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
-                    const uint8_t scx_mod8 = gb->display.latched_scx & 7;
+                    const bool besu_skip = gb->direct.first_scanline_besu_skip;
+                    gb->direct.first_scanline_besu_skip = 0;
 
-                    mode3_cycles += scx_mod8;
+                    if (besu_skip)
+                    {
+                        // First scanline after LCD-on: BESU never sets on hardware,
+                        // so no OAM latch, no sprites, no sprite penalties.
+                        // SCX/SCY are not latched either - use live values.
+                        gb->display.latched_scx = gb->gb_reg.SCX;
+                        gb->display.latched_scy = gb->gb_reg.SCY;
+                        mode3_cycles += gb->display.latched_scx & 7;
+                    }
+                    else
+                    {
+                        for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
+                            ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
+                        gb->display.latched_scx = gb->gb_reg.SCX;
+                        gb->display.latched_scy = gb->gb_reg.SCY;
+
+                        mode3_cycles += gb->display.latched_scx & 7;
+
+                        // PPU sprite timing: dynamic per-sprite penalty.
+                        // Stacked sprites at same X: first pays full alignment cost,
+                        // subsequent sprites cost only the 6-dot core (combinational re-fire).
+                        uint8_t sprites_found = 0;
+                        uint8_t last_penalty_x = 0xFF;
+                        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+                        static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
+
+                        for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE;
+                             s++)
+                        {
+                            const uint8_t y = gb->display.oam_latch[s * 4];
+                            const uint8_t x = gb->display.oam_latch[s * 4 + 1];
+
+                            // Check if sprite Y intersects current line
+                            if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
+                            {
+                                if (sprites_found > 0 && x == last_penalty_x)
+                                {
+                                    mode3_cycles += 6;
+                                }
+                                else if (x == 0)
+                                {
+                                    // Exception: OAM X=0 always incurs the max 11-dot penalty
+                                    mode3_cycles += 11;
+                                }
+                                else
+                                {
+                                    const uint8_t alignment =
+                                        ((gb->display.latched_scx & 7) + x) & 7;
+                                    mode3_cycles += sprite_penalty_lut[alignment];
+                                }
+                                last_penalty_x = x;
+                                sprites_found++;
+                            }
+                        }
+                    }
 
                     bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
                                        (gb->gb_reg.WX <= 166) && (gb->gb_reg.LY >= gb->gb_reg.WY);
@@ -2137,33 +2190,6 @@ done_instr_timing:
                     if (win_visible)
                     {
                         mode3_cycles += 6;
-                    }
-
-                    // PPU sprite timing: dynamic per-sprite penalty
-                    uint8_t sprites_found = 0;
-                    const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-                    static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
-
-                    for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
-                    {
-                        const uint8_t y = gb->display.oam_latch[s * 4];
-                        const uint8_t x = gb->display.oam_latch[s * 4 + 1];
-
-                        // Check if sprite Y intersects current line
-                        if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
-                        {
-                            // Exception: OAM X=0 always incurs the max 11-dot penalty
-                            if (x == 0)
-                            {
-                                mode3_cycles += 11;
-                            }
-                            else
-                            {
-                                const uint8_t alignment = (scx_mod8 + x) & 7;
-                                mode3_cycles += sprite_penalty_lut[alignment];
-                            }
-                            sprites_found++;
-                        }
                     }
 
                     gb->display.current_mode3_cycles =
@@ -2212,6 +2238,7 @@ done_instr_timing:
                         gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
                         gb->gb_frame = 1;
                         gb->gb_reg.IF |= VBLANK_INTR;
+                        gb->direct.wy_latched = 0;
 
 #if PGB_IS_CGB
                         // FIXME: is this correct?

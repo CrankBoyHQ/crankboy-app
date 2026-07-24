@@ -1610,6 +1610,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
     case 0x8:
     case 0x9:
+        if (gb->lcd_mode == LCD_TRANSFER)
+            return 0xFF;
         if (addr < 0x1800 + VRAM_ADDR)
             return reverse_bits_u8(gb->vram_base[addr]);
         return gb->vram_base[addr];
@@ -1681,7 +1683,11 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->echo_ram_base[addr];
 
         if (addr < UNUSED_ADDR)
+        {
+            if (gb->lcd_mode >= LCD_SEARCH_OAM && gb->lcd_mode <= LCD_TRANSFER)
+                return 0xFF;
             return gb->oam[addr - OAM_ADDR];
+        }
 
         /* Unusable memory area. Reading from this area returns 0.*/
         if (addr < IO_ADDR)
@@ -2095,6 +2101,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
     case 0x8:
     case 0x9:
+        if (gb->lcd_mode == LCD_TRANSFER)
+            return;
         if (addr < 0x1800 + VRAM_ADDR)
             gb->vram_base[addr] = reverse_bits_u8(val);
         else
@@ -2228,6 +2236,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (addr < UNUSED_ADDR)
         {
+            if (gb->lcd_mode >= LCD_SEARCH_OAM && gb->lcd_mode <= LCD_TRANSFER)
+                return;
             gb->oam[addr - OAM_ADDR] = val;
             return;
         }
@@ -2483,6 +2493,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->gb_reg.STAT &= ~(STAT_MODE | STAT_LYC_COINC);
                 gb->direct.stat_line = 0;
                 gb->display.window_clear = 0;
+                gb->direct.wy_latched = 0;
                 __gb_check_lyc__cgb(gb);
             }
             else if (!was_enabled && is_enabled)
@@ -2492,6 +2503,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->lcd_mode = LCD_SEARCH_OAM;
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
                 gb->direct.stat_line = 0;
+                gb->direct.wy_latched = 0;
+                gb->direct.first_scanline_besu_skip = 1;
                 __gb_update_lyc_and_stat_irq__cgb(gb);
             }
             return;
