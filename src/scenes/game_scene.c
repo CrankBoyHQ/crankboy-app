@@ -432,6 +432,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
     // paranoia
     int MARGIN = 4;
+    int DTCM_ALIGN_PAD = 31;
 
     // probe for clean DTCM pockets, choose the one with the most slack
     dtcm_probe_lower_bound();
@@ -443,9 +444,9 @@ __section__(".rare") void itcm_core_init(bool cgb)
         if (!dtcm_pocket_enabled(i))
             continue;
         size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
-        if (avail >= core_size + MARGIN)
+        if (avail >= core_size + MARGIN + DTCM_ALIGN_PAD)
         {
-            size_t slack = avail - (core_size + MARGIN);
+            size_t slack = avail - (core_size + MARGIN + DTCM_ALIGN_PAD);
             if (best == -1 || slack > best_slack)
             {
                 best = i;
@@ -461,7 +462,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
     {
         playdate->system->logToConsole(
             "itcm_core_init: %s no pocket fits %u bytes, keeping ITCM in place",
-            cgb ? "CGB" : "DMG", core_size + MARGIN
+            cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD
         );
         core_itcm_reloc = itcm_start;
         core_itcm_offset = 0;
