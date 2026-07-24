@@ -1327,6 +1327,15 @@ void audio_write(
             uint8_t mask = gb->cgb_fast_mode_active ? 0x20 : 0x10;
             if (gb->gb_reg.DIV & mask)
                 audio->skip_next_apu_tick = true;
+
+            int cgb_fast = gb->cgb_fast_mode_active;
+            if (!cgb_fast)
+            {
+                uint32_t reg_div16 = ((uint32_t)gb->gb_reg.DIV << 8) | gb->counter.div_count;
+                int S_pon = (reg_div16 >> 11) & 7;
+                int a = ((reg_div16 & 0x7FF) >= 1023) ? 1 : 0;
+                audio->div_apu_step = (S_pon + a - 1) & 7;
+            }
         }
         return;
     }
