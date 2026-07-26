@@ -2520,6 +2520,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 {
                     uint8_t* restrict lcd = context->gb->lcd;
                     uint8_t* restrict accum = context->ghost_accum;
+                    uint32_t any_unconverged = 0;
 
                     for (int y = 0; y < LCD_HEIGHT; y++)
                     {
@@ -2577,6 +2578,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                                     out_word |= (uint32_t)out_byte << (boff * 8);
                                 }
+
+                                any_unconverged |= (acc32[x * 4 + boff] ^ cur8);
                             }
 
                             if (out_word != w)
@@ -2593,14 +2596,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             context->line_has_changed[y >> 4] |= (1 << (y & 0xF));
                     }
 
-                    bool any_dirty = false;
-                    for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                        if (context->line_has_changed[i])
-                        {
-                            any_dirty = true;
-                            break;
-                        }
-                    context->ghost_converged = !any_dirty;
+                    context->ghost_converged = (any_unconverged == 0);
                 }
             }
             else if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode)
