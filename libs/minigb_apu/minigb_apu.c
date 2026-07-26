@@ -1377,7 +1377,7 @@ int audio_enabled;
 int audio_muted;
 
 #if TARGET_PLAYDATE
-__attribute__((always_inline)) static inline void replicate_samples_optimized(
+__attribute__((always_inline)) static inline void replicate_samples_interpolated(
     int16_t* left_ptr, int16_t* right_ptr, int chunksize, int sample_replication, bool is_stereo
 )
 {
@@ -1386,21 +1386,31 @@ __attribute__((always_inline)) static inline void replicate_samples_optimized(
 
     for (int i = 0; i < chunksize; i += sample_replication)
     {
-        int samples_to_replicate = sample_replication - 1;
-        if (i + samples_to_replicate >= chunksize)
-        {
-            samples_to_replicate = chunksize - i - 1;
-        }
-        if (samples_to_replicate <= 0)
-            continue;
+        int16_t a_l = left_ptr[i];
+        int16_t b_l = (i + sample_replication < chunksize) ? left_ptr[i + sample_replication] : a_l;
+        int step_l = ((int)b_l - (int)a_l) / sample_replication;
 
-        int16_t sample_l = left_ptr[i];
-        int16_t sample_r = is_stereo ? right_ptr[i] : 0;
-        for (int k = 1; k <= samples_to_replicate; k++)
+        int step_r = step_l;
+        int16_t a_r = a_l;
+        if (is_stereo)
         {
-            left_ptr[i + k] = sample_l;
+            a_r = right_ptr[i];
+            int16_t b_r =
+                (i + sample_replication < chunksize) ? right_ptr[i + sample_replication] : a_r;
+            step_r = ((int)b_r - (int)a_r) / sample_replication;
+        }
+
+        int16_t val_l = a_l;
+        int16_t val_r = a_r;
+        for (int k = 1; k < sample_replication && (i + k) < chunksize; k++)
+        {
+            val_l += step_l;
+            left_ptr[i + k] = val_l;
             if (is_stereo)
-                right_ptr[i + k] = sample_r;
+            {
+                val_r += step_r;
+                right_ptr[i + k] = val_r;
+            }
         }
     }
 }
@@ -1623,7 +1633,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             update_noise(audio, left_ptr, right_ptr, chunksize);
 
 #if TARGET_PLAYDATE
-            replicate_samples_optimized(
+            replicate_samples_interpolated(
                 left_ptr, right_ptr, chunksize, sample_replication, gameScene->is_stereo
             );
 #else
@@ -1632,12 +1642,31 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             {
                 for (int i = 0; i < chunksize; i += sample_replication)
                 {
+                    int16_t a_l = left_ptr[i];
+                    int16_t b_l = (i + sample_replication < chunksize)
+                                      ? left_ptr[i + sample_replication]
+                                      : a_l;
+                    int step_l = ((int)b_l - (int)a_l) / sample_replication;
+                    int step_r = step_l;
+                    int16_t a_r = a_l;
+                    if (gameScene->is_stereo)
+                    {
+                        a_r = right_ptr[i];
+                        int16_t b_r = (i + sample_replication < chunksize)
+                                          ? right_ptr[i + sample_replication]
+                                          : a_r;
+                        step_r = ((int)b_r - (int)a_r) / sample_replication;
+                    }
+                    int16_t val_l = a_l;
+                    int16_t val_r = a_r;
                     for (int j = 1; j < sample_replication && (i + j) < chunksize; ++j)
                     {
-                        left_ptr[i + j] = left_ptr[i];
+                        val_l += step_l;
+                        left_ptr[i + j] = val_l;
                         if (gameScene->is_stereo)
                         {
-                            right_ptr[i + j] = right_ptr[i];
+                            val_r += step_r;
+                            right_ptr[i + j] = val_r;
                         }
                     }
                 }
