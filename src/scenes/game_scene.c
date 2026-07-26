@@ -1422,34 +1422,30 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     return;
 }
 
-static __section__(".text.tick") void blend_frames_lut(uint8_t* frame_a, uint8_t* frame_b_and_dest)
+static __section__(".text.tick") void blend_frames_lut(
+    uint8_t* restrict frame_a, uint8_t* restrict frame_b_and_dest
+)
 {
     for (int y = 0; y < LCD_HEIGHT; y++)
     {
-        if (y < LCD_HEIGHT - 1)
-        {
-            __builtin_prefetch(frame_a + LCD_WIDTH_PACKED, 0, 0);
-            __builtin_prefetch(frame_b_and_dest + LCD_WIDTH_PACKED, 1, 0);
-        }
+        uint32_t bias_e = (y & 1) ? 0x11111111 : 0;
+        uint32_t bias_o = (y & 1) ? 0 : 0x11111111;
 
-        int y_parity = y & 1;
-        uint32_t* frame_a_32 = (uint32_t*)frame_a;
-        uint32_t* frame_b_32 = (uint32_t*)frame_b_and_dest;
+        uint32_t* restrict frame_a_32 = (uint32_t*)frame_a;
+        uint32_t* restrict frame_b_32 = (uint32_t*)frame_b_and_dest;
 
         for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
         {
             uint32_t a_word = frame_a_32[x];
             uint32_t b_word = frame_b_32[x];
 
-            // Blend 4 bytes using compact dither table
-            uint8_t b0 = blend_byte((a_word >> 0) & 0xFF, (b_word >> 0) & 0xFF, y_parity);
-            uint8_t b1 = blend_byte((a_word >> 8) & 0xFF, (b_word >> 8) & 0xFF, y_parity);
-            uint8_t b2 = blend_byte((a_word >> 16) & 0xFF, (b_word >> 16) & 0xFF, y_parity);
-            uint8_t b3 = blend_byte((a_word >> 24) & 0xFF, (b_word >> 24) & 0xFF, y_parity);
+            uint32_t e =
+                (((a_word & 0x33333333) + (b_word & 0x33333333) + bias_e) >> 1) & 0x33333333;
+            uint32_t o =
+                ((((a_word >> 2) & 0x33333333) + ((b_word >> 2) & 0x33333333) + bias_o) >> 1) &
+                0x33333333;
 
-            uint32_t blended_word = b0 | (b1 << 8) | (b2 << 16) | (b3 << 24);
-
-            frame_b_32[x] = blended_word;
+            frame_b_32[x] = e | (o << 2);
         }
 
         frame_a += LCD_WIDTH_PACKED;
