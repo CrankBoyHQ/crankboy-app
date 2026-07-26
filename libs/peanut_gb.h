@@ -5912,6 +5912,11 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 #define $_(x, y) $__(x, y)
 #define $(x) $_(x, PGB_TEMPLATE)
 
+/* Dirty-line tracking globals. Set by frontend before run_frame. */
+static uint8_t* pgb_dirty_prev = NULL;
+static uint16_t* pgb_dirty_flags = NULL;
+static uint8_t pgb_dirty_skip = 0;
+
 // ------------ DMG ------------
 
 #define PGB_TEMPLATE dmg

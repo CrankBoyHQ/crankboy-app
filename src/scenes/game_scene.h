@@ -81,6 +81,8 @@ typedef struct CB_GameSceneContext
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
     clalign uint8_t ghost_accum[LCD_BUFFER_BYTES * 4];  // EMA accum, 8 bits/pixel
+    uint16_t line_has_changed[LCD_HEIGHT / 16];
+    bool ghost_converged;
 } CB_GameSceneContext;
 
 struct ScriptState;

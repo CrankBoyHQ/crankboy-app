@@ -816,6 +816,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
                 memset(context->ghost_accum, 0, sizeof(context->ghost_accum));
+                pgb_dirty_prev = context->previous_lcd;
+                pgb_dirty_flags = context->line_has_changed;
+                context->ghost_converged = false;
                 gameScene->state = CB_GameSceneStateLoaded;
 
                 playdate->system->logToConsole("gb context initialized.");
@@ -1392,7 +1395,8 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
 }
 
 static __section__(".text.tick") void blend_frames_lut(
-    uint8_t* restrict frame_a, uint8_t* restrict frame_b_and_dest
+    uint8_t* restrict frame_a, uint8_t* restrict frame_b_and_dest, uint8_t* restrict prev_lcd,
+    uint16_t* restrict dirty_flags
 )
 {
     for (int y = 0; y < LCD_HEIGHT; y++)
@@ -1402,7 +1406,9 @@ static __section__(".text.tick") void blend_frames_lut(
 
         uint32_t* restrict frame_a_32 = (uint32_t*)frame_a;
         uint32_t* restrict frame_b_32 = (uint32_t*)frame_b_and_dest;
+        uint32_t* restrict prev_32 = (uint32_t*)prev_lcd;
 
+        uint32_t changed = 0;
         for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
         {
             uint32_t a_word = frame_a_32[x];
@@ -1414,11 +1420,45 @@ static __section__(".text.tick") void blend_frames_lut(
                 ((((a_word >> 2) & 0x33333333) + ((b_word >> 2) & 0x33333333) + bias_o) >> 1) &
                 0x33333333;
 
-            frame_b_32[x] = e | (o << 2);
+            uint32_t blended_word = e | (o << 2);
+            frame_b_32[x] = blended_word;
+
+            changed |= blended_word ^ prev_32[x];
+            prev_32[x] = blended_word;
         }
+
+        if (changed)
+            dirty_flags[y >> 4] |= (1 << (y & 0xF));
 
         frame_a += LCD_WIDTH_PACKED;
         frame_b_and_dest += LCD_WIDTH_PACKED;
+        prev_lcd += LCD_WIDTH_PACKED;
+    }
+}
+
+static __section__(".text.tick") void blit_tracked(
+    const uint8_t* restrict src, uint8_t* restrict dest, uint8_t* restrict prev_lcd,
+    uint16_t* restrict dirty_flags
+)
+{
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        uint32_t* restrict s = (uint32_t*)src;
+        uint32_t* restrict d = (uint32_t*)dest;
+        uint32_t* restrict p = (uint32_t*)prev_lcd;
+        uint32_t changed = 0;
+        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
+        {
+            uint32_t w = s[x];
+            changed |= w ^ p[x];
+            d[x] = w;
+            p[x] = w;
+        }
+        if (changed)
+            dirty_flags[y >> 4] |= (1 << (y & 0xF));
+        src += LCD_WIDTH_PACKED;
+        dest += LCD_WIDTH_PACKED;
+        prev_lcd += LCD_WIDTH_PACKED;
     }
 }
 
@@ -2048,6 +2088,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         context->gb->direct.sram_updated = 0;
 
+        memset(context->line_has_changed, 0, sizeof(context->line_has_changed));
+
         bool skip_frame = false;
         if (context->scene->script)
         {
@@ -2109,6 +2151,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
 
+                pgb_dirty_skip = context->gb->is_cgb_mode ||
+                                 (preferences_blend_frames && preferences_frame_skip != 0);
+
                 if (context->gb->is_cgb_mode)
                 {
                     // --- CGB Dual-Output Blending ---
@@ -2164,7 +2209,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
-                        blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                        blend_frames_lut(
+                            cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
+                            context->line_has_changed
+                        );
                         memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                     }
                     else
@@ -2216,13 +2264,19 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                 tick_audio_sync(gameScene);
 
                                 // Blend frame N bright + frame N+1 dark
-                                blend_frames_lut(original_lcd, cb_frame_buffer[1]);
+                                blend_frames_lut(
+                                    original_lcd, cb_frame_buffer[1], context->previous_lcd,
+                                    context->line_has_changed
+                                );
                                 memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                             }
                             else
                             {
                                 // Blend frame N's own bright + dark (same as dual-output)
-                                blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                                blend_frames_lut(
+                                    cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
+                                    context->line_has_changed
+                                );
                                 memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
                             }
                         }
@@ -2243,7 +2297,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
 
                             context->gb->direct.cgb_dual_output = false;
-                            blend_frames_lut(cb_frame_buffer[0], cb_frame_buffer[1]);
+                            blend_frames_lut(
+                                cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
+                                context->line_has_changed
+                            );
                             memcpy(original_lcd, cb_frame_buffer[1], LCD_BUFFER_BYTES);
 
                             ++gameScene->next_frames_elapsed;
@@ -2318,21 +2375,17 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     tick_audio_sync(gameScene);
 
                     // 4. Blend/composite and copy result back to original lcd buffer
-                    if (preferences_blend_frames)
+                    if (!screen_is_static)
                     {
-                        if (!screen_is_static)
-                        {
-                            blend_frames_lut(frame_buffer[0], frame_buffer[1]);
-                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                        }
-                        else
-                        {
-                            memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                        }
+                        blend_frames_lut(
+                            frame_buffer[0], frame_buffer[1], context->previous_lcd,
+                            context->line_has_changed
+                        );
+                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }
                     else
                     {
-                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
+                        memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
                     }
 
                     context->gb->lcd = original_lcd;
@@ -2372,12 +2425,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
-                        blend_frames_lut(frame_buffer[0], frame_buffer[1]);
+                        blend_frames_lut(
+                            frame_buffer[0], frame_buffer[1], context->previous_lcd,
+                            context->line_has_changed
+                        );
                         memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
                     }
                     else
                     {
-                        memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
+                        blit_tracked(
+                            frame_buffer[0], original_lcd, context->previous_lcd,
+                            context->line_has_changed
+                        );
                     }
 
                     context->gb->lcd = original_lcd;
@@ -2455,63 +2514,92 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode &&
                 !(gameScene->next_frames_elapsed == 2 && preferences_blend_frames))
             {
-                uint8_t* restrict lcd = context->gb->lcd;
-                uint8_t* restrict accum = context->ghost_accum;
-
-                for (int y = 0; y < LCD_HEIGHT; y++)
-                {
-                    uint32_t rbias = (y & 1) ? 0x00200020 : 0x20002000;
-
-                    uint32_t* restrict lcd32 = (uint32_t*)lcd;
-                    uint32_t* restrict acc32 = (uint32_t*)accum;
-
-                    for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
+                bool has_dirty = false;
+                for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                    if (context->line_has_changed[i])
                     {
-                        uint32_t w = lcd32[x];
-                        uint32_t out_word = 0;
+                        has_dirty = true;
+                        break;
+                    }
 
-                        for (int boff = 0; boff < 4; boff++)
+                if (!context->ghost_converged || has_dirty)
+                {
+                    uint8_t* restrict lcd = context->gb->lcd;
+                    uint8_t* restrict accum = context->ghost_accum;
+
+                    for (int y = 0; y < LCD_HEIGHT; y++)
+                    {
+                        bool line_touched = false;
+                        uint32_t rbias = (y & 1) ? 0x00200020 : 0x20002000;
+
+                        uint32_t* restrict lcd32 = (uint32_t*)lcd;
+                        uint32_t* restrict acc32 = (uint32_t*)accum;
+
+                        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
                         {
-                            uint32_t b = (w >> (boff * 8)) & 0xFF;
-                            uint32_t lo = (b | (b << 6)) & 0x0303;
-                            uint32_t hi = ((b >> 4) | ((b >> 4) << 6)) & 0x0303;
-                            uint32_t cur8 = (lo | (hi << 16)) << 6;
-                            uint32_t acc8 = acc32[x * 4 + boff];
+                            uint32_t w = lcd32[x];
+                            uint32_t out_word = 0;
 
-                            if (cur8 == acc8)
+                            for (int boff = 0; boff < 4; boff++)
                             {
-                                out_word |= b << (boff * 8);
+                                uint32_t b = (w >> (boff * 8)) & 0xFF;
+                                uint32_t lo = (b | (b << 6)) & 0x0303;
+                                uint32_t hi = ((b >> 4) | ((b >> 4) << 6)) & 0x0303;
+                                uint32_t cur8 = (lo | (hi << 16)) << 6;
+                                uint32_t acc8 = acc32[x * 4 + boff];
+
+                                if (cur8 == acc8)
+                                {
+                                    out_word |= b << (boff * 8);
+                                }
+                                else
+                                {
+                                    // round-half-up average per 8-bit lane, no overflow
+                                    uint32_t xor8 = acc8 ^ cur8;
+                                    uint32_t avg8 = (acc8 & cur8) + ((xor8 >> 1) & 0x7F7F7F7F) +
+                                                    (xor8 & 0x01010101);
+
+                                    acc32[x * 4 + boff] = avg8;
+
+                                    // quantize 8-bit → 2-bit, dithered rounding
+                                    uint32_t quant = ((avg8 + rbias) >> 6) & 0x03030303;
+
+                                    uint8_t out_byte =
+                                        (uint8_t)((quant & 3) | (((quant >> 8) & 3) << 2) |
+                                                  (((quant >> 16) & 3) << 4) |
+                                                  (((quant >> 24) & 3) << 6));
+
+                                    out_word |= (uint32_t)out_byte << (boff * 8);
+                                }
                             }
-                            else
+
+                            if (out_word != w)
                             {
-                                // round-half-up average per 8-bit lane, no overflow
-                                uint32_t xor8 = acc8 ^ cur8;
-                                uint32_t avg8 = (acc8 & cur8) + ((xor8 >> 1) & 0x7F7F7F7F) +
-                                                (xor8 & 0x01010101);
-
-                                acc32[x * 4 + boff] = avg8;
-
-                                // quantize 8-bit → 2-bit, dithered rounding
-                                uint32_t quant = ((avg8 + rbias) >> 6) & 0x03030303;
-
-                                uint8_t out_byte =
-                                    (uint8_t)((quant & 3) | (((quant >> 8) & 3) << 2) |
-                                              (((quant >> 16) & 3) << 4) |
-                                              (((quant >> 24) & 3) << 6));
-
-                                out_word |= (uint32_t)out_byte << (boff * 8);
+                                lcd32[x] = out_word;
+                                line_touched = true;
                             }
                         }
 
-                        lcd32[x] = out_word;
+                        lcd += LCD_WIDTH_PACKED;
+                        accum += LCD_WIDTH_PACKED * 4;
+
+                        if (line_touched)
+                            context->line_has_changed[y >> 4] |= (1 << (y & 0xF));
                     }
 
-                    lcd += LCD_WIDTH_PACKED;
-                    accum += LCD_WIDTH_PACKED * 4;
+                    bool any_dirty = false;
+                    for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                        if (context->line_has_changed[i])
+                        {
+                            any_dirty = true;
+                            break;
+                        }
+                    context->ghost_converged = !any_dirty;
                 }
             }
             else if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode)
             {
+                context->ghost_converged = false;
                 uint8_t* restrict lcd = context->gb->lcd;
                 uint8_t* restrict accum = context->ghost_accum;
 
@@ -2540,14 +2628,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
-            uint8_t* previous_lcd = context->previous_lcd;
-            uint16_t line_has_changed[LCD_HEIGHT / 16];
-
-            memset(line_has_changed, 0, sizeof(line_has_changed));
-
-            unsigned dither_preference = preferences_dither_line;
-            bool stable_scaling_enabled = preferences_dither_stable;
+            uint8_t* dither_lut0 = CB_dither_lut_row0;
+            uint8_t* dither_lut1 = CB_dither_lut_row1;
             int scy = context->gb->gb_reg.SCY;
+            bool stable_scaling_enabled = preferences_dither_stable;
 
             const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
             if (preferences_dither_stable && scy % scaling != last_scy % scaling)
@@ -2556,58 +2640,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 last_scy = scy;
             }
 
-            for (int y = 0; y < LCD_HEIGHT; y++)
-            {
-                uint64_t* cur = (uint64_t*)&current_lcd[y * LCD_WIDTH_PACKED];
-                uint64_t* prv = (uint64_t*)&previous_lcd[y * LCD_WIDTH_PACKED];
-
-                // Prefetch next row while comparing current
-                if (y < LCD_HEIGHT - 1)
-                {
-                    __builtin_prefetch(&current_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
-                    __builtin_prefetch(&previous_lcd[(y + 1) * LCD_WIDTH_PACKED], 0, 0);
-                }
-
-                // Early-out comparison: check 64-bit chunks, break on first difference
-                bool line_changed = false;
-                for (int x = 0; x < LCD_WIDTH_PACKED / 8; x++)
-                {
-                    if (cur[x] != prv[x])
-                    {
-                        line_changed = true;
-                        break;
-                    }
-                }
-
-                if (line_changed)
-                {
-                    line_has_changed[y >> 4] |= (1 << (y & 0xF));
-
-                    gb_fast_memcpy_64(prv, cur, LCD_WIDTH_PACKED);
-                }
-            }
-
-            uint8_t* dither_lut0 = CB_dither_lut_row0;
-            uint8_t* dither_lut1 = CB_dither_lut_row1;
-
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
+                context->ghost_converged = false;
                 for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                {
-                    line_has_changed[i] = 0xFFFF;
-                }
+                    context->line_has_changed[i] = 0xFFFF;
             }
 
             update_fb_dirty_lines(
-                playdate->graphics->getFrame(), current_lcd, line_has_changed,
+                playdate->graphics->getFrame(), current_lcd, context->line_has_changed,
                 playdate->graphics->markUpdatedRows, scy, stable_scaling_enabled, dither_lut0,
                 dither_lut1
             );
-
-            if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
-            {
-                gb_fast_memcpy_64(context->previous_lcd, current_lcd, LCD_BUFFER_BYTES);
-            }
 
             if (preferences_rewind_enabled && !context->gb->is_cgb_mode &&
                 gameScene->rewind.states && !gameScene->rewind.active &&
@@ -3897,6 +3941,9 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                         else
                         {
                             audio_reset_replay_state(&context->gb->audio);
+                            pgb_dirty_prev = context->previous_lcd;
+                            pgb_dirty_flags = context->line_has_changed;
+                            context->ghost_converged = false;
                             gameScene->cgb_needs_palette_recompute = true;
                             if (gameScene->script)
                             {
@@ -4223,6 +4270,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = newest;
     gameScene->rewind.active = true;
     gameScene->rewind.scrub_accumulator = 0.0f;
+    context->ghost_converged = false;
 
     uint8_t* buf = gameScene->rewind.states[newest];
     rewind_dmg_load(context->gb, buf, lcd_sources[0]);

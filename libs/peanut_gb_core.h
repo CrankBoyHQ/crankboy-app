@@ -1124,8 +1124,27 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
     }
 
     uint32_t* restrict line_out = (uint32_t*)(void*)dest_pixels;
-    for (int i = 0; i < LCD_WIDTH_PACKED / 4; ++i)
-        line_out[i] = line_stage[i];
+#if PGB_IS_DMG
+    if (pgb_dirty_prev && !pgb_dirty_skip)
+    {
+        uint32_t* restrict prev_out = (uint32_t*)&pgb_dirty_prev[gb->gb_reg.LY * LCD_WIDTH_PACKED];
+        uint32_t changed = 0;
+        for (int i = 0; i < LCD_WIDTH_PACKED / 4; ++i)
+        {
+            uint32_t s = line_stage[i];
+            changed |= s ^ prev_out[i];
+            line_out[i] = s;
+            prev_out[i] = s;
+        }
+        if (changed)
+            pgb_dirty_flags[gb->gb_reg.LY >> 4] |= (1 << (gb->gb_reg.LY & 0xF));
+    }
+    else
+#endif
+    {
+        for (int i = 0; i < LCD_WIDTH_PACKED / 4; ++i)
+            line_out[i] = line_stage[i];
+    }
 #if PGB_IS_CGB
     if (dest_pixels_alt)
     {
@@ -2068,6 +2087,16 @@ done_instr_timing:
                 uint32_t fill_word = (uint32_t)fill * 0x01010101u;
                 for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
                     ((uint32_t*)gb->lcd)[i] = fill_word;
+                if (gb->lcd_alt)
+                    for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                        ((uint32_t*)gb->lcd_alt)[i] = fill_word;
+                if (pgb_dirty_prev && !pgb_dirty_skip)
+                {
+                    for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                        ((uint32_t*)pgb_dirty_prev)[i] = fill_word;
+                    for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                        pgb_dirty_flags[i] = 0xFFFF;
+                }
             }
         }
     }
