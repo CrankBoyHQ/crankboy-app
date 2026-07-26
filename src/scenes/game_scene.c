@@ -2362,13 +2362,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // 2. Determine if the screen is static.
-                    bool screen_is_static =
-                        (memcmp(frame_buffer[0], context->previous_lcd, LCD_BUFFER_BYTES) == 0);
-
-                    // 3. Render Frame B into frame_buffer[1]
+                    // 2. Render Frame B into frame_buffer[1]
                     context->gb->lcd = frame_buffer[1];
-                    context->gb->direct.frame_skip = screen_is_static;
+                    context->gb->direct.frame_skip = 0;
 #ifdef DTCM_ALLOC
                     DTCM_VERIFY_DEBUG();
                     run_frame_function_pointer(context->gb);
@@ -2379,19 +2375,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     ++gameScene->next_frames_elapsed;
                     tick_audio_sync(gameScene);
 
-                    // 4. Blend/composite and copy result back to original lcd buffer
-                    if (!screen_is_static)
-                    {
-                        blend_frames(
-                            frame_buffer[0], frame_buffer[1], context->previous_lcd,
-                            context->line_has_changed
-                        );
-                        memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
-                    }
-                    else
-                    {
-                        memcpy(original_lcd, frame_buffer[0], LCD_BUFFER_BYTES);
-                    }
+                    // 3. Blend and copy result back to original lcd buffer
+                    blend_frames(
+                        frame_buffer[0], frame_buffer[1], context->previous_lcd,
+                        context->line_has_changed
+                    );
+                    memcpy(original_lcd, frame_buffer[1], LCD_BUFFER_BYTES);
 
                     context->gb->lcd = original_lcd;
                 }
