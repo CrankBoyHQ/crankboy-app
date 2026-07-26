@@ -2084,35 +2084,6 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         };
     }
 
-    // Ghosting
-    if (preferences_blend_frames && preferences_frame_skip == 1)
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "LCD Ghosting",
-            .values = off_on_labels,
-            .description =
-                "Mimics the Game Boy LCD's slow pixel decay.\n\n"
-                "Not available when 30 FPS Mode and Frame Blending is active at the same time.",
-            .pref_var = &preferences_ghosting,
-            .max_value = 0,
-            .on_press = NULL,
-        };
-    }
-    else
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = "LCD Ghosting",
-            .values = off_on_labels,
-            .description =
-                "Mimics the Game Boy LCD's slow pixel decay.\n\n"
-                "Alternates scanlines between current and previous frames, recreating the LCD's "
-                "slow pixel fade.",
-            .pref_var = &preferences_ghosting,
-            .max_value = 2,
-            .on_press = NULL,
-        };
-    }
-
     // dither
     section[++i] = (OptionsMenuEntry){
         .name = "Dither",

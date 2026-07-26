@@ -820,10 +820,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
-                memset(context->ghost_accum, 0, sizeof(context->ghost_accum));
                 pgb_dirty_prev = context->previous_lcd;
                 pgb_dirty_flags = context->line_has_changed;
-                context->ghost_converged = false;
                 gameScene->state = CB_GameSceneStateLoaded;
 
                 playdate->system->logToConsole("gb context initialized.");
@@ -2504,130 +2502,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 }
             }  // if (!gameScene->rewind.active)
 
-            // Ghosting: EMA alpha=1/2, 8-bit accum, dithered output
-            if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode &&
-                !(gameScene->next_frames_elapsed == 2 && preferences_blend_frames))
-            {
-                bool has_dirty = false;
-                for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                    if (context->line_has_changed[i])
-                    {
-                        has_dirty = true;
-                        break;
-                    }
-
-                if (!context->ghost_converged || has_dirty)
-                {
-                    uint8_t* restrict lcd = context->gb->lcd;
-                    uint8_t* restrict accum = context->ghost_accum;
-                    uint32_t any_unconverged = 0;
-
-                    for (int y = 0; y < LCD_HEIGHT; y++)
-                    {
-                        bool line_touched = false;
-                        uint32_t rbias = (y & 1) ? 0x00200020 : 0x20002000;
-
-                        uint32_t* restrict lcd32 = (uint32_t*)lcd;
-                        uint32_t* restrict acc32 = (uint32_t*)accum;
-
-                        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
-                        {
-                            uint32_t w = lcd32[x];
-                            uint32_t out_word = 0;
-
-                            for (int boff = 0; boff < 4; boff++)
-                            {
-                                uint32_t b = (w >> (boff * 8)) & 0xFF;
-                                uint32_t lo = (b | (b << 6)) & 0x0303;
-                                uint32_t hi = ((b >> 4) | ((b >> 4) << 6)) & 0x0303;
-                                uint32_t cur8 = (lo | (hi << 16)) << 6;
-                                uint32_t acc8 = acc32[x * 4 + boff];
-
-                                if (cur8 == acc8)
-                                {
-                                    out_word |= b << (boff * 8);
-                                }
-                                else
-                                {
-                                    uint32_t new_acc = acc8;
-
-                                    for (int p = 0; p < 4; p++)
-                                    {
-                                        int shift = p * 8;
-                                        uint8_t c = (uint8_t)(cur8 >> shift);
-                                        uint8_t a = (uint8_t)(new_acc >> shift);
-                                        if (c != a)
-                                        {
-                                            uint16_t sum = (uint16_t)a + (uint16_t)c;
-                                            uint8_t avg =
-                                                (uint8_t)((a < c) ? ((sum + 1) >> 1) : (sum >> 1));
-                                            new_acc = (new_acc & ~(0xFFu << shift)) |
-                                                      ((uint32_t)avg << shift);
-                                        }
-                                    }
-
-                                    acc32[x * 4 + boff] = new_acc;
-
-                                    // quantize 8-bit -> 2-bit, dithered rounding
-                                    uint32_t quant = ((new_acc + rbias) >> 6) & 0x03030303;
-
-                                    uint8_t out_byte =
-                                        (uint8_t)((quant & 3) | (((quant >> 8) & 3) << 2) |
-                                                  (((quant >> 16) & 3) << 4) |
-                                                  (((quant >> 24) & 3) << 6));
-
-                                    out_word |= (uint32_t)out_byte << (boff * 8);
-                                }
-
-                                any_unconverged |= (acc32[x * 4 + boff] ^ cur8);
-                            }
-
-                            if (out_word != w)
-                            {
-                                lcd32[x] = out_word;
-                                line_touched = true;
-                            }
-                        }
-
-                        lcd += LCD_WIDTH_PACKED;
-                        accum += LCD_WIDTH_PACKED * 4;
-
-                        if (line_touched)
-                            context->line_has_changed[y >> 4] |= (1 << (y & 0xF));
-                    }
-
-                    context->ghost_converged = (any_unconverged == 0);
-                }
-            }
-            else if (preferences_ghosting && !gameScene->rewind.active && !context->gb->is_cgb_mode)
-            {
-                context->ghost_converged = false;
-                uint8_t* restrict lcd = context->gb->lcd;
-                uint8_t* restrict accum = context->ghost_accum;
-
-                for (int y = 0; y < LCD_HEIGHT; y++)
-                {
-                    uint32_t* restrict lcd32 = (uint32_t*)lcd;
-                    uint32_t* restrict acc32 = (uint32_t*)accum;
-
-                    for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
-                    {
-                        uint32_t w = lcd32[x];
-
-                        for (int boff = 0; boff < 4; boff++)
-                        {
-                            uint32_t b = (w >> (boff * 8)) & 0xFF;
-                            uint32_t lo = (b | (b << 6)) & 0x0303;
-                            uint32_t hi = ((b >> 4) | ((b >> 4) << 6)) & 0x0303;
-                            acc32[x * 4 + boff] = (lo | (hi << 16)) << 6;
-                        }
-                    }
-
-                    lcd += LCD_WIDTH_PACKED;
-                    accum += LCD_WIDTH_PACKED * 4;
-                }
-            }
-
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
             uint8_t* dither_lut0 = CB_dither_lut_row0;
@@ -2644,7 +2518,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             if (gbScreenRequiresFullRefresh || force_all_lines_dirty)
             {
-                context->ghost_converged = false;
                 for (int i = 0; i < LCD_HEIGHT / 16; i++)
                     context->line_has_changed[i] = 0xFFFF;
             }
@@ -3945,7 +3818,6 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             audio_reset_replay_state(&context->gb->audio);
                             pgb_dirty_prev = context->previous_lcd;
                             pgb_dirty_flags = context->line_has_changed;
-                            context->ghost_converged = false;
                             gameScene->cgb_needs_palette_recompute = true;
                             if (gameScene->script)
                             {
@@ -4272,7 +4144,6 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = newest;
     gameScene->rewind.active = true;
     gameScene->rewind.scrub_accumulator = 0.0f;
-    context->ghost_converged = false;
 
     uint8_t* buf = gameScene->rewind.states[newest];
     rewind_dmg_load(context->gb, buf, lcd_sources[0]);
