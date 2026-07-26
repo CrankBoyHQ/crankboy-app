@@ -658,35 +658,42 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
+        uint32_t fc = c->freq_counter;
         c->freq_counter += c->freq_inc;
-        int step_count = 0;
-        int32_t step_sum = 0;
+        uint32_t total = c->freq_inc;
+        int32_t weighted_sum = 0;
+
         if (c->freq >= 14)
         {
-            /* LFSR frozen; cap counter to avoid wasted loop spins. */
+            weighted_sum = (int32_t)total * c->val;
             c->freq_counter %= sample_rate;
         }
         else
         {
-            while (c->freq_counter >= sample_rate)
+            uint32_t first = sample_rate - fc;
+            if (first > total)
+                first = total;
+            weighted_sum += (int32_t)first * c->val;
+            uint32_t done = first;
+
+            while (done < total)
             {
-                c->freq_counter -= sample_rate;
-
                 uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
-
                 c->noise.lfsr_reg >>= 1;
                 c->noise.lfsr_reg |= (xor_res << 14);
-
                 if (c->lfsr_narrow)
-                {
                     c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
-                }
-
                 c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MAX / MAX_CHAN_VOLUME)
                                                  : (VOL_INIT_MIN / MAX_CHAN_VOLUME);
-                step_count++;
-                step_sum += c->val;
+
+                uint32_t seg = sample_rate;
+                if (total - done < seg)
+                    seg = total - done;
+                weighted_sum += (int32_t)seg * c->val;
+                done += seg;
             }
+
+            c->freq_counter %= sample_rate;
         }
 
         if (c->muted)
@@ -697,8 +704,8 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
         c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
         int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
 
-        if (step_count > 0)
-            mono_sample = (step_sum / step_count) * effective_volume;
+        if (total > 0)
+            mono_sample = (weighted_sum / (int32_t)total) * effective_volume;
         else
             mono_sample = c->val * effective_volume;
 #if TARGET_PLAYDATE
