@@ -353,8 +353,9 @@ __audio static int update_len(audio_data* restrict audio, chan* c, int len)
     return len;
 }
 
-// This function is only for the "Accurate" mode.
-__audio static bool update_freq(chan* c, uint32_t* pos, int sample_rate)
+__attribute__((always_inline)) static inline bool update_freq(
+    chan* c, uint32_t* pos, int sample_rate
+)
 {
     uint32_t inc = c->freq_inc - *pos;
     c->freq_counter += inc;
