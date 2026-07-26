@@ -1136,7 +1136,7 @@ __core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
             line_out[i] = s;
             prev_out[i] = s;
         }
-        if (changed)
+        if (changed && pgb_dirty_flags)
             pgb_dirty_flags[gb->gb_reg.LY >> 4] |= (1 << (gb->gb_reg.LY & 0xF));
     }
     else
@@ -2090,7 +2090,7 @@ done_instr_timing:
                 if (gb->lcd_alt)
                     for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
                         ((uint32_t*)gb->lcd_alt)[i] = fill_word;
-                if (pgb_dirty_prev && !pgb_dirty_skip)
+                if (pgb_dirty_prev && pgb_dirty_flags && !pgb_dirty_skip)
                 {
                     for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
                         ((uint32_t*)pgb_dirty_prev)[i] = fill_word;

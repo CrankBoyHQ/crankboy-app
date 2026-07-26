@@ -46,6 +46,11 @@ bool gbScreenRequiresFullRefresh;
 #include <string.h>
 #include <time.h>
 
+/* Definitions for extern globals declared in peanut_gb.h */
+uint8_t* pgb_dirty_prev = NULL;
+uint16_t* pgb_dirty_flags = NULL;
+uint8_t pgb_dirty_skip = 0;
+
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208
 
@@ -1394,7 +1399,7 @@ static void gb_error(gb_s* gb, const enum gb_error_e gb_err, const uint16_t val)
     return;
 }
 
-static __section__(".text.tick") void blend_frames_lut(
+static __section__(".text.tick") void blend_frames(
     uint8_t* restrict frame_a, uint8_t* restrict frame_b_and_dest, uint8_t* restrict prev_lcd,
     uint16_t* restrict dirty_flags
 )
@@ -2209,7 +2214,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
-                        blend_frames_lut(
+                        blend_frames(
                             cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
                             context->line_has_changed
                         );
@@ -2264,7 +2269,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                 tick_audio_sync(gameScene);
 
                                 // Blend frame N bright + frame N+1 dark
-                                blend_frames_lut(
+                                blend_frames(
                                     original_lcd, cb_frame_buffer[1], context->previous_lcd,
                                     context->line_has_changed
                                 );
@@ -2273,7 +2278,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             else
                             {
                                 // Blend frame N's own bright + dark (same as dual-output)
-                                blend_frames_lut(
+                                blend_frames(
                                     cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
                                     context->line_has_changed
                                 );
@@ -2297,7 +2302,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #endif
 
                             context->gb->direct.cgb_dual_output = false;
-                            blend_frames_lut(
+                            blend_frames(
                                 cb_frame_buffer[0], cb_frame_buffer[1], context->previous_lcd,
                                 context->line_has_changed
                             );
@@ -2377,7 +2382,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     // 4. Blend/composite and copy result back to original lcd buffer
                     if (!screen_is_static)
                     {
-                        blend_frames_lut(
+                        blend_frames(
                             frame_buffer[0], frame_buffer[1], context->previous_lcd,
                             context->line_has_changed
                         );
@@ -2425,7 +2430,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         ++gameScene->next_frames_elapsed;
                         tick_audio_sync(gameScene);
 
-                        blend_frames_lut(
+                        blend_frames(
                             frame_buffer[0], frame_buffer[1], context->previous_lcd,
                             context->line_has_changed
                         );
@@ -2554,15 +2559,27 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                 }
                                 else
                                 {
-                                    // round-half-up average per 8-bit lane, no overflow
-                                    uint32_t xor8 = acc8 ^ cur8;
-                                    uint32_t avg8 = (acc8 & cur8) + ((xor8 >> 1) & 0x7F7F7F7F) +
-                                                    (xor8 & 0x01010101);
+                                    uint32_t new_acc = acc8;
 
-                                    acc32[x * 4 + boff] = avg8;
+                                    for (int p = 0; p < 4; p++)
+                                    {
+                                        int shift = p * 8;
+                                        uint8_t c = (uint8_t)(cur8 >> shift);
+                                        uint8_t a = (uint8_t)(new_acc >> shift);
+                                        if (c != a)
+                                        {
+                                            uint16_t sum = (uint16_t)a + (uint16_t)c;
+                                            uint8_t avg =
+                                                (uint8_t)((a < c) ? ((sum + 1) >> 1) : (sum >> 1));
+                                            new_acc = (new_acc & ~(0xFFu << shift)) |
+                                                      ((uint32_t)avg << shift);
+                                        }
+                                    }
 
-                                    // quantize 8-bit → 2-bit, dithered rounding
-                                    uint32_t quant = ((avg8 + rbias) >> 6) & 0x03030303;
+                                    acc32[x * 4 + boff] = new_acc;
+
+                                    // quantize 8-bit -> 2-bit, dithered rounding
+                                    uint32_t quant = ((new_acc + rbias) >> 6) & 0x03030303;
 
                                     uint8_t out_byte =
                                         (uint8_t)((quant & 3) | (((quant >> 8) & 3) << 2) |
