@@ -80,7 +80,7 @@ typedef struct CB_GameSceneContext
     bool cgb_mode;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
-    clalign uint8_t ghost_raw_prev[LCD_BUFFER_BYTES];  // raw frame N-1 for ghost blend
+    clalign uint8_t ghost_accum[LCD_BUFFER_BYTES * 4];  // EMA accum, 8 bits/pixel
 } CB_GameSceneContext;
 
 struct ScriptState;
