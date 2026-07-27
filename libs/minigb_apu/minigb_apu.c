@@ -21,6 +21,24 @@
 
 #define DMG_CLOCK_FREQ_U ((unsigned)DMG_CLOCK_FREQ)
 
+/* Per-frame APU register write events for cycle-accurate replay.
+ * Kept as file-static state in main RAM instead of gb_s (which is
+ * DTCM-resident): sequential write-once/read-once access gains nothing
+ * from DTCM, and the 16 KB buffer would strain the ~64 KB DTCM pool.
+ * Transient per-frame data, never serialized.
+ * Sized to cover all realistic streaming: CH1/2 volume PCM (16 kHz
+ * voice = ~267/frame) and CH3 wave-RAM streaming up to ~15 kHz
+ * (16 byte-writes per period = ~4096/frame). */
+#define APU_EVENT_CAP 4096
+typedef struct
+{
+    uint32_t apu_count;
+    uint16_t addr;
+    uint8_t val;
+} apu_event_t;
+static apu_event_t s_apu_events[APU_EVENT_CAP];
+static uint16_t s_apu_event_count;
+
 #define AUDIO_MEM_SIZE (0xFF40 - 0xFF10)
 #define AUDIO_ADDR_COMPENSATION 0xFF10
 
@@ -987,13 +1005,12 @@ void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
-    if (audio->pre_frame_valid && audio->apu_event_count < PGB_APU_EVENT_CAP &&
-        preferences_sound_mode == 2)
+    if (audio->pre_frame_valid && s_apu_event_count < APU_EVENT_CAP && preferences_sound_mode == 2)
     {
-        audio->apu_events[audio->apu_event_count].apu_count = apu_count;
-        audio->apu_events[audio->apu_event_count].addr = addr;
-        audio->apu_events[audio->apu_event_count].val = val;
-        audio->apu_event_count++;
+        s_apu_events[s_apu_event_count].apu_count = apu_count;
+        s_apu_events[s_apu_event_count].addr = addr;
+        s_apu_events[s_apu_event_count].val = val;
+        s_apu_event_count++;
     }
     /* Find sound channel corresponding to register address. */
     uint_fast8_t i;
@@ -1303,7 +1320,7 @@ void audio_init(audio_data* audio)
     audio->div_apu_step = 3;
     audio->pre_frame_div_apu_step = 3;
     audio->skip_next_apu_tick = false;
-    audio->apu_event_count = 0;
+    s_apu_event_count = 0;
     audio->pre_frame_valid = true;
 
     memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
@@ -1367,7 +1384,7 @@ void audio_init(audio_data* audio)
 
 void audio_reset_replay_state(audio_data* audio)
 {
-    audio->apu_event_count = 0;
+    s_apu_event_count = 0;
     audio->pre_frame_valid = false;
 }
 
@@ -1753,12 +1770,12 @@ __shell void audio_generate_accurate(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len
 )
 {
-    if (audio->apu_event_count)
+    if (s_apu_event_count)
     {
         uint32_t end_count = 0;
-        for (int i = 0; i < audio->apu_event_count; i++)
-            if (audio->apu_events[i].apu_count > end_count)
-                end_count = audio->apu_events[i].apu_count;
+        for (int i = 0; i < s_apu_event_count; i++)
+            if (s_apu_events[i].apu_count > end_count)
+                end_count = s_apu_events[i].apu_count;
 
         int sample_rate = get_audio_sample_rate();
         int frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
@@ -1783,13 +1800,13 @@ __shell void audio_generate_accurate(
             int tick_accum = 0;
             int offset = 0;
 
-            for (int i = 0; i < audio->apu_event_count; i++)
+            for (int i = 0; i < s_apu_event_count; i++)
             {
                 /* Absolute sample position: avoids cumulative floor drift
                  * from per-delta rounding across many events. */
-                int seg = (int)((uint64_t)audio->apu_events[i].apu_count * sample_rate /
-                                DMG_CLOCK_FREQ_U) -
-                          offset;
+                int seg =
+                    (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) -
+                    offset;
                 if (seg > frame_samples - offset)
                     seg = frame_samples - offset;
                 if (seg < 0)
@@ -1831,8 +1848,7 @@ __shell void audio_generate_accurate(
                 }
 
                 audio_write(
-                    audio, audio->apu_events[i].addr, audio->apu_events[i].val,
-                    audio->apu_events[i].apu_count
+                    audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count
                 );
             }
 
@@ -1877,7 +1893,7 @@ __shell void audio_generate_accurate(
             len -= frame_samples;
         }
 
-        audio->apu_event_count = 0;
+        s_apu_event_count = 0;
     }
 
     int sample_rate = get_audio_sample_rate();
