@@ -24,12 +24,14 @@
 /* Per-frame APU register write events for cycle-accurate replay.
  * Kept as file-static state in main RAM instead of gb_s (which is
  * DTCM-resident): sequential write-once/read-once access gains nothing
- * from DTCM, and the 16 KB buffer would strain the ~64 KB DTCM pool.
+ * from DTCM, and the 64 KB buffer would strain the ~64 KB DTCM pool.
  * Transient per-frame data, never serialized.
- * Sized to cover all realistic streaming: CH1/2 volume PCM (16 kHz
- * voice = ~267/frame) and CH3 wave-RAM streaming up to ~15 kHz
- * (16 byte-writes per period = ~4096/frame). */
-#define APU_EVENT_CAP 4096
+ * Sized beyond every hardware-possible rate: CH1/2 volume PCM
+ * (16 kHz voice = ~267/frame), NR32 PDM (25.6 kHz = ~427/frame),
+ * CH3 wave-RAM streaming (16 byte-writes per period) past the
+ * CPU-saturation limit, plus room for two frames of events when a
+ * frame-skip hiccup delays generation. */
+#define APU_EVENT_CAP 8192
 typedef struct
 {
     uint32_t apu_count;
@@ -1931,152 +1933,185 @@ void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* righ
         tick_next += samples_per_tick;            \
     }
 
+/* Render one emulated frame's event span [span_start, span_end) plus the
+ * tail after its last event, emitting up to frame_samples samples.
+ * Events beyond frame_samples (buffer clamp) are still applied so channel
+ * state stays correct. Returns samples emitted. */
+__shell static int replay_event_span(
+    audio_data* restrict audio, int16_t* left, int16_t* right, int span_start, int span_end,
+    int frame_samples, int sample_rate
+)
+{
+    int samples_per_tick = sample_rate / 512;
+    int samples_per_tick_rem = sample_rate % 512;
+    int tick_accum = 0;
+    int tick_sched_accum = 0;
+    int tick_next = samples_per_tick;
+    int offset = 0;
+
+    for (int i = span_start; i < span_end; i++)
+    {
+        /* Absolute sample position: avoids cumulative floor drift
+         * from per-delta rounding across many events. */
+        int seg =
+            (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) - offset;
+        if (seg > frame_samples - offset)
+            seg = frame_samples - offset;
+        if (seg < 0)
+            seg = 0;
+
+        if (seg > 0)
+        {
+            int generated = 0;
+            while (generated < seg)
+            {
+                int chunk = samples_per_tick;
+                tick_accum += samples_per_tick_rem;
+                if (tick_accum >= 512)
+                {
+                    tick_accum -= 512;
+                    chunk++;
+                }
+                if (generated + chunk > seg)
+                    chunk = seg - generated;
+
+                update_wave(audio, left + offset + generated, right + offset + generated, chunk);
+                update_square(
+                    audio, left + offset + generated, right + offset + generated, 0, chunk
+                );
+                update_square(
+                    audio, left + offset + generated, right + offset + generated, 1, chunk
+                );
+                update_noise(audio, left + offset + generated, right + offset + generated, chunk);
+
+                generated += chunk;
+            }
+            offset += seg;
+
+            APU_DIV_TICK_SCHED_UPTO(offset);
+        }
+
+        if (s_ch3_cursor_valid)
+            ch3_cursor_advance(audio, s_apu_events[i].apu_count);
+
+        audio_write(audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count);
+
+        /* Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52):
+         * freq change alters step period; trigger restarts step phase. */
+        if (s_ch3_cursor_valid)
+        {
+            uint16_t a = s_apu_events[i].addr;
+            if (a == 0xFF1A || a == 0xFF1D || a == 0xFF1E || a == 0xFF26)
+                ch3_cursor_reanchor(audio, s_apu_events[i].apu_count);
+        }
+    }
+
+    int rem = frame_samples - offset;
+    if (rem > 0)
+    {
+        int generated = 0;
+        while (generated < rem)
+        {
+            int chunk = samples_per_tick;
+            tick_accum += samples_per_tick_rem;
+            if (tick_accum >= 512)
+            {
+                tick_accum -= 512;
+                chunk++;
+            }
+            if (generated + chunk > rem)
+                chunk = rem - generated;
+
+            update_wave(audio, left + offset + generated, right + offset + generated, chunk);
+            update_square(audio, left + offset + generated, right + offset + generated, 0, chunk);
+            update_square(audio, left + offset + generated, right + offset + generated, 1, chunk);
+            update_noise(audio, left + offset + generated, right + offset + generated, chunk);
+
+            generated += chunk;
+
+            APU_DIV_TICK_SCHED_UPTO(offset + generated);
+        }
+        offset += rem;
+    }
+
+    return offset;
+}
+
 __shell void audio_generate_accurate(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len
 )
 {
     if (s_apu_event_count)
     {
-        uint32_t end_count = 0;
-        for (int i = 0; i < s_apu_event_count; i++)
-            if (s_apu_events[i].apu_count > end_count)
-                end_count = s_apu_events[i].apu_count;
-
         int sample_rate = get_audio_sample_rate();
-        int frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
-        if (frame_samples > len)
-            frame_samples = len;
-        if (frame_samples < 0)
-            frame_samples = 0;
 
-        if (frame_samples > 0)
+        if (audio->pre_frame_valid)
         {
-            if (audio->pre_frame_valid)
-            {
-                memcpy(audio->chans, audio->pre_frame_chans, sizeof(audio->chans));
-                audio->div_apu_step = audio->pre_frame_div_apu_step;
-                audio->skip_next_apu_tick = audio->pre_frame_skip_apu_tick;
-            }
-
-            audio->pre_frame_valid = false;
-
-            /* Anchor CH3 cycle cursor to the (restored) frame-start state.
-             * Base = first event's apu_count: generate may be called several
-             * times per frame with apu_count continuing across calls, so the
-             * step schedule must start at the state's actual cycle position. */
-            ch3_cursor_reset(audio, s_apu_events[0].apu_count);
-
-            int samples_per_tick = sample_rate / 512;
-            int samples_per_tick_rem = sample_rate % 512;
-            int tick_accum = 0;
-            int tick_sched_accum = 0;
-            int tick_next = samples_per_tick;
-            int offset = 0;
-
-            for (int i = 0; i < s_apu_event_count; i++)
-            {
-                /* Absolute sample position: avoids cumulative floor drift
-                 * from per-delta rounding across many events. */
-                int seg =
-                    (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) -
-                    offset;
-                if (seg > frame_samples - offset)
-                    seg = frame_samples - offset;
-                if (seg < 0)
-                    seg = 0;
-
-                if (seg > 0)
-                {
-                    int generated = 0;
-                    while (generated < seg)
-                    {
-                        int chunk = samples_per_tick;
-                        tick_accum += samples_per_tick_rem;
-                        if (tick_accum >= 512)
-                        {
-                            tick_accum -= 512;
-                            chunk++;
-                        }
-                        if (generated + chunk > seg)
-                            chunk = seg - generated;
-
-                        update_wave(
-                            audio, left + offset + generated, right + offset + generated, chunk
-                        );
-                        update_square(
-                            audio, left + offset + generated, right + offset + generated, 0, chunk
-                        );
-                        update_square(
-                            audio, left + offset + generated, right + offset + generated, 1, chunk
-                        );
-                        update_noise(
-                            audio, left + offset + generated, right + offset + generated, chunk
-                        );
-
-                        generated += chunk;
-                    }
-                    offset += seg;
-
-                    APU_DIV_TICK_SCHED_UPTO(offset);
-                }
-
-                if (s_ch3_cursor_valid)
-                    ch3_cursor_advance(audio, s_apu_events[i].apu_count);
-
-                audio_write(
-                    audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count
-                );
-
-                /* Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52):
-                 * freq change alters step period; trigger restarts step phase. */
-                if (s_ch3_cursor_valid)
-                {
-                    uint16_t a = s_apu_events[i].addr;
-                    if (a == 0xFF1A || a == 0xFF1D || a == 0xFF1E || a == 0xFF26)
-                        ch3_cursor_reanchor(audio, s_apu_events[i].apu_count);
-                }
-            }
-
-            int rem = frame_samples - offset;
-            if (rem > 0)
-            {
-                int generated = 0;
-                while (generated < rem)
-                {
-                    int chunk = samples_per_tick;
-                    tick_accum += samples_per_tick_rem;
-                    if (tick_accum >= 512)
-                    {
-                        tick_accum -= 512;
-                        chunk++;
-                    }
-                    if (generated + chunk > rem)
-                        chunk = rem - generated;
-
-                    update_wave(
-                        audio, left + offset + generated, right + offset + generated, chunk
-                    );
-                    update_square(
-                        audio, left + offset + generated, right + offset + generated, 0, chunk
-                    );
-                    update_square(
-                        audio, left + offset + generated, right + offset + generated, 1, chunk
-                    );
-                    update_noise(
-                        audio, left + offset + generated, right + offset + generated, chunk
-                    );
-
-                    generated += chunk;
-
-                    APU_DIV_TICK_SCHED_UPTO(offset + generated);
-                }
-                offset += rem;
-            }
-
-            left += frame_samples;
-            right += frame_samples;
-            len -= frame_samples;
+            memcpy(audio->chans, audio->pre_frame_chans, sizeof(audio->chans));
+            audio->div_apu_step = audio->pre_frame_div_apu_step;
+            audio->skip_next_apu_tick = audio->pre_frame_skip_apu_tick;
         }
+
+        audio->pre_frame_valid = false;
+
+        /* Split the batch at emulated-frame boundaries: apu_count restarts
+         * at 0 each frame (peanut_gb_core.h), so a decrease marks the start
+         * of a new frame. Multi-frame batches occur when a generation tick
+         * was skipped (lead accounting) or the emulator frame-skips; without
+         * splitting, later frames' events clamp to a single sample point and
+         * their span renders flat (audible flutter on PDM-style content). */
+        int span_start = 0;
+        int offset = 0;
+
+        while (span_start < s_apu_event_count)
+        {
+            int span_end = s_apu_event_count;
+            for (int i = span_start + 1; i < s_apu_event_count; i++)
+            {
+                if (s_apu_events[i].apu_count < s_apu_events[i - 1].apu_count)
+                {
+                    span_end = i;
+                    break;
+                }
+            }
+
+            uint32_t end_count = 0;
+            for (int i = span_start; i < span_end; i++)
+                if (s_apu_events[i].apu_count > end_count)
+                    end_count = s_apu_events[i].apu_count;
+
+            int frame_samples;
+            if (span_end < s_apu_event_count)
+            {
+                /* Interior span: events end at end_count but the frame's
+                 * audio continues to the frame boundary (70224 cycles).
+                 * Deriving span length from end_count would drop the
+                 * post-event remainder of the frame (staccato gaps). */
+                frame_samples = (int)((uint64_t)LCD_FRAME_CYCLES * sample_rate / DMG_CLOCK_FREQ_U);
+            }
+            else
+            {
+                frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
+            }
+            if (frame_samples > len - offset)
+                frame_samples = len - offset;
+            if (frame_samples < 0)
+                frame_samples = 0;
+
+            /* Anchor CH3 cycle cursor to this frame's first event. */
+            ch3_cursor_reset(audio, s_apu_events[span_start].apu_count);
+
+            offset += replay_event_span(
+                audio, left + offset, right + offset, span_start, span_end, frame_samples,
+                sample_rate
+            );
+
+            span_start = span_end;
+        }
+
+        left += offset;
+        right += offset;
+        len -= offset;
 
         s_apu_event_count = 0;
         s_ch3_cursor_valid = false;
