@@ -226,6 +226,10 @@ struct PGB_VERSIONED(chan)
     uint8_t env_divider;
 };
 
+/* Max per-frame APU register write events (cycle-accurate replay).
+ * Covers CH3 wave-RAM streaming to ~7.6 kHz (16 byte-writes per period). */
+#define PGB_APU_EVENT_CAP 2048
+
 struct PGB_VERSIONED(audio_data)
 {
     int vol_l : 4;
@@ -241,14 +245,16 @@ struct PGB_VERSIONED(audio_data)
      * edge tick is skipped (hardware glitch). */
     bool skip_next_apu_tick : 1;
 
-    /* Per-frame register write events for cycle-accurate replay. */
-    uint8_t apu_event_count;
+    /* Per-frame register write events for cycle-accurate replay.
+     * Sized for CH1/2 volume PCM (16 kHz voice = ~267/frame) and
+     * CH3 wave-RAM streaming (4-8 kHz = ~1067-2133/frame). */
+    uint16_t apu_event_count;
     struct
     {
         uint32_t apu_count;
         uint16_t addr;
         uint8_t val;
-    } apu_events[128];
+    } apu_events[PGB_APU_EVENT_CAP];
 
     /* Pre-frame channel snapshot for event replay. */
     struct PGB_VERSIONED(chan) pre_frame_chans[4];

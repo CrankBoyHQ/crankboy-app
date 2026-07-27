@@ -987,7 +987,8 @@ void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
-    if (audio->pre_frame_valid && audio->apu_event_count < 128 && preferences_sound_mode == 2)
+    if (audio->pre_frame_valid && audio->apu_event_count < PGB_APU_EVENT_CAP &&
+        preferences_sound_mode == 2)
     {
         audio->apu_events[audio->apu_event_count].apu_count = apu_count;
         audio->apu_events[audio->apu_event_count].addr = addr;
@@ -1755,12 +1756,12 @@ __shell void audio_generate_accurate(
     if (audio->apu_event_count)
     {
         uint32_t end_count = 0;
-        for (uint8_t i = 0; i < audio->apu_event_count; i++)
+        for (int i = 0; i < audio->apu_event_count; i++)
             if (audio->apu_events[i].apu_count > end_count)
                 end_count = audio->apu_events[i].apu_count;
 
         int sample_rate = get_audio_sample_rate();
-        int frame_samples = (int)((uint64_t)end_count * sample_rate / 4194304);
+        int frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
         if (frame_samples > len)
             frame_samples = len;
         if (frame_samples < 0)
@@ -1781,13 +1782,15 @@ __shell void audio_generate_accurate(
             int samples_per_tick_rem = sample_rate % 512;
             int tick_accum = 0;
             int offset = 0;
-            uint32_t prev_count = 0;
 
-            for (uint8_t i = 0; i < audio->apu_event_count; i++)
+            for (int i = 0; i < audio->apu_event_count; i++)
             {
-                uint32_t delta = audio->apu_events[i].apu_count - prev_count;
-                int seg = (int)((uint64_t)delta * sample_rate / 4194304);
-                if (seg > 0 && offset + seg > frame_samples)
+                /* Absolute sample position: avoids cumulative floor drift
+                 * from per-delta rounding across many events. */
+                int seg = (int)((uint64_t)audio->apu_events[i].apu_count * sample_rate /
+                                DMG_CLOCK_FREQ_U) -
+                          offset;
+                if (seg > frame_samples - offset)
                     seg = frame_samples - offset;
                 if (seg < 0)
                     seg = 0;
@@ -1831,7 +1834,6 @@ __shell void audio_generate_accurate(
                     audio, audio->apu_events[i].addr, audio->apu_events[i].val,
                     audio->apu_events[i].apu_count
                 );
-                prev_count = audio->apu_events[i].apu_count;
             }
 
             int rem = frame_samples - offset;
