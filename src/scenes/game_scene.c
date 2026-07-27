@@ -80,11 +80,19 @@ CB_GameScene* audioGameScene = NULL;
 
 volatile int g_audio_resync_requested = 0;
 
+/* Frames to ignore further resync requests after handling one, so a single
+ * reset is guaranteed time to refill the ring before another can trigger.
+ * Breaks reset -> starve -> reset oscillation (e.g. after sleep/resume). */
+static int s_resync_cooldown = 0;
+
 void CB_reset_audio_sync_state(void)
 {
     atomic_store(&g_audio_sync_buffer.read_pos, 0);
     atomic_store(&g_audio_sync_buffer.write_pos, 0);
     atomic_store(&g_samples_generated_total, playdate->sound->getCurrentTime());
+    memset(g_audio_sync_buffer.left, 0, sizeof(g_audio_sync_buffer.left));
+    memset(g_audio_sync_buffer.right, 0, sizeof(g_audio_sync_buffer.right));
+    g_audio_resync_requested = 0;
 }
 
 static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generate)
@@ -144,16 +152,23 @@ static void tick_audio_sync(CB_GameScene* gameScene)
         return;
     }
 
-    /* Underrun reported by the audio callback: underrun silence counts as
-     * played time in the lead accounting, so without a rebaseline the
-     * generator believes it is ahead while the ring starves (wedge).
-     * Reset positions + baseline, then fall through and regenerate a
-     * full lead immediately. */
+    // Underrun reported by the audio callback: underrun silence counts as
+    // played time in the lead accounting, so without a rebaseline the
+    // generator believes it is ahead while the ring starves (wedge).
+    // Reset positions + baseline, then fall through and regenerate a
+    // full lead immediately. Cooldown ensures one reset completes its
+    // refill before another can trigger.
     if (g_audio_resync_requested)
     {
         g_audio_resync_requested = 0;
-        CB_reset_audio_sync_state();
+        if (s_resync_cooldown <= 0)
+        {
+            CB_reset_audio_sync_state();
+            s_resync_cooldown = 10;
+        }
     }
+    if (s_resync_cooldown > 0)
+        s_resync_cooldown--;
 
     uint32_t samples_played = playdate->sound->getCurrentTime();
     uint32_t samples_generated = atomic_load(&g_samples_generated_total);
@@ -3964,7 +3979,16 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             // while the device was locked or the system menu was open.
             if (preferences_sound_mode == 2)
             {
+                // Stabilize while the callback is still silenced: reset (now
+                // also clears the ring of stale samples), pre-fill a full
+                // lead of fresh audio, then re-enable output. Prevents the
+                // reset -> starve -> resync storm that caused seconds of
+                // muffled/distorted audio after sleep or the system menu.
+                audioGameScene = NULL;
                 CB_reset_audio_sync_state();
+                generate_audio_chunk(gameScene, MAX_AUDIO_SAMPLES_PER_CHUNK);
+                s_resync_cooldown = 10;
+                audioGameScene = gameScene;
             }
         }
         break;
