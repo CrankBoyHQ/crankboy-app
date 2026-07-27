@@ -1911,6 +1911,26 @@ void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* righ
     update_noise(audio, left, right, len);
 }
 
+/* Advance the DIV-APU frame-sequencer schedule up to an absolute sample
+ * position. Ticks must fire at 512 Hz of output progress regardless of how
+ * rendering is segmented: event-dense frames (PDM cries) cut segments to
+ * 1-2 samples, and chunk-relative ticking ("tick after each chunk") then
+ * starves the envelope/length/sweep sequencer entirely (hanging notes).
+ * Requires in scope: tick_next, tick_sched_accum, samples_per_tick,
+ * samples_per_tick_rem, audio. */
+#define APU_DIV_TICK_SCHED_UPTO(pos)              \
+    while ((pos) >= tick_next)                    \
+    {                                             \
+        audio_div_apu_tick(audio);                \
+        tick_sched_accum += samples_per_tick_rem; \
+        if (tick_sched_accum >= 512)              \
+        {                                         \
+            tick_sched_accum -= 512;              \
+            tick_next++;                          \
+        }                                         \
+        tick_next += samples_per_tick;            \
+    }
+
 __shell void audio_generate_accurate(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len
 )
@@ -1949,6 +1969,8 @@ __shell void audio_generate_accurate(
             int samples_per_tick = sample_rate / 512;
             int samples_per_tick_rem = sample_rate % 512;
             int tick_accum = 0;
+            int tick_sched_accum = 0;
+            int tick_next = samples_per_tick;
             int offset = 0;
 
             for (int i = 0; i < s_apu_event_count; i++)
@@ -1992,10 +2014,10 @@ __shell void audio_generate_accurate(
                         );
 
                         generated += chunk;
-                        if (generated < seg)
-                            audio_div_apu_tick(audio);
                     }
                     offset += seg;
+
+                    APU_DIV_TICK_SCHED_UPTO(offset);
                 }
 
                 if (s_ch3_cursor_valid)
@@ -2045,8 +2067,8 @@ __shell void audio_generate_accurate(
                     );
 
                     generated += chunk;
-                    if (generated < rem)
-                        audio_div_apu_tick(audio);
+
+                    APU_DIV_TICK_SCHED_UPTO(offset + generated);
                 }
                 offset += rem;
             }
@@ -2064,6 +2086,8 @@ __shell void audio_generate_accurate(
     int samples_per_tick = sample_rate / 512;
     int samples_per_tick_rem = sample_rate % 512;
     int tick_accum = 0;
+    int tick_sched_accum = 0;
+    int tick_next = samples_per_tick;
     int generated = 0;
 
     while (generated < len)
@@ -2085,8 +2109,7 @@ __shell void audio_generate_accurate(
 
         generated += chunk;
 
-        if (generated < len)
-            audio_div_apu_tick(audio);
+        APU_DIV_TICK_SCHED_UPTO(generated);
     }
 
     memcpy(audio->pre_frame_chans, audio->chans, sizeof(audio->pre_frame_chans));
