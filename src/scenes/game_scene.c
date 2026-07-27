@@ -78,6 +78,8 @@ uint8_t pgb_dirty_skip = 0;
 
 CB_GameScene* audioGameScene = NULL;
 
+volatile int g_audio_resync_requested = 0;
+
 void CB_reset_audio_sync_state(void)
 {
     atomic_store(&g_audio_sync_buffer.read_pos, 0);
@@ -142,11 +144,22 @@ static void tick_audio_sync(CB_GameScene* gameScene)
         return;
     }
 
+    /* Underrun reported by the audio callback: underrun silence counts as
+     * played time in the lead accounting, so without a rebaseline the
+     * generator believes it is ahead while the ring starves (wedge).
+     * Reset positions + baseline, then fall through and regenerate a
+     * full lead immediately. */
+    if (g_audio_resync_requested)
+    {
+        g_audio_resync_requested = 0;
+        CB_reset_audio_sync_state();
+    }
+
     uint32_t samples_played = playdate->sound->getCurrentTime();
     uint32_t samples_generated = atomic_load(&g_samples_generated_total);
 
-    // Target having a buffer of ~3 frames of audio (at 60fps)
-    uint32_t target_lead_samples = (44100 / 60) * 3;
+    // Target having a buffer of ~4 frames of audio (at 60fps)
+    uint32_t target_lead_samples = (44100 / 60) * 4;
     uint32_t target_sample_count = samples_played + target_lead_samples;
 
     int samples_to_generate = 0;
@@ -167,7 +180,7 @@ static void tick_audio_sync(CB_GameScene* gameScene)
         uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
         uint32_t available_space = AUDIO_RING_BUFFER_SIZE - (write_pos - read_pos);
 
-        if (samples_to_generate < available_space)
+        if ((uint32_t)samples_to_generate <= available_space)
         {
             generate_audio_chunk(gameScene, samples_to_generate);
             atomic_fetch_add(&g_samples_generated_total, samples_to_generate);

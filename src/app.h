@@ -36,8 +36,14 @@ extern pthread_mutex_t audio_mutex;
 #define __space __attribute__((optimize("Os")))
 #endif
 
-#define AUDIO_RING_BUFFER_SIZE 4096                          // ~90ms of audio at 44.1kHz.
+#define AUDIO_RING_BUFFER_SIZE 8192                          // ~185ms of audio at 44.1kHz.
 #define AUDIO_RING_BUFFER_MASK (AUDIO_RING_BUFFER_SIZE - 1)  // For fast bitwise modulo
+
+/* Set by audio_callback on underrun; consumed by tick_audio_sync on the
+ * main thread to rebaseline the audio lead accounting (which otherwise
+ * wedges: underrun silence counts as played time, so the generator
+ * believes it is ahead while the ring starves). */
+extern volatile int g_audio_resync_requested;
 
 // For the official catalog release from the crankboy team. Not
 // for third-party catalog releases:

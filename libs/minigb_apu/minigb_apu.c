@@ -39,6 +39,67 @@ typedef struct
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
+/* CH3 cycle-domain sample cursor for accurate-mode wave-RAM write timing.
+ * The renderer (update_wave) advances c->val at sample granularity, which is
+ * too coarse for the DMG wave-RAM access quirk: writes during CH3 playback
+ * redirect to the byte CH3 is currently reading, and a quantized cursor
+ * lands bytes in wrong slots (PCM-via-wave-RAM turns to noise).
+ * This cursor advances in the cycle domain between replayed write events,
+ * giving the gate and redirect an exact position at each event's apu_count.
+ * Transient, replay-only; never serialized. */
+static bool s_ch3_cursor_valid;
+static uint8_t s_ch3_cursor_pos;   /* sample index 0-31 */
+static uint32_t s_ch3_step_period; /* apu_count cycles per step: 2 * (2048 - freq) */
+static uint32_t s_ch3_last_step;   /* apu_count of most recent step */
+static uint32_t s_ch3_next_step;   /* apu_count of next scheduled step */
+
+static inline uint32_t ch3_step_period(const chan* c)
+{
+    return 2u * (2048u - c->freq);
+}
+
+/* Anchor cursor to current channel state at frame start (or on CH3-affecting
+ * register writes: NR30/NR33/NR34/NR52). Position is preserved on trigger by
+ * hardware, but step phase restarts. */
+__shell static void ch3_cursor_reanchor(const audio_data* audio, uint32_t apu_count)
+{
+    const chan* c = &audio->chans[2];
+    s_ch3_cursor_pos = c->val & 31;
+    s_ch3_step_period = ch3_step_period(c);
+    s_ch3_last_step = apu_count;
+    s_ch3_next_step = apu_count + s_ch3_step_period;
+}
+
+__shell static void ch3_cursor_reset(const audio_data* audio, uint32_t base_count)
+{
+    ch3_cursor_reanchor(audio, base_count);
+    s_ch3_cursor_valid = true;
+}
+
+__shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_count)
+{
+    const chan* c = &audio->chans[2];
+    if (!(c->powered && c->enabled))
+        return;
+    if (apu_count < s_ch3_next_step)
+        return; /* covers mid-frame restart (count < last_step) and no-step case */
+    /* div/mod instead of per-step loop: PDM carriers run at step periods
+     * as low as 2 cycles (period 2047), i.e. tens of thousands of steps
+     * per frame. */
+    uint32_t steps = (apu_count - s_ch3_last_step) / s_ch3_step_period;
+    s_ch3_cursor_pos = (s_ch3_cursor_pos + steps) & 31;
+    s_ch3_last_step += steps * s_ch3_step_period;
+    s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
+}
+
+/* DMG write window: write must coincide with a CH3 read. We use a loose
+ * one-step-period window: tuned PCM players time writes to the window, and
+ * the exact redirect target (not gate tightness) determines byte placement. */
+static inline bool ch3_cursor_just_read(uint32_t apu_count)
+{
+    return apu_count - s_ch3_last_step <= s_ch3_step_period;
+}
+
 #define AUDIO_MEM_SIZE (0xFF40 - 0xFF10)
 #define AUDIO_ADDR_COMPENSATION 0xFF10
 
@@ -532,10 +593,19 @@ __audio static int8_t wave_sample(
     {
         sample >>= 4;
     }
-
     int8_t signed_sample = (int8_t)sample - 8;
 
     return volume ? (signed_sample >> (volume - 1)) : 0;
+}
+
+/* Sum of wave_sample over all 32 wave positions with the given volume.
+ * Used by the extreme-frequency fast path in update_wave. */
+__audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c)
+{
+    int16_t sum = 0;
+    for (int p = 0; p < 32; p++)
+        sum += wave_sample(audio, p, c->volume);
+    return sum;
 }
 
 __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
@@ -565,19 +635,49 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
-    if (c->freq_inc / 32 > (uint32_t)sample_rate / 2)
-        return;
-
     len = update_len(audio, c, len);
+
+    /* CH3 muted (NR32 volume 0): no output, but keep the sample position
+     * and frequency counter advancing so wave RAM access timing and the
+     * accurate-mode cursor anchor stay correct. O(1) for the whole chunk.
+     * This is the idle state of PDM-via-NR32 players (e.g. Pokemon Yellow
+     * parks CH3 at max frequency, volume 0). */
+    if (c->volume == 0)
+    {
+        uint64_t total = (uint64_t)c->freq_inc * (uint32_t)len + c->freq_counter;
+        uint32_t steps = (uint32_t)(total / (uint32_t)sample_rate);
+        c->val = (c->val + steps) & 31;
+        c->freq_counter = (uint32_t)(total % (uint32_t)sample_rate);
+        if (steps)
+            c->wave.just_read = true;
+        return;
+    }
 
 #if TARGET_PLAYDATE
     int16_t final_vol_l = c->on_left * audio->vol_l;
     int16_t final_vol_r = c->on_right * audio->vol_r;
     uint32_t packed_vols;
+
     asm volatile("pkhbt %0, %1, %2, lsl #16"
                  : "=r"(packed_vols)
                  : "r"(final_vol_l), "r"(final_vol_r));
 #endif
+
+    /* Extreme frequency (at least one full 32-step wave cycle per output
+     * sample, e.g. period 2047 = 65.6 kHz used by NR32 PDM voice): the
+     * per-step loop would run dozens of iterations per sample. Instead
+     * collapse whole wave cycles analytically: each cycle spans
+     * 32 * sample_rate counter units and contributes the cached nibble
+     * sum. Remainder (< 32 steps) runs through the normal loop.
+     * The weighted average still yields the correct band-limited mean,
+     * which is what hardware + speaker low-pass produce. */
+    const bool extreme_freq = c->freq_inc >= 32u * (uint32_t)sample_rate;
+    if (extreme_freq && (!c->wave.sum_valid || c->wave.sum_volume != c->volume))
+    {
+        c->wave.sum = wave_cycle_sum(audio, c);
+        c->wave.sum_volume = c->volume;
+        c->wave.sum_valid = true;
+    }
 
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
@@ -586,6 +686,30 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
         uint32_t pos = 0;
         uint32_t prev_pos = 0;
         int32_t weighted_sum = 0;
+
+        if (extreme_freq)
+        {
+            /* First step: consume freq_counter leftover from previous sample. */
+            if (update_freq(c, &pos, sample_rate))
+            {
+                weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
+                c->val = (c->val + 1) & 31;
+                c->wave.sample = wave_sample(audio, c->val, c->volume);
+                c->wave.just_read = true;
+                prev_pos = pos;
+            }
+
+            /* Skip full 32-step wave cycles (c->val unchanged by 32 steps). */
+            uint32_t cycle_span = 32u * (uint32_t)sample_rate;
+            uint32_t full = (c->freq_inc - prev_pos) / cycle_span;
+            if (full)
+            {
+                weighted_sum += (int32_t)(full * (uint32_t)sample_rate) * (int32_t)c->wave.sum;
+                prev_pos += full * cycle_span;
+                pos = prev_pos; /* update_freq derives the next step from *pos */
+                c->wave.just_read = true;
+            }
+        }
 
         while (update_freq(c, &pos, sample_rate))
         {
@@ -1060,6 +1184,7 @@ void audio_write(
          */
         if (addr >= 0xFF30 && addr <= 0xFF3F)
         {
+            audio->chans[2].wave.sum_valid = false;
             audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
         }
         return;
@@ -1067,6 +1192,8 @@ void audio_write(
 
     /* Wave RAM writes during CH3 playback redirect to the byte CH3 is currently
      * reading. On DMG, writes are ignored unless coincident with CH3 read cycle.
+     * In accurate mode the cycle-domain cursor provides the exact position at
+     * this write's apu_count; otherwise fall back to the renderer's c->val.
      */
     if (addr >= 0xFF30 && addr <= 0xFF3F)
     {
@@ -1076,13 +1203,17 @@ void audio_write(
             gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
             if (!gb->is_cgb_mode)
             {
-                if (!c->wave.just_read)
+                bool can_access =
+                    s_ch3_cursor_valid ? ch3_cursor_just_read(apu_count) : c->wave.just_read;
+                if (!can_access)
                     return;
             }
-            uint8_t wave_idx = c->val >> 1;
+            uint8_t wave_idx = (s_ch3_cursor_valid ? s_ch3_cursor_pos : (uint8_t)c->val) >> 1;
+            c->wave.sum_valid = false;
             audio_mem(audio)[0xFF30 + wave_idx - AUDIO_ADDR_COMPENSATION] = val;
             return;
         }
+        c->wave.sum_valid = false;
     }
 
     audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
@@ -1321,6 +1452,7 @@ void audio_init(audio_data* audio)
     audio->pre_frame_div_apu_step = 3;
     audio->skip_next_apu_tick = false;
     s_apu_event_count = 0;
+    s_ch3_cursor_valid = false;
     audio->pre_frame_valid = true;
 
     memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
@@ -1385,6 +1517,7 @@ void audio_init(audio_data* audio)
 void audio_reset_replay_state(audio_data* audio)
 {
     s_apu_event_count = 0;
+    s_ch3_cursor_valid = false;
     audio->pre_frame_valid = false;
 }
 
@@ -1601,9 +1734,21 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 
         if (samples_available < len)
         {
-            playdate->system->logToConsole(
-                "AUDIO UNDERRUN! available: %d, needed: %d", samples_available, len
-            );
+            /* Underrun: do NOT advance read_pos past unwritten samples.
+             * Request a rebaseline on the main thread (underrun silence
+             * counts as played time and would otherwise wedge the lead
+             * accounting, causing chronic starvation). Rate-limit the log:
+             * spamming the console here makes the underrun worse. */
+            static unsigned s_underrun_count = 0;
+            s_underrun_count++;
+            if (s_underrun_count == 1 || s_underrun_count % 60 == 0)
+            {
+                playdate->system->logToConsole(
+                    "AUDIO UNDERRUN #%u! available: %d, needed: %d", s_underrun_count,
+                    samples_available, len
+                );
+            }
+            g_audio_resync_requested = 1;
             clear_audio_buffers(left, right, len);
         }
         else
@@ -1617,9 +1762,9 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                     right[i] = g_audio_sync_buffer.right[current_pos];
                 }
             }
-        }
 
-        atomic_store(&g_audio_sync_buffer.read_pos, read_pos + len);
+            atomic_store(&g_audio_sync_buffer.read_pos, read_pos + len);
+        }
     }
     else
     {
@@ -1795,6 +1940,12 @@ __shell void audio_generate_accurate(
 
             audio->pre_frame_valid = false;
 
+            /* Anchor CH3 cycle cursor to the (restored) frame-start state.
+             * Base = first event's apu_count: generate may be called several
+             * times per frame with apu_count continuing across calls, so the
+             * step schedule must start at the state's actual cycle position. */
+            ch3_cursor_reset(audio, s_apu_events[0].apu_count);
+
             int samples_per_tick = sample_rate / 512;
             int samples_per_tick_rem = sample_rate % 512;
             int tick_accum = 0;
@@ -1847,9 +1998,21 @@ __shell void audio_generate_accurate(
                     offset += seg;
                 }
 
+                if (s_ch3_cursor_valid)
+                    ch3_cursor_advance(audio, s_apu_events[i].apu_count);
+
                 audio_write(
                     audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count
                 );
+
+                /* Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52):
+                 * freq change alters step period; trigger restarts step phase. */
+                if (s_ch3_cursor_valid)
+                {
+                    uint16_t a = s_apu_events[i].addr;
+                    if (a == 0xFF1A || a == 0xFF1D || a == 0xFF1E || a == 0xFF26)
+                        ch3_cursor_reanchor(audio, s_apu_events[i].apu_count);
+                }
             }
 
             int rem = frame_samples - offset;
@@ -1894,6 +2057,7 @@ __shell void audio_generate_accurate(
         }
 
         s_apu_event_count = 0;
+        s_ch3_cursor_valid = false;
     }
 
     int sample_rate = get_audio_sample_rate();

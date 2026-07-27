@@ -215,6 +215,13 @@ struct PGB_VERSIONED(chan)
             int8_t sample;
             bool just_read;  // transient: CH3 just read sample, gates DMG wave RAM CPU access
             bool pulsed;     // set on trigger, cleared on DAC disable; gates bugged read path
+            /* Cached sum of wave_sample over all 32 positions for the
+             * extreme-frequency fast path (PCM-via-NR32 PDM, e.g. Pokemon
+             * Yellow cries). Recomputed lazily; invalidated on wave RAM
+             * writes and volume changes. */
+            int16_t sum;
+            uint8_t sum_volume;
+            bool sum_valid;
         } wave;
     };
 
