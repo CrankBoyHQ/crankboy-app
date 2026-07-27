@@ -638,6 +638,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     int sample_rate = get_audio_sample_rate();
 
     len = update_len(audio, c, len);
+    c->wave.sample = wave_sample(audio, c->val, c->volume);
 
     /* CH3 muted (NR32 volume 0): no output, but keep the sample position
      * and frequency counter advancing so wave RAM access timing and the
