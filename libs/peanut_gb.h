@@ -3608,25 +3608,37 @@ _0x75:
 
 _0x76:
 { /* HALT */
-    if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
+    if ((gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0)
     {
-        gb->gb_halt = 1;
-    }
-    else if (gb->gb_ime_countdown > 0)
-    {
-        /* HALT bug (DMG, IME=0, pending interrupt) with active EI delay.
-         * Rewind PC to HALT address so the pending interrupt returns to
-         * HALT, which then re-executes and properly halts. */
-        gb->cpu_reg.pc--;
-        gb->gb_halt = 1;
+        if (gb->gb_ime)
+        {
+            /* Interrupt pending with IME=1: the halt latch never sets.
+             * The interrupt dispatch pushes HALT's own address, so the
+             * handler returns to HALT, which then halts normally. */
+            gb->cpu_reg.pc--;
+        }
+        else if (gb->gb_ime_countdown > 0)
+        {
+            /* HALT bug (IME=0, pending interrupt) with active EI delay.
+             * Rewind PC to HALT address so the pending interrupt returns to
+             * HALT, which then re-executes and properly halts. */
+            gb->cpu_reg.pc--;
+            gb->gb_halt = 1;
+        }
+        else
+        {
+            /* HALT bug (IME=0, pending interrupt) without EI delay.
+             * HALT reads the operand byte (hardware bus cycle), then the
+             * same byte is read once as the next opcode: PC increment is
+             * inhibited for one fetch. */
+            __gb_read_full(gb, gb->cpu_reg.pc);
+            gb->gb_halt_bug = 1;
+            gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+        }
     }
     else
     {
-        /* HALT bug (DMG, IME=0, pending interrupt) without EI delay.
-         * HALT exits immediately, PC fails to increment past next byte,
-         * so the byte after HALT gets read a second time. */
-        gb->gb_halt_bug = 2;
-        gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+        gb->gb_halt = 1;
     }
     goto exit;
 }
@@ -5844,25 +5856,37 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
         return cycles;
     }
     case 0x76:
-        if (gb->is_cgb_mode || gb->gb_ime != 0 || (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) == 0)
+        if ((gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0)
         {
-            gb->gb_halt = 1;
-        }
-        else if (gb->gb_ime_countdown > 0)
-        {
-            /* HALT bug (DMG, IME=0, pending interrupt) with active EI delay.
-             * Rewind PC to HALT address so the pending interrupt returns to
-             * HALT, which then re-executes and properly halts. */
-            gb->cpu_reg.pc--;
-            gb->gb_halt = 1;
+            if (gb->gb_ime)
+            {
+                /* Interrupt pending with IME=1: the halt latch never sets.
+                 * The interrupt dispatch pushes HALT's own address, so the
+                 * handler returns to HALT, which then halts normally. */
+                gb->cpu_reg.pc--;
+            }
+            else if (gb->gb_ime_countdown > 0)
+            {
+                /* HALT bug (IME=0, pending interrupt) with active EI delay.
+                 * Rewind PC to HALT address so the pending interrupt returns to
+                 * HALT, which then re-executes and properly halts. */
+                gb->cpu_reg.pc--;
+                gb->gb_halt = 1;
+            }
+            else
+            {
+                /* HALT bug (IME=0, pending interrupt) without EI delay.
+                 * HALT reads the operand byte (hardware bus cycle), then the
+                 * same byte is read once as the next opcode: PC increment is
+                 * inhibited for one fetch. */
+                __gb_read_full(gb, gb->cpu_reg.pc);
+                gb->gb_halt_bug = 1;
+                gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+            }
         }
         else
         {
-            /* HALT bug (DMG, IME=0, pending interrupt) without EI delay.
-             * HALT exits immediately, PC fails to increment past next byte,
-             * so the byte after HALT gets read a second time. */
-            gb->gb_halt_bug = 2;
-            gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+            gb->gb_halt = 1;
         }
         return 1 * 4;
     case 0xE8:

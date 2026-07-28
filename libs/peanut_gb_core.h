@@ -1209,14 +1209,12 @@ second_instruction:
 
 dispatch:
 {
-#if CPU_VALIDATE == 0
     if unlikely (gb->gb_halt_bug)
     {
         if (gb->gb_halt_bug == 1)
             gb->cpu_reg.pc = gb->gb_halt_bug_pc;
         gb->gb_halt_bug--;
     }
-#endif
 
     const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
 
@@ -1818,6 +1816,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         memcpy(&_gb[0], gb, sizeof(_gb));
 
         uint8_t opcode = (gb->gb_halt ? 0 : $(__gb_fetch8)(gb));
+        if unlikely (gb->gb_halt_bug)
+        {
+            /* HALT bug: PC increment is inhibited for this fetch, so the
+             * byte after HALT is re-read as the next opcode's first byte. */
+            gb->cpu_reg.pc--;
+            gb->gb_halt_bug = 0;
+        }
         inst_cycles = __gb_run_instruction(gb, opcode);
 
         gb->cpu_reg.f_bits.unused = 0;
@@ -1925,13 +1930,6 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
                 inst_cycles_m
             );
         }
-    }
-
-    if unlikely (gb->gb_halt_bug)
-    {
-        if (gb->gb_halt_bug == 1)
-            gb->cpu_reg.pc = gb->gb_halt_bug_pc;
-        gb->gb_halt_bug--;
     }
 
     // EI delay handling
