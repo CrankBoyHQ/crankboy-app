@@ -1978,8 +1978,11 @@ done_instr_timing:
 #endif
     if (gb->counter.serial_count > 0)
     {
-        gb->counter.serial_count -= inst_cycles;
-        if (gb->counter.serial_count <= 0)
+        /* Overshoot-safe expiry: subtracting inst_cycles can skip past zero
+         * (an interrupt mid-wait shifts the cycle grid), and with an unsigned
+         * counter that wraps to a huge value and never completes, hanging any
+         * game that polls SC bit 7 (F-1 Pole Position on hardware). */
+        if (gb->counter.serial_count <= inst_cycles)
         {
             if ((gb->gb_reg.SC & SERIAL_SC_TX_START) && (gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC))
             {
@@ -1991,6 +1994,10 @@ done_instr_timing:
                 gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
             }
             gb->counter.serial_count = 0;
+        }
+        else
+        {
+            gb->counter.serial_count -= inst_cycles;
         }
     }
 
