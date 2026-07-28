@@ -2532,12 +2532,16 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         case 0x41:  // STAT Register
         {
             // --- Spurious STAT interrupt quirk (DMG-only) ---
-            // A STAT write behaves as if $FF were written for one M-cycle, so
-            // only request the interrupt on a rising edge of the STAT line.
+            // Pan Docs: a STAT write behaves as if $FF were written for one
+            // M-cycle, requesting an interrupt if any source condition is
+            // true. Gated to VBlank: Road Rash depends on it polling STAT in
+            // VBlank, while F-1 Pole Position's ISRs write STAT in modes
+            // 0/2/3, where the glitch re-arms STAT endlessly and the nested
+            // ISRs smash the stack. Rising-edge check only fires when the
+            // STAT line was previously low.
             if (!gb->is_cgb_mode && (gb->gb_reg.LCDC & LCDC_ENABLE))
             {
-                if (!gb->direct.stat_line && (__gb_ppu_mode_synced(gb) != LCD_TRANSFER ||
-                                              (gb->gb_reg.STAT & STAT_LYC_COINC)))
+                if (!gb->direct.stat_line && gb->lcd_mode == LCD_VBLANK)
                 {
                     gb->gb_reg.IF |= LCDC_INTR;
                 }
