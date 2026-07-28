@@ -2532,14 +2532,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         case 0x41:  // STAT Register
         {
             // --- Spurious STAT interrupt quirk (DMG-only) ---
-            // On DMG, a write to STAT can trigger an interrupt if an observable
-            // condition (a specific PPU mode or LY=LYC) is already true,
-            // regardless of the STAT enable bits.
-            // The check is for any mode except Mode 3 (Pixel Transfer).
-            // Required for games like Road Rash and F-1 Racing.
+            // A STAT write behaves as if $FF were written for one M-cycle, so
+            // only request the interrupt on a rising edge of the STAT line.
             if (!gb->is_cgb_mode && (gb->gb_reg.LCDC & LCDC_ENABLE))
             {
-                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER || (gb->gb_reg.STAT & STAT_LYC_COINC))
+                if (!gb->direct.stat_line && (__gb_ppu_mode_synced(gb) != LCD_TRANSFER ||
+                                              (gb->gb_reg.STAT & STAT_LYC_COINC)))
                 {
                     gb->gb_reg.IF |= LCDC_INTR;
                 }
@@ -5454,11 +5452,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->display.current_mode0_cycles = 204;
         gb->counter.lcd_count = 144;
         gb->lcd_mode = LCD_HBLANK;
-
-        // F-1 Pole Position checks the value at 0xFF80 and enters an
-        // infinite rst loop if it's zero. Real hardware boot ROM leaves
-        // non-zero garbage here.
-        gb->hram[0x80] = 0x95;
     }
 
     /* Common state for all modes */
