@@ -1787,7 +1787,11 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     inst_cycles = 0;
     for (int _i = 0; _i < CPU_BATCH_SIZE; _i++)
     {
-        if (gb->gb_halt || gb->gb_stop || gb->gb_hle)
+        /* Also stop the batch when an interrupt became dispatchable, so the
+         * dispatch at the top of the next step happens before any further
+         * instruction (e.g. a following DI) can change the outcome. */
+        if (gb->gb_halt || gb->gb_stop || gb->gb_hle ||
+            (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)))
             break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
         if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
