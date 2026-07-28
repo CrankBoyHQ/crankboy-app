@@ -794,9 +794,42 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     StateHeader* v6_header = (StateHeader*)v6_org;
     struct gb_s_v6* v6_gb = (struct gb_s_v6*)(v6_org + sizeof(StateHeader));
 
-    // v6 removes the unused zero32 field (was between xram and audio);
-    // layout is identical except sweep struct grew (enabled + divider fields)
-    set_fields(v6_gb, v5_gb, gb_rom, xram);
+    // v6 deltas vs v5:
+    //  - counter grew (apu_count added)
+    //  - direct gained wy_latched and first_scanline_besu_skip bits mid-block
+    //  - audio: env grew (should_lock, clock), sweep grew (enabled, divider),
+    //    wave grew (pulsed, sum, sum_volume, sum_valid), pre_frame_* snapshot added
+    //  - zero32 removed (was between xram and audio)
+
+    set_fields(v6_gb, v5_gb, gb_rom, gb_reg);
+
+    v6_gb->counter.lcd_count = v5_gb->counter.lcd_count;
+    v6_gb->counter.div_count = v5_gb->counter.div_count;
+    v6_gb->counter.tima_count = v5_gb->counter.tima_count;
+    v6_gb->counter.serial_count = v5_gb->counter.serial_count;
+    v6_gb->counter.lcd_off_count = v5_gb->counter.lcd_off_count;
+    v6_gb->counter.apu_count = 0;
+
+    set_fields(v6_gb, v5_gb, ram_base, lcd_alt);
+
+    memcpy(&v6_gb->display, &v5_gb->display, sizeof(v5_gb->display));
+
+    v6_gb->direct.frame_skip = v5_gb->direct.frame_skip;
+    v6_gb->direct.sound = v5_gb->direct.sound;
+    v6_gb->direct.sram_updated = v5_gb->direct.sram_updated;
+    v6_gb->direct.sram_dirty = v5_gb->direct.sram_dirty;
+    v6_gb->direct.crank_docked = v5_gb->direct.crank_docked;
+    v6_gb->direct.enable_xram = v5_gb->direct.enable_xram;
+    v6_gb->direct.ignore_cgb_check = v5_gb->direct.ignore_cgb_check;
+    v6_gb->direct.stat_line = v5_gb->direct.stat_line;
+    v6_gb->direct.wy_latched = 0;
+    v6_gb->direct.first_scanline_besu_skip = 0;
+    v6_gb->direct.has_read_accelerometer_this_frame =
+        v5_gb->direct.has_read_accelerometer_this_frame;
+    v6_gb->direct.cgb_dual_output = v5_gb->direct.cgb_dual_output;
+
+    set_fields(v6_gb, v5_gb, direct.joypad_interrupt_delay, direct.priv);
+    set_fields(v6_gb, v5_gb, gb_cart_ram_size, xram);
 
     v6_gb->audio.vol_l = v5_gb->audio.vol_l;
     v6_gb->audio.vol_r = v5_gb->audio.vol_r;
