@@ -135,6 +135,11 @@ static inline bool ch3_cursor_just_read(uint32_t apu_count)
 #define APU_GAIN_CAP 3072 /* >= MAX_AUDIO_SAMPLES_PER_CHUNK (2940) */
 static uint16_t s_ch3_gain_q8[APU_GAIN_CAP];
 
+/* Same fractional treatment for CH1/CH2 NRx2 PCM voice (e.g. Cannon
+ * Fodder vocals): per-sample volume as vol*16 (0-240, exact /16).
+ * Index 0 = CH1 (0xFF12), 1 = CH2 (0xFF17). */
+static uint16_t s_sq_gain_q4[2][APU_GAIN_CAP];
+
 /* Volume -> gain in Q8, matching wave_sample's shift:
  * 0 = mute, 1 = 100%, 2 = 50%, 3 = 25%. */
 static inline uint16_t ch3_gain_q8(unsigned volume)
@@ -145,7 +150,7 @@ static inline uint16_t ch3_gain_q8(unsigned volume)
 
 /* Accumulate gain g (Q8) over the Q16 fixed-point sample interval
  * [a_q16, b_q16) into per-sample weighted sums, clamped to bound. */
-static void ch3_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16_t g, int bound)
+static void apu_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16_t g, int bound)
 {
     uint32_t pos = a_q16;
     while (pos < b_q16)
@@ -442,6 +447,45 @@ __audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t ol
     }
 }
 
+/* NRx2 write side effects: zombie volume glitch + envelope fields.
+ * Shared by audio_write and the square-PCM gain pre-pass (which replays
+ * the write on a shadow chan to reconstruct the volume timeline). */
+__audio static void apply_nrx2(chan* chans, int i, uint8_t val, uint8_t old_val, bool is_cgb)
+{
+    // SameBoy _nrx2_glitch: adjust volume on NRx2 write while channel active.
+    // DMG: 2-pass via 0xFF intermediate. CGB: single pass.
+    if (chans[i].powered && chans[i].enabled)
+    {
+        if (!is_cgb)
+        {
+            _nrx2_glitch(chans, i, 0xFF, old_val);
+            _nrx2_glitch(chans, i, val, 0xFF);
+        }
+        else
+        {
+            _nrx2_glitch(chans, i, val, old_val);
+        }
+    }
+
+    chans[i].volume_init = val >> 4;
+    chans[i].powered = (val >> 3) != 0;
+    chans[i].env.up = (val & 0x08) != 0;
+    chans[i].env.step = val & 0x07;
+    chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
+    chans[i].env.counter = 0;
+
+    // Reload divider and recompute lock state when NRx2 is written
+    // while the envelope clock is high (pending volume change).
+    // The zombie NRx2 write may have changed volume or direction
+    // via _nrx2_glitch, so should_lock must be recalculated.
+    if (chans[i].enabled && chans[i].env.clock && chans[i].env.step > 0)
+    {
+        chans[i].env_divider = chans[i].env.step;
+        chans[i].env.should_lock = (chans[i].volume == MAX_CHAN_VOLUME && chans[i].env.up) ||
+                                   (chans[i].volume == 0 && !chans[i].env.up);
+    }
+}
+
 __audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
 {
     uint16_t new_freq;
@@ -512,8 +556,14 @@ __attribute__((always_inline)) static inline bool update_freq(
     }
 }
 
+/* gain_q4: optional per-sample volume array (vol*16, replay fractional
+ * NRx2 PCM). When non-NULL it carries the write-driven volume timeline:
+ * envelope_smooth is bypassed and the above-Nyquist early-out is lifted
+ * (PCM players park the carrier at max frequency and must stay audible
+ * via the boxcar-averaged DC mean). */
 __audio static void update_square(
-    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
+    audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len,
+    const uint16_t* gain_q4
 )
 {
     chan* c = audio->chans + ch2;
@@ -531,7 +581,7 @@ __audio static void update_square(
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
-    if (c->freq_inc / 8 > (uint32_t)sample_rate / 2)
+    if (!gain_q4 && c->freq_inc / 8 > (uint32_t)sample_rate / 2)
         return;
 
     len = update_len(audio, c, len);
@@ -578,9 +628,19 @@ __audio static void update_square(
 
         weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
 
-        int32_t target_vol = (int32_t)c->volume << 8;
-        c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
-        int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
+        int32_t effective_volume;
+        if (gain_q4)
+        {
+            /* Gain array carries the write-driven volume (envelope off by
+             * pre-pass construction); skip the smoothing ramp. */
+            effective_volume = ((int32_t)gain_q4[i] + 8) >> 4;
+        }
+        else
+        {
+            int32_t target_vol = (int32_t)c->volume << 8;
+            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+            effective_volume = (c->envelope_smooth + 128) >> 8;
+        }
 
         if (c->freq_inc > 0)
             sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
@@ -1342,41 +1402,9 @@ void audio_write(
     case 0xFF17:
     case 0xFF21:
     {
-        // SameBoy _nrx2_glitch: adjust volume on NRx2 write while channel active.
-        // DMG: 2-pass via 0xFF intermediate. CGB: single pass.
-        if (chans[i].powered && chans[i].enabled)
-        {
-            gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
-            uint8_t old_val = audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION];
-
-            if (!gb->is_cgb_mode)
-            {
-                _nrx2_glitch(chans, i, 0xFF, old_val);
-                _nrx2_glitch(chans, i, val, 0xFF);
-            }
-            else
-            {
-                _nrx2_glitch(chans, i, val, old_val);
-            }
-        }
-
-        chans[i].volume_init = val >> 4;
-        chans[i].powered = (val >> 3) != 0;
-        chans[i].env.up = (val & 0x08) != 0;
-        chans[i].env.step = val & 0x07;
-        chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
-        chans[i].env.counter = 0;
-
-        // Reload divider and recompute lock state when NRx2 is written
-        // while the envelope clock is high (pending volume change).
-        // The zombie NRx2 write may have changed volume or direction
-        // via _nrx2_glitch, so should_lock must be recalculated.
-        if (chans[i].enabled && chans[i].env.clock && chans[i].env.step > 0)
-        {
-            chans[i].env_divider = chans[i].env.step;
-            chans[i].env.should_lock = (chans[i].volume == MAX_CHAN_VOLUME && chans[i].env.up) ||
-                                       (chans[i].volume == 0 && !chans[i].env.up);
-        }
+        gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+        uint8_t old_val = audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION];
+        apply_nrx2(chans, i, val, old_val, gb->is_cgb_mode);
     }
     break;
 
@@ -1870,8 +1898,8 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
 #endif
 
             update_wave(audio, left_ptr, right_ptr, chunksize, NULL);
-            update_square(audio, left_ptr, right_ptr, 0, chunksize);
-            update_square(audio, left_ptr, right_ptr, 1, chunksize);
+            update_square(audio, left_ptr, right_ptr, 0, chunksize, NULL);
+            update_square(audio, left_ptr, right_ptr, 1, chunksize, NULL);
             update_noise(audio, left_ptr, right_ptr, chunksize);
 
 #if TARGET_PLAYDATE
@@ -1977,7 +2005,7 @@ void audio_update_square(
     audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len
 )
 {
-    update_square(audio, left, right, ch2, len);
+    update_square(audio, left, right, ch2, len, NULL);
 }
 
 void audio_update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
@@ -2076,12 +2104,100 @@ __shell static int replay_event_span(
                     pos_q16 = span_end_q16;
                 if (pos_q16 < cursor_q16)
                     pos_q16 = cursor_q16;
-                ch3_gain_fill(s_ch3_gain_q8, cursor_q16, pos_q16, cur, frame_samples);
+                apu_gain_fill(s_ch3_gain_q8, cursor_q16, pos_q16, cur, frame_samples);
                 cursor_q16 = pos_q16;
                 cur = ch3_gain_q8((unsigned)(s_apu_events[i].val >> 5) & 3);
             }
-            ch3_gain_fill(s_ch3_gain_q8, cursor_q16, span_end_q16, cur, frame_samples);
+            apu_gain_fill(s_ch3_gain_q8, cursor_q16, span_end_q16, cur, frame_samples);
             ch3_gain = s_ch3_gain_q8;
+        }
+    }
+
+    /* Fractional CH1/CH2 gain pre-pass (16 kHz NRx2 PCM voice, e.g.
+     * Cannon Fodder vocals): same sub-sample weighting as the CH3/NR32
+     * path. The volume timeline is reconstructed on a shadow chan via
+     * apply_nrx2 (plus trigger reload), so zombie-glitch behavior stays
+     * identical to the live write path. Requires the envelope off for
+     * the whole span: with the envelope running, hardware lets it own
+     * the volume and we fall back to segment snapping. */
+    const uint16_t* sq_gain[2] = {NULL, NULL};
+    if (frame_samples > 0 && frame_samples <= APU_GAIN_CAP)
+    {
+        gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
+        const uint32_t span_end_q16 = (uint32_t)frame_samples << 16;
+
+        for (int ch = 0; ch < 2; ch++)
+        {
+            const uint16_t nrx2 = (uint16_t)(0xFF12 + ch * 5);
+            const uint16_t nrx4 = (uint16_t)(0xFF14 + ch * 5);
+
+            bool has_nrx2 = false;
+            for (int i = span_start; i < span_end; i++)
+                if (s_apu_events[i].addr == nrx2)
+                {
+                    has_nrx2 = true;
+                    break;
+                }
+            if (!has_nrx2 || audio->chans[ch].env.step != 0)
+                continue;
+
+            chan shadow;
+            memcpy(&shadow, &audio->chans[ch], sizeof(chan));
+
+            uint32_t cursor_q16 = 0;
+            unsigned rec_vol = (unsigned)shadow.volume;
+            uint8_t last_nrx2 = audio_mem(audio)[nrx2 - AUDIO_ADDR_COMPENSATION];
+            bool envelope_set = false;
+
+            memset(s_sq_gain_q4[ch], 0, (size_t)frame_samples * sizeof(uint16_t));
+            for (int i = span_start; i < span_end && !envelope_set; i++)
+            {
+                uint16_t a = s_apu_events[i].addr;
+                if (a != nrx2 && a != nrx4)
+                    continue;
+                if (a == nrx2 && (s_apu_events[i].val & 7) != 0)
+                {
+                    /* Envelope period set: the envelope owns the volume
+                     * timeline from here on; bail to segment snapping. */
+                    envelope_set = true;
+                    break;
+                }
+
+                uint32_t pos_q16 = (uint32_t)(((uint64_t)s_apu_events[i].apu_count *
+                                               (uint64_t)sample_rate * 65536u) /
+                                              DMG_CLOCK_FREQ_U);
+                if (pos_q16 > span_end_q16)
+                    pos_q16 = span_end_q16;
+                if (pos_q16 < cursor_q16)
+                    pos_q16 = cursor_q16;
+
+                if (a == nrx2)
+                {
+                    apply_nrx2(&shadow, 0, s_apu_events[i].val, last_nrx2, gb->is_cgb_mode);
+                    last_nrx2 = s_apu_events[i].val;
+                }
+                else if (s_apu_events[i].val & 0x80)
+                {
+                    shadow.volume = shadow.volume_init; /* trigger reload */
+                }
+
+                if ((unsigned)shadow.volume != rec_vol)
+                {
+                    apu_gain_fill(
+                        s_sq_gain_q4[ch], cursor_q16, pos_q16, (uint16_t)(rec_vol * 16),
+                        frame_samples
+                    );
+                    cursor_q16 = pos_q16;
+                    rec_vol = (unsigned)shadow.volume;
+                }
+            }
+            if (envelope_set)
+                continue;
+
+            apu_gain_fill(
+                s_sq_gain_q4[ch], cursor_q16, span_end_q16, (uint16_t)(rec_vol * 16), frame_samples
+            );
+            sq_gain[ch] = s_sq_gain_q4[ch];
         }
     }
 
@@ -2096,9 +2212,11 @@ __shell static int replay_event_span(
         if (seg < 0)
             seg = 0;
 
-        /* NR32 volume changes are carried by the gain array: no segment
-         * cut (also removes the per-event tiny-segment render cost). */
-        if (ch3_gain && s_apu_events[i].addr == 0xFF1C)
+        /* Volume changes carried by a gain array need no segment cut
+         * (also removes the per-event tiny-segment render cost). */
+        if ((ch3_gain && s_apu_events[i].addr == 0xFF1C) ||
+            (sq_gain[0] && s_apu_events[i].addr == 0xFF12) ||
+            (sq_gain[1] && s_apu_events[i].addr == 0xFF17))
             seg = 0;
 
         if (seg > 0)
@@ -2121,10 +2239,12 @@ __shell static int replay_event_span(
                     ch3_gain ? ch3_gain + offset + generated : NULL
                 );
                 update_square(
-                    audio, left + offset + generated, right + offset + generated, 0, chunk
+                    audio, left + offset + generated, right + offset + generated, 0, chunk,
+                    sq_gain[0] ? sq_gain[0] + offset + generated : NULL
                 );
                 update_square(
-                    audio, left + offset + generated, right + offset + generated, 1, chunk
+                    audio, left + offset + generated, right + offset + generated, 1, chunk,
+                    sq_gain[1] ? sq_gain[1] + offset + generated : NULL
                 );
                 update_noise(audio, left + offset + generated, right + offset + generated, chunk);
 
@@ -2170,8 +2290,14 @@ __shell static int replay_event_span(
                 audio, left + offset + generated, right + offset + generated, chunk,
                 ch3_gain ? ch3_gain + offset + generated : NULL
             );
-            update_square(audio, left + offset + generated, right + offset + generated, 0, chunk);
-            update_square(audio, left + offset + generated, right + offset + generated, 1, chunk);
+            update_square(
+                audio, left + offset + generated, right + offset + generated, 0, chunk,
+                sq_gain[0] ? sq_gain[0] + offset + generated : NULL
+            );
+            update_square(
+                audio, left + offset + generated, right + offset + generated, 1, chunk,
+                sq_gain[1] ? sq_gain[1] + offset + generated : NULL
+            );
             update_noise(audio, left + offset + generated, right + offset + generated, chunk);
 
             generated += chunk;
@@ -2180,6 +2306,12 @@ __shell static int replay_event_span(
         }
         offset += rem;
     }
+
+    /* Re-sync the smoothing ramp for the next non-gain span (it was
+     * bypassed while the gain arrays owned the volume timeline). */
+    for (int ch = 0; ch < 2; ch++)
+        if (sq_gain[ch])
+            audio->chans[ch].envelope_smooth = (int32_t)audio->chans[ch].volume << 8;
 
     return offset;
 }
@@ -2286,8 +2418,8 @@ __shell void audio_generate_accurate(
             chunk = len - generated;
 
         update_wave(audio, left + generated, right + generated, chunk, NULL);
-        update_square(audio, left + generated, right + generated, 0, chunk);
-        update_square(audio, left + generated, right + generated, 1, chunk);
+        update_square(audio, left + generated, right + generated, 0, chunk, NULL);
+        update_square(audio, left + generated, right + generated, 1, chunk, NULL);
         update_noise(audio, left + generated, right + generated, chunk);
 
         generated += chunk;
