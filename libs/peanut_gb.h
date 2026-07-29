@@ -1513,30 +1513,6 @@ hle_fail:
  * PPU counters. Transient; set by the batch loop, zeroed when it ends. */
 static uint16_t pgb_batch_elapsed;
 
-extern uint8_t* pgb_dirty_prev;
-extern uint16_t* pgb_dirty_flags;
-extern uint8_t pgb_dirty_skip;
-
-/* LCD-off frame fill. Cold path: once per frame, LCD disabled only.
- * Kept out of core (ITCM) code for size. */
-__shell static void __gb_lcd_off_frame_fill(gb_s* gb)
-{
-    uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
-    uint32_t fill_word = (uint32_t)fill * 0x01010101u;
-    for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-        ((uint32_t*)gb->lcd)[i] = fill_word;
-    if (gb->lcd_alt)
-        for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-            ((uint32_t*)gb->lcd_alt)[i] = fill_word;
-    if (pgb_dirty_prev && pgb_dirty_flags && !pgb_dirty_skip)
-    {
-        for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-            ((uint32_t*)pgb_dirty_prev)[i] = fill_word;
-        for (int i = 0; i < LCD_HEIGHT / 16; i++)
-            pgb_dirty_flags[i] = 0xFFFF;
-    }
-}
-
 /**
  * Cycles remaining until next PPU mode boundary.
  */

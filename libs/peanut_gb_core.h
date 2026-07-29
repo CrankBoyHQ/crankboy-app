@@ -2301,7 +2301,20 @@ done_instr_timing:
             gb->gb_frame = 1;
             if (!gb->direct.frame_skip)
             {
-                __gb_lcd_off_frame_fill(gb);
+                uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
+                uint32_t fill_word = (uint32_t)fill * 0x01010101u;
+                for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                    ((uint32_t*)gb->lcd)[i] = fill_word;
+                if (gb->lcd_alt)
+                    for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                        ((uint32_t*)gb->lcd_alt)[i] = fill_word;
+                if (pgb_dirty_prev && pgb_dirty_flags && !pgb_dirty_skip)
+                {
+                    for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                        ((uint32_t*)pgb_dirty_prev)[i] = fill_word;
+                    for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                        pgb_dirty_flags[i] = 0xFFFF;
+                }
             }
         }
     }
