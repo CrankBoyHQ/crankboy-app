@@ -103,12 +103,19 @@ __shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_cou
     s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
-/* DMG write window: write must coincide with a CH3 read. We use a loose
- * one-step-period window: tuned PCM players time writes to the window, and
- * the exact redirect target (not gate tightness) determines byte placement. */
+/* DMG write window: CPU write must coincide with CH3's wave-RAM read,
+ * which occurs when the position steps to an even index (fresh byte, held
+ * for both nibbles). The accessible window is ~1 dot on hardware; we allow
+ * up to 4 dots (one M-cycle = CPU write strobe granularity), covering the
+ * cursor's sub-period anchor error at streamer-rate frequencies. Untimed
+ * writes are then mostly blocked, preserving the hardware corruption quirk.
+ * (A window of one full step period could never fail: after
+ * ch3_cursor_advance, apu_count is always within one period of last_step.) */
 static inline bool ch3_cursor_just_read(uint32_t apu_count)
 {
-    return apu_count - s_ch3_last_step <= s_ch3_step_period;
+    uint32_t last_byte_read = s_ch3_last_step - ((s_ch3_cursor_pos & 1) ? s_ch3_step_period : 0);
+    uint32_t window = s_ch3_step_period < 4u ? s_ch3_step_period : 4u;
+    return apu_count - last_byte_read <= window;
 }
 
 #define AUDIO_MEM_SIZE (0xFF40 - 0xFF10)
@@ -1204,9 +1211,9 @@ void audio_write(
 
     /* Wave RAM writes during CH3 playback redirect to the byte CH3 is currently
      * reading. On DMG, writes are ignored unless coincident with CH3 read cycle.
-     * In accurate mode the cycle-domain cursor provides the exact position at
-     * this write's apu_count; otherwise fall back to the renderer's c->val.
-     */
+     * In accurate mode the cycle-domain cursor provides the exact position and
+     * a byte-read window at this write's apu_count; the non-cursor fallback
+     * (just_read) stays loose by design — the renderer has no cycle timing. */
     if (addr >= 0xFF30 && addr <= 0xFF3F)
     {
         chan* c = &audio->chans[2];
