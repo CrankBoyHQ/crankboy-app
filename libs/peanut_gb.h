@@ -939,8 +939,8 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
     }
 }
 
-static uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
-static uint8_t __gb_ppu_next_mode(gb_s* gb);
+static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
+static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb);
 static uint8_t __gb_ppu_mode_synced(gb_s* gb);
 
 __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t val)
@@ -1540,7 +1540,7 @@ __shell static void __gb_lcd_off_frame_fill(gb_s* gb)
 /**
  * Cycles remaining until next PPU mode boundary.
  */
-__section__(".text.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
+static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
 {
     int32_t remaining;
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
@@ -1580,7 +1580,7 @@ __section__(".text.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
 /**
  * Shared: next PPU mode after current. Pure, mirrors core PPU state machine.
  */
-__section__(".text.cb") static uint8_t __gb_ppu_next_mode(gb_s* gb)
+static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb)
 {
     switch (gb->lcd_mode)
     {
@@ -1615,7 +1615,7 @@ __section__(".text.cb") static uint8_t __gb_ppu_mode_synced(gb_s* gb)
  * PPU read synchronization: peek ahead to the next mode boundary so
  * polling loops don't miss STAT/LY transitions.
  */
-__section__(".text.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
+static inline __attribute__((always_inline)) uint8_t __gb_read_stat_synced(gb_s* gb)
 {
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
         return gb->gb_reg.STAT | 0x80;
@@ -1631,7 +1631,7 @@ __section__(".text.cb") static uint8_t __gb_read_stat_synced(gb_s* gb)
     return gb->gb_reg.STAT | 0x80;
 }
 
-__section__(".text.cb") static uint8_t __gb_read_ly_synced(gb_s* gb)
+static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* gb)
 {
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
         return gb->gb_reg.LY;
@@ -5047,105 +5047,6 @@ __shell static void __gb_interrupt(gb_s* gb)
 
         gb->gb_reg.IF = pending_if | 0xE0;
     }
-}
-
-__shell static uint16_t __gb_calc_halt_cycles(gb_s* gb)
-{
-    // In STOP mode, the CPU is paused until a button is pressed.
-    if (gb->gb_stop && gb->direct.joypad != 0xFF)
-    {
-        gb->gb_stop = 0;
-        gb->gb_hle = false;  // paranoia
-        return 16;
-    }
-
-    gb->gb_hle = false;
-
-#if 0
-    // TODO: optimize serial
-    if(gb->gb_reg.SC & SERIAL_SC_TX_START) return 16;
-#endif
-
-    uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
-
-    if (gb->gb_reg.tac_enable)
-    {
-#if PGB_IS_CGB
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
-#else
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
-#endif
-
-        if (tima_threshold == 0)
-            tima_threshold = 1;
-
-        uint16_t cycles_until_next_tick =
-            tima_threshold - (gb->counter.tima_count % tima_threshold);
-        if (cycles_until_next_tick == 0)
-            cycles_until_next_tick = tima_threshold;
-        uint16_t ticks_until_overflow = 0x100 - gb->gb_reg.TIMA;
-
-        src[1] =
-            ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
-
-        if (gb->gb_reg.tima_overflow_delay)
-        {
-            src[1] = 1;
-        }
-    }
-
-    // PPU event calculation
-    uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
-
-    if ((int16_t)ppu_cycles_remaining <= 0)
-    {
-        ppu_cycles_remaining = 1;
-    }
-    src[2] = (uint32_t)ppu_cycles_remaining;
-
-    // Register-specific HLE: LY polling waits for LY change, not just mode change
-    if (gb->hle_ioaddr == 0x44)
-    {
-        uint16_t ly_cycles;
-        switch (gb->lcd_mode)
-        {
-        case LCD_HBLANK:  // already optimal, LY++ at end of HBlank
-            ly_cycles = ppu_cycles_remaining;
-            break;
-        case LCD_TRANSFER:
-            // skip remaining mode3 + all of mode0
-            ly_cycles = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-            break;
-        default:
-            // LCD_VBLANK, LCD_SEARCH_OAM, or LCD off: wait for scanline end
-            ly_cycles = LCD_LINE_CYCLES - gb->counter.lcd_count;
-            break;
-        }
-        src[2] = ly_cycles;
-    }
-
-    // Find the minimum cycles until the next event
-    uint32_t cycles = src[0];
-    if (src[1] < cycles)
-        cycles = src[1];
-    if (src[2] < cycles)
-        cycles = src[2];
-
-    // ensure positive
-    cycles = (cycles < 16) ? 16 : cycles;
-
-    if (gb->cgb_speed_switch_halt_period)
-    {
-        uint32_t max_cycles = gb->cgb_speed_switch_halt_period;
-        if (cycles > max_cycles)
-            cycles = max_cycles;
-
-        gb->cgb_speed_switch_halt_period = max_cycles - cycles;
-        if (gb->cgb_speed_switch_halt_period == 0)
-            gb->gb_halt = 0;
-    }
-
-    return (uint16_t)cycles;
 }
 
 const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str);

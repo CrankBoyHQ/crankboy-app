@@ -110,6 +110,33 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
     {
         return gb->selected_cart_bank_addr[addr];
     }
+
+    // Hot IO reads: bypass read_full in polling loops. HLE-gated regs
+    // (STAT/LY/IF) keep the full path when HLE is active (CGB only).
+    if (addr >= 0xFF00 && addr < 0xFF80)
+    {
+        switch (addr)
+        {
+        case 0x41:
+            if (!gb->hle_enabled)
+                return __gb_read_stat_synced(gb);
+            break;
+        case 0x44:
+            if (!gb->hle_enabled)
+                return __gb_read_ly_synced(gb);
+            break;
+        case 0x0F:
+            if (!gb->hle_enabled)
+                return gb->gb_reg.IF;
+            break;
+        case 0x04:
+            return gb->gb_reg.DIV;
+        case 0x05:
+            return gb->gb_reg.tima_overflow_delay ? gb->gb_reg.TMA : gb->gb_reg.TIMA;
+        case 0x45:
+            return gb->gb_reg.LYC;
+        }
+    }
     return __gb_read_full(gb, addr);
 }
 
@@ -1830,6 +1857,105 @@ dispatch:
     return cycles + chain_cycles;
 }
 
+__core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
+{
+    // In STOP mode, the CPU is paused until a button is pressed.
+    if (gb->gb_stop && gb->direct.joypad != 0xFF)
+    {
+        gb->gb_stop = 0;
+        gb->gb_hle = false;  // paranoia
+        return 16;
+    }
+
+    gb->gb_hle = false;
+
+#if 0
+    // TODO: optimize serial
+    if(gb->gb_reg.SC & SERIAL_SC_TX_START) return 16;
+#endif
+
+    uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
+
+    if (gb->gb_reg.tac_enable)
+    {
+#if PGB_IS_CGB
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
+#else
+        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+#endif
+
+        if (tima_threshold == 0)
+            tima_threshold = 1;
+
+        uint16_t cycles_until_next_tick =
+            tima_threshold - (gb->counter.tima_count % tima_threshold);
+        if (cycles_until_next_tick == 0)
+            cycles_until_next_tick = tima_threshold;
+        uint16_t ticks_until_overflow = 0x100 - gb->gb_reg.TIMA;
+
+        src[1] =
+            ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
+
+        if (gb->gb_reg.tima_overflow_delay)
+        {
+            src[1] = 1;
+        }
+    }
+
+    // PPU event calculation
+    uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
+
+    if ((int16_t)ppu_cycles_remaining <= 0)
+    {
+        ppu_cycles_remaining = 1;
+    }
+    src[2] = (uint32_t)ppu_cycles_remaining;
+
+    // Register-specific HLE: LY polling waits for LY change, not just mode change
+    if (gb->hle_ioaddr == 0x44)
+    {
+        uint16_t ly_cycles;
+        switch (gb->lcd_mode)
+        {
+        case LCD_HBLANK:  // already optimal, LY++ at end of HBlank
+            ly_cycles = ppu_cycles_remaining;
+            break;
+        case LCD_TRANSFER:
+            // skip remaining mode3 + all of mode0
+            ly_cycles = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+            break;
+        default:
+            // LCD_VBLANK, LCD_SEARCH_OAM, or LCD off: wait for scanline end
+            ly_cycles = LCD_LINE_CYCLES - gb->counter.lcd_count;
+            break;
+        }
+        src[2] = ly_cycles;
+    }
+
+    // Find the minimum cycles until the next event
+    uint32_t cycles = src[0];
+    if (src[1] < cycles)
+        cycles = src[1];
+    if (src[2] < cycles)
+        cycles = src[2];
+
+    // ensure positive
+    cycles = (cycles < 16) ? 16 : cycles;
+
+    if (gb->cgb_speed_switch_halt_period)
+    {
+        uint32_t max_cycles = gb->cgb_speed_switch_halt_period;
+        if (cycles > max_cycles)
+            cycles = max_cycles;
+
+        gb->cgb_speed_switch_halt_period = max_cycles - cycles;
+        if (gb->cgb_speed_switch_halt_period == 0)
+            gb->gb_halt = 0;
+    }
+
+    return (uint16_t)cycles;
+}
+
 /**
  * Internal function used to step the CPU.
  */
@@ -1855,7 +1981,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
     if unlikely (gb->gb_halt || gb->gb_stop || gb->gb_hle)
     {
-        inst_cycles = __gb_calc_halt_cycles(gb);
+        inst_cycles = $(__gb_calc_halt_cycles)(gb);
         goto done_instr_timing;
     }
 
