@@ -41,6 +41,15 @@ typedef struct
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
+/* 512 Hz frame-sequencer schedule phase. Continuous render-side grid,
+ * persistent across replay spans and generate calls: restarting it per
+ * call dropped the fractional tick interval (8 instead of 8.57 ticks per
+ * 738-sample frame = sequencer running at 478 Hz). Transient, replay-only;
+ * never serialized. Valid while the sample rate is constant (accurate mode
+ * locks it High). */
+static uint16_t s_apu_tick_left;      /* samples until next tick; 0 = uninitialized */
+static uint16_t s_apu_tick_rem_accum; /* fractional interval, 512ths of a sample */
+
 /* CH3 cycle-domain sample cursor for accurate-mode wave-RAM write timing.
  * The renderer (update_wave) advances c->val at sample granularity, which is
  * too coarse for the DMG wave-RAM access quirk: writes during CH3 playback
@@ -1456,6 +1465,8 @@ void audio_init(audio_data* audio)
     audio->skip_next_apu_tick = false;
     s_apu_event_count = 0;
     s_ch3_cursor_valid = false;
+    s_apu_tick_left = 0;
+    s_apu_tick_rem_accum = 0;
     audio->pre_frame_valid = true;
 
     memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
@@ -1521,6 +1532,8 @@ void audio_reset_replay_state(audio_data* audio)
 {
     s_apu_event_count = 0;
     s_ch3_cursor_valid = false;
+    s_apu_tick_left = 0;
+    s_apu_tick_rem_accum = 0;
     audio->pre_frame_valid = false;
 }
 
@@ -1914,25 +1927,32 @@ void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* righ
     update_noise(audio, left, right, len);
 }
 
-/* Advance the DIV-APU frame-sequencer schedule up to an absolute sample
- * position. Ticks must fire at 512 Hz of output progress regardless of how
- * rendering is segmented: event-dense frames (PDM cries) cut segments to
- * 1-2 samples, and chunk-relative ticking ("tick after each chunk") then
- * starves the envelope/length/sweep sequencer entirely (hanging notes).
- * Requires in scope: tick_next, tick_sched_accum, samples_per_tick,
- * samples_per_tick_rem, audio. */
-#define APU_DIV_TICK_SCHED_UPTO(pos)              \
-    while ((pos) >= tick_next)                    \
-    {                                             \
-        audio_div_apu_tick(audio);                \
-        tick_sched_accum += samples_per_tick_rem; \
-        if (tick_sched_accum >= 512)              \
-        {                                         \
-            tick_sched_accum -= 512;              \
-            tick_next++;                          \
-        }                                         \
-        tick_next += samples_per_tick;            \
+/* Advance the persistent 512 Hz DIV-APU frame-sequencer schedule by a
+ * number of rendered samples. Ticks must fire at 512 Hz of output progress
+ * regardless of how rendering is segmented: event-dense frames (PDM cries)
+ * cut segments to 1-2 samples, and chunk-relative ticking ("tick after each
+ * chunk") then starves the envelope/length/sweep sequencer entirely
+ * (hanging notes). Phase persists across spans and calls (s_apu_tick_left,
+ * s_apu_tick_rem_accum): a per-call restart drops the fractional tick
+ * interval and slows the sequencer to 478 Hz. */
+__shell static void apu_div_tick_sched_advance(audio_data* audio, int samples, int sample_rate)
+{
+    if (s_apu_tick_left == 0)
+        s_apu_tick_left = (uint16_t)(sample_rate / 512); /* first tick one interval in */
+    while (samples >= s_apu_tick_left)
+    {
+        samples -= s_apu_tick_left;
+        audio_div_apu_tick(audio);
+        s_apu_tick_rem_accum += (uint16_t)(sample_rate % 512);
+        s_apu_tick_left = (uint16_t)(sample_rate / 512);
+        if (s_apu_tick_rem_accum >= 512)
+        {
+            s_apu_tick_rem_accum -= 512;
+            s_apu_tick_left++;
+        }
     }
+    s_apu_tick_left -= (uint16_t)samples;
+}
 
 /* Render one emulated frame's event span [span_start, span_end) plus the
  * tail after its last event, emitting up to frame_samples samples.
@@ -1946,8 +1966,6 @@ __shell static int replay_event_span(
     int samples_per_tick = sample_rate / 512;
     int samples_per_tick_rem = sample_rate % 512;
     int tick_accum = 0;
-    int tick_sched_accum = 0;
-    int tick_next = samples_per_tick;
     int offset = 0;
 
     for (int i = span_start; i < span_end; i++)
@@ -1986,10 +2004,10 @@ __shell static int replay_event_span(
                 update_noise(audio, left + offset + generated, right + offset + generated, chunk);
 
                 generated += chunk;
+
+                apu_div_tick_sched_advance(audio, chunk, sample_rate);
             }
             offset += seg;
-
-            APU_DIV_TICK_SCHED_UPTO(offset);
         }
 
         if (s_ch3_cursor_valid)
@@ -2030,7 +2048,7 @@ __shell static int replay_event_span(
 
             generated += chunk;
 
-            APU_DIV_TICK_SCHED_UPTO(offset + generated);
+            apu_div_tick_sched_advance(audio, chunk, sample_rate);
         }
         offset += rem;
     }
@@ -2122,8 +2140,6 @@ __shell void audio_generate_accurate(
     int samples_per_tick = sample_rate / 512;
     int samples_per_tick_rem = sample_rate % 512;
     int tick_accum = 0;
-    int tick_sched_accum = 0;
-    int tick_next = samples_per_tick;
     int generated = 0;
 
     while (generated < len)
@@ -2145,7 +2161,7 @@ __shell void audio_generate_accurate(
 
         generated += chunk;
 
-        APU_DIV_TICK_SCHED_UPTO(generated);
+        apu_div_tick_sched_advance(audio, chunk, sample_rate);
     }
 
     memcpy(audio->pre_frame_chans, audio->chans, sizeof(audio->pre_frame_chans));
