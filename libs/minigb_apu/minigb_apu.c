@@ -24,14 +24,14 @@
 /* Per-frame APU register write events for cycle-accurate replay.
  * Kept as file-static state in main RAM instead of gb_s (which is
  * DTCM-resident): sequential write-once/read-once access gains nothing
- * from DTCM, and the 64 KB buffer would strain the ~64 KB DTCM pool.
+ * from DTCM, and the buffer would strain the ~64 KB DTCM pool.
  * Transient per-frame data, never serialized.
  * Sized beyond every hardware-possible rate: CH1/2 volume PCM
  * (16 kHz voice = ~267/frame), NR32 PDM (25.6 kHz = ~427/frame),
- * CH3 wave-RAM streaming (16 byte-writes per period) past the
- * CPU-saturation limit, plus room for two frames of events when a
- * frame-skip hiccup delays generation. */
-#define APU_EVENT_CAP 8192
+ * CH3 wave-RAM streaming (~2000-3500/frame), up to two full frames at
+ * the absolute CPU-max write rate (LDH every 12 dots = 5852/frame)
+ * when a frame-skip hiccup delays generation. */
+#define APU_EVENT_CAP 16384
 typedef struct
 {
     uint32_t apu_count;
