@@ -1086,6 +1086,8 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     }
     else if (i == 3)
     {  // noise
+        // Inverted-LFSR (XNOR) convention: 0 is the dual of hardware's
+        // all-ones load. 0x7FFF would latch the register (constant DC).
         c->noise.lfsr_reg = 0x0000;
         c->val = VOL_INIT_MIN / MAX_CHAN_VOLUME;
     }
