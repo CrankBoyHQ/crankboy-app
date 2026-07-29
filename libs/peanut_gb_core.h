@@ -247,7 +247,11 @@ __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr,
 
 __core_section("short") static uint8_t $(__gb_fetch8)(gb_s* restrict gb)
 {
-    return $(__gb_read)(gb, gb->cpu_reg.pc++);
+    u16 addr = gb->cpu_reg.pc++;
+    uint8_t* fetch_base = gb->ram_base[addr >> 12];
+    if likely (fetch_base)
+        return fetch_base[addr];
+    return $(__gb_read)(gb, addr);
 }
 
 __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
@@ -1318,8 +1322,13 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
     u16 _pc = gb->cpu_reg.pc;
     u8 opcode;
-    if likely (_pc < 0x8000)
-        opcode = gb->ram_base[_pc >> 12][_pc];
+    // Fast path: any region mapped in ram_base (ROM, WRAM, echo) + HRAM.
+    // VRAM/IO/cart-RAM fetches fall through to preserve read side effects.
+    uint8_t* fetch_base = gb->ram_base[_pc >> 12];
+    if likely (fetch_base)
+        opcode = fetch_base[_pc];
+    else if (_pc >= 0xFF80)
+        opcode = gb->hram[_pc & 0xFF];
     else
         opcode = $(__gb_read)(gb, _pc);
     gb->cpu_reg.pc++;
