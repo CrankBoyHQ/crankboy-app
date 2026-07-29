@@ -399,7 +399,7 @@ __core static uint8_t $(__gb_execute_cb)(gb_s* gb)
     return inst_cycles;
 }
 
-__core_section("draw") static void $(__gb_draw_pixel)(uint8_t* line, u8 x, u8 v)
+static inline __attribute__((always_inline)) void $(__gb_draw_pixel)(uint8_t* line, u8 x, u8 v)
 {
     u8* pix = line + x / LCD_PACKING;
     x = (x % LCD_PACKING) * (8 / LCD_PACKING);
@@ -407,14 +407,14 @@ __core_section("draw") static void $(__gb_draw_pixel)(uint8_t* line, u8 x, u8 v)
     *pix |= (v & 3) << x;
 }
 
-__core_section("draw") static u8 $(__gb_get_pixel)(uint8_t* line, u8 x)
+static inline __attribute__((always_inline)) u8 $(__gb_get_pixel)(uint8_t* line, u8 x)
 {
     u8* pix = line + x / LCD_PACKING;
     x = (x % LCD_PACKING) * LCD_BITS_PER_PIXEL;
     return (*pix >> x) % (1 << LCD_BITS_PER_PIXEL);
 }
 
-__core_section("draw") static inline int $(compare_sprites)(
+static inline int $(compare_sprites)(
     const struct sprite_data* const sd1, const struct sprite_data* const sd2
 )
 {
@@ -429,7 +429,7 @@ __core_section("draw") static inline int $(compare_sprites)(
 #endif
 }
 
-__core_section("draw") static void $(__gb_draw_line_sprites)(
+__draw static void $(__gb_draw_line_sprites)(
     gb_s* restrict gb, const uint8_t* oam_src, const uint32_t* line_priority,
 #if PGB_IS_CGB
     const uint32_t* line_cgb_priority, bool cgb_master_priority,
@@ -586,16 +586,15 @@ __core_section("draw") static void $(__gb_draw_line_sprites)(
 }
 
 #if PGB_IS_CGB
-__core_section("draw") static uint16_t __cgb_remap_tile(
-    uint8_t lo_plane, uint8_t hi_plane, const uint8_t* restrict lut
-)
+static inline __attribute__((always_inline)) uint16_t
+__cgb_remap_tile(uint8_t lo_plane, uint8_t hi_plane, const uint8_t* restrict lut)
 {
     uint8_t idx_lo = (lo_plane & 0x0F) | ((hi_plane & 0x0F) << 4);
     uint8_t idx_hi = (lo_plane >> 4) | (hi_plane & 0xF0);
     return ((uint16_t)lut[idx_hi] << 8) | lut[idx_lo];
 }
 
-__core_section("draw") static void __cgb_merge_tiles(
+static inline __attribute__((always_inline)) void __cgb_merge_tiles(
     uint16_t tile_data_lo, uint16_t tile_data_hi, uint16_t pre_remapped_lo, bool has_pre_remapped,
     const uint8_t* restrict lut_lo, const uint8_t* restrict lut_hi, int subx,
     uint16_t* restrict out, uint8_t* restrict pri, uint16_t* restrict out_rm_hi,
@@ -624,7 +623,7 @@ __core_section("draw") static void __cgb_merge_tiles(
     *pri = (uint8_t)((lo_p | hi_p) >> subx) | (uint8_t)((lo_hp | hi_hp) << (8 - subx));
 }
 
-__core_section("draw") static void __cgb_write_dark(
+static inline __attribute__((always_inline)) void __cgb_write_dark(
     uint16_t tile_hi, uint16_t rm_lo_dark, const uint8_t* restrict lut_hi_dark, int subx,
     uint8_t* restrict pixels_alt, int x, uint16_t* restrict rm_hi_dark_out
 )
@@ -637,7 +636,7 @@ __core_section("draw") static void __cgb_write_dark(
     *rm_hi_dark_out = rm_hi_dark;
 }
 
-__core_section("draw") static uint16_t __cgb_fetch_tile(
+static inline __attribute__((always_inline)) uint16_t __cgb_fetch_tile(
     uint8_t* restrict tile_map, uint8_t* restrict attr_map, uint16_t* restrict reg_data,
     uint16_t* restrict flip_data, uint8_t map_idx, int tiledata_offset, uint8_t* out_palette
 )
@@ -657,7 +656,7 @@ __core_section("draw") static uint16_t __cgb_fetch_tile(
 #define CGB_LUT_DARK(gb, pal_idx) \
     ((gb)->cgb_bg_palette + 64 + 8 * 256 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
 
-__core_section("draw") static void __cgb_draw_tile_strip(
+static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
     gb_s* restrict gb, uint8_t* restrict tile_map, uint8_t* restrict attr_map,
     uint16_t* restrict tile_data_y, uint16_t* restrict tile_data_y_flipped, int tiledata_offset,
     int map_x_offset, int start_x, int end_x, int subx, int merge_subx, uint8_t* restrict pixels,
@@ -773,7 +772,9 @@ __core_section("draw") static void __cgb_draw_tile_strip(
 #endif
 
 // renders one scanline
-__core_section("draw") void $(__gb_draw_line)(gb_s* restrict gb)
+// __draw (+noinline): dedicated relocatable section, kept out of the core
+// pocket; called from __gb_step_cpu via the offset-adjusted pointer.
+__draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 {
     __builtin_prefetch(&gb->gb_reg.LCDC, 0);
     __builtin_prefetch(&gb->gb_reg.WX, 0);
@@ -2207,7 +2208,11 @@ done_instr_timing:
 
                     if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
                     {
-                        $(__gb_draw_line)(gb);
+                        // draw cluster may be relocated into the main DTCM
+                        // pool (rev A); call via the offset-adjusted pointer.
+                        void (*draw_line)(gb_s*) =
+                            (void (*)(gb_s*))((char*)$(__gb_draw_line) + pgb_draw_reloc_offset);
+                        draw_line(gb);
                     }
 
                     gb->lcd_mode = LCD_HBLANK;

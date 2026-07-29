@@ -354,6 +354,25 @@ extern volatile int g_trace_frames_remaining;
 #endif
 #endif
 
+// Draw cluster: dedicated sections so it can be relocated into the main
+// DTCM pool as a separate block on rev A (see itcm_core_init), keeping
+// the core pocket small. Intra-cluster calls only (short_call).
+#ifdef TARGET_SIMULATOR
+#define __draw_dmg
+#define __draw_cgb
+#else
+#define __draw_dmg                                                             \
+    __attribute__((optimize("Os"))) __attribute__((section(".dtcm.draw.dmg"))) \
+    __attribute__((short_call))
+#define __draw_cgb                                                             \
+    __attribute__((optimize("Os"))) __attribute__((section(".dtcm.draw.cgb"))) \
+    __attribute__((short_call))
+#endif
+
+// Offset of the relocated draw cluster (0 = run from flash). Set by
+// itcm_core_init on rev A.
+extern intptr_t pgb_draw_reloc_offset;
+
 __core_cgb static void __gb_check_lyc__cgb(gb_s* gb);
 __core_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);
 __core_cgb static void __gb_update_lyc_and_stat_irq__cgb(gb_s* gb);
@@ -5992,11 +6011,13 @@ extern uint8_t pgb_dirty_skip;
 
 #define __core __core_dmg
 #define __core_section(x) __core_dmg_section(x)
+#define __draw __draw_dmg
 
 #include "peanut_gb_core.h"
 
 #undef __core
 #undef __core_section
+#undef __draw
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
 
@@ -6007,11 +6028,13 @@ extern uint8_t pgb_dirty_skip;
 #define PGB_IS_CGB 1
 #define __core __core_cgb
 #define __core_section(x) __core_cgb_section(x)
+#define __draw __draw_cgb
 
 #include "peanut_gb_core.h"
 
 #undef __core
 #undef __core_section
+#undef __draw
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
 

@@ -393,6 +393,10 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
 volatile int g_trace_frames_remaining = 0;
 #endif
 
+// Offset of the relocated draw cluster (0 = run from flash).
+// Set by itcm_core_init on RevA; always 0 elsewhere.
+intptr_t pgb_draw_reloc_offset = 0;
+
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
 intptr_t core_itcm_offset = 0;
@@ -401,6 +405,10 @@ extern char __itcm_dmg_start[];
 extern char __itcm_dmg_end[];
 extern char __itcm_cgb_start[];
 extern char __itcm_cgb_end[];
+extern char __draw_dmg_start[];
+extern char __draw_dmg_end[];
+extern char __draw_cgb_start[];
+extern char __draw_cgb_end[];
 
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 
@@ -462,19 +470,74 @@ __section__(".rare") void itcm_core_init(bool cgb)
             dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
     else
     {
+        // No pocket fits: fall back to the main DTCM pool. Validated at
+        // post-shrink core sizes; the high canary guards pool overflow.
+        core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
         playdate->system->logToConsole(
-            "itcm_core_init: %s no pocket fits %u bytes, keeping ITCM in place",
-            cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD
+            "itcm_core_init: %s no pocket fits %u bytes, using main pool at %p",
+            cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD, core_itcm_reloc
         );
-        core_itcm_reloc = itcm_start;
-        core_itcm_offset = 0;
-        return;
     }
 
     DTCM_VERIFY();
     memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
     DTCM_VERIFY();
     core_itcm_offset = core_itcm_reloc - itcm_start;
+
+    // Relocate the draw cluster as a separate block so the core stays small
+    // enough for pockets. Priority: core's pocket slack -> any other pocket
+    // -> main pool (only if core is in a pocket) -> flash. This keeps core
+    // and draw from ever sharing the main pool. (Rev A only; other revs
+    // keep offset 0 = flash.)
+    {
+        void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
+        void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
+        size_t draw_size = draw_end - draw_start;
+        size_t draw_need = draw_size + MARGIN + DTCM_ALIGN_PAD;
+
+        void* draw_reloc = NULL;
+        const char* draw_where = "flash";
+
+        // core's pocket first (its brk continues after the core block),
+        // then any other pocket with room
+        for (int i = 0; i < dtcm_num_pockets && !draw_reloc; i++)
+        {
+            int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
+            if (!dtcm_pocket_enabled(p))
+                continue;
+            size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
+            if (avail >= draw_need)
+            {
+                draw_reloc =
+                    dtcm_pocket_alloc_aligned(p, draw_size + MARGIN, (uintptr_t)draw_start);
+                draw_where = "pocket";
+            }
+        }
+
+        // main pool only when the core did NOT fall back to it
+        if (!draw_reloc && best >= 0)
+        {
+            draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
+            draw_where = "main pool";
+        }
+
+        if (draw_reloc)
+        {
+            DTCM_VERIFY();
+            memcpy(draw_reloc, draw_start, draw_size);
+            DTCM_VERIFY();
+            pgb_draw_reloc_offset = (char*)draw_reloc - (char*)draw_start;
+        }
+        else
+        {
+            pgb_draw_reloc_offset = 0;
+        }
+
+        playdate->system->logToConsole(
+            "draw cluster: %s 0x%X bytes at %p (%s)", cgb ? "CGB" : "DMG", draw_size,
+            draw_reloc ? draw_reloc : draw_start, draw_where
+        );
+    }
 
     playdate->system->logToConsole(
         "itcm start: %p, end %p: (%s)", itcm_start, itcm_end, cgb ? "cgb" : "dmg"
@@ -771,6 +834,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
+    pgb_draw_reloc_offset = 0;
 #endif
     dtcm_deinit();
     dtcm_init();

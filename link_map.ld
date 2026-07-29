@@ -81,6 +81,18 @@ SECTIONS
 			*(.itcm.cgb.*)
         __itcm_cgb_end = .;
 
+		/* draw cluster: relocated into main DTCM pool on rev A */
+		. = ALIGN(32);
+        __draw_dmg_start = .;
+			*(.dtcm.draw.dmg)
+			*(.dtcm.draw.dmg.*)
+        __draw_dmg_end = .;
+		. = ALIGN(32);
+        __draw_cgb_start = .;
+			*(.dtcm.draw.cgb)
+			*(.dtcm.draw.cgb.*)
+        __draw_cgb_end = .;
+
 		. = ALIGN(0x1000);
 		__audio_start__ = .;
 		*(.audio)
