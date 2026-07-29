@@ -41,6 +41,12 @@ typedef struct
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
+/* Sentinel addr marking an emulated frame's end in the event stream
+ * (outside 0xFF10-0xFF3F, never passed to audio_write). Gives replay an
+ * explicit frame boundary: a frame with zero APU writes otherwise leaves
+ * no marker, and the next frame's span would render one frame-slot early. */
+#define APU_FRAME_END_ADDR 0xFFFF
+
 /* 512 Hz frame-sequencer schedule phase. Continuous render-side grid,
  * persistent across replay spans and generate calls: restarting it per
  * call dropped the fractional tick interval (8 instead of 8.57 ticks per
@@ -1961,6 +1967,19 @@ __shell static void apu_div_tick_sched_advance(audio_data* audio, int samples, i
     s_apu_tick_left -= (uint16_t)samples;
 }
 
+/* Record an emulated frame's end as a sentinel event. Called by the CPU
+ * core at the end of gb_run_frame with the frame's final apu_count. */
+__shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
+{
+    if (audio->pre_frame_valid && s_apu_event_count < APU_EVENT_CAP && preferences_sound_mode == 2)
+    {
+        s_apu_events[s_apu_event_count].apu_count = apu_count;
+        s_apu_events[s_apu_event_count].addr = APU_FRAME_END_ADDR;
+        s_apu_events[s_apu_event_count].val = 0;
+        s_apu_event_count++;
+    }
+}
+
 /* Render one emulated frame's event span [span_start, span_end) plus the
  * tail after its last event, emitting up to frame_samples samples.
  * Events beyond frame_samples (buffer clamp) are still applied so channel
@@ -2080,26 +2099,28 @@ __shell void audio_generate_accurate(
 
         audio->pre_frame_valid = false;
 
-        /* Split the batch at emulated-frame boundaries: apu_count restarts
-         * at 0 each frame (peanut_gb_core.h), so a decrease marks the start
-         * of a new frame. Multi-frame batches occur when a generation tick
-         * was skipped (lead accounting) or the emulator frame-skips; without
-         * splitting, later frames' events clamp to a single sample point and
-         * their span renders flat (audible flutter on PDM-style content). */
+        /* Split the batch at frame boundaries: the CPU core appends a
+         * sentinel event (APU_FRAME_END_ADDR) at every emulated frame's
+         * end. Multi-frame batches occur when a generation tick was
+         * skipped (lead accounting) or the emulator frame-skips; without
+         * splitting, later frames' events clamp to a single sample point
+         * and their span renders flat (audible flutter on PDM-style
+         * content). The sentinel also marks frames with no APU writes,
+         * which an apu_count-decrease heuristic cannot detect (the
+         * following frame's audio rendered one frame-slot early). */
         int span_start = 0;
         int offset = 0;
 
         while (span_start < s_apu_event_count)
         {
-            int span_end = s_apu_event_count;
-            for (int i = span_start + 1; i < s_apu_event_count; i++)
-            {
-                if (s_apu_events[i].apu_count < s_apu_events[i - 1].apu_count)
-                {
-                    span_end = i;
-                    break;
-                }
-            }
+            /* Span = run of write events up to the next sentinel (frame
+             * end) or batch end (current partial frame). */
+            int span_end = span_start;
+            while (span_end < s_apu_event_count &&
+                   s_apu_events[span_end].addr != APU_FRAME_END_ADDR)
+                span_end++;
+
+            const bool frame_complete = span_end < s_apu_event_count;
 
             uint32_t end_count = 0;
             for (int i = span_start; i < span_end; i++)
@@ -2107,13 +2128,13 @@ __shell void audio_generate_accurate(
                     end_count = s_apu_events[i].apu_count;
 
             int frame_samples;
-            if (span_end < s_apu_event_count)
+            if (frame_complete)
             {
-                /* Interior span: events end at end_count but the frame's
-                 * audio continues to the frame boundary (70224 cycles).
-                 * Deriving span length from end_count would drop the
-                 * post-event remainder of the frame (staccato gaps). */
-                frame_samples = (int)((uint64_t)LCD_FRAME_CYCLES * sample_rate / DMG_CLOCK_FREQ_U);
+                /* Full frame: render to the frame boundary (the sentinel's
+                 * apu_count), not the last write — the frame's audio
+                 * continues past its final event. */
+                frame_samples = (int)((uint64_t)s_apu_events[span_end].apu_count * sample_rate /
+                                      DMG_CLOCK_FREQ_U);
             }
             else
             {
@@ -2124,15 +2145,16 @@ __shell void audio_generate_accurate(
             if (frame_samples < 0)
                 frame_samples = 0;
 
-            /* Anchor CH3 cycle cursor to this frame's first event. */
-            ch3_cursor_reset(audio, s_apu_events[span_start].apu_count);
+            /* Anchor CH3 cycle cursor to this frame's first event
+             * (frame start for write-less frames). */
+            ch3_cursor_reset(audio, span_end > span_start ? s_apu_events[span_start].apu_count : 0);
 
             offset += replay_event_span(
                 audio, left + offset, right + offset, span_start, span_end, frame_samples,
                 sample_rate
             );
 
-            span_start = span_end;
+            span_start = frame_complete ? span_end + 1 : span_end;
         }
 
         left += offset;

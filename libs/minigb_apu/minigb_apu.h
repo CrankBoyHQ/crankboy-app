@@ -87,6 +87,14 @@ __shell void audio_generate_accurate(
 
 __shell void audio_reset_replay_state(audio_data* audio);
 
+/**
+ * Record an emulated frame's end in the write-event stream (accurate
+ * sound mode only). Called by the CPU core at the end of gb_run_frame;
+ * gives event replay an explicit frame boundary even for frames with
+ * no APU register writes.
+ */
+__shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count);
+
 unsigned audio_get_state_size(void);
 void audio_state_save(void* buff);
 void audio_state_load(const void* buff);

@@ -2366,6 +2366,12 @@ __core void $(gb_run_frame)(gb_s* gb)
         total_cycles += $(__gb_step_cpu)(gb);
     }
 
+    /* Mark the frame's end in the APU write-event stream (accurate sound
+     * mode): gives audio event replay an explicit frame boundary even
+     * when the frame had no register writes. */
+    if (gb->direct.sound)
+        audio_note_frame_end(&gb->audio, gb->counter.apu_count);
+
 #ifdef TARGET_SIMULATOR
     if (trace_this_frame)
     {
