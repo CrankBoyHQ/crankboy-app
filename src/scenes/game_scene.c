@@ -444,51 +444,68 @@ __section__(".rare") void itcm_core_init(bool cgb)
     int MARGIN = 4;
     int DTCM_ALIGN_PAD = 31;
 
-    // probe for clean DTCM pockets, choose the one with the most slack
+    // probe for clean DTCM pockets (needed for core and/or draw placement)
     dtcm_probe_lower_bound();
-    int best = -1;
-    size_t best_slack = 0;
 
-    for (int i = 0; i < dtcm_num_pockets; i++)
+    // preference: 0=Off, 1=Both, 2=Core, 3=Draw
+    const bool core_on = (preferences_itcm == 1 || preferences_itcm == 2);
+    const bool draw_on = (preferences_itcm == 1 || preferences_itcm == 3);
+    bool core_in_main_pool = false;
+    int best = -1;
+
+    if (core_on)
     {
-        if (!dtcm_pocket_enabled(i))
-            continue;
-        size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
-        if (avail >= core_size + MARGIN + DTCM_ALIGN_PAD)
+        // choose the pocket with the most slack
+        size_t best_slack = 0;
+
+        for (int i = 0; i < dtcm_num_pockets; i++)
         {
-            size_t slack = avail - (core_size + MARGIN + DTCM_ALIGN_PAD);
-            if (best == -1 || slack > best_slack)
+            if (!dtcm_pocket_enabled(i))
+                continue;
+            size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
+            if (avail >= core_size + MARGIN + DTCM_ALIGN_PAD)
             {
-                best = i;
-                best_slack = slack;
+                size_t slack = avail - (core_size + MARGIN + DTCM_ALIGN_PAD);
+                if (best == -1 || slack > best_slack)
+                {
+                    best = i;
+                    best_slack = slack;
+                }
             }
         }
-    }
 
-    if (best >= 0)
-        core_itcm_reloc =
-            dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
+        if (best >= 0)
+            core_itcm_reloc =
+                dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
+        else
+        {
+            // No pocket fits: fall back to the main DTCM pool. Validated at
+            // post-shrink core sizes; the high canary guards pool overflow.
+            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+            core_in_main_pool = true;
+            playdate->system->logToConsole(
+                "itcm_core_init: %s no pocket fits %u bytes, using main pool at %p",
+                cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD, core_itcm_reloc
+            );
+        }
+
+        DTCM_VERIFY();
+        memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
+        DTCM_VERIFY();
+        core_itcm_offset = core_itcm_reloc - itcm_start;
+    }
     else
     {
-        // No pocket fits: fall back to the main DTCM pool. Validated at
-        // post-shrink core sizes; the high canary guards pool overflow.
-        core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
-        playdate->system->logToConsole(
-            "itcm_core_init: %s no pocket fits %u bytes, using main pool at %p",
-            cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD, core_itcm_reloc
-        );
+        // Draw-only: core runs from flash.
+        core_itcm_reloc = itcm_start;
+        core_itcm_offset = 0;
     }
-
-    DTCM_VERIFY();
-    memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
-    DTCM_VERIFY();
-    core_itcm_offset = core_itcm_reloc - itcm_start;
 
     // Relocate the draw cluster as a separate block so the core stays small
     // enough for pockets. Priority: core's pocket slack -> any other pocket
-    // -> main pool (only if core is in a pocket) -> flash. This keeps core
-    // and draw from ever sharing the main pool. (Rev A only; other revs
-    // keep offset 0 = flash.)
+    // -> main pool (only if core is NOT in the main pool) -> flash. This
+    // keeps core and draw from ever sharing the main pool.
+    if (draw_on)
     {
         void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
         void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
@@ -514,8 +531,8 @@ __section__(".rare") void itcm_core_init(bool cgb)
             }
         }
 
-        // main pool only when the core did NOT fall back to it
-        if (!draw_reloc && best >= 0)
+        // main pool only when the core is not in it
+        if (!draw_reloc && !core_in_main_pool)
         {
             draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
             draw_where = "main pool";
