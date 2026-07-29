@@ -124,6 +124,42 @@ static inline bool ch3_cursor_just_read(uint32_t apu_count)
     return apu_count - last_byte_read <= window;
 }
 
+/* Fractional CH3 gain for NR32 PDM (Pokemon Yellow cries). NR32 volume
+ * transitions are applied per output sample with sub-sample weights
+ * instead of snapping edges to the integer sample grid: at 25.6 kHz PDM
+ * rates pulses are 1-2 samples wide, so grid snapping jittered every
+ * edge by +/-0.5 sample (audible roughness). CH3 output is linear in
+ * volume gain (carrier ~47 cycles/sample), so the per-sample time-
+ * weighted mean gain is exact to within a partial carrier cycle.
+ * Transient, replay-only; never serialized. */
+#define APU_GAIN_CAP 3072 /* >= MAX_AUDIO_SAMPLES_PER_CHUNK (2940) */
+static uint16_t s_ch3_gain_q8[APU_GAIN_CAP];
+
+/* Volume -> gain in Q8, matching wave_sample's shift:
+ * 0 = mute, 1 = 100%, 2 = 50%, 3 = 25%. */
+static inline uint16_t ch3_gain_q8(unsigned volume)
+{
+    static const uint16_t map[4] = {0, 256, 128, 64};
+    return map[volume & 3];
+}
+
+/* Accumulate gain g (Q8) over the Q16 fixed-point sample interval
+ * [a_q16, b_q16) into per-sample weighted sums, clamped to bound. */
+static void ch3_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16_t g, int bound)
+{
+    uint32_t pos = a_q16;
+    while (pos < b_q16)
+    {
+        uint32_t s = pos >> 16;
+        if ((int)s >= bound)
+            break;
+        uint32_t next = (s + 1) << 16;
+        if (next > b_q16)
+            next = b_q16;
+        gain[s] += (uint16_t)(((uint32_t)g * (next - pos)) >> 16);
+        pos = next;
+    }
+}
 #define AUDIO_MEM_SIZE (0xFF40 - 0xFF10)
 #define AUDIO_ADDR_COMPENSATION 0xFF10
 
@@ -624,15 +660,22 @@ __audio static int8_t wave_sample(
 
 /* Sum of wave_sample over all 32 wave positions with the given volume.
  * Used by the extreme-frequency fast path in update_wave. */
-__audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c)
+__audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c, unsigned volume)
 {
     int16_t sum = 0;
     for (int p = 0; p < 32; p++)
-        sum += wave_sample(audio, p, c->volume);
+        sum += wave_sample(audio, p, volume);
     return sum;
 }
 
-__audio static void update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+/* gain_q8: optional per-sample gain array (Q8, replay fractional NR32 PDM).
+ * When non-NULL, volume is treated as 1 internally and each output sample
+ * is scaled by gain_q8[i]; the muted early-out is bypassed (gain 0 handles
+ * silence while the carrier keeps advancing). Accurate mode only, so
+ * sample_replication is 1 and gain_q8[i] aligns with output index i. */
+__audio static void update_wave(
+    audio_data* restrict audio, int16_t* left, int16_t* right, int len, const uint16_t* gain_q8
+)
 {
     chan* c = audio->chans + 2;
 
@@ -660,14 +703,18 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
     int sample_rate = get_audio_sample_rate();
 
     len = update_len(audio, c, len);
-    c->wave.sample = wave_sample(audio, c->val, c->volume);
+
+    /* Effective volume for internal scaling: 1 when an external gain
+     * array carries the envelope (fractional NR32 PDM). */
+    const unsigned volume = gain_q8 ? 1 : c->volume;
+    c->wave.sample = wave_sample(audio, c->val, volume);
 
     /* CH3 muted (NR32 volume 0): no output, but keep the sample position
      * and frequency counter advancing so wave RAM access timing and the
      * accurate-mode cursor anchor stay correct. O(1) for the whole chunk.
      * This is the idle state of PDM-via-NR32 players (e.g. Pokemon Yellow
      * parks CH3 at max frequency, volume 0). */
-    if (c->volume == 0)
+    if (!gain_q8 && c->volume == 0)
     {
         uint64_t total = (uint64_t)c->freq_inc * (uint32_t)len + c->freq_counter;
         uint32_t steps = (uint32_t)(total / (uint32_t)sample_rate);
@@ -697,10 +744,10 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
      * The weighted average still yields the correct band-limited mean,
      * which is what hardware + speaker low-pass produce. */
     const bool extreme_freq = c->freq_inc >= 32u * (uint32_t)sample_rate;
-    if (extreme_freq && (!c->wave.sum_valid || c->wave.sum_volume != c->volume))
+    if (extreme_freq && (!c->wave.sum_valid || c->wave.sum_volume != volume))
     {
-        c->wave.sum = wave_cycle_sum(audio, c);
-        c->wave.sum_volume = c->volume;
+        c->wave.sum = wave_cycle_sum(audio, c, volume);
+        c->wave.sum_volume = volume;
         c->wave.sum_valid = true;
     }
 
@@ -719,7 +766,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
             {
                 weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
                 c->val = (c->val + 1) & 31;
-                c->wave.sample = wave_sample(audio, c->val, c->volume);
+                c->wave.sample = wave_sample(audio, c->val, volume);
                 c->wave.just_read = true;
                 prev_pos = pos;
             }
@@ -740,7 +787,7 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
         {
             weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
             c->val = (c->val + 1) & 31;
-            c->wave.sample = wave_sample(audio, c->val, c->volume);
+            c->wave.sample = wave_sample(audio, c->val, volume);
             c->wave.just_read = true;
             prev_pos = pos;
         }
@@ -748,6 +795,9 @@ __audio static void update_wave(audio_data* restrict audio, int16_t* left, int16
         weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->wave.sample;
         int32_t avg = (c->freq_inc > 0) ? (weighted_sum / (int32_t)c->freq_inc) : c->wave.sample;
         sample_out = avg * (INT16_MAX / 32);
+
+        if (gain_q8)
+            sample_out = (sample_out * (int32_t)gain_q8[i]) >> 8;
 
         if (c->muted)
             sample_out = 0;
@@ -1819,7 +1869,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
                 memset(right_ptr, 0, chunksize * sizeof(int16_t));
 #endif
 
-            update_wave(audio, left_ptr, right_ptr, chunksize);
+            update_wave(audio, left_ptr, right_ptr, chunksize, NULL);
             update_square(audio, left_ptr, right_ptr, 0, chunksize);
             update_square(audio, left_ptr, right_ptr, 1, chunksize);
             update_noise(audio, left_ptr, right_ptr, chunksize);
@@ -1932,7 +1982,7 @@ void audio_update_square(
 
 void audio_update_wave(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
-    update_wave(audio, left, right, len);
+    update_wave(audio, left, right, len, NULL);
 }
 
 void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
@@ -1994,6 +2044,47 @@ __shell static int replay_event_span(
     int tick_accum = 0;
     int offset = 0;
 
+    /* Fractional CH3 gain pre-pass: if the span contains NR32 (CH3 volume)
+     * writes, sweep them into per-sample weighted gains (Q16 sub-sample
+     * positions) instead of cutting render segments at integer samples.
+     * See the comment at s_ch3_gain_q8. */
+    const uint16_t* ch3_gain = NULL;
+    if (frame_samples > 0 && frame_samples <= APU_GAIN_CAP)
+    {
+        bool has_nr32 = false;
+        for (int i = span_start; i < span_end; i++)
+            if (s_apu_events[i].addr == 0xFF1C)
+            {
+                has_nr32 = true;
+                break;
+            }
+        if (has_nr32)
+        {
+            const uint32_t span_end_q16 = (uint32_t)frame_samples << 16;
+            uint32_t cursor_q16 = 0;
+            uint16_t cur = ch3_gain_q8(audio->chans[2].volume);
+
+            memset(s_ch3_gain_q8, 0, (size_t)frame_samples * sizeof(uint16_t));
+            for (int i = span_start; i < span_end; i++)
+            {
+                if (s_apu_events[i].addr != 0xFF1C)
+                    continue;
+                uint32_t pos_q16 = (uint32_t)(((uint64_t)s_apu_events[i].apu_count *
+                                               (uint64_t)sample_rate * 65536u) /
+                                              DMG_CLOCK_FREQ_U);
+                if (pos_q16 > span_end_q16)
+                    pos_q16 = span_end_q16;
+                if (pos_q16 < cursor_q16)
+                    pos_q16 = cursor_q16;
+                ch3_gain_fill(s_ch3_gain_q8, cursor_q16, pos_q16, cur, frame_samples);
+                cursor_q16 = pos_q16;
+                cur = ch3_gain_q8((unsigned)(s_apu_events[i].val >> 5) & 3);
+            }
+            ch3_gain_fill(s_ch3_gain_q8, cursor_q16, span_end_q16, cur, frame_samples);
+            ch3_gain = s_ch3_gain_q8;
+        }
+    }
+
     for (int i = span_start; i < span_end; i++)
     {
         /* Absolute sample position: avoids cumulative floor drift
@@ -2003,6 +2094,11 @@ __shell static int replay_event_span(
         if (seg > frame_samples - offset)
             seg = frame_samples - offset;
         if (seg < 0)
+            seg = 0;
+
+        /* NR32 volume changes are carried by the gain array: no segment
+         * cut (also removes the per-event tiny-segment render cost). */
+        if (ch3_gain && s_apu_events[i].addr == 0xFF1C)
             seg = 0;
 
         if (seg > 0)
@@ -2020,7 +2116,10 @@ __shell static int replay_event_span(
                 if (generated + chunk > seg)
                     chunk = seg - generated;
 
-                update_wave(audio, left + offset + generated, right + offset + generated, chunk);
+                update_wave(
+                    audio, left + offset + generated, right + offset + generated, chunk,
+                    ch3_gain ? ch3_gain + offset + generated : NULL
+                );
                 update_square(
                     audio, left + offset + generated, right + offset + generated, 0, chunk
                 );
@@ -2067,7 +2166,10 @@ __shell static int replay_event_span(
             if (generated + chunk > rem)
                 chunk = rem - generated;
 
-            update_wave(audio, left + offset + generated, right + offset + generated, chunk);
+            update_wave(
+                audio, left + offset + generated, right + offset + generated, chunk,
+                ch3_gain ? ch3_gain + offset + generated : NULL
+            );
             update_square(audio, left + offset + generated, right + offset + generated, 0, chunk);
             update_square(audio, left + offset + generated, right + offset + generated, 1, chunk);
             update_noise(audio, left + offset + generated, right + offset + generated, chunk);
@@ -2183,7 +2285,7 @@ __shell void audio_generate_accurate(
         if (generated + chunk > len)
             chunk = len - generated;
 
-        update_wave(audio, left + generated, right + generated, chunk);
+        update_wave(audio, left + generated, right + generated, chunk, NULL);
         update_square(audio, left + generated, right + generated, 0, chunk);
         update_square(audio, left + generated, right + generated, 1, chunk);
         update_noise(audio, left + generated, right + generated, chunk);
