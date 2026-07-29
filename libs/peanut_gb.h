@@ -164,7 +164,7 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
 #define PPU_PEEK_CYCLES 24
-#define CPU_BATCH_SIZE 3
+#define CPU_BATCH_CYCLE_BUDGET 48
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -1487,27 +1487,48 @@ hle_fail:
 }
 }
 
+/* Cycles executed in the current CPU batch but not yet applied to the
+ * PPU counters. Transient; set by the batch loop, zeroed when it ends. */
+static uint16_t pgb_batch_elapsed;
+
 /**
  * Cycles remaining until next PPU mode boundary.
  */
 __section__(".text.cb") static uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
 {
+    int32_t remaining;
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
-        return LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
-
-    switch (gb->lcd_mode)
+        remaining = LCD_FRAME_CYCLES - gb->counter.lcd_off_count;
+    else
     {
-    case LCD_SEARCH_OAM:
-        return PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-    case LCD_TRANSFER:
-        return gb->display.current_mode3_cycles - gb->counter.lcd_count;
-    case LCD_HBLANK:
-        return gb->display.current_mode0_cycles - gb->counter.lcd_count;
-    case LCD_VBLANK:
-        return LCD_LINE_CYCLES - gb->counter.lcd_count;
-    default:
-        return 1;
+        switch (gb->lcd_mode)
+        {
+        case LCD_SEARCH_OAM:
+            remaining = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+            break;
+        case LCD_TRANSFER:
+            remaining = gb->display.current_mode3_cycles - gb->counter.lcd_count;
+            break;
+        case LCD_HBLANK:
+            remaining = gb->display.current_mode0_cycles - gb->counter.lcd_count;
+            break;
+        case LCD_VBLANK:
+            remaining = LCD_LINE_CYCLES - gb->counter.lcd_count;
+            break;
+        default:
+            remaining = 1;
+            break;
+        }
     }
+
+    // Discount cycles already executed in the current batch (same shifts
+    // inst_cycles will receive in the timing block).
+    uint16_t lag = pgb_batch_elapsed;
+    if (gb->lcd_mode == LCD_VBLANK)
+        lag >>= gb->overclock;
+    lag >>= gb->cgb_fast_mode_active;
+    remaining -= lag;
+    return (remaining > 0) ? remaining : 0;
 }
 
 /**

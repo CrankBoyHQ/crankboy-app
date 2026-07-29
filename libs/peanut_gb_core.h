@@ -1785,18 +1785,25 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     inst_cycles = 0;
-    for (int _i = 0; _i < CPU_BATCH_SIZE; _i++)
+    // Cycle-budget batching: worst-case event window = budget + 23 (one
+    // max-length instruction of overshoot). Budget doubles in CGB
+    // double-speed mode; inst_cycles is shifted back down (>>1) after the
+    // batch, so the PPU-domain window matches DMG.
+    const unsigned batch_budget = CPU_BATCH_CYCLE_BUDGET
+                                  << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
+    // Stop batching once an interrupt is dispatchable.
+    while (
+        !(gb->gb_halt || gb->gb_stop || gb->gb_hle ||
+          (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))))
     {
-        /* Also stop the batch when an interrupt became dispatchable, so the
-         * dispatch at the top of the next step happens before any further
-         * instruction (e.g. a following DI) can change the outcome. */
-        if (gb->gb_halt || gb->gb_stop || gb->gb_hle ||
-            (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)))
-            break;
         inst_cycles += $(__gb_run_instruction_micro)(gb);
+        pgb_batch_elapsed = inst_cycles;
         if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
             gb->gb_ime = 1;
+        if (inst_cycles >= batch_budget)
+            break;
     }
+    pgb_batch_elapsed = 0;
 #else
     // run once as each, verify
 
