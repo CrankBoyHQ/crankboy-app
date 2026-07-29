@@ -28,6 +28,7 @@ Options:
                     of piping the device's serial output (ctrl+c to stop).
   --retry           After a timeout, prompt to (R)etry instead of exiting.
   --timeout SECONDS  Wait time for each step (default: 15).
+                     Also accepts --timeout=SECONDS.
   --only-bin        Only sync *.bin files (e.g. pdex.bin) into the existing
                     installed .pdx — first removes existing .bin files there.
                     Requires the .pdx to already be installed on the device.
@@ -129,8 +130,12 @@ while [[ $# -gt 0 ]]; do
         shift
         ;;
     --timeout)
-        timeout=$2
+        timeout=${2:?"error: --timeout requires a value"}
         shift 2
+        ;;
+    --timeout=*)
+        timeout=${1#*=}
+        shift
         ;;
     --only-bin)
         only_bin=1
@@ -158,6 +163,11 @@ while [[ $# -gt 0 ]]; do
         ;;
     esac
 done
+
+if [[ ! $timeout =~ ^[0-9]+$ ]]; then
+    echo "error: --timeout value must be a positive integer, got '$timeout'" >&2
+    exit 2
+fi
 
 if [[ ${#launch_args[@]} -gt 0 && $launch -ne 1 ]]; then
     echo "error: arguments after '--' require --launch" >&2
