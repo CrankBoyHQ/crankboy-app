@@ -373,9 +373,12 @@ extern volatile int g_trace_frames_remaining;
 // itcm_core_init on rev A.
 extern intptr_t pgb_draw_reloc_offset;
 
-__core_cgb static void __gb_check_lyc__cgb(gb_s* gb);
-__core_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);
-__core_cgb static void __gb_update_lyc_and_stat_irq__cgb(gb_s* gb);
+// Call a draw-cluster function from core code through the relocation offset.
+#define DRAW_CALL(fn, gb_) ((void (*)(gb_s*))((char*)(fn) + pgb_draw_reloc_offset))(gb_)
+
+__draw_cgb static void __gb_check_lyc__cgb(gb_s* gb);
+__draw_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);
+__draw_cgb static void __gb_update_lyc_and_stat_irq__cgb(gb_s* gb);
 
 __core_dmg static unsigned __gb_run_instruction_micro__dmg(gb_s* gb);
 __core_cgb static unsigned __gb_run_instruction_micro__cgb(gb_s* gb);

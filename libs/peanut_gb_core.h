@@ -30,7 +30,7 @@
 /**
  * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
  */
-__core static void $(__gb_update_stat_irq)(gb_s* gb)
+__draw static void $(__gb_update_stat_irq)(gb_s* gb)
 {
     /* No STAT interrupts can occur when the LCD is off. */
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
@@ -58,7 +58,7 @@ __core static void $(__gb_update_stat_irq)(gb_s* gb)
  * Internal function to check for LY=LYC coincidence and update STAT.
  * Note: this is used outside of core.
  */
-__core static void $(__gb_check_lyc)(gb_s* gb)
+__draw static void $(__gb_check_lyc)(gb_s* gb)
 {
     if (gb->gb_reg.LY == gb->gb_reg.LYC)
     {
@@ -70,7 +70,7 @@ __core static void $(__gb_check_lyc)(gb_s* gb)
     }
 }
 
-__core static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
+__draw static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
 {
     if (gb->gb_reg.LY == gb->gb_reg.LYC)
         gb->gb_reg.STAT |= STAT_LYC_COINC;
@@ -1161,6 +1161,81 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 #undef CGB_LUT_DARK
 #endif
 
+// Per-scanline mode-3 setup: OAM latch, sprite penalties, window
+// visibility, mode3/mode0 cycle lengths. Lives in the draw cluster
+// (scanline cadence); called from the PPU step via DRAW_CALL.
+__draw static void $(__gb_ppu_mode3_setup)(gb_s* gb)
+{
+    uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
+    const bool besu_skip = gb->direct.first_scanline_besu_skip;
+    gb->direct.first_scanline_besu_skip = 0;
+
+    if (besu_skip)
+    {
+        // First scanline after LCD-on: BESU never sets on hardware,
+        // so no OAM latch, no sprites, no sprite penalties.
+        // SCX/SCY are not latched either - use live values.
+        gb->display.latched_scx = gb->gb_reg.SCX;
+        gb->display.latched_scy = gb->gb_reg.SCY;
+        mode3_cycles += gb->display.latched_scx & 7;
+    }
+    else
+    {
+        for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
+            ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
+        gb->display.latched_scx = gb->gb_reg.SCX;
+        gb->display.latched_scy = gb->gb_reg.SCY;
+
+        mode3_cycles += gb->display.latched_scx & 7;
+
+        // PPU sprite timing: dynamic per-sprite penalty.
+        // Stacked sprites at same X: first pays full alignment cost,
+        // subsequent sprites cost only the 6-dot core (combinational re-fire).
+        uint8_t sprites_found = 0;
+        uint8_t last_penalty_x = 0xFF;
+        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
+        static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
+
+        for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE; s++)
+        {
+            const uint8_t y = gb->display.oam_latch[s * 4];
+            const uint8_t x = gb->display.oam_latch[s * 4 + 1];
+
+            // Check if sprite Y intersects current line
+            if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
+            {
+                if (sprites_found > 0 && x == last_penalty_x)
+                {
+                    mode3_cycles += 6;
+                }
+                else
+                {
+                    const uint8_t alignment = ((gb->display.latched_scx & 7) + x) & 7;
+                    mode3_cycles += sprite_penalty_lut[alignment];
+                }
+                last_penalty_x = x;
+                sprites_found++;
+            }
+        }
+    }
+
+    bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.WX <= 166) &&
+                       (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY);
+#if PGB_IS_DMG
+    win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
+#endif
+    if (win_visible)
+    {
+        mode3_cycles += 6;
+    }
+
+    gb->display.current_mode3_cycles = MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
+    gb->display.current_mode0_cycles =
+        LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
+    if (besu_skip)
+        gb->display.current_mode0_cycles -= 2;
+}
+
 __core_section("short") static bool $(__gb_get_op_flag)(gb_s* restrict gb, uint8_t op8)
 {
     op8 %= 4;
@@ -2122,80 +2197,8 @@ done_instr_timing:
                     gb->lcd_mode = LCD_TRANSFER;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
-                    uint16_t mode3_cycles = PPU_MODE_3_VRAM_MIN_CYCLES;
-                    const bool besu_skip = gb->direct.first_scanline_besu_skip;
-                    gb->direct.first_scanline_besu_skip = 0;
-
-                    if (besu_skip)
-                    {
-                        // First scanline after LCD-on: BESU never sets on hardware,
-                        // so no OAM latch, no sprites, no sprite penalties.
-                        // SCX/SCY are not latched either - use live values.
-                        gb->display.latched_scx = gb->gb_reg.SCX;
-                        gb->display.latched_scy = gb->gb_reg.SCY;
-                        mode3_cycles += gb->display.latched_scx & 7;
-                    }
-                    else
-                    {
-                        for (int _i = 0; _i < OAM_SIZE >> 2; _i++)
-                            ((uint32_t*)gb->display.oam_latch)[_i] = ((uint32_t*)gb->oam)[_i];
-                        gb->display.latched_scx = gb->gb_reg.SCX;
-                        gb->display.latched_scy = gb->gb_reg.SCY;
-
-                        mode3_cycles += gb->display.latched_scx & 7;
-
-                        // PPU sprite timing: dynamic per-sprite penalty.
-                        // Stacked sprites at same X: first pays full alignment cost,
-                        // subsequent sprites cost only the 6-dot core (combinational re-fire).
-                        uint8_t sprites_found = 0;
-                        uint8_t last_penalty_x = 0xFF;
-                        const uint8_t sprite_height = (gb->gb_reg.LCDC & LCDC_OBJ_SIZE) ? 16 : 8;
-                        static const uint8_t sprite_penalty_lut[8] = {11, 10, 9, 8, 7, 6, 6, 6};
-
-                        for (uint8_t s = 0; s < NUM_SPRITES && sprites_found < MAX_SPRITES_LINE;
-                             s++)
-                        {
-                            const uint8_t y = gb->display.oam_latch[s * 4];
-                            const uint8_t x = gb->display.oam_latch[s * 4 + 1];
-
-                            // Check if sprite Y intersects current line
-                            if (y <= gb->gb_reg.LY + 16 && gb->gb_reg.LY + 16 < y + sprite_height)
-                            {
-                                if (sprites_found > 0 && x == last_penalty_x)
-                                {
-                                    mode3_cycles += 6;
-                                }
-                                else
-                                {
-                                    const uint8_t alignment =
-                                        ((gb->display.latched_scx & 7) + x) & 7;
-                                    mode3_cycles += sprite_penalty_lut[alignment];
-                                }
-                                last_penalty_x = x;
-                                sprites_found++;
-                            }
-                        }
-                    }
-
-                    bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) &&
-                                       (gb->gb_reg.WX <= 166) &&
-                                       (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY);
-#if PGB_IS_DMG
-                    win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
-#endif
-                    if (win_visible)
-                    {
-                        mode3_cycles += 6;
-                    }
-
-                    gb->display.current_mode3_cycles =
-                        MIN(mode3_cycles, PPU_MODE_3_VRAM_MAX_CYCLES);
-                    gb->display.current_mode0_cycles =
-                        LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
-                    if (besu_skip)
-                        gb->display.current_mode0_cycles -= 2;
-
-                    $(__gb_update_stat_irq)(gb);
+                    DRAW_CALL($(__gb_ppu_mode3_setup), gb);
+                    DRAW_CALL($(__gb_update_stat_irq), gb);
                     ticked = true;
                 }
                 break;
@@ -2217,7 +2220,7 @@ done_instr_timing:
 
                     gb->lcd_mode = LCD_HBLANK;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
-                    $(__gb_update_stat_irq)(gb);
+                    DRAW_CALL($(__gb_update_stat_irq), gb);
 #if PGB_IS_CGB
                     if (gb->cgb_hdma_active)
                         __gb_do_hdma(gb);
@@ -2258,16 +2261,16 @@ done_instr_timing:
                         while (gb->cgb_hdma_active)
                             __gb_do_hdma(gb);
 #endif
-                        $(__gb_update_stat_irq)(gb);
+                        DRAW_CALL($(__gb_update_stat_irq), gb);
 
-                        $(__gb_update_lyc_and_stat_irq)(gb);
+                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                     }
                     else
                     {
                         gb->lcd_mode = LCD_SEARCH_OAM;
                         gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
 
-                        $(__gb_update_lyc_and_stat_irq)(gb);
+                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                     }
                     ticked = true;
                 }
@@ -2297,12 +2300,12 @@ done_instr_timing:
 
                         gb->display.window_clear = 0;
 
-                        $(__gb_update_lyc_and_stat_irq)(gb);
+                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                     }
                     else
                     {
                         gb->gb_reg.LY++;
-                        $(__gb_update_lyc_and_stat_irq)(gb);
+                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                     }
                     ticked = true;
                 }
@@ -2313,7 +2316,7 @@ done_instr_timing:
                 else if (gb->gb_reg.LY == 153)
                 {
                     gb->gb_reg.LY = 0;
-                    $(__gb_update_lyc_and_stat_irq)(gb);
+                    DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                     ticked = true;
                 }
                 break;
