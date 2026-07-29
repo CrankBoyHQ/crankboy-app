@@ -8,7 +8,6 @@
 
 #include "../gbz.h"
 #include "../preferences.h"
-#include "../revcheck.h"
 
 #include <pd_api.h>
 #include <pd_api/pd_api_gfx.h>
@@ -420,8 +419,9 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
     uintptr_t core_size = itcm_end - itcm_start;
 
-    // Rev A benefits from DTCM relocation; Rev B/unknown/emulator skip it.
-    if (!dtcm_enabled() || pd_rev != PD_REV_A)
+    // DTCM relocation controlled by the TCM Accel. preference (default on).
+    // Manual escape hatch if a device/rev misbehaves.
+    if (!dtcm_enabled() || preferences_itcm == 0)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;

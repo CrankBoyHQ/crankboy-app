@@ -53,6 +53,9 @@ static void cb_wrap_invalidate(void);
 
 static const char* get_settings_game_name(CB_SettingsScene* settingsScene);
 
+static char* itcm_base_desc = NULL;
+static char* itcm_restart_desc = NULL;
+
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
 #define HOLD_TIME_MARGIN 0.15f
 #define HOLD_TIME 1.09f
@@ -2715,6 +2718,44 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         section[i].max_value = 3;
     }
 
+#if defined(ITCM_CORE) && defined(DTCM_ALLOC)
+    // itcm accel
+    if (itcm_base_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_base_desc,
+            "Improves performance by running emulator code from the stack.\n\n"
+            "Disable if you experience instability, especially on non-Rev A devices.\n"
+            "(Your device: %s)",
+            pd_rev_description
+        );
+    }
+
+    if (itcm_restart_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_restart_desc, "%s\n\nRestart the game for changes to apply.", itcm_base_desc
+        );
+    }
+
+    section[++i] = (OptionsMenuEntry){
+        .name = "TCM Accel.",
+        .values = off_on_labels,
+        .pref_var = &preferences_itcm,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
+    if (gameScene || scene->emucoreGameScene)
+    {
+        section[i].description = itcm_restart_desc;
+    }
+    else
+    {
+        section[i].description = itcm_base_desc;
+    }
+#endif
+
     if (!emucore_mode)
     {
         section[++i] = (OptionsMenuEntry){
@@ -3789,6 +3830,18 @@ static void CB_SettingsScene_free(void* object)
     {
         cb_free(settingsScene->peek_rom);
         settingsScene->peek_rom = NULL;
+    }
+
+    if (itcm_base_desc)
+    {
+        cb_free(itcm_base_desc);
+        itcm_base_desc = NULL;
+    }
+
+    if (itcm_restart_desc)
+    {
+        cb_free(itcm_restart_desc);
+        itcm_restart_desc = NULL;
     }
 
     if (settingsScene->gradient)

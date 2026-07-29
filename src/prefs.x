@@ -83,6 +83,7 @@ PREF(library_launch_animation, 1)
 PREF(show_bundled_games, 1)
 
 /* --- misc ---
+ * itcm:                           0=Off, 1=On
  * tcm_lcd:                        0=Off, 1=On
  * uncap_fps:                      0=Off, 1=On
  * display_fps:                    0=Off, 1=On, 2=Playdate
@@ -90,6 +91,7 @@ PREF(show_bundled_games, 1)
  * ui_sounds:                      0=Off, 1=On
  * boot_fade:                      0=Off, 1=Short, 2=Long, 3=Short (W), 4=Long (W)
  */
+PREF(itcm, 1)
 PREF(tcm_lcd, 0)
 PREF(uncap_fps, 0)
 PREF(display_fps, 0)
