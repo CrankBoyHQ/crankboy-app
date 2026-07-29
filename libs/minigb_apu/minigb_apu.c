@@ -1,8 +1,7 @@
-/**
+/*
  * minigb_apu is released under the terms listed within the LICENSE file.
- *
- * minigb_apu emulates the audio processing unit (APU) of the Game Boy. This
- * project is based on MiniGBS by Alex Baines: https://github.com/baines/MiniGBS
+ * Game Boy APU emulator, based on MiniGBS by Alex Baines:
+ * https://github.com/baines/MiniGBS
  */
 
 #include "../../src/app.h"
@@ -22,15 +21,9 @@
 #define DMG_CLOCK_FREQ_U ((unsigned)DMG_CLOCK_FREQ)
 
 /* Per-frame APU register write events for cycle-accurate replay.
- * Kept as file-static state in main RAM instead of gb_s (which is
- * DTCM-resident): sequential write-once/read-once access gains nothing
- * from DTCM, and the buffer would strain the ~64 KB DTCM pool.
- * Transient per-frame data, never serialized.
- * Sized beyond every hardware-possible rate: CH1/2 volume PCM
- * (16 kHz voice = ~267/frame), NR32 PDM (25.6 kHz = ~427/frame),
- * CH3 wave-RAM streaming (~2000-3500/frame), up to two full frames at
- * the absolute CPU-max write rate (LDH every 12 dots = 5852/frame)
- * when a frame-skip hiccup delays generation. */
+ * File-static in main RAM (gb_s is DTCM-resident); transient, never
+ * serialized. Sized for two frames at the CPU-max write rate (LDH every
+ * 12 dots = 5852/frame). */
 #define APU_EVENT_CAP 16384
 typedef struct
 {
@@ -41,43 +34,32 @@ typedef struct
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
-/* Sentinel addr marking an emulated frame's end in the event stream
- * (outside 0xFF10-0xFF3F, never passed to audio_write). Gives replay an
- * explicit frame boundary: a frame with zero APU writes otherwise leaves
- * no marker, and the next frame's span would render one frame-slot early. */
+/* Sentinel addr marking an emulated frame's end in the event stream (never
+ * passed to audio_write): explicit boundary, also for write-less frames. */
 #define APU_FRAME_END_ADDR 0xFFFF
 
-/* 512 Hz frame-sequencer schedule phase. Continuous render-side grid,
- * persistent across replay spans and generate calls: restarting it per
- * call dropped the fractional tick interval (8 instead of 8.57 ticks per
- * 738-sample frame = sequencer running at 478 Hz). Transient, replay-only;
- * never serialized. Valid while the sample rate is constant (accurate mode
- * locks it High). */
-static uint16_t s_apu_tick_left;      /* samples until next tick; 0 = uninitialized */
-static uint16_t s_apu_tick_rem_accum; /* fractional interval, 512ths of a sample */
+/* 512 Hz frame-sequencer schedule phase. Persistent across replay spans and
+ * generate calls: restarting per call drops the fractional interval
+ * (sequencer runs at 478 Hz instead of 512 Hz). Transient, never serialized. */
+static uint16_t s_apu_tick_left;       // samples until next tick; 0 = uninitialized
+static uint16_t s_apu_tick_rem_accum;  // fractional interval, 512ths of a sample
 
-/* CH3 cycle-domain sample cursor for accurate-mode wave-RAM write timing.
- * The renderer (update_wave) advances c->val at sample granularity, which is
- * too coarse for the DMG wave-RAM access quirk: writes during CH3 playback
- * redirect to the byte CH3 is currently reading, and a quantized cursor
- * lands bytes in wrong slots (PCM-via-wave-RAM turns to noise).
- * This cursor advances in the cycle domain between replayed write events,
- * giving the gate and redirect an exact position at each event's apu_count.
- * Transient, replay-only; never serialized. */
+/* CH3 cycle-domain sample cursor for DMG wave-RAM write timing in accurate
+ * mode (the renderer's c->val advances at sample granularity, too coarse for
+ * the access quirk). Transient, replay-only; never serialized. */
 static bool s_ch3_cursor_valid;
-static uint8_t s_ch3_cursor_pos;   /* sample index 0-31 */
-static uint32_t s_ch3_step_period; /* apu_count cycles per step: 2 * (2048 - freq) */
-static uint32_t s_ch3_last_step;   /* apu_count of most recent step */
-static uint32_t s_ch3_next_step;   /* apu_count of next scheduled step */
+static uint8_t s_ch3_cursor_pos;    // sample index 0-31
+static uint32_t s_ch3_step_period;  // apu_count cycles per step: 2 * (2048 - freq)
+static uint32_t s_ch3_last_step;    // apu_count of most recent step
+static uint32_t s_ch3_next_step;    // apu_count of next scheduled step
 
 static inline uint32_t ch3_step_period(const chan* c)
 {
     return 2u * (2048u - c->freq);
 }
 
-/* Anchor cursor to current channel state at frame start (or on CH3-affecting
- * register writes: NR30/NR33/NR34/NR52). Position is preserved on trigger by
- * hardware, but step phase restarts. */
+/* Anchor cursor to current channel state (frame start, or NR30/NR33/NR34/NR52
+ * writes: freq change alters step period, trigger restarts step phase). */
 __shell static void ch3_cursor_reanchor(const audio_data* audio, uint32_t apu_count)
 {
     const chan* c = &audio->chans[2];
@@ -99,24 +81,18 @@ __shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_cou
     if (!(c->powered && c->enabled))
         return;
     if (apu_count < s_ch3_next_step)
-        return; /* covers mid-frame restart (count < last_step) and no-step case */
-    /* div/mod instead of per-step loop: PDM carriers run at step periods
-     * as low as 2 cycles (period 2047), i.e. tens of thousands of steps
-     * per frame. */
+        return;  // covers mid-frame restart (count < last_step) and no-step case
+    // div/mod instead of per-step loop: PDM carriers step every 2 cycles.
     uint32_t steps = (apu_count - s_ch3_last_step) / s_ch3_step_period;
     s_ch3_cursor_pos = (s_ch3_cursor_pos + steps) & 31;
     s_ch3_last_step += steps * s_ch3_step_period;
     s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
-/* DMG write window: CPU write must coincide with CH3's wave-RAM read,
- * which occurs when the position steps to an even index (fresh byte, held
- * for both nibbles). The accessible window is ~1 dot on hardware; we allow
- * up to 4 dots (one M-cycle = CPU write strobe granularity), covering the
- * cursor's sub-period anchor error at streamer-rate frequencies. Untimed
- * writes are then mostly blocked, preserving the hardware corruption quirk.
- * (A window of one full step period could never fail: after
- * ch3_cursor_advance, apu_count is always within one period of last_step.) */
+/* DMG write window: write must coincide with CH3's byte read (position
+ * stepping to an even index). Hardware allows ~1 dot; allow up to 4 dots
+ * (one M-cycle) to cover cursor anchor error. A full-period window could
+ * never fail: apu_count is always within one period of last_step. */
 static inline bool ch3_cursor_just_read(uint32_t apu_count)
 {
     uint32_t last_byte_read = s_ch3_last_step - ((s_ch3_cursor_pos & 1) ? s_ch3_step_period : 0);
@@ -124,32 +100,25 @@ static inline bool ch3_cursor_just_read(uint32_t apu_count)
     return apu_count - last_byte_read <= window;
 }
 
-/* Fractional CH3 gain for NR32 PDM (Pokemon Yellow cries). NR32 volume
- * transitions are applied per output sample with sub-sample weights
- * instead of snapping edges to the integer sample grid: at 25.6 kHz PDM
- * rates pulses are 1-2 samples wide, so grid snapping jittered every
- * edge by +/-0.5 sample (audible roughness). CH3 output is linear in
- * volume gain (carrier ~47 cycles/sample), so the per-sample time-
- * weighted mean gain is exact to within a partial carrier cycle.
+/* Fractional CH3 gain for NR32 PDM (Pokemon Yellow cries): per-sample
+ * time-weighted volume instead of integer-grid edge snapping (jitter).
  * Transient, replay-only; never serialized. */
-#define APU_GAIN_CAP 3072 /* >= MAX_AUDIO_SAMPLES_PER_CHUNK (2940) */
+#define APU_GAIN_CAP 3072  // >= MAX_AUDIO_SAMPLES_PER_CHUNK (2940)
 static uint16_t s_ch3_gain_q8[APU_GAIN_CAP];
 
-/* Same fractional treatment for CH1/CH2 NRx2 PCM voice (e.g. Cannon
- * Fodder vocals): per-sample volume as vol*16 (0-240, exact /16).
+/* Same for CH1/CH2 NRx2 PCM (Cannon Fodder vocals): vol*16 (0-240, exact /16).
  * Index 0 = CH1 (0xFF12), 1 = CH2 (0xFF17). */
 static uint16_t s_sq_gain_q4[2][APU_GAIN_CAP];
 
-/* Volume -> gain in Q8, matching wave_sample's shift:
- * 0 = mute, 1 = 100%, 2 = 50%, 3 = 25%. */
+/* Volume -> gain Q8, matching wave_sample's shift: 0=mute, 1=100%, 2=50%, 3=25%. */
 static inline uint16_t ch3_gain_q8(unsigned volume)
 {
     static const uint16_t map[4] = {0, 256, 128, 64};
     return map[volume & 3];
 }
 
-/* Accumulate gain g (Q8) over the Q16 fixed-point sample interval
- * [a_q16, b_q16) into per-sample weighted sums, clamped to bound. */
+/* Accumulate gain g over Q16 sample interval [a_q16, b_q16) into per-sample
+ * weighted sums, clamped to bound. */
 static void apu_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16_t g, int bound)
 {
     uint32_t pos = a_q16;
@@ -179,9 +148,7 @@ static void apu_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16
 #define VOL_INIT_MAX (INT16_MAX / 8)
 #define VOL_INIT_MIN (INT16_MIN / 8)
 
-/* Handles time keeping for sound generation.
- * This is a fixed reference to ensure timing calculations are consistent
- * regardless of the output sample rate. */
+/* Fixed timing reference, independent of output sample rate. */
 #define FREQ_INC_REF 44100
 
 #define MAX_CHAN_VOLUME 15
@@ -194,18 +161,11 @@ static void apu_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16
 #endif
 
 #if TARGET_PLAYDATE
-/* Q1.15 fixed-point equivalents of the factors below.
- * Formula: (int16_t)((base ^ (DMG_CLOCK_FREQ / sample_rate)) * 32768)
- *   DMG  base: 0.999958  -> 32637, 32507, 32378
- *   CGB  base: 0.998943  -> 29632, 26797, 24233
- */
+/* Q1.15 fixed-point equivalents of the factors below. */
 static const int16_t get_charge_factors_q15[2][3] = {{32637, 32507, 32378}, {29632, 26797, 24233}};
 #else
 
-/* The factors are calculated using the formula:
- * base^(DMG_CLOCK_FREQ / sample_rate)
- * DMG base: 0.999958, CGB base: 0.998943
- */
+/* Factors: base^(DMG_CLOCK_FREQ / sample_rate); DMG base 0.999958, CGB 0.998943. */
 static const float get_charge_factors[2][3] = {{0.996f, 0.992f, 0.988f}, {0.904f, 0.818f, 0.739f}};
 
 static inline int16_t clamp16(float s)
@@ -233,18 +193,13 @@ static inline int get_audio_sample_rate(void)
     return FREQ_INC_REF / get_sample_replication();
 }
 
-/**
- * Memory holding audio registers between 0xFF10 and 0xFF3F inclusive.
- */
 static uint32_t precomputed_noise_freqs[8][16];
 
 __audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i);
 
 __audio static void set_note_freq(chan* c, const uint32_t freq)
 {
-    /* Lowest expected value of freq is 64. */
-    // Set frequency increment
-    c->freq_inc = freq;
+    c->freq_inc = freq;  // freq >= 64
 }
 
 static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enable)
@@ -283,7 +238,7 @@ __shell void audio_div_apu_tick(audio_data* audio)
 
     chan* chans = audio->chans;
 
-    /* Length timer: 256 Hz (steps 0, 2, 4, 6). */
+    // Length timer: 256 Hz (steps 0, 2, 4, 6).
     if ((step & 1) == 0)
     {
         for (int i = 0; i < 4; i++)
@@ -302,10 +257,8 @@ __shell void audio_div_apu_tick(audio_data* audio)
     }
 
     // Process pending envelope ticks from previous step-7 events.
-    // Hardware delays volume change by ~1/2 DIV-APU cycle: the envelope
-    // clock goes high when the divider hits 0; volume changes when the
-    // clock falls on the next DIV-APU tick. The lock state (should_lock)
-    // is computed at clock rise and applied at clock fall.
+    // Hardware delays the volume change by half a DIV-APU cycle: the
+    // clock rises at divider 0, volume changes when it falls next tick.
     {
         for (int i = 0; i < 4; i++)
         {
@@ -448,8 +401,7 @@ __audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t ol
 }
 
 /* NRx2 write side effects: zombie volume glitch + envelope fields.
- * Shared by audio_write and the square-PCM gain pre-pass (which replays
- * the write on a shadow chan to reconstruct the volume timeline). */
+ * Shared by audio_write and the square-PCM gain pre-pass (shadow chan). */
 __audio static void apply_nrx2(chan* chans, int i, uint8_t val, uint8_t old_val, bool is_cgb)
 {
     // SameBoy _nrx2_glitch: adjust volume on NRx2 write while channel active.
@@ -474,10 +426,8 @@ __audio static void apply_nrx2(chan* chans, int i, uint8_t val, uint8_t old_val,
     chans[i].env.inc = chans[i].env.step ? 64ul / (uint32_t)chans[i].env.step : 8ul;
     chans[i].env.counter = 0;
 
-    // Reload divider and recompute lock state when NRx2 is written
-    // while the envelope clock is high (pending volume change).
-    // The zombie NRx2 write may have changed volume or direction
-    // via _nrx2_glitch, so should_lock must be recalculated.
+    // Reload divider and recompute lock state when NRx2 is written while
+    // the envelope clock is high (the glitch may have changed volume).
     if (chans[i].enabled && chans[i].env.clock && chans[i].env.step > 0)
     {
         chans[i].env_divider = chans[i].env.step;
@@ -517,7 +467,7 @@ __audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
     return false;  // Channel still active
 }
 
-// returns sample index at which to stop outputting in channel
+/* Returns the sample index at which the length counter expires (<= len). */
 __audio static int update_len(audio_data* restrict audio, chan* c, int len)
 {
     if (!c->enabled)
@@ -556,11 +506,10 @@ __attribute__((always_inline)) static inline bool update_freq(
     }
 }
 
-/* gain_q4: optional per-sample volume array (vol*16, replay fractional
- * NRx2 PCM). When non-NULL it carries the write-driven volume timeline:
- * envelope_smooth is bypassed and the above-Nyquist early-out is lifted
- * (PCM players park the carrier at max frequency and must stay audible
- * via the boxcar-averaged DC mean). */
+/* gain_q4: optional per-sample volume array (vol*16, replay fractional NRx2
+ * PCM). When non-NULL it carries the write-driven volume: envelope_smooth is
+ * bypassed and the above-Nyquist early-out is lifted (PCM players park the
+ * carrier at max frequency and stay audible via the averaged DC mean). */
 __audio static void update_square(
     audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len,
     const uint16_t* gain_q4
@@ -631,8 +580,7 @@ __audio static void update_square(
         int32_t effective_volume;
         if (gain_q4)
         {
-            /* Gain array carries the write-driven volume (envelope off by
-             * pre-pass construction); skip the smoothing ramp. */
+            // Gain array carries the volume; skip the smoothing ramp.
             effective_volume = ((int32_t)gain_q4[i] + 8) >> 4;
         }
         else
@@ -729,10 +677,10 @@ __audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c, unsigned
 }
 
 /* gain_q8: optional per-sample gain array (Q8, replay fractional NR32 PDM).
- * When non-NULL, volume is treated as 1 internally and each output sample
- * is scaled by gain_q8[i]; the muted early-out is bypassed (gain 0 handles
- * silence while the carrier keeps advancing). Accurate mode only, so
- * sample_replication is 1 and gain_q8[i] aligns with output index i. */
+ * When non-NULL, volume is treated as 1 internally and each output sample is
+ * scaled by gain_q8[i]; the muted early-out is bypassed (gain 0 handles
+ * silence while the carrier keeps advancing). Accurate mode only:
+ * sample_replication is 1, so gain_q8[i] aligns with output index i. */
 __audio static void update_wave(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len, const uint16_t* gain_q8
 )
@@ -764,16 +712,14 @@ __audio static void update_wave(
 
     len = update_len(audio, c, len);
 
-    /* Effective volume for internal scaling: 1 when an external gain
-     * array carries the envelope (fractional NR32 PDM). */
+    // Effective internal volume: 1 when a gain array carries the envelope.
     const unsigned volume = gain_q8 ? 1 : c->volume;
     c->wave.sample = wave_sample(audio, c->val, volume);
 
-    /* CH3 muted (NR32 volume 0): no output, but keep the sample position
-     * and frequency counter advancing so wave RAM access timing and the
-     * accurate-mode cursor anchor stay correct. O(1) for the whole chunk.
-     * This is the idle state of PDM-via-NR32 players (e.g. Pokemon Yellow
-     * parks CH3 at max frequency, volume 0). */
+    /* CH3 muted (NR32 volume 0): no output, but keep position and frequency
+     * counter advancing (wave RAM access timing, cursor anchor). O(1) per
+     * chunk. Idle state of PDM-via-NR32 players (Yellow parks CH3 at max
+     * frequency, volume 0). */
     if (!gain_q8 && c->volume == 0)
     {
         uint64_t total = (uint64_t)c->freq_inc * (uint32_t)len + c->freq_counter;
@@ -795,14 +741,11 @@ __audio static void update_wave(
                  : "r"(final_vol_l), "r"(final_vol_r));
 #endif
 
-    /* Extreme frequency (at least one full 32-step wave cycle per output
-     * sample, e.g. period 2047 = 65.6 kHz used by NR32 PDM voice): the
-     * per-step loop would run dozens of iterations per sample. Instead
-     * collapse whole wave cycles analytically: each cycle spans
-     * 32 * sample_rate counter units and contributes the cached nibble
-     * sum. Remainder (< 32 steps) runs through the normal loop.
-     * The weighted average still yields the correct band-limited mean,
-     * which is what hardware + speaker low-pass produce. */
+    /* Extreme frequency (a full 32-step wave cycle per output sample, e.g.
+     * period 2047 = 65.6 kHz NR32 PDM carrier): collapse whole cycles
+     * analytically via the cached nibble sum; remainder (< 32 steps) runs
+     * through the normal loop. The weighted average yields the correct
+     * band-limited mean, like hardware + speaker low-pass. */
     const bool extreme_freq = c->freq_inc >= 32u * (uint32_t)sample_rate;
     if (extreme_freq && (!c->wave.sum_valid || c->wave.sum_volume != volume))
     {
@@ -821,7 +764,7 @@ __audio static void update_wave(
 
         if (extreme_freq)
         {
-            /* First step: consume freq_counter leftover from previous sample. */
+            // First step: consume freq_counter leftover from previous sample.
             if (update_freq(c, &pos, sample_rate))
             {
                 weighted_sum += (int32_t)(pos - prev_pos) * c->wave.sample;
@@ -831,14 +774,14 @@ __audio static void update_wave(
                 prev_pos = pos;
             }
 
-            /* Skip full 32-step wave cycles (c->val unchanged by 32 steps). */
+            // Skip full 32-step wave cycles (c->val unchanged by 32 steps).
             uint32_t cycle_span = 32u * (uint32_t)sample_rate;
             uint32_t full = (c->freq_inc - prev_pos) / cycle_span;
             if (full)
             {
                 weighted_sum += (int32_t)(full * (uint32_t)sample_rate) * (int32_t)c->wave.sum;
                 prev_pos += full * cycle_span;
-                pos = prev_pos; /* update_freq derives the next step from *pos */
+                pos = prev_pos;  // update_freq derives the next step from *pos
                 c->wave.just_read = true;
             }
         }
@@ -1149,16 +1092,14 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
     c->envelope_smooth = (int32_t)c->volume << 8;
 
-    // Always reload length on trigger. Hardware restarts the length
-    // timer on every channel trigger. Accurate mode also applies the
-    // obscure max-1 reload (63 vs 64) when the next DIV-APU step
-    // doesn't clock the length counter.
+    // Always reload length on trigger (hardware restarts the timer).
+    // Accurate mode also applies the obscure max-1 reload (63 vs 64) when
+    // the next DIV-APU step doesn't clock the length counter.
     int load = len_max - c->len.load;
 
     uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
     bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-    // Obscure: length reload 63 vs 64 (255 vs 256 for wave)
     if (next_doesnt_clock_len && c->len_enabled && load == len_max)
         load = len_max - 1;
 
@@ -1166,12 +1107,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     c->len.counter = 0;
 }
 
-/**
- * Read audio register.
- * \param addr  Address of audio register. Must be 0xFF10 <= addr <= 0xFF3F.
- *              This is not checked in this function.
- * \return      Byte at address.
- */
+/* Read audio register (0xFF10 <= addr <= 0xFF3F, unchecked). */
 uint8_t audio_read(audio_data* audio, const uint16_t addr)
 { /* clang-format off */
     static const uint8_t ortab[] =
@@ -1188,8 +1124,7 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
     /* clang-format on */
 
     /* Wave RAM reads during CH3 playback return the byte currently being read.
-     * On DMG, returns 0xFF unless CPU access coincides with CH3 read cycle (just_read).
-     */
+     * DMG: 0xFF unless the access coincides with CH3's read (just_read). */
     if (addr >= 0xFF30 && addr <= 0xFF3F)
     {
         chan* c = &audio->chans[2];
@@ -1209,9 +1144,8 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
         }
     }
 
-    /* PCM12: CH2 (high nibble) + CH1 (low nibble). PCM34: CH4 (high) + CH3 (low).
-     * CGB-only registers; DMG returns open bus (0xFF)).
-     */
+    /* PCM12: CH2 (high nibble) + CH1 (low). PCM34: CH4 (high) + CH3 (low).
+     * CGB-only; DMG returns open bus (0xFF). */
     if (addr == 0xFF76 || addr == 0xFF77)
     {
         gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
@@ -1254,12 +1188,7 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
     return audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] | ortab[addr - AUDIO_ADDR_COMPENSATION];
 }
 
-/**
- * Write audio register.
- * \param addr  Address of audio register. Must be 0xFF10 <= addr <= 0xFF3F.
- *              This is not checked in this function.
- * \param val   Byte to write at address.
- */
+/* Write audio register (0xFF10 <= addr <= 0xFF3F, unchecked). */
 void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
@@ -1271,7 +1200,6 @@ void audio_write(
         s_apu_events[s_apu_event_count].val = val;
         s_apu_event_count++;
     }
-    /* Find sound channel corresponding to register address. */
     uint_fast8_t i;
     chan* chans = audio->chans;
 
@@ -1279,7 +1207,7 @@ void audio_write(
     {
         bool was_on = (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] & 0x80) != 0;
         audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val & 0x80;
-        /* On APU power off, clear all registers apart from wave RAM. */
+        // On APU power off, clear all registers apart from wave RAM.
         if ((val & 0x80) == 0)
         {
             memset(audio_mem(audio), 0x00, 0xFF26 - AUDIO_ADDR_COMPENSATION);
@@ -1311,12 +1239,10 @@ void audio_write(
         return;
     }
 
-    /* Ignore register writes if APU powered off, except wave RAM (always accessible). */
+    /* Ignore register writes if APU powered off, except wave RAM (always
+     * accessible; CH3 can't be active, so no redirect needed). */
     if (audio_mem(audio)[0xFF26 - AUDIO_ADDR_COMPENSATION] == 0x00)
     {
-        /* Wave RAM is writable even with APU off (Pandocs). CH3 can't be active
-         * when APU is off, so no redirect needed.
-         */
         if (addr >= 0xFF30 && addr <= 0xFF3F)
         {
             audio->chans[2].wave.sum_valid = false;
@@ -1325,11 +1251,10 @@ void audio_write(
         return;
     }
 
-    /* Wave RAM writes during CH3 playback redirect to the byte CH3 is currently
-     * reading. On DMG, writes are ignored unless coincident with CH3 read cycle.
-     * In accurate mode the cycle-domain cursor provides the exact position and
-     * a byte-read window at this write's apu_count; the non-cursor fallback
-     * (just_read) stays loose by design — the renderer has no cycle timing. */
+    /* Wave RAM writes during CH3 playback redirect to the byte CH3 is reading.
+     * DMG: ignored unless coincident with CH3's read. Accurate mode uses the
+     * cycle cursor for position and window; the fallback (just_read) stays
+     * loose by design (renderer has no cycle timing). */
     if (addr >= 0xFF30 && addr <= 0xFF3F)
     {
         chan* c = &audio->chans[2];
@@ -1484,7 +1409,7 @@ void audio_write(
     case 0xFF1E:
         chans[i].freq &= 0x00FF;
         chans[i].freq |= ((val & 0x07) << 8);
-        /* Intentional fall-through. */
+        // Intentional fall-through.
     case 0xFF23:
     {
         bool old_len_enabled = chans[i].len_enabled;
@@ -1534,7 +1459,6 @@ void audio_init(audio_data* audio)
 {
     chan* chans = audio->chans;
 
-    /* Initialise channels and samples. */
     memset(chans, 0, 4 * sizeof(chan));
     chans[0].val = chans[1].val = -1;
     chans[2].wave.sample = 0;
@@ -1562,13 +1486,11 @@ void audio_init(audio_data* audio)
 
     memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
 
-    // NRx4 registers ($FF14/$FF19/$FF1E/$FF23) are set to $3F instead of the Pan Docs
-    // post-boot-rom value $BF. The difference is bit 7 (channel trigger): the real boot
-    // ROM sets this because it played "ba-ding" before handing off. With skip-BIOS we
-    // must keep it clear so the game triggers channels when it intends to and avoid a
-    // "ba-ding" when the game first launches.
+    // NRx4 registers set to $3F instead of the Pan Docs post-boot $BF: bit 7
+    // (trigger) must stay clear with skip-BIOS, or the game gets a spurious
+    // "ba-ding" at launch.
 
-    /* Initialise IO registers. */
+    // Initialise IO registers.
     { /* clang-format off */
         static const uint8_t regs_init[] = {
             0x80, 0xBF, 0xF3, 0xFF, 0x3F,
@@ -1583,7 +1505,7 @@ void audio_init(audio_data* audio)
             audio_write(audio, 0xFF10 + i, regs_init[i], 0);
     }
 
-    /* Initialise Wave Pattern RAM. */
+    // Initialise Wave Pattern RAM.
     { /* clang-format off */
         static const uint8_t wave_init[] = {
             0xac, 0xdd, 0xda, 0x48,
@@ -1606,8 +1528,7 @@ void audio_init(audio_data* audio)
 
             if (divisor_term == 0)
             {
-                // This should ideally not happen with current_lfsr_div_val and
-                // 0-15 shift
+                // unreachable with current values
                 precomputed_noise_freqs[lfsr_selector_idx][c_freq_shift_val] = 0;
             }
             else
@@ -1628,10 +1549,10 @@ void audio_reset_replay_state(audio_data* audio)
     audio->pre_frame_valid = false;
 }
 
-/* completely disables audio subsystem, important for multithreading reasons */
+// completely disables audio subsystem, important for multithreading reasons
 int audio_enabled;
 
-/* cpu-visible audio state still updated, but most of it is skipped */
+// cpu-visible audio state still updated, but most of it is skipped
 int audio_muted;
 
 #if TARGET_PLAYDATE
@@ -1732,10 +1653,7 @@ __attribute__((always_inline)) static inline void high_pass_filter_fixed_asm(
     audio->capacitor_r = cap_r;
 }
 
-/**
- * Optimized memset for audio buffers using SIMD stores.
- * Clears buffer 8 samples at a time using STM.
- */
+/* Optimized memset for audio buffers: 8 samples per iteration via STM. */
 __attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
     int16_t* buf, int len
 )
@@ -1768,9 +1686,7 @@ __attribute__((always_inline)) static inline void audio_buffer_clear_optimized(
 }
 #endif
 
-/**
- * Helper to clear both audio buffers (mono or stereo).
- */
+/* Clear both audio buffers (mono or stereo). */
 #if TARGET_PLAYDATE
 __attribute__((always_inline)) static inline void clear_audio_buffers(
     int16_t* left, int16_t* right, int len
@@ -1795,9 +1711,7 @@ __attribute__((always_inline)) static inline void clear_audio_buffers(
 }
 #endif
 
-/**
- * Playdate audio callback function.
- */
+/* Playdate audio callback. */
 __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len)
 {
     if (!audio_enabled || audio_muted)
@@ -1842,10 +1756,9 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
         if (samples_available < len)
         {
             /* Underrun: do NOT advance read_pos past unwritten samples.
-             * Request a rebaseline on the main thread (underrun silence
-             * counts as played time and would otherwise wedge the lead
-             * accounting, causing chronic starvation). Rate-limit the log:
-             * spamming the console here makes the underrun worse. */
+             * Request a main-thread rebaseline (underrun silence counts as
+             * played time and would wedge the lead accounting). Rate-limit
+             * the log: console spam makes the underrun worse. */
             static unsigned s_underrun_count = 0;
             s_underrun_count++;
             if (s_underrun_count == 1 || s_underrun_count % 60 == 0)
@@ -2018,18 +1931,15 @@ void audio_update_noise(audio_data* restrict audio, int16_t* left, int16_t* righ
     update_noise(audio, left, right, len);
 }
 
-/* Advance the persistent 512 Hz DIV-APU frame-sequencer schedule by a
- * number of rendered samples. Ticks must fire at 512 Hz of output progress
- * regardless of how rendering is segmented: event-dense frames (PDM cries)
- * cut segments to 1-2 samples, and chunk-relative ticking ("tick after each
- * chunk") then starves the envelope/length/sweep sequencer entirely
- * (hanging notes). Phase persists across spans and calls (s_apu_tick_left,
- * s_apu_tick_rem_accum): a per-call restart drops the fractional tick
- * interval and slows the sequencer to 478 Hz. */
+/* Advance the persistent 512 Hz DIV-APU schedule by rendered samples. Ticks
+ * must fire at 512 Hz of output progress regardless of segmentation:
+ * event-dense frames (PDM cries) cut segments to 1-2 samples, and
+ * chunk-relative ticking starved the sequencer (hanging notes). Phase
+ * persists across spans and calls — a per-call restart slows it to 478 Hz. */
 __shell static void apu_div_tick_sched_advance(audio_data* audio, int samples, int sample_rate)
 {
     if (s_apu_tick_left == 0)
-        s_apu_tick_left = (uint16_t)(sample_rate / 512); /* first tick one interval in */
+        s_apu_tick_left = (uint16_t)(sample_rate / 512);  // first tick one interval in
     while (samples >= s_apu_tick_left)
     {
         samples -= s_apu_tick_left;
@@ -2072,10 +1982,9 @@ __shell static int replay_event_span(
     int tick_accum = 0;
     int offset = 0;
 
-    /* Fractional CH3 gain pre-pass: if the span contains NR32 (CH3 volume)
-     * writes, sweep them into per-sample weighted gains (Q16 sub-sample
-     * positions) instead of cutting render segments at integer samples.
-     * See the comment at s_ch3_gain_q8. */
+    /* Fractional CH3 gain pre-pass: sweep NR32 (CH3 volume) writes into
+     * per-sample weighted gains (Q16 sub-sample positions) instead of
+     * cutting render segments at integer samples. */
     const uint16_t* ch3_gain = NULL;
     if (frame_samples > 0 && frame_samples <= APU_GAIN_CAP)
     {
@@ -2113,13 +2022,10 @@ __shell static int replay_event_span(
         }
     }
 
-    /* Fractional CH1/CH2 gain pre-pass (16 kHz NRx2 PCM voice, e.g.
-     * Cannon Fodder vocals): same sub-sample weighting as the CH3/NR32
-     * path. The volume timeline is reconstructed on a shadow chan via
-     * apply_nrx2 (plus trigger reload), so zombie-glitch behavior stays
-     * identical to the live write path. Requires the envelope off for
-     * the whole span: with the envelope running, hardware lets it own
-     * the volume and we fall back to segment snapping. */
+    /* Fractional CH1/CH2 gain pre-pass (16 kHz NRx2 PCM voice): volume
+     * timeline reconstructed on a shadow chan via apply_nrx2 (+ trigger
+     * reload), identical to the live write path. Requires envelope off for
+     * the whole span, else the envelope owns volume: fall back to snapping. */
     const uint16_t* sq_gain[2] = {NULL, NULL};
     if (frame_samples > 0 && frame_samples <= APU_GAIN_CAP)
     {
@@ -2157,8 +2063,7 @@ __shell static int replay_event_span(
                     continue;
                 if (a == nrx2 && (s_apu_events[i].val & 7) != 0)
                 {
-                    /* Envelope period set: the envelope owns the volume
-                     * timeline from here on; bail to segment snapping. */
+                    // Envelope period set: envelope owns volume; bail to snapping.
                     envelope_set = true;
                     break;
                 }
@@ -2178,7 +2083,7 @@ __shell static int replay_event_span(
                 }
                 else if (s_apu_events[i].val & 0x80)
                 {
-                    shadow.volume = shadow.volume_init; /* trigger reload */
+                    shadow.volume = shadow.volume_init;  // trigger reload
                 }
 
                 if ((unsigned)shadow.volume != rec_vol)
@@ -2203,8 +2108,7 @@ __shell static int replay_event_span(
 
     for (int i = span_start; i < span_end; i++)
     {
-        /* Absolute sample position: avoids cumulative floor drift
-         * from per-delta rounding across many events. */
+        // Absolute sample position: avoids cumulative floor drift.
         int seg =
             (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) - offset;
         if (seg > frame_samples - offset)
@@ -2212,8 +2116,7 @@ __shell static int replay_event_span(
         if (seg < 0)
             seg = 0;
 
-        /* Volume changes carried by a gain array need no segment cut
-         * (also removes the per-event tiny-segment render cost). */
+        // Gain-carried volume changes need no segment cut.
         if ((ch3_gain && s_apu_events[i].addr == 0xFF1C) ||
             (sq_gain[0] && s_apu_events[i].addr == 0xFF12) ||
             (sq_gain[1] && s_apu_events[i].addr == 0xFF17))
@@ -2260,8 +2163,7 @@ __shell static int replay_event_span(
 
         audio_write(audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count);
 
-        /* Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52):
-         * freq change alters step period; trigger restarts step phase. */
+        // Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52).
         if (s_ch3_cursor_valid)
         {
             uint16_t a = s_apu_events[i].addr;
@@ -2307,8 +2209,7 @@ __shell static int replay_event_span(
         offset += rem;
     }
 
-    /* Re-sync the smoothing ramp for the next non-gain span (it was
-     * bypassed while the gain arrays owned the volume timeline). */
+    // Re-sync the smoothing ramp for the next non-gain span.
     for (int ch = 0; ch < 2; ch++)
         if (sq_gain[ch])
             audio->chans[ch].envelope_smooth = (int32_t)audio->chans[ch].volume << 8;
@@ -2333,22 +2234,17 @@ __shell void audio_generate_accurate(
 
         audio->pre_frame_valid = false;
 
-        /* Split the batch at frame boundaries: the CPU core appends a
-         * sentinel event (APU_FRAME_END_ADDR) at every emulated frame's
-         * end. Multi-frame batches occur when a generation tick was
-         * skipped (lead accounting) or the emulator frame-skips; without
-         * splitting, later frames' events clamp to a single sample point
-         * and their span renders flat (audible flutter on PDM-style
-         * content). The sentinel also marks frames with no APU writes,
-         * which an apu_count-decrease heuristic cannot detect (the
-         * following frame's audio rendered one frame-slot early). */
+        /* Split the batch at frame boundaries: the CPU core appends a sentinel
+         * (APU_FRAME_END_ADDR) at every frame's end. Multi-frame batches occur
+         * on skipped generation ticks or frame-skip; without splitting, later
+         * frames' events clamp to one sample point (audible flutter). Sentinels
+         * also mark write-less frames, undetectable by apu_count decrease. */
         int span_start = 0;
         int offset = 0;
 
         while (span_start < s_apu_event_count)
         {
-            /* Span = run of write events up to the next sentinel (frame
-             * end) or batch end (current partial frame). */
+            // Span = run of write events up to the next sentinel or batch end.
             int span_end = span_start;
             while (span_end < s_apu_event_count &&
                    s_apu_events[span_end].addr != APU_FRAME_END_ADDR)
@@ -2364,9 +2260,8 @@ __shell void audio_generate_accurate(
             int frame_samples;
             if (frame_complete)
             {
-                /* Full frame: render to the frame boundary (the sentinel's
-                 * apu_count), not the last write — the frame's audio
-                 * continues past its final event. */
+                // Full frame: render to the sentinel's apu_count, not the
+                // last write — audio continues past the final event.
                 frame_samples = (int)((uint64_t)s_apu_events[span_end].apu_count * sample_rate /
                                       DMG_CLOCK_FREQ_U);
             }
@@ -2379,8 +2274,8 @@ __shell void audio_generate_accurate(
             if (frame_samples < 0)
                 frame_samples = 0;
 
-            /* Anchor CH3 cycle cursor to this frame's first event
-             * (frame start for write-less frames). */
+            // Anchor CH3 cursor to the frame's first event (frame start
+            // for write-less frames).
             ch3_cursor_reset(audio, span_end > span_start ? s_apu_events[span_start].apu_count : 0);
 
             offset += replay_event_span(
