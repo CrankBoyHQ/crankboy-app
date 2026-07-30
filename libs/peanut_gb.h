@@ -941,7 +941,7 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
 
 static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
 static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb);
-static uint8_t __gb_ppu_mode_synced(gb_s* gb);
+static uint8_t __gb_ppu_mode_exact(gb_s* gb);
 
 __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t val)
 {
@@ -1058,7 +1058,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x69:  // BCPD (CGB BG Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
+                if (__gb_ppu_mode_exact(gb) != LCD_TRANSFER)
                 {
                     uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
@@ -1078,7 +1078,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
+                if (__gb_ppu_mode_exact(gb) != LCD_TRANSFER)
                 {
                     uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
@@ -1187,7 +1187,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x69:  // BCPD (CGB BG Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
+                if (__gb_ppu_mode_exact(gb) != LCD_TRANSFER)
                     return gb->cgb_bg_palette[gb->cgb_bg_palette_index & 0x3F];
                 return 0xFF;
             }
@@ -1199,7 +1199,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
             if (gb->is_cgb_mode)
             {
-                if (__gb_ppu_mode_synced(gb) != LCD_TRANSFER)
+                if (__gb_ppu_mode_exact(gb) != LCD_TRANSFER)
                     return gb->cgb_obj_palette[gb->cgb_obj_palette_index & 0x3F];
                 return 0xFF;
             }
@@ -1574,17 +1574,15 @@ static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb
 }
 
 /**
- * Synchronized PPU mode: if within PPU_PEEK_CYCLES of next mode
- * boundary, return the next mode instead of current. Prevents
- * false-positive VRAM/OAM access locks when instructions span
- * mode transitions.
+ * Exact-time PPU mode for VRAM/OAM/palette access locks: report the next
+ * mode only once the boundary has actually passed in accumulated time
+ * (batch-lag-discounted). Unlike STAT/LY polling, locks must not engage
+ * early: a constant peek would drop legal late-mode-2 writes and allow
+ * early mode-3 writes.
  */
-__section__(".text.cb") static uint8_t __gb_ppu_mode_synced(gb_s* gb)
+__section__(".text.cb") static uint8_t __gb_ppu_mode_exact(gb_s* gb)
 {
-    uint16_t remaining = __gb_ppu_cycles_remaining(gb);
-    if ((int16_t)remaining <= PPU_PEEK_CYCLES)
-        return __gb_ppu_next_mode(gb);
-    return gb->lcd_mode;
+    return (__gb_ppu_cycles_remaining(gb) == 0) ? __gb_ppu_next_mode(gb) : gb->lcd_mode;
 }
 
 /**
@@ -1671,7 +1669,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
     case 0x8:
     case 0x9:
-        if (__gb_ppu_mode_synced(gb) == LCD_TRANSFER)
+        if (__gb_ppu_mode_exact(gb) == LCD_TRANSFER)
             return 0xFF;
         if (addr < 0x1800 + VRAM_ADDR)
             return reverse_bits_u8(gb->vram_base[addr]);
@@ -1745,7 +1743,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         if (addr < UNUSED_ADDR)
         {
-            uint8_t mode = __gb_ppu_mode_synced(gb);
+            uint8_t mode = __gb_ppu_mode_exact(gb);
             if (mode >= LCD_SEARCH_OAM && mode <= LCD_TRANSFER)
                 return 0xFF;
             return gb->oam[addr - OAM_ADDR];
@@ -2163,7 +2161,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
     case 0x8:
     case 0x9:
-        if (__gb_ppu_mode_synced(gb) == LCD_TRANSFER)
+        if (__gb_ppu_mode_exact(gb) == LCD_TRANSFER)
             return;
         if (addr < 0x1800 + VRAM_ADDR)
             gb->vram_base[addr] = reverse_bits_u8(val);
@@ -2298,7 +2296,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         if (addr < UNUSED_ADDR)
         {
-            uint8_t mode = __gb_ppu_mode_synced(gb);
+            uint8_t mode = __gb_ppu_mode_exact(gb);
             if (mode >= LCD_SEARCH_OAM && mode <= LCD_TRANSFER)
                 return;
             gb->oam[addr - OAM_ADDR] = val;
