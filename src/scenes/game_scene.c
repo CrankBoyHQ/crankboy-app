@@ -1574,6 +1574,31 @@ static __section__(".text.tick") void blit_tracked(
     }
 }
 
+// Dirty-tracking only: frame already sits in the display buffer (rendered
+// in place), just sync prev_lcd + dirty flags. Used when blending is
+// skipped (identity LUTs).
+static __section__(".text.tick") void track_changes(
+    const uint8_t* restrict frame, uint8_t* restrict prev_lcd, uint16_t* restrict dirty_flags
+)
+{
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        uint32_t* restrict f = (uint32_t*)frame;
+        uint32_t* restrict p = (uint32_t*)prev_lcd;
+        uint32_t changed = 0;
+        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
+        {
+            uint32_t w = f[x];
+            changed |= w ^ p[x];
+            p[x] = w;
+        }
+        if (changed)
+            dirty_flags[y >> 4] |= (1 << (y & 0xF));
+        frame += LCD_WIDTH_PACKED;
+        prev_lcd += LCD_WIDTH_PACKED;
+    }
+}
+
 static void save_check(gb_s* gb);
 
 __section__(".text.tick") __space static void crank_update(CB_GameScene* gameScene, float* progress)
@@ -2335,32 +2360,76 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         gb_recompute_cgb_gray_palettes(context->gb);
                         cgb_blend_stage = 1;
 
+                        // Identity check: if stage-1 and stage-2 remap outputs
+                        // agree for every color, bright == dark and any
+                        // same-frame blend is a no-op.
+                        const bool blend_identity =
+                            (memcmp(
+                                 context->gb->cgb_bg_palette + 64,
+                                 context->gb->cgb_bg_palette + 64 + 8 * 256, 8 * 256
+                             ) == 0) &&
+                            (memcmp(
+                                 context->gb->cgb_obj_palette_gray,
+                                 context->gb->cgb_obj_palette_gray_alt, 8
+                             ) == 0);
+
                         if (preferences_frame_skip == 2 && preferences_blend_frames)
                         {
                             // --- CGB Adaptive Consecutive-Frame Blending ---
-                            // Frame N: dual output -> cb[0]=bright, original_lcd=dark
-                            context->gb->lcd = cb_frame_buffer[0];
-                            context->gb->lcd_alt = original_lcd;
-                            context->gb->direct.frame_skip = 0;
-                            context->gb->direct.cgb_dual_output = true;
-#ifdef DTCM_ALLOC
-                            DTCM_VERIFY_DEBUG();
-                            run_frame_function_pointer(context->gb);
-                            DTCM_VERIFY_DEBUG();
-#else
-                            run_frame_function_pointer(context->gb);
-#endif
-                            context->gb->direct.cgb_dual_output = false;
-                            ++gameScene->next_frames_elapsed;
-                            tick_audio_sync(gameScene);
-
-                            if (gameScene->adaptive_fs_perf_allowed &&
-                                !gameScene->adaptive_fs_probe_pending)
+                            if (blend_identity)
                             {
-                                // Frame N+1: bright N stays in cb[0]; bright N+1 -> cb[1]
-                                // (unused), dark N+1 -> original_lcd (clobbers dark N,
-                                // which this branch doesn't use)
-                                context->gb->lcd = cb_frame_buffer[1];
+                                // LUTs identical: dual output would render the
+                                // same pixels twice - render single-output.
+                                // Frame N -> cb[0]
+                                context->gb->lcd = cb_frame_buffer[0];
+                                context->gb->lcd_alt = NULL;
+                                context->gb->direct.frame_skip = 0;
+                                context->gb->direct.cgb_dual_output = false;
+#ifdef DTCM_ALLOC
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
+#else
+                                run_frame_function_pointer(context->gb);
+#endif
+                                ++gameScene->next_frames_elapsed;
+                                tick_audio_sync(gameScene);
+
+                                if (gameScene->adaptive_fs_perf_allowed &&
+                                    !gameScene->adaptive_fs_probe_pending)
+                                {
+                                    // Frame N+1 -> original_lcd; temporal blend
+                                    // still needed (different frames)
+                                    context->gb->lcd = original_lcd;
+                                    context->gb->direct.frame_skip = 0;
+#ifdef DTCM_ALLOC
+                                    DTCM_VERIFY_DEBUG();
+                                    run_frame_function_pointer(context->gb);
+                                    DTCM_VERIFY_DEBUG();
+#else
+                                    run_frame_function_pointer(context->gb);
+#endif
+                                    ++gameScene->next_frames_elapsed;
+                                    tick_audio_sync(gameScene);
+
+                                    blend_frames(
+                                        cb_frame_buffer[0], original_lcd, context->previous_lcd,
+                                        context->line_has_changed
+                                    );
+                                }
+                                else
+                                {
+                                    // same-frame blend would be identity
+                                    blit_tracked(
+                                        cb_frame_buffer[0], original_lcd, context->previous_lcd,
+                                        context->line_has_changed
+                                    );
+                                }
+                            }
+                            else
+                            {
+                                // Frame N: dual output -> cb[0]=bright, original_lcd=dark
+                                context->gb->lcd = cb_frame_buffer[0];
                                 context->gb->lcd_alt = original_lcd;
                                 context->gb->direct.frame_skip = 0;
                                 context->gb->direct.cgb_dual_output = true;
@@ -2374,39 +2443,83 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                                 context->gb->direct.cgb_dual_output = false;
                                 ++gameScene->next_frames_elapsed;
                                 tick_audio_sync(gameScene);
-                                // blend: bright N (cb[0]) + dark N+1 (original_lcd)
-                            }
-                            // else blend: bright N (cb[0]) + dark N (original_lcd)
 
-                            // both branches: blend in place, no memcpy
-                            blend_frames(
-                                cb_frame_buffer[0], original_lcd, context->previous_lcd,
-                                context->line_has_changed
-                            );
+                                if (gameScene->adaptive_fs_perf_allowed &&
+                                    !gameScene->adaptive_fs_probe_pending)
+                                {
+                                    // Frame N+1: bright N stays in cb[0]; bright N+1 -> cb[1]
+                                    // (unused), dark N+1 -> original_lcd (clobbers dark N,
+                                    // which this branch doesn't use)
+                                    context->gb->lcd = cb_frame_buffer[1];
+                                    context->gb->lcd_alt = original_lcd;
+                                    context->gb->direct.frame_skip = 0;
+                                    context->gb->direct.cgb_dual_output = true;
+#ifdef DTCM_ALLOC
+                                    DTCM_VERIFY_DEBUG();
+                                    run_frame_function_pointer(context->gb);
+                                    DTCM_VERIFY_DEBUG();
+#else
+                                    run_frame_function_pointer(context->gb);
+#endif
+                                    context->gb->direct.cgb_dual_output = false;
+                                    ++gameScene->next_frames_elapsed;
+                                    tick_audio_sync(gameScene);
+                                    // blend: bright N (cb[0]) + dark N+1 (original_lcd)
+                                }
+                                // else blend: bright N (cb[0]) + dark N (original_lcd)
+
+                                // both branches: blend in place, no memcpy
+                                blend_frames(
+                                    cb_frame_buffer[0], original_lcd, context->previous_lcd,
+                                    context->line_has_changed
+                                );
+                            }
                         }
                         else
                         {
                             // --- Dual-Output Blending (60fps / 30fps / Adaptive) ---
-                            // Dark stage renders directly into the display buffer;
-                            // blend then runs in place - no final memcpy.
-                            context->gb->lcd = cb_frame_buffer[0];
-                            context->gb->lcd_alt = original_lcd;
-                            context->gb->direct.frame_skip = 0;
-                            context->gb->direct.cgb_dual_output = true;
+                            if (blend_identity)
+                            {
+                                // LUTs identical: single-output render directly
+                                // into the display buffer; blend is a no-op.
+                                context->gb->lcd = original_lcd;
+                                context->gb->lcd_alt = NULL;
+                                context->gb->direct.frame_skip = 0;
+                                context->gb->direct.cgb_dual_output = false;
+#ifdef DTCM_ALLOC
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
+#else
+                                run_frame_function_pointer(context->gb);
+#endif
+                                track_changes(
+                                    original_lcd, context->previous_lcd, context->line_has_changed
+                                );
+                            }
+                            else
+                            {
+                                // Dark stage renders directly into the display buffer;
+                                // blend then runs in place - no final memcpy.
+                                context->gb->lcd = cb_frame_buffer[0];
+                                context->gb->lcd_alt = original_lcd;
+                                context->gb->direct.frame_skip = 0;
+                                context->gb->direct.cgb_dual_output = true;
 
 #ifdef DTCM_ALLOC
-                            DTCM_VERIFY_DEBUG();
-                            run_frame_function_pointer(context->gb);
-                            DTCM_VERIFY_DEBUG();
+                                DTCM_VERIFY_DEBUG();
+                                run_frame_function_pointer(context->gb);
+                                DTCM_VERIFY_DEBUG();
 #else
-                            run_frame_function_pointer(context->gb);
+                                run_frame_function_pointer(context->gb);
 #endif
 
-                            context->gb->direct.cgb_dual_output = false;
-                            blend_frames(
-                                cb_frame_buffer[0], original_lcd, context->previous_lcd,
-                                context->line_has_changed
-                            );
+                                context->gb->direct.cgb_dual_output = false;
+                                blend_frames(
+                                    cb_frame_buffer[0], original_lcd, context->previous_lcd,
+                                    context->line_has_changed
+                                );
+                            }
 
                             ++gameScene->next_frames_elapsed;
                             tick_audio_sync(gameScene);
