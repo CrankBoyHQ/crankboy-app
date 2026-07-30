@@ -54,6 +54,8 @@ static void cb_wrap_invalidate(void);
 static const char* get_settings_game_name(CB_SettingsScene* settingsScene);
 
 static char* itcm_base_desc = NULL;
+static char* itcm_device_desc = NULL;
+static char* itcm_base_with_device_desc = NULL;
 static char* itcm_restart_desc = NULL;
 
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
@@ -2637,7 +2639,7 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
  * Miscellaneous
  *  Show FPS, Turbo Speed, UI sounds,
  *  Disable auto lock, Boot Fade,
- *  TCM acceleration, LCD-TCM accel.,
+ *  TCM acceleration, LCD acceleration.,
  *  About CrankBoy...
  */
 static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, int* count)
@@ -2727,16 +2729,27 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
             &itcm_base_desc,
             "Runs emulator in TCM for better performance.\n\n"
             "Both: core + draw.\nCore: interpreter only.\nDraw: rendering only.\n\n"
-            "Disable (or restrict) if you experience instability.\n"
-            "(Your device: %s)",
-            pd_rev_description
+            "Disable (or restrict) if you experience instability."
+        );
+    }
+
+    if (itcm_device_desc == NULL)
+    {
+        playdate->system->formatString(&itcm_device_desc, "(Your device: %s)", pd_rev_description);
+    }
+
+    if (itcm_base_with_device_desc == NULL)
+    {
+        playdate->system->formatString(
+            &itcm_base_with_device_desc, "%s\n\n%s", itcm_base_desc, itcm_device_desc
         );
     }
 
     if (itcm_restart_desc == NULL)
     {
         playdate->system->formatString(
-            &itcm_restart_desc, "%s\n\nRestart the game for changes to apply.", itcm_base_desc
+            &itcm_restart_desc, "%s\n\nRestart the game for changes to apply.\n\n%s",
+            itcm_base_desc, itcm_device_desc
         );
     }
 
@@ -2754,7 +2767,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     }
     else
     {
-        section[i].description = itcm_base_desc;
+        section[i].description = itcm_base_with_device_desc;
     }
 #endif
 
@@ -3838,6 +3851,18 @@ static void CB_SettingsScene_free(void* object)
     {
         cb_free(itcm_base_desc);
         itcm_base_desc = NULL;
+    }
+
+    if (itcm_device_desc)
+    {
+        cb_free(itcm_device_desc);
+        itcm_device_desc = NULL;
+    }
+
+    if (itcm_base_with_device_desc)
+    {
+        cb_free(itcm_base_with_device_desc);
+        itcm_base_with_device_desc = NULL;
     }
 
     if (itcm_restart_desc)
