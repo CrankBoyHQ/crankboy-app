@@ -34,6 +34,15 @@ typedef struct
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
+/* Debug: skip rendering per channel (bit0=CH1,1=CH2,2=CH3,
+ * 3=CH4). Freezes channel state while set; measurement only. */
+static uint8_t s_audio_skip_mask;
+
+void audio_set_skip_mask(uint8_t m)
+{
+    s_audio_skip_mask = m;
+}
+
 /* Sentinel addr marking an emulated frame's end in the event stream (never
  * passed to audio_write): explicit boundary, also for write-less frames. */
 #define APU_FRAME_END_ADDR 0xFFFF
@@ -517,6 +526,9 @@ __audio static void update_square(
 {
     chan* c = audio->chans + ch2;
 
+    if (s_audio_skip_mask & (1 << ch2))
+        return;
+
     if (!c->powered)
         return;
 
@@ -687,6 +699,9 @@ __audio static void update_wave(
 {
     chan* c = audio->chans + 2;
 
+    if (s_audio_skip_mask & 4)
+        return;
+
     if (!c->powered)
         return;
 
@@ -851,6 +866,9 @@ __audio static void update_wave(
 __audio static void update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
 {
     chan* c = audio->chans + 3;
+
+    if (s_audio_skip_mask & 8)
+        return;
 
     if (!c->powered)
         return;

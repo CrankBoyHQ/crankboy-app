@@ -9,6 +9,10 @@
 #include "utility.h"
 #include "version.h"
 
+/* clang-format off */
+#include "../libs/minigb_apu/minigb_apu.h"
+/* clang-format on */
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -752,6 +756,21 @@ static bool serial_cb_gbload(const char* const* tokens)
     return true;
 }
 
+// Handle cb:audiomask command - debug: skip rendering per channel (attribution)
+// Format: cb:audiomask:<0-15>  (bit0=CH1, 1=CH2, 2=CH3, 3=CH4)
+static bool serial_cb_audiomask(const char* const* tokens)
+{
+    if (!tokens[2])
+    {
+        serial_send_response("cb:audiomask:error:usage: cb:audiomask:<0-15>");
+        return true;
+    }
+    uint8_t mask = (uint8_t)strtol(tokens[2], NULL, 0) & 0xF;
+    audio_set_skip_mask(mask);
+    serial_send_response("cb:audiomask:%u", mask);
+    return true;
+}
+
 // Handle cb:gb command - Dump live emulator CPU/IO state (debugging)
 // Format: cb:gb
 static bool serial_cb_gb(const char* const* tokens)
@@ -897,6 +916,10 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "fwdinstall") == 0)
     {
         return serial_cb_fwdinstall(tokens);
+    }
+    else if (strcmp(subcmd, "audiomask") == 0)
+    {
+        return serial_cb_audiomask(tokens);
     }
     else if (strcmp(subcmd, "gb") == 0)
     {

@@ -40,6 +40,10 @@ void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val, uint
 /* Initialise audio driver. */
 void audio_init(audio_data* audio);
 
+/* Debug: skip rendering per channel (bit0=CH1,1=CH2,2=CH3,
+ * 3=CH4). Freezes channel state while set; measurement only. */
+void audio_set_skip_mask(uint8_t m);
+
 /* Advance the DIV-APU frame sequencer one step (512 Hz DIV falling edge;
  * bit 4 DMG/CGB normal speed, bit 5 CGB double speed). */
 __shell void audio_div_apu_tick(audio_data* audio);
