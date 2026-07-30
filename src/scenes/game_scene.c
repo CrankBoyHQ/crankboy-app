@@ -2499,12 +2499,15 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             }
                             else
                             {
-                                // Dark stage renders directly into the display buffer;
-                                // blend then runs in place - no final memcpy.
-                                context->gb->lcd = cb_frame_buffer[0];
-                                context->gb->lcd_alt = original_lcd;
+                                // Merged blend: render once with pre-blended
+                                // LUTs (built from fresh stage-1/2 maps).
+                                // Output is bit-identical to dual render+blend.
+                                __cgb_build_blend_luts(context->gb);
+                                pgb_blend_merged = true;
+                                context->gb->lcd = original_lcd;
+                                context->gb->lcd_alt = NULL;
                                 context->gb->direct.frame_skip = 0;
-                                context->gb->direct.cgb_dual_output = true;
+                                context->gb->direct.cgb_dual_output = false;
 
 #ifdef DTCM_ALLOC
                                 DTCM_VERIFY_DEBUG();
@@ -2513,11 +2516,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 #else
                                 run_frame_function_pointer(context->gb);
 #endif
+                                pgb_blend_merged = false;
 
-                                context->gb->direct.cgb_dual_output = false;
-                                blend_frames(
-                                    cb_frame_buffer[0], original_lcd, context->previous_lcd,
-                                    context->line_has_changed
+                                track_changes(
+                                    original_lcd, context->previous_lcd, context->line_has_changed
                                 );
                             }
 

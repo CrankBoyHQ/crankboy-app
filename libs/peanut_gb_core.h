@@ -601,7 +601,19 @@ __draw static void $(__gb_draw_line_sprites)(
 #endif
                 {
 #if PGB_IS_CGB
-                    uint8_t color_value = (cgb_obj_pal >> (c * 2)) & 3;
+                    uint8_t color_value;
+                    if (pgb_blend_merged)
+                    {
+                        // merged blend: pre-averaged pal, dither phase by (x ^ y)
+                        color_value = (pgb_obj_blend_pal[(disp_x ^ gb->gb_reg.LY) & 1]
+                                                        [OF & OBJ_CGB_PALETTE] >>
+                                       (c * 2)) &
+                                      3;
+                    }
+                    else
+                    {
+                        color_value = (cgb_obj_pal >> (c * 2)) & 3;
+                    }
 #else
                     uint8_t color_value = (OBP >> (c * 2 + c_add * 2)) & 3;
 #endif
@@ -693,6 +705,9 @@ static inline __attribute__((always_inline)) uint16_t __cgb_fetch_tile(
 #define CGB_LUT(gb, pal_idx) ((gb)->cgb_bg_palette + 64 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
 #define CGB_LUT_DARK(gb, pal_idx) \
     ((gb)->cgb_bg_palette + 64 + 8 * 256 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
+// Merged pre-blended LUTs (slots 16-23 even lines, 24-31 odd lines)
+#define CGB_LUT_BLEND(gb, pal_idx, par) \
+    ((gb)->cgb_bg_palette + 64 + (16 + ((par) & 1) * 8 + ((pal_idx) & BG_MAP_ATTR_PALETTE)) * 256)
 
 static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
     gb_s* restrict gb, uint8_t* restrict tile_map, uint8_t* restrict attr_map,
@@ -714,7 +729,8 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
     }
 
-    const uint8_t* lut_lo = CGB_LUT(gb, tile_palette_lo);
+    const uint8_t* lut_lo = pgb_blend_merged ? CGB_LUT_BLEND(gb, tile_palette_lo, gb->gb_reg.LY)
+                                             : CGB_LUT(gb, tile_palette_lo);
     uint8_t lo_p = (uint8_t)vram_tile_data_hi;
     uint8_t hi_p = (uint8_t)(vram_tile_data_hi >> 8);
     uint16_t rm_lo = __cgb_remap_tile(lo_p, hi_p, lut_lo);
@@ -744,7 +760,9 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         uint8_t pri_lo = tile_palette_lo & BG_MAP_ATTR_PRIORITY;
         uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
 
-        const uint8_t* lut_hi = CGB_LUT(gb, tile_palette_hi_val);
+        const uint8_t* lut_hi = pgb_blend_merged
+                                    ? CGB_LUT_BLEND(gb, tile_palette_hi_val, gb->gb_reg.LY)
+                                    : CGB_LUT(gb, tile_palette_hi_val);
         const uint8_t* lut_hi_dark = NULL;
         if (pixels_alt)
             lut_hi_dark = CGB_LUT_DARK(gb, tile_palette_hi_val);
@@ -1197,6 +1215,7 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 #if PGB_IS_CGB
 #undef CGB_LUT
 #undef CGB_LUT_DARK
+#undef CGB_LUT_BLEND
 #endif
 
 // Per-scanline mode-3 setup: OAM latch, sprite penalties, window
