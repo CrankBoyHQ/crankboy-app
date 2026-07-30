@@ -1157,7 +1157,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
     (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
-static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
+__shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
 
 __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t addr)
 {
@@ -1333,7 +1333,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 
 // attempt to detect an optimizable routine
 // (e.g. tight-loop polling an io register)
-uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
+__shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
 {
     if (!gb->hle_enabled)
         return ioval;
@@ -1409,7 +1409,15 @@ uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
     u8 op0 = READ8(pc);
     u8 d8 = READ8(pc + 1);
     addr_next = pc + 2;
-    if (op0 == 0xFE || op0 == 0xD6)
+    if (op0 == 0xA7 || op0 == 0xB7)
+    {
+        // AND A / OR A: Z = (A == 0), C = 0. Single-byte instruction;
+        // the classic "ldh a,(x); and a; jr z" flag-wait idiom.
+        z = (ioval == 0);
+        c = 0;
+        addr_next = pc + 1;
+    }
+    else if (op0 == 0xFE || op0 == 0xD6)
     {
         // cp d8 / sub d8
         z = ioval == d8;

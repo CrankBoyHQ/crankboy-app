@@ -104,7 +104,18 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
     }
     if likely (addr >= 0xFF80)  // no need to check upper bound -- gb->hram[0xFF] should match IE
     {
-        return gb->hram[addr % 0x100];
+        uint8_t val = gb->hram[addr % 0x100];
+        if (gb->hle_enabled)
+        {
+            // HLE: games wait on HRAM flags set by ISRs ("ldh a,(x); and a;
+            // jr z"). Pre-filter to ldh-imm reads from ROM before paying
+            // for the full loop check.
+            uint16_t pc = gb->cpu_reg.pc;
+            if (pc >= 2 && pc < 0x8000 && gb->ram_base[pc >> 12][pc - 2] == 0xF0 &&
+                gb->ram_base[pc >> 12][pc - 1] == (uint8_t)addr)
+                return __gb_try_hle(gb, addr, val);
+        }
+        return val;
     }
     if likely (addr >= 0xA000 && addr < 0xC000 && gb->selected_cart_bank_addr)
     {
