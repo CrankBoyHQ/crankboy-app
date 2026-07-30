@@ -950,7 +950,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 
 static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
 static const char* off_on_labels[] = {"Off", "On"};
-static const char* itcm_labels[] = {"Off", "Both", "Core", "Draw"};
+static const char* itcm_labels[] = {"Off", "Full", "Core", "Draw"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "Brighter"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
@@ -2655,7 +2655,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     section[++i] = (OptionsMenuEntry){
         .name = T(sethdr_misc),
         .header = 1,
-        .description = "FPS display, turbo speed, boot fade, TCM Acceleration, and more."
+        .description = "FPS display, turbo speed, boot fade, TCM Mode, and more."
     };
 
     section[++i] = (OptionsMenuEntry){
@@ -2728,7 +2728,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         playdate->system->formatString(
             &itcm_base_desc,
             "Runs emulator in TCM for better performance.\n\n"
-            "Both: core + draw.\nCore: interpreter only.\nDraw: rendering only.\n\n"
+            "Full: core + draw.\nCore: interpreter only.\nDraw: rendering only.\n\n"
             "Disable (or restrict) if you experience instability."
         );
     }
@@ -2754,7 +2754,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     }
 
     section[++i] = (OptionsMenuEntry){
-        .name = "TCM Accel.",
+        .name = "TCM Mode",
         .values = itcm_labels,
         .pref_var = &preferences_itcm,
         .max_value = 4,
@@ -2774,7 +2774,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     if (!emucore_mode)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "LCD-TCM Accel.",
+            .name = "LCD Acceleration",
             .values = off_on_labels,
             .description =
                 "Provides minor perf boost by using the Playdate's own last-frame buffer "

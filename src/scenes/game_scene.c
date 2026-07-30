@@ -419,7 +419,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
     uintptr_t core_size = itcm_end - itcm_start;
 
-    // DTCM relocation controlled by the TCM Accel. preference (default on).
+    // DTCM relocation controlled by the TCM Mode preference (default on).
     // Manual escape hatch if a device/rev misbehaves.
     if (!dtcm_enabled() || preferences_itcm == 0)
     {
