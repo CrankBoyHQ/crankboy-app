@@ -164,6 +164,10 @@ typedef struct CB_GameScene
 
     bool isCurrentlySaving : 1;
     bool cgb_needs_palette_recompute : 1;
+    bool cgb_blend_identity : 1;
+
+    // last applied blend bias (for change detection)
+    int8_t last_cgb_bias;
 
     // Adaptive frame_skip (preferences_frame_skip == 2)
     int adaptive_fs_headroom_counter;

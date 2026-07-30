@@ -1026,7 +1026,10 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     generate_dither_luts();
 
     if (context->cgb_mode)
+    {
         gameScene->cgb_needs_palette_recompute = true;
+        pgb_cgb_lut_dirty = true;
+    }
 
     reconfigure_audio_source(gameScene);
 
@@ -1762,6 +1765,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     {
         gb_recompute_cgb_gray_palettes(context->gb);
         gameScene->cgb_needs_palette_recompute = false;
+        pgb_cgb_lut_dirty = true;
     }
 
     CB_Scene_update(gameScene->scene, dt);
@@ -2295,6 +2299,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 {
                     // --- CGB Dual-Output Blending ---
                     cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
+                    if (cgb_gray_bias != gameScene->last_cgb_bias)
+                    {
+                        gameScene->last_cgb_bias = cgb_gray_bias;
+                        pgb_cgb_lut_dirty = true;
+                    }
                     static clalign uint8_t cb_frame_buffer[4][LCD_BUFFER_BYTES];
 
                     uint8_t* original_lcd = context->gb->lcd;
@@ -2354,24 +2363,35 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     }
                     else
                     {
-                        cgb_blend_stage = 1;
-                        gb_recompute_cgb_gray_palettes(context->gb);
-                        cgb_blend_stage = 2;
-                        gb_recompute_cgb_gray_palettes(context->gb);
-                        cgb_blend_stage = 1;
+                        // Gray/blend LUTs only change with palette writes or
+                        // bias changes; rebuild them (and the identity check)
+                        // only then, not per frame.
+                        if (pgb_cgb_lut_dirty)
+                        {
+                            cgb_blend_stage = 1;
+                            gb_recompute_cgb_gray_palettes(context->gb);
+                            cgb_blend_stage = 2;
+                            gb_recompute_cgb_gray_palettes(context->gb);
+                            cgb_blend_stage = 1;
 
-                        // Identity check: if stage-1 and stage-2 remap outputs
-                        // agree for every color, bright == dark and any
-                        // same-frame blend is a no-op.
-                        const bool blend_identity =
-                            (memcmp(
-                                 context->gb->cgb_bg_palette + 64,
-                                 context->gb->cgb_bg_palette + 64 + 8 * 256, 8 * 256
-                             ) == 0) &&
-                            (memcmp(
-                                 context->gb->cgb_obj_palette_gray,
-                                 context->gb->cgb_obj_palette_gray_alt, 8
-                             ) == 0);
+                            // Identity: stage-1 and stage-2 remap outputs
+                            // agree for every color -> same-frame blend is a no-op.
+                            gameScene->cgb_blend_identity =
+                                (memcmp(
+                                     context->gb->cgb_bg_palette + 64,
+                                     context->gb->cgb_bg_palette + 64 + 8 * 256, 8 * 256
+                                 ) == 0) &&
+                                (memcmp(
+                                     context->gb->cgb_obj_palette_gray,
+                                     context->gb->cgb_obj_palette_gray_alt, 8
+                                 ) == 0);
+
+                            if (!gameScene->cgb_blend_identity)
+                                __cgb_build_blend_luts(context->gb);
+
+                            pgb_cgb_lut_dirty = false;
+                        }
+                        const bool blend_identity = gameScene->cgb_blend_identity;
 
                         if (preferences_frame_skip == 2 && preferences_blend_frames)
                         {
@@ -2500,9 +2520,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             else
                             {
                                 // Merged blend: render once with pre-blended
-                                // LUTs (built from fresh stage-1/2 maps).
+                                // LUTs (rebuilt in the dirty-gate above).
                                 // Output is bit-identical to dual render+blend.
-                                __cgb_build_blend_luts(context->gb);
                                 pgb_blend_merged = true;
                                 context->gb->lcd = original_lcd;
                                 context->gb->lcd_alt = NULL;
@@ -4035,6 +4054,7 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             pgb_dirty_prev = context->previous_lcd;
                             pgb_dirty_flags = context->line_has_changed;
                             gameScene->cgb_needs_palette_recompute = true;
+                            pgb_cgb_lut_dirty = true;
                             if (gameScene->script)
                             {
                                 const char* scriptbuff =

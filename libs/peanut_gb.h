@@ -793,6 +793,10 @@ __shell static void __gb_do_hdma(gb_s* gb)
 static bool pgb_blend_merged;
 static uint8_t pgb_obj_blend_pal[2][8];
 
+/* Set by palette-data writes (BCPD/OCPD) and frontend events (init, state
+ * load, bias change). Gates the per-frame gray/blend LUT rebuild. */
+static bool pgb_cgb_lut_dirty;
+
 __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
 {
     uint16_t range = (uint16_t)cgb_gray_lum_max - (uint16_t)cgb_gray_lum_min;
@@ -1111,6 +1115,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
                     uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
                     __cgb_update_bg_gray_palette(gb, idx / 8, 0);
+                    pgb_cgb_lut_dirty = true;
                     if (gb->cgb_bg_palette_index & 0x80)
                         gb->cgb_bg_palette_index =
                             (gb->cgb_bg_palette_index & 0x80) | ((idx + 1) & 0x3F);
@@ -1131,6 +1136,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
                     uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
                     __cgb_update_obj_gray_palette(gb, idx / 8, gb->cgb_obj_palette_gray);
+                    pgb_cgb_lut_dirty = true;
                     if (gb->cgb_obj_palette_index & 0x80)
                         gb->cgb_obj_palette_index =
                             (gb->cgb_obj_palette_index & 0x80) | ((idx + 1) & 0x3F);
