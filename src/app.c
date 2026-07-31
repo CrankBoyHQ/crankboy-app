@@ -756,7 +756,7 @@ static void get_homebrew_hub_api(void)
         return;
     }
 
-    while (staticpath[0] && staticpath[strlen(path) - 1] == '/')
+    while (staticpath[0] && staticpath[strlen(staticpath) - 1] == '/')
     {
         staticpath[strlen(staticpath) - 1] = 0;
     }

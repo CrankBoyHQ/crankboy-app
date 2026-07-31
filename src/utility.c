@@ -1452,6 +1452,16 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
     if (!dat)
         return NULL;
 
+    // minimum valid gzip: 10-byte header + 8-byte trailer. Reject early:
+    // smaller files underflow the size-based arithmetic below (isz read
+    // before the buffer, size - 8 wraparound into mini_gz_start).
+    if (size < 18)
+    {
+        playdate->system->logToConsole("Failed to decompress %s: file too small", path);
+        cb_free(dat);
+        return NULL;
+    }
+
     // read decompressed size from header
     char* dat_end = dat + size;
     uint8_t* isz = (uint8_t*)(dat_end - 4);
