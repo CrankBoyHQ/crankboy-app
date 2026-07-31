@@ -920,6 +920,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
         if (gb_ret == GB_INIT_NO_ERROR || gb_ret == GB_INIT_NO_ERROR_BUT_REQUIRES_CGB)
         {
+            context->gb_initialized = true;
             if (!CB_GameScene_complete_successful_init(gameScene))
             {
                 gameScene->state = CB_GameSceneStateError;
@@ -1214,6 +1215,7 @@ static uint8_t* read_rom_to_ram(
                 "%s:%i: Failed to decompress %s: %d", __FILE__, __LINE__, filename, status
             );
             cb_free(decompressed_rom);
+            *sceneError = CB_GameSceneErrorLoadingRom;
             return NULL;
         }
         else
@@ -4553,7 +4555,7 @@ static void CB_GameScene_free(void* object)
 
     CB_Scene_free(gameScene->scene);
 
-    if (context)
+    if (context && context->gb_initialized)
     {
         gb_reset(context->gb, context->cgb_mode);
     }
