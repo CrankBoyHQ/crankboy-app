@@ -97,20 +97,20 @@ static bool copy_one_file(const char* full_path, const char* filename)
     void* dat = cb_read_entire_file(full_path, &size, kFileRead);
 
     bool success = false;
-    if (dat && size > 0)
+    if (dat)
     {
         success = cb_write_entire_file(dst_path, dat, size);
         if (!success)
         {
             playdate->system->logToConsole("Error: Failed to write to %s", dst_path);
         }
-        cb_free(dat);
     }
     else
     {
         playdate->system->logToConsole("Error: Failed to read from %s", full_path);
     }
 
+    cb_free(dat);
     cb_free(dst_path);
     return success;
 }
