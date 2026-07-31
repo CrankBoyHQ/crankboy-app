@@ -729,51 +729,40 @@ __shell static void __gb_do_hdma(gb_s* gb)
     int hdma_remaning = (unsigned)gb->cgb_hdma_len;
 
     uint16_t src = gb->cgb_hdma_src;
-    uint16_t dst = VRAM_ADDR | (gb->cgb_hdma_dst % VRAM_SIZE);
+    /* Bank offset 0..0x1FFF; wraps within bank (hardware behavior) and can
+     * never index out of the VRAM buffer, even for corrupt state values. */
+    unsigned base = gb->cgb_hdma_dst % VRAM_SIZE;
 
-    // FIXME: bugs when this is an unusual address
     // NOTE: we use __cgb version because hdma is only possible on CGB.
-    if (dst < 0x9800)
+    for (int i = 0; i < 0x10; i += 4)
     {
-        for (int i = 0; i < 0x10; i += 4)
+        bool aligned = ((base + i) & 3) == 0;
+        bool no_wrap = (base + i + 3) < VRAM_SIZE;
+        bool same_region = ((base + i) < 0x1800) == ((base + i + 3) < 0x1800);
+        bool src_ok = (src + i) < 0x8000 || (src + i + 3) >= 0xA000 ||
+                      ((src + i) >= 0x9800) == ((src + i + 3) >= 0x9800);
+
+        if (aligned && no_wrap && same_region && src_ok)
         {
-            if ((src + i) < 0x8000 || (src + i + 3) >= 0xA000 ||
-                ((src + i) >= 0x9800) == ((src + i + 3) >= 0x9800))
+            uint32_t v = __gb_read32__cgb(gb, src + i);
+            if (base + i < 0x1800)
             {
-                uint32_t v = __gb_read32__cgb(gb, src + i);
                 uint8_t b0 = reverse_bits_u8((uint8_t)(v));
                 uint8_t b1 = reverse_bits_u8((uint8_t)(v >> 8));
                 uint8_t b2 = reverse_bits_u8((uint8_t)(v >> 16));
                 uint8_t b3 = reverse_bits_u8((uint8_t)(v >> 24));
-                *(uint32_t*)(&gb->vram_base[dst + i]) = (uint32_t)b0 | ((uint32_t)b1 << 8) |
-                                                        ((uint32_t)b2 << 16) | ((uint32_t)b3 << 24);
+                v = (uint32_t)b0 | ((uint32_t)b1 << 8) | ((uint32_t)b2 << 16) |
+                    ((uint32_t)b3 << 24);
             }
-            else
-            {
-                for (int j = i; j < i + 4; ++j)
-                {
-                    uint8_t v = __gb_read__cgb(gb, src + j);
-                    v = reverse_bits_u8(v);
-                    gb->vram_base[dst + j] = v;
-                }
-            }
+            *(uint32_t*)(&gb->vram_base[VRAM_ADDR + base + i]) = v;
         }
-    }
-    else
-    {
-        for (int i = 0; i < 0x10; i += 4)
+        else
         {
-            if ((src + i) < 0x8000 || (src + i + 3) >= 0xA000 ||
-                ((src + i) >= 0x9800) == ((src + i + 3) >= 0x9800))
+            for (int j = i; j < i + 4; ++j)
             {
-                *(uint32_t*)(&gb->vram_base[dst + i]) = __gb_read32__cgb(gb, src + i);
-            }
-            else
-            {
-                for (int j = i; j < i + 4; ++j)
-                {
-                    gb->vram_base[dst + j] = __gb_read__cgb(gb, src + j);
-                }
+                unsigned off = (base + j) % VRAM_SIZE;
+                uint8_t v = __gb_read__cgb(gb, src + j);
+                gb->vram_base[VRAM_ADDR + off] = (off < 0x1800) ? reverse_bits_u8(v) : v;
             }
         }
     }
