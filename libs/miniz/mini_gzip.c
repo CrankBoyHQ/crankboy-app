@@ -116,8 +116,8 @@ mini_gz_unpack(struct mini_gzip *gz_ptr, void *mem_out, size_t mem_out_len)
 		s.avail_in += bytes_to_read;
 		ret = mz_inflate(&s, MZ_SYNC_FLUSH);
 		in_bytes_avail -= bytes_to_read;
-		if (s.avail_out == 0 && in_bytes_avail != 0) {
-			return (-3);
+		if (ret == MZ_STREAM_END) {
+			break;
 		}
 		assert(ret != MZ_BUF_ERROR);
 		if (ret == MZ_PARAM_ERROR) {
@@ -126,8 +126,17 @@ mini_gz_unpack(struct mini_gzip *gz_ptr, void *mem_out, size_t mem_out_len)
 		if (ret == MZ_DATA_ERROR) {
 			return (-2);
 		}
-		if (ret == MZ_STREAM_END) {
-			break;
+		if (s.avail_out == 0) {
+			/* Output buffer full before stream end: genuinely too small.
+			 * Must be checked AFTER MZ_STREAM_END: an exactly-sized
+			 * buffer legitimately reaches avail_out == 0 on the final
+			 * chunk. */
+			return (-3);
+		}
+		if (s.avail_in == 0 && in_bytes_avail == 0) {
+			/* Input exhausted without stream end: truncated stream.
+			 * (Previously this spun forever feeding 0-byte chunks.) */
+			return (-5);
 		}
 	}
 	ret = inflateEnd(&s);
