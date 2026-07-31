@@ -499,6 +499,7 @@ bool ft_handle_begin(
         if (url_decode(original_filename, decoded_orig_name, sizeof(decoded_orig_name)) < 0)
         {
             serial_send_response("ft:x:filename");
+            ft_cleanup();
             return false;
         }
 
@@ -508,6 +509,7 @@ bool ft_handle_begin(
             strstr(decoded_orig_name, "..") != NULL || decoded_orig_name[0] == '\0')
         {
             serial_send_response("ft:x:orig_filename");
+            ft_cleanup();
             return false;
         }
 
@@ -515,6 +517,7 @@ bool ft_handle_begin(
         if (!sanitize_filename(decoded_orig_name, safe_orig_name, sizeof(safe_orig_name)))
         {
             serial_send_response("ft:x:orig_filename");
+            ft_cleanup();
             return false;
         }
 
