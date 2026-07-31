@@ -6,6 +6,9 @@
 
 #ifdef DTCM_ALLOC
 static uint32_t* dtcm_low_canary_addr = NULL;
+// highest dtcm_mempool ever reached; used by dtcm_free to identify DTCM
+// pointers even after dtcm_deinit/dtcm_restore moved dtcm_mempool back.
+static void* dtcm_mempool_hwm = NULL;
 #define DTCM_CANARY 0xDE0DCA94
 #endif
 
@@ -100,13 +103,19 @@ __dtcm_ctrl void* dtcm_alloc(size_t size)
         void* tmp = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = 0;  // remove canary
         dtcm_mempool = (void*)(size + (uintptr_t)dtcm_mempool);
+        if (dtcm_mempool > dtcm_mempool_hwm)
+            dtcm_mempool_hwm = dtcm_mempool;
         // high canary
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
         return tmp;
     }
 #endif
 
-    return cb_malloc(size);
+    // use the same header convention as dtcm_alloc_aligned so that dtcm_free
+    // can always recover the original pointer from a heap allocation
+    void* original_ptr = cb_malloc(size + sizeof(void*));
+    *(void**)original_ptr = original_ptr;
+    return (void*)((uintptr_t)original_ptr + sizeof(void*));
 }
 
 __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
@@ -119,6 +128,8 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
             dtcm_mempool = (void*)(dtcm_mempool + 1);
         void* tmp = dtcm_mempool;
         dtcm_mempool = (void*)(size + (uintptr_t)dtcm_mempool);
+        if (dtcm_mempool > dtcm_mempool_hwm)
+            dtcm_mempool_hwm = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
         return tmp;
     }
@@ -172,6 +183,7 @@ __dtcm_ctrl void dtcm_set_mempool(void* addr)
     }
     dtcm_mempool_start = addr;
 #ifdef DTCM_ALLOC
+    dtcm_mempool_hwm = addr;
     playdate->system->logToConsole("DTCM mempool: %p\n", dtcm_mempool_start);
 #endif
 }
@@ -254,7 +266,10 @@ void dtcm_free(void* ptr)
 
 #ifdef DTCM_ALLOC
     uintptr_t p = (uintptr_t)ptr;
-    if (p >= (uintptr_t)dtcm_mempool_start && p < (uintptr_t)dtcm_mempool)
+    // check against the high-water mark rather than dtcm_mempool: deinit and
+    // restore move dtcm_mempool back, which would misclassify still-live
+    // DTCM pointers as heap pointers. DTCM is a bump allocator; no free.
+    if (p >= (uintptr_t)dtcm_mempool_start && p < (uintptr_t)dtcm_mempool_hwm)
     {
         return;
     }
