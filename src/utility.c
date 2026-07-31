@@ -1370,6 +1370,11 @@ char* cb_read_partial_file(
 {
     bool binary = flags & CB_FILE_FLAG_BINARY;
     flags &= ~CB_FILE_FLAG_BINARY;
+
+    // defined value on all failure paths
+    if (o_size)
+        *o_size = 0;
+
     SDFile* file = playdate->file->open(path, flags);
     char* dat;
     char* out;
