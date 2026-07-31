@@ -3180,7 +3180,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // --- End Continuous Scrolling ---
 
     // Apply cursor movement if there are steps to take
-    if (steps != 0)
+    if (steps != 0 && menuItemCount > 0)
     {
         settingsScene->option_hold_time = 0;
         int direction = (steps > 0) ? 1 : -1;
@@ -3208,6 +3208,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     //
     // This is actually a good thing! We don't want to mess with players' muscle
     // memories and cause them to accidentally load state when they mean to save state
+    if (menuItemCount > 0)
     {
         OptionsMenuEntry* sel = &settingsScene->entries[settingsScene->cursorIndex];
         last_selected_preference = sel->pref_var;
@@ -3244,7 +3245,11 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         settingsScene->topVisibleIndex = MAX(0, settingsScene->topVisibleIndex);
     }
 
-    OptionsMenuEntry* cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
+    // Emptied sections (e.g., all entries bundle-hidden) have no valid cursor
+    // entry; fall back to a zeroed dummy so entry-driven input handling no-ops.
+    static OptionsMenuEntry dummy_entry;
+    OptionsMenuEntry* cursor_entry =
+        (menuItemCount > 0) ? &settingsScene->entries[settingsScene->cursorIndex] : &dummy_entry;
 
     bool a_pressed = (pushed & kButtonA);
     if (cursor_entry->on_hold && !cursor_entry->locked)
@@ -3261,10 +3266,11 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         cb_play_ui_sound(CB_UISound_Navigate);
         int n = (int)settingsScene->sections_count;
         switchToSection(settingsScene, (settingsScene->currentSectionIndex + direction + n) % n);
-        cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
+        menuItemCount = settingsScene->totalMenuItemCount;
+        cursor_entry = (menuItemCount > 0) ? &settingsScene->entries[settingsScene->cursorIndex]
+                                           : &dummy_entry;
         direction = 0;
         settingsScene->option_hold_time = 0;
-        menuItemCount = settingsScene->totalMenuItemCount;
     }
 
     if (cursor_entry->on_hold && !cursor_entry->locked)
@@ -3331,7 +3337,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 if (cursor_entry->rebuild_when_changed)
                 {
                     CB_SettingsScene_rebuildEntries(settingsScene);
-                    cursor_entry = &settingsScene->entries[settingsScene->cursorIndex];
+                    cursor_entry = (settingsScene->totalMenuItemCount > 0)
+                                       ? &settingsScene->entries[settingsScene->cursorIndex]
+                                       : &dummy_entry;
                 }
 
                 if (cursor_entry->thumbnail)
@@ -3364,7 +3372,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // Recalc recommended settings button state when dirty
-    if (settingsScene->rec_dirty && settingsScene->rec_entry_index >= 0)
+    if (settingsScene->rec_dirty && settingsScene->rec_entry_index >= 0 &&
+        settingsScene->rec_entry_index < settingsScene->totalMenuItemCount)
     {
         recalc_recommended_entry_state(
             &settingsScene->entries[settingsScene->rec_entry_index], settingsScene
