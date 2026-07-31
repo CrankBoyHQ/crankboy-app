@@ -2947,6 +2947,10 @@ _0x10:
 
         gb->cgb_fast_mode = !gb->cgb_fast_mode;
         gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+        /* Keep the combined vblank cycle shift at most >>2 (see game_scene):
+         * cap overclock at x2 the moment fast mode engages, not next frame. */
+        if (gb->cgb_fast_mode_active)
+            gb->overclock = MIN(gb->overclock, 1);
         gb->gb_halt = 1;
         gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
         goto exit;
@@ -5823,6 +5827,10 @@ __shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
 
             gb->cgb_fast_mode = !gb->cgb_fast_mode;
             gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+            /* Keep the combined vblank cycle shift at most >>2 (see game_scene):
+             * cap overclock at x2 the moment fast mode engages, not next frame. */
+            if (gb->cgb_fast_mode_active)
+                gb->overclock = MIN(gb->overclock, 1);
             gb->gb_halt = 1;
             gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
             return cycles;

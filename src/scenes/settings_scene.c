@@ -2456,10 +2456,13 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .name = "Overclock",
         .values = overclock_labels,
         .description =
-            "Attempt to reduce lag in emulated device, but the Playdate must work harder to "
-            "achieve this.\n\n"
-            "Allows the emulated CPU to run much faster during VBLANK.\n\n"
-            "Not a guaranteed way to improve performance, and may introduce inaccuracies.",
+            "Runs the emulated CPU faster between frames to reduce in-game lag.\n\n"
+            "The Playdate must work harder, so results vary and timing may be less accurate.\n\n"
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+            "In CGB double-speed mode, x4 is limited to x2.",
+#else
+            "On Game Boy Color at double speed, x4 is limited to x2.",
+#endif
         .pref_var = &preferences_overclock,
         .max_value = 3,
         .on_press = NULL

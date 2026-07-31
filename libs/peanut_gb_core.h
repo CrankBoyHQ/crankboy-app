@@ -2216,11 +2216,12 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     }
 
 #if PGB_IS_CGB
+    /* Fast-mode halving is exact: inst_cycles is in T-cycles, always a
+     * multiple of 4 (GB instructions take whole M-cycles). No clamp needed:
+     * overclock is capped at x2 while fast mode is active (see the STOP
+     * speed-switch handler and game_scene), so the combined shift is at
+     * most >>2 and the result is at least 1. */
     inst_cycles >>= gb->cgb_fast_mode_active;
-
-    // FIXME: we can avoid having to do this if we change the cycle units
-    // to allow more fixed-point precision here.
-    inst_cycles = MAX(1, inst_cycles);
 #endif
 
 done_instr_timing:

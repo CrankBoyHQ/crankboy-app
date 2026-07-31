@@ -2224,7 +2224,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 context->gb->direct.joypad_bits.a = !(buttons & 4);
         }
 
-        context->gb->overclock = (unsigned)(preferences_overclock);
+        /* Overclock capped at x2 while CGB fast mode is active: keeps the
+         * combined vblank cycle shift at most >>2, so inst_cycles stays >= 1
+         * and the core needs no clamp. Re-evaluated each frame, so runtime
+         * speed switches are covered. */
+        context->gb->overclock =
+            MIN((unsigned)preferences_overclock, context->gb->cgb_fast_mode_active ? 1 : 2);
         context->gb->cgb_speed_permitted = preferences_cgb_speed == 0;
         context->gb->hle_enabled = (preferences_hle == 1) && context->cgb_mode;
         context->gb->lcd = lcd_sources[gameScene->rewind.active ? 0 : preferences_tcm_lcd];
