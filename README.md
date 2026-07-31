@@ -37,12 +37,14 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 ## Limitations <!--userguide-->
 
 - CrankBoy is not 100% stable. A responsible gamer makes back-ups of their save files now and then.
-- Currently, **Game Boy Color games are not supported** in general. However, many Game Boy Color games are able to run on the DMG (original Game Boy) -- CrankBoy should be able to play those games fine. (There is now limited support for running CGB games, but it still works with only very few games.)
-- Some games don't work correctly. Please report any broken games.
-- Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.
+- ~~Currently, **Game Boy Color games are not supported** in general. However, many Game Boy Color games are able to run on the DMG (original Game Boy) -- CrankBoy should be able to play those games fine. (There is now limited support for running CGB games, but it still works with only very few games.)~~<sup>_See Note_</sup>
+- Some games might not work correctly. Please report any broken games.
+- ~~Audio is not accurate to sub-frame precision, so audio clips (like in _Pokémon Yellow_ or _The Chessmaster_) will often be unrecognizable or silent.~~<sup>_See Note_</sup>
 - Link Cable (and other peripherals) are not supported.
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options.
 - Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu. <!--no-userguide-->
+
+__Note:__ These features are currently only available in our [unstable nightly builds](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
 
 ## Installing
 
