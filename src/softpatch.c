@@ -307,8 +307,9 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
                 unsigned new_size = read_bigendian(ips, 3);
                 if (new_size < *romsize)
                 {
-                    void* resized_rom = cb_realloc(*rom, new_size);
-                    *rom = resized_rom;
+                    // Don't realloc-shrink here: the allocation may be the game
+                    // scene's rom_pool, whose tracked size would go stale,
+                    // causing a heap overflow when the pool is next reused.
                     *romsize = new_size;
                 }
             }

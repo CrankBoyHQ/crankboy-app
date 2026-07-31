@@ -888,6 +888,11 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
         {
             printf("softpatching ROM...\n");
             bool result = call_with_main_stack_3(patch_rom, (void*)&rom, &rom_size, patches);
+            // Patching may replace/shrink the ROM allocation (UPS/BPS always
+            // allocate an exact-size new buffer). rom returns to rom_pool at
+            // teardown, so rom_pool_size must track its actual allocation
+            // size, otherwise a later pool reuse could overflow it.
+            rom_pool_size = rom_size;
             gameScene->patches_hash = patch_hash(patches);
 
             free_patches(patches);
