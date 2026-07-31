@@ -1480,7 +1480,24 @@ char* cb_read_entire_file_maybe_compressed(const char* path, size_t* o_size, uns
         return NULL;
     }
 
+    // ISZ comes from the file and cannot be trusted: reject zero, the
+    // decompressed_size+1 wrap case (SIZE_MAX), and implausible expansion
+    // ratios (gzip theoretical maximum is ~1032:1).
+    if (decompressed_size == 0 || decompressed_size == SIZE_MAX ||
+        (uint64_t)decompressed_size > (uint64_t)size * 1032)
+    {
+        playdate->system->logToConsole("Failed to decompress %s: invalid size", path);
+        cb_free(dat);
+        return NULL;
+    }
+
     char* decompressed = cb_malloc(decompressed_size + 1);
+    if (!decompressed)
+    {
+        playdate->system->logToConsole("Failed to decompress %s: out of memory", path);
+        cb_free(dat);
+        return NULL;
+    }
 
     struct mini_gzip gz;
     // Subtract 8 bytes for gzip trailer (CRC32 + ISIZE) before calling mini_gz_start
