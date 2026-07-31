@@ -574,6 +574,7 @@ static void play_launch_animation(CB_Game* game)
         load_game_prefs(game->fullpath, false);
         boot_fade = preferences_boot_fade;
         preferences_restore_subset(stored);
+        cb_free(stored);
     }
 
     bool white_gap;
@@ -699,6 +700,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     load_game_prefs(game->fullpath, false);
     bool will_use_script = preferences_script_support;
     preferences_restore_subset(prefs);
+    cb_free(prefs);
     playdate->system->logToConsole("Will use script: %d", (int)will_use_script);
 
     if (will_use_script && info && info->launch_system != ScriptPreferredLaunchSystem_None)
@@ -797,6 +799,7 @@ static void _launch_game_check_sram(CB_Game* game)
         void* prefs = preferences_store_subset(~(PREFBIT_save_slot | PREFBIT_script_support));
         load_game_prefs(game->fullpath, false);
         preferences_restore_subset(prefs);
+        cb_free(prefs);
 
         char* save_fname = cb_save_filename(game->fullpath, false);
 
@@ -809,6 +812,7 @@ static void _launch_game_check_sram(CB_Game* game)
         cb_free(save_fname);
         if (!data || size != 0x20)
         {
+            cb_free(data);
             launch_game_prompt_cgb(game, 1);
         }
         else
@@ -816,6 +820,7 @@ static void _launch_game_check_sram(CB_Game* game)
             uint64_t magic = *(uint64_t*)(void*)&data[0x18];
             if (magic != SRAM_MAGIC_NUMBER)
             {
+                cb_free(data);
                 launch_game_prompt_cgb(game, 1);
             }
             else
@@ -823,6 +828,7 @@ static void _launch_game_check_sram(CB_Game* game)
                 uint32_t stored_hash = *(uint32_t*)(void*)&data[0x14];
                 uint32_t flags = *(uint32_t*)(void*)&data[0x10];
                 bool script = flags & 1;
+                cb_free(data);
 
                 if (stored_hash != hash)
                 {
