@@ -2,26 +2,49 @@
 
 #include "utility.h"
 
+// stack of containers currently open during decoding, so partially-built
+// data can be freed if parsing fails mid-sublist
+typedef struct JsonContainerNode
+{
+    struct JsonContainerNode* parent;
+    void* container;  // JsonArray* or JsonObject*
+    json_value_type type;
+} JsonContainerNode;
+
 __section__(".rare") void SI_willDecodeSublist(
     json_decoder* decoder, const char* name, json_value_type type
 )
 {
+    JsonContainerNode* node = cb_malloc(sizeof(JsonContainerNode));
+    node->parent = decoder->userdata;
+    node->type = type;
     if (type == kJSONArray)
     {
-        decoder->userdata = cb_malloc(sizeof(JsonArray));
-        memset(decoder->userdata, 0, sizeof(JsonArray));
+        node->container = cb_malloc(sizeof(JsonArray));
+        memset(node->container, 0, sizeof(JsonArray));
     }
     else
     {
-        decoder->userdata = cb_malloc(sizeof(JsonObject));
-        memset(decoder->userdata, 0, sizeof(JsonObject));
+        node->container = cb_malloc(sizeof(JsonObject));
+        memset(node->container, 0, sizeof(JsonObject));
     }
+    decoder->userdata = node;
 }
 
 __section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos, json_value value)
 {
     --pos;  // one-indexed (!!)
-    JsonArray* array = decoder->userdata;
+    JsonContainerNode* node = decoder->userdata;
+    if (!node)
+    {
+        // bare value at root (no containing sublist)
+        node = cb_malloc(sizeof(JsonContainerNode));
+        node->parent = NULL;
+        node->type = kJSONArray;
+        node->container = NULL;
+        decoder->userdata = node;
+    }
+    JsonArray* array = node->container;
     int n = array ? array->n : 0;
     if (pos >= n)
         n = pos + 1;
@@ -37,7 +60,8 @@ __section__(".rare") void SI_didDecodeArrayValue(json_decoder* decoder, int pos,
 
     array->data[pos] = value;
     array->n = n;
-    decoder->userdata = array;
+    node->container = array;
+    decoder->userdata = node;
     return;
 }
 
@@ -45,7 +69,8 @@ __section__(".rare") void SI_didDecodeTableValue(
     json_decoder* decoder, const char* key, json_value value
 )
 {
-    JsonObject* obj = decoder->userdata;
+    JsonContainerNode* node = decoder->userdata;
+    JsonObject* obj = node ? node->container : NULL;
 
     int n = 1 + (obj ? obj->n : 0);
 
@@ -62,7 +87,7 @@ __section__(".rare") void SI_didDecodeTableValue(
     obj->data[n - 1].key = cb_strdup(key);
     obj->data[n - 1].value = value;
     obj->n = n;
-    decoder->userdata = obj;
+    node->container = obj;
     return;
 }
 
@@ -70,7 +95,13 @@ __section__(".rare") void* SI_didDecodeSublist(
     json_decoder* decoder, const char* name, json_value_type type
 )
 {
-    return decoder->userdata;
+    JsonContainerNode* node = decoder->userdata;
+    void* container = node->container;
+    // pop; the SDK also restores userdata to its previous value after this
+    // callback, which is the same pointer
+    decoder->userdata = node->parent;
+    cb_free(node);
+    return container;
 }
 
 __section__(".rare") void free_json_data(json_value v)
@@ -97,6 +128,20 @@ __section__(".rare") void free_json_data(json_value v)
     else if (v.type == kJSONString)
     {
         cb_free(v.data.stringval);
+    }
+}
+
+// free any containers still open when parsing aborts mid-sublist
+__section__(".rare") static void free_decoder_stack(void* userdata)
+{
+    JsonContainerNode* node = userdata;
+    while (node)
+    {
+        JsonContainerNode* parent = node->parent;
+        json_value v = {.type = node->type, .data.tableval = node->container};
+        free_json_data(v);
+        cb_free(node);
+        node = parent;
     }
 }
 
@@ -265,6 +310,7 @@ __section__(".rare") int parse_json(const char* path, json_value* out, FileOptio
 
     if (!ok)
     {
+        free_decoder_stack(decoder.userdata);
         free_json_data(*out);
         out->type = kJSONNull;
         return 0;
@@ -434,6 +480,7 @@ __section__(".rare") int parse_json_string(const char* text, json_value* out)
 
     if (!ok)
     {
+        free_decoder_stack(decoder.userdata);
         free_json_data(*out);
         out->type = kJSONNull;
         return 0;
