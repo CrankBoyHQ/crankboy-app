@@ -503,6 +503,7 @@ static void on_get_patch(unsigned flags, char* data, size_t data_len, void* ud)
 
     if (!pds->http_in_progress)
     {
+        cb_free(data);
         cb_free(pud);
         return;
     }
@@ -587,6 +588,7 @@ static void on_get_textfile(unsigned flags, char* data, size_t data_len, void* u
 
     if (!pds->http_in_progress)
     {
+        cb_free(data);
         cb_free(pud);
         return;
     }
@@ -1757,9 +1759,11 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
         CB_presentModal(modal->scene);
         return false;
     }
-    else if (pds->game_hacks.type != kJSONArray)
+
+    JsonArray* arr = (pds->game_hacks.type == kJSONArray) ? pds->game_hacks.data.arrayval : NULL;
+    if (!arr || arr->n == 0)
     {
-    missing_entry:;
+        cb_free(pds->list_fetch_error_message);
         pds->list_fetch_error_message = cb_strdup("No patches found.");
         return false;
     }
@@ -1768,15 +1772,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     if (!context)
         return false;
 
-    JsonArray* arr = (pds->game_hacks.type == kJSONArray) ? pds->game_hacks.data.arrayval : NULL;
-    if (arr)
     {
-        if (arr->n == 0)
-        {
-            pds->list_fetch_error_message = cb_strdup("No patches found.");
-            return false;
-        }
-
         for (int i = 0; i < arr->n; ++i)
         {
             const char* s = NULL;
@@ -1800,11 +1796,6 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
             itemButton = CB_ListItemButton_new(s ? s : "?");
             array_push(context->list->items, itemButton);
         }
-    }
-    else
-    {
-        // seems unlikely; we're already guarding
-        goto missing_entry;
     }
 
     CB_ListView_reload(context->list);
