@@ -667,6 +667,14 @@ void CB_GameScanningScene_free(void* object)
     cb_free(scanScene);
 }
 
+static void reset_crc_cache(CB_GameScanningScene* scanScene)
+{
+    scanScene->crc_cache.type = kJSONTable;
+    JsonObject* obj = cb_malloc(sizeof(JsonObject));
+    obj->n = 0;
+    scanScene->crc_cache.data.tableval = obj;
+}
+
 CB_GameScanningScene* CB_GameScanningScene_new(void)
 {
     CB_GameScanningScene* scanScene = cb_calloc(1, sizeof(CB_GameScanningScene));
@@ -707,23 +715,23 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
                 if (legacy)
                 {
                     free_json_data(scanScene->crc_cache);
-                    scanScene->crc_cache.type = kJSONTable;
-                    JsonObject* empty = cb_malloc(sizeof(JsonObject));
-                    empty->n = 0;
-                    scanScene->crc_cache.data.tableval = empty;
+                    reset_crc_cache(scanScene);
                 }
                 else if (obj && obj->n > 1)
                 {
                     qsort(obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs);
                 }
             }
+            else
+            {
+                // unexpected type (array/string/etc.): discard, rebuild empty
+                free_json_data(scanScene->crc_cache);
+                reset_crc_cache(scanScene);
+            }
         }
         else
         {
-            scanScene->crc_cache.type = kJSONTable;
-            JsonObject* obj = cb_malloc(sizeof(JsonObject));
-            obj->n = 0;
-            scanScene->crc_cache.data.tableval = obj;
+            reset_crc_cache(scanScene);
         }
         cb_free(path);
     }
