@@ -2435,11 +2435,6 @@ done_instr_timing:
                             gb->direct.stat_line = 1;
                         }
 
-#if PGB_IS_CGB
-                        // FIXME: is this correct?
-                        while (gb->cgb_hdma_active)
-                            __gb_do_hdma(gb);
-#endif
                         DRAW_CALL($(__gb_update_stat_irq), gb);
 
                         DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
@@ -2461,6 +2456,12 @@ done_instr_timing:
                 if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
                 {
                     gb->counter.lcd_count -= LCD_LINE_CYCLES;
+
+#if PGB_IS_CGB
+                    /* HBlank HDMA continues during VBlank: one block per line. */
+                    if (gb->cgb_hdma_active)
+                        __gb_do_hdma(gb);
+#endif
 
                     if (gb->gb_reg.LY == 0)
                     {

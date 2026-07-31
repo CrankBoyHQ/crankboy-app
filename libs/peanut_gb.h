@@ -2622,6 +2622,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->display.window_clear = 0;
                 gb->direct.wy_latched = 0;
                 __gb_check_lyc__cgb(gb);
+#if PGB_IS_CGB
+                /* LCD off stops the PPU tick, which would stall an in-flight
+                 * HBlank HDMA (hardware pauses it instead).*/
+                while (gb->cgb_hdma_active)
+                    __gb_do_hdma(gb);
+#endif
             }
             else if (!was_enabled && is_enabled)
             {
