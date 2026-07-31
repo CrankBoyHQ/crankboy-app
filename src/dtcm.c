@@ -124,6 +124,7 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
     if (is_dtcm_init)
     {
         alignment %= 32;
+        *(uint32_t*)dtcm_mempool = 0;
         while ((uintptr_t)dtcm_mempool % 32 != alignment)
             dtcm_mempool = (void*)(dtcm_mempool + 1);
         void* tmp = dtcm_mempool;
