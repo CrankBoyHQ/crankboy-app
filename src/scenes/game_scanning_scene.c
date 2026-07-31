@@ -344,12 +344,9 @@ static void build_scan_sources(CB_GameScanningScene* scanScene)
         array_push(scanScene->sources, scan_source_new("packed", GB_SYSTEM_SLUG, -1));
 #endif
 
-    array_push(
-        scanScene->sources,
-        scan_source_new(
-            cb_system_directory_path_for_slug(GB_SYSTEM_SLUG, CB_gamesPath), GB_SYSTEM_SLUG, -1
-        )
-    );
+    char* gb_dir = cb_system_directory_path_for_slug(GB_SYSTEM_SLUG, CB_gamesPath);
+    array_push(scanScene->sources, scan_source_new(gb_dir, GB_SYSTEM_SLUG, -1));
+    cb_free(gb_dir);
 
     for (size_t i = 0; i < CB_App->cores_n; ++i)
     {
@@ -357,10 +354,9 @@ static void build_scan_sources(CB_GameScanningScene* scanScene)
         for (size_t j = 0; j < emucore->n_system_slugs; ++j)
         {
             const char* slug = emucore->system_slugs[j];
-            array_push(
-                scanScene->sources,
-                scan_source_new(cb_system_directory_path_for_slug(slug, CB_gamesPath), slug, (int)i)
-            );
+            char* dir = cb_system_directory_path_for_slug(slug, CB_gamesPath);
+            array_push(scanScene->sources, scan_source_new(dir, slug, (int)i));
+            cb_free(dir);
         }
     }
 }
