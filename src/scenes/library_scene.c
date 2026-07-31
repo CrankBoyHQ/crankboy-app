@@ -292,6 +292,21 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     char* rom_basename_no_ext = NULL;
     char* cover_dest_path = NULL;
 
+    // The game may have been deleted while the download was in flight
+    // (CB_LibraryScene_removeGame / CB_Game_free). Bail before ever
+    // dereferencing it.
+    bool game_still_exists = false;
+    for (int i = 0; i < libraryScene->games->length; ++i)
+    {
+        if (libraryScene->games->items[i] == game)
+        {
+            game_still_exists = true;
+            break;
+        }
+    }
+    if (!game_still_exists)
+        goto cleanup;
+
     if (flags & HTTP_WIFI_NOT_AVAILABLE)
     {
         if (stillOnSameGame)
@@ -491,6 +506,9 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
 
     if (libraryScene->activeCoverDownloadConnection)
     {
+        // reclaim userdata of any in-flight download; the tombstoned
+        // connection will never invoke the callback.
+        cb_free(http_safe_ud(libraryScene->activeCoverDownloadConnection));
         http_safe_free(libraryScene->activeCoverDownloadConnection);
     }
 
@@ -1225,7 +1243,7 @@ static void library_push_get_roms_item(CB_ListView* listView)
 CB_LibraryScene* CB_LibraryScene_new(void)
 {
     CB_ASSERT(!CB_App->bundled_rom);
-    
+
     clear_last_selected_preference();
 
     // setup completed without crashing
@@ -1881,6 +1899,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             // Reset download state when user navigates away
             if (libraryScene->activeCoverDownloadConnection)
             {
+                cb_free(http_safe_ud(libraryScene->activeCoverDownloadConnection));
                 http_safe_free(libraryScene->activeCoverDownloadConnection);
                 libraryScene->activeCoverDownloadConnection = NULL;
                 playdate->system->logToConsole(
@@ -2342,9 +2361,10 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             }
             else if (selectedIndex == libraryScene->games->length)
             {
-                const char* text = "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
-                                   "This feature is still experimental.\n\n"
-                                   "Parental lock is available.";
+                const char* text =
+                    "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
+                    "This feature is still experimental.\n\n"
+                    "Parental lock is available.";
 
                 LCDFont* font = CB_App->subheadFont;
                 int margin = 6;
@@ -2551,6 +2571,7 @@ static void CB_LibraryScene_free(void* object)
 
     if (libraryScene->activeCoverDownloadConnection)
     {
+        cb_free(http_safe_ud(libraryScene->activeCoverDownloadConnection));
         http_safe_free(libraryScene->activeCoverDownloadConnection);
         libraryScene->activeCoverDownloadConnection = NULL;
     }

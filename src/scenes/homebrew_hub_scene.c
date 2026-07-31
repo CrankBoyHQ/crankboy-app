@@ -157,6 +157,8 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
 
         cb_free(s);
     }
+
+    cb_free(data);
 }
 
 static char* context_list_files_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
@@ -537,6 +539,8 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
 
         if (pdi_data)
             cb_free(pdi_data);
+
+        cb_free(data);
     }
 }
 
@@ -620,7 +624,11 @@ static void context_list_search_update(
                                     "%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug,
                                     screenshot
                                 );
-                                hbs->download_image_name = screenshot;
+                                // owned copy: `screenshot` borrows into the jsearch
+                                // tree, which clear_search() may free while this
+                                // cover-art request is still in flight.
+                                cb_free(hbs->download_image_name);
+                                hbs->download_image_name = cb_strdup(screenshot);
 
                                 // TODO: associate cover art with slug, to be extra sure it matches
                                 // when ROM download completes later.
@@ -817,6 +825,7 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
         {
         err_invalid_json:
             CB_presentModal(CB_Modal_new("Invalid JSON received", NULL, NULL, NULL)->scene);
+            cb_free(data);
             return;
         }
 
@@ -832,6 +841,8 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
 
             populate_search_listing(hbs, context);
         }
+
+        cb_free(data);
     }
 }
 
@@ -1257,6 +1268,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
     cb_free(hbs->urlpath);
     if (hbs->download_image)
         playdate->graphics->freeBitmap(hbs->download_image);
+    cb_free(hbs->download_image_name);
     cb_free(hbs->cached_hint);
     free_json_data(hbs->jsearch);
     cb_free(hbs);

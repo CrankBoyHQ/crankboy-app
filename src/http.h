@@ -26,6 +26,14 @@ typedef uint32_t http_handle_t;
 // attempts to enable HTTP, then invokes the given callback
 void enable_http(const char* domain, const char* reason, enable_cb_t cb, void* ud);
 
+// Result callback for http_get.
+//
+// Data ownership contract (uniform):
+//   - `data` is non-NULL only on success, or when HTTP_REDIRECT is set
+//     (in which case it holds the redirect Location URL, NUL-terminated).
+//   - Whenever `data` is non-NULL, the CALLER takes ownership and must
+//     cb_free() it.
+//   - On all other failures `data` is NULL.
 typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void* ud);
 
 // performs an HTTP request, then invokes the callback.

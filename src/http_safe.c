@@ -42,6 +42,9 @@ HTTPSafe* http_safe_new(void)
 
 void http_safe_free(HTTPSafe* safe)
 {
+    if (safe == NULL)
+        return;
+
     if (safe->handle == 0)
     {
         cb_free(safe->queued.domain);
@@ -51,14 +54,36 @@ void http_safe_free(HTTPSafe* safe)
     }
     else
     {
+        // In flight: tombstone only. The pending completion will release
+        // the safe without ever invoking the user callback (see http_safe_cb).
         safe->tombstone = true;
     }
+}
+
+void* http_safe_ud(HTTPSafe* safe)
+{
+    return safe ? safe->ud : NULL;
 }
 
 void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
 {
     http_result_cb cb = safe->cb;
     void* ud = safe->ud;
+
+    // Owner has been freed (http_safe_free while in flight).
+    // NEVER invoke the user callback -- its ud is stale.
+    // Per the http.h contract we own `data` now, so release it,
+    // then release the safe.
+    if (safe->tombstone)
+    {
+        if (data)
+            cb_free(data);
+        cb_free(safe->queued.domain);
+        cb_free(safe->queued.path);
+        cb_free(safe->queued.reason);
+        cb_free(safe);
+        return;
+    }
 
     if (flags & HTTP_REDIRECT)
     {
@@ -69,6 +94,10 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
 
         if (data && parse_url_safe(data, &new_domain, &new_path))
         {
+            // redirect URL consumed; we own it per contract
+            cb_free(data);
+            data = NULL;
+
             safe->handle = 0;
 
             const char* reason = safe->queued.reason ? safe->queued.reason : "following redirect";
@@ -85,15 +114,20 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
         else
         {
             playdate->system->logToConsole("HTTPSafe: Failed to parse redirect URL");
+
+            // don't hand redirect data to the user callback; we own it
+            if (data)
+            {
+                cb_free(data);
+                data = NULL;
+            }
         }
     }
 
     if (cb == NULL)
     {
-        if (safe->tombstone && safe->handle == 0)
-        {
-            cb_free(safe);
-        }
+        if (data)
+            cb_free(data);
         return;
     }
 
@@ -101,13 +135,17 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
     safe->cb = NULL;
     safe->ud = NULL;
 
-    if (!safe->enqueued && !safe->tombstone)
+    if (!safe->enqueued)
     {
         cb(flags, data, data_len, ud);
     }
     else
     {
         playdate->system->logToConsole("HTTPSafe: pre-empted");
+
+        // this request was pre-empted; its data (if any) is ours to drop
+        if (data)
+            cb_free(data);
 
         if (safe->queued.cb != NULL)
         {
@@ -116,10 +154,7 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
             safe->enqueued = false;
             memset(&safe->queued, 0, sizeof(safe->queued));
 
-            if (!safe->tombstone)
-            {
-                http_safe_replace_get(safe, q.domain, q.path, q.reason, q.cb, q.timeout_ms, q.ud);
-            }
+            http_safe_replace_get(safe, q.domain, q.path, q.reason, q.cb, q.timeout_ms, q.ud);
 
             cb(HTTP_CANCELLED, NULL, 0, ud);
 
@@ -131,11 +166,6 @@ void http_safe_cb(unsigned flags, char* data, size_t data_len, HTTPSafe* safe)
         {
             safe->enqueued = false;
             cb(HTTP_CANCELLED, NULL, 0, ud);
-        }
-
-        if (safe->tombstone)
-        {
-            cb_free(safe);
         }
     }
 }

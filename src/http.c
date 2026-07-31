@@ -303,14 +303,17 @@ static void CB_RequestComplete(HTTPConnection* connection)
     void* saved_ud = httpud->ud;
     unsigned saved_flags = httpud->flags;
 
+    // On redirect, ownership of location_copy transfers to the callback
+    // (uniform contract: non-NULL data is always caller-owned).
+    bool is_redirect = (saved_flags & HTTP_REDIRECT) && httpud->location;
+
     char* location_copy = NULL;
-    if (httpud->location)
+    if (is_redirect)
         location_copy = cb_strdup(httpud->location);
 
     char* data_stolen = NULL;
     size_t data_len = 0;
 
-    bool is_redirect = (saved_flags & HTTP_REDIRECT) && location_copy;
     bool is_html_error = httpud->contentType && strstr(httpud->contentType, "text/html");
     bool is_success = !is_redirect && !is_html_error && httpud->data && httpud->data_len > 0;
 
@@ -358,7 +361,9 @@ static void CB_RequestComplete(HTTPConnection* connection)
         }
     }
 
-    if (location_copy)
+    // note: location_copy (if any) was handed off to the callback above;
+    // the callback owns it now and must cb_free() it.
+    if (!saved_cb && location_copy)
     {
         cb_free(location_copy);
     }

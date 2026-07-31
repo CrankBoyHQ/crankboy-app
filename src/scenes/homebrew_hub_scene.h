@@ -66,7 +66,7 @@ typedef struct CB_HomebrewHubScene
 
     LCDBitmap* download_image;
     int download_image_index;
-    const char* download_image_name;
+    char* download_image_name;  // owned copy (cb_free); never borrows into jsearch
 
     int context_depth;
     int target_context_depth;
