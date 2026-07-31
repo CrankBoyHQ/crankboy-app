@@ -75,6 +75,8 @@ CB_ListView* CB_ListView_new(void)
     listView->hideScrollIndicator = false;
     listView->font = CB_App->subheadFont;
 
+    listView->needsDisplay = true;
+
     return listView;
 }
 
