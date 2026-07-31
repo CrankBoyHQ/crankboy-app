@@ -35,6 +35,7 @@ HTTPSafe* http_safe_new(void);
 // released when the request completes; the pending user callback is then
 // NEVER invoked (its ud is presumed stale). Use http_safe_ud() beforehand
 // to reclaim any caller-allocated userdata.
+// Must NOT be called from within the safe's own result callback.
 void http_safe_free(HTTPSafe* safe);
 
 // Returns the userdata pointer of the current request (NULL if none).
@@ -45,6 +46,8 @@ void http_safe_replace_get(
     int timeout_ms, void* ud
 );
 
+// Cancels the in-flight request (if any) and drops any queued request.
+// The user callback is NOT invoked. No-op on NULL or tombstoned safes.
 void http_safe_cancel(HTTPSafe* safe);
 
 bool http_safe_in_progress(HTTPSafe* safe);

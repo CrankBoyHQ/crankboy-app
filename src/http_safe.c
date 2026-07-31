@@ -180,7 +180,15 @@ void http_safe_replace_get(
         safe->cb = cb;
         safe->ud = ud;
 
-        safe->handle = http_get(domain, path, reason, (void*)http_safe_cb, timeout_ms, safe);
+        http_handle_t handle =
+            http_get(domain, path, reason, (void*)http_safe_cb, timeout_ms, safe);
+
+        // http_get may invoke http_safe_cb SYNCHRONOUSLY (e.g. cached
+        // permission + immediate connect failure; see http.h). If it did,
+        // the request already completed and safe->cb was cleared -- do not
+        // resurrect a dead handle, or the safe wedges "in progress" forever.
+        if (safe->cb == cb)
+            safe->handle = handle;
     }
     else
     {
@@ -202,33 +210,36 @@ void http_safe_replace_get(
 
 void http_safe_cancel(HTTPSafe* safe)
 {
-    if (safe->handle)
+    if (safe == NULL || safe->tombstone)
     {
-        http_cancel(safe->handle);
-        safe->handle = 0;
+        // Tombstoned safes are owned by their pending completion, which
+        // releases them. Touching one here would be a use-after-free.
+        return;
     }
+
+    http_handle_t handle = safe->handle;
+
+    // Clear all state BEFORE http_cancel: it can synchronously re-enter
+    // http_safe_cb (via http_cleanup), which then sees cb == NULL and
+    // harmlessly returns.
+    safe->handle = 0;
     safe->enqueued = false;
     safe->cb = NULL;
     safe->ud = NULL;
 
-    // Clear any queued request
-    if (safe->queued.domain)
-    {
-        cb_free(safe->queued.domain);
-        safe->queued.domain = NULL;
-    }
-    if (safe->queued.path)
-    {
-        cb_free(safe->queued.path);
-        safe->queued.path = NULL;
-    }
-    if (safe->queued.reason)
-    {
-        cb_free(safe->queued.reason);
-        safe->queued.reason = NULL;
-    }
+    cb_free(safe->queued.domain);
+    safe->queued.domain = NULL;
+    cb_free(safe->queued.path);
+    safe->queued.path = NULL;
+    cb_free(safe->queued.reason);
+    safe->queued.reason = NULL;
     safe->queued.cb = NULL;
     safe->queued.ud = NULL;
+
+    if (handle)
+    {
+        http_cancel(handle);
+    }
 }
 
 bool http_safe_in_progress(HTTPSafe* safe)

@@ -461,6 +461,7 @@ static void context_top_level_update(
         {
             http_safe_cancel(hbs->active_http_connection);
             http_safe_cancel(hbs->active_http_connection_2);
+            hbs->active_download_type = HB_DL_NONE;
             CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
             CB_presentModal(plScene->scene);
         }

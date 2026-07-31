@@ -17,6 +17,9 @@ enum HttpHandleState
     Complete,
     Permission,
     Get,
+    // slot is being claimed by push_handle; the evicted request is being
+    // aborted. Not pickable by a (re-entrant) push_handle.
+    Evicting,
 };
 
 struct HTTPUD
@@ -51,6 +54,7 @@ static http_handle_t next_handle = 1;
 struct HttpHandleInfo handle_info[MAX_HTTP];
 
 static void CB_Permission(unsigned flags, void* ud);
+static void http_cleanup(HTTPConnection* connection);
 
 struct HttpHandleInfo* get_handle_info(http_handle_t handle)
 {
@@ -73,6 +77,18 @@ struct HttpHandleInfo* push_handle(void)
     // try to find earliest completed handle
     for (int i = 1; i < MAX_HTTP; ++i)
     {
+        // slots being evicted right now (re-entrant push_handle) are
+        // not pickable
+        if (handle_info[i].state == Evicting)
+            continue;
+
+        if (handle_info[best_idx].state == Evicting)
+        {
+            // current candidate is being evicted; any other slot wins
+            best_idx = i;
+            continue;
+        }
+
         if (handle_info[i].state == Complete && handle_info[best_idx].state != Complete)
         {
             best_idx = i;
@@ -85,15 +101,48 @@ struct HttpHandleInfo* push_handle(void)
         }
     }
 
-    http_cancel(handle_info[best_idx].handle);
-    handle_info[best_idx].handle = next_handle;
+    struct HttpHandleInfo* info = &handle_info[best_idx];
+
+    // Save the evicted entry, then claim the slot BEFORE aborting it:
+    // the abort invokes user callbacks (http_cleanup -> cb) which may
+    // re-enter http_get/push_handle. The Evicting state prevents a
+    // nested push_handle from re-picking this slot.
+    enum HttpHandleState old_state = info->state;
+    struct HTTPUD* old_httpud = info->httpud;
+
+    info->handle = next_handle;
+    info->state = Evicting;
+    info->httpud = NULL;
+    info->flags = 0;
 
     // increment, and ensure never 0.
     ++next_handle;
     if (next_handle == 0)
         ++next_handle;
 
-    return &handle_info[best_idx];
+    // Abort the evicted request directly. We can't use http_cancel() here:
+    // it looks the handle up in the table, which no longer matches.
+    switch (old_state)
+    {
+    case Get:
+        if (old_httpud)
+        {
+            old_httpud->flags |= HTTP_CANCELLED;
+            http_cleanup(old_httpud->connection);
+        }
+        break;
+    case Permission:
+        if (old_httpud && old_httpud->cb)
+        {
+            old_httpud->cb(HTTP_CANCELLED, NULL, 0, old_httpud->ud);
+            // httpud will be cleaned up later, in CB_Permission()
+        }
+        break;
+    default:
+        break;
+    }
+
+    return info;
 }
 
 static void http_get_(
@@ -156,7 +205,8 @@ static void http_cleanup(HTTPConnection* connection)
             cb_free(httpud->path);
 
         cb_free(httpud);
-        info->httpud = NULL;
+        if (info)
+            info->httpud = NULL;
     }
 
     playdate->network->http->close(connection);

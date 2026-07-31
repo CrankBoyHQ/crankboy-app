@@ -41,6 +41,11 @@ typedef void (*http_result_cb)(unsigned flags, char* data, size_t data_len, void
 // if cb is required, it's guaranteed that cb will eventually be called
 // (unless the entire program terminates first.)
 // return result will never be 0, except in the case of a memory error.
+//
+// NOTE: cb may be invoked SYNCHRONOUSLY, before http_get returns
+// (e.g. when the network permission is already cached and the connection
+// fails immediately). Callers must not assume the request is still in
+// flight after http_get returns without checking their callback state.
 http_handle_t http_get(
     const char* domain, const char* path, const char* reason, http_result_cb cb, int timeout_ms,
     void* ud
