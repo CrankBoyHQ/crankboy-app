@@ -2,6 +2,8 @@
 
 #include "utility.h"
 
+#include <stdint.h>
+
 #define __dtcm_ctrl __section__(".text.dtcm_ctrl")
 
 #ifdef DTCM_ALLOC
@@ -111,11 +113,14 @@ __dtcm_ctrl void* dtcm_alloc(size_t size)
     }
 #endif
 
-    // use the same header convention as dtcm_alloc_aligned so that dtcm_free
-    // can always recover the original pointer from a heap allocation
-    void* original_ptr = cb_malloc(size + sizeof(void*));
-    *(void**)original_ptr = original_ptr;
-    return (void*)((uintptr_t)original_ptr + sizeof(void*));
+    // 8-byte header slot preserves cb_malloc's 8-byte alignment guarantee.
+    // Original pointer stored in the slot adjacent to the returned pointer,
+    // so dtcm_free's ((void**)ptr)[-1] convention still works.
+    if (size > SIZE_MAX - 2 * sizeof(void*))
+        playdate->system->error("dtcm_alloc: size overflow");
+    void* original_ptr = cb_malloc(size + 2 * sizeof(void*));
+    ((void**)original_ptr)[1] = original_ptr;
+    return (void*)((uintptr_t)original_ptr + 2 * sizeof(void*));
 }
 
 __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
@@ -136,6 +141,8 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
     }
 #endif
 
+    if (alignment == 0 || size > SIZE_MAX - (alignment - 1) - sizeof(void*))
+        playdate->system->error("dtcm_alloc_aligned: size overflow");
     void* original_ptr = cb_malloc(size + alignment - 1 + sizeof(void*));
 
     void* aligned_ptr =
@@ -273,6 +280,14 @@ void dtcm_free(void* ptr)
     if (p >= (uintptr_t)dtcm_mempool_start && p < (uintptr_t)dtcm_mempool_hwm)
     {
         return;
+    }
+    // pockets live BELOW dtcm_mempool_start; bump-allocated, never freed
+    for (int i = 0; i < dtcm_num_pockets; i++)
+    {
+        if (p >= (uintptr_t)dtcm_pockets[i].start && p < (uintptr_t)dtcm_pockets[i].end)
+        {
+            return;
+        }
     }
 #endif
     void* original_ptr = ((void**)ptr)[-1];
