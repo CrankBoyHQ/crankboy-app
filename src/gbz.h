@@ -53,7 +53,14 @@ bool gbz_parse_header(GBZ_Header* o_gbz, const uint8_t* data, size_t size);
 uint8_t gbz_read_header_byte(const GBZ_Header* header, uint16_t rom_address);
 
 // Decompress the gbz ROM data into out_buf (capacity out_max).
-// Returns the number of bytes written, or negative on failure.
+// Returns the number of bytes written, or negative on failure:
+//   -1   invalid gbz header
+//   -2   decompressed size exceeds out_max
+//   -3   gzip stream init failed
+//   -4   decompressed size mismatch (stream ended early)
+//   -5   CRC32 of decompressed data does not match header field
+//   -10 + mini_gz_unpack status: -11 param, -12 corrupt data,
+//        -13 output buffer too small, -14 inflateEnd, -15 truncated stream
 int gbz_decompress(const uint8_t* data, size_t size, uint8_t* out_buf, size_t out_max);
 
 #endif /* gbz_h */

@@ -6,6 +6,7 @@
 #include "gbz.h"
 
 #include "../libs/miniz/mini_gzip.h"
+#include "../libs/miniz/miniz.h"
 
 #include <string.h>
 
@@ -87,8 +88,13 @@ int gbz_decompress(const uint8_t* data, size_t size, uint8_t* out_buf, size_t ou
         return -3;
 
     status = mini_gz_unpack(&gz, out_buf, header.original_size);
+    if (status < 0)
+        return -10 + status;
     if (status != (int)header.original_size)
         return -4;
+
+    if ((uint32_t)mz_crc32(MZ_CRC32_INIT, out_buf, header.original_size) != header.crc32)
+        return -5;
 
     return (int)header.original_size;
 }
