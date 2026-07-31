@@ -60,17 +60,8 @@ static void on_get(unsigned flags, char* data, size_t data_len, void* ud)
         return;
     }
 
-    // skip leading garbage (FIXME: unsure why this is present...)
-    char* json_start = strchr(data, '{');
-    if (!json_start)
-    {
-        playdate->system->logToConsole("Update check failed (Invalid json)");
-        cb_free(data);
-        return;
-    }
-
     free_json_data(newVersionInfo);
-    if (parse_json_string(json_start, &newVersionInfo) != 0)
+    if (parse_json_string(data, &newVersionInfo) != 0)
     {
         json_value local_name = json_get_table_value(localVersionInfo, "name");
         json_value new_name = json_get_table_value(newVersionInfo, "name");
