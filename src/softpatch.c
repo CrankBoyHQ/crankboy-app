@@ -288,6 +288,7 @@ static bool apply_ips_patch(void** rom, size_t* romsize, const SoftPatch* patch)
             goto err;      \
     } while (0)
 
+    CHECKLEN(5);
     if (memcmp(ips, IPS_MAGIC, 5))
     {
         goto err;
