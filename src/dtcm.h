@@ -38,6 +38,7 @@ extern void* dtcm_probe_lowest;
 
 // clean DTCM pockets found by the probe, for data that doesn't need dtcm_store/restore.
 // use dtcm_pocket_alloc(pocket_idx, size) to allocate from one.
+// probe verifies every word of each 256-byte block; pocket tops carry a one-step guard band.
 #define DTCM_MAX_POCKETS 5
 
 struct dtcm_pocket_t

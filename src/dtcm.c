@@ -322,6 +322,10 @@ void dtcm_probe_lower_bound(void)
     uintptr_t cur_run_start = 0;
     unsigned cur_run = 0;
 
+    unsigned blocks_scanned = 0;
+    unsigned blocks_clean = 0;
+    unsigned blocks_dirty = 0;
+
 #define INSERT_RUN(start, size)                            \
     do                                                     \
     {                                                      \
@@ -348,7 +352,6 @@ void dtcm_probe_lower_bound(void)
         volatile uint32_t* addr = (volatile uint32_t*)probe;
 
         uint32_t prev = *addr;
-        playdate->system->logToConsole("DTCM probe: %p prev=%08x  ", (void*)probe, (unsigned)prev);
 
         *addr = DTCM_PROBE_CANARY;
 
@@ -366,9 +369,41 @@ void dtcm_probe_lower_bound(void)
 
         *addr = prev;
         lowest_ok = probe;
-        playdate->system->logToConsole("DTCM probe: OK");
 
-        if (prev == DTCM_PROBE_CLEAN)
+        // Full-block clean scan: every word of the 256-byte block must read
+        // DTCM_PROBE_CLEAN. Single-word sampling could claim a block that used
+        // data merely crosses into (blind pocket top), or extend a run past a
+        // used word that coincidentally reads as DTCM_PROBE_CLEAN.
+        bool block_clean = true;
+        int w = 0;
+        for (; w < DTCM_PROBE_STEP / 4; w++)
+        {
+            if (addr[w] != (volatile uint32_t)DTCM_PROBE_CLEAN)
+            {
+                block_clean = false;
+                break;
+            }
+        }
+
+        blocks_scanned++;
+        if (block_clean)
+            blocks_clean++;
+        else
+            blocks_dirty++;
+
+#if DTCM_DEBUG
+        // Full per-block map, for diagnosing pocket layout changes on new
+        // OS/revs. Summary counts above are always logged.
+        if (!block_clean)
+        {
+            playdate->system->logToConsole(
+                "DTCM probe: dirty block %p: first dirty word at %p = %08x", (void*)probe,
+                (void*)&addr[w], (unsigned)addr[w]
+            );
+        }
+#endif
+
+        if (block_clean)
         {
             if (cur_run == 0)
                 cur_run_start = probe;
@@ -392,6 +427,11 @@ void dtcm_probe_lower_bound(void)
     dtcm_probe_lowest = (void*)lowest_ok;
 
     playdate->system->logToConsole(
+        "DTCM probe: scanned %u blocks: %u clean, %u dirty", blocks_scanned, blocks_clean,
+        blocks_dirty
+    );
+
+    playdate->system->logToConsole(
         "DTCM probe: lowest writable = %p (%u bytes below pool)", (void*)lowest_ok,
         (unsigned)((uintptr_t)dtcm_mempool_start - lowest_ok)
     );
@@ -400,7 +440,17 @@ void dtcm_probe_lower_bound(void)
     dtcm_num_pockets = 0;
     for (int i = 0; i < MAX_RUNS && run_sizes[i] > 0; i++)
     {
-        size_t size = run_sizes[i] * DTCM_PROBE_STEP;
+        // Guard band: trim one probe step off the pocket top. The pocket
+        // bottom stays at the lowest verified-clean word (already exact).
+        if (run_sizes[i] < 2)
+        {
+            playdate->system->logToConsole(
+                "DTCM probe: run at %p too small after top guard trim, skipping",
+                (void*)run_starts[i]
+            );
+            continue;
+        }
+        size_t size = (run_sizes[i] - 1) * DTCM_PROBE_STEP;
         void* low = (void*)(run_starts[i] - (run_sizes[i] - 1) * DTCM_PROBE_STEP);
         dtcm_pocket_init(&dtcm_pockets[i], low, size);
         dtcm_num_pockets = i + 1;
