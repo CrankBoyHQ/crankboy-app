@@ -2008,6 +2008,18 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
         .locked = (preferences_sound_mode == 2),
     };
 
+    // high-pass filter
+    section[++i] = (OptionsMenuEntry){
+        .name = "High-Pass Filter",
+        .values = off_on_labels,
+        .description =
+            "Emulates the hardware's capacitor coupling. Bass frequencies are weakend.\n\n"
+            "On:\nHardware-accurate sound. Costs a little performance.\n\n"
+            "Off:\nFuller bass, but less faithful to the original hardware.",
+        .pref_var = &preferences_high_pass_filter,
+        .max_value = 2,
+    };
+
     // Mono/Stereo
     section[++i] = (OptionsMenuEntry){
         .name = CB_App->mirror_active ? "Mirror/Aux" : "Headphones",

@@ -1883,6 +1883,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
     }
 
     // --- High-Pass Filter ---
+    if (preferences_high_pass_filter)
     {
         bool dacs_enabled = audio->chans[0].powered || audio->chans[1].powered ||
                             audio->chans[2].powered || audio->chans[3].powered;
@@ -1923,6 +1924,18 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             audio->capacitor_r = 0.0f;
 #endif
         }
+    }
+    else
+    {
+        /* Filter disabled by preference: keep capacitors discharged so
+         * re-enabling the filter doesn't cause a click. */
+#if TARGET_PLAYDATE
+        audio->capacitor_l = 0;
+        audio->capacitor_r = 0;
+#else
+        audio->capacitor_l = 0.0f;
+        audio->capacitor_r = 0.0f;
+#endif
     }
 
 #ifdef TARGET_SIMULATOR
