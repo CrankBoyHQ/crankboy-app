@@ -396,7 +396,7 @@ volatile int g_trace_frames_remaining = 0;
 #endif
 
 // Offset of the relocated draw cluster (0 = run from flash).
-// Set by itcm_core_init on RevA; always 0 elsewhere.
+// Set by tcm_relocate on RevA; always 0 elsewhere.
 intptr_t pgb_draw_reloc_offset = 0;
 
 #if ITCM_CORE
@@ -414,7 +414,7 @@ extern char __draw_cgb_end[];
 
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 
-__section__(".rare") void itcm_core_init(bool cgb)
+__section__(".rare") void tcm_relocate(bool cgb)
 {
     void* itcm_start = cgb ? &__itcm_cgb_start : &__itcm_dmg_start;
 
@@ -586,12 +586,45 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
     playdate->system->clearICache();
 }
+
+// Clear TCM on lock/menu: system may write into pockets while locked, so
+// switch code back to flash and return pockets to boot-idle 0xA5.
+// tcm_relocate() re-probes and re-places on unlock/resume (re-entry guard
+// re-armed by setting core_itcm_reloc to the flash start below).
+//
+// pool_keep_end: lowest main-pool address that must survive (the gb struct);
+// space above it that held fallback core/draw copies is released so repeated
+// lock/unlock cycles don't leak the pool toward the stack canary.
+__section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
+{
+    if (!dtcm_enabled() || preferences_itcm == 0)
+        return;
+
+    void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
+
+    core_itcm_offset = 0;
+    pgb_draw_reloc_offset = 0;
+    core_itcm_reloc = itcm_start;
+
+    dtcm_pocket_fill_and_reset();
+
+    if (pool_keep_end)
+        dtcm_pool_release_above(pool_keep_end);
+
+    playdate->system->clearICache();
+}
 #else
 
 #define ITCM_CORE_FN(fn) fn
 
-void itcm_core_init(bool cgb)
+void tcm_relocate(bool cgb)
 {
+}
+
+void tcm_clear(bool cgb, void* pool_keep_end)
+{
+    (void)cgb;
+    (void)pool_keep_end;
 }
 #endif
 
@@ -966,7 +999,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
                 memcpy(context->gb, &gb_fallback, sizeof(gb_s));
             }
 
-            itcm_core_init(context->gb->is_cgb_mode);
+            tcm_relocate(context->gb->is_cgb_mode);
         }
         else
         {
@@ -4163,6 +4196,10 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     case kEventPause:
         audioGameScene = NULL;
 
+        // System may write into TCM pockets while locked/menu open; clear
+        // code to flash. gb struct (main pool) stays; re-placed on resume.
+        tcm_clear(context->gb->is_cgb_mode, (char*)context->gb + sizeof(gb_s));
+
         // Re-enable auto-lock when the system menu is open.
         playdate->system->setAutoLockDisabled(0);
 
@@ -4186,6 +4223,10 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
         break;
     case kEventUnlock:
     case kEventResume:
+        // Re-probe pockets and relocate core/draw back into TCM (no-op if
+        // never cleared or TCM off). Must run before audio reconfig/frames.
+        tcm_relocate(context->gb->is_cgb_mode);
+
         // Re-apply the user's auto-lock preference on resume.
         playdate->system->setAutoLockDisabled(preferences_disable_autolock);
         reconfigure_audio_source(gameScene);

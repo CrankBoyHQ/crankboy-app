@@ -355,7 +355,7 @@ extern volatile int g_trace_frames_remaining;
 #endif
 
 // Draw cluster: dedicated sections so it can be relocated into the main
-// DTCM pool as a separate block on rev A (see itcm_core_init), keeping
+// DTCM pool as a separate block on (see tcm_relocate), keeping
 // the core pocket small. Intra-cluster calls only (short_call).
 #ifdef TARGET_SIMULATOR
 #define __draw_dmg
@@ -370,7 +370,7 @@ extern volatile int g_trace_frames_remaining;
 #endif
 
 // Offset of the relocated draw cluster (0 = run from flash). Set by
-// itcm_core_init on rev A.
+// tcm_relocate
 extern intptr_t pgb_draw_reloc_offset;
 
 // Call a draw-cluster function from core code through the relocation offset.

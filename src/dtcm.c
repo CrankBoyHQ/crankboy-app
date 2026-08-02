@@ -153,6 +153,23 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
     return aligned_ptr;
 }
 
+__dtcm_ctrl void dtcm_pool_release_above(void* ptr_end)
+{
+#ifdef DTCM_ALLOC
+    if (!is_dtcm_init)
+        return;
+
+    uintptr_t end = (uintptr_t)ptr_end;
+    if (end < (uintptr_t)dtcm_mempool_start)
+        end = (uintptr_t)dtcm_mempool_start;
+    if (end > (uintptr_t)dtcm_mempool)
+        return;
+    end = (end + 3u) & ~3u;
+    dtcm_mempool = (void*)end;
+    *(uint32_t*)dtcm_mempool = DTCM_CANARY;
+#endif
+}
+
 __dtcm_ctrl void dtcm_init(void)
 {
     if (is_dtcm_init)

@@ -20,6 +20,9 @@ void* dtcm_alloc(size_t size);
 void* dtcm_alloc_aligned(size_t size, size_t offset);
 void dtcm_free(void* ptr);
 
+// Release main-pool space above ptr_end (lock/unlock cycle cleanup).
+void dtcm_pool_release_above(void* ptr_end);
+
 struct dtcm_store_t;
 
 // copies dtcm region to a buffer outside of dtcm.
