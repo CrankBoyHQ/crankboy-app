@@ -542,6 +542,9 @@ __audio static void update_square(
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
+    // gain_q4 implies accurate (replay-only); fast mode takes the cheap path.
+    const bool accurate = gain_q4 || (preferences_sound_mode == 2);
+
     if (!gain_q4 && c->freq_inc / 8 > (uint32_t)sample_rate / 2)
         return;
 
@@ -573,44 +576,73 @@ __audio static void update_square(
 
         int32_t sample_out;
 
-        uint32_t pos = 0;
-        uint32_t prev_pos = 0;
-        int32_t weighted_sum = 0;
-
-        while (update_freq(c, &pos, sample_rate))
+        if (!accurate)
         {
-            c->square.duty_counter = (c->square.duty_counter + 1) & 7;
-            weighted_sum += (int32_t)(pos - prev_pos) * c->val;
-            c->val = (c->square.duty & (1 << c->square.duty_counter))
-                         ? VOL_INIT_MAX / MAX_CHAN_VOLUME
-                         : VOL_INIT_MIN / MAX_CHAN_VOLUME;
-            prev_pos = pos;
-        }
+            // --- FAST MODE: plain step counting, no per-sample divide ---
+            c->freq_counter += c->freq_inc;
+            int step_count = 0;
+            int32_t step_sum = 0;
+            while (c->freq_counter >= (uint32_t)sample_rate)
+            {
+                c->freq_counter -= sample_rate;
+                c->square.duty_counter = (c->square.duty_counter + 1) & 7;
+                c->val = (c->square.duty & (1 << c->square.duty_counter))
+                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+                step_count++;
+                step_sum += c->val;
+            }
 
-        weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
+            if (step_count >= 3)
+                sample_out = (step_sum / step_count) * c->volume;
+            else
+                sample_out = c->val * c->volume;
 
-        int32_t effective_volume;
-        if (gain_q4)
-        {
-            // Gain array carries the volume; skip the smoothing ramp.
-            effective_volume = ((int32_t)gain_q4[i] + 8) >> 4;
+            // Keep the smoothing ramp synced for a click-free switch to accurate.
+            c->envelope_smooth = (int32_t)c->volume << 8;
         }
         else
         {
-            int32_t target_vol = (int32_t)c->volume << 8;
-            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
-            effective_volume = (c->envelope_smooth + 128) >> 8;
-        }
+            // --- ACCURATE MODE (incl. gain replay) ---
+            uint32_t pos = 0;
+            uint32_t prev_pos = 0;
+            int32_t weighted_sum = 0;
 
-        if (c->freq_inc > 0)
-            sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
-        else
-            sample_out = c->val * effective_volume;
+            while (update_freq(c, &pos, sample_rate))
+            {
+                c->square.duty_counter = (c->square.duty_counter + 1) & 7;
+                weighted_sum += (int32_t)(pos - prev_pos) * c->val;
+                c->val = (c->square.duty & (1 << c->square.duty_counter))
+                             ? VOL_INIT_MAX / MAX_CHAN_VOLUME
+                             : VOL_INIT_MIN / MAX_CHAN_VOLUME;
+                prev_pos = pos;
+            }
 
-        if (c->sample_surpressed)
-        {
-            sample_out = INT16_MIN / 8;
-            c->sample_surpressed = false;
+            weighted_sum += (int32_t)(c->freq_inc - prev_pos) * c->val;
+
+            int32_t effective_volume;
+            if (gain_q4)
+            {
+                // Gain array carries the volume; skip the smoothing ramp.
+                effective_volume = ((int32_t)gain_q4[i] + 8) >> 4;
+            }
+            else
+            {
+                int32_t target_vol = (int32_t)c->volume << 8;
+                c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+                effective_volume = (c->envelope_smooth + 128) >> 8;
+            }
+
+            if (c->freq_inc > 0)
+                sample_out = (weighted_sum / (int32_t)c->freq_inc) * effective_volume;
+            else
+                sample_out = c->val * effective_volume;
+
+            if (c->sample_surpressed)
+            {
+                sample_out = INT16_MIN / 8;
+                c->sample_surpressed = false;
+            }
         }
 
         if (c->muted)
@@ -886,6 +918,8 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
     int sample_replication = get_sample_replication();
     int sample_rate = get_audio_sample_rate();
 
+    const bool accurate = (preferences_sound_mode == 2);
+
 #if TARGET_PLAYDATE
     int16_t final_vol_l = c->on_left * audio->vol_l;
     int16_t final_vol_r = c->on_right * audio->vol_r;
@@ -897,56 +931,103 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
 
     for (uint_fast16_t i = 0; i < len; i += sample_replication)
     {
-        uint32_t fc = c->freq_counter;
-        c->freq_counter += c->freq_inc;
-        uint32_t total = c->freq_inc;
-        int32_t weighted_sum = 0;
+        int32_t mono_sample;
 
-        if (c->freq >= 14)
+        if (!accurate)
         {
-            weighted_sum = (int32_t)total * c->val;
-            c->freq_counter %= sample_rate;
-        }
-        else
-        {
-            uint32_t first = sample_rate - fc;
-            if (first > total)
-                first = total;
-            weighted_sum += (int32_t)first * c->val;
-            uint32_t done = first;
-
-            while (done < total)
+            // --- FAST MODE: step counting, no envelope ramp, no per-sample divide ---
+            c->freq_counter += c->freq_inc;
+            int step_count = 0;
+            int32_t step_sum = 0;
+            if (c->freq >= 14)
             {
-                uint8_t xor_res = ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
-                c->noise.lfsr_reg >>= 1;
-                c->noise.lfsr_reg |= (xor_res << 14);
-                if (c->lfsr_narrow)
-                    c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
-                c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MAX / MAX_CHAN_VOLUME)
-                                                 : (VOL_INIT_MIN / MAX_CHAN_VOLUME);
+                // LFSR frozen; cap counter to avoid wasted loop spins.
+                c->freq_counter %= sample_rate;
+            }
+            else
+            {
+                while (c->freq_counter >= (uint32_t)sample_rate)
+                {
+                    c->freq_counter -= sample_rate;
 
-                uint32_t seg = sample_rate;
-                if (total - done < seg)
-                    seg = total - done;
-                weighted_sum += (int32_t)seg * c->val;
-                done += seg;
+                    uint8_t xor_res =
+                        ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
+                    c->noise.lfsr_reg >>= 1;
+                    c->noise.lfsr_reg |= (xor_res << 14);
+                    if (c->lfsr_narrow)
+                        c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
+                    c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MAX / MAX_CHAN_VOLUME)
+                                                     : (VOL_INIT_MIN / MAX_CHAN_VOLUME);
+                    step_count++;
+                    step_sum += c->val;
+                }
             }
 
-            c->freq_counter %= sample_rate;
+            if (c->muted)
+                continue;
+
+            if (step_count > 0)
+                mono_sample = (step_sum / step_count) * c->volume;
+            else
+                mono_sample = c->val * c->volume;
+
+            // Keep the smoothing ramp synced for a click-free switch to accurate.
+            c->envelope_smooth = (int32_t)c->volume << 8;
         }
-
-        if (c->muted)
-            continue;
-
-        int32_t mono_sample;
-        int32_t target_vol = (int32_t)c->volume << 8;
-        c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
-        int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
-
-        if (total > 0)
-            mono_sample = (weighted_sum / (int32_t)total) * effective_volume;
         else
-            mono_sample = c->val * effective_volume;
+        {
+            // --- ACCURATE MODE ---
+            uint32_t fc = c->freq_counter;
+            c->freq_counter += c->freq_inc;
+            uint32_t total = c->freq_inc;
+            int32_t weighted_sum = 0;
+
+            if (c->freq >= 14)
+            {
+                weighted_sum = (int32_t)total * c->val;
+                c->freq_counter %= sample_rate;
+            }
+            else
+            {
+                uint32_t first = sample_rate - fc;
+                if (first > total)
+                    first = total;
+                weighted_sum += (int32_t)first * c->val;
+                uint32_t done = first;
+
+                while (done < total)
+                {
+                    uint8_t xor_res =
+                        ((c->noise.lfsr_reg >> 0) & 1) == ((c->noise.lfsr_reg >> 1) & 1);
+                    c->noise.lfsr_reg >>= 1;
+                    c->noise.lfsr_reg |= (xor_res << 14);
+                    if (c->lfsr_narrow)
+                        c->noise.lfsr_reg = (c->noise.lfsr_reg & ~(1 << 6)) | (xor_res << 6);
+                    c->val = (c->noise.lfsr_reg & 1) ? (VOL_INIT_MAX / MAX_CHAN_VOLUME)
+                                                     : (VOL_INIT_MIN / MAX_CHAN_VOLUME);
+
+                    uint32_t seg = sample_rate;
+                    if (total - done < seg)
+                        seg = total - done;
+                    weighted_sum += (int32_t)seg * c->val;
+                    done += seg;
+                }
+
+                c->freq_counter %= sample_rate;
+            }
+
+            if (c->muted)
+                continue;
+
+            int32_t target_vol = (int32_t)c->volume << 8;
+            c->envelope_smooth += (target_vol - c->envelope_smooth) >> 3;
+            int32_t effective_volume = (c->envelope_smooth + 128) >> 8;
+
+            if (total > 0)
+                mono_sample = (weighted_sum / (int32_t)total) * effective_volume;
+            else
+                mono_sample = c->val * effective_volume;
+        }
 #if TARGET_PLAYDATE
         int16_t sample16 = mono_sample / 4;
 
@@ -1001,8 +1082,8 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     bool was_enabled = c->enabled;
 
     // Digital-zero surpression on first start only (not re-trigger).
-    // Must check c->enabled before chan_enable sets it to 1.
-    if ((i == 0 || i == 1))
+    // Must check c->enabled before chan_enable sets it to 1. Accurate mode only.
+    if ((i == 0 || i == 1) && preferences_sound_mode == 2)
         c->sample_surpressed = !c->enabled;
 
     chan_enable(audio, i, 1);
@@ -1019,15 +1100,26 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
         c->env.should_lock = false;
         c->env.clock = false;
         c->env_pending = false;
-        if (i != 3)
+        // Accurate: CH4 keeps its shift divider phase across trigger.
+        if (preferences_sound_mode == 2)
+        {
+            if (i != 3)
+                c->freq_counter = 0;
+        }
+        else
+        {
             c->freq_counter = 0;
+        }
 
         if (c->env.step > 0)
         {
             c->env_divider = c->env.step;
-            uint8_t next_step = (audio->div_apu_step + 1) & 7;
-            if (next_step == 7)
-                c->env_divider++;
+            if (preferences_sound_mode == 2)
+            {
+                uint8_t next_step = (audio->div_apu_step + 1) & 7;
+                if (next_step == 7)
+                    c->env_divider++;
+            }
         }
         else
         {
@@ -1055,7 +1147,7 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 
         c->sweep.enabled = (c->sweep.rate != 0) || (c->sweep.shift != 0);
         c->sweep.divider = c->sweep.rate ? c->sweep.rate : 8;
-        if (c->sweep.rate > 0)
+        if (preferences_sound_mode == 2 && c->sweep.rate > 0)
         {
             uint8_t next_step = (audio->div_apu_step + 1) & 7;
             if (next_step == 2 || next_step == 6)
@@ -1113,15 +1205,18 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
     c->envelope_smooth = (int32_t)c->volume << 8;
 
     // Always reload length on trigger (hardware restarts the timer).
-    // Accurate mode also applies the obscure max-1 reload (63 vs 64) when
-    // the next DIV-APU step doesn't clock the length counter.
     int load = len_max - c->len.load;
 
-    uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
-    bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
+    // Accurate mode also applies the obscure max-1 reload (63 vs 64) when
+    // the next DIV-APU step doesn't clock the length counter.
+    if (preferences_sound_mode == 2)
+    {
+        uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+        bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-    if (next_doesnt_clock_len && c->len_enabled && load == len_max)
-        load = len_max - 1;
+        if (next_doesnt_clock_len && c->len_enabled && load == len_max)
+            load = len_max - 1;
+    }
 
     c->len.inc = 256 | ((uint32_t)load << 16);
     c->len.counter = 0;
@@ -1435,17 +1530,23 @@ void audio_write(
         bool old_len_enabled = chans[i].len_enabled;
         chans[i].len_enabled = val & 0x40 ? 1 : 0;
         bool trigger = val & 0x80;
-        uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
-        bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
 
-        if (next_doesnt_clock_len && !old_len_enabled && chans[i].len_enabled)
+        // Accurate mode: obscure length clock on enable when the next
+        // DIV-APU step doesn't clock the length counter.
+        if (preferences_sound_mode == 2)
         {
-            int remaining = (int)(chans[i].len.inc >> 16);
-            if (remaining > 0)
+            uint8_t div_apu_next = (audio->div_apu_step + 1) & 7;
+            bool next_doesnt_clock_len = (div_apu_next & 1) != 0;
+
+            if (next_doesnt_clock_len && !old_len_enabled && chans[i].len_enabled)
             {
-                chans[i].len.inc -= (1 << 16);
-                if (((chans[i].len.inc >> 16) == 0) && !trigger)
-                    chan_enable(audio, i, 0);
+                int remaining = (int)(chans[i].len.inc >> 16);
+                if (remaining > 0)
+                {
+                    chans[i].len.inc -= (1 << 16);
+                    if (((chans[i].len.inc >> 16) == 0) && !trigger)
+                        chan_enable(audio, i, 0);
+                }
             }
         }
 
