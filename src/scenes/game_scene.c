@@ -427,7 +427,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
         core_itcm_reloc = itcm_start;
         core_itcm_offset = 0;
 
-        playdate->system->logToConsole("itcm_core_init but dtcm not enabled");
+        playdate->system->logToConsole("itcm[%s]: off - running from flash", cgb ? "cgb" : "dmg");
         return;
     }
 
@@ -483,10 +483,6 @@ __section__(".rare") void itcm_core_init(bool cgb)
             // post-shrink core sizes; the high canary guards pool overflow.
             core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
             core_in_main_pool = true;
-            playdate->system->logToConsole(
-                "itcm_core_init: %s no pocket fits %u bytes, using main pool at %p",
-                cgb ? "CGB" : "DMG", core_size + MARGIN + DTCM_ALIGN_PAD, core_itcm_reloc
-            );
         }
 
         DTCM_VERIFY();
@@ -501,6 +497,18 @@ __section__(".rare") void itcm_core_init(bool cgb)
         core_itcm_offset = 0;
     }
 
+    // Unified placement log: itcm[<mode>]: <cluster> <size> at <addr> (<where>)
+    if (best >= 0)
+        playdate->system->logToConsole(
+            "itcm[%s]: core 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", core_size,
+            core_itcm_reloc, best
+        );
+    else
+        playdate->system->logToConsole(
+            "itcm[%s]: core 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", core_size, core_itcm_reloc,
+            core_in_main_pool ? "main pool" : "flash"
+        );
+
     // Relocate the draw cluster as a separate block so the core stays small
     // enough for pockets. Priority: core's pocket slack -> any other pocket
     // -> main pool (only if core is NOT in the main pool) -> flash. This
@@ -514,6 +522,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
 
         void* draw_reloc = NULL;
         const char* draw_where = "flash";
+        int draw_pocket = -1;
 
         // core's pocket first (its brk continues after the core block),
         // then any other pocket with room
@@ -528,6 +537,7 @@ __section__(".rare") void itcm_core_init(bool cgb)
                 draw_reloc =
                     dtcm_pocket_alloc_aligned(p, draw_size + MARGIN, (uintptr_t)draw_start);
                 draw_where = "pocket";
+                draw_pocket = p;
             }
         }
 
@@ -550,18 +560,27 @@ __section__(".rare") void itcm_core_init(bool cgb)
             pgb_draw_reloc_offset = 0;
         }
 
+        if (draw_pocket >= 0)
+            playdate->system->logToConsole(
+                "itcm[%s]: draw 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", draw_size,
+                draw_reloc, draw_pocket
+            );
+        else
+            playdate->system->logToConsole(
+                "itcm[%s]: draw 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", draw_size,
+                draw_reloc ? draw_reloc : draw_start, draw_where
+            );
+    }
+    else
+    {
+        void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
+        void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
         playdate->system->logToConsole(
-            "draw cluster: %s 0x%X bytes at %p (%s)", cgb ? "CGB" : "DMG", draw_size,
-            draw_reloc ? draw_reloc : draw_start, draw_where
+            "itcm[%s]: draw 0x%X bytes at %p (flash)", cgb ? "cgb" : "dmg", draw_end - draw_start,
+            draw_start
         );
     }
 
-    playdate->system->logToConsole(
-        "itcm start: %p, end %p: (%s)", itcm_start, itcm_end, cgb ? "cgb" : "dmg"
-    );
-    playdate->system->logToConsole(
-        "core is 0x%X bytes, relocated at %p", core_size, core_itcm_reloc
-    );
     playdate->system->clearICache();
 }
 #else
