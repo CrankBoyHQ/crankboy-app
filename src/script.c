@@ -83,8 +83,10 @@ ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene
 {
     DTCM_VERIFY();
 
-    ScriptInfo* info = get_script_info(game_name);
+    script_patch_record_reset();
     script_gb = game_scene->context->gb;
+
+    ScriptInfo* info = get_script_info(game_name);
 
     if (!info)
         return NULL;

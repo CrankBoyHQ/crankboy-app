@@ -74,9 +74,6 @@ static void on_end(gb_s* gb, void* data)
     if (!state)
         return;
 
-    rom_poke(PATCH_ADDR_MOVE_LEFT, state->original_move_left_byte);
-    rom_poke(PATCH_ADDR_MOVE_RIGHT, state->original_move_right_byte);
-
     cb_free(state);
 }
 

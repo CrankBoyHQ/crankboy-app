@@ -11,6 +11,17 @@
 C scripts are .c files which must be included in the makefile
 at build time, and they must contain a C_SCRIPT { ... } declaration.
 
+Scripts can be toggled on/off mid-session from the settings menu, so
+on_begin/on_end may run more than once per game. Keep them togglable:
+
+- on_begin may start mid-game: don't assume boot-time state; ROM patches
+  are safe to run more than once (poke_verify tolerates already-patched bytes).
+- on_end should undo what the script changed. The framework auto-resets the
+  screen layout, restores force_pref'd prefs reverts ROM patches and re-inits
+  the Start/Select selector (move it via script_selector()); the script only
+  needs to clean up any other gameScene fields it changed.
+- userdata is fresh per enable; state does not survive a disable/enable.
+
 */
 
 struct CB_GameScene;
@@ -117,6 +128,16 @@ typedef struct ScriptState
 
 ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene);
 void script_end(ScriptState* state, struct CB_GameScene* game_scene);
+
+// Restore prefs forced by the script (via force_pref) to their pre-script
+// values. Called when a script is disabled mid-session.
+void script_pref_restore_originals(void);
+
+// ROM patches are tracked by rom_poke so a mid-session script disable can
+// revert the in-memory ROM to its pre-patch bytes.
+void script_patch_record_reset(void);
+void script_patch_restore(void);
+
 bool script_tick(ScriptState* state, struct CB_GameScene* game_scene, int frames_elapsed);
 void script_draw(ScriptState* state, struct CB_GameScene* game_scene);
 

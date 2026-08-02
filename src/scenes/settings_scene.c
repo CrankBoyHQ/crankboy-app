@@ -2499,13 +2499,10 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     {
         if (gameScene->script_available)
         {
-            section[i].description =
-                BASE_SCRIPT_STRING "\n\nYou must restart the ROM for this setting to take effect.";
             if (gameScene->script_info_available)
             {
-                section[i].description = BASE_SCRIPT_STRING
-                    "\n\nHold the Ⓐ button now for more information."
-                    "\n\nYou must restart the ROM for this setting to take effect.";
+                section[i].description =
+                    BASE_SCRIPT_STRING "\n\nHold the Ⓐ button now for more information.";
                 section[i].on_hold = display_script_info;
             }
         }

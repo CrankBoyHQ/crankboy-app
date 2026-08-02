@@ -47,29 +47,19 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     return data;
 }
 
-static int get_score(gb_s* gb)
-{
-    int score = 0;
-    for (int addr = 0x9C26; addr <= 0x9C2B; ++addr)
-    {
-        score *= 10;
-        score += (ram_peek(addr) - 0x50) % 10;
-    }
-    return score;
-}
-
 static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     bool show_sidebar = gb->gb_reg.WY == 0x80;
 
     CB_GameSceneContext* gameSceneContext = gb->direct.priv;
     CB_GameScene* gameScene = gameSceneContext->scene;
+    CB_CrankSelector* sel = script_selector();
 
     if (data->org_selector_y < 0)
     {
-        data->org_selector_y = gameScene->selector.y;
-        data->org_select_y = gameScene->selector.selectButtonY - data->org_selector_y;
-        data->org_start_y = gameScene->selector.startButtonY - data->org_selector_y;
+        data->org_selector_y = sel->y;
+        data->org_select_y = sel->selectButtonY - data->org_selector_y;
+        data->org_start_y = sel->startButtonY - data->org_selector_y;
     }
 
     if (show_sidebar)
@@ -81,7 +71,7 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_background_color = kColorWhite;
         game_invert_indicator = true;
         game_hide_indicator = true;
-        gameScene->selector.y = 240 - 16 * 3 - gameScene->selector.containerHeight;
+        sel->y = 240 - 16 * 3 - sel->containerHeight;
         gameScene->staticSelectorUIDrawn = false;
     }
     else
@@ -92,12 +82,12 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
         game_picture_y_bottom = LCD_HEIGHT;
         game_picture_background_color = kColorBlack;
         game_invert_indicator = false;
-        gameScene->selector.y = data->org_selector_y;
+        sel->y = data->org_selector_y;
         game_hide_indicator = false;
     }
 
-    gameScene->selector.selectButtonY = data->org_select_y + gameScene->selector.y;
-    gameScene->selector.startButtonY = data->org_start_y + gameScene->selector.y;
+    sel->selectButtonY = data->org_select_y + sel->y;
+    sel->startButtonY = data->org_start_y + sel->y;
 }
 
 static void on_draw(gb_s* gb, ScriptData* data)

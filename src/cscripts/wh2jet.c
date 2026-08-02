@@ -145,67 +145,6 @@ static bool is_cinematic(gb_s* gb)
     return gb->vram[0x1800] == 0x01 && gb->vram[0x181F] == 0x01;
 }
 
-static uint16_t tile_addr_for_idx(int tile_idx, bool unsigned_addr)
-{
-    if (unsigned_addr)
-        return ((uint16_t)tile_idx * 16) & 0x1FFF;
-    else
-        return (0x1000 + ((int8_t)tile_idx) * 16) & 0x1FFF;
-}
-
-static LCDColor tile_pixel_to_color(uint8_t lo, uint8_t hi, int bit)
-{
-    static const LCDColor pal[4] = {
-        kColorWhite,
-        (LCDColor)&lcdp_75,
-        (LCDColor)&lcdp_50,
-        kColorBlack,
-    };
-    return pal[((hi >> bit) & 1) << 1 | ((lo >> bit) & 1)];
-}
-
-static void draw_tile_at(
-    gb_s* gb, int vram_offset, int dst_x, int dst_y, int scale, bool flip_x, bool flip_y
-)
-{
-    uint8_t* tile = &gb->vram[vram_offset];
-
-    for (int dy = 0; dy < 8; ++dy)
-    {
-        int sy = flip_y ? (7 - dy) : dy;
-        uint8_t lo = tile[2 * sy + 0];
-        uint8_t hi = tile[2 * sy + 1];
-
-        int run_x = 0;
-        while (run_x < 8)
-        {
-            int sx = flip_x ? run_x : (7 - run_x);
-            LCDColor c = tile_pixel_to_color(lo, hi, sx);
-            int run_len = 1;
-            while (run_x + run_len < 8)
-            {
-                int sx2 = flip_x ? (run_x + run_len) : (7 - (run_x + run_len));
-                if (tile_pixel_to_color(lo, hi, sx2) != c)
-                    break;
-                run_len++;
-            }
-            playdate->graphics->fillRect(
-                dst_x + run_x * scale, dst_y + dy * scale, run_len * scale, scale, c
-            );
-            run_x += run_len;
-        }
-    }
-}
-
-static void draw_tile(
-    gb_s* gb, int tile_idx, int dst_x, int dst_y, int scale, bool flip_x, bool unsigned_addr,
-    bool flip_y
-)
-{
-    uint16_t tile_addr = tile_addr_for_idx(tile_idx, unsigned_addr);
-    draw_tile_at(gb, tile_addr, dst_x, dst_y, scale, flip_x, flip_y);
-}
-
 static void draw_hud(gb_s* gb, ScriptData* data)
 {
     bool seed = !data->hud_seeded || gbScreenRequiresFullRefresh;
@@ -217,8 +156,8 @@ static void draw_hud(gb_s* gb, ScriptData* data)
         int idx_l = gb->vram[PORTRAIT_L_ADDRS[i]];
         int idx_r = gb->vram[PORTRAIT_R_ADDRS[i]];
 
-        uint16_t addr_l = tile_addr_for_idx(idx_l, unsigned_addr);
-        uint16_t addr_r = tile_addr_for_idx(idx_r, unsigned_addr);
+        uint16_t addr_l = script_vram_tile_addr(idx_l, unsigned_addr);
+        uint16_t addr_r = script_vram_tile_addr(idx_r, unsigned_addr);
         uint32_t hash_l = *(uint32_t*)&gb->vram[addr_l];
         uint32_t hash_r = *(uint32_t*)&gb->vram[addr_r];
 
@@ -231,28 +170,34 @@ static void draw_hud(gb_s* gb, ScriptData* data)
         bool overlap_r = (i == 0 || i == 3 || i == 6);
 
         if (changed_l || overlap_l)
-            draw_tile(gb, idx_l, PORTRAIT_L_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
+            script_draw_vram_tile_fixed(
+                gb, script_vram_tile_addr(idx_l, unsigned_addr), PORTRAIT_L_X[i], PORTRAIT_Y[i], 2,
+                2, true, false, false
+            );
         if (changed_r || overlap_r)
-            draw_tile(gb, idx_r, PORTRAIT_R_X[i], PORTRAIT_Y[i], 2, true, unsigned_addr, false);
+            script_draw_vram_tile_fixed(
+                gb, script_vram_tile_addr(idx_r, unsigned_addr), PORTRAIT_R_X[i], PORTRAIT_Y[i], 2,
+                2, true, false, false
+            );
     }
 }
 
 static void draw_options_sidebar(gb_s* gb)
 {
-    draw_tile_at(gb, 0x0A20, 0, 0, 2, true, false);
+    script_draw_vram_tile_fixed(gb, 0x0A20, 0, 0, 2, 2, true, false, false);
     for (int y = 16; y < 224; y += 16)
-        draw_tile_at(gb, 0x0A50, 0, y, 2, true, false);
-    draw_tile_at(gb, 0x0A60, 0, 224, 2, true, false);
+        script_draw_vram_tile_fixed(gb, 0x0A50, 0, y, 2, 2, true, false, false);
+    script_draw_vram_tile_fixed(gb, 0x0A60, 0, 224, 2, 2, true, false, false);
 
-    draw_tile_at(gb, 0x0A40, 384, 0, 2, true, false);
+    script_draw_vram_tile_fixed(gb, 0x0A40, 384, 0, 2, 2, true, false, false);
     for (int y = 16; y < 224; y += 16)
-        draw_tile_at(gb, 0x0A50, 384, y, 2, true, false);
-    draw_tile_at(gb, 0x0A70, 384, 224, 2, true, false);
+        script_draw_vram_tile_fixed(gb, 0x0A50, 384, y, 2, 2, true, false, false);
+    script_draw_vram_tile_fixed(gb, 0x0A70, 384, 224, 2, 2, true, false, false);
 
     for (int x = 16; x < 384; x += 16)
-        draw_tile_at(gb, 0x0A30, x, 0, 2, true, false);
+        script_draw_vram_tile_fixed(gb, 0x0A30, x, 0, 2, 2, true, false, false);
     for (int x = 16; x < 384; x += 16)
-        draw_tile_at(gb, 0x0A30, x, 224, 2, true, false);
+        script_draw_vram_tile_fixed(gb, 0x0A30, x, 224, 2, 2, true, false, false);
 }
 
 static ScriptData* on_begin(gb_s* gb, const char* header_name)

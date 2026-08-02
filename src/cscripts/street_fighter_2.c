@@ -42,71 +42,6 @@ static const uint8_t lcdp_stripe_bw[8] = {
     0x55, 0xFF, 0x55, 0xFF, 0x55, 0xFF, 0x55, 0xFF,
 };
 
-static uint16_t tile_addr_for_idx(gb_s* gb, int tile_idx)
-{
-    uint16_t tile_addr;
-    if (gb->gb_reg.LCDC & 0x10)
-    {
-        // Unsigned indexing, base 0x8000.
-        tile_addr = (uint16_t)tile_idx * 16;
-    }
-    else
-    {
-        // Signed indexing, base 0x8800.
-        tile_addr = 0x1000 + ((int8_t)tile_idx) * 16;
-    }
-    return tile_addr & 0x1FFF;
-}
-
-static LCDColor tile_pixel_to_color(uint8_t lo, uint8_t hi, int bit)
-{
-    const uint8_t color = (((hi >> bit) & 1) << 1) | ((lo >> bit) & 1);
-    switch (color)
-    {
-    case 0:
-        return kColorWhite;
-    case 1:
-        return (LCDColor)&lcdp_75;  // light gray
-    case 2:
-        return (LCDColor)&lcdp_50;  // dark gray
-    default:
-        return kColorBlack;
-    }
-}
-
-// Draw a single 8x8 tile from VRAM into the sidebar. Supports flip, 90° rotation, and dithering.
-static void draw_tile_attr(
-    gb_s* gb, int tile_idx, uint8_t attr, int dst_x, int dst_y, int scale_x, int scale_y,
-    bool rotate90
-)
-{
-    uint16_t tile_addr = tile_addr_for_idx(gb, tile_idx);
-
-    bool fx = (attr & 0x20) != 0;
-    bool fy = (attr & 0x40) != 0;
-
-    uint8_t* tile = &gb->vram[tile_addr];
-
-    for (int dy = 0; dy < 8; ++dy)
-    {
-        for (int dx = 0; dx < 8; ++dx)
-        {
-            int sx = rotate90 ? (7 - dy) : dx;  // rotate clockwise
-            int sy = rotate90 ? dx : dy;
-            if (fx)
-                sx = 7 - sx;
-            if (fy)
-                sy = 7 - sy;
-            uint8_t lo = tile[2 * sy + 0];
-            uint8_t hi = tile[2 * sy + 1];
-            LCDColor c = tile_pixel_to_color(lo, hi, 7 - sx);
-            int px = dst_x + dx * scale_x;
-            int py = dst_y + dy * scale_y;
-            playdate->graphics->fillRect(px, py, scale_x, scale_y, c);
-        }
-    }
-}
-
 static bool tile_is_transient_black(uint8_t tile_idx)
 {
     return tile_idx == 0x4D || tile_idx == 0x40 || tile_idx == 0x00;
@@ -124,7 +59,7 @@ static bool name_tile_is_blank(gb_s* gb, int tile_idx)
     if (tile_idx == 0x4F || tile_is_transient_black((uint8_t)tile_idx))
         return true;
 
-    uint16_t tile_addr = tile_addr_for_idx(gb, tile_idx);
+    uint16_t tile_addr = script_vram_tile_addr(tile_idx, gb->gb_reg.LCDC & 0x10);
 
     uint8_t* tile = &gb->vram[tile_addr];
 
@@ -146,7 +81,10 @@ static void draw_tile_or_black(
         playdate->graphics->fillRect(dst_x, dst_y, 8 * scale_x, 8 * scale_y, kColorBlack);
         return;
     }
-    draw_tile_attr(gb, tile_idx, attr, dst_x, dst_y, scale_x, scale_y, rotate90);
+    script_draw_vram_tile_fixed(
+        gb, script_vram_tile_addr(tile_idx, gb->gb_reg.LCDC & 0x10), dst_x, dst_y, scale_x, scale_y,
+        attr & 0x20, attr & 0x40, rotate90
+    );
 }
 
 static bool update_tile_block(gb_s* gb, int base, int count, uint8_t* tiles_out)
@@ -599,8 +537,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
                         int x = time_x;
                         for (int i = 0; i < time_tiles; ++i, x += 8 * scale_x)
                         {
-                            draw_tile_attr(
-                                gb, data->time_tiles[i], 0x20, x, time_y, scale_x, scale_y, false
+                            script_draw_vram_tile_fixed(
+                                gb,
+                                script_vram_tile_addr(data->time_tiles[i], gb->gb_reg.LCDC & 0x10),
+                                x, time_y, scale_x, scale_y, true, false, false
                             );
                         }
 

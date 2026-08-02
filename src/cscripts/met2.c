@@ -785,8 +785,9 @@ void read_embedding_header(
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     // press A to resume from game-over.
-    // also a poor-man's rom check.
-    if (rom_peek(0x372A) == 0x8)
+    // also a poor-man's rom check (tolerate already-patched for re-enable).
+    u8 met2_resume = rom_peek(0x372A);
+    if (met2_resume == 0x8 || met2_resume == 1)
     {
         rom_poke(0x372A, 1);
     }
@@ -796,7 +797,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     }
 
     // press A to start on main menu
-    if (rom_peek(5 * 0x4000 + 0x0249) == 0x8)
+    u8 met2_start = rom_peek(5 * 0x4000 + 0x0249);
+    if (met2_start == 0x8 || met2_start == 1)
     {
         rom_poke(5 * 0x4000 + 0x0249, 1);
     }

@@ -40,39 +40,6 @@ typedef struct ScriptData
     int cached_stages_beaten;
 } ScriptData;
 
-static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
-{
-    uint16_t* tiles12 = &data->tiles12[idx][0];
-
-    for (int i = 0; i < 12; ++i)
-    {
-        for (int j = 0; j < 12; ++j)
-        {
-            int _y = (i + y);
-            int _x = (x + j);
-            int x8 = 7 - (_x % 8);
-            lcd[rowbytes * _y + _x / 8] &= ~(1 << x8);
-            if (tiles12[i] & (1 << (15 - j)))
-            {
-                lcd[rowbytes * _y + _x / 8] |= (1 << x8);
-            }
-        }
-    }
-}
-
-static void drawBCD12(
-    ScriptData* data, uint8_t* lcd, int rowbytes, int bcd, int digits, int x, int y
-)
-{
-    while (digits > 0)
-    {
-        --digits;
-        int v = (bcd >> (digits * 4)) & 0xF;
-        drawTile12(data, lcd, rowbytes, v, x, y);
-        x += 12;
-    }
-}
-
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     ScriptData* data = allocz(ScriptData);
@@ -350,12 +317,12 @@ static void on_draw(gb_s* gb, ScriptData* data)
         int hp[2] = {ram_peek(0xCC89), ram_peek(0xCC90)};
         int subweapon = ram_peek(0xC8D0);
 
-#define DRAW_BCD(field, digits, x, y)                        \
-    if (field != data->field || refresh)                     \
-    {                                                        \
-        data->field = field;                                 \
-        drawBCD12(data, lcd, rowbytes, field, digits, x, y); \
-        playdate->graphics->markUpdatedRows(y, y + 11);      \
+#define DRAW_BCD(field, digits, x, y)                                         \
+    if (field != data->field || refresh)                                      \
+    {                                                                         \
+        data->field = field;                                                  \
+        script_draw_bcd12(data->tiles12, lcd, rowbytes, field, digits, x, y); \
+        playdate->graphics->markUpdatedRows(y, y + 11);                       \
     }
 
         DRAW_BCD(time, 3, LCD_COLUMNS - 12 * 3, 2);
@@ -380,7 +347,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
                     if (data->hp[k] > i * 2 + 1)
                         tidx = 10;
 
-                    drawTile12(data, lcd, rowbytes, tidx, x, y + (5 - i) * 12);
+                    script_draw_tiles12(data->tiles12, lcd, rowbytes, tidx, x, y + (5 - i) * 12);
                 }
                 playdate->graphics->markUpdatedRows(y, y + 6 * 12 - 1);
             }

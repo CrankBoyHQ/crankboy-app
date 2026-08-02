@@ -159,26 +159,6 @@ static void force_prefs(void)
     force_pref(dither_line, 0);
 }
 
-static void drawTile12(ScriptData* data, uint8_t* lcd, int rowbytes, int idx, int x, int y)
-{
-    uint16_t* tiles12 = &data->tiles12[idx][0];
-
-    for (int i = 0; i < 12; ++i)
-    {
-        for (int j = 0; j < 12; ++j)
-        {
-            int _y = (i + y);
-            int _x = (x + j);
-            int x8 = 7 - (_x % 8);
-            lcd[rowbytes * _y + _x / 8] &= ~(1 << x8);
-            if (tiles12[i] & (1 << (15 - j)))
-            {
-                lcd[rowbytes * _y + _x / 8] |= (1 << x8);
-            }
-        }
-    }
-}
-
 static ScriptData* on_begin(gb_s* gb, char* header_name)
 {
     printf("Hello from C!\n");
@@ -512,8 +492,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
         int y = 0;
         int x = 376;
-        drawTile12(data, lcd, rowbytes, (newlives / 10) % 20, x, y);
-        drawTile12(data, lcd, rowbytes, (newlives % 10) % 20, x + 12, y);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, (newlives / 10) % 20, x, y);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, (newlives % 10) % 20, x + 12, y);
 
         playdate->graphics->markUpdatedRows(y, y + 11);
     }
@@ -531,7 +511,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
 
             int idx = (i < newhealth) ? 10 : 15;
 
-            drawTile12(data, lcd, rowbytes, idx, x, y);
+            script_draw_tiles12(data->tiles12, lcd, rowbytes, idx, x, y);
             playdate->graphics->markUpdatedRows(y, y + 11);
         }
     }
@@ -548,10 +528,10 @@ static void on_draw(gb_s* gb, ScriptData* data)
         int x = 370;
         int y = 66;
 
-        drawTile12(data, lcd, rowbytes, show ? 12 : 19, x, y);
-        drawTile12(data, lcd, rowbytes, show ? 13 : 19, x + 12, y);
-        drawTile12(data, lcd, rowbytes, show ? 17 : 19, x, y + 12);
-        drawTile12(data, lcd, rowbytes, show ? 18 : 19, x + 12, y + 12);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, show ? 12 : 19, x, y);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, show ? 13 : 19, x + 12, y);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, show ? 17 : 19, x, y + 12);
+        script_draw_tiles12(data->tiles12, lcd, rowbytes, show ? 18 : 19, x + 12, y + 12);
 
         y += 24;
         x += 6;
@@ -560,8 +540,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
         {
             const bool disp = (i < effective_boss && show);
 
-            drawTile12(data, lcd, rowbytes, disp ? 11 : 19, x, y);
-            drawTile12(data, lcd, rowbytes, disp ? 16 : 19, x, y + 12);
+            script_draw_tiles12(data->tiles12, lcd, rowbytes, disp ? 11 : 19, x, y);
+            script_draw_tiles12(data->tiles12, lcd, rowbytes, disp ? 16 : 19, x, y + 12);
             playdate->graphics->markUpdatedRows(y, y + 13);
 
             y += 14;
@@ -585,12 +565,12 @@ static void on_draw(gb_s* gb, ScriptData* data)
             if (digit > 0 || isDrawing || i == 4)
             {
                 isDrawing = 1;
-                drawTile12(data, lcd, rowbytes, digit % 20, x, y);
+                script_draw_tiles12(data->tiles12, lcd, rowbytes, digit % 20, x, y);
             }
             else
             {
                 // clear
-                drawTile12(data, lcd, rowbytes, 19, x, y);
+                script_draw_tiles12(data->tiles12, lcd, rowbytes, 19, x, y);
             }
         }
 

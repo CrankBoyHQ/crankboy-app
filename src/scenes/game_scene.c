@@ -22,6 +22,10 @@ bool game_hide_indicator;
 bool game_invert_indicator;
 bool gbScreenRequiresFullRefresh;
 
+// Default screen layout (no script active). Restored on scene init and when
+// a script is disabled mid-session, since scripts set these every frame.
+static void CB_GameScene_reset_screen_defaults(void);
+
 #define PGB_IMPL
 /* clang-format off */
 #include "game_scene.h"
@@ -822,13 +826,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     if (!DTCM_VERIFY_DEBUG())
         return NULL;
 
-    game_picture_x_offset = CB_LCD_X;
-    game_picture_scaling = 3;
-    game_picture_y_top = 0;
-    game_picture_y_bottom = LCD_HEIGHT;
-    game_picture_background_color = kColorBlack;
-    game_hide_indicator = false;
-    game_invert_indicator = false;
+    CB_GameScene_reset_screen_defaults();
     game_menu_button_input_enabled = 1;
 
     CB_Scene* scene = CB_Scene_new();
@@ -1120,6 +1118,59 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     return gameScene;
 }
 
+// Default screen layout (no script active). Restored on scene init and when
+// a script is disabled mid-session, since scripts set these every frame.
+static void CB_GameScene_reset_screen_defaults(void)
+{
+    game_picture_x_offset = CB_LCD_X;
+    game_picture_scaling = 3;
+    game_picture_y_top = 0;
+    game_picture_y_bottom = LCD_HEIGHT;
+    game_picture_background_color = kColorBlack;
+    game_hide_indicator = false;
+    game_invert_indicator = false;
+}
+
+// Enable/disable the game script live (settings close). Mirrors the boot
+// begin/end; script consumers NULL-guard everywhere.
+void CB_GameScene_apply_script_support(CB_GameScene* gameScene)
+{
+    if (preferences_script_support && gameScene->script_available && !gameScene->script)
+    {
+        ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);
+        if (scriptInfo)
+        {
+            playdate->system->logToConsole("ROM name: \"%s\"", scriptInfo->rom_name);
+            gameScene->script = script_begin(scriptInfo->rom_name, gameScene);
+            gameScene->prev_dt = 0;
+            if (!gameScene->script)
+                playdate->system->logToConsole("Associated script failed to load or not found.");
+            script_info_free(scriptInfo);
+        }
+    }
+    else if (!preferences_script_support && gameScene->script)
+    {
+        script_end(gameScene->script, gameScene);
+        gameScene->script = NULL;
+
+        // Scripts set these every frame; restore the no-script defaults so a
+        // mid-game disable reverts scaling/layout (frame loop auto-refreshes).
+        CB_GameScene_reset_screen_defaults();
+
+        // Un-force any prefs the script locked, back to the user's values.
+        script_pref_restore_originals();
+        prefs_locked_by_script = 0;
+
+        // Revert in-memory ROM bytes patched by the script.
+        script_patch_restore();
+
+        // Reset the on-screen Start/Select selector to its default position
+        // (deterministic; scripts move it via script_selector()).
+        CB_GameScene_selector_init(gameScene);
+        gameScene->staticSelectorUIDrawn = false;
+    }
+}
+
 void CB_GameScene_apply_settings(CB_GameScene* gameScene)
 {
     CB_GameSceneContext* context = gameScene->context;
@@ -1168,7 +1219,10 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     // Apply TCM Mode changes live (skipped at boot, where tcm_relocate runs
     // separately after the gb struct is moved into the DTCM pool).
     if (gameScene->state == CB_GameSceneStateLoaded)
+    {
         tcm_apply(context->gb->is_cgb_mode);
+        CB_GameScene_apply_script_support(gameScene);
+    }
 }
 
 static void CB_GameScene_selector_init(CB_GameScene* gameScene)

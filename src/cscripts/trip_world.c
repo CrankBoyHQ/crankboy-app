@@ -60,17 +60,6 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     return data;
 }
 
-static int get_score(gb_s* gb)
-{
-    int score = 0;
-    for (int addr = 0x9C26; addr <= 0x9C2B; ++addr)
-    {
-        score *= 10;
-        score += (ram_peek(addr) - 0x50) % 10;
-    }
-    return score;
-}
-
 static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     bool show_sidebar = gb->gb_reg.WY == 0x80;
@@ -123,7 +112,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         // Only read values to check if they changed
         lives = ram_peek(0xC0E1);
         hp = ram_peek(0xFFA0);
-        score = get_score(gb);
+        score = script_ram_bcd(0x9C26, 6, 0x50);
 
         refresh_lives = lives != data->prev_lives;
         refresh_hp = hp != data->prev_hp;
@@ -144,7 +133,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
         // Need to read values for initial draw
         lives = ram_peek(0xC0E1);
         hp = ram_peek(0xFFA0);
-        score = get_score(gb);
+        score = script_ram_bcd(0x9C26, 6, 0x50);
 
         playdate->graphics->fillRect(320, 0, 80, 240, kColorWhite);
         playdate->graphics->fillRect(320, 0, 1, 240, kColorBlack);

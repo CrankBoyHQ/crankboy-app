@@ -10,12 +10,75 @@
 uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr);
 void __gb_write_full(gb_s* gb, const uint_fast16_t addr, uint8_t);
 
+preference_t script_pref_original[PREFI_COUNT];
+preferences_bitfield_t script_pref_original_mask;
+
+void script_pref_restore_originals(void)
+{
+    int i = 0;
+#define PREF(x, ...)                                                  \
+    if (script_pref_original_mask & ((preferences_bitfield_t)1 << i)) \
+        preferences_##x = script_pref_original[i];                    \
+    ++i;
+#include "prefs.x"
+    script_pref_original_mask = 0;
+}
+
+CB_CrankSelector* script_selector(void)
+{
+    return &((CB_GameSceneContext*)script_gb->direct.priv)->scene->selector;
+}
+
 u8 rom_peek(romaddr_t addr)
 {
     return GB->gb_rom[addr];
 }
+
+#define SCRIPT_MAX_PATCH_RECORDS 128
+
+typedef struct ScriptPatchRecord
+{
+    uint32_t addr;
+    uint8_t orig;
+} ScriptPatchRecord;
+
+static ScriptPatchRecord s_patches[SCRIPT_MAX_PATCH_RECORDS];
+static int s_patch_count = 0;
+
+void script_patch_record_reset(void)
+{
+    s_patch_count = 0;
+}
+
+void script_patch_restore(void)
+{
+    for (int i = 0; i < s_patch_count; i++)
+    {
+        GB->gb_rom[s_patches[i].addr] = s_patches[i].orig;
+    }
+    s_patch_count = 0;
+}
+
 void rom_poke(romaddr_t addr, u8 v)
 {
+    if (s_patch_count < SCRIPT_MAX_PATCH_RECORDS)
+    {
+        bool known = false;
+        for (int i = 0; i < s_patch_count; i++)
+        {
+            if (s_patches[i].addr == addr)
+            {
+                known = true;
+                break;
+            }
+        }
+        if (!known)
+        {
+            s_patches[s_patch_count].addr = addr;
+            s_patches[s_patch_count].orig = GB->gb_rom[addr];
+            s_patch_count++;
+        }
+    }
     GB->gb_rom[addr] = v;
 }
 
@@ -26,6 +89,17 @@ u8 ram_peek(addr16_t addr)
 void ram_poke(addr16_t addr, u8 v)
 {
     __gb_write_full(GB, addr, v);
+}
+
+int script_ram_bcd(addr16_t start, int digits, uint8_t ascii_base)
+{
+    int value = 0;
+    for (int i = 0; i < digits; ++i)
+    {
+        value *= 10;
+        value += (ram_peek(start + i) - ascii_base) % 10;
+    }
+    return value;
 }
 u16 ram_peek_u16(addr16_t addr)
 {
@@ -41,12 +115,14 @@ void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val)
 {
     u32 addr32 = (bank * 0x4000) | (addr % 0x4000);
     u8 actual = rom_peek(addr32);
-    if (actual != prev)
+    // Tolerate already-patched bytes (actual == val) so a script can be
+    // re-enabled mid-session without tripping the wrong-ROM error.
+    if (actual != prev && actual != val)
     {
         playdate->system->error(
             "SCRIPT ERROR -- is this the right ROM? Poke_verify failed at %x:%04x (%04x); expected "
-            "%02x, but was %02x (should replace with %02x)",
-            bank, addr, addr32, prev, actual, val
+            "%02x or %02x, but was %02x (should replace with %02x)",
+            bank, addr, addr32, prev, val, actual, val
         );
     }
 
@@ -153,6 +229,84 @@ void script_draw_string12(
     {
         int c = s[i] - char_offset;
         script_draw_tiles12(tiles12, lcd, rowbytes, c, x + i * 12, y);
+    }
+}
+
+LCDColor script_tile_pixel_color(uint8_t lo, uint8_t hi, int bit)
+{
+    static const LCDColor pal[4] = {
+        kColorWhite,
+        (LCDColor)&lcdp_75,
+        (LCDColor)&lcdp_50,
+        kColorBlack,
+    };
+    return pal[((hi >> bit) & 1) << 1 | ((lo >> bit) & 1)];
+}
+
+uint16_t script_vram_tile_addr(int tile_idx, bool unsigned_addr)
+{
+    if (unsigned_addr)
+        return ((uint16_t)tile_idx * 16) & 0x1FFF;
+    else
+        return (0x1000 + ((int8_t)tile_idx) * 16) & 0x1FFF;
+}
+
+void script_draw_vram_tile_fixed(
+    gb_s* gb, int vram_offset, int dst_x, int dst_y, int scale_x, int scale_y, bool flip_x,
+    bool flip_y, bool rotate90
+)
+{
+    uint8_t* tile = &gb->vram[vram_offset];
+
+    for (int dy = 0; dy < 8; ++dy)
+    {
+        int dx = 0;
+        while (dx < 8)
+        {
+            int sx = rotate90 ? (7 - dy) : dx;
+            int sy = rotate90 ? dx : dy;
+            if (flip_x)
+                sx = 7 - sx;
+            if (flip_y)
+                sy = 7 - sy;
+            uint8_t lo = tile[2 * sy + 0];
+            uint8_t hi = tile[2 * sy + 1];
+            LCDColor c = script_tile_pixel_color(lo, hi, 7 - sx);
+
+            int run = 1;
+            while (dx + run < 8)
+            {
+                int sx2 = rotate90 ? (7 - dy) : (dx + run);
+                int sy2 = rotate90 ? (dx + run) : dy;
+                if (flip_x)
+                    sx2 = 7 - sx2;
+                if (flip_y)
+                    sy2 = 7 - sy2;
+                uint8_t lo2 = tile[2 * sy2 + 0];
+                uint8_t hi2 = tile[2 * sy2 + 1];
+                if (script_tile_pixel_color(lo2, hi2, 7 - sx2) != c)
+                    break;
+                run++;
+            }
+
+            playdate->graphics->fillRect(
+                dst_x + dx * scale_x, dst_y + dy * scale_y, run * scale_x, scale_y, c
+            );
+            dx += run;
+        }
+    }
+}
+
+void script_draw_bcd12(
+    uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int bcd, int digits, int x, int y
+)
+{
+    while (digits > 0)
+    {
+        --digits;
+        int v = (bcd >> (digits * 4)) & 0xF;
+        script_draw_tiles12(tiles12, lcd, rowbytes, v, x, y);
+        x += 12;
     }
 }
 

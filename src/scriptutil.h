@@ -3,6 +3,7 @@
 // convenient import for scripts
 
 #include "../libs/peanut_gb.h"
+#include "scenes/game_scene.h"
 #include "script.h"
 
 typedef uint32_t romaddr_t;
@@ -10,6 +11,10 @@ typedef u16 addr16_t;
 
 extern gb_s* script_gb;
 extern bool suppress_gb_frame;
+
+// Locate the on-screen Start/Select selector so scripts can move it. The
+// framework re-inits it to its default position when the script is disabled.
+CB_CrankSelector* script_selector(void);
 
 extern int audio_enabled;
 
@@ -21,10 +26,15 @@ void ram_poke(addr16_t addr, u8 v);
 
 u16 ram_peek_u16(addr16_t addr);
 
+// Read `digits` ASCII-BCD bytes at `start` (RAM) into an int. `ascii_base`
+// is the byte value for digit 0 (commonly 0x50 or 0x30).
+int script_ram_bcd(addr16_t start, int digits, uint8_t ascii_base);
+
 void script_save_to_disk(const char* data, size_t size, unsigned fidx);
 char* script_load_from_disk(unsigned fidx, size_t* o_size);
 
 // returns number of tiles loaded
+// 12x12 px tiles: each stored as 12 rows of uint16_t (12 bits used).
 int script_load_tiles12(const char* path, uint16_t (*out)[12], int max_tiles);
 void script_draw_tiles12(
     uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int idx, int x, int y
@@ -34,13 +44,48 @@ void script_draw_string12(
     int y
 );
 
+// Fixed-palette color (White / 75% / 50% / Black) for a VRAM tile's 2-bit
+// pixel, ignoring dither prefs (sidebars want consistent dither).
+LCDColor script_tile_pixel_color(uint8_t lo, uint8_t hi, int bit);
+
+// Resolve a BG/WIN tile-map byte to the VRAM offset of that tile's pixel
+// data (16 bytes per tile; offset & 0x1FFF, so 0 = 0x8000). The offset lets
+// scripts read, checksum, or draw a tile elsewhere (e.g. a sidebar HUD).
+//   unsigned_addr: byte as index 0-255 (8000-mode).
+//   else: byte as a signed index -128..127, base 0x1000 (0x9000 layout,
+//   per the original wh2jet/sf2 code).
+uint16_t script_vram_tile_addr(int tile_idx, bool unsigned_addr);
+
+// Draw an 8x8 VRAM tile with the fixed 4-shade palette. Run-length filled;
+// supports flip_x/flip_y, 90° CW rotation, per-axis scale. Output-identical
+// to a per-pixel version (RLE is purely a fillRect-count optimization).
+void script_draw_vram_tile_fixed(
+    gb_s* gb, int vram_offset, int dst_x, int dst_y, int scale_x, int scale_y, bool flip_x,
+    bool flip_y, bool rotate90
+);
+
+// Draw a BCD number as 12x12 tiles.
+void script_draw_bcd12(
+    uint16_t (*tiles12)[12], uint8_t* lcd, int rowbytes, int bcd, int digits, int x, int y
+);
+
+// Values prefs had before the script forced them, recorded on first force
+// so a mid-session script disable can restore them.
+extern preference_t script_pref_original[PREFI_COUNT];
+extern preferences_bitfield_t script_pref_original_mask;
+
 romaddr_t rom_size(void);
 
-#define force_pref(pref, val)                     \
-    do                                            \
-    {                                             \
-        preferences_##pref = (val);               \
-        prefs_locked_by_script |= PREFBIT_##pref; \
+#define force_pref(pref, val)                                        \
+    do                                                               \
+    {                                                                \
+        if (!(prefs_locked_by_script & PREFBIT_##pref))              \
+        {                                                            \
+            script_pref_original[PREFI_##pref] = preferences_##pref; \
+            script_pref_original_mask |= PREFBIT_##pref;             \
+        }                                                            \
+        preferences_##pref = (val);                                  \
+        prefs_locked_by_script |= PREFBIT_##pref;                    \
     } while (0)
 
 void poke_verify(unsigned bank, u16 addr, u8 prev, u8 val);
