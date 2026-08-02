@@ -1070,6 +1070,12 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
         memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
         memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
     }
+    else
+    {
+        // pre_frame snapshot is stale after fast mode (renderer ran in the
+        // callback); invalidate so accurate starts from live chans.
+        audio_reset_replay_state(&context->gb->audio);
+    }
 
     if (preferences_crank_down_action == 0)
     {
@@ -4224,6 +4230,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
                 // muffled/distorted audio after sleep or the system menu.
                 audioGameScene = NULL;
                 CB_reset_audio_sync_state();
+                audio_reset_replay_state(&context->gb->audio);
                 generate_audio_chunk(gameScene, MAX_AUDIO_SAMPLES_PER_CHUNK);
                 s_resync_cooldown = 10;
                 audioGameScene = gameScene;
