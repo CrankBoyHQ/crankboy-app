@@ -403,6 +403,10 @@ intptr_t pgb_draw_reloc_offset = 0;
 void* core_itcm_reloc = NULL;
 intptr_t core_itcm_offset = 0;
 
+// DTCM snapshot of the main pool (gb struct) taken on lock/menu, restored on
+// resume so system writes into DTCM can't corrupt emulator state.
+static struct dtcm_store_t* s_tcm_store = NULL;
+
 extern char __itcm_dmg_start[];
 extern char __itcm_dmg_end[];
 extern char __itcm_cgb_start[];
@@ -416,6 +420,13 @@ extern char __draw_cgb_end[];
 
 __section__(".rare") void tcm_relocate(bool cgb)
 {
+    // Restore the main-pool snapshot (gb struct) taken on lock/menu, if any.
+    if (s_tcm_store)
+    {
+        dtcm_restore(s_tcm_store);
+        s_tcm_store = NULL;
+    }
+
     void* itcm_start = cgb ? &__itcm_cgb_start : &__itcm_dmg_start;
 
     void* itcm_end = cgb ? &__itcm_cgb_end : &__itcm_dmg_end;
@@ -610,6 +621,11 @@ __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
 
     if (pool_keep_end)
         dtcm_pool_release_above(pool_keep_end);
+
+    // Snapshot the main pool (gb struct) so system writes into DTCM while
+    // locked/menu open can't corrupt emulator state; tcm_relocate restores.
+    if (!s_tcm_store)
+        s_tcm_store = dtcm_store();
 
     playdate->system->clearICache();
 }
@@ -903,6 +919,7 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
     pgb_draw_reloc_offset = 0;
+    s_tcm_store = NULL;
 #endif
     dtcm_deinit();
     dtcm_init();
@@ -4667,6 +4684,9 @@ static void CB_GameScene_free(void* object)
 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
+    // Free any outstanding lock snapshot (pool is about to be deinited).
+    cb_free(s_tcm_store);
+    s_tcm_store = NULL;
 #endif
     dtcm_pocket_fill_and_reset();
     dtcm_deinit();
