@@ -2659,7 +2659,6 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
  */
 static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
-    CB_GameScene* gameScene = scene->gameScene;
     bool emucore_mode = cb_settings_emucore_mode(scene);
     scene->rec_entry_index = -1;
 
@@ -2776,12 +2775,14 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         .on_press = NULL
     };
 
-    if (gameScene || scene->emucoreGameScene)
+    if (scene->emucoreGameScene)
     {
+        // external core: itcm setting only takes effect on next load
         section[i].description = itcm_restart_desc;
     }
     else
     {
+        // built-in GB scene: applies immediately on leaving settings
         section[i].description = itcm_base_with_device_desc;
     }
 #endif

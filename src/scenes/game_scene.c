@@ -629,6 +629,28 @@ __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
 
     playdate->system->clearICache();
 }
+
+// Apply the current TCM Mode preference live (settings close): relocate core/
+// draw into TCM if enabled, else switch back to flash and empty pockets.
+__section__(".rare") void tcm_apply(bool cgb)
+{
+    if (!dtcm_enabled())
+        return;
+
+    if (preferences_itcm == 0)
+    {
+        void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
+        core_itcm_offset = 0;
+        pgb_draw_reloc_offset = 0;
+        core_itcm_reloc = itcm_start;
+        dtcm_pocket_fill_and_reset();
+        playdate->system->clearICache();
+    }
+    else
+    {
+        tcm_relocate(cgb);
+    }
+}
 #else
 
 #define ITCM_CORE_FN(fn) fn
@@ -641,6 +663,11 @@ void tcm_clear(bool cgb, void* pool_keep_end)
 {
     (void)cgb;
     (void)pool_keep_end;
+}
+
+void tcm_apply(bool cgb)
+{
+    (void)cgb;
 }
 #endif
 
@@ -1137,6 +1164,11 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     }
 
     playdate->system->setAutoLockDisabled(preferences_disable_autolock);
+
+    // Apply TCM Mode changes live (skipped at boot, where tcm_relocate runs
+    // separately after the gb struct is moved into the DTCM pool).
+    if (gameScene->state == CB_GameSceneStateLoaded)
+        tcm_apply(context->gb->is_cgb_mode);
 }
 
 static void CB_GameScene_selector_init(CB_GameScene* gameScene)
