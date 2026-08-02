@@ -149,10 +149,6 @@ typedef struct CB_GameScene
     uint8_t hold_ab_release_value;  // resolved PREF_BUTTON_ABR_* mapping
     uint8_t hold_ab_release_frames;
 
-    int16_t* audio_temp_left;
-    int16_t* audio_temp_right;
-    size_t audio_temp_capacity;
-
     // time since started or last save/load state
     unsigned playtime;
     // epoch seconds when system menu was opened, 0 if not open

@@ -94,48 +94,51 @@ void CB_reset_audio_sync_state(void)
     g_audio_resync_requested = 0;
 }
 
+/* Render accurate-mode audio straight into the ring buffer at write_pos
+ * (wrap-split), avoiding a temp buffer and a copy. The rendered region is
+ * unpublished until the final write_pos add, so the audio callback thread
+ * never reads it mid-render; lead accounting guarantees we never overwrite
+ * unconsumed samples. Callers are accurate-mode only. */
 static void generate_audio_chunk(CB_GameScene* gameScene, int samples_to_generate)
 {
     if (samples_to_generate <= 0)
         return;
 
-    if (samples_to_generate > (int)gameScene->audio_temp_capacity)
+    if (samples_to_generate > AUDIO_RING_BUFFER_SIZE)
     {
         playdate->system->logToConsole(
-            "Audio chunk request %d exceeds buffer capacity %zu; clamping.", samples_to_generate,
-            gameScene->audio_temp_capacity
+            "Audio chunk request %d exceeds ring capacity; clamping.", samples_to_generate
         );
-        samples_to_generate = (int)gameScene->audio_temp_capacity;
+        samples_to_generate = AUDIO_RING_BUFFER_SIZE;
     }
 
     audio_data* audio = &gameScene->context->gb->audio;
 
-    int16_t* temp_left = gameScene->audio_temp_left;
-    int16_t* temp_right =
-        gameScene->is_stereo ? gameScene->audio_temp_right : gameScene->audio_temp_left;
-
-    size_t bytes_to_zero = (size_t)samples_to_generate * sizeof(int16_t);
-    memset(temp_left, 0, bytes_to_zero);
-    if (gameScene->is_stereo)
-        memset(temp_right, 0, bytes_to_zero);
-
-    if (preferences_sound_mode == 2)
-        audio_generate_accurate(audio, temp_left, temp_right, samples_to_generate);
-    else
-    {
-        audio_update_wave(audio, temp_left, temp_right, samples_to_generate);
-        audio_update_square(audio, temp_left, temp_right, 0, samples_to_generate);
-        audio_update_square(audio, temp_left, temp_right, 1, samples_to_generate);
-        audio_update_noise(audio, temp_left, temp_right, samples_to_generate);
-    }
-
     uint32_t write_pos_local = atomic_load(&g_audio_sync_buffer.write_pos);
-    for (int i = 0; i < samples_to_generate; ++i)
+    uint32_t start = write_pos_local & AUDIO_RING_BUFFER_MASK;
+    uint32_t first = AUDIO_RING_BUFFER_SIZE - start;
+    if (first > (uint32_t)samples_to_generate)
+        first = (uint32_t)samples_to_generate;
+
+    int16_t* dst_left = &g_audio_sync_buffer.left[start];
+    int16_t* dst_right = gameScene->is_stereo ? &g_audio_sync_buffer.right[start] : dst_left;
+
+    // Renderers accumulate into the destination: zero the spans first.
+    memset(dst_left, 0, first * sizeof(int16_t));
+    if (gameScene->is_stereo)
+        memset(dst_right, 0, first * sizeof(int16_t));
+    audio_generate_accurate(audio, dst_left, dst_right, first);
+
+    uint32_t rest = (uint32_t)samples_to_generate - first;
+    if (rest)
     {
-        uint32_t current_pos = (write_pos_local + i) & AUDIO_RING_BUFFER_MASK;
-        g_audio_sync_buffer.left[current_pos] = temp_left[i];
+        memset(g_audio_sync_buffer.left, 0, rest * sizeof(int16_t));
         if (gameScene->is_stereo)
-            g_audio_sync_buffer.right[current_pos] = temp_right[i];
+            memset(g_audio_sync_buffer.right, 0, rest * sizeof(int16_t));
+        audio_generate_accurate(
+            audio, g_audio_sync_buffer.left,
+            gameScene->is_stereo ? g_audio_sync_buffer.right : g_audio_sync_buffer.left, rest
+        );
     }
 
     atomic_fetch_add(&g_audio_sync_buffer.write_pos, samples_to_generate);
@@ -788,10 +791,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     gameScene->button_hold_mode = 1;  // None
     gameScene->button_hold_frames_remaining = 0;
     gameScene->prev_joypad = 0xFF;
-
-    gameScene->audio_temp_capacity = MAX_AUDIO_SAMPLES_PER_CHUNK;
-    gameScene->audio_temp_left = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
-    gameScene->audio_temp_right = cb_calloc(gameScene->audio_temp_capacity, sizeof(int16_t));
 
     gameScene->crank_turbo_accumulator = 0.0f;
     gameScene->crank_turbo_a_active = false;
@@ -4606,9 +4605,6 @@ static void CB_GameScene_free(void* object)
         script_end(gameScene->script, gameScene);
         gameScene->script = NULL;
     }
-
-    cb_free(gameScene->audio_temp_left);
-    cb_free(gameScene->audio_temp_right);
 
     rewind_free(gameScene);
 
