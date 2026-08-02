@@ -5997,48 +5997,6 @@ void gb_step_cpu(gb_s* gb)
 
 typedef typeof(playdate->graphics->markUpdatedRows) markUpdateRows_t;
 
-__shell clalign void gb_fast_memcpy_64(void* restrict _dst, const void* restrict _src, size_t len)
-{
-    CB_ASSERT((len & 7) == 0);
-
-#if TARGET_PLAYDATE
-    uint8_t* dst8 = (uint8_t*)_dst;
-    const uint8_t* src8 = (const uint8_t*)_src;
-
-    while (len >= 16)
-    {
-        asm volatile(
-            "ldmia %1!, {r3, r4, r5, r6} \n"
-            "stmia %0!, {r3, r4, r5, r6} \n"
-            : "+r"(dst8), "+r"(src8)
-            :
-            : "r3", "r4", "r5", "r6", "memory"
-        );
-        len -= 16;
-    }
-
-    if (len > 0)
-    {
-        *(uint64_t*)dst8 = *(const uint64_t*)src8;
-    }
-
-#else
-    if ((((uintptr_t)_dst | (uintptr_t)_src) & 7) != 0)
-    {
-        memcpy(_dst, _src, len);
-        return;
-    }
-
-    const uint64_t* src = (const uint64_t*)_src;
-    uint64_t* dst = (uint64_t*)_dst;
-
-    for (size_t n = len >> 3; n; --n)
-    {
-        *dst++ = *src++;
-    }
-#endif
-}
-
 __shell void update_fb_dirty_lines(
     uint8_t* restrict framebuffer, uint8_t* restrict lcd,
     const uint16_t* restrict line_changed_flags, markUpdateRows_t markUpdatedRows, int scy,
