@@ -1168,6 +1168,10 @@ void CB_GameScene_apply_script_support(CB_GameScene* gameScene)
         // (deterministic; scripts move it via script_selector()).
         CB_GameScene_selector_init(gameScene);
         gameScene->staticSelectorUIDrawn = false;
+
+        // Drop script-added Playdate menu entries now; next menu open
+        // rebuilds the full list from scratch.
+        playdate->system->removeAllMenuItems();
     }
 }
 

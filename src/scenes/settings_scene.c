@@ -3896,6 +3896,12 @@ static void CB_SettingsScene_free(void* object)
     if (settingsScene->gradient)
         playdate->graphics->freeBitmap(settingsScene->gradient);
 
+    // Reset script-added custom settings state (names/descriptions/options)
+    // now that the settings section referencing them is freed. build_script
+    // repopulates fresh on the next open; this also clears it when a script
+    // is disabled mid-session.
+    clear_script_settings();
+
     CB_Scene_free(settingsScene->scene);
     cb_free(settingsScene);
     DTCM_VERIFY();

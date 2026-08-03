@@ -17,9 +17,10 @@ on_begin/on_end may run more than once per game. Keep them togglable:
 - on_begin may start mid-game: don't assume boot-time state; ROM patches
   are safe to run more than once (poke_verify tolerates already-patched bytes).
 - on_end should undo what the script changed. The framework auto-resets the
-  screen layout, restores force_pref'd prefs reverts ROM patches and re-inits
-  the Start/Select selector (move it via script_selector()); the script only
-  needs to clean up any other gameScene fields it changed.
+  screen layout, restores force_pref'd prefs, reverts ROM patches, re-inits
+  the Start/Select selector (move it via script_selector()), and clears
+  script-added Playdate menu entries + custom settings; the script only needs
+  to clean up any other gameScene fields it changed.
 - userdata is fresh per enable; state does not survive a disable/enable.
 
 */
