@@ -39,6 +39,19 @@ extern uint8_t cgb_gray_lum_min;
 extern uint8_t cgb_gray_lum_max;
 extern int8_t cgb_gray_bias;
 
+/* When set (Auto or Contrast gray mode), the render hooks count per-frame
+ * pixel usage so the frontend can build a luminance histogram. */
+extern bool cgb_hist_active;
+
+/* When set (Contrast gray mode), __cgb_scan_luminance_range is skipped: the
+ * frontend supplies the gray range directly. */
+extern bool cgb_contrast_active;
+
+/* Contrast gray mode: direct gray thresholds (T1 white .. T3 black) from the
+ * frame luminance histogram; the stage-2 blend pass offsets them by delta. */
+extern uint16_t cgb_thresh[3];
+extern uint16_t cgb_thresh_delta;
+
 #include <stddef.h> /* Required for offsetof */
 #include <stdint.h> /* Required for int types */
 #include <stdlib.h> /* Required for abort */
@@ -786,14 +799,38 @@ static uint8_t pgb_obj_blend_pal[2][8];
  * load, bias change). Gates the per-frame gray/blend LUT rebuild. */
 static bool pgb_cgb_lut_dirty;
 
+/* Per-palette color luminance (RGB -> sum), used by the usage-histogram
+ * (Auto/Contrast gray mode) render hooks in the core. */
+static uint8_t cgb_bg_lum_sum[8][4];
+static uint8_t cgb_obj_lum_sum[8][4];
+
+/* Per-palette 4-pixel pattern -> packed luminance bins (6 bits each), used by
+ * the frontend to expand per-frame usage counts into a histogram. Built when
+ * a palette's gray mapping is rebuilt. */
+static uint32_t cgb_bg_patbin[8][256];
+
 __section__(".rare") static uint8_t __cgb_gray_from_sum(uint16_t sum)
 {
+    if (cgb_contrast_active)
+    {
+        // Contrast mode: direct thresholds from the frame histogram.
+        const uint16_t d = (cgb_blend_stage == 2) ? cgb_thresh_delta : 0;
+        if (sum >= cgb_thresh[0] + d)
+            return 0;
+        if (sum >= cgb_thresh[1] + d)
+            return 1;
+        if (sum >= cgb_thresh[2] + d)
+            return 2;
+        return 3;
+    }
+
     uint16_t range = (uint16_t)cgb_gray_lum_max - (uint16_t)cgb_gray_lum_min;
     if (range == 0)
         range = 1;
     uint16_t base = (uint16_t)cgb_gray_lum_min;
     int8_t b = cgb_gray_bias;
 
+    // Thresholds in eighths of the range: bias shifts by range/8 per step.
     switch (cgb_blend_stage)
     {
     case 1:
@@ -845,6 +882,7 @@ __section__(".rare") static void __cgb_update_bg_gray_palette(
     gb_s* gb, uint8_t pal_idx, int lut_offset
 )
 {
+    const bool hist = (preferences_cgb_bias_auto != 0);
     uint8_t pal = 0;
     for (int c = 0; c < 4; c++)
     {
@@ -855,16 +893,35 @@ __section__(".rare") static void __cgb_update_bg_gray_palette(
         uint8_t b = (hi >> 2) & 0x1F;
         uint16_t sum = (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
         uint8_t gray = __cgb_gray_from_sum(sum);
+        if (hist)
+            cgb_bg_lum_sum[pal_idx][c] = (uint8_t)sum;
         pal |= (uint8_t)(gray << (2 * c));
     }
     gb->cgb_bg_palette_gray[pal_idx] = pal;
     __cgb_build_remap_lut(gb->cgb_bg_palette + 64 + (pal_idx + lut_offset) * 256, pal);
+
+    if (hist)
+    {
+        // Pack per-pattern luminance bins (6 bits each) for the usage
+        // expansion: color_i = (lo_i) | (hi_i << 1), raw = lo | (hi << 4).
+        for (int raw = 0; raw < 256; raw++)
+        {
+            uint32_t v = 0;
+            for (int i = 0; i < 4; i++)
+            {
+                uint8_t color = ((raw >> i) & 1) | ((((raw >> (4 + i)) & 1)) << 1);
+                v |= (uint32_t)(cgb_bg_lum_sum[pal_idx][color] >> 2) << (6 * i);
+            }
+            cgb_bg_patbin[pal_idx][raw] = v;
+        }
+    }
 }
 
 __section__(".rare") static void __cgb_update_obj_gray_palette(
     gb_s* gb, uint8_t pal_idx, uint8_t* target
 )
 {
+    const bool hist = (preferences_cgb_bias_auto != 0);
     uint8_t pal = 0;
     for (int c = 0; c < 4; c++)
     {
@@ -875,6 +932,8 @@ __section__(".rare") static void __cgb_update_obj_gray_palette(
         uint8_t b = (hi >> 2) & 0x1F;
         uint16_t sum = (uint16_t)((231 * (uint16_t)r + 450 * (uint16_t)g + 87 * (uint16_t)b) >> 8);
         uint8_t gray = __cgb_gray_from_sum(sum);
+        if (hist)
+            cgb_obj_lum_sum[pal_idx][c] = (uint8_t)sum;
         pal |= (uint8_t)(gray << (2 * c));
     }
     target[pal_idx] = pal;
@@ -924,6 +983,9 @@ __section__(".rare") static void __cgb_build_blend_luts(gb_s* gb)
 
 __section__(".rare") static void __cgb_scan_luminance_range(gb_s* gb)
 {
+    if (cgb_contrast_active)
+        return;
+
     uint8_t min_lum = 255;
     uint8_t max_lum = 0;
 

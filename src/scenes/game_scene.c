@@ -243,6 +243,40 @@ uint8_t cgb_gray_lum_min = 0;
 uint8_t cgb_gray_lum_max = 93;
 int8_t cgb_gray_bias = 0;
 
+/* --- Usage histogram (Auto/Contrast gray modes) ---
+ * Core render hooks count per-palette BG 4-pixel patterns and OBJ colors;
+ * cgb_hist_build() expands them into a 64-bin luminance histogram
+ * (bin = lum_sum >> 2). Hooks run while preferences_cgb_bias_auto != 0. */
+bool cgb_hist_active;
+bool cgb_contrast_active;
+
+/* --- Auto gray mode ---
+ * Scores the Dark/Neutral/Bright presets (bias -1/0/+1) against the frame's
+ * luminance histogram and applies the best. Score = mid-shade mass: pixels
+ * between the black and white thresholds survive as dithered grays, pixels
+ * beyond them clip. Guards: flat scenes and naturally posterized (b/w)
+ * content force Neutral. Hysteresis + hold-down prevent flicker. */
+#define CGB_AUTO_FLAT_SPREAD 16     // P5..P95 lum spread below this -> Neutral
+#define CGB_AUTO_BW_MID_PERCENT 15  // mid mass below this for all presets -> Neutral
+#define CGB_AUTO_MARGIN_PERCENT 10  // relative mid-mass win required to switch
+#define CGB_AUTO_HOLDDOWN 20        // frames between bias switches
+static int8_t cgb_auto_bias;
+static uint8_t cgb_auto_holddown;
+static uint8_t cgb_auto_prev_enabled;
+
+/* Contrast mode: gray thresholds from the frame's luminance percentiles
+ * (T1=P75, T2=P50, T3=P25 -> ~25% of pixels per shade = max dither detail).
+ * The stage-2 blend pass offsets them by (P95-P5)/8. Flat or naturally
+ * posterized (b/w) scenes fall back to linear Neutral over the palette
+ * range (schmitt-triggered). Per-threshold deadband prevents flicker. */
+#define CGB_CONTRAST_FLAT_SPREAD 16  // P5..P95 lum spread below this -> fallback
+#define CGB_CONTRAST_BW_ENTER 85     // top-2 lum bins hold this % of pixels -> fallback
+#define CGB_CONTRAST_BW_EXIT 75      // top-2 share below this -> equalize
+#define CGB_CONTRAST_DEADBAND 4      // lum units a threshold must move to apply
+uint16_t cgb_thresh[3] = {3, 2, 1};
+uint16_t cgb_thresh_delta = 1;
+static bool cgb_contrast_fallback;
+
 static uint8_t* rom_pool = NULL;
 static size_t rom_pool_size = 0;
 
@@ -315,6 +349,254 @@ __section__(".rare") static void generate_dither_luts(void)
 // forces screen refresh
 bool game_menu_button_input_enabled;
 
+__section__(".rare") static void cgb_hist_build(uint32_t hist[64])
+{
+    // Expand per-frame usage counts into a luminance histogram.
+    memset(hist, 0, 64 * sizeof(uint32_t));
+    for (int pal = 0; pal < 8; pal++)
+    {
+        const uint16_t* u = cgb_bg_usage[pal];
+        const uint32_t* pb = cgb_bg_patbin[pal];
+        for (int raw = 0; raw < 256; raw++)
+        {
+            uint16_t n = u[raw];
+            if (n)
+            {
+                uint32_t v = pb[raw];
+                hist[v & 63] += n;
+                hist[(v >> 6) & 63] += n;
+                hist[(v >> 12) & 63] += n;
+                hist[(v >> 18) & 63] += n;
+            }
+        }
+        for (int c = 0; c < 4; c++)
+        {
+            uint16_t n = cgb_obj_usage[pal][c];
+            if (n)
+                hist[cgb_obj_lum_sum[pal][c] >> 2] += n;
+        }
+    }
+}
+
+// Auto: score each preset (Dark/Neutral/Bright) by how many pixels land in
+// the dithered mid shades, then apply the winner with hysteresis.
+__section__(".rare") static void cgb_auto_update(void)
+{
+    uint32_t hist[64];
+    cgb_hist_build(hist);
+
+    uint32_t total = 0;
+    for (int i = 0; i < 64; i++)
+        total += hist[i];
+    if (total == 0)
+        return;
+
+    // P5..P95 spread, for the flat-scene guard.
+    const uint32_t lo_cut = total / 20;
+    const uint32_t hi_cut = total - lo_cut;
+    uint32_t acc = 0;
+    uint8_t lo = 0, hi = 0;
+    bool lo_set = false;
+    for (int i = 0; i < 64; i++)
+    {
+        acc += hist[i];
+        if (!lo_set && acc >= lo_cut)
+        {
+            lo = (uint8_t)(i * 4);
+            lo_set = true;
+        }
+        if (acc >= hi_cut)
+        {
+            hi = (uint8_t)(i * 4);
+            break;
+        }
+    }
+    const bool flat = ((uint8_t)(hi - lo) < CGB_AUTO_FLAT_SPREAD);
+
+    // Mid-shade mass per preset: pixels between the stage-1 black threshold
+    // (T3) and white threshold (T1) survive as dithered grays; the rest clip.
+    const uint16_t base = cgb_gray_lum_min;
+    uint16_t range = (uint16_t)cgb_gray_lum_max - base;
+    if (range == 0)
+        range = 1;
+    uint32_t mid[3];
+    bool any_usable = false;
+    for (int k = 0; k < 3; k++)
+    {
+        const int b = k - 1;
+        const uint16_t t1 = base + ((range * (6 - b)) >> 3);
+        const uint16_t t3 = base + ((range * (2 - b)) >> 3);
+        uint32_t m = 0;
+        for (int i = 0; i < 64; i++)
+        {
+            const uint16_t lum = (uint16_t)(i * 4);
+            if (lum < t1 && lum + 3 >= t3)
+                m += hist[i];
+        }
+        mid[k] = m;
+        if (m * 100 >= total * CGB_AUTO_BW_MID_PERCENT)
+            any_usable = true;
+    }
+
+    const int cur = cgb_auto_bias + 1;
+    int want;
+    if (flat || !any_usable)
+    {
+        // Flat or naturally posterized (b/w) content: leave it alone.
+        want = 1;  // Neutral
+    }
+    else
+    {
+        // Argmax mid mass; ties prefer the current bias, then Neutral.
+        int order[3];
+        order[0] = cur;
+        order[1] = (cur == 1) ? 0 : 1;
+        order[2] = (cur == 2) ? 0 : 2;
+        want = order[0];
+        if (mid[order[1]] > mid[want])
+            want = order[1];
+        if (mid[order[2]] > mid[want])
+            want = order[2];
+    }
+
+    if (cgb_auto_holddown)
+        cgb_auto_holddown--;
+
+    if (want != cur && cgb_auto_holddown == 0 &&
+        mid[want] > mid[cur] + (total * CGB_AUTO_MARGIN_PERCENT) / 100)
+    {
+        cgb_auto_bias = (int8_t)(want - 1);
+        cgb_auto_holddown = CGB_AUTO_HOLDDOWN;
+    }
+}
+
+// Palette luminance range over all 64 BG+OBJ colors. Reuses the core scan
+// (temporarily un-skipping it); safe: lum_min/max are unused in Contrast.
+__section__(".rare") static void cgb_palette_lum_range(gb_s* gb, uint8_t* omin, uint8_t* omax)
+{
+    const bool saved = cgb_contrast_active;
+    cgb_contrast_active = false;
+    __cgb_scan_luminance_range(gb);
+    cgb_contrast_active = saved;
+    *omin = cgb_gray_lum_min;
+    *omax = cgb_gray_lum_max;
+}
+
+// Contrast: thresholds = P75/P50/P25 of the frame's luminance histogram, so
+// each shade gets ~25% of the pixels (histogram equalization to 4 shades).
+// Flat or naturally posterized content falls back to linear Neutral.
+__section__(".rare") static void cgb_auto_contrast_update(gb_s* gb)
+{
+    uint32_t hist[64];
+    cgb_hist_build(hist);
+
+    uint32_t total = 0;
+    for (int i = 0; i < 64; i++)
+        total += hist[i];
+    if (total == 0)
+        return;
+
+    // Percentiles P5/P25/P50/P75/P95 in one accumulation pass.
+    const uint32_t cut[5] = {
+        total * 5 / 100, total * 25 / 100, total * 50 / 100, total * 75 / 100, total * 95 / 100
+    };
+    uint8_t pct[5] = {0, 0, 0, 0, 0};
+    uint32_t acc = 0;
+    int ci = 0;
+    for (int i = 0; i < 64 && ci < 5; i++)
+    {
+        acc += hist[i];
+        while (ci < 5 && acc >= cut[ci])
+            pct[ci++] = (uint8_t)(i * 4);
+    }
+    const uint16_t spread = (uint16_t)(pct[4] - pct[0]);
+
+    // Fallback reference: linear Neutral thresholds over the palette range.
+    uint8_t pal_min, pal_max;
+    cgb_palette_lum_range(gb, &pal_min, &pal_max);
+    uint16_t pal_range = (uint16_t)pal_max - pal_min;
+    if (pal_range == 0)
+        pal_range = 1;
+    const uint16_t lin_t1 = pal_min + ((pal_range * 6) >> 3);
+    const uint16_t lin_t2 = pal_min + ((pal_range * 4) >> 3);
+    const uint16_t lin_t3 = pal_min + ((pal_range * 2) >> 3);
+
+    // b/w guard: two-spike (posterized) content. Pure b/w has its pixels in
+    // two luminance spikes; equalizing would wash them into two grays. A
+    // dark or bright scene with real detail is a broad cluster and passes.
+    uint32_t top1 = 0, top2 = 0;
+    for (int i = 0; i < 64; i++)
+    {
+        if (hist[i] >= top1)
+        {
+            top2 = top1;
+            top1 = hist[i];
+        }
+        else if (hist[i] > top2)
+        {
+            top2 = hist[i];
+        }
+    }
+    const uint32_t top2_pct = (top1 + top2) * 100 / total;
+
+    const bool was_fallback = cgb_contrast_fallback;
+    if (cgb_contrast_fallback)
+    {
+        if (spread >= CGB_CONTRAST_FLAT_SPREAD && top2_pct < CGB_CONTRAST_BW_EXIT)
+            cgb_contrast_fallback = false;
+    }
+    else if (spread < CGB_CONTRAST_FLAT_SPREAD || top2_pct >= CGB_CONTRAST_BW_ENTER)
+    {
+        cgb_contrast_fallback = true;
+    }
+
+    uint16_t t1, t2, t3, delta;
+    if (cgb_contrast_fallback)
+    {
+        t1 = lin_t1;
+        t2 = lin_t2;
+        t3 = lin_t3;
+        delta = pal_range >> 3;
+    }
+    else
+    {
+        t1 = pct[3];  // P75
+        t2 = pct[2];  // P50
+        t3 = pct[1];  // P25
+        delta = spread >> 3;
+    }
+
+    if (was_fallback != cgb_contrast_fallback)
+    {
+        // Guard flip: apply immediately, skip deadband.
+        cgb_thresh[0] = t1;
+        cgb_thresh[1] = t2;
+        cgb_thresh[2] = t3;
+        cgb_thresh_delta = delta;
+        pgb_cgb_lut_dirty = true;
+        return;
+    }
+
+    // Deadband per threshold; any accepted change triggers a LUT rebuild.
+    const uint16_t nt[3] = {t1, t2, t3};
+    bool changed = false;
+    for (int k = 0; k < 3; k++)
+    {
+        int d = (int)nt[k] - (int)cgb_thresh[k];
+        if (d < 0)
+            d = -d;
+        if (d >= CGB_CONTRAST_DEADBAND)
+        {
+            cgb_thresh[k] = nt[k];
+            changed = true;
+        }
+    }
+    if (changed)
+    {
+        cgb_thresh_delta = delta;
+        pgb_cgb_lut_dirty = true;
+    }
+}
 static uint8_t CB_bitmask[4][4][4];
 static bool CB_GameScene_bitmask_done = false;
 
@@ -2005,6 +2287,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         gb_recompute_cgb_gray_palettes(context->gb);
         gameScene->cgb_needs_palette_recompute = false;
         pgb_cgb_lut_dirty = true;
+        // New game / state load: reseed Auto bias from the manual preset.
+        cgb_auto_prev_enabled = 0;
     }
 
     CB_Scene_update(gameScene->scene, dt);
@@ -2542,7 +2826,54 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 if (context->gb->is_cgb_mode)
                 {
                     // --- CGB Dual-Output Blending ---
-                    cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
+                    if (preferences_cgb_bias_auto == 2)
+                    {
+                        // Contrast: per-scene percentile thresholds.
+                        cgb_gray_bias = 0;
+                        if (cgb_auto_prev_enabled != 2)
+                        {
+                            // Freshly enabled: start from linear Neutral over
+                            // the palette range; the first post-render update
+                            // refines from the frame histogram.
+                            uint8_t pal_min, pal_max;
+                            cgb_palette_lum_range(context->gb, &pal_min, &pal_max);
+                            uint16_t pal_range = (uint16_t)pal_max - pal_min;
+                            if (pal_range == 0)
+                                pal_range = 1;
+                            cgb_thresh[0] = pal_min + ((pal_range * 6) >> 3);
+                            cgb_thresh[1] = pal_min + ((pal_range * 4) >> 3);
+                            cgb_thresh[2] = pal_min + ((pal_range * 2) >> 3);
+                            cgb_thresh_delta = pal_range >> 3;
+                            cgb_contrast_fallback = false;
+                        }
+                        cgb_contrast_active = 1;
+                    }
+                    else if (preferences_cgb_bias_auto == 1)
+                    {
+                        if (cgb_auto_prev_enabled != 1)
+                        {
+                            // Freshly enabled: seed from manual so there's no
+                            // abrupt bias jump on toggle.
+                            cgb_auto_bias = (int8_t)preferences_cgb_blend_bias - 2;
+                            if (cgb_auto_bias > 1)
+                                cgb_auto_bias = 1;
+                            if (cgb_auto_bias < -1)
+                                cgb_auto_bias = -1;
+                            cgb_auto_holddown = 0;
+                        }
+                        cgb_gray_bias = cgb_auto_bias;
+                        cgb_contrast_active = 0;
+                    }
+                    else
+                    {
+                        cgb_gray_bias = (int8_t)preferences_cgb_blend_bias - 2;
+                        cgb_contrast_active = 0;
+                    }
+                    cgb_hist_active = (preferences_cgb_bias_auto != 0);
+                    if (preferences_cgb_bias_auto != cgb_auto_prev_enabled)
+                        // Mode toggle: rebuild gray LUTs + histogram tables.
+                        pgb_cgb_lut_dirty = true;
+                    cgb_auto_prev_enabled = preferences_cgb_bias_auto;
                     if (cgb_gray_bias != gameScene->last_cgb_bias)
                     {
                         gameScene->last_cgb_bias = cgb_gray_bias;
@@ -3035,6 +3366,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             uint8_t* dither_lut1 = CB_dither_lut_row1;
             int scy = context->gb->gb_reg.SCY;
             bool stable_scaling_enabled = preferences_dither_stable;
+
+            if (context->gb->is_cgb_mode)
+            {
+                if (preferences_cgb_bias_auto == 2)
+                    cgb_auto_contrast_update(context->gb);
+                else if (preferences_cgb_bias_auto == 1)
+                    cgb_auto_update();
+            }
 
             const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
             if (preferences_dither_stable && scy % scaling != last_scy % scaling)

@@ -471,6 +471,15 @@ static inline int $(compare_sprites)(
 #endif
 }
 
+#if PGB_IS_CGB
+// Usage-histogram (Auto/Contrast gray mode) per-frame counters. The BG
+// hooks count distinct 4-pixel patterns per palette, sprites count
+// (palette,color); the frontend expands these into a luminance histogram
+// post-frame. Reset at LY==0.
+static uint16_t cgb_bg_usage[8][256];
+static uint16_t cgb_obj_usage[8][4];
+#endif
+
 __draw static void $(__gb_draw_line_sprites)(
     gb_s* restrict gb, const uint8_t* oam_src, const uint32_t* line_priority,
 #if PGB_IS_CGB
@@ -623,6 +632,8 @@ __draw static void $(__gb_draw_line_sprites)(
 #endif
                     $(__gb_draw_pixel)(pixels, disp_x, color_value);
 #if PGB_IS_CGB
+                    if (cgb_hist_active)
+                        cgb_obj_usage[OF & OBJ_CGB_PALETTE][c]++;
                     if (pixels_alt)
                     {
                         uint8_t obj_pal_dark = gb->cgb_obj_palette_gray_alt[OF & OBJ_CGB_PALETTE];
@@ -747,6 +758,17 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
     {
         uint16_t vram_tile_data_lo = vram_tile_data_hi;
 
+        if (cgb_hist_active)
+        {
+            // Usage histogram: count this tile's two 4-pixel patterns.
+            // Pattern = lo_half | (hi_half << 4), expanded post-frame.
+            uint8_t lo_byte = (uint8_t)vram_tile_data_lo;
+            uint8_t hi_byte = (uint8_t)(vram_tile_data_lo >> 8);
+            uint16_t* u = cgb_bg_usage[tile_palette_lo & BG_MAP_ATTR_PALETTE];
+            u[(lo_byte & 0x0F) | ((hi_byte & 0x0F) << 4)]++;
+            u[(lo_byte >> 4) | ((hi_byte >> 4) << 4)]++;
+        }
+
         uint8_t tile_palette_hi_val;
         vram_tile_data_hi = __cgb_fetch_tile(
             tile_map, attr_map, tile_data_y, tile_data_y_flipped, (map_x_offset + x + 1) % 32,
@@ -839,6 +861,19 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
     __builtin_prefetch(&gb->gb_reg.WY, 0);
 
     uint8_t* dest_pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
+
+#if PGB_IS_CGB
+    if (cgb_hist_active && gb->gb_reg.LY == 0)
+    {
+        for (int i = 0; i < 8; i++)
+        {
+            for (int j = 0; j < 256; j++)
+                cgb_bg_usage[i][j] = 0;
+            for (int j = 0; j < 4; j++)
+                cgb_obj_usage[i][j] = 0;
+        }
+    }
+#endif
 
     // render line to stack-buffer, then copy to dest
     uint32_t line_stage[LCD_WIDTH_PACKED / 4];

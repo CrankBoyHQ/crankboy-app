@@ -953,6 +953,7 @@ static const char* off_on_labels[] = {"Off", "On"};
 static const char* itcm_labels[] = {"Off", "Full", "Core", "Draw"};
 static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
 static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "Brighter"};
+static const char* cgb_auto_bias_labels[] = {"Manual", "Auto", "Contrast"};
 static const char* audio_output_labels[] = {"Mono", "Stereo"};
 static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
 static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
@@ -2428,11 +2429,30 @@ static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int
     };
 
     section[++i] = (OptionsMenuEntry){
+        .name = "Gray Mode",
+        .values = cgb_auto_bias_labels,
+        .description =
+            "How the CGB grayscale conversion is tuned.\n\n"
+            "Manual: set the grayscale bias yourself.\n\n"
+            "Auto: picks the best of Dark/Neutral/Bright for each scene.\n\n"
+            "Contrast: normalizes contrast to the \"colors\" actually on screen.",
+        .pref_var = &preferences_cgb_bias_auto,
+        .max_value = 3,
+        .rebuild_when_changed = 1,
+    };
+
+    section[++i] = (OptionsMenuEntry){
         .name = "Grayscale Bias",
         .values = cgb_bias_labels,
-        .description = "Shift CGB grayscale conversion toward darker or brighter shades.",
+        .description = (preferences_cgb_bias_auto != 0)
+                           ? "Manually shift CGB grayscale conversion between 5 levels, from "
+                             "darker to brighter shades.\n\n"
+                             "Only available in Manual mode."
+                           : "Manually shift CGB grayscale conversion between 5 levels, from "
+                             "darker to brighter shades.",
         .pref_var = &preferences_cgb_blend_bias,
         .max_value = 5,
+        .locked = (bool)(preferences_cgb_bias_auto != 0),
     };
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);
