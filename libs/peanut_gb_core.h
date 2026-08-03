@@ -651,8 +651,7 @@ __cgb_remap_tile(uint8_t lo_plane, uint8_t hi_plane, const uint8_t* restrict lut
 static inline __attribute__((always_inline)) void __cgb_merge_tiles(
     uint16_t tile_data_lo, uint16_t tile_data_hi, uint16_t pre_remapped_lo, bool has_pre_remapped,
     const uint8_t* restrict lut_lo, const uint8_t* restrict lut_hi, int subx,
-    uint16_t* restrict out, uint8_t* restrict pri, uint16_t* restrict out_rm_hi,
-    uint8_t* restrict out_pri_hi
+    uint16_t* restrict out, uint8_t* restrict pri, uint16_t* restrict out_rm_hi
 )
 {
     uint8_t lo_p = (uint8_t)tile_data_lo;
@@ -662,7 +661,6 @@ static inline __attribute__((always_inline)) void __cgb_merge_tiles(
 
     uint16_t rm_hi = __cgb_remap_tile(lo_hp, hi_hp, lut_hi);
     *out_rm_hi = rm_hi;
-    *out_pri_hi = lo_hp | hi_hp;
 
     uint16_t rm_lo = has_pre_remapped ? pre_remapped_lo : __cgb_remap_tile(lo_p, hi_p, lut_lo);
 
@@ -766,7 +764,6 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
             lut_hi_dark = CGB_LUT_DARK(gb, tile_palette_hi_val);
         uint8_t pri;
         uint16_t rm_hi;
-        uint8_t pri_hi_byte;
         uint16_t bg_pixels = 0;
         uint16_t bg_pixels_alt = 0;
         if (bgmask)
@@ -777,7 +774,7 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         }
         __cgb_merge_tiles(
             vram_tile_data_lo, vram_tile_data_hi, rm_lo, true, lut_lo, lut_hi, merge_subx,
-            (uint16_t*)(pixels + x * 2), &pri, &rm_hi, &pri_hi_byte
+            (uint16_t*)(pixels + x * 2), &pri, &rm_hi
         );
 
         uint16_t rm_hi_dark = 0;
