@@ -727,12 +727,6 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         tiledata_offset, &tile_palette_lo
     );
 
-    if (apply_bgmask)
-    {
-        vram_tile_data_hi &= (0xFFFF) << subx;
-        vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
-    }
-
     const uint8_t* lut_lo = pgb_blend_merged ? CGB_LUT_BLEND(gb, tile_palette_lo, gb->gb_reg.LY)
                                              : CGB_LUT(gb, tile_palette_lo);
     uint8_t lo_p = (uint8_t)vram_tile_data_hi;
@@ -792,8 +786,17 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
                 vram_tile_data_hi, rm_lo_dark, lut_hi_dark, subx, pixels_alt, x, &rm_hi_dark
             );
 
+        uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> merge_subx) : 0;
+        if (pri_hi && merge_subx)
+            pri_mask |= (uint8_t)(0xFF << (8 - merge_subx));
+
         if (bgmask)
         {
+            // blended region shows BG pixels; keep BG's priority bits there
+            uint8_t win_bits = (uint8_t)~bgmask;
+            pri &= win_bits;
+            pri_mask &= win_bits;
+
             uint8_t n_bg = 8 - subx;
             uint8_t mask0_byte = (n_bg >= 4) ? 0xFFu : (uint8_t)((1u << (2 * n_bg)) - 1);
             uint8_t mask2_byte = (n_bg <= 4) ? 0x00u : (uint8_t)((1u << (2 * (n_bg - 4))) - 1);
@@ -813,9 +816,6 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
             bgmask = 0;
         }
 
-        uint8_t pri_mask = pri_lo ? (uint8_t)(0xFF >> merge_subx) : 0;
-        if (pri_hi && merge_subx)
-            pri_mask |= (uint8_t)(0xFF << (8 - merge_subx));
         line_priority[x / 4] &= ~(((uint32_t)pri) << ((x * 8) & 31));
         line_cgb_priority[x / 4] &= ~(((uint32_t)(pri & pri_mask)) << ((x * 8) & 31));
 
@@ -1097,21 +1097,23 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         }
 #endif
 
-#if PGB_IS_DMG
-        unsigned bank_offset = 0;
-        uint8_t tile_hi = vram_line_tiles[0];
-        uint16_t vram_tile_data_hi = vram_tile_data
-            [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
-             (8 * (unsigned)tile_hi)];
-#endif
-
         int subx = bg_x % 8;
 
 #if PGB_IS_DMG
-        // first part of window is obscured
-        vram_tile_data_hi &= (0xFFFF) << subx;
-        vram_tile_data_hi &= 0xFF | ((0xFF00) << subx);
+        // Carry region of first block is always BG-masked, so preload 0
+        // instead of the previous column's tail (also avoids a VRAM fetch).
+        uint16_t vram_tile_data_hi = 0;
+        if (subx == 0)
+        {
+            unsigned bank_offset = 0;
+            uint8_t tile_hi = vram_line_tiles[(window_map_x_offset + wx / 8) % 32];
+            vram_tile_data_hi = vram_tile_data
+                [bank_offset | (tile_hi < 0x80 ? addr_mode_vram_tiledata_offset : 0) |
+                 (8 * (unsigned)tile_hi)];
+        }
+
         uint32_t bgmask = 0xFF >> subx;
+
         if (subx == 0)
             bgmask = 0;
 #endif
@@ -1119,15 +1121,16 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 #if PGB_IS_CGB
         __cgb_draw_tile_strip(
             gb, vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
-            addr_mode_vram_tiledata_offset, window_map_x_offset, wx / 8, LCD_WIDTH / 8, subx, 0,
-            pixels, pixels_alt, line_priority, line_cgb_priority, true
+            addr_mode_vram_tiledata_offset,
+            subx ? (window_map_x_offset + 31) % 32 : window_map_x_offset, wx / 8, LCD_WIDTH / 8,
+            subx, subx, pixels, pixels_alt, line_priority, line_cgb_priority, true
         );
 #else
         for (int x = wx / 8; x < LCD_WIDTH / 8; ++x)
         {
             uint8_t* out = pixels + (x % 2) + (x / 2) * 4;
             uint16_t vram_tile_data_lo = vram_tile_data_hi;
-            uint16_t tile_hi = vram_line_tiles[(window_map_x_offset + x + 1) % 32];
+            uint16_t tile_hi = vram_line_tiles[(window_map_x_offset + x + (subx ? 0 : 1)) % 32];
 
             unsigned bank_offset = 0;
             vram_tile_data_hi = vram_tile_data
@@ -1136,6 +1139,13 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 
             uint8_t raw1 = vram_tile_data_lo & 0x00FF;
             uint8_t raw2 = (uint16_t)vram_tile_data_lo >> 8;
+            if (subx != 0)
+            {
+                raw1 = ((vram_tile_data_lo & 0x00FF) >> subx) |
+                       ((vram_tile_data_hi & 0x00FF) << (8 - subx));
+                raw2 = (((vram_tile_data_lo >> 8) & 0xFF) >> subx) |
+                       (((vram_tile_data_hi >> 8) & 0xFF) << (8 - subx));
+            }
 
             uint32_t combined_mask = 0xFF00FF00 | (bgmask) | (bgmask << 16);
             uint32_t combined_planes = (uint32_t)(raw1) | ((uint32_t)raw2 << 16);
