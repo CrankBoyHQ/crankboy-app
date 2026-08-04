@@ -987,34 +987,6 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 
         int subx = bg_x % 8;
 
-#if 0
-        // prefetch each tile's data
-        for (int x = 0; x <= (wx + 7) / 8; ++x)
-        {
-            uint8_t tile = vram_line_tiles[(bg_x / 8 + x) % 32];
-            unsigned bank_offset = 0;
-            uint16_t* tile_data = vram_tile_data;
-
-#if PGB_IS_CGB
-            uint8_t tile_attributes = vram_line_tile_attrs[(bg_x / 8 + x) % 32];
-            if (tile_attributes & BG_MAP_ATTR_BANK)
-            {
-                bank_offset = VRAM_SIZE / sizeof(uint16_t);
-            }
-            if (tile_attributes & BG_MAP_ATTR_Y_FLIP)
-            {
-                tile_data = vram_tile_data_flipped_y;
-            }
-#endif
-
-            __builtin_prefetch(
-                &tile_data
-                    [bank_offset | (tile < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile)],
-                0
-            );
-        }
-#endif
-
 #if PGB_IS_CGB
         __cgb_draw_tile_strip(
             gb, vram_line_tiles, vram_line_tile_attrs, vram_tile_data, vram_tile_data_flipped_y,
@@ -1070,35 +1042,6 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 
         // points to line data for flipped-y offset
         uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
-#endif
-
-#if 0
-        // prefetch each tile's data
-        for (int x = wx / 8; x <= LCD_WIDTH / 8; ++x)
-        {
-            uint8_t tile = vram_line_tiles[(window_map_x_offset + x) % 32];
-
-            unsigned bank_offset = 0;
-            uint16_t* tile_data = vram_tile_data;
-
-#if PGB_IS_CGB
-            uint8_t tile_attributes = vram_line_tile_attrs[(window_map_x_offset + x) % 32];
-            if (tile_attributes & BG_MAP_ATTR_BANK)
-            {
-                bank_offset = VRAM_SIZE / sizeof(uint16_t);
-            }
-            if (tile_attributes & BG_MAP_ATTR_Y_FLIP)
-            {
-                tile_data = vram_tile_data_flipped_y;
-            }
-#endif
-
-            __builtin_prefetch(
-                &vram_tile_data
-                    [bank_offset | (tile < 0x80 ? addr_mode_vram_tiledata_offset : 0) | (8 * (unsigned)tile)],
-                0
-            );
-        }
 #endif
 
         int subx = bg_x % 8;
