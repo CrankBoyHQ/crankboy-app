@@ -2110,7 +2110,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         .name = "LCD Ghosting",
         .values = off_on_labels,
         .description =
-            "Mimics the DMG LCD's slow pixel response, smearing motion over 100-150 ms.\n\n"
+            "Mimics the DMG LCD's slow pixel response, smearing motion over 100 ms.\n\n"
             "Only available in DMG Mode.",
         .pref_var = &preferences_ghosting,
         .max_value = cgb_active ? 0 : 2,

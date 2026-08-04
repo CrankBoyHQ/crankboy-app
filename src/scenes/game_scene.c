@@ -2062,10 +2062,10 @@ static __section__(".text.tick") void track_changes(
 /* LCD ghosting: 2-bit slew-rate smear emulating the DMG LCD's slow pixel
  * response. ghost holds one packed 2bpp frame; on step frames each pixel
  * moves one shade toward the current frame. A full white-to-black sweep
- * takes 3 steps: 150 ms at 60fps mode, 100 ms at 30fps (see cadence
- * logic at the call site).
+ * takes 3 steps: 100 ms in both modes (see cadence logic at the call
+ * site).
  */
-#define GHOST_STEP_INTERVAL 3
+#define GHOST_STEP_INTERVAL 2
 
 static __section__(".text.tick") void ghost_pass(
     uint8_t* restrict lcd, uint8_t* restrict ghost, uint16_t* restrict dirty_flags, bool do_step,
