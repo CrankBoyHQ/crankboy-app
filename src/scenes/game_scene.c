@@ -277,6 +277,7 @@ static uint8_t cgb_hist_phase;
 uint16_t cgb_thresh[3] = {3, 2, 1};
 uint16_t cgb_thresh_delta = 1;
 static bool cgb_contrast_fallback;
+static bool cgb_contrast_init_pending;
 
 static uint8_t* rom_pool = NULL;
 static size_t rom_pool_size = 0;
@@ -491,6 +492,17 @@ __section__(".rare") static void cgb_palette_lum_range(gb_s* gb, uint8_t* omin, 
     *omax = cgb_gray_lum_max;
 }
 
+__section__(".rare") static void cgb_thresh_apply(
+    uint16_t t1, uint16_t t2, uint16_t t3, uint16_t delta
+)
+{
+    cgb_thresh[0] = t1;
+    cgb_thresh[1] = t2;
+    cgb_thresh[2] = t3;
+    cgb_thresh_delta = delta;
+    pgb_cgb_lut_dirty = true;
+}
+
 // Contrast: thresholds = P75/P50/P25 of the frame's luminance histogram, so
 // each shade gets ~25% of the pixels (histogram equalization to 4 shades).
 // Flat or naturally posterized content falls back to linear Neutral.
@@ -549,7 +561,16 @@ __section__(".rare") static void cgb_auto_contrast_update(gb_s* gb)
     const uint32_t top2_pct = (top1 + top2) * 100 / total;
 
     const bool was_fallback = cgb_contrast_fallback;
-    if (cgb_contrast_fallback)
+    if (cgb_contrast_init_pending)
+    {
+        // Mode entry: no hysteresis yet — pick the branch by midpoint rule
+        // so the entry state matches what steady state would converge to.
+        cgb_contrast_fallback =
+            (spread < CGB_CONTRAST_FLAT_SPREAD ||
+             top2_pct >= (CGB_CONTRAST_BW_ENTER + CGB_CONTRAST_BW_EXIT) / 2);
+        cgb_contrast_init_pending = false;
+    }
+    else if (cgb_contrast_fallback)
     {
         if (spread >= CGB_CONTRAST_FLAT_SPREAD && top2_pct < CGB_CONTRAST_BW_EXIT)
             cgb_contrast_fallback = false;
@@ -577,12 +598,8 @@ __section__(".rare") static void cgb_auto_contrast_update(gb_s* gb)
 
     if (was_fallback != cgb_contrast_fallback)
     {
-        // Guard flip: apply immediately, skip deadband.
-        cgb_thresh[0] = t1;
-        cgb_thresh[1] = t2;
-        cgb_thresh[2] = t3;
-        cgb_thresh_delta = delta;
-        pgb_cgb_lut_dirty = true;
+        // Guard flip or first evaluation: apply immediately, skip deadband.
+        cgb_thresh_apply(t1, t2, t3, delta);
         return;
     }
 
@@ -2853,7 +2870,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                             cgb_thresh[1] = pal_min + ((pal_range * 4) >> 3);
                             cgb_thresh[2] = pal_min + ((pal_range * 2) >> 3);
                             cgb_thresh_delta = pal_range >> 3;
-                            cgb_contrast_fallback = false;
+                            // Derive guard state from the first frame
+                            // histogram, not a forced value.
+                            cgb_contrast_init_pending = true;
                         }
                         cgb_contrast_active = 1;
                     }
