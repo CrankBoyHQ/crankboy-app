@@ -478,6 +478,11 @@ static inline int $(compare_sprites)(
 // post-frame. Reset at LY==0.
 static uint16_t cgb_bg_usage[8][256];
 static uint16_t cgb_obj_usage[8][4];
+
+// Line sampling: count usage on even lines only. The histogram shape is
+// preserved (scenes are vertically coherent); totals halve, which the
+// downstream math absorbs (percentiles/scores are relative).
+#define CGB_HIST_LINE_MASK 1  // 0 = off (every line), 1 = every 2nd, 3 = every 4th
 #endif
 
 __draw static void $(__gb_draw_line_sprites)(
@@ -632,7 +637,7 @@ __draw static void $(__gb_draw_line_sprites)(
 #endif
                     $(__gb_draw_pixel)(pixels, disp_x, color_value);
 #if PGB_IS_CGB
-                    if (cgb_hist_active)
+                    if (cgb_hist_active && !(gb->gb_reg.LY & CGB_HIST_LINE_MASK))
                         cgb_obj_usage[OF & OBJ_CGB_PALETTE][c]++;
                     if (pixels_alt)
                     {
@@ -758,7 +763,7 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
     {
         uint16_t vram_tile_data_lo = vram_tile_data_hi;
 
-        if (cgb_hist_active)
+        if (cgb_hist_active && !(gb->gb_reg.LY & CGB_HIST_LINE_MASK))
         {
             // Usage histogram: count this tile's two 4-pixel patterns.
             // Pattern = lo_half | (hi_half << 4), expanded post-frame.
