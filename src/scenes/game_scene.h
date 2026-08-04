@@ -81,7 +81,11 @@ typedef struct CB_GameSceneContext
     bool gb_initialized;
     uint8_t* cart_ram;
     clalign uint8_t previous_lcd[LCD_BUFFER_BYTES];
+    clalign uint8_t ghost_state[LCD_BUFFER_BYTES];  // slew-rate ghost, packed 2bpp
     uint16_t line_has_changed[LCD_HEIGHT / 16];
+    uint8_t ghost_phase;
+    bool ghost_converged;
+    bool ghost_resnap;
 } CB_GameSceneContext;
 
 struct ScriptState;

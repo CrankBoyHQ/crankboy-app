@@ -2040,7 +2040,7 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
 
 /*
  * Display
- *  30 FPS mode, Frame blending, Dither,
+ *  30 FPS mode, Frame blending, LCD Ghosting, Dither,
  *  First scaling line, Stabilization
  */
 static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene, int* count)
@@ -2101,6 +2101,20 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
             .on_press = NULL,
         };
     }
+
+    // ghosting
+    CB_GameScene* gameScene = scene->gameScene;
+    bool cgb_active = gameScene && gameScene->context->cgb_mode;
+    section[++i] = (OptionsMenuEntry){
+        .name = "LCD Ghosting",
+        .values = off_on_labels,
+        .description =
+            "Mimics the DMG LCD's slow pixel response, smearing motion over 100-150 ms.\n\n"
+            "Only available in DMG Mode.",
+        .pref_var = &preferences_ghosting,
+        .max_value = cgb_active ? 0 : 2,
+        .on_press = NULL,
+    };
 
     // dither
     section[++i] = (OptionsMenuEntry){

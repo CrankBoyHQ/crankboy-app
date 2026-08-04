@@ -1028,6 +1028,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
+                memset(context->ghost_state, 0, sizeof(context->ghost_state));
+                context->ghost_phase = 0;
+                context->ghost_converged = false;
+                context->ghost_resnap = false;
                 pgb_dirty_prev = context->previous_lcd;
                 pgb_dirty_flags = context->line_has_changed;
                 gameScene->state = CB_GameSceneStateLoaded;
@@ -1771,6 +1775,70 @@ static __section__(".text.tick") void track_changes(
         frame += LCD_WIDTH_PACKED;
         prev_lcd += LCD_WIDTH_PACKED;
     }
+}
+
+/* LCD ghosting: 2-bit slew-rate smear emulating the DMG LCD's slow pixel
+ * response. ghost holds one packed 2bpp frame; on step frames each pixel
+ * moves one shade toward the current frame. A full white-to-black sweep
+ * takes 3 steps: 150 ms at 60fps mode, 100 ms at 30fps (see cadence
+ * logic at the call site).
+ */
+#define GHOST_STEP_INTERVAL 3
+
+static __section__(".text.tick") void ghost_pass(
+    uint8_t* restrict lcd, uint8_t* restrict ghost, uint16_t* restrict dirty_flags, bool do_step,
+    bool* converged_inout
+)
+{
+    uint32_t diverged = 0;
+
+    for (int y = 0; y < LCD_HEIGHT; y++)
+    {
+        uint32_t* restrict lcd32 = (uint32_t*)lcd;
+        uint32_t* restrict g32 = (uint32_t*)ghost;
+        bool line_changed = false;
+
+        for (int x = 0; x < LCD_WIDTH_PACKED / 4; x++)
+        {
+            uint32_t s = g32[x];
+            uint32_t r = lcd32[x];
+
+            if (s == r)
+                continue;
+
+            if (do_step)
+            {
+                // Step each 2-bit field 1 shade toward r. (a|4)-b never borrows
+                // across nibbles, so nibble bit 2 = "a>=b"; XOR gives +-1.
+                uint32_t ae = s & 0x33333333;
+                uint32_t be = r & 0x33333333;
+                uint32_t ge_ab = ((ae | 0x44444444) - be) & 0x44444444;
+                uint32_t ge_ba = ((be | 0x44444444) - ae) & 0x44444444;
+                ae += ((ge_ab ^ 0x44444444) >> 2) - ((ge_ba ^ 0x44444444) >> 2);
+
+                uint32_t ao = (s >> 2) & 0x33333333;
+                uint32_t bo = (r >> 2) & 0x33333333;
+                ge_ab = ((ao | 0x44444444) - bo) & 0x44444444;
+                ge_ba = ((bo | 0x44444444) - ao) & 0x44444444;
+                ao += ((ge_ab ^ 0x44444444) >> 2) - ((ge_ba ^ 0x44444444) >> 2);
+
+                s = ae | (ao << 2);
+                g32[x] = s;
+            }
+
+            lcd32[x] = s;
+            line_changed = true;
+            diverged |= s ^ r;
+        }
+
+        if (line_changed)
+            dirty_flags[y >> 4] |= (1 << (y & 0xF));
+
+        lcd += LCD_WIDTH_PACKED;
+        ghost += LCD_WIDTH_PACKED;
+    }
+
+    *converged_inout = (diverged == 0);
 }
 
 static void save_check(gb_s* gb);
@@ -2912,6 +2980,54 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     save_check(context->gb);
                 }
             }  // if (!gameScene->rewind.active)
+
+            // LCD ghosting (DMG only): slew-rate smear, applied to the final
+            // presented frame (post-blend). Runs after generation/blending so
+            // its dirty bits merge with the core's raw ones, and before
+            // update_fb_dirty_lines consumes them.
+            if (preferences_ghosting && !context->gb->is_cgb_mode && !gameScene->rewind.active)
+            {
+                if (context->ghost_resnap)
+                {
+                    memcpy(context->ghost_state, context->gb->lcd, LCD_BUFFER_BYTES);
+                    context->ghost_converged = true;
+                    context->ghost_resnap = false;
+                    context->ghost_phase = 0;
+                }
+                else
+                {
+                    bool do_step = false;
+                    if (gameScene->next_frames_elapsed >= 2)
+                    {
+                        do_step = true;
+                        context->ghost_phase = 0;
+                    }
+                    else if (++context->ghost_phase >= GHOST_STEP_INTERVAL)
+                    {
+                        context->ghost_phase = 0;
+                        do_step = true;
+                    }
+
+                    bool has_dirty = false;
+                    if (context->ghost_converged)
+                    {
+                        for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                            if (context->line_has_changed[i])
+                            {
+                                has_dirty = true;
+                                break;
+                            }
+                    }
+
+                    if (!context->ghost_converged || has_dirty)
+                    {
+                        ghost_pass(
+                            context->gb->lcd, context->ghost_state, context->line_has_changed,
+                            do_step, &context->ghost_converged
+                        );
+                    }
+                }
+            }
 
             // --- Conditional Screen Update (Drawing) Logic ---
             uint8_t* current_lcd = context->gb->lcd;
@@ -4229,6 +4345,7 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             audio_reset_replay_state(&context->gb->audio);
                             pgb_dirty_prev = context->previous_lcd;
                             pgb_dirty_flags = context->line_has_changed;
+                            context->ghost_resnap = true;
                             gameScene->cgb_needs_palette_recompute = true;
                             pgb_cgb_lut_dirty = true;
                             if (gameScene->script)
@@ -4648,6 +4765,7 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
     gameScene->rewind.noise_pending = false;
     gameScene->rewind.help_step_count = 0;
+    gameScene->context->ghost_resnap = true;
 
     if (preferences_sound_mode == 2)
         CB_reset_audio_sync_state();
