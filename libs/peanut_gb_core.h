@@ -475,9 +475,11 @@ static inline int $(compare_sprites)(
 // Usage-histogram (Auto/Contrast gray mode) per-frame counters. The BG
 // hooks count distinct 4-pixel patterns per palette, sprites count
 // (palette,color); the frontend expands these into a luminance histogram
-// post-frame. Reset at LY==0.
+// post-frame. Counters are cleared on consume (cgb_hist_build), not per
+// frame; cgb_bg_used marks palettes holding data.
 static uint16_t cgb_bg_usage[8][256];
 static uint16_t cgb_obj_usage[8][4];
+static uint8_t cgb_bg_used;
 
 // Line sampling: count usage on even lines only. The histogram shape is
 // preserved (scenes are vertically coherent); totals halve, which the
@@ -769,7 +771,9 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
             // Pattern = lo_half | (hi_half << 4), expanded post-frame.
             uint8_t lo_byte = (uint8_t)vram_tile_data_lo;
             uint8_t hi_byte = (uint8_t)(vram_tile_data_lo >> 8);
-            uint16_t* u = cgb_bg_usage[tile_palette_lo & BG_MAP_ATTR_PALETTE];
+            const uint8_t pal = tile_palette_lo & BG_MAP_ATTR_PALETTE;
+            cgb_bg_used |= (uint8_t)(1 << pal);
+            uint16_t* u = cgb_bg_usage[pal];
             u[(lo_byte & 0x0F) | ((hi_byte & 0x0F) << 4)]++;
             u[(lo_byte >> 4) | ((hi_byte >> 4) << 4)]++;
         }
@@ -866,19 +870,6 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
     __builtin_prefetch(&gb->gb_reg.WY, 0);
 
     uint8_t* dest_pixels = &gb->lcd[gb->gb_reg.LY * LCD_WIDTH_PACKED];
-
-#if PGB_IS_CGB
-    if (cgb_hist_active && gb->gb_reg.LY == 0)
-    {
-        for (int i = 0; i < 8; i++)
-        {
-            for (int j = 0; j < 256; j++)
-                cgb_bg_usage[i][j] = 0;
-            for (int j = 0; j < 4; j++)
-                cgb_obj_usage[i][j] = 0;
-        }
-    }
-#endif
 
     // render line to stack-buffer, then copy to dest
     uint32_t line_stage[LCD_WIDTH_PACKED / 4];

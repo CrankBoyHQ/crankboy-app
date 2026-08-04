@@ -352,31 +352,39 @@ bool game_menu_button_input_enabled;
 
 __section__(".rare") static void cgb_hist_build(uint32_t hist[64])
 {
-    // Expand per-frame usage counts into a luminance histogram.
+    // Expand usage counts into a luminance histogram, clearing the counters
+    // as they are consumed (replaces the per-frame reset). Palettes the
+    // hooks did not touch are skipped via the used-bitmap.
     memset(hist, 0, 64 * sizeof(uint32_t));
     for (int pal = 0; pal < 8; pal++)
     {
-        const uint16_t* u = cgb_bg_usage[pal];
-        const uint32_t* pb = cgb_bg_patbin[pal];
-        for (int raw = 0; raw < 256; raw++)
+        if (cgb_bg_used & (1 << pal))
         {
-            uint16_t n = u[raw];
-            if (n)
+            uint16_t* u = cgb_bg_usage[pal];
+            const uint32_t* pb = cgb_bg_patbin[pal];
+            for (int raw = 0; raw < 256; raw++)
             {
-                uint32_t v = pb[raw];
-                hist[v & 63] += n;
-                hist[(v >> 6) & 63] += n;
-                hist[(v >> 12) & 63] += n;
-                hist[(v >> 18) & 63] += n;
+                uint16_t n = u[raw];
+                u[raw] = 0;
+                if (n)
+                {
+                    uint32_t v = pb[raw];
+                    hist[v & 63] += n;
+                    hist[(v >> 6) & 63] += n;
+                    hist[(v >> 12) & 63] += n;
+                    hist[(v >> 18) & 63] += n;
+                }
             }
         }
         for (int c = 0; c < 4; c++)
         {
             uint16_t n = cgb_obj_usage[pal][c];
+            cgb_obj_usage[pal][c] = 0;
             if (n)
                 hist[cgb_obj_lum_sum[pal][c] >> 2] += n;
         }
     }
+    cgb_bg_used = 0;
 }
 
 // Auto: score each preset (Dark/Neutral/Bright) by how many pixels land in
@@ -2877,6 +2885,14 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         // and update immediately on the first frame.
                         pgb_cgb_lut_dirty = true;
                         cgb_hist_phase = 0;
+                        if (preferences_cgb_bias_auto != 0 && cgb_auto_prev_enabled == 0)
+                        {
+                            // Entering from Manual: hooks were off, drop any
+                            // stale usage counts.
+                            memset(cgb_bg_usage, 0, sizeof(cgb_bg_usage));
+                            memset(cgb_obj_usage, 0, sizeof(cgb_obj_usage));
+                            cgb_bg_used = 0;
+                        }
                     }
                     cgb_auto_prev_enabled = preferences_cgb_bias_auto;
                     if (cgb_gray_bias != gameScene->last_cgb_bias)
