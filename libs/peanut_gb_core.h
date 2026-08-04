@@ -875,18 +875,25 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         // non-CGB mode: window is also disabled if BG is disabled
         (gb->gb_reg.LCDC & LCDC_BG_ENABLE) &&
 #endif
-        (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY) &&
+        (gb->direct.wy_latched || gb->gb_reg.LY == gb->gb_reg.WY) &&
         (gb->gb_reg.WX < LCD_WIDTH + 7))
     {
-        if (!gb->direct.wy_latched && gb->gb_reg.LY >= gb->gb_reg.WY)
+        // hardware Y condition: set once WY == LY at a scanline start,
+        // stays true for the rest of the frame
+        if (!gb->direct.wy_latched && gb->gb_reg.LY == gb->gb_reg.WY)
             gb->direct.wy_latched = 1;
+#if PGB_IS_DMG
         if (gb->gb_reg.WX == 166)
         {
-            // WX=166 is unreliable and can corrupt the next scanline.
-            // We treat it as fully off-screen to prevent rendering artifacts.
+            // DMG-only quirk: on monochrome, WX=166 makes the window span the
+            // whole screen offset by one scanline. Approximate it as fully
+            // off-screen to avoid artifacts. CGB renders it normally (a 1-px
+            // window column at the right edge).
             wx = LCD_WIDTH;
         }
-        else if (gb->gb_reg.WX < 7)
+        else
+#endif
+            if (gb->gb_reg.WX < 7)
         {
             // WX=0 causes the window to "stutter" based on SCX scroll.
             // Values 1-6 also seem to be unreliable
@@ -1288,7 +1295,7 @@ __draw static void $(__gb_ppu_mode3_setup)(gb_s* gb)
     }
 
     bool win_visible = (gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE) && (gb->gb_reg.WX <= 166) &&
-                       (gb->direct.wy_latched || gb->gb_reg.LY >= gb->gb_reg.WY);
+                       (gb->direct.wy_latched || gb->gb_reg.LY == gb->gb_reg.WY);
 #if PGB_IS_DMG
     win_visible &= (gb->gb_reg.LCDC & LCDC_BG_ENABLE);
 #endif

@@ -2600,6 +2600,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
             bool is_enabled = (gb->gb_reg.LCDC & LCDC_ENABLE);
 
+            // CGB: clearing the window enable bit resets the window Y
+            // condition; WY must reach LY again for the window to reappear
+            if (gb->is_cgb_mode && (old_lcdc & LCDC_WINDOW_ENABLE) &&
+                !(gb->gb_reg.LCDC & LCDC_WINDOW_ENABLE))
+                gb->direct.wy_latched = 0;
+
             if (was_enabled && !is_enabled)
             {
                 gb->counter.lcd_off_count = 0;
