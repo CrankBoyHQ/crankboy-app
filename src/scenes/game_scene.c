@@ -263,6 +263,7 @@ bool cgb_contrast_active;
 static int8_t cgb_auto_bias;
 static uint8_t cgb_auto_holddown;
 static uint8_t cgb_auto_prev_enabled;
+static uint8_t cgb_hist_phase;
 
 /* Contrast mode: gray thresholds from the frame's luminance percentiles
  * (T1=P75, T2=P50, T3=P25 -> ~25% of pixels per shade = max dither detail).
@@ -2871,8 +2872,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     }
                     cgb_hist_active = (preferences_cgb_bias_auto != 0);
                     if (preferences_cgb_bias_auto != cgb_auto_prev_enabled)
-                        // Mode toggle: rebuild gray LUTs + histogram tables.
+                    {
+                        // Mode toggle: rebuild gray LUTs + histogram tables,
+                        // and update immediately on the first frame.
                         pgb_cgb_lut_dirty = true;
+                        cgb_hist_phase = 0;
+                    }
                     cgb_auto_prev_enabled = preferences_cgb_bias_auto;
                     if (cgb_gray_bias != gameScene->last_cgb_bias)
                     {
@@ -3367,12 +3372,16 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             int scy = context->gb->gb_reg.SCY;
             bool stable_scaling_enabled = preferences_dither_stable;
 
-            if (context->gb->is_cgb_mode)
+            if (context->gb->is_cgb_mode && preferences_cgb_bias_auto != 0)
             {
-                if (preferences_cgb_bias_auto == 2)
-                    cgb_auto_contrast_update(context->gb);
-                else if (preferences_cgb_bias_auto == 1)
-                    cgb_auto_update();
+                cgb_hist_phase ^= 1;
+                if (cgb_hist_phase)
+                {
+                    if (preferences_cgb_bias_auto == 2)
+                        cgb_auto_contrast_update(context->gb);
+                    else
+                        cgb_auto_update();
+                }
             }
 
             const unsigned scaling = game_picture_scaling ? game_picture_scaling : 0x1000;
