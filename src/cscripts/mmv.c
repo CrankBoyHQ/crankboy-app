@@ -223,6 +223,7 @@ C_SCRIPT{
     .rom_name = "MEGAMAN5",
     .description = DESCRIPTION,
     .experimental = true,
+    .toggleable = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,

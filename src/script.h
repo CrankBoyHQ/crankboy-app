@@ -11,8 +11,10 @@
 C scripts are .c files which must be included in the makefile
 at build time, and they must contain a C_SCRIPT { ... } declaration.
 
-Scripts can be toggled on/off mid-session from the settings menu, so
-on_begin/on_end may run more than once per game. Keep them togglable:
+Scripts can be toggled on/off mid-session from the settings menu, but only
+if they declare `.toggleable = true` in their C_SCRIPT{...} declaration.
+Default (unset) is false: the pref change then applies on the next ROM
+launch. toggleable scripts must keep on_begin/on_end re-runnable:
 
 - on_begin may start mid-game: don't assume boot-time state; ROM patches
   are safe to run more than once (poke_verify tolerates already-patched bytes).
@@ -90,6 +92,9 @@ struct CScriptInfo
     const char* rom_name;
     const char* description;
     bool experimental;
+    // can be toggled on/off mid-session from settings; default false means
+    // the pref change applies on the next ROM launch (see doc block above).
+    bool toggleable;
     enum ScriptPreferredLaunchSystem launch_system;
     enum ScriptPreferredLaunchColor launch_color;
     CS_OnBegin on_begin;

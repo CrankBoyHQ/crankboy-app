@@ -601,6 +601,7 @@ C_SCRIPT{
     .rom_name = "STREET FIGHTER 2",
     .description = DESCRIPTION,
     .experimental = false,
+    .toggleable = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_draw = (CS_OnDraw)on_draw,

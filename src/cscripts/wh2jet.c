@@ -431,6 +431,7 @@ C_SCRIPT{
     .rom_name = "WH2JET",
     .description = DESCRIPTION,
     .experimental = false,
+    .toggleable = true,
     .launch_color = ScriptPreferredLaunchColor_White,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,

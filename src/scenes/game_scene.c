@@ -1380,6 +1380,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool 
     {
         gameScene->script_available = true;
         gameScene->script_info_available = !!scriptInfo->info;
+        gameScene->script_toggleable =
+            scriptInfo->c_script_info && scriptInfo->c_script_info->toggleable;
 
         if (scriptInfo->launch_color == ScriptPreferredLaunchColor_White)
         {
@@ -1447,6 +1449,11 @@ static void CB_GameScene_reset_screen_defaults(void)
 // begin/end; script consumers NULL-guard everywhere.
 void CB_GameScene_apply_script_support(CB_GameScene* gameScene)
 {
+    // Scripts that don't declare .toggleable keep the old behavior: the pref
+    // change applies on the next ROM launch.
+    if (!gameScene->script_toggleable)
+        return;
+
     if (preferences_script_support && gameScene->script_available && !gameScene->script)
     {
         ScriptInfo* scriptInfo = script_get_info_by_rom_path(gameScene->rom_filename);

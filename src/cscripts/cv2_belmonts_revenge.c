@@ -452,6 +452,7 @@ C_SCRIPT{
     .rom_name = "CASTLEVANIA2 BEL",
     .description = DESCRIPTION,
     .experimental = false,
+    .toggleable = true,
     .launch_system = ScriptPreferredLaunchSystem_DMG,
     .launch_color = ScriptPreferredLaunchColor_White,
     .on_begin = (CS_OnBegin)on_begin,

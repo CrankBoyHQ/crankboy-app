@@ -205,6 +205,7 @@ C_SCRIPT{
     .rom_name = "ALLEY WAY",
     .description = DESCRIPTION,
     .experimental = true,
+    .toggleable = true,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
     .on_end = (CS_OnEnd)on_end,

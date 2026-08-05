@@ -205,6 +205,7 @@ C_SCRIPT{
     .rom_name = "TRIP WORLD",
     .description = DESCRIPTION,
     .experimental = false,
+    .toggleable = true,
     .launch_system = ScriptPreferredLaunchSystem_DMG,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,

@@ -112,6 +112,7 @@ typedef struct CB_GameScene
     bool save_state_requires_warning : 1;
     unsigned script_available : 1;
     unsigned script_info_available : 1;
+    unsigned script_toggleable : 1;
 
     // from ROM header
     bool dmg_compatible : 1;

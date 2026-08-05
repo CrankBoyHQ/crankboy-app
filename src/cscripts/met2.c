@@ -2632,6 +2632,7 @@ C_SCRIPT{
     .rom_name = "METROID2",
     .description = DESCRIPTION,
     .experimental = false,
+    .toggleable = false,
     .launch_system = ScriptPreferredLaunchSystem_DMG,
     .on_begin = (CS_OnBegin)on_begin,
     .on_tick = (CS_OnTick)on_tick,
@@ -2639,7 +2640,6 @@ C_SCRIPT{
     .on_menu = (CS_OnMenu)on_menu,
     .on_settings = (CS_OnSettings)on_settings,
     .on_end = (CS_OnEnd)on_end,
-
     .query_serial_size = (CS_QuerySerialSize)query_serial_size,
     .serialize = (CS_Serialize)serialize,
     .deserialize = (CS_Deserialize)deserialize,

@@ -2516,13 +2516,16 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
 
 #define BASE_SCRIPT_STRING                                                                         \
     "Scripts attempt to add Playdate feature support into ROMs.\n\nFor instance, the crank might " \
-    "be used to navigate menus.\n\nThis setting is always per-game."
+    "be used to navigate menus."
+
+// Only shown in the library view; obvious (and noise) in the in-game settings.
+#define SCRIPT_PER_GAME_SUFFIX "\n\nThis setting is always per-game."
 
     // C scripts
     section[++i] = (OptionsMenuEntry){
         .name = "Game Scripts",
         .values = off_on_labels,
-        .description = BASE_SCRIPT_STRING,
+        .description = BASE_SCRIPT_STRING SCRIPT_PER_GAME_SUFFIX,
         .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
@@ -2538,6 +2541,17 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
                 section[i].description =
                     BASE_SCRIPT_STRING "\n\nHold the Ⓐ button now for more information.";
                 section[i].on_hold = display_script_info;
+            }
+
+            if (!gameScene->script_toggleable)
+            {
+                if (gameScene->script_info_available)
+                    section[i].description = BASE_SCRIPT_STRING
+                        "\n\nHold the Ⓐ button now for more information."
+                        "\n\nRestart the ROM for this setting to take effect.";
+                else
+                    section[i].description =
+                        BASE_SCRIPT_STRING "\n\nRestart the ROM for this setting to take effect.";
             }
         }
         else
