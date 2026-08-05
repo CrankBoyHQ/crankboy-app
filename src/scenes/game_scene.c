@@ -265,19 +265,22 @@ static uint8_t cgb_auto_holddown;
 static uint8_t cgb_auto_prev_enabled;
 static uint8_t cgb_hist_phase;
 
-/* Contrast mode: gray thresholds from the frame's luminance percentiles
- * (T1=P75, T2=P50, T3=P25 -> ~25% of pixels per shade = max dither detail).
- * The stage-2 blend pass offsets them by (P95-P5)/8. Flat or naturally
+/* Contrast mode: gray thresholds blend the frame's luminance percentiles
+ * with the linear palette-range mapping (midpoint of P75/P50/P25 and the
+ * linear Neutral thresholds): percentiles give detail in clustered scenes,
+ * the linear anchor preserves the scene's brightness mood. The stage-2
+ * blend pass offsets them by the blended spread/8. Flat or naturally
  * posterized (b/w) scenes fall back to linear Neutral over the palette
- * range (schmitt-triggered). Per-threshold deadband prevents flicker. */
+ * range (debounced). Per-threshold deadband prevents flicker. */
 #define CGB_CONTRAST_FLAT_SPREAD 16  // P5..P95 lum spread below this -> fallback
-#define CGB_CONTRAST_BW_ENTER 85     // top-2 lum bins hold this % of pixels -> fallback
-#define CGB_CONTRAST_BW_EXIT 75      // top-2 share below this -> equalize
+#define CGB_CONTRAST_BW_POINT 80     // top-2 lum bins >= this % of pixels -> fallback
+#define CGB_CONTRAST_DEBOUNCE 5      // consecutive evals required to flip the guard
 #define CGB_CONTRAST_DEADBAND 4      // lum units a threshold must move to apply
 uint16_t cgb_thresh[3] = {3, 2, 1};
 uint16_t cgb_thresh_delta = 1;
 static bool cgb_contrast_fallback;
 static bool cgb_contrast_init_pending;
+static uint8_t cgb_contrast_debounce;
 
 static uint8_t* rom_pool = NULL;
 static size_t rom_pool_size = 0;
@@ -560,24 +563,31 @@ __section__(".rare") static void cgb_auto_contrast_update(gb_s* gb)
     }
     const uint32_t top2_pct = (top1 + top2) * 100 / total;
 
+    // Guard decision is stateless (single point); a debounce counter provides
+    // the stability. A transient intrusion (dialog box, flash) can no longer
+    // capture the guard the way a hysteresis band could.
+    const bool want_fallback =
+        (spread < CGB_CONTRAST_FLAT_SPREAD || top2_pct >= CGB_CONTRAST_BW_POINT);
+
     const bool was_fallback = cgb_contrast_fallback;
     if (cgb_contrast_init_pending)
     {
-        // Mode entry: no hysteresis yet — pick the branch by midpoint rule
-        // so the entry state matches what steady state would converge to.
-        cgb_contrast_fallback =
-            (spread < CGB_CONTRAST_FLAT_SPREAD ||
-             top2_pct >= (CGB_CONTRAST_BW_ENTER + CGB_CONTRAST_BW_EXIT) / 2);
+        // Mode entry: take the guard decision directly.
+        cgb_contrast_fallback = want_fallback;
         cgb_contrast_init_pending = false;
+        cgb_contrast_debounce = 0;
     }
-    else if (cgb_contrast_fallback)
+    else if (want_fallback != cgb_contrast_fallback)
     {
-        if (spread >= CGB_CONTRAST_FLAT_SPREAD && top2_pct < CGB_CONTRAST_BW_EXIT)
-            cgb_contrast_fallback = false;
+        if (++cgb_contrast_debounce >= CGB_CONTRAST_DEBOUNCE)
+        {
+            cgb_contrast_fallback = want_fallback;
+            cgb_contrast_debounce = 0;
+        }
     }
-    else if (spread < CGB_CONTRAST_FLAT_SPREAD || top2_pct >= CGB_CONTRAST_BW_ENTER)
+    else
     {
-        cgb_contrast_fallback = true;
+        cgb_contrast_debounce = 0;
     }
 
     uint16_t t1, t2, t3, delta;
@@ -590,10 +600,14 @@ __section__(".rare") static void cgb_auto_contrast_update(gb_s* gb)
     }
     else
     {
-        t1 = pct[3];  // P75
-        t2 = pct[2];  // P50
-        t3 = pct[1];  // P25
-        delta = spread >> 3;
+        // Hybrid: midpoint of equalized and linear-Neutral thresholds.
+        // Pure equalization normalizes scene mood away (dark caves became
+        // bright); pure linear loses detail in clustered scenes. The
+        // midpoint keeps the mood while retaining half the detail gain.
+        t1 = (uint16_t)((pct[3] + lin_t1) / 2);  // P75
+        t2 = (uint16_t)((pct[2] + lin_t2) / 2);  // P50
+        t3 = (uint16_t)((pct[1] + lin_t3) / 2);  // P25
+        delta = (uint16_t)(((spread + pal_range) / 2) >> 3);
     }
 
     if (was_fallback != cgb_contrast_fallback)
