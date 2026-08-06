@@ -1925,11 +1925,15 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
     if (gb->gb_stop && gb->direct.joypad != 0xFF)
     {
         gb->gb_stop = 0;
+#if PGB_IS_CGB
         gb->gb_hle = false;  // paranoia
+#endif
         return 16;
     }
 
+#if PGB_IS_CGB
     gb->gb_hle = false;
+#endif
 
 #if 0
     // TODO: optimize serial
@@ -1973,7 +1977,9 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
     }
     src[2] = (uint32_t)ppu_cycles_remaining;
 
+#if PGB_IS_CGB
     // Register-specific HLE: LY polling waits for LY change, not just mode change
+    // (CGB-only: hle_ioaddr is never set on DMG)
     if (gb->hle_ioaddr == 0x44)
     {
         uint16_t ly_cycles;
@@ -1993,6 +1999,7 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
         }
         src[2] = ly_cycles;
     }
+#endif
 
     // Find the minimum cycles until the next event
     uint32_t cycles = src[0];
@@ -2004,6 +2011,8 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
     // ensure positive
     cycles = (cycles < 16) ? 16 : cycles;
 
+#if PGB_IS_CGB
+    /* Speed-switch settle: CGB-only (KEY1), never set on DMG. */
     if (gb->cgb_speed_switch_halt_period)
     {
         uint32_t max_cycles = gb->cgb_speed_switch_halt_period;
@@ -2015,7 +2024,6 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
             gb->gb_halt = 0;
     }
 
-#if PGB_IS_CGB
     /* GDMA stall drain: halt-path cycles are PPU-domain (skip fast-mode >>1). */
     if (gb->cgb_gdma_halt_period)
     {
@@ -2056,7 +2064,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         __gb_interrupt(gb);
     }
 
-    if unlikely (gb->gb_halt || gb->gb_stop || gb->gb_hle)
+    if unlikely (gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false))
     {
         inst_cycles = $(__gb_calc_halt_cycles)(gb);
         goto done_instr_timing;
@@ -2070,9 +2078,9 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     // batch, so the PPU-domain window matches DMG.
     const unsigned batch_budget = CPU_BATCH_CYCLE_BUDGET
                                   << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
-    // Stop batching once an interrupt is dispatchable.
+    // Stop batching once an interrupt is dispatchable. (gb_hle: CGB-only.)
     while (
-        !(gb->gb_halt || gb->gb_stop || gb->gb_hle ||
+        !(gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) ||
           (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))))
     {
         inst_cycles += $(__gb_run_instruction_micro)(gb);
