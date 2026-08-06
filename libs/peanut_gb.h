@@ -1293,7 +1293,120 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
     (gb->gb_error)(gb, GB_INVALID_WRITE, addr);
 }
 
-__shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
+/* HLE poll-loop verdict cache: decode each loop's load/cmp/jr shape
+ * once per load-pc; per-read cost is a slot probe. ROM pcs only
+ * (bank-keyed, immutable); WRAM polls re-analyze per read (rare). */
+enum
+{
+    HLE_CMP_AND_A = 0,  // and a / or a:  z = (v == 0), c = 0
+    HLE_CMP_CP_D8,      // cp d8:         z = (v == d8), c = (v < d8)
+    HLE_CMP_SUB_D8,     // sub d8:        same flags as cp d8
+    HLE_CMP_AND_D8,     // and d8:        z = !(v & d8), c = 0
+    HLE_CMP_BIT_A,      // bit n,a:       z = !(v & bit), c unknown
+    HLE_CMP_BIT_HL      // bit n,(hl):    z = !(v & bit), c unknown
+};
+
+enum
+{
+    HLE_JR_NZ = 0,
+    HLE_JR_NC,
+    HLE_JR_Z,
+    HLE_JR_C
+};
+
+enum
+{
+    HLE_NO_WARP = 0,
+    HLE_WARPED,
+    HLE_MISS
+};
+
+typedef struct
+{
+    uint16_t pc;    // post-load pc (key); 0 = empty
+    uint16_t bank;  // selected_rom_bank at analyze time
+    uint8_t addr;   // ioaddr & 0xFF
+    int8_t rewind;  // 0 = verdict NO; else -1..-3 (pc offset to load instr)
+    uint8_t cmp_op;
+    uint8_t cmp_arg;  // d8 operand or bit index
+    uint8_t jr_pol;
+    uint8_t _pad;
+} hle_slot_t;
+
+#define PGB_HLE_CACHE_SIZE 16
+#define PGB_HLE_CACHE_MASK (PGB_HLE_CACHE_SIZE - 1)
+
+static hle_slot_t pgb_hle_cache[PGB_HLE_CACHE_SIZE];
+
+/* Evaluate the cached compare+branch: true while the loop keeps waiting. */
+static inline __attribute__((always_inline)) bool __gb_hle_waiting(
+    const hle_slot_t* s, const uint8_t v
+)
+{
+    int z, c;
+    switch (s->cmp_op)
+    {
+    case HLE_CMP_AND_A:
+        z = (v == 0);
+        c = 0;
+        break;
+    case HLE_CMP_CP_D8:
+    case HLE_CMP_SUB_D8:
+        z = (v == s->cmp_arg);
+        c = (v < s->cmp_arg);
+        break;
+    case HLE_CMP_AND_D8:
+        z = !(v & s->cmp_arg);
+        c = 0;
+        break;
+    default:  // BIT: carry unaffected -> unknown
+        z = !(v & (1 << (s->cmp_arg & 7)));
+        c = -1;
+        break;
+    }
+    switch (s->jr_pol)
+    {
+    case HLE_JR_NZ:
+        return !z;
+    case HLE_JR_Z:
+        return z == 1;
+    case HLE_JR_NC:
+        return c != 1;  // c unknown: keep waiting (matches decode behavior)
+    default:            // HLE_JR_C
+        return c != 0;
+    }
+}
+
+static inline __attribute__((always_inline)) void __gb_hle_apply_warp(gb_s* gb, const hle_slot_t* s)
+{
+    gb->gb_hle = true;
+    gb->cpu_reg.pc += s->rewind;
+    gb->hle_ioaddr = s->addr;
+}
+
+/* Probe the verdict cache. HLE_WARPED: warp applied, return ioval.
+ * HLE_NO_WARP: return ioval. HLE_MISS: call __gb_hle_miss. */
+static inline __attribute__((always_inline)) int __gb_hle_probe(
+    gb_s* gb, const uint_fast16_t ioaddr, const uint8_t ioval
+)
+{
+    if (!gb->hle_enabled)
+        return HLE_NO_WARP;
+
+    const uint16_t pc = gb->cpu_reg.pc;
+    hle_slot_t* s = &pgb_hle_cache[(pc >> 1) & PGB_HLE_CACHE_MASK];
+
+    if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != (uint16_t)gb->selected_rom_bank)
+        return HLE_MISS;
+
+    if (s->rewind == 0 || !__gb_hle_waiting(s, ioval))
+        return HLE_NO_WARP;
+
+    __gb_hle_apply_warp(gb, s);
+    return HLE_WARPED;
+}
+
+__shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
 
 __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t addr)
 {
@@ -1372,10 +1485,11 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x55:  // HDMA5 (VRAM DMA)
             if (gb->is_cgb_mode)
             {
-                return __gb_try_hle(
-                    gb, addr,
-                    ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80)
-                );
+                const uint8_t v =
+                    ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80);
+                if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
+                    return __gb_hle_miss(gb, addr, v);
+                return v;
             }
             return 0xFF;
 
@@ -1469,13 +1583,21 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 
 // attempt to detect an optimizable routine
 // (e.g. tight-loop polling an io register)
-__shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval)
+/* Decode the load/cmp/jr poll-loop shape around pc into a verdict slot.
+ * Pure analysis: no gb side effects. rewind stays 0 (verdict NO) unless
+ * the full shape matches. */
+__shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
 {
-    if (!gb->hle_enabled)
-        return ioval;
+    s->pc = gb->cpu_reg.pc;
+    s->bank = (uint16_t)gb->selected_rom_bank;
+    s->addr = ioaddr & 0xFF;
+    s->rewind = 0;
+    s->cmp_op = HLE_CMP_AND_A;
+    s->cmp_arg = 0;
+    s->jr_pol = HLE_JR_NZ;
 
     // pc of instruction following compare
-    u16 pc = gb->cpu_reg.pc;
+    const u16 pc = gb->cpu_reg.pc;
 
     // shouldn't go over ROM -- don't want to trigger side effects on read
     if (pc >= 0x7FF8 || pc < 3)
@@ -1483,7 +1605,7 @@ __shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 iov
         // executing from wram is okay though
         if (pc < 0xC003 || pc >= 0xEFF0)
         {
-            return ioval;
+            return;
         }
     }
 
@@ -1525,7 +1647,6 @@ __shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 iov
         // fall through to BIT n,(HL) check
     }
 
-    int c = -1, z = -1;
     u16 addr_next;
     if (offset == 0)
     {
@@ -1533,124 +1654,118 @@ __shell static uint8_t __gb_try_hle(gb_s* gb, const uint_fast16_t ioaddr, u8 iov
         if (READ8(pc - 2) == 0xCB && (READ8(pc - 1) & 0xC7) == 0x46)
         {
             offset = -2;
-            uint8_t bit = (READ8(pc - 1) >> 3) & 7;
-            z = !(ioval & (1 << bit));
-            c = -1;
+            s->cmp_op = HLE_CMP_BIT_HL;
+            s->cmp_arg = (READ8(pc - 1) >> 3) & 7;
             addr_next = pc;
-            goto hle_jr;
+            goto analyze_jr;
         }
-        goto hle_fail;
+        goto analyze_fail;
     }
 
-    u8 op0 = READ8(pc);
-    u8 d8 = READ8(pc + 1);
-    addr_next = pc + 2;
-    if (op0 == 0xA7 || op0 == 0xB7)
     {
-        // AND A / OR A: Z = (A == 0), C = 0. Single-byte instruction;
-        // the classic "ldh a,(x); and a; jr z" flag-wait idiom.
-        z = (ioval == 0);
-        c = 0;
-        addr_next = pc + 1;
-    }
-    else if (op0 == 0xFE || op0 == 0xD6)
-    {
-        // cp d8 / sub d8
-        z = ioval == d8;
-        c = ioval < d8;
-    }
-    else if (op0 == 0xE6)
-    {
-        // AND d8
-        z = !(ioval & d8);
-        c = 0;
-    }
-    else if (op0 == 0xCB)
-    {
-        u8 bitop = READ8(pc + 1);
-        // BIT n,A: opcodes 0x47+8n, mask 01bbb111
-        if ((bitop & 0xC7) != 0x47)
-            goto hle_fail;
-        z = !(ioval & (1 << ((bitop >> 3) & 7)));
-        c = -1;  // BIT doesn't affect C
-    }
-    else
-    {
-        goto hle_fail;
+        u8 op0 = READ8(pc);
+        u8 d8 = READ8(pc + 1);
+        addr_next = pc + 2;
+        if (op0 == 0xA7 || op0 == 0xB7)
+        {
+            // AND A / OR A: Z = (A == 0), C = 0. Single-byte instruction;
+            // the classic "ldh a,(x); and a; jr z" flag-wait idiom.
+            s->cmp_op = HLE_CMP_AND_A;
+            s->cmp_arg = 0;
+            addr_next = pc + 1;
+        }
+        else if (op0 == 0xFE)
+        {
+            // cp d8
+            s->cmp_op = HLE_CMP_CP_D8;
+            s->cmp_arg = d8;
+        }
+        else if (op0 == 0xD6)
+        {
+            // sub d8
+            s->cmp_op = HLE_CMP_SUB_D8;
+            s->cmp_arg = d8;
+        }
+        else if (op0 == 0xE6)
+        {
+            // and d8
+            s->cmp_op = HLE_CMP_AND_D8;
+            s->cmp_arg = d8;
+        }
+        else if (op0 == 0xCB)
+        {
+            u8 bitop = READ8(pc + 1);
+            // BIT n,A: opcodes 0x47+8n, mask 01bbb111
+            if ((bitop & 0xC7) != 0x47)
+                goto analyze_fail;
+            s->cmp_op = HLE_CMP_BIT_A;
+            s->cmp_arg = (bitop >> 3) & 7;
+        }
+        else
+        {
+            goto analyze_fail;
+        }
     }
 
-hle_jr:;
-    u8 opjd = READ8(addr_next + 1);
-
+analyze_jr:;
     // jr destination should be the read-io opcode
-    if (opjd != (uint8_t)(offset - (addr_next - pc) - 2))
-        goto hle_fail;
+    if (READ8(addr_next + 1) != (uint8_t)(offset - (addr_next - pc) - 2))
+        goto analyze_fail;
 
-    // jr condition
-    u8 opj = READ8(addr_next);
-    if (opj == 0x20)
+    switch (READ8(addr_next))
     {
-        // JR NZ
-        if (z == 1)
-            goto hle_unnecessary;
-    }
-    else if (opj == 0x30)
-    {
-        // JR NC
-        if (c == 1)
-            goto hle_unnecessary;
-    }
-    else if (opj == 0x28)
-    {
-        // JR Z
-        if (z == 0)
-            goto hle_unnecessary;
-    }
-    else if (opj == 0x38)
-    {
-        // JR C
-        if (c == 0)
-            goto hle_unnecessary;
-    }
-    else
-    {
-        goto hle_fail;
+    case 0x20:
+        s->jr_pol = HLE_JR_NZ;
+        break;
+    case 0x30:
+        s->jr_pol = HLE_JR_NC;
+        break;
+    case 0x28:
+        s->jr_pol = HLE_JR_Z;
+        break;
+    case 0x38:
+        s->jr_pol = HLE_JR_C;
+        break;
+    default:
+        goto analyze_fail;
     }
 
+    s->rewind = (int8_t)offset;
+
+analyze_fail:
 #undef READ8
-
-hle_success:
-// YES, we can hle!
-#ifdef TARGET_SIMULATOR
-// playdate->system->logToConsole("HLE %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset,
-// ioaddr);
-#endif
-
-    // rewind pc and wait
-    gb->gb_hle = true;
-    gb->cpu_reg.pc += offset;
-    gb->hle_ioaddr = ioaddr & 0xFF;
-
-    return ioval;
-
-hle_unnecessary:
-    return ioval;
-
-hle_fail:
-{
-#ifdef TARGET_SIMULATOR
-    static int hle_n = 0;
-    if (hle_n++ % 256 == 0)
-    {
-        // only display a portion of these, as they flood the console otherwise.
-        // important to print some though, so we can improve HLE detection over time.
-        playdate->system->logToConsole(
-            "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, pc + offset, ioaddr
-        );
-    }
-#endif
-    return ioval;
+    ;
 }
+
+__shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
+{
+    hle_slot_t v;
+    __gb_hle_analyze(gb, ioaddr, &v);
+
+    if (v.pc < 0x8000)
+        pgb_hle_cache[(v.pc >> 1) & PGB_HLE_CACHE_MASK] = v;
+
+    if (v.rewind == 0)
+    {
+#ifdef TARGET_SIMULATOR
+        static int hle_n = 0;
+        if (hle_n++ % 256 == 0)
+        {
+            // only display a portion of these, as they flood the console
+            // otherwise. important to print some though, so we can improve
+            // HLE detection over time.
+            playdate->system->logToConsole(
+                "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
+            );
+        }
+#endif
+        return ioval;
+    }
+
+    if (__gb_hle_waiting(&v, ioval))
+        __gb_hle_apply_warp(gb, &v);
+
+    return ioval;
 }
 
 /* Cycles executed in the current CPU batch but not yet applied to the
@@ -1972,14 +2087,24 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         /* Interrupt Flag Register */
         case 0x0F:
-            return __gb_try_hle(gb, addr, gb->gb_reg.IF);
+        {
+            const uint8_t v = gb->gb_reg.IF;
+            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
+                return __gb_hle_miss(gb, addr, v);
+            return v;
+        }
 
         /* LCD Registers */
         case 0x40:
             return gb->gb_reg.LCDC;
 
         case 0x41:
-            return __gb_try_hle(gb, addr, __gb_read_stat_synced(gb));
+        {
+            const uint8_t v = __gb_read_stat_synced(gb);
+            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
+                return __gb_hle_miss(gb, addr, v);
+            return v;
+        }
 
         case 0x42:
             return gb->gb_reg.SCY;
@@ -1988,14 +2113,24 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.SCX;
 
         case 0x44:
-            return __gb_try_hle(gb, addr, __gb_read_ly_synced(gb));
+        {
+            const uint8_t v = __gb_read_ly_synced(gb);
+            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
+                return __gb_hle_miss(gb, addr, v);
+            return v;
+        }
 
         case 0x45:
             return gb->gb_reg.LYC;
 
         /* DMA Register */
         case 0x46:
-            return __gb_try_hle(gb, addr, gb->gb_reg.DMA);
+        {
+            const uint8_t v = gb->gb_reg.DMA;
+            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
+                return __gb_hle_miss(gb, addr, v);
+            return v;
+        }
 
         /* DMG Palette Registers */
         case 0x47:
@@ -5337,9 +5472,10 @@ void gb_init_serial(
 __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 {
     gb->gb_halt = 0;
-    gb->cgb_gdma_halt_period = 0;
+    gb->cgb_gdma_halt_period = 0;  // stale period would gate interrupt dispatch
     gb->gb_halt_bug = 0;
     gb->gb_ime = 0;
+    memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
 
     /* Initialise MBC values. */
     gb->selected_rom_bank = 1;
@@ -5751,6 +5887,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_fast_mode_armed = false;
     gb->cgb_speed_switch_halt_period = 0;
     gb->cgb_gdma_halt_period = 0;
+    memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
     pgb_cgb_bg_pal_dirty = 0;
     pgb_cgb_obj_pal_dirty = 0;
     gb->cgb_wram_bank = 0;

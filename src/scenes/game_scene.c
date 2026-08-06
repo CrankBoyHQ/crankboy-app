@@ -2794,7 +2794,9 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         context->gb->overclock =
             MIN((unsigned)preferences_overclock, context->gb->cgb_fast_mode_active ? 1 : 2);
         context->gb->cgb_speed_permitted = preferences_cgb_speed == 0;
-        context->gb->hle_enabled = (preferences_hle == 1) && context->cgb_mode;
+        /* hle_enabled must imply is_cgb_mode: the DMG core compiles HLE out;
+         * a warp there rewinds pc with gb_hle unchecked -> poll-loop hang. */
+        context->gb->hle_enabled = (preferences_hle == 1) && context->gb->is_cgb_mode;
         context->gb->lcd = lcd_sources[gameScene->rewind.active ? 0 : preferences_tcm_lcd];
 
         if (gbScreenRequiresFullRefresh)

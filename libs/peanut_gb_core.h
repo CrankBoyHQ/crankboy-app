@@ -95,6 +95,25 @@ __draw static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
     gb->direct.stat_line = line_is_high;
 }
 
+#if PGB_IS_CGB
+__core static uint8_t
+    __attribute__((noinline)) $(__gb_hle_read)(gb_s* gb, const uint16_t addr, const uint8_t v)
+{
+    if (__gb_hle_probe(gb, addr, v) != HLE_MISS)
+        return v;
+
+    /* HRAM flag waits: analyze only ldh-imm reads from ROM. */
+    if (addr >= 0xFF80)
+    {
+        uint16_t pc = gb->cpu_reg.pc;
+        if (pc < 2 || pc >= 0x8000 || gb->ram_base[pc >> 12][pc - 2] != 0xF0 ||
+            gb->ram_base[pc >> 12][pc - 1] != (uint8_t)addr)
+            return v;
+    }
+    return __gb_hle_miss(gb, addr, v);
+}
+#endif
+
 __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t addr)
 {
     uint8_t* ram_region_base = gb->ram_base[addr >> 12];
@@ -105,16 +124,12 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
     if likely (addr >= 0xFF80)  // no need to check upper bound -- gb->hram[0xFF] should match IE
     {
         uint8_t val = gb->hram[addr % 0x100];
+#if PGB_IS_CGB
+        // HLE is CGB-only (hle_enabled implies cgb_mode): games wait on HRAM
+        // flags set by ISRs ("ldh a,(x); and a; jr z").
         if (gb->hle_enabled)
-        {
-            // HLE: games wait on HRAM flags set by ISRs ("ldh a,(x); and a;
-            // jr z"). Pre-filter to ldh-imm reads from ROM before paying
-            // for the full loop check.
-            uint16_t pc = gb->cpu_reg.pc;
-            if (pc >= 2 && pc < 0x8000 && gb->ram_base[pc >> 12][pc - 2] == 0xF0 &&
-                gb->ram_base[pc >> 12][pc - 1] == (uint8_t)addr)
-                return __gb_try_hle(gb, addr, val);
-        }
+            return $(__gb_hle_read)(gb, addr, val);
+#endif
         return val;
     }
     if likely (addr >= 0xA000 && addr < 0xC000 && gb->selected_cart_bank_addr)
@@ -122,24 +137,44 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         return gb->selected_cart_bank_addr[addr];
     }
 
-    // Hot IO reads: bypass read_full in polling loops. HLE-gated regs
-    // (STAT/LY/IF) keep the full path when HLE is active (CGB only).
+    // Hot IO reads: bypass read_full in polling loops. On CGB, HLE-gated
+    // regs (STAT/LY/IF) go through the verdict cache when HLE is active;
+    // cached NO verdicts return the synced value straight from the core
+    // section. HLE is CGB-only, so DMG keeps plain synced returns.
     if (addr >= 0xFF00 && addr < 0xFF80)
     {
         switch (addr & 0xFF)
         {
+#if PGB_IS_CGB
         case 0x41:
+        {
+            uint8_t v = __gb_read_stat_synced(gb);
             if (!gb->hle_enabled)
-                return __gb_read_stat_synced(gb);
-            break;
+                return v;
+            return $(__gb_hle_read)(gb, addr, v);
+        }
         case 0x44:
+        {
+            uint8_t v = __gb_read_ly_synced(gb);
             if (!gb->hle_enabled)
-                return __gb_read_ly_synced(gb);
-            break;
+                return v;
+            return $(__gb_hle_read)(gb, addr, v);
+        }
         case 0x0F:
+        {
+            uint8_t v = gb->gb_reg.IF;
             if (!gb->hle_enabled)
-                return gb->gb_reg.IF;
-            break;
+                return v;
+            return $(__gb_hle_read)(gb, addr, v);
+        }
+#else
+        case 0x41:
+            return __gb_read_stat_synced(gb);
+        case 0x44:
+            return __gb_read_ly_synced(gb);
+        case 0x0F:
+            return gb->gb_reg.IF;
+#endif
         case 0x04:
             return gb->gb_reg.DIV;
         case 0x05:
