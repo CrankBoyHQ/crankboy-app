@@ -1980,6 +1980,20 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
             gb->gb_halt = 0;
     }
 
+#if PGB_IS_CGB
+    /* GDMA stall drain: halt-path cycles are PPU-domain (skip fast-mode >>1). */
+    if (gb->cgb_gdma_halt_period)
+    {
+        uint32_t max_cycles = gb->cgb_gdma_halt_period;
+        if (cycles > max_cycles)
+            cycles = max_cycles;
+
+        gb->cgb_gdma_halt_period = max_cycles - cycles;
+        if (gb->cgb_gdma_halt_period == 0)
+            gb->gb_halt = 0;
+    }
+#endif
+
     return (uint16_t)cycles;
 }
 
@@ -1992,7 +2006,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
     /* Handle interrupts */
     if unlikely (
-        (gb->gb_ime || gb->gb_halt || gb->gb_stop) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+        (gb->gb_ime || gb->gb_halt || gb->gb_stop) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) &&
+        (PGB_IS_CGB ? gb->cgb_gdma_halt_period == 0 : true)
     )
     {
         /* Timer-sourced HALT wake takes 6 M-cycles (all other sources: 5).

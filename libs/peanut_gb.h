@@ -1172,6 +1172,11 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
                         gb->cgb_hdma_active = true;
                         while (gb->cgb_hdma_active)
                             __gb_do_hdma(gb);
+
+                        /* GDMA CPU stall: (len+1)x8 M-cycles, charged in PPU-domain
+                         * T-cycles (x32) -- same duration in single and double speed. */
+                        gb->cgb_gdma_halt_period = (uint16_t)((val & 0x7F) + 1) * 32;
+                        gb->gb_halt = 1;
                     }
                 }
             }
@@ -5332,6 +5337,7 @@ void gb_init_serial(
 __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 {
     gb->gb_halt = 0;
+    gb->cgb_gdma_halt_period = 0;
     gb->gb_halt_bug = 0;
     gb->gb_ime = 0;
 
@@ -5744,6 +5750,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
     gb->cgb_speed_switch_halt_period = 0;
+    gb->cgb_gdma_halt_period = 0;
     pgb_cgb_bg_pal_dirty = 0;
     pgb_cgb_obj_pal_dirty = 0;
     gb->cgb_wram_bank = 0;

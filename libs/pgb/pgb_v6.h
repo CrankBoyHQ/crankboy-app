@@ -350,6 +350,7 @@ struct PGB_VERSIONED(gb_s)
     uint16_t cgb_hdma_dst;
     uint16_t cgb_hdma_len : 7;
     bool cgb_hdma_active : 1;
+    uint16_t cgb_gdma_halt_period;  // remaining GDMA CPU stall
 
     bool dma_active : 1;
     uint16_t dma_src;
@@ -800,8 +801,16 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     //  - audio: env grew (should_lock, clock), sweep grew (enabled, divider),
     //    wave grew (pulsed, sum, sum_volume, sum_valid), pre_frame_* snapshot added
     //  - zero32 removed (was between xram and audio)
+    //  - cgb_gdma_halt_period added
 
-    set_fields(v6_gb, v5_gb, gb_rom, gb_reg);
+    set_fields(v6_gb, v5_gb, gb_rom, cgb_hdma_dst);
+
+    v6_gb->cgb_hdma_len = v5_gb->cgb_hdma_len;
+    v6_gb->cgb_hdma_active = v5_gb->cgb_hdma_active;
+    v6_gb->cgb_gdma_halt_period = 0;
+    v6_gb->dma_active = v5_gb->dma_active;
+
+    set_fields(v6_gb, v5_gb, dma_src, gb_reg);
 
     v6_gb->counter.lcd_count = v5_gb->counter.lcd_count;
     v6_gb->counter.div_count = v5_gb->counter.div_count;
