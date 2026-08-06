@@ -2364,6 +2364,14 @@ done_instr_timing:
                     gb->lcd_mode = LCD_TRANSFER;
                     gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
+#if PGB_IS_CGB
+                    /* Flush batched palette gray-LUT rebuilds. Palette
+                     * writes only land outside mode 3, so rebuilding here
+                     * matches per-write update timing. */
+                    if unlikely (pgb_cgb_bg_pal_dirty | pgb_cgb_obj_pal_dirty)
+                        __cgb_flush_pal_dirty(gb);
+#endif
+
                     DRAW_CALL($(__gb_ppu_mode3_setup), gb);
                     DRAW_CALL($(__gb_update_stat_irq), gb);
                     ticked = true;

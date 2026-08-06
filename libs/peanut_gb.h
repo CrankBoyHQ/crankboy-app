@@ -799,6 +799,11 @@ static uint8_t pgb_obj_blend_pal[2][8];
  * load, bias change). Gates the per-frame gray/blend LUT rebuild. */
 static bool pgb_cgb_lut_dirty;
 
+/* Per-palette dirty masks for batched gray-LUT rebuilds. Bit i = palette i.
+ * Set on BCPD/OCPD writes; flushed at the next mode 3 entry (writes can only
+ * land outside mode 3, so this matches per-write update timing exactly). */
+static uint8_t pgb_cgb_bg_pal_dirty, pgb_cgb_obj_pal_dirty;
+
 /* Per-palette color luminance (RGB -> sum), used by the usage-histogram
  * (Auto/Contrast gray mode) render hooks in the core. */
 static uint8_t cgb_bg_lum_sum[8][4];
@@ -937,6 +942,27 @@ __section__(".rare") static void __cgb_update_obj_gray_palette(
         pal |= (uint8_t)(gray << (2 * c));
     }
     target[pal_idx] = pal;
+}
+
+/* Rebuild gray palettes flagged by BCPD/OCPD writes since the last flush.
+ * Called once per scanline at most (mode 3 entry). */
+__shell static void __cgb_flush_pal_dirty(gb_s* gb)
+{
+    uint8_t bg = pgb_cgb_bg_pal_dirty, obj = pgb_cgb_obj_pal_dirty;
+    pgb_cgb_bg_pal_dirty = 0;
+    pgb_cgb_obj_pal_dirty = 0;
+    while (bg)
+    {
+        int i = __builtin_ctz(bg);
+        bg &= bg - 1;
+        __cgb_update_bg_gray_palette(gb, i, 0);
+    }
+    while (obj)
+    {
+        int i = __builtin_ctz(obj);
+        obj &= obj - 1;
+        __cgb_update_obj_gray_palette(gb, i, gb->cgb_obj_palette_gray);
+    }
 }
 
 // Build merged blend remap LUTs (BG slots 16-23 = even lines, 24-31 = odd)
@@ -1165,7 +1191,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
                 {
                     uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
-                    __cgb_update_bg_gray_palette(gb, idx / 8, 0);
+                    pgb_cgb_bg_pal_dirty |= 1 << (idx >> 3);
                     pgb_cgb_lut_dirty = true;
                     if (gb->cgb_bg_palette_index & 0x80)
                         gb->cgb_bg_palette_index =
@@ -1186,7 +1212,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
                 {
                     uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
-                    __cgb_update_obj_gray_palette(gb, idx / 8, gb->cgb_obj_palette_gray);
+                    pgb_cgb_obj_pal_dirty |= 1 << (idx >> 3);
                     pgb_cgb_lut_dirty = true;
                     if (gb->cgb_obj_palette_index & 0x80)
                         gb->cgb_obj_palette_index =
@@ -5434,6 +5460,8 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
             __cgb_update_bg_gray_palette(gb, i, 0);
             __cgb_update_obj_gray_palette(gb, i, gb->cgb_obj_palette_gray);
         }
+        pgb_cgb_bg_pal_dirty = 0;
+        pgb_cgb_obj_pal_dirty = 0;
         memset(gb->cgb_obj_palette_gray_alt, 0, sizeof(gb->cgb_obj_palette_gray_alt));
 
         /* CGB internal timer is 0xAC28 */
@@ -5716,6 +5744,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_fast_mode = false;
     gb->cgb_fast_mode_armed = false;
     gb->cgb_speed_switch_halt_period = 0;
+    pgb_cgb_bg_pal_dirty = 0;
+    pgb_cgb_obj_pal_dirty = 0;
     gb->cgb_wram_bank = 0;
     gb->cgb_ff6c = 0;
     gb->cgb_ff75 = 0;
