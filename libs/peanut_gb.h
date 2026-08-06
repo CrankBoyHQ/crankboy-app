@@ -1338,6 +1338,29 @@ typedef struct
 
 static hle_slot_t pgb_hle_cache[PGB_HLE_CACHE_SIZE];
 
+/* Simulator-only diagnostics for cache validation: always on in sim
+ * builds (host cost is noise), nothing emitted on device. Periodic
+ * counter dump plus per-pc fail sites via logToConsole. */
+#ifdef TARGET_SIMULATOR
+enum
+{
+    HLE_STAT_PROBE = 0,  // probe calls (hle_enabled only)
+    HLE_STAT_WARP,       // hits that applied a warp
+    HLE_STAT_HIT_NO,     // hits on verdict NO
+    HLE_STAT_HIT_MET,    // warpable hit, wait condition already met
+    HLE_STAT_MISS,       // probe misses
+    HLE_STAT_ANALYZE,    // actual decodes (miss handler entries)
+    HLE_STAT_FAIL,       // decodes yielding verdict NO
+    HLE_STAT_EVICT,      // store over an occupied different-pc slot
+    HLE_STAT_COUNT
+};
+static uint32_t pgb_hle_stats[HLE_STAT_COUNT];
+#define PGB_HLE_STAT_INC(i) (++pgb_hle_stats[HLE_STAT_##i])
+__shell static void pgb_hle_stats_dump(void);
+#else
+#define PGB_HLE_STAT_INC(i) ((void)0)
+#endif
+
 /* Evaluate the cached compare+branch: true while the loop keeps waiting. */
 static inline __attribute__((always_inline)) bool __gb_hle_waiting(
     const hle_slot_t* s, const uint8_t v
@@ -1393,16 +1416,35 @@ static inline __attribute__((always_inline)) int __gb_hle_probe(
     if (!gb->hle_enabled)
         return HLE_NO_WARP;
 
+    PGB_HLE_STAT_INC(PROBE);
+#ifdef TARGET_SIMULATOR
+    if ((pgb_hle_stats[HLE_STAT_PROBE] & 0xFFFFF) == 0)
+        pgb_hle_stats_dump();
+#endif
+
     const uint16_t pc = gb->cpu_reg.pc;
     hle_slot_t* s = &pgb_hle_cache[(pc >> 1) & PGB_HLE_CACHE_MASK];
 
     if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != (uint16_t)gb->selected_rom_bank)
+    {
+        PGB_HLE_STAT_INC(MISS);
         return HLE_MISS;
+    }
 
-    if (s->rewind == 0 || !__gb_hle_waiting(s, ioval))
+    if (s->rewind == 0)
+    {
+        PGB_HLE_STAT_INC(HIT_NO);
         return HLE_NO_WARP;
+    }
+
+    if (!__gb_hle_waiting(s, ioval))
+    {
+        PGB_HLE_STAT_INC(HIT_MET);
+        return HLE_NO_WARP;
+    }
 
     __gb_hle_apply_warp(gb, s);
+    PGB_HLE_STAT_INC(WARP);
     return HLE_WARPED;
 }
 
@@ -1739,25 +1781,30 @@ analyze_fail:
 
 __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
 {
+    PGB_HLE_STAT_INC(ANALYZE);
+
     hle_slot_t v;
     __gb_hle_analyze(gb, ioaddr, &v);
 
     if (v.pc < 0x8000)
-        pgb_hle_cache[(v.pc >> 1) & PGB_HLE_CACHE_MASK] = v;
+    {
+        hle_slot_t* s = &pgb_hle_cache[(v.pc >> 1) & PGB_HLE_CACHE_MASK];
+#ifdef TARGET_SIMULATOR
+        if (s->pc != 0 && s->pc != v.pc)
+            ++pgb_hle_stats[HLE_STAT_EVICT];
+#endif
+        *s = v;
+    }
 
     if (v.rewind == 0)
     {
+        PGB_HLE_STAT_INC(FAIL);
 #ifdef TARGET_SIMULATOR
-        static int hle_n = 0;
-        if (hle_n++ % 256 == 0)
-        {
-            // only display a portion of these, as they flood the console
-            // otherwise. important to print some though, so we can improve
-            // HLE detection over time.
-            playdate->system->logToConsole(
-                "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
-            );
-        }
+        // No throttle needed: the verdict cache makes this fire once per
+        // unique pc. Log all of them -- they drive HLE pattern extensions.
+        playdate->system->logToConsole(
+            "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
+        );
 #endif
         return ioval;
     }
@@ -1767,6 +1814,20 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
 
     return ioval;
 }
+
+#ifdef TARGET_SIMULATOR
+__shell static void pgb_hle_stats_dump(void)
+{
+    playdate->system->logToConsole(
+        "HLE stats: probes=%u warp=%u hit_no=%u hit_met=%u miss=%u analyze=%u fail=%u "
+        "evict=%u",
+        (unsigned)pgb_hle_stats[HLE_STAT_PROBE], (unsigned)pgb_hle_stats[HLE_STAT_WARP],
+        (unsigned)pgb_hle_stats[HLE_STAT_HIT_NO], (unsigned)pgb_hle_stats[HLE_STAT_HIT_MET],
+        (unsigned)pgb_hle_stats[HLE_STAT_MISS], (unsigned)pgb_hle_stats[HLE_STAT_ANALYZE],
+        (unsigned)pgb_hle_stats[HLE_STAT_FAIL], (unsigned)pgb_hle_stats[HLE_STAT_EVICT]
+    );
+}
+#endif
 
 /* Cycles executed in the current CPU batch but not yet applied to the
  * PPU counters. Transient; set by the batch loop, zeroed when it ends. */
