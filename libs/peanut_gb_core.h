@@ -126,7 +126,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
     // (STAT/LY/IF) keep the full path when HLE is active (CGB only).
     if (addr >= 0xFF00 && addr < 0xFF80)
     {
-        switch (addr)
+        switch (addr & 0xFF)
         {
         case 0x41:
             if (!gb->hle_enabled)
