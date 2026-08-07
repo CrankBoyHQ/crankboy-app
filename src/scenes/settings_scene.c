@@ -2411,7 +2411,7 @@ static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int
             "Normally, the CGB CPU can run twice as fast as the DMG (non-Color GB).\n\n"
             "Set to \"DMG\" to force it to run at DMG speed.\n\n"
             "Can greatly improve perf on titles which don't make efficient use of the CPU.\n\n"
-            "This is the opposite of overclocking (see below).",
+            "This is the opposite of overclocking.",
         .pref_var = &preferences_cgb_speed,
         .max_value = 2,
     };
