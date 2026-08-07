@@ -1357,6 +1357,9 @@ enum
 static uint32_t pgb_hle_stats[HLE_STAT_COUNT];
 #define PGB_HLE_STAT_INC(i) (++pgb_hle_stats[HLE_STAT_##i])
 __shell static void pgb_hle_stats_dump(void);
+
+#define PGB_HLE_FAIL_LOG_LIMIT 32
+static int pgb_hle_fail_logged;
 #else
 #define PGB_HLE_STAT_INC(i) ((void)0)
 #endif
@@ -1800,11 +1803,21 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
     {
         PGB_HLE_STAT_INC(FAIL);
 #ifdef TARGET_SIMULATOR
-        // No throttle needed: the verdict cache makes this fire once per
-        // unique pc. Log all of them -- they drive HLE pattern extensions.
-        playdate->system->logToConsole(
-            "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
-        );
+        /* Once per unique pc, but a game can have thousands of failing
+         * sites -- cap the I/O burst. The fail counter keeps the
+         * total (see periodic stats dump). Reset with the cache. */
+        if (pgb_hle_fail_logged < PGB_HLE_FAIL_LOG_LIMIT)
+        {
+            ++pgb_hle_fail_logged;
+            playdate->system->logToConsole(
+                "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
+            );
+            if (pgb_hle_fail_logged == PGB_HLE_FAIL_LOG_LIMIT)
+                playdate->system->logToConsole(
+                    "HLE Fail log limit (%d) reached, further sites suppressed",
+                    PGB_HLE_FAIL_LOG_LIMIT
+                );
+        }
 #endif
         return ioval;
     }
@@ -5537,6 +5550,9 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->gb_halt_bug = 0;
     gb->gb_ime = 0;
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+#ifdef TARGET_SIMULATOR
+    pgb_hle_fail_logged = 0;
+#endif
 
     /* Initialise MBC values. */
     gb->selected_rom_bank = 1;
@@ -5949,6 +5965,9 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_speed_switch_halt_period = 0;
     gb->cgb_gdma_halt_period = 0;
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+#ifdef TARGET_SIMULATOR
+    pgb_hle_fail_logged = 0;
+#endif
     pgb_cgb_bg_pal_dirty = 0;
     pgb_cgb_obj_pal_dirty = 0;
     gb->cgb_wram_bank = 0;
