@@ -105,9 +105,11 @@ PREF(boot_fade, 1)
 /* --- phony ---
  * script_has_prompted:            0=No, 1=Yes (not a real setting)
  * recommended_settings_ignored:   0=No, 1=Yes (not a real setting)
+ * cgb_only_has_prompted:          0=No, 1=Yes (not a real setting)
  */
 PREF(script_has_prompted, 0)
 PREF(recommended_settings_ignored, 0)
+PREF(cgb_only_has_prompted, 0)
 
 /* --- cgb ---
  * cgb_speed:       0=Default, 1=Force slow mode

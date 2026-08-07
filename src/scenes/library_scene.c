@@ -689,6 +689,29 @@ static bool maybe_launch_emucore_game(CB_Game* game)
     return true;
 }
 
+// one-time "CGB-only" notice acknowledged: remember per game, launch as CGB
+static void cgb_only_ack_and_launch(CB_Game* game, int option)
+{
+    if (option != 0)  // cancelled (B button): no launch, ask again next time
+        return;
+
+    char* settings_path = cb_game_config_path(game->fullpath);
+    if (settings_path)
+    {
+        void* prefs = preferences_store_subset(-1);
+        preferences_cgb_only_has_prompted = 1;
+        preferences_save_to_disk(settings_path, ~(PREFBIT_cgb_only_has_prompted));
+        preferences_restore_subset(prefs);
+        cb_free(prefs);
+        cb_free(settings_path);
+    }
+    launch_dmg_or_cgb(game, 1);
+}
+
+// shared disclaimer for all launch-prompt dialogs
+#define CGB_EXPERIMENTAL_NOTE \
+    "CrankBoy only has experimental support for CGB (\"Color\") emulation."
+
 static void launch_game_prompt_cgb(CB_Game* game, int launch)
 {
     if (launch != 1)
@@ -713,8 +736,14 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     }
     else
     {
-        const char* options[] = {"DMG", "CGB", NULL};
-        const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
+        static const char* options[] = {"DMG", "CGB", NULL};
+        static const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
+        static const char* options_understood[] = {"Understood", NULL};
+
+        int launch_mode = -1;  // -1 = show modal; 0 = DMG; 1 = CGB
+        const char* msg = NULL;
+        const char** modal_options = options_cgb_not_recommended;
+        void* modal_cb = (void*)launch_dmg_or_cgb;
 
         switch (game->names->rom_cgb_support)
         {
@@ -723,64 +752,69 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
                 "WARNING: unexpected game platform (0x%x); launching as DMG",
                 game->names->rom_cgb_support
             );
-            launch_dmg_or_cgb(game, 0);
+            launch_mode = 0;
             break;
         case GB_SUPPORT_DMG:
             if (preferences_prompt_if_cgb_optional >= 2)
-            {
-                CB_Modal* modal = CB_Modal_new(
-                    "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), "
-                    "or try CrankBoy's experimental CGB (\"Color\") emulation regardless.",
-                    options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
-                );
-
-                modal->width = 380;
-                modal->height = 220;
-
-                CB_presentModal(modal->scene);
-            }
+                msg =
+                    "This ROM is marked as DMG.\n \nYou can launch in DMG mode "
+                    "(recommended), or try CGB mode regardless. " CGB_EXPERIMENTAL_NOTE;
             else
-            {
-                launch_dmg_or_cgb(game, 0);
-            }
+                launch_mode = 0;
             break;
         case GB_SUPPORT_CGB:
-        {
-            CB_Modal* modal = CB_Modal_new(
-                "This ROM is marked CGB-only.\n \nCrankBoy only has experimental support for CGB "
-                "ROMs. "
-                "You can try launching this as a standard DMG ROM, or try CGB mode (\"Color\").",
-                options, (void*)launch_dmg_or_cgb, game
-            );
-
-            modal->width = 380;
-            modal->height = 220;
-
-            CB_presentModal(modal->scene);
-        }
-        break;
-        case GB_SUPPORT_DMG_AND_CGB:
-        {
-            if (preferences_prompt_if_cgb_optional)
+            if (preferences_prompt_if_cgb_optional >= 2)
             {
-                CB_Modal* modal = CB_Modal_new(
-                    "This ROM supports CGB mode.\n \nYou can launch in standard, "
-                    "DMG mode (recommended), or try using CrankBoy's experimental "
-                    "CGB (\"Color\") emulation.",
-                    options_cgb_not_recommended, (void*)launch_dmg_or_cgb, game
-                );
-
-                modal->width = 380;
-                modal->height = 220;
-
-                CB_presentModal(modal->scene);
+                // "CGB Prompt: Always" keeps the chooser every launch.
+                msg =
+                    "This ROM is marked CGB-only.\n \nYou can try launching as a "
+                    "standard DMG ROM, or in CGB mode. " CGB_EXPERIMENTAL_NOTE;
+                modal_options = options;
             }
             else
             {
-                launch_dmg_or_cgb(game, 0);
+                // one-time notice per game, then always launch as CGB
+                void* p = preferences_store_subset(-1);
+                preferences_cgb_only_has_prompted = 0;
+                load_game_prefs(game->fullpath, false);
+                int has_prompted = preferences_cgb_only_has_prompted;
+                preferences_restore_subset(p);
+                cb_free(p);
+
+                if (has_prompted)
+                {
+                    launch_mode = 1;
+                }
+                else
+                {
+                    msg =
+                        "This ROM is marked CGB-only.\n \nThe game will launch in "
+                        "CGB mode. " CGB_EXPERIMENTAL_NOTE;
+                    modal_options = options_understood;
+                    modal_cb = (void*)cgb_only_ack_and_launch;
+                }
             }
+            break;
+        case GB_SUPPORT_DMG_AND_CGB:
+            if (preferences_prompt_if_cgb_optional)
+                msg =
+                    "This ROM supports CGB mode.\n \nYou can launch in DMG mode "
+                    "(recommended), or try CGB mode. " CGB_EXPERIMENTAL_NOTE;
+            else
+                launch_mode = 0;
+            break;
         }
-        break;
+
+        if (msg)
+        {
+            CB_Modal* modal = CB_Modal_new(msg, modal_options, modal_cb, game);
+            modal->width = 380;
+            modal->height = 220;
+            CB_presentModal(modal->scene);
+        }
+        else if (launch_mode >= 0)
+        {
+            launch_dmg_or_cgb(game, launch_mode);
         }
     }
 

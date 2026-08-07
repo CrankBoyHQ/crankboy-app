@@ -2663,14 +2663,13 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .name = "CGB Prompt",
         .values = cgb_prompt_labels,
         .description =
-            "When launching a ROM,"
-            "show a prompt to choose:\n\n"
+            "When launching a ROM, show a prompt to choose:\n\n"
             "1. DMG (original) emulation\n"
-            "2. CGB (\"Color\") emulation\n"
-            "      (experimental)\n\n"
-            "No: CGB-only ROMs\n\n"
-            "Yes: CGB-compatible ROMs\n\n"
-            "Always: CGB and DMG ROMs",
+            "2. CGB (\"Color\") emulation\n\n"
+            "No: never prompt\n"
+            "Yes: CGB-compatible ROMs\n"
+            "Always: CGB and DMG ROMs\n\n"
+            "CGB-only ROMs always show a one-time notice.",
         .pref_var = &preferences_prompt_if_cgb_optional,
         .max_value = 3,
         .on_press = NULL

@@ -61,4 +61,6 @@ typedef struct CB_Modal
     int wrapped_lines_count;
 } CB_Modal;
 
-CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback callback, void* ud);
+CB_Modal* CB_Modal_new(
+    const char* text, char const* const* options, CB_ModalCallback callback, void* ud
+);

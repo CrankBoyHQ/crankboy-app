@@ -381,7 +381,9 @@ void CB_Modal_free(CB_Modal* modal)
     cb_free(modal);
 }
 
-CB_Modal* CB_Modal_new(char* text, char const* const* options, CB_ModalCallback callback, void* ud)
+CB_Modal* CB_Modal_new(
+    const char* text, char const* const* options, CB_ModalCallback callback, void* ud
+)
 {
     CB_Modal* modal = allocz(CB_Modal);
 
