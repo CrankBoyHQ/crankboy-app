@@ -61,6 +61,9 @@ enum ScriptPreferredLaunchSystem
     ScriptPreferredLaunchSystem_None,
     ScriptPreferredLaunchSystem_DMG,
     ScriptPreferredLaunchSystem_CGB,
+    // CGB iff the rom header supports it, else DMG (for scripts whose title
+    // matches both DMG and CGB variants, e.g. ZELDA / Link's Awakening DX).
+    ScriptPreferredLaunchSystem_Auto,
 };
 
 enum ScriptPreferredLaunchColor

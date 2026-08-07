@@ -705,7 +705,11 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
 
     if (will_use_script && info && info->launch_system != ScriptPreferredLaunchSystem_None)
     {
-        launch_dmg_or_cgb(game, info->launch_system == ScriptPreferredLaunchSystem_CGB);
+        enum ScriptPreferredLaunchSystem ls = info->launch_system;
+        bool cgb = (ls == ScriptPreferredLaunchSystem_CGB) ||
+                   (ls == ScriptPreferredLaunchSystem_Auto &&
+                    (game->names->rom_cgb_support & GB_SUPPORT_CGB));
+        launch_dmg_or_cgb(game, cgb);
     }
     else
     {
