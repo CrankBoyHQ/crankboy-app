@@ -1303,7 +1303,10 @@ enum
     HLE_CMP_SUB_D8,     // sub d8:        same flags as cp d8
     HLE_CMP_AND_D8,     // and d8:        z = !(v & d8), c = 0
     HLE_CMP_BIT_A,      // bit n,a:       z = !(v & bit), c unknown
-    HLE_CMP_BIT_HL      // bit n,(hl):    z = !(v & bit), c unknown
+    HLE_CMP_BIT_HL,     // bit n,(hl):    z = !(v & bit), c unknown
+    HLE_CMP_AND_CP,     // and d8 + cp/sub d8: m = v & arg; z = (m == arg2), c = (m < arg2)
+    HLE_CMP_AND_XOR,    // and d8 + xor d8:    z = ((v & arg) == arg2), c = 0
+    HLE_CMP_CP_R        // cp a,r:        z = (v == r), c = (v < r); arg = reg (0-5,7)
 };
 
 enum
@@ -1328,9 +1331,9 @@ typedef struct
     uint8_t addr;   // ioaddr & 0xFF
     int8_t rewind;  // 0 = verdict NO; else -1..-3 (pc offset to load instr)
     uint8_t cmp_op;
-    uint8_t cmp_arg;  // d8 operand or bit index
+    uint8_t cmp_arg;  // d8 operand, bit index, mask, or register selector
     uint8_t jr_pol;
-    uint8_t _pad;
+    uint8_t cmp_arg2;  // target byte (HLE_CMP_AND_CP / HLE_CMP_AND_XOR)
 } hle_slot_t;
 
 #define PGB_HLE_CACHE_SIZE 16
@@ -1366,7 +1369,7 @@ static int pgb_hle_fail_logged;
 
 /* Evaluate the cached compare+branch: true while the loop keeps waiting. */
 static inline __attribute__((always_inline)) bool __gb_hle_waiting(
-    const hle_slot_t* s, const uint8_t v
+    gb_s* gb, const hle_slot_t* s, const uint8_t v
 )
 {
     int z, c;
@@ -1385,6 +1388,49 @@ static inline __attribute__((always_inline)) bool __gb_hle_waiting(
         z = !(v & s->cmp_arg);
         c = 0;
         break;
+    case HLE_CMP_AND_CP:
+    {
+        uint8_t m = v & s->cmp_arg;
+        z = (m == s->cmp_arg2);
+        c = (m < s->cmp_arg2);
+        break;
+    }
+    case HLE_CMP_AND_XOR:
+        z = ((v & s->cmp_arg) == s->cmp_arg2);
+        c = 0;
+        break;
+    case HLE_CMP_CP_R:
+    {
+        // cp a,r against the live register (0xBE excluded at decode)
+        uint8_t r;
+        switch (s->cmp_arg)
+        {
+        case 0:
+            r = gb->cpu_reg.b;
+            break;
+        case 1:
+            r = gb->cpu_reg.c;
+            break;
+        case 2:
+            r = gb->cpu_reg.d;
+            break;
+        case 3:
+            r = gb->cpu_reg.e;
+            break;
+        case 4:
+            r = gb->cpu_reg.h;
+            break;
+        case 5:
+            r = gb->cpu_reg.l;
+            break;
+        default:
+            r = gb->cpu_reg.a;
+            break;
+        }
+        z = (v == r);
+        c = (v < r);
+        break;
+    }
     default:  // BIT: carry unaffected -> unknown
         z = !(v & (1 << (s->cmp_arg & 7)));
         c = -1;
@@ -1440,7 +1486,7 @@ static inline __attribute__((always_inline)) int __gb_hle_probe(
         return HLE_NO_WARP;
     }
 
-    if (!__gb_hle_waiting(s, ioval))
+    if (!__gb_hle_waiting(gb, s, ioval))
     {
         PGB_HLE_STAT_INC(HIT_MET);
         return HLE_NO_WARP;
@@ -1639,6 +1685,7 @@ __shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_s
     s->rewind = 0;
     s->cmp_op = HLE_CMP_AND_A;
     s->cmp_arg = 0;
+    s->cmp_arg2 = 0;
     s->jr_pol = HLE_JR_NZ;
 
     // pc of instruction following compare
@@ -1711,7 +1758,25 @@ __shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_s
         u8 op0 = READ8(pc);
         u8 d8 = READ8(pc + 1);
         addr_next = pc + 2;
-        if (op0 == 0xA7 || op0 == 0xB7)
+        if (op0 == 0xE6 &&
+            (READ8(pc + 2) == 0xFE || READ8(pc + 2) == 0xD6 || READ8(pc + 2) == 0xEE))
+        {
+            // and d8 + cp/sub/xor d8: masked-mode waits,
+            // "ldh a,(STAT); and 3; cp 1; jr nz"
+            s->cmp_op = (READ8(pc + 2) == 0xEE) ? HLE_CMP_AND_XOR : HLE_CMP_AND_CP;
+            s->cmp_arg = d8;              // mask
+            s->cmp_arg2 = READ8(pc + 3);  // target
+            addr_next = pc + 4;
+        }
+        else if (op0 >= 0xB8 && op0 <= 0xBF && op0 != 0xBE)
+        {
+            // cp a,r: register-value waits, "ldh a,(LY); cp b; jr c".
+            // (0xBE = cp a,(hl) excluded: extra memory read per iteration)
+            s->cmp_op = HLE_CMP_CP_R;
+            s->cmp_arg = op0 - 0xB8;
+            addr_next = pc + 1;
+        }
+        else if (op0 == 0xA7 || op0 == 0xB7)
         {
             // AND A / OR A: Z = (A == 0), C = 0. Single-byte instruction;
             // the classic "ldh a,(x); and a; jr z" flag-wait idiom.
@@ -1822,7 +1887,7 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
         return ioval;
     }
 
-    if (__gb_hle_waiting(&v, ioval))
+    if (__gb_hle_waiting(gb, &v, ioval))
         __gb_hle_apply_warp(gb, &v);
 
     return ioval;
