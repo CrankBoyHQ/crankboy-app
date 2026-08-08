@@ -170,7 +170,7 @@ PDCFLAGS += --quiet
 # bake Source/*.json into C source
 build/baked_%_json.c: Source/%.json scripts/embed_json.py | MKOBJDIR
 	$(PYTHON) scripts/embed_json.py $< $@ baked_$*_json
-	
+
 build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
 	xxd -i -n baked_$*_strings $< | sed 's/^unsigned/const unsigned/' > $@
 
@@ -210,9 +210,9 @@ $(FONT_STAMP): $(JP_LIST) $(JP_TTF) scripts/insert_glyphs.py $(wildcard assets/f
 fonts: $(FONT_STAMP)
 
 # fonts must be produced before pdc packages Source
-all: | fonts
-device: | fonts
-simulator: | fonts
+all: | fonts db
+device: | fonts db
+simulator: | fonts db
 
 # Compress recommended settings JSONs and add to pdx
 .PHONY: csettings
@@ -224,6 +224,24 @@ csettings:
 .PHONY: changelog
 changelog:
 	gzip -c CHANGELOG.md > build/CHANGELOG.md.gz
+
+# Compress db JSONs to Source/db/ (incremental: only when source newer, clean stale)
+.PHONY: db
+db:
+	@mkdir -p Source/db
+	@for f in src/db/*.json; do \
+		name=$$(basename "$$f"); \
+		target="Source/db/$${name}.gz"; \
+		if [ ! -f "$$target" ] || [ "$$f" -nt "$$target" ]; then \
+			gzip -c "$$f" > "$$target"; \
+		fi; \
+	done
+	@for f in Source/db/*.json.gz; do \
+		name=$$(basename "$$f" .gz); \
+		if [ ! -f "src/db/$$name" ]; then \
+			rm -f "$$f"; \
+		fi; \
+	done
 
 # Post-pdc steps: copy csettings to PDX and strip baked JSONs from PDX
 define _post_pdc
