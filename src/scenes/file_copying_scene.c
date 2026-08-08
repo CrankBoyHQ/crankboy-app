@@ -200,7 +200,7 @@ void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
     {
     case kFileCopyingStateInit:
     {
-        cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+        cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_initializing));
 
         const char* sources[] = {".", "packed"};
         struct list_files_ud ud = {.scene = scene};
@@ -246,7 +246,7 @@ void CB_FileCopyingScene_update(void* object, uint32_t u32enc_dt)
             );
 
             cb_draw_logo_screen_centered_split(
-                CB_App->subheadFont, "Copying Files... ", progress_message,
+                CB_App->subheadFont, T(status_copying_files), progress_message,
                 scene->progress_max_width
             );
 

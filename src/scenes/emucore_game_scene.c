@@ -294,7 +294,7 @@ CB_EmucoreGameScene* CB_EmucoreGameScene_new(
 {
     CB_EmucoreGameScene* es = cb_malloc(sizeof(CB_EmucoreGameScene));
     memset(es, 0, sizeof(*es));
-    
+
     clear_last_selected_preference();
 
     CB_Scene* scene = CB_Scene_new();

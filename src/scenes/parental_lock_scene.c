@@ -103,16 +103,16 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
                         4 * sizeof(unsigned)
                     ) != 0)
                 {
-                    CB_Modal* modal = CB_Modal_new("Incorrect password.", NULL, NULL, NULL);
+                    CB_Modal* modal = CB_Modal_new(T(plock_incorrect_password), NULL, NULL, NULL);
                     modal->height = 90;
                     CB_presentModal(modal->scene);
                 }
                 else
                 {
-                    const char* options[] = {"Temporary", "Permanent", NULL};
+                    const char* options[] = {T(label_temporary), T(label_permanent), NULL};
                     CB_Modal* modal = CB_Modal_new(
-                        "Unlock temporarily or permanently?", options,
-                        (void*)parental_lock_disengage, parentalLockScene
+                        T(plock_unlock_prompt), options, (void*)parental_lock_disengage,
+                        parentalLockScene
                     );
                     modal->width = 330;
                     modal->height += 20;
@@ -122,13 +122,11 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
             }
             else
             {
-                const char* options[] = {"Cancel", "Yes", NULL};
-                CB_Modal* modal = CB_Modal_new(
-                    "Really set parental lock? Internet features will be restricted until the lock "
-                    "is disengaged. If you forget the password, you can simply "
-                    "delete " PARENTAL_LOCK_FILE " as a fallback.",
-                    options, (void*)parental_lock_engage, parentalLockScene
-                );
+                const char* options[] = {T(label_cancel), T(label_yes), NULL};
+                char* msg = aprintf(T(plock_really_set), PARENTAL_LOCK_FILE);
+                CB_Modal* modal =
+                    CB_Modal_new(msg, options, (void*)parental_lock_engage, parentalLockScene);
+                cb_free(msg);
                 modal->width = 350;
                 modal->height = 200;
                 CB_presentModal(modal->scene);
@@ -154,7 +152,9 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
         }
     }
 
-    playdate->graphics->drawText("Confirm", 8, kASCIIEncoding, 220, y);
+    playdate->graphics->drawText(
+        T(plock_confirm), strlen(T(plock_confirm)), kASCIIEncoding, 220, y
+    );
     if (parentalLockScene->sel == 4)
     {
         playdate->graphics->fillRect(220 - 4, y - 4, 90, 24, kColorXOR);
@@ -162,15 +162,11 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
 
     if (parentalLockScene->unlocking)
     {
-        playdate->graphics->drawText(
-            "Please enter the code, or Ⓑ to cancel.", 50, kUTF8Encoding, 50, 50
-        );
+        playdate->graphics->drawText(T(plock_enter_code), 50, kUTF8Encoding, 50, 50);
     }
     else
     {
-        playdate->graphics->drawText(
-            "Please enter a code, or Ⓑ to cancel.", 50, kUTF8Encoding, 50, 50
-        );
+        playdate->graphics->drawText(T(plock_enter_new_code), 50, kUTF8Encoding, 50, 50);
     }
 }
 

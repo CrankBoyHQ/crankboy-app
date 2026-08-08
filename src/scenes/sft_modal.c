@@ -60,7 +60,7 @@ void CB_SFTModal_update(void* object, uint32_t u32float_dt)
 {
     (void)object;
     (void)u32float_dt;
-    cb_draw_logo_screen_to_buffer(CB_App->subheadFont, "File Transfer Mode");
+    cb_draw_logo_screen_to_buffer(CB_App->subheadFont, T(status_file_transfer));
 }
 
 // Getter for the global instance (used by serial.c to check if modal is active)

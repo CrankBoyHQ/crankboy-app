@@ -86,7 +86,7 @@ SRC += libs/pdll/uzlib/crc32.c
 SRC += build/baked_version_json.c
 SRC += build/baked_credits_json.c
 SRC += build/baked_en_strings.c
-SRC += build/baked_jp_strings.c
+SRC += build/baked_ja_strings.c
 SRC += src/l10n/l10n.c
 
 ASRC = setup.s
@@ -177,8 +177,8 @@ build/baked_%_strings.c: src/l10n/%.strings | MKOBJDIR
 JP_TTF  = assets/fonts/LINESeed/LINESeedJP-Bold.ttf
 JP_LIST = build/glyphs-jp.txt
 
-$(JP_LIST): src/l10n/jp.strings scripts/list_jp_glyphs.py | MKOBJDIR
-	$(PYTHON) scripts/list_jp_glyphs.py src/l10n/jp.strings $@
+$(JP_LIST): src/l10n/ja.strings scripts/list_jp_glyphs.py | MKOBJDIR
+	$(PYTHON) scripts/list_jp_glyphs.py src/l10n/ja.strings $@
 
 FONT_STAMP = build/fonts.stamp
 

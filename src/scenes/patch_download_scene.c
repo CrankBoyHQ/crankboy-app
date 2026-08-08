@@ -231,15 +231,15 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
         char* msg;
         if (flags & HTTP_WIFI_NOT_AVAILABLE)
         {
-            msg = cb_strdup("Wi-Fi not available.");
+            msg = cb_strdup(T(net_wifi_unavailable));
         }
         else if (flags & HTTP_ENABLE_DENIED)
         {
-            msg = cb_strdup("Network permission was denied.");
+            msg = cb_strdup(T(net_permission_denied));
         }
         else
         {
-            msg = aprintf("A network error occurred. (0x%03x)", flags);
+            msg = aprintf(T(net_error), flags);
         }
 
         CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
@@ -360,7 +360,7 @@ static void context_patch_files_browse_update(
     if (context->list->items->length == 1)
     {
         CB_ListItemButton* button = context->list->items->items[0];
-        if (strcmp(button->title, "<empty>") == 0)
+        if (strcmp(button->title, T(status_empty)) == 0)
         {
             // This is the <empty> placeholder, which is not interactive.
             return;
@@ -397,7 +397,7 @@ static void context_patch_files_browse_update(
 
             if (unknown_file_size)
             {
-                CB_Modal* modal = CB_Modal_new("Unknown file size.", NULL, NULL, NULL);
+                CB_Modal* modal = CB_Modal_new(T(patch_unknown_size), NULL, NULL, NULL);
                 CB_presentModal(modal->scene);
                 return;
             }
@@ -421,14 +421,14 @@ static void context_patch_files_browse_update(
                 {
                     pds->text_file_title = obj->data[original_idx].key;
                     initiate_download_with_permission_check(
-                        pds, PD_TEXTFILE, "to download this text file", http_path_san
+                        pds, PD_TEXTFILE, T(net_patch_text_reason), http_path_san
                     );
                 }
                 else
                 {
                     pds->basename = obj->data[original_idx].key;
                     initiate_download_with_permission_check(
-                        pds, PD_PATCH, "to download this patch file", http_path_san
+                        pds, PD_PATCH, T(net_patch_file_reason), http_path_san
                     );
                 }
 
@@ -459,7 +459,7 @@ static void context_patch_list_update(
         if (pds->hack_fs.type != kJSONTable || pds->selected_hack.type != kJSONTable)
         {
             // failed to find info on hack
-            CB_Modal* modal = CB_Modal_new("Patch database missing entry.", NULL, NULL, NULL);
+            CB_Modal* modal = CB_Modal_new(T(patch_missing_entry), NULL, NULL, NULL);
             CB_presentModal(modal->scene);
         }
         else
@@ -471,22 +471,22 @@ static void context_patch_list_update(
             c->type = PDSCT_PATCH_CHOOSE_INTERACTION;
             CB_ListItemButton* itemButton;
 
-            itemButton = CB_ListItemButton_new("Download files\t›");
+            itemButton = CB_ListItemButton_new(T(patch_download_files));
             array_push(c->list->items, itemButton);
 
-            itemButton = CB_ListItemButton_new("Patch info\t›");
+            itemButton = CB_ListItemButton_new(T(patch_info));
             array_push(c->list->items, itemButton);
 
             json_value fs = pds->hack_fs;
 
-            itemButton = CB_ListItemButton_new("Readme\t›");
+            itemButton = CB_ListItemButton_new(T(patch_readme));
             itemButton->ud.uint = 0;
             array_push(c->list->items, itemButton);
 
             bool has_changelog = (json_get_table_value(fs, "changelog.txt").type != kJSONNull) ||
                                  (json_get_table_value(fs, "releasenotes.txt").type != kJSONNull);
 
-            itemButton = CB_ListItemButton_new("Changelog\t›");
+            itemButton = CB_ListItemButton_new(T(patch_changelog));
             itemButton->ud.uint = has_changelog ? 0 : 1;  // 1 means disabled
             array_push(c->list->items, itemButton);
 
@@ -665,19 +665,14 @@ static void context_patch_choose_interaction_update(
         case 0:  // Download Files
             if (!push_file_browser(pds, pds->hack_fs))
             {
-                CB_Modal* modal = CB_Modal_new("Failed to open directory", NULL, NULL, NULL);
+                CB_Modal* modal = CB_Modal_new(T(patch_dir_failed), NULL, NULL, NULL);
                 CB_presentModal(modal->scene);
             }
             else
             {
                 if (!hash_match(pds->selected_hack, pds->game))
                 {
-                    CB_Modal* modal = CB_Modal_new(
-                        "ROM not listed in hack info.\nYou should read the hack info and/or README "
-                        "to verify this ROM's compatability before applying any patches, lest "
-                        "glitches occur.",
-                        NULL, NULL, NULL
-                    );
+                    CB_Modal* modal = CB_Modal_new(T(patch_rom_not_listed), NULL, NULL, NULL);
                     modal->width = 320;
                     modal->height = 190;
                     CB_presentModal(modal->scene);
@@ -731,9 +726,9 @@ static void context_patch_choose_interaction_update(
             cb_free(http_path);
 
             pds->http_in_progress = 1;
-            pds->text_file_title = "Readme";
+            pds->text_file_title = T(patch_readme_heading);
             initiate_download_with_permission_check(
-                pds, PD_TEXTFILE, "to download a patch README", http_path_san
+                pds, PD_TEXTFILE, T(net_patch_readme_reason), http_path_san
             );
             cb_free(http_path_san);
         }
@@ -768,9 +763,9 @@ static void context_patch_choose_interaction_update(
                 cb_free(http_path);
 
                 pds->http_in_progress = 1;
-                pds->text_file_title = "Changelog";
+                pds->text_file_title = T(pdmenu_changelog);
                 initiate_download_with_permission_check(
-                    pds, PD_TEXTFILE, "to download the changelog", http_path_san
+                    pds, PD_TEXTFILE, T(net_patch_changelog_reason), http_path_san
                 );
                 cb_free(http_path_san);
             }
@@ -785,9 +780,8 @@ static void context_patch_choose_interaction_update(
 char* get_rom_info(CB_PatchDownloadScene* pds)
 {
     return aprintf(
-        "ROM Header title: %s\n \nCRC32: %X\nInternal save: %s\n \nFilename: %s", pds->header_name,
-        pds->game->names->crc32, pds->game->names->rom_has_battery ? "Yes" : "No",
-        pds->game->names->filename
+        T(patch_rom_info_fmt), pds->header_name, pds->game->names->crc32,
+        pds->game->names->rom_has_battery ? T(label_yes) : T(label_no), pds->game->names->filename
     );
 }
 
@@ -817,12 +811,7 @@ static void context_top_level_update(
             cb_play_ui_sound(CB_UISound_Confirm);
             char* rom_basename = cb_basename(pds->game->fullpath, true);
             char* msg = aprintf(
-                "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n"
-                "2. Via USB connection, add patch files to: %s/%s/\n"
-                "3. Finally, enable them from this screen (settings > Patches > Manage "
-                "patches).\n\n"
-                "You may find patches on romhacking.net or romhack.ing",
-                cb_gb_directory_path(CB_patchesPath), rom_basename
+                T(patch_setup_instructions), cb_gb_directory_path(CB_patchesPath), rom_basename
             );
             cb_free(rom_basename);
 
@@ -873,22 +862,18 @@ static void context_top_level_update(
             cb_play_ui_sound(CB_UISound_Confirm);
             if (CB_App->parentalLockEngaged)
             {
-                CB_presentModal(CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene);
+                CB_presentModal(CB_Modal_new(T(patch_engaged), NULL, NULL, NULL)->scene);
             }
             else if (!CB_App->rhdb_present)
             {
-                CB_presentModal(CB_Modal_new(
-                                    "Unable to download patches:\nrhdb.json missing.", NULL, NULL,
-                                    NULL
-                )
-                                    ->scene);
+                CB_presentModal(CB_Modal_new(T(patch_rhdb_missing), NULL, NULL, NULL)->scene);
             }
             else
             {
                 if (pds->rhdb.type == kJSONNull)
                 {
                     // rhdb takes a while to parse, so we put a message here
-                    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading...");
+                    cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_loading));
                     parse_json(ROMHACK_DB_FILE, &pds->rhdb, kFileRead | kFileReadData);
 
                     // load entry for game
@@ -921,10 +906,7 @@ static void context_top_level_update(
                 }
                 else
                 {
-                    CB_Modal* modal = CB_Modal_new(
-                        "Failed to determine patch host.\n \n(Is rhdb.json present?)", NULL, NULL,
-                        NULL
-                    );
+                    CB_Modal* modal = CB_Modal_new(T(patch_no_host), NULL, NULL, NULL);
                     CB_presentModal(modal->scene);
                 }
             }
@@ -1121,9 +1103,9 @@ static char* context_patch_files_browse_hint(
     if (context->list->items->length == 1)
     {
         CB_ListItemButton* button = context->list->items->items[0];
-        if (strcmp(button->title, "<empty>") == 0)
+        if (strcmp(button->title, T(status_empty)) == 0)
         {
-            return cb_strdup("This directory contains no supported files.");
+            return cb_strdup(T(patch_dir_no_files));
         }
     }
 
@@ -1134,35 +1116,32 @@ static char* context_patch_files_browse_hint(
 
         if ((button->ud.uint & FT_DOWNLOADED_BIT) != 0)
         {
-            return cb_strdup("This patch file has already been downloaded.");
+            return cb_strdup(T(patch_already_downloaded));
         }
 
         enum file_type const ft = button->ud.uint & ((1 << FILETYPE_BITS) - 1);
         unsigned const file_size = (button->ud.uint >> FILE_META_BITS);
         bool const unknown_file_size = (file_size >= (1 << (32 - FILE_META_BITS)));
 
-        char* en_file_size = unknown_file_size ? aprintf("unknown") : en_human_bytes(file_size);
+        char* en_file_size =
+            unknown_file_size ? aprintf(T(label_unknown)) : en_human_bytes(file_size);
         char* v = NULL;
         switch (ft)
         {
         case FT_DIRECTORY:
-            v = aprintf("Directory.\nPress Ⓐ to view contents.");
+            v = aprintf(T(patch_dir_help));
             break;
         case FT_TEXT:
-            v = aprintf("Size: %s\nText file.\nPress Ⓐ to view contents.", en_file_size);
+            v = aprintf(T(patch_text_file_help), en_file_size);
             break;
         case FT_PATCH_SUPPORTED:
-            v = aprintf("Size: %s\nPress Ⓐ to download this patch file.", en_file_size);
+            v = aprintf(T(patch_file_help), en_file_size);
             break;
         case FT_PATCH_UNSUPPORTED:
-            v = aprintf(
-                "Size: %s\nCrankBoy does not support this type of patch yet.", en_file_size
-            );
+            v = aprintf(T(patch_file_unsupported), en_file_size);
             break;
         case FT_UNSUPPORTED:
-            v = aprintf(
-                "Size: %s\nCrankBoy does not know how to open this type of file.", en_file_size
-            );
+            v = aprintf(T(patch_file_unknown), en_file_size);
             break;
         default:
             break;
@@ -1188,26 +1167,26 @@ static char* context_patch_choose_interaction_hint(
     switch (context->list->selectedItem)
     {
     case 0:
-        return aprintf("Download patch files for hack \"%s\"", title ? title : "?");
+        return aprintf(T(patch_download_title), title ? title : "?");
     case 1:
-        return aprintf("View patch info for hack \"%s\"", title ? title : "?");
+        return aprintf(T(patch_info_title), title ? title : "?");
     case 2:
     {
         const CB_ListItemButton* button = context->list->items->items[context->list->selectedItem];
         if (button->ud.uint == 1)
         {  // is disabled
-            return aprintf("No readme available for this hack.");
+            return aprintf(T(patch_no_readme));
         }
-        return aprintf("View readme for hack \"%s\"", title ? title : "?");
+        return aprintf(T(patch_readme_title), title ? title : "?");
     }
     case 3:
     {
         const CB_ListItemButton* button = context->list->items->items[context->list->selectedItem];
         if (button->ud.uint == 1)
         {  // is disabled
-            return aprintf("No changelog available for this hack.");
+            return aprintf(T(patch_no_changelog));
         }
-        return aprintf("View changelog for hack \"%s\"", title ? title : "?");
+        return aprintf(T(patch_changelog_title), title ? title : "?");
     }
     default:
         return NULL;
@@ -1233,8 +1212,7 @@ static char* context_hack_list_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         title = jtitle.data.stringval;
 
     return aprintf(
-        "Author: %s\n\nRelease Date: %s\n\nTitle: %s", author ? author : "?", date ? date : "?",
-        title ? title : "?"
+        T(patch_author_info), author ? author : "?", date ? date : "?", title ? title : "?"
     );
 }
 
@@ -1252,8 +1230,6 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
         }
         else
         {
-#define PATCH_MANAGE_MSG \
-    "Toggle installed patches and and rearrange the order in which they are applied."
             SoftPatch* patches = list_patches(pds->game->fullpath, NULL);
             if (patches)
             {
@@ -1264,29 +1240,19 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
                 {
                     if (pds->game->names->rom_has_battery)
                     {
-                        return aprintf(
-                            PATCH_MANAGE_MSG
-                            "\n \nPatch code: %08X\n \nNote: because patches are in use, and this "
-                            "ROM has an internal save system, you may wish to use a separate save "
-                            "file. Before launching the game, please adjust Save Slot in settings.",
-                            hash
-                        );
+                        return aprintf(T(patch_manage_help_battery), hash);
                     }
                     else
                     {
-                        return aprintf(PATCH_MANAGE_MSG "\n \nPatch code: %08X", hash);
+                        return aprintf(T(patch_manage_help_code), hash);
                     }
                 }
             }
-            return aprintf(PATCH_MANAGE_MSG);
+            return aprintf(T(patch_manage_help));
         }
         break;
     case 1:
-        return aprintf(
-            "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n "
-            "\nRequires internet.",
-            pds->game->names->name_short_leading_article
-        );
+        return aprintf(T(patch_context_help), pds->game->names->name_short_leading_article);
         break;
     case 2:
         return get_rom_info(pds);
@@ -1640,27 +1606,30 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         switch (pds->pending_download_type)
         {
         case PD_PATCH:
-            base_text = "Downloading patch";
+            base_text = T(patch_downloading_patch);
             break;
         case PD_TEXTFILE:
-            if (pds->text_file_title && strcasecmp(pds->text_file_title, "Readme") == 0)
+            if (pds->text_file_title &&
+                strcasecmp(pds->text_file_title, T(patch_readme_heading)) == 0)
             {
-                base_text = "Downloading Readme";
+                base_text = T(patch_downloading_readme);
             }
-            else if (pds->text_file_title && strcasecmp(pds->text_file_title, "Changelog") == 0)
+            else if (
+                pds->text_file_title && strcasecmp(pds->text_file_title, T(pdmenu_changelog)) == 0
+            )
             {
-                base_text = "Downloading Changelog";
+                base_text = T(patch_downloading_changelog);
             }
             else
             {
-                base_text = "Downloading text file";
+                base_text = T(patch_downloading_text);
             }
             break;
         case PD_PROCESSING:
-            base_text = "Processing";
+            base_text = T(patch_processing);
             break;
         default:
-            base_text = "Please wait";
+            base_text = T(patch_please_wait);
             break;
         }
 
@@ -1698,27 +1667,27 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         {
         case PDC_DOWNLOAD_SUCCESS:
         {
-            const char* options[] = {"Yes", "No", NULL};
-            msg = cb_strdup("Patch downloaded successfully.\nWould you like to enable it now?");
+            const char* options[] = {T(label_yes), T(label_no), NULL};
+            msg = cb_strdup(T(patch_downloaded));
             modal = CB_Modal_new(msg, options, on_enable_patch_modal_close, pds);
             modal->width = 320;
             modal->height = 140;
             break;
         }
         case PDC_DOWNLOAD_FAILED_NOT_FOUND:
-            msg = cb_strdup("The requested file was not found on the server.");
+            msg = cb_strdup(T(patch_not_found));
             modal = CB_Modal_new(msg, NULL, NULL, NULL);
             break;
         case PDC_DOWNLOAD_FAILED_WIFI:
-            msg = cb_strdup("Wi-Fi not available.");
+            msg = cb_strdup(T(net_wifi_unavailable));
             modal = CB_Modal_new(msg, NULL, NULL, NULL);
             break;
         case PDC_DOWNLOAD_FAILED_OTHER:
-            msg = aprintf("Failed to download file. (Error: 0x%03x)", pds->post_download_flags);
+            msg = aprintf(T(patch_download_failed), pds->post_download_flags);
             modal = CB_Modal_new(msg, NULL, NULL, NULL);
             break;
         case PDC_SAVE_FAILED:
-            msg = cb_strdup("Failed to save patch file to disk after successfully downloading it.");
+            msg = cb_strdup(T(patch_failed_save));
             modal = CB_Modal_new(msg, NULL, NULL, NULL);
             break;
         case PDC_TEXTFILE_SUCCESS:
@@ -1751,10 +1720,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
 {
     if (!pds->header_name[0])
     {
-        CB_Modal* modal = CB_Modal_new(
-            "ROM lacks a title in its header, so CrankBoy cannot match it to any patch database",
-            NULL, NULL, NULL
-        );
+        CB_Modal* modal = CB_Modal_new(T(patch_no_title), NULL, NULL, NULL);
         modal->height = 200;
         CB_presentModal(modal->scene);
         return false;
@@ -1764,7 +1730,7 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     if (!arr || arr->n == 0)
     {
         cb_free(pds->list_fetch_error_message);
-        pds->list_fetch_error_message = cb_strdup("No patches found.");
+        pds->list_fetch_error_message = cb_strdup(T(patch_no_patches));
         return false;
     }
 
@@ -2003,7 +1969,7 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
 
     if (context->list->items->length == 0)
     {
-        CB_ListItemButton* itemButton = CB_ListItemButton_new("<empty>");
+        CB_ListItemButton* itemButton = CB_ListItemButton_new(T(status_empty));
         array_push(context->list->items, itemButton);
     }
 
@@ -2022,18 +1988,18 @@ static bool push_top_level(CB_PatchDownloadScene* pds)
 
     context->type = PDSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Manage patches\t›");
+    itemButton = CB_ListItemButton_new(T(patch_manage));
     itemButton->ud.uint = !pds->has_local_patches;
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Download patches\t›");
+    itemButton = CB_ListItemButton_new(T(patch_download_patches));
     itemButton->ud.uint = !CB_App->rhdb_present;
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("ROM Info\t›");
+    itemButton = CB_ListItemButton_new(T(patch_rom_info));
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Parental Lock\t›");
+    itemButton = CB_ListItemButton_new(T(patch_parental_lock));
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);

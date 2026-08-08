@@ -238,7 +238,7 @@ typedef struct CB_Application
 extern CB_Application* CB_App;
 extern AudioSyncBuffer g_audio_sync_buffer;
 extern atomic_uint g_samples_generated_total;
-extern const char* const save_slot_labels[10];
+extern const char** save_slot_labels;
 
 void CB_init(void);
 void CB_event(PDSystemEvent event, uint32_t arg);

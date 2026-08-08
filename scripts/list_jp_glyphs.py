@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# gets all ja glyphs used in jp.strings
+# gets all ja glyphs used in ja.strings
 # usage: list_jp_glyphs.py <strings-file> <out.txt>
 
 import sys

@@ -311,7 +311,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     {
         if (stillOnSameGame)
         {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Wi-Fi not available.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(net_wifi_unavailable));
         }
         goto cleanup;
     }
@@ -320,7 +320,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     {
         if (stillOnSameGame)
         {
-            set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, "No cover found.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, T(cover_no_cover));
         }
         goto cleanup;
     }
@@ -328,7 +328,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     {
         if (stillOnSameGame)
         {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Download failed.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_download_failed));
         }
         goto cleanup;
     }
@@ -341,7 +341,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     {
         if (stillOnSameGame)
         {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Invalid file received.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_invalid_file));
         }
         goto cleanup;
     }
@@ -353,7 +353,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     if (!rom_basename_no_ext)
     {
         if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
         goto cleanup;
     }
 
@@ -364,7 +364,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     if (!cover_dest_path)
     {
         if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
         goto cleanup;
     }
 
@@ -407,7 +407,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     else
     {
         if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Failed to save cover.");
+            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_failed_save));
     }
 
 cleanup:
@@ -438,18 +438,18 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
 
     CB_Game* game = libraryScene->games->items[selectedIndex];
 
-    set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, "Searching for missing Cover...");
+    set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, T(cover_searching));
 
     if (game->names->name_database == NULL)
     {
-        set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, "No Cover found.");
+        set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, T(cover_no_cover_found));
         return;
     }
 
     char* encoded_name = cb_url_encode_for_github_raw(game->names->name_database);
     if (!encoded_name)
     {
-        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
+        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
         return;
     }
 
@@ -490,11 +490,11 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
 
     if (!url_path)
     {
-        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, "Internal error.");
+        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
         return;
     }
 
-    set_download_status(libraryScene, COVER_DOWNLOAD_DOWNLOADING, "Downloading cover...");
+    set_download_status(libraryScene, COVER_DOWNLOAD_DOWNLOADING, T(cover_downloading_long));
 
     coverDownloadAnimationTimer = 0.0f;
     coverDownloadAnimationStep = 0;
@@ -516,7 +516,7 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
 
     http_safe_replace_get(
         libraryScene->activeCoverDownloadConnection, "github.com", url_path,
-        "to download missing cover art", on_cover_download_finished, 15000, userdata
+        T(net_cover_art_reason), on_cover_download_finished, 15000, userdata
     );
 
     cb_free(url_path);
@@ -677,8 +677,7 @@ static bool maybe_launch_emucore_game(CB_Game* game)
 
     if (!CB_get_emucore_by_slug(slug))
     {
-        CB_InfoScene* info =
-            CB_InfoScene_new("No Core", "No emulator core is installed for this game's system.");
+        CB_InfoScene* info = CB_InfoScene_new(T(lib_no_core), T(lib_no_core_msg));
         CB_presentModal(info->scene);
         return true;
     }
@@ -708,10 +707,6 @@ static void cgb_only_ack_and_launch(CB_Game* game, int option)
     launch_dmg_or_cgb(game, 1);
 }
 
-// shared disclaimer for all launch-prompt dialogs
-#define CGB_EXPERIMENTAL_NOTE \
-    "CrankBoy only has experimental support for CGB (\"Color\") emulation."
-
 static void launch_game_prompt_cgb(CB_Game* game, int launch)
 {
     if (launch != 1)
@@ -738,7 +733,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     {
         static const char* options[] = {"DMG", "CGB", NULL};
         static const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
-        static const char* options_understood[] = {"Understood", NULL};
+        const char* options_understood[] = {T(label_understood), NULL};
 
         int launch_mode = -1;  // -1 = show modal; 0 = DMG; 1 = CGB
         const char* msg = NULL;
@@ -756,9 +751,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             break;
         case GB_SUPPORT_DMG:
             if (preferences_prompt_if_cgb_optional >= 2)
-                msg =
-                    "This ROM is marked as DMG.\n \nYou can launch in DMG mode "
-                    "(recommended), or try CGB mode regardless. " CGB_EXPERIMENTAL_NOTE;
+                msg = T(lib_cgb_prompt_dmg);
             else
                 launch_mode = 0;
             break;
@@ -766,9 +759,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             if (preferences_prompt_if_cgb_optional >= 2)
             {
                 // "CGB Prompt: Always" keeps the chooser every launch.
-                msg =
-                    "This ROM is marked CGB-only.\n \nYou can try launching as a "
-                    "standard DMG ROM, or in CGB mode. " CGB_EXPERIMENTAL_NOTE;
+                msg = T(lib_cgb_prompt_cgb_only);
                 modal_options = options;
             }
             else
@@ -787,9 +778,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
                 }
                 else
                 {
-                    msg =
-                        "This ROM is marked CGB-only.\n \nThe game will launch in "
-                        "CGB mode. " CGB_EXPERIMENTAL_NOTE;
+                    msg = T(lib_cgb_prompt_cgb_only);
                     modal_options = options_understood;
                     modal_cb = (void*)cgb_only_ack_and_launch;
                 }
@@ -797,9 +786,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
             break;
         case GB_SUPPORT_DMG_AND_CGB:
             if (preferences_prompt_if_cgb_optional)
-                msg =
-                    "This ROM supports CGB mode.\n \nYou can launch in DMG mode "
-                    "(recommended), or try CGB mode. " CGB_EXPERIMENTAL_NOTE;
+                msg = T(lib_cgb_prompt_cgb_compat);
             else
                 launch_mode = 0;
             break;
@@ -841,7 +828,7 @@ static void _launch_game_check_sram(CB_Game* game)
 
         char* save_fname = cb_save_filename(game->fullpath, false);
 
-        const char* options[] = {"Cancel", "Launch", NULL};
+        const char* options[] = {T(label_cancel), T(label_launch), NULL};
 
         size_t size;
         char* data = call_with_main_stack_5(
@@ -874,31 +861,19 @@ static void _launch_game_check_sram(CB_Game* game)
                     if (!stored_hash)
                     {
                         modal = CB_Modal_new(
-                            "You have softpatches enabled, but this game's save data comes from an "
-                            "unpatched ROM. To keep the save data separate, you may wish to change "
-                            "the save slot in settings before launching.",
-                            options, (void*)launch_game_prompt_cgb, game
+                            T(lib_save_slot_patch_warning), options, (void*)launch_game_prompt_cgb,
+                            game
                         );
                     }
                     else if (!hash)
                     {
-                        char* msg = aprintf(
-                            "You have no softpatches on, but this game's save data comes from a "
-                            "patched ROM (code: %08X.) To keep the save data separate, you may "
-                            "wish to change the save slot in settings before launching.",
-                            stored_hash
-                        );
+                        char* msg = aprintf(T(lib_save_slot_unpatched_warning), stored_hash);
                         modal = CB_Modal_new(msg, options, (void*)launch_game_prompt_cgb, game);
                         cb_free(msg);
                     }
                     else
                     {
-                        char* msg = aprintf(
-                            "This game's save data comes from a ROM with different softpatches "
-                            "applied (saved code: %08X; your patches: %08X) Consider changing the "
-                            "save slot in settings to keep your save data separate.",
-                            stored_hash, hash
-                        );
+                        char* msg = aprintf(T(lib_save_slot_mismatch), stored_hash, hash);
                         modal = CB_Modal_new(msg, options, (void*)launch_game_prompt_cgb, game);
                         cb_free(msg);
                     }
@@ -1079,14 +1054,10 @@ static void launch_game_script_prompt(CB_Game* game)
 
         if (!info->experimental && !has_prompted && has_game_cb)
         {
-            const char* options[] = {"Yes", "No", "About", NULL};
+            const char* options[] = {T(label_yes), T(label_no), T(label_about), NULL};
             if (!info->info)
                 options[2] = NULL;
-            CB_Modal* modal = CB_Modal_new(
-                "There is native Playdate support for this game.\n"
-                "Would you like to enable it?",
-                options, launch_game, game
-            );
+            CB_Modal* modal = CB_Modal_new(T(lib_playdate_support), options, launch_game, game);
 
             modal->width = 290;
             modal->height = 152;
@@ -1096,12 +1067,9 @@ static void launch_game_script_prompt(CB_Game* game)
         }
         else if (info->experimental && script_enabled && has_game_cb)
         {
-            const char* options[] = {"Yes", "No", NULL};
-            CB_Modal* modal = CB_Modal_new(
-                "This game's script is marked as \"experimental\", so please expect glitches or "
-                "even crashes.\n \nDisable script?",
-                options, disable_script_and_launch, game
-            );
+            const char* options[] = {T(label_yes), T(label_no), NULL};
+            CB_Modal* modal =
+                CB_Modal_new(T(lib_script_experimental), options, disable_script_and_launch, game);
 
             modal->width = 310;
             modal->height = 224;
@@ -1158,11 +1126,9 @@ static void launch_game_recommended_cb(void* ud, int option)
         preferences_restore_subset(stored);
         cb_free(stored);
 
-        const char* info_options[] = {"OK", NULL, NULL};
+        const char* info_options[] = {T(label_ok), NULL, NULL};
         CB_Modal* info_modal = CB_Modal_new(
-            "Recommended settings can be applied "
-            "from the settings menu at any time.",
-            info_options, launch_game_after_later_info, game
+            T(setdsc_apply_recommended), info_options, launch_game_after_later_info, game
         );
         info_modal->width = 320;
         info_modal->height = 160;
@@ -1206,7 +1172,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
 
             if (!optimal)
             {
-                const char* options[] = {"Apply", "Ignore", NULL};
+                const char* options[] = {T(label_apply), T(label_ignore), NULL};
                 char* msg = rec->message;
                 char default_msg[256];
                 if (!msg)
@@ -1214,10 +1180,7 @@ static void launch_game_prompt_if_script(void* ud, int option)
                     const char* name = game->names->name_short_leading_article;
                     if (!name || !name[0])
                         name = game->names->name_header;
-                    snprintf(
-                        default_msg, sizeof(default_msg),
-                        "%s has recommended settings from the CrankBoy community.\n\n", name
-                    );
+                    snprintf(default_msg, sizeof(default_msg), T(lib_recommended_settings), name);
                     msg = default_msg;
                 }
                 CB_Modal* modal = CB_Modal_new(msg, options, launch_game_recommended_cb, game);
@@ -1506,7 +1469,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
 
                 cb_draw_logo_screen_centered_split(
-                    CB_App->subheadFont, "Building Game List... ", progress_suffix,
+                    CB_App->subheadFont, T(lib_building_list), progress_suffix,
                     libraryScene->progress_max_width
                 );
             }
@@ -1603,7 +1566,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", pct);
 
                 cb_draw_logo_screen_centered_split(
-                    CB_App->subheadFont, "Caching Covers... ", progress_suffix,
+                    CB_App->subheadFont, T(lib_caching_covers), progress_suffix,
                     libraryScene->progress_max_width
                 );
             }
@@ -1644,7 +1607,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     snprintf(progress_suffix, sizeof(progress_suffix), "%d%%", percentage);
 
                     cb_draw_logo_screen_centered_split(
-                        CB_App->subheadFont, "Loading Library... ", progress_suffix,
+                        CB_App->subheadFont, T(lib_loading_library), progress_suffix,
                         libraryScene->progress_max_width
                     );
                 }
@@ -1698,8 +1661,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             libraryScene->update_modal_shown = true;
 
             char* modal_result = aprintf(
-                "CrankBoy Update!\n\n%s -> %s\n\n%s", get_current_version(), update_info->version,
-                update_info->url
+                T(lib_update_modal), get_current_version(), update_info->version, update_info->url
             );
 
             if (modal_result)
@@ -1747,11 +1709,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         libraryScene->migration_modal_shown = true;
         CB_App->migration_modal_needed = false;
 
-        char* modal_text = aprintf(
-            "To improve compatability, your CrankBoy library has been moved to the shared "
-            "folder:\n\n%s",
-            CB_App->directory
-        );
+        char* modal_text = aprintf(T(lib_folder_moved), CB_App->directory);
         if (modal_text)
         {
             CB_Modal* modal = CB_Modal_new(modal_text, NULL, NULL, NULL);
@@ -1829,11 +1787,9 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             // warn if the crank is in a bad position
             if (crank_would_cause_input(game))
             {
-                const char* options[] = {"Ignore", "Cancel", NULL};
+                const char* options[] = {T(label_ignore), T(label_cancel), NULL};
                 CB_Modal* modal = CB_Modal_new(
-                    "The crank's current position will cause an input in-game.\n \nPlease dock the "
-                    "crank now.",
-                    options, launch_game_prompt_if_script, game
+                    T(lib_crank_dock_warning), options, launch_game_prompt_if_script, game
                 );
 
                 modal->width = 290;
@@ -1891,8 +1847,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             {
                 freeSpool();
 
-                infoScene->text =
-                    "A critical error occurred:\n\nOut of Memory\n\nPlease restart CrankBoy.";
+                infoScene->text = (char*)T(lib_critical_oom);
                 infoScene->textIsStatic = true;
 
                 infoScene->canClose = true;
@@ -2194,11 +2149,11 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
                     if (had_error_loading)
                     {
-                        const char* message = "Error";
+                        const char* message = T(lib_error);
 
                         if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
                         {
-                            message = "Invalid image";
+                            message = T(lib_invalid_image);
                         }
 
                         playdate->graphics->setFont(CB_App->bodyFont);
@@ -2226,7 +2181,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
                             if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
                             {
-                                const char* base_text = "Downloading cover";
+                                const char* base_text = T(cover_downloading);
                                 // Animation sequence: 0 dots, 1 dots, 2 dot, 3 dots
                                 const int dot_counts[] = {0, 1, 2, 3};
                                 int num_dots = dot_counts[coverDownloadAnimationStep];
@@ -2237,14 +2192,14 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                     strncat(message, ".", sizeof(message) - strlen(message) - 1);
                                 }
                                 // Use the full string for width calculation to prevent jitter
-                                width_calc_string = "Downloading cover...";
+                                width_calc_string = T(cover_downloading_long);
                             }
                             else
                             {
                                 const char* defaultMessage =
                                     libraryScene->coverDownloadMessage
                                         ? libraryScene->coverDownloadMessage
-                                        : "Please wait...";
+                                        : T(lib_please_wait);
                                 snprintf(message, sizeof(message), "%s", defaultMessage);
                             }
 
@@ -2273,25 +2228,27 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                             CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
                             bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
-                            static const char* title = "Missing Cover";
+                            const char* title = T(cover_missing_title);
                             char middle_message[32];
 
                             if (hasDBMatch)
                             {
                                 snprintf(
-                                    middle_message, sizeof(middle_message), "Press Ⓑ to download."
+                                    middle_message, sizeof(middle_message), "%s",
+                                    T(lib_press_download)
                                 );
                             }
                             else
                             {
                                 snprintf(
-                                    middle_message, sizeof(middle_message), "No database match"
+                                    middle_message, sizeof(middle_message), "%s",
+                                    T(cover_no_db_match)
                                 );
                             }
 
                             // Common messages for the footer
                             static const char* message_or = "- or -";
-                            static const char* message_connect = "Connect to a computer";
+                            const char* message_connect = T(cover_connect_computer);
                             static const char* message_copy = "and copy cover to:";
                             const char* message_path = cb_gb_directory_path(CB_coversPath);
 
@@ -2405,10 +2362,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             }
             else if (selectedIndex == libraryScene->games->length)
             {
-                const char* text =
-                    "Download \"homebrew\" games for free from Homebrew Hub.\n\n"
-                    "This feature is still experimental.\n\n"
-                    "Parental lock is available.";
+                const char* text = T(lib_homebrew_banner);
 
                 LCDFont* font = CB_App->subheadFont;
                 int margin = 6;
@@ -2443,21 +2397,21 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
     {
         if (needsDisplay)
         {
-            static const char* title = "Use CrankBoy Manager";
-            static const char* message1 = "- OR -";
+            const char* title = T(lib_manager_title);
+            const char* message1 = T(lib_or_separator);
 
             static const char* message2_num = "1.";
-            static const char* message2_text = "Connect to a computer via USB";
+            const char* message2_text = T(lib_manager_usb);
 
             static const char* message3_num = "2.";
-            static const char* message3_text1 = "For about 10s, hold ";
-            static const char* message3_text2 = "LEFT + MENU + POWER";
+            const char* message3_text1 = T(lib_manager_hold);
+            const char* message3_text2 = T(lib_manager_buttons);
 
             static const char* message4_num = "3.";
-            static const char* message4_text1 = "Copy games to ";
+            const char* message4_text1 = T(lib_manager_copy);
             const char* message4_text2 = cb_gb_directory_path(CB_gamesPath);
 
-            static const char* message5_text = "(Filenames must end with .gb, .gbc, or .gbz)";
+            const char* message5_text = T(lib_filename_note);
 
             if (!forAnimation)
                 playdate->graphics->clear(kColorWhite);
@@ -2590,8 +2544,8 @@ static void CB_LibraryScene_showSettings(void* userdata)
 
 static void CB_LibraryScene_menu(void* object)
 {
-    playdate->system->addMenuItem("Credits", CB_showCredits, object);
-    playdate->system->addMenuItem("Help", (void*)CB_showHelp, 0);
+    playdate->system->addMenuItem(T(pdmenu_credits), CB_showCredits, object);
+    playdate->system->addMenuItem(T(pdmenu_help), (void*)CB_showHelp, 0);
     playdate->system->addMenuItem(T(pdmenu_settings), CB_LibraryScene_showSettings, object);
 }
 

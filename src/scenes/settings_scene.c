@@ -57,6 +57,11 @@ static char* itcm_base_desc = NULL;
 static char* itcm_device_desc = NULL;
 static char* itcm_base_with_device_desc = NULL;
 static char* itcm_restart_desc = NULL;
+static char* gs_desc_base_per_game = NULL;
+static char* gs_desc_base_hold = NULL;
+static char* gs_desc_base_hold_restart = NULL;
+static char* gs_desc_base_restart = NULL;
+static char* gs_desc_base_none = NULL;
 
 #define HOLD_TIME_SUPPRESS_RELEASE 0.25f
 #define HOLD_TIME_MARGIN 0.15f
@@ -163,14 +168,14 @@ static void display_changelog(struct OptionsMenuEntry* entry, CB_SettingsScene* 
     char* changelog =
         cb_read_entire_file_maybe_compressed("CHANGELOG.md", &clen, kFileRead | kFileReadData);
     if (!changelog)
-        changelog = cb_strdup("No changelog found.");
+        changelog = cb_strdup(T(app_no_changelog));
 
     char* plain = cb_markdown_to_plaintext(changelog);
     cb_free(changelog);
     if (!plain)
         return;
 
-    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", plain);
+    CB_InfoScene* infoScene = CB_InfoScene_new(T(app_whats_new), plain);
     infoScene->min_dismiss_time = 1.0f;
     infoScene->textIsStatic = false;
     CB_presentModal(infoScene->scene);
@@ -813,12 +818,11 @@ static void settings_load_state(CB_GameScene* gameScene, CB_SettingsScene* setti
         playdate->system->logToConsole("Loaded save state %d", preferences_save_state_slot);
 
         // TODO: something less invasive than a modal here.
-        const char* options[] = {"Game", "Settings", NULL};
-        CB_presentModal(CB_Modal_new(
-                            "State loaded. Return to:", options, state_action_modal_callback,
-                            settingsScene
-        )
-                            ->scene);
+        const char* options[] = {T(label_game), T(label_settings), NULL};
+        CB_presentModal(
+            CB_Modal_new(T(modal_state_loaded), options, state_action_modal_callback, settingsScene)
+                ->scene
+        );
     }
 }
 
@@ -923,7 +927,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
             preferences_per_game, game_settings_path ? game_settings_path : "(null)",
             CB_globalPrefsPath
         );
-        CB_presentModal(CB_Modal_new("Error saving preferences.", NULL, NULL, NULL)->scene);
+        CB_presentModal(CB_Modal_new(T(modal_save_prefs_error), NULL, NULL, NULL)->scene);
     }
     else
     {
@@ -948,51 +952,266 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
         return _RET;                                        \
     })
 
-static const char* sound_mode_labels[] = {"Off", "Fast", "Accurate"};
-static const char* off_on_labels[] = {"Off", "On"};
-static const char* itcm_labels[] = {"Off", "Full", "Core", "Draw"};
-static const char* cgb_dmg_labels[] = {"Standard", "DMG"};
-static const char* cgb_bias_labels[] = {"Darker", "Dark", "Neutral", "Bright", "Brighter"};
-static const char* cgb_auto_bias_labels[] = {"Manual", "Auto", "Contrast"};
-static const char* audio_output_labels[] = {"Mono", "Stereo"};
-static const char* boot_fade_labels[] = {"Off", "Short", "Long", "Short (W)", "Long (W)"};
-static const char* gb_button_labels[] = {"None", "Start", "Select", "Start+Select", "A", "B"};
-static const char* menu_button_labels[] = {"None", "Start", "Select", "Start+Select"};
-static const char* gb_button_labels_hp[] = {
-    "Default",   "Start",          "Select",  "Start+Select", "Start+A",
-    "Select+A",  "Start+Select+A", "Start+B", "Select+B",     "Start+Select+B",
-    "Start+A+B", "Select+A+B",     "All"
-};
-static const char* gb_button_labels_ab_release_a[] = {
-    "Default",      "B",       "None",     "Start",          "Select",
-    "Start+Select", "Start+B", "Select+B", "Start+Select+B",
-};
-static const char* gb_button_labels_ab_release_b[] = {
-    "Default",      "A",       "None",     "Start",          "Select",
-    "Start+Select", "Start+A", "Select+A", "Start+Select+A",
-};
-static const char* crank_mode_labels[] = {"Start/Select", "Turbo A/B", "Turbo B/A", "None"};
-static const char* crank_down_action_labels[] = {"None", "Select+Start"};
-static const char* sample_rate_labels[] = {"High", "Medium", "Low"};
-static const char* fps_labels[] = {"Off", "On", "Playdate"};
-static const char* frame_skip_labels[] = {"Off", "On", "Adaptive"};
-static const char* slot_labels[] = {"Slot 0", "Slot 1", "Slot 2", "Slot 3", "Slot 4",
-                                    "Slot 5", "Slot 6", "Slot 7", "Slot 8", "Slot 9"};
-const char* const save_slot_labels[10] = {
-    "Slot A", "Slot B", "Slot C", "Slot D", "Slot E",
-    "Slot F", "Slot G", "Slot H", "Slot I", "Slot K",
-};
-static const char* dither_pattern_labels[] = {"Staggered", "Grid",          "Staggered (L)",
-                                              "Grid (L)",  "Staggered (D)", "Grid (D)"};
-static const char* overclock_labels[] = {"Off", "x2", "x4"};
-static const char* dither_line_labels[] = {"1", "2", "3"};
-static const char* settings_scope_labels[] = {"Global", "Game"};
-static const char* cgb_prompt_labels[] = {"No", "Yes", "Always"};
-static const char* display_name_mode_labels[] = {"Short", "Detailed", "Filename"};
-static const char* sort_labels[] = {"Filename", "Database", "DB (w/article)", "File (w/article)"};
-static const char* article_labels[] = {"Leading", "As-is"};
-static const char* show_hide_labels[] = {"Hide", "Show"};
-static const char* next_scene[] = {"›"};
+const char** sound_mode_labels;
+const char** off_on_labels;
+const char** itcm_labels;
+const char** cgb_dmg_labels;
+const char** cgb_bias_labels;
+const char** cgb_auto_bias_labels;
+const char** audio_output_labels;
+const char** boot_fade_labels;
+const char** gb_button_labels;
+const char** menu_button_labels;
+const char** gb_button_labels_hp;
+const char** gb_button_labels_ab_release_a;
+const char** gb_button_labels_ab_release_b;
+const char** crank_mode_labels;
+const char** crank_down_action_labels;
+const char** sample_rate_labels;
+const char** fps_labels;
+const char** frame_skip_labels;
+const char** slot_labels;
+const char** save_slot_labels;
+const char** dither_pattern_labels;
+const char** overclock_labels;
+const char** dither_line_labels;
+const char** settings_scope_labels;
+const char** cgb_prompt_labels;
+const char** display_name_mode_labels;
+const char** sort_labels;
+const char** article_labels;
+const char** show_hide_labels;
+const char** next_scene;
+
+static int settings_labels_initialized = 0;
+
+static void CB_init_settings_labels(void)
+{
+    if (settings_labels_initialized)
+        return;
+    settings_labels_initialized = 1;
+
+    sound_mode_labels = cb_malloc(4 * sizeof(const char*));
+    sound_mode_labels[0] = T(setval_off);
+    sound_mode_labels[1] = T(setval_fast);
+    sound_mode_labels[2] = T(setval_accurate);
+    sound_mode_labels[3] = NULL;
+
+    off_on_labels = cb_malloc(3 * sizeof(const char*));
+    off_on_labels[0] = T(setval_off);
+    off_on_labels[1] = T(setval_on);
+    off_on_labels[2] = NULL;
+
+    itcm_labels = cb_malloc(5 * sizeof(const char*));
+    itcm_labels[0] = T(setval_off);
+    itcm_labels[1] = T(setval_full);
+    itcm_labels[2] = T(setval_core);
+    itcm_labels[3] = T(setval_draw);
+    itcm_labels[4] = NULL;
+
+    cgb_dmg_labels = cb_malloc(3 * sizeof(const char*));
+    cgb_dmg_labels[0] = T(setval_standard);
+    cgb_dmg_labels[1] = T(setval_dmg);
+    cgb_dmg_labels[2] = NULL;
+
+    cgb_bias_labels = cb_malloc(6 * sizeof(const char*));
+    cgb_bias_labels[0] = T(setval_darker);
+    cgb_bias_labels[1] = T(setval_dark);
+    cgb_bias_labels[2] = T(setval_neutral);
+    cgb_bias_labels[3] = T(setval_bright);
+    cgb_bias_labels[4] = T(setval_brighter);
+    cgb_bias_labels[5] = NULL;
+
+    cgb_auto_bias_labels = cb_malloc(4 * sizeof(const char*));
+    cgb_auto_bias_labels[0] = T(setval_manual);
+    cgb_auto_bias_labels[1] = T(setval_auto);
+    cgb_auto_bias_labels[2] = T(setval_contrast);
+    cgb_auto_bias_labels[3] = NULL;
+
+    audio_output_labels = cb_malloc(3 * sizeof(const char*));
+    audio_output_labels[0] = T(setval_mono);
+    audio_output_labels[1] = T(setval_stereo);
+    audio_output_labels[2] = NULL;
+
+    boot_fade_labels = cb_malloc(6 * sizeof(const char*));
+    boot_fade_labels[0] = T(setval_off);
+    boot_fade_labels[1] = T(setval_short);
+    boot_fade_labels[2] = T(setval_long);
+    boot_fade_labels[3] = T(setval_short_w);
+    boot_fade_labels[4] = T(setval_long_w);
+    boot_fade_labels[5] = NULL;
+
+    gb_button_labels = cb_malloc(7 * sizeof(const char*));
+    gb_button_labels[0] = T(setval_none);
+    gb_button_labels[1] = T(setval_start);
+    gb_button_labels[2] = T(setval_select);
+    gb_button_labels[3] = T(setval_start_select);
+    gb_button_labels[4] = T(setval_a);
+    gb_button_labels[5] = T(setval_b);
+    gb_button_labels[6] = NULL;
+
+    menu_button_labels = cb_malloc(5 * sizeof(const char*));
+    menu_button_labels[0] = T(setval_none);
+    menu_button_labels[1] = T(setval_start);
+    menu_button_labels[2] = T(setval_select);
+    menu_button_labels[3] = T(setval_start_select);
+    menu_button_labels[4] = NULL;
+
+    gb_button_labels_hp = cb_malloc(14 * sizeof(const char*));
+    gb_button_labels_hp[0] = T(setval_default);
+    gb_button_labels_hp[1] = T(setval_start);
+    gb_button_labels_hp[2] = T(setval_select);
+    gb_button_labels_hp[3] = T(setval_start_select);
+    gb_button_labels_hp[4] = T(setval_start_a);
+    gb_button_labels_hp[5] = T(setval_select_a);
+    gb_button_labels_hp[6] = T(setval_start_select_a);
+    gb_button_labels_hp[7] = T(setval_start_b);
+    gb_button_labels_hp[8] = T(setval_select_b);
+    gb_button_labels_hp[9] = T(setval_start_select_b);
+    gb_button_labels_hp[10] = T(setval_start_a_b);
+    gb_button_labels_hp[11] = T(setval_select_a_b);
+    gb_button_labels_hp[12] = T(setval_all);
+    gb_button_labels_hp[13] = NULL;
+
+    gb_button_labels_ab_release_a = cb_malloc(10 * sizeof(const char*));
+    gb_button_labels_ab_release_a[0] = T(setval_default);
+    gb_button_labels_ab_release_a[1] = T(setval_b);
+    gb_button_labels_ab_release_a[2] = T(setval_none);
+    gb_button_labels_ab_release_a[3] = T(setval_start);
+    gb_button_labels_ab_release_a[4] = T(setval_select);
+    gb_button_labels_ab_release_a[5] = T(setval_start_select);
+    gb_button_labels_ab_release_a[6] = T(setval_start_b);
+    gb_button_labels_ab_release_a[7] = T(setval_select_b);
+    gb_button_labels_ab_release_a[8] = T(setval_start_select_b);
+    gb_button_labels_ab_release_a[9] = NULL;
+
+    gb_button_labels_ab_release_b = cb_malloc(10 * sizeof(const char*));
+    gb_button_labels_ab_release_b[0] = T(setval_default);
+    gb_button_labels_ab_release_b[1] = T(setval_a);
+    gb_button_labels_ab_release_b[2] = T(setval_none);
+    gb_button_labels_ab_release_b[3] = T(setval_start);
+    gb_button_labels_ab_release_b[4] = T(setval_select);
+    gb_button_labels_ab_release_b[5] = T(setval_start_select);
+    gb_button_labels_ab_release_b[6] = T(setval_start_a);
+    gb_button_labels_ab_release_b[7] = T(setval_select_a);
+    gb_button_labels_ab_release_b[8] = T(setval_start_select_a);
+    gb_button_labels_ab_release_b[9] = NULL;
+
+    crank_mode_labels = cb_malloc(5 * sizeof(const char*));
+    crank_mode_labels[0] = T(setval_start_slash_select);
+    crank_mode_labels[1] = T(setval_turbo_ab);
+    crank_mode_labels[2] = T(setval_turbo_ba);
+    crank_mode_labels[3] = T(setval_none);
+    crank_mode_labels[4] = NULL;
+
+    crank_down_action_labels = cb_malloc(3 * sizeof(const char*));
+    crank_down_action_labels[0] = T(setval_none);
+    crank_down_action_labels[1] = T(setval_select_start);
+    crank_down_action_labels[2] = NULL;
+
+    sample_rate_labels = cb_malloc(4 * sizeof(const char*));
+    sample_rate_labels[0] = T(setval_high);
+    sample_rate_labels[1] = T(setval_medium);
+    sample_rate_labels[2] = T(setval_low);
+    sample_rate_labels[3] = NULL;
+
+    fps_labels = cb_malloc(4 * sizeof(const char*));
+    fps_labels[0] = T(setval_off);
+    fps_labels[1] = T(setval_on);
+    fps_labels[2] = T(setval_playdate);
+    fps_labels[3] = NULL;
+
+    frame_skip_labels = cb_malloc(4 * sizeof(const char*));
+    frame_skip_labels[0] = T(setval_off);
+    frame_skip_labels[1] = T(setval_on);
+    frame_skip_labels[2] = T(setval_adaptive);
+    frame_skip_labels[3] = NULL;
+
+    slot_labels = cb_malloc(11 * sizeof(const char*));
+    slot_labels[0] = T(setval_slot_0);
+    slot_labels[1] = T(setval_slot_1);
+    slot_labels[2] = T(setval_slot_2);
+    slot_labels[3] = T(setval_slot_3);
+    slot_labels[4] = T(setval_slot_4);
+    slot_labels[5] = T(setval_slot_5);
+    slot_labels[6] = T(setval_slot_6);
+    slot_labels[7] = T(setval_slot_7);
+    slot_labels[8] = T(setval_slot_8);
+    slot_labels[9] = T(setval_slot_9);
+    slot_labels[10] = NULL;
+
+    save_slot_labels = cb_malloc(11 * sizeof(const char*));
+    save_slot_labels[0] = T(setval_slot_a);
+    save_slot_labels[1] = T(setval_slot_b);
+    save_slot_labels[2] = T(setval_slot_c);
+    save_slot_labels[3] = T(setval_slot_d);
+    save_slot_labels[4] = T(setval_slot_e);
+    save_slot_labels[5] = T(setval_slot_f);
+    save_slot_labels[6] = T(setval_slot_g);
+    save_slot_labels[7] = T(setval_slot_h);
+    save_slot_labels[8] = T(setval_slot_i);
+    save_slot_labels[9] = T(setval_slot_k);
+    save_slot_labels[10] = NULL;
+
+    dither_pattern_labels = cb_malloc(7 * sizeof(const char*));
+    dither_pattern_labels[0] = T(setval_staggered);
+    dither_pattern_labels[1] = T(setval_grid);
+    dither_pattern_labels[2] = T(setval_staggered_l);
+    dither_pattern_labels[3] = T(setval_grid_l);
+    dither_pattern_labels[4] = T(setval_staggered_d);
+    dither_pattern_labels[5] = T(setval_grid_d);
+    dither_pattern_labels[6] = NULL;
+
+    overclock_labels = cb_malloc(4 * sizeof(const char*));
+    overclock_labels[0] = T(setval_off);
+    overclock_labels[1] = T(setval_x2);
+    overclock_labels[2] = T(setval_x4);
+    overclock_labels[3] = NULL;
+
+    dither_line_labels = cb_malloc(4 * sizeof(const char*));
+    dither_line_labels[0] = T(setval_1);
+    dither_line_labels[1] = T(setval_2);
+    dither_line_labels[2] = T(setval_3);
+    dither_line_labels[3] = NULL;
+
+    settings_scope_labels = cb_malloc(3 * sizeof(const char*));
+    settings_scope_labels[0] = T(setval_global);
+    settings_scope_labels[1] = T(setval_game);
+    settings_scope_labels[2] = NULL;
+
+    cgb_prompt_labels = cb_malloc(4 * sizeof(const char*));
+    cgb_prompt_labels[0] = T(setval_no);
+    cgb_prompt_labels[1] = T(setval_yes);
+    cgb_prompt_labels[2] = T(setval_always);
+    cgb_prompt_labels[3] = NULL;
+
+    display_name_mode_labels = cb_malloc(4 * sizeof(const char*));
+    display_name_mode_labels[0] = T(setval_display_short);
+    display_name_mode_labels[1] = T(setval_detailed);
+    display_name_mode_labels[2] = T(setval_filename);
+    display_name_mode_labels[3] = NULL;
+
+    sort_labels = cb_malloc(5 * sizeof(const char*));
+    sort_labels[0] = T(setval_filename);
+    sort_labels[1] = T(setval_database);
+    sort_labels[2] = T(setval_db_article);
+    sort_labels[3] = T(setval_file_article);
+    sort_labels[4] = NULL;
+
+    article_labels = cb_malloc(3 * sizeof(const char*));
+    article_labels[0] = T(setval_leading);
+    article_labels[1] = T(setval_as_is);
+    article_labels[2] = NULL;
+
+    show_hide_labels = cb_malloc(3 * sizeof(const char*));
+    show_hide_labels[0] = T(setval_hide);
+    show_hide_labels[1] = T(setval_show);
+    show_hide_labels[2] = NULL;
+
+    next_scene = cb_malloc(2 * sizeof(const char*));
+    next_scene[0] = T(setval_arrow);
+    next_scene[1] = NULL;
+}
 
 static void update_thumbnail(CB_SettingsScene* settingsScene)
 {
@@ -1015,7 +1234,8 @@ static OptionsMenuEntry* find_load_state_entry(CB_SettingsScene* settingsScene)
     int count = settingsScene->totalMenuItemCount;
     for (int i = 0; i < count; ++i)
     {
-        if (settingsScene->entries[i].name && !strcmp(settingsScene->entries[i].name, "Load state"))
+        if (settingsScene->entries[i].name &&
+            !strcmp(settingsScene->entries[i].name, T(setopt_load_state)))
             return &settingsScene->entries[i];
     }
     return NULL;
@@ -1038,7 +1258,7 @@ static void update_state_descriptions(CB_SettingsScene* settingsScene)
     if (has_save)
     {
         if (age < 10)
-            human_time = "just now";
+            human_time = T(setdsc_just_now);
         else
             human_time = allocated_time = en_human_time(age);
     }
@@ -1058,8 +1278,8 @@ static void update_state_descriptions(CB_SettingsScene* settingsScene)
         const char* load_fmt;
         if (age < 10)
         {
-            save_fmt = "Overwrite snapshot from\njust now.";
-            load_fmt = "Restore snapshot from\njust now.";
+            save_fmt = T(setdsc_save_snapshot_just_now);
+            load_fmt = T(setdsc_load_snapshot_just_now);
         }
         else
         {
@@ -1075,10 +1295,10 @@ static void update_state_descriptions(CB_SettingsScene* settingsScene)
         else
         {
             playdate->system->formatString(
-                &settingsScene->save_state_desc, "Overwrite snapshot from\n%s ago.", human_time
+                &settingsScene->save_state_desc, T(setdsc_save_snapshot_ago), human_time
             );
             playdate->system->formatString(
-                &settingsScene->load_state_desc, "Restore snapshot from\n%s ago.", human_time
+                &settingsScene->load_state_desc, T(setdsc_load_snapshot_ago), human_time
             );
         }
     }
@@ -1089,11 +1309,9 @@ static void update_state_descriptions(CB_SettingsScene* settingsScene)
     for (int i = 0; i < count; ++i)
     {
         OptionsMenuEntry* entry = &settingsScene->entries[i];
-        if (entry->name && !strcmp(entry->name, "Save state"))
+        if (entry->name && !strcmp(entry->name, T(setopt_save_state)))
         {
-            entry->description =
-                has_save ? settingsScene->save_state_desc
-                         : "Create a snapshot of this moment, which can be resumed later.";
+            entry->description = has_save ? settingsScene->save_state_desc : T(setdsc_save_state);
             break;
         }
     }
@@ -1102,8 +1320,7 @@ static void update_state_descriptions(CB_SettingsScene* settingsScene)
     if (load_entry)
     {
         load_entry->dimmed = !has_save;
-        load_entry->description =
-            has_save ? settingsScene->load_state_desc : "Restore a previously created snapshot.";
+        load_entry->description = has_save ? settingsScene->load_state_desc : T(setdsc_load_state);
     }
 }
 
@@ -1127,8 +1344,8 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     if (!save_state(gameScene, slot))
     {
         char* msg;
-        playdate->system->formatString(&msg, "Error saving state:\n%s", playdate->file->geterr());
-        const char* options[] = {"OK", NULL};
+        playdate->system->formatString(&msg, T(modal_save_state_error), playdate->file->geterr());
+        const char* options[] = {T(label_ok), NULL};
         CB_presentModal(CB_Modal_new(msg, options, NULL, NULL)->scene);
         cb_free(msg);
     }
@@ -1137,14 +1354,13 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
         playdate->system->logToConsole("Saved state %d successfully", slot);
 
         // TODO: something less invasive than a modal here.
-        const char* options[] = {"Game", "Settings", NULL, NULL};
+        const char* options[] = {T(label_game), T(label_settings), NULL, NULL};
         if (!CB_App->bundled_rom)
         {
             options[2] = T(pdmenu_library);
         }
-        CB_Modal* modal = CB_Modal_new(
-            "State saved. Return to:", options, state_action_modal_callback, settingsScene
-        );
+        CB_Modal* modal =
+            CB_Modal_new(T(modal_state_saved), options, state_action_modal_callback, settingsScene);
         if (modal)
         {
             modal->width = 324;
@@ -1173,12 +1389,7 @@ static void settings_post_action_lock_button(
     {
         has_warned = true;
 
-        CB_Modal* modal = CB_Modal_new(
-            "Note: holding the lock button for 5 seconds will reboot your Playdate.\n\nAlso note: "
-            "with lock button override enabled, you will not be able to lock the Playdate normally "
-            "while in game.\nInstead, press ⊙ to open the menu, then lock as normal.",
-            NULL, NULL, NULL
-        );
+        CB_Modal* modal = CB_Modal_new(T(modal_lock_button_info), NULL, NULL, NULL);
 
         modal->height = 202;
         modal->width = 380;
@@ -1251,10 +1462,7 @@ static void settings_post_action_script(
         ScriptInfo* info = script_get_info_by_rom_path(gameScene->rom_filename);
         if (info->experimental)
         {
-            CB_Modal* modal = CB_Modal_new(
-                "This game's script is marked as \"experimental.\"\n\nExpect glitches.", NULL, NULL,
-                NULL
-            );
+            CB_Modal* modal = CB_Modal_new(T(modal_script_experimental), NULL, NULL, NULL);
 
             modal->width = 300;
             modal->height = 150;
@@ -1284,10 +1492,10 @@ static void settings_action_save_state(void* _settingsScene, int option)
     {
         char* human_time = en_human_time(now - timestamp);
         char* msg;
-        playdate->system->formatString(&msg, "Overwrite state which is %s old?", human_time);
+        playdate->system->formatString(&msg, T(modal_overwrite_state), human_time);
         cb_free(human_time);
 
-        const char* options[] = {"Cancel", "Yes", NULL};
+        const char* options[] = {T(label_cancel), T(label_yes), NULL};
         CB_presentModal(
             CB_Modal_new(msg, options, (CB_ModalCallback)confirm_save_state, settingsScene)->scene
         );
@@ -1312,7 +1520,7 @@ static void settings_action_load_state(void* _settingsScene, int option)
     // confirmation needed if more than 2 minutes of progress made
     if (gameScene->playtime >= 60 * 120)
     {
-        const char* confirm_options[] = {"No", "Yes", NULL};
+        const char* confirm_options[] = {T(label_no), T(label_yes), NULL};
         LoadStateUserdata* data = cb_malloc(sizeof(LoadStateUserdata));
         data->gameScene = gameScene;
         data->settingsScene = settingsScene;
@@ -1322,12 +1530,12 @@ static void settings_action_load_state(void* _settingsScene, int option)
         char* text;
         if (timestamp == 0 || timestamp > now)
         {
-            text = cb_strdup("Really load state?");
+            text = cb_strdup(T(modal_really_load));
         }
         else
         {
             char* human_time = en_human_time(now - timestamp);
-            playdate->system->formatString(&text, "Really load state from %s ago?", human_time);
+            playdate->system->formatString(&text, T(modal_really_load_from), human_time);
             cb_free(human_time);
         }
 
@@ -1349,12 +1557,9 @@ static void settings_action_save_state_possibly_warn(
     CB_GameScene* gameScene = e->ud;
     if (gameScene->save_state_requires_warning)
     {
-        const char* options[] = {"Understood", NULL};
+        const char* options[] = {T(label_understood), NULL};
         CB_Modal* modal = CB_Modal_new(
-            "WARNING! This game has an internal save data system, a snapshot of which will be "
-            "included in this save state.\n\nIf you later load this state, this game's internal "
-            "save data will irreversibly revert to its current state.",
-            options, (void*)settings_action_save_state, settingsScene
+            T(modal_save_warn), options, (void*)settings_action_save_state, settingsScene
         );
         modal->width = 390;
         modal->height = 234;
@@ -1380,7 +1585,7 @@ static void settings_action_load_state_possibly_warn(
 
     if (gameScene->cartridge_has_battery)
     {
-        const char* options[] = {"Cancel", "Load", NULL};
+        const char* options[] = {T(label_cancel), T(label_load), NULL};
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
 
         int h = 234;
@@ -1388,11 +1593,7 @@ static void settings_action_load_state_possibly_warn(
         char* text;
         if (timestamp == 0 || timestamp >= now)
         {
-            text = aprintf(
-                "WARNING! This game has its own save data system, which will be PERMANENTLY reset "
-                "to match that of this state.\n\nYou will not be able to undo this by resetting. "
-                "If this game has multiple files, all will be affected. You have been warned."
-            );
+            text = aprintf(T(modal_load_warn));
         }
         else
         {
@@ -1400,21 +1601,11 @@ static void settings_action_load_state_possibly_warn(
             if (now - timestamp >= 900)
             {
                 // more elaborate error message if state >= 15 minutes old
-                text = aprintf(
-                    "WARNING! This game has its own save data system, which will be PERMANENTLY "
-                    "reset back %s. You will not be able to recover it by resetting. If this game "
-                    "has multiple files, all files will be affected.\n\nPerhaps make a back-up "
-                    "before proceeding. You have been warned.",
-                    human_time
-                );
+                text = aprintf(T(modal_load_warn_from), human_time);
             }
             else
             {
-                text = aprintf(
-                    "WARNING! This game has its own save data system, which will be permanently "
-                    "reset back %s. You will not be able to undo this by resetting the game.",
-                    human_time
-                );
+                text = aprintf(T(modal_load_warn_from_2), human_time);
                 h = 180;
             }
             cb_free(human_time);
@@ -1524,9 +1715,9 @@ bool script_custom_setting_add(const char* name, const char* description, const 
 static void addUISoundOption(CB_SettingsScene* scene, OptionsMenuEntry* entries, int* i)
 {
     entries[++*i] = (OptionsMenuEntry){
-        .name = "UI Sounds",
+        .name = T(setopt_ui_sounds),
         .values = off_on_labels,
-        .description = "Enable or disable interface sound effects.",
+        .description = T(setdsc_ui_sounds),
         .pref_var = &preferences_ui_sounds,
         .max_value = 2,
         .on_press = NULL,
@@ -1594,9 +1785,9 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
     if (!preferences_per_game)
     {
         if (script_check_recommended_current(rec))
-            entry->description = "Recommended settings are already applied.";
+            entry->description = T(setdsc_apply_recommended_done);
         else
-            entry->description = "Switch to 'Game' scope to apply recommended settings.";
+            entry->description = T(setdsc_apply_recommended_scope);
         entry->locked = true;
     }
     else
@@ -1605,12 +1796,12 @@ static void recalc_recommended_entry_state(OptionsMenuEntry* entry, CB_SettingsS
 
         if (already_optimal)
         {
-            entry->description = "Recommended settings are already applied.";
+            entry->description = T(setdsc_apply_recommended_done);
             entry->locked = true;
         }
         else
         {
-            entry->description = "Apply the recommended settings for this game.";
+            entry->description = T(setdsc_apply_recommended_apply);
             entry->locked = false;
         }
     }
@@ -1655,7 +1846,7 @@ static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count)
         if (prefs_locked_by_script & (1 << (preferences_bitfield_t)j)) \
         {                                                              \
             entry->locked = 1;                                         \
-            entry->description = "Disabled by game script.";           \
+            entry->description = T(setdsc_disabled_by_script);         \
         }                                                              \
     }                                                                  \
     ++j;
@@ -1671,6 +1862,7 @@ static void applyScriptLockedFilter(OptionsMenuEntry* entries, int count)
  */
 static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
+    CB_init_settings_labels();
     CB_GameScene* gameScene = scene->gameScene;
     CB_LibraryScene* libraryScene = scene->libraryScene;
     CB_Game* selectedGame =
@@ -1687,15 +1879,11 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     {
         const char* general_desc;
         if (gameScene)
-            general_desc =
-                "Save and load snapshots, manage settings scope.\n\n"
-                "All other sections respect the current scope setting.";
+            general_desc = T(setdsc_general_game);
         else if (selectedGame)
-            general_desc =
-                "Manage patches, save data, and settings scope.\n\n"
-                "All other sections respect the current scope setting.";
+            general_desc = T(setdsc_general_library);
         else
-            general_desc = "Manage settings scope.";
+            general_desc = T(setdsc_general_noscope);
 
         section[++i] =
             (OptionsMenuEntry){.name = T(sethdr_general), .header = 1, .description = general_desc};
@@ -1704,7 +1892,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     if (gameScene)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Save state",
+            .name = T(setopt_save_state),
             .values = slot_labels,
             .pref_var = &preferences_save_state_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
@@ -1718,7 +1906,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
 
         {
             section[++i] = (OptionsMenuEntry){
-                .name = "Load state",
+                .name = T(setopt_load_state),
                 .values = slot_labels,
                 .pref_var = &preferences_save_state_slot,
                 .max_value = SAVE_STATE_SLOT_COUNT,
@@ -1734,14 +1922,11 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     else if (scene->emucoreGameScene)
     {
         bool supported = emucore_save_state_supported(scene->emucoreGameScene);
-        const char* save_desc =
-            supported ? "Create a snapshot of this moment, which can be resumed later."
-                      : "This emucore does not support save states.";
-        const char* load_desc = supported ? "Restore the previously created snapshot."
-                                          : "This emucore does not nsupport save states.";
+        const char* save_desc = supported ? T(setdsc_save_state) : T(setdsc_save_state_unavailable);
+        const char* load_desc = supported ? T(setdsc_load_state) : T(setdsc_load_state_unavailable);
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Save state",
+            .name = T(setopt_save_state),
             .values = slot_labels,
             .description = save_desc,
             .pref_var = &preferences_save_state_slot,
@@ -1754,7 +1939,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         };
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Load state",
+            .name = T(setopt_load_state),
             .values = slot_labels,
             .description = load_desc,
             .pref_var = &preferences_save_state_slot,
@@ -1770,8 +1955,8 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     if (libraryScene && selectedGame)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Manage ROM",
-            .description = "View ROM info and delete the ROM, save data, or cover art.",
+            .name = T(setopt_manage_rom),
+            .description = T(setdsc_manage_rom),
             .values = next_scene,
             .max_value = 0,
             .on_press = open_manage_rom,
@@ -1779,11 +1964,8 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         };
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Patches/Hacks",
-            .description =
-                "Manage and download game patches, also known as ROM hacks.\n\n"
-                "Remember to verify that a hack is compatible with your ROM before applying it.\n\n"
-                "Parental lock is available.",
+            .name = T(setopt_patches_hacks),
+            .description = T(setdsc_patches_hacks),
             .values = next_scene,
             .max_value = 0,
             .on_press = open_patches,
@@ -1791,12 +1973,9 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         };
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Save Data",
+            .name = T(setopt_save_data),
             .values = save_slot_labels,
-            .description =
-                "Select which save file to use for the ROM's internal save data.\n\n"
-                "If you apply softpatches, you may wish to use different saves for each.\n\n"
-                "Note: \"save states\" are a different concept.",
+            .description = T(setdsc_save_data),
             .pref_var = &preferences_save_slot,
             .max_value = SAVE_STATE_SLOT_COUNT,
             .suppress_nondefault_indicator = 1,
@@ -1807,8 +1986,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
         if (!selectedGame->names->rom_has_battery)
         {
             section[i].locked = true;
-            section[i].description =
-                "Because this ROM does not use internal save data, this feature is disabled.";
+            section[i].description = T(setdsc_save_data_disabled);
         }
         else
         {
@@ -1818,7 +1996,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
             if (cb_file_exists(save_file, kFileReadData))
             {
                 save_info = aprintf(
-                    "Save data exists in %s.\n\n%s", save_slot_labels[preferences_save_slot],
+                    T(modal_save_data_exists), save_slot_labels[preferences_save_slot],
                     section[i].description
                 );
                 section[i].description = save_info;
@@ -1826,7 +2004,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
             else
             {
                 save_info = aprintf(
-                    "%s is empty.\n\n%s", save_slot_labels[preferences_save_slot],
+                    T(modal_save_data_empty), save_slot_labels[preferences_save_slot],
                     section[i].description
                 );
                 section[i].description = save_info;
@@ -1842,21 +2020,15 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
 
         if (gameScene || scene->emucoreGameScene)
         {
-            scope_description =
-                "Use shared settings or create custom ones for this game.\n\n"
-                "Global:\nSettings are shared across all games.\n\n"
-                "Game:\nSettings are unique to this game.";
+            scope_description = T(setdsc_settings_scope_game);
         }
         else
         {
-            scope_description =
-                "Which settings to edit.\n\n"
-                "Global:\nEdit app-wide settings, including Library options.\n\n"
-                "Game:\nEdit settings specific for the selected game.";
+            scope_description = T(setdsc_settings_scope_library);
         }
 
         section[++i] = (OptionsMenuEntry){
-            .name = "Settings Scope",
+            .name = T(setopt_settings_scope),
             .values = settings_scope_labels,
             .description = scope_description,
             .pref_var = &preferences_per_game,
@@ -1874,7 +2046,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
             if (has_rec)
             {
                 section[++i] = (OptionsMenuEntry){
-                    .name = "Apply recommended",
+                    .name = T(setopt_apply_recommended),
                     .on_press = apply_recommended_in_settings,
                     .locked = true,
                     .suppress_nondefault_indicator = 1,
@@ -1930,11 +2102,8 @@ static OptionsMenuEntry* build_script(SectionDef* def, CB_SettingsScene* scene, 
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_script),
-        .header = 1,
-        .description = "Game-specific settings provided by a custom script for this ROM."
-    };
+    section[++i] =
+        (OptionsMenuEntry){.name = T(sethdr_script), .header = 1, .description = T(setdsc_script)};
 
     for (int j = 0; j < script_settings_info_count; ++j)
     {
@@ -1971,20 +2140,13 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_audio),
-        .header = 1,
-        .description = "Sound quality, sample rate, and headphone output."
-    };
+    section[++i] =
+        (OptionsMenuEntry){.name = T(sethdr_audio), .header = 1, .description = T(setdsc_audio)};
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Sound",
+        .name = T(setopt_sound),
         .values = sound_mode_labels,
-        .description =
-            "Fast:\nGood performance. Sound timing is less precise.\n\n"
-            "Accurate:\nMost faithful audio. Uses a buffer to ensure correct sound pitch and "
-            "speed.\n"
-            "Minor performance cost.",
+        .description = T(setdsc_sound_mode),
         .pref_var = &preferences_sound_mode,
         .max_value = 3,
         .disabled_entries = (1 << 0), /* 'Off' removed */
@@ -1996,40 +2158,27 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
 
     // sample rate
     section[++i] = (OptionsMenuEntry){
-        .name = "Sample Rate",
+        .name = T(setopt_sample_rate),
         .values = sample_rate_labels,
-        .description = (preferences_sound_mode == 2)
-                           ? "Accurate sound mode requires High sample rate."
-                           : "Adjusts audio quality.\nHigher values may impact performance.\n\n"
-                             "High:\nBest quality (44.1 kHz)\n\n"
-                             "Medium:\nGood quality (22.1 kHz)\n\n"
-                             "Low:\nReduced quality (14.7 kHz)",
+        .description =
+            (preferences_sound_mode == 2) ? T(setdsc_sample_rate_accurate) : T(setdsc_sample_rate),
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .locked = (preferences_sound_mode == 2),
     };
 
-    // high-pass filter
     section[++i] = (OptionsMenuEntry){
-        .name = "High-Pass Filter",
+        .name = T(setopt_high_pass_filter),
         .values = off_on_labels,
-        .description =
-            "Emulates the hardware's capacitor coupling. Bass frequencies are weakend.\n\n"
-            "On:\nHardware-accurate sound. Costs a little performance.\n\n"
-            "Off:\nFuller bass, but less faithful to the original hardware.",
+        .description = T(setdsc_high_pass_filter),
         .pref_var = &preferences_high_pass_filter,
         .max_value = 2,
     };
 
-    // Mono/Stereo
     section[++i] = (OptionsMenuEntry){
-        .name = CB_App->mirror_active ? "Mirror/Aux" : "Headphones",
+        .name = CB_App->mirror_active ? T(setopt_mirror_aux) : T(setopt_headphones),
         .values = audio_output_labels,
-        .description =
-            "Select the audio output mode when an aux cable is connected.\n\n"
-            "Stereo:\nImmersive sound with spatial separation.\n\n"
-            "Mono:\n Combines channels, which improves performance.\n\n"
-            "Also used for Mirror.",
+        .description = T(setdsc_headphones),
         .pref_var = &preferences_headphone_audio,
         .max_value = 2,
     };
@@ -2061,12 +2210,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
 
     // frame skip
     section[++i] = (OptionsMenuEntry){
-        .name = "30 FPS Mode",
+        .name = T(setopt_30fps_mode),
         .values = frame_skip_labels,
-        .description =
-            "Skips displaying every second frame. Greatly improves performance for most games.\n\n"
-            "Can generally be disabled if a game doesn't feature scrolling backgrounds.\n\n"
-            "\"Adaptive\": switches between 30/60 depending on if the screen is scrolling etc.",
+        .description = T(setdsc_30fps_mode),
         .pref_var = &preferences_frame_skip,
         .max_value = 3,
         .rebuild_when_changed = 1,
@@ -2077,11 +2223,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     if (preferences_frame_skip != 0)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Frame Blending",
+            .name = T(setopt_frame_blending),
             .values = off_on_labels,
-            .description =
-                "Blends two consecutive frames with dithering to reproduce the Game Boy's "
-                "flicker-based transparency effects.",
+            .description = T(setdsc_frame_blending),
             .pref_var = &preferences_blend_frames,
             .max_value = 2,
             .rebuild_when_changed = 1,
@@ -2091,12 +2235,9 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     else
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Frame Blending",
+            .name = T(setopt_frame_blending),
             .values = off_on_labels,
-            .description =
-                "Blends two consecutive frames with dithering to reproduce the Game Boy's "
-                "flicker-based transparency effects.\n\n"
-                "Only available in 30 FPS or Adaptive mode.",
+            .description = T(setdsc_frame_blending_30fps_only),
             .pref_var = &preferences_blend_frames,
             .max_value = 0,
             .on_press = NULL,
@@ -2107,53 +2248,37 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     CB_GameScene* gameScene = scene->gameScene;
     bool cgb_active = gameScene && gameScene->context->cgb_mode;
     section[++i] = (OptionsMenuEntry){
-        .name = "LCD Ghosting",
+        .name = T(setopt_lcd_ghosting),
         .values = off_on_labels,
-        .description =
-            "Mimics the DMG LCD's slow pixel response, smearing motion over 100 ms.\n\n"
-            "Only available in DMG Mode.",
+        .description = T(setdsc_lcd_ghosting),
         .pref_var = &preferences_ghosting,
         .max_value = cgb_active ? 0 : 2,
         .on_press = NULL,
     };
 
-    // dither
     section[++i] = (OptionsMenuEntry){
-        .name = "Dither",
+        .name = T(setopt_dither),
         .values = dither_pattern_labels,
-        .description =
-            "How to represent 4-color graphics on a 1-bit display.\n\n"
-            "L: bias toward light\n\n"
-            "D: bias toward dark",
+        .description = T(setdsc_dither),
         .pref_var = &preferences_dither_pattern,
         .max_value = 6,
         .graphics_test = 1,
         .on_press = NULL
     };
 
-    // dither line
     section[++i] = (OptionsMenuEntry){
-        .name = "First Scaling Line",
+        .name = T(setopt_first_scaling_line),
         .values = dither_line_labels,
-        .description =
-            "Due to the 3:5 ratio between the GB's and Playdate's vertical resolutions, 1 in every "
-            "3 scanlines must be vertically squished.\n\n"
-            "This means there are three choices for which lines are to be the ones to squish."
-            "If text is uneven, try adjusting this.",
+        .description = T(setdsc_first_scaling_line),
         .pref_var = &preferences_dither_line,
         .max_value = 3,
         .on_press = NULL
     };
 
-    // stabilization
     section[++i] = (OptionsMenuEntry){
-        .name = "Stabilization",
+        .name = T(setopt_stabilization),
         .values = off_on_labels,
-        .description =
-            "Stabilizes scaling artifacts by making them scroll with the camera.\n\n"
-            "This prevents textures from shimmering, but may reduce performance slightly in "
-            "scroll-heavy games.\n\n"
-            "Works best with Dither set to \"Staggered\".",
+        .description = T(setdsc_stabilization),
         .pref_var = &preferences_dither_stable,
         .max_value = 2,
         .on_press = NULL
@@ -2180,15 +2305,12 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_input),
-        .header = 1,
-        .description = "Crank function, dock and undock mapping, and button remapping."
-    };
+    section[++i] =
+        (OptionsMenuEntry){.name = T(sethdr_input), .header = 1, .description = T(setdsc_input)};
 
     // crank mode
     section[++i] = (OptionsMenuEntry){
-        .name = "Crank",
+        .name = T(setopt_crank),
         .values = crank_mode_labels,
         .pref_var = &preferences_crank_mode,
         .max_value = 4,
@@ -2199,28 +2321,16 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     switch (preferences_crank_mode)
     {
     case CRANK_MODE_START_SELECT:
-        section[i].description =
-            "Start/Select mode.\n\n"
-            "Turn the crank back to press Select.\n\n"
-            "Turn forward to press Start.\n\n"
-            "See 'Down' for crank-down action.";
+        section[i].description = T(setdsc_crank);
         break;
     case CRANK_MODE_TURBO_CW:
-        section[i].description =
-            "Turbo A/B mode.\n\n"
-            "CW = turbo-press A.\n"
-            "CCW = turbo-press B.";
+        section[i].description = T(setdsc_crank_turbo_ab);
         break;
     case CRANK_MODE_TURBO_CCW:
-        section[i].description =
-            "Turbo B/A mode.\n\n"
-            "CW = turbo-press B.\n"
-            "CCW = turbo-press A.";
+        section[i].description = T(setdsc_crank_turbo_ba);
         break;
     case CRANK_MODE_OFF:
-        section[i].description =
-            "Assign a function to the crank.\n\n"
-            "Currently: no function.";
+        section[i].description = T(setdsc_crank_none);
         break;
     }
 
@@ -2228,11 +2338,9 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     if (preferences_crank_mode == CRANK_MODE_START_SELECT)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Down",
+            .name = T(setopt_crank_down),
             .values = crank_down_action_labels,
-            .description =
-                "When the crank is pointed down (between Start and Select), choose whether to hold "
-                "Start + Select or do nothing.",
+            .description = T(setdsc_crank_down_active),
             .pref_var = &preferences_crank_down_action,
             .max_value = 2,
             .on_press = NULL,
@@ -2241,42 +2349,37 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     else
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Down",
+            .name = T(setopt_crank_down),
             .values = crank_down_action_labels,
-            .description = "Only available when Crank mode is set to Start/Select.",
+            .description = T(setdsc_crank_down),
             .pref_var = &preferences_crank_down_action,
             .max_value = 0,
             .on_press = NULL,
         };
     }
 
-    // undock
     section[++i] = (OptionsMenuEntry){
-        .name = "Undock",
+        .name = T(setopt_undock),
         .values = gb_button_labels,
-        .description = "Assign a button input for undocking the crank.\n\n",
+        .description = T(setdsc_undock),
         .pref_var = &preferences_crank_undock_button,
         .max_value = 4,
         .on_press = NULL
     };
 
-    // dock
     section[++i] = (OptionsMenuEntry){
-        .name = "Dock",
+        .name = T(setopt_dock),
         .values = gb_button_labels,
-        .description = "Assign a button input for docking the crank.\n\n",
+        .description = T(setdsc_dock),
         .pref_var = &preferences_crank_dock_button,
         .max_value = 4,
         .on_press = NULL
     };
 
-    // A->B
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓐ › ⧂",
+        .name = T(setopt_a_to_menu),
         .values = gb_button_labels_hp,
-        .description =
-            "Assign a replacement button input for holding Ⓐ and then pressing Ⓑ.\n\n"
-            "This replaces the normal button presses.",
+        .description = T(setdsc_a_to_menu),
         .pref_var = &preferences_hold_a_press_b,
         .max_value = 13,
         .on_press = NULL
@@ -2284,11 +2387,9 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
 
     // B->A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓑ › ⧂",
+        .name = T(setopt_b_to_menu),
         .values = gb_button_labels_hp,
-        .description =
-            "Assign a replacement button input for holding Ⓑ and then pressing Ⓐ.\n\n"
-            "This replaces the normal button presses.",
+        .description = T(setdsc_b_to_menu),
         .pref_var = &preferences_hold_b_press_a,
         .max_value = 13,
         .on_press = NULL
@@ -2296,12 +2397,9 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
 
     // B+A
     section[++i] = (OptionsMenuEntry){
-        .name = "Ⓑ + Ⓐ",
+        .name = T(setopt_b_plus_a),
         .values = gb_button_labels_hp,
-        .description =
-            "Assign a replacement button input when simultaneously pressing both Ⓐ and Ⓑ.\n\n"
-            "This replaces the normal button presses.\n\nNote: both buttons must be pressed "
-            "on exactly the same frame, which is quite precise!",
+        .description = T(setdsc_b_plus_a),
         .pref_var = &preferences_press_a_b,
         .max_value = 13,
         .on_press = NULL
@@ -2309,40 +2407,27 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
 
     // AB->A
     section[++i] = (OptionsMenuEntry){
-        .name = "⧂ › Ⓐ",
+        .name = T(setopt_menu_to_a),
         .values = gb_button_labels_ab_release_b,
-        .description =
-            "Assign a replacement button input for holding both Ⓐ and Ⓑ then releasing Ⓑ.\n\n"
-            "If A is omitted here, then the A input is suppressed until next released.\n\n"
-            "Default: maps to A normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings "
-            "above)",
+        .description = T(setdsc_menu_to_a),
         .pref_var = &preferences_hold_ab_release_b,
         .max_value = 9,
         .on_press = NULL
     };
 
-    // AB->B
     section[++i] = (OptionsMenuEntry){
-        .name = "⧂ › Ⓑ",
+        .name = T(setopt_menu_to_b),
         .values = gb_button_labels_ab_release_a,
-        .description =
-            "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both "
-            "simultaneously).\n\n"
-            "If B is omitted here, then the B input is suppressed until next released.\n\n"
-            "Default: maps to B normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings "
-            "above)",
+        .description = T(setdsc_menu_to_b),
         .pref_var = &preferences_hold_ab_release_a,
         .max_value = 9,
         .on_press = NULL
     };
 
-    // menu quick-press
     section[++i] = (OptionsMenuEntry){
-        .name = "⊙",
+        .name = T(setopt_menu),
         .values = menu_button_labels,
-        .description =
-            "Quickly open and close the system menu to trigger a button press.\n\n"
-            "Open and close within 1 second to activate.",
+        .description = T(setdsc_menu),
         .pref_var = &preferences_menu_button,
         .max_value = 4,
     };
@@ -2354,13 +2439,9 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
     if (CB_App->hasSystemAccess)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "Lock Override",
+            .name = T(setopt_lock_override),
             .values = gb_button_labels,
-            .description =
-                "Playdate's lock button can be used for start or select.\n\n"
-                "Requires system access\n(i.e. launch CrankBoy via FunnyLoader)\n\n"
-                "Only applies input from the moment the lock button is pressed; holding the lock "
-                "button has no effect.",
+            .description = T(setdsc_lock_override),
             .pref_var = &preferences_lock_button,
             .max_value = 3,
             .on_change = settings_post_action_lock_button
@@ -2396,60 +2477,45 @@ static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int
 
     section[++i] = (OptionsMenuEntry){
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-        .name = "CGB (GB Color)",
+        .name = T(sethdr_cgb_catalog),
 #else
-        .name = "Game Boy Color",
+        .name = T(sethdr_cgb),
 #endif
         .header = 1,
-        .description = "CGB CPU speed control and high-level emulation routines."
+        .description = T(setdsc_cgb)
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "CPU Speed",
+        .name = T(setopt_cpu_speed),
         .values = cgb_dmg_labels,
-        .description =
-            "Normally, the CGB CPU can run twice as fast as the DMG (non-Color GB).\n\n"
-            "Set to \"DMG\" to force it to run at DMG speed.\n\n"
-            "Can greatly improve perf on titles which don't make efficient use of the CPU.\n\n"
-            "This is the opposite of overclocking.",
+        .description = T(setdsc_cpu_speed),
         .pref_var = &preferences_cgb_speed,
         .max_value = 2,
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "HLE Routines",
+        .name = T(setopt_hle_routines),
         .values = off_on_labels,
-        .description =
-            "Automatically identify certain common routines and replace them with high-level "
-            "emulated versions.\n\n"
-            "Can allow for large performance gains, but potentially inaccurate.",
+        .description = T(setdsc_hle_routines),
         .pref_var = &preferences_hle,
         .max_value = 2,
         .on_press = NULL
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Gray Mode",
+        .name = T(setopt_gray_mode),
         .values = cgb_auto_bias_labels,
-        .description =
-            "How the CGB grayscale conversion is tuned.\n\n"
-            "Manual: set the grayscale bias yourself.\n\n"
-            "Auto: picks the best of Dark/Neutral/Bright for each scene.\n\n"
-            "Contrast: normalizes contrast to the \"colors\" actually on screen.",
+        .description = T(setdsc_gray_mode),
         .pref_var = &preferences_cgb_bias_auto,
         .max_value = 3,
         .rebuild_when_changed = 1,
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Grayscale Bias",
+        .name = T(setopt_grayscale_bias),
         .values = cgb_bias_labels,
-        .description = (preferences_cgb_bias_auto != 0)
-                           ? "Manually shift CGB grayscale conversion between 5 levels, from "
-                             "darker to brighter shades.\n\n"
-                             "Only available in Manual mode."
-                           : "Manually shift CGB grayscale conversion between 5 levels, from "
-                             "darker to brighter shades.",
+        .description = (preferences_cgb_bias_auto != 0) ? T(setdsc_grayscale_bias_manual)
+                                                        : T(setdsc_grayscale_bias),
         .pref_var = &preferences_cgb_blend_bias,
         .max_value = 5,
         .locked = (bool)(preferences_cgb_bias_auto != 0),
@@ -2478,59 +2544,47 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_behavior),
-        .header = 1,
-        .description = "Rewind, overclock, and script support."
+        .name = T(sethdr_behavior), .header = 1, .description = T(setdsc_behavior)
     };
 
-    // Rewind
     section[++i] = (OptionsMenuEntry){
-        .name = "Rewind",
+        .name = T(setopt_rewind),
         .values = off_on_labels,
-        .description =
-            "Rewind up to 10 seconds of gameplay.\n\n"
-            "Hold Ⓑ or Up and undock the crank to enter rewind.\n\n"
-            "Hold Ⓑ or Up while cranking to scrub.\n\n"
-            "Release Ⓑ or Up then dock the crank to exit.\n\n"
-            "DMG only.",
+        .description = T(setdsc_rewind),
         .pref_var = &preferences_rewind_enabled,
         .max_value = 2,
     };
 
-    // overclocking
     section[++i] = (OptionsMenuEntry){
-        .name = "Overclock",
+        .name = T(setopt_overclock),
         .values = overclock_labels,
         .description =
-            "Runs the emulated CPU faster between frames to reduce in-game lag.\n\n"
-            "The Playdate must work harder, so results vary and timing may be less accurate.\n\n"
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-            "In CGB double-speed mode, x4 is limited to x2.",
+            T(setdsc_overclock_catalog),
 #else
-            "On Game Boy Color at double speed, x4 is limited to x2.",
+            T(setdsc_overclock),
 #endif
         .pref_var = &preferences_overclock,
         .max_value = 3,
         .on_press = NULL
     };
 
-#define BASE_SCRIPT_STRING                                                                         \
-    "Scripts attempt to add Playdate feature support into ROMs.\n\nFor instance, the crank might " \
-    "be used to navigate menus."
-
-// Only shown in the library view; obvious (and noise) in the in-game settings.
-#define SCRIPT_PER_GAME_SUFFIX "\n\nThis setting is always per-game."
-
     // C scripts
     section[++i] = (OptionsMenuEntry){
-        .name = "Game Scripts",
+        .name = T(setopt_game_scripts),
         .values = off_on_labels,
-        .description = BASE_SCRIPT_STRING SCRIPT_PER_GAME_SUFFIX,
+        .description = NULL,
         .pref_var = &preferences_script_support,
         .max_value = 2,
         .locked = 0,
         .on_change = settings_post_action_script,
     };
+
+    if (gs_desc_base_per_game == NULL)
+        playdate->system->formatString(
+            &gs_desc_base_per_game, "%s%s", T(setdsc_game_scripts), T(setdsc_game_scripts_per_game)
+        );
+    section[i].description = gs_desc_base_per_game;
 
     if (gameScene)
     {
@@ -2538,26 +2592,44 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         {
             if (gameScene->script_info_available)
             {
-                section[i].description =
-                    BASE_SCRIPT_STRING "\n\nHold the Ⓐ button now for more information.";
+                if (gs_desc_base_hold == NULL)
+                    playdate->system->formatString(
+                        &gs_desc_base_hold, "%s%s", T(setdsc_game_scripts),
+                        T(setdsc_game_scripts_hold_button)
+                    );
+                section[i].description = gs_desc_base_hold;
                 section[i].on_hold = display_script_info;
             }
 
             if (!gameScene->script_toggleable)
             {
                 if (gameScene->script_info_available)
-                    section[i].description = BASE_SCRIPT_STRING
-                        "\n\nHold the Ⓐ button now for more information."
-                        "\n\nRestart the ROM for this setting to take effect.";
+                {
+                    if (gs_desc_base_hold_restart == NULL)
+                        playdate->system->formatString(
+                            &gs_desc_base_hold_restart, "%s%s", T(setdsc_game_scripts),
+                            T(setdsc_game_scripts_hold_restart)
+                        );
+                    section[i].description = gs_desc_base_hold_restart;
+                }
                 else
-                    section[i].description =
-                        BASE_SCRIPT_STRING "\n\nRestart the ROM for this setting to take effect.";
+                {
+                    if (gs_desc_base_restart == NULL)
+                        playdate->system->formatString(
+                            &gs_desc_base_restart, "%s%s", T(setdsc_game_scripts),
+                            T(setdsc_game_scripts_restart)
+                        );
+                    section[i].description = gs_desc_base_restart;
+                }
             }
         }
         else
         {
-            section[i].description =
-                BASE_SCRIPT_STRING "\n\nThere is no script available for this ROM.";
+            if (gs_desc_base_none == NULL)
+                playdate->system->formatString(
+                    &gs_desc_base_none, "%s%s", T(setdsc_game_scripts), T(setdsc_game_scripts_none)
+                );
+            section[i].description = gs_desc_base_none;
             section[i].locked = 1;
         }
     }
@@ -2590,59 +2662,40 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
     int i = -1;
 
     section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_library),
-        .header = 1,
-        .description =
-            "Game list appearance, sorting, launch behavior, and CGB prompt options.\n\n"
-            "Visible in Library scope."
+        .name = T(sethdr_library), .header = 1, .description = T(setdsc_library)
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Title Display",
+        .name = T(setopt_title_display),
         .values = display_name_mode_labels,
-        .description =
-            "Choose how game titles"
-            "are displayed in the list.\n\n"
-            "Short:\nThe common game title\n(by database match).\n\n"
-            "Detailed:\nThe full title, including region and version info.\n\n"
-            "Filename:\nThe original ROM filename.\n\n",
+        .description = T(setdsc_title_display),
         .pref_var = &preferences_display_name_mode,
         .max_value = 3,
         .on_press = NULL
     };
 
-    // display article
     section[++i] = (OptionsMenuEntry){
-        .name = "Article",
+        .name = T(setopt_article),
         .values = article_labels,
-        .description =
-            "If a game title ends with an article, such as\n\n"
-            "      \"Mummy, The (USA)\"\n\n"
-            "it can be displayed at the start instead, i.e.\n\n"
-            "      \"The Mummy (USA)\"",
+        .description = T(setdsc_article),
         .pref_var = &preferences_display_article,
         .max_value = 2,
         .on_press = NULL
     };
 
-    // sorting
     section[++i] = (OptionsMenuEntry){
-        .name = "Sort",
+        .name = T(setopt_sort),
         .values = sort_labels,
-        .description =
-            "Sort the games list either by database name or by filename.\n\n"
-            "Can also choose to include articles that have been moved to the front of the name "
-            "toward sorting.",
+        .description = T(setdsc_sort),
         .pref_var = &preferences_display_sort,
         .max_value = 4,
         .on_press = NULL
     };
 
-    // remember selection
     section[++i] = (OptionsMenuEntry){
-        .name = "Remember Last",
+        .name = T(setopt_remember_last),
         .values = off_on_labels,
-        .description = "When opening the library, initial selection will be the last game played.",
+        .description = T(setdsc_remember_last),
         .pref_var = &preferences_library_remember_selection,
         .max_value = 2,
         .on_press = NULL
@@ -2651,25 +2704,17 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
     addUISoundOption(scene, section, &i);
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Launch Animation",
+        .name = T(setopt_launch_animation),
         .values = off_on_labels,
-        .description = "Animation when launching a ROM from the library.",
+        .description = T(setdsc_launch_animation),
         .pref_var = &preferences_library_launch_animation,
         .max_value = 2,
     };
 
-    // remember selection
     section[++i] = (OptionsMenuEntry){
-        .name = "CGB Prompt",
+        .name = T(setopt_cgb_prompt),
         .values = cgb_prompt_labels,
-        .description =
-            "When launching a ROM, show a prompt to choose:\n\n"
-            "1. DMG (original) emulation\n"
-            "2. CGB (\"Color\") emulation\n\n"
-            "No: never prompt\n"
-            "Yes: CGB-compatible ROMs\n"
-            "Always: CGB and DMG ROMs\n\n"
-            "CGB-only ROMs always show a one-time notice.",
+        .description = T(setdsc_cgb_prompt),
         .pref_var = &preferences_prompt_if_cgb_optional,
         .max_value = 3,
         .on_press = NULL
@@ -2677,11 +2722,9 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
     section[++i] = (OptionsMenuEntry){
-        .name = "Bundled Games",
+        .name = T(setopt_bundled_games),
         .values = show_hide_labels,
-        .description =
-            "Show or hide games that are bundled with CrankBoy in the library.\n\n"
-            "Requires restart to apply.",
+        .description = T(setdsc_bundled_games),
         .pref_var = &preferences_show_bundled_games,
         .max_value = 2,
     };
@@ -2710,31 +2753,22 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
-    section[++i] = (OptionsMenuEntry){
-        .name = T(sethdr_misc),
-        .header = 1,
-        .description = "FPS display, turbo speed, boot fade, TCM Mode, and more."
-    };
+    section[++i] =
+        (OptionsMenuEntry){.name = T(sethdr_misc), .header = 1, .description = T(setdsc_misc)};
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Show FPS",
+        .name = T(setopt_show_fps),
         .values = fps_labels,
-        .description =
-            "Displays the current frames-per-second on screen.\n\n"
-            "Choice of displaying Playdate screen refreshes or emulated frames. (These can "
-            "differ if 30 FPS mode is enabled.)\n\n"
-            "Ideal performance is just under 60 emulated frames per second.",
+        .description = T(setdsc_show_fps),
         .pref_var = &preferences_display_fps,
         .max_value = 3,
         .on_press = NULL
     };
 
     section[++i] = (OptionsMenuEntry){
-        .name = "Turbo Speed",
+        .name = T(setopt_turbo_speed),
         .values = off_on_labels,
-        .description =
-            "Removes the FPS limit.\n\n"
-            "This is intended just for benchmarking performance, not for casual play.",
+        .description = T(setdsc_turbo_speed),
         .pref_var = &preferences_uncap_fps,
         .max_value = 2,
         .on_press = NULL
@@ -2742,17 +2776,13 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
 
     if (CB_App->bundled_rom)
     {
-        // ui sounds (for non-bundled, part of library settings only)
         addUISoundOption(scene, section, &i);
     }
 
-    // Disable Auto Lock
     section[++i] = (OptionsMenuEntry){
-        .name = "Disable Auto Lock",
+        .name = T(setopt_disable_auto_lock),
         .values = off_on_labels,
-        .description =
-            "Prevents the device from auto-locking after 3 minutes of inactivity.\n\n"
-            "Note: This only applies while a game is running.",
+        .description = T(setdsc_disable_auto_lock),
         .pref_var = &preferences_disable_autolock,
         .max_value = 2,
         .on_press = NULL,
@@ -2760,22 +2790,17 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         .on_change = NULL,
     };
 
-    // Starting fade
     section[++i] = (OptionsMenuEntry){
-        .name = "Boot Fade",
+        .name = T(setopt_boot_fade),
         .values = boot_fade_labels,
-        .description =
-            "Fade from black/white on game start. Masks visual glitches.\n\n"
-            "The options marked (W) fade from white.",
+        .description = T(setdsc_boot_fade),
         .pref_var = &preferences_boot_fade,
         .max_value = 5,
     };
 
     if (CB_App->bundled_rom)
     {
-        section[i].description =
-            "Fade from black on game start.\n\n"
-            "In bundled mode, fade from white is not currently possible.";
+        section[i].description = T(setdsc_boot_fade_bundled);
         section[i].max_value = 3;
     }
 
@@ -2783,17 +2808,12 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     // itcm accel
     if (itcm_base_desc == NULL)
     {
-        playdate->system->formatString(
-            &itcm_base_desc,
-            "Runs emulator in TCM for better performance.\n\n"
-            "Full: core + draw.\nCore: interpreter only.\nDraw: rendering only.\n\n"
-            "Disable (or restrict) if you experience instability."
-        );
+        playdate->system->formatString(&itcm_base_desc, T(setdsc_tcm_mode));
     }
 
     if (itcm_device_desc == NULL)
     {
-        playdate->system->formatString(&itcm_device_desc, "(Your device: %s)", pd_rev_description);
+        playdate->system->formatString(&itcm_device_desc, T(setdsc_tcm_device), pd_rev_description);
     }
 
     if (itcm_base_with_device_desc == NULL)
@@ -2806,13 +2826,12 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     if (itcm_restart_desc == NULL)
     {
         playdate->system->formatString(
-            &itcm_restart_desc, "%s\n\nRestart the game for changes to apply.\n\n%s",
-            itcm_base_desc, itcm_device_desc
+            &itcm_restart_desc, T(setdsc_tcm_mode_restart), itcm_base_desc, itcm_device_desc
         );
     }
 
     section[++i] = (OptionsMenuEntry){
-        .name = "TCM Mode",
+        .name = T(setopt_tcm_mode),
         .values = itcm_labels,
         .pref_var = &preferences_itcm,
         .max_value = 4,
@@ -2834,12 +2853,9 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     if (!emucore_mode)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "LCD Acceleration",
+            .name = T(setopt_lcd_acceleration),
             .values = off_on_labels,
-            .description =
-                "Provides minor perf boost by using the Playdate's own last-frame buffer "
-                "to store the GB's internal frame buffer as well.\n\n"
-                "Sometimes causes garbage data to become visible on screen.",
+            .description = T(setdsc_lcd_acceleration),
             .pref_var = &preferences_tcm_lcd,
             .max_value = 2,
             .on_press = NULL
@@ -2849,11 +2865,9 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     if (CB_App->bundled_rom)
     {
         section[++i] = (OptionsMenuEntry){
-            .name = "About CrankBoy...",
+            .name = T(setopt_about_crankboy),
             .values = NULL,
-            .description =
-                "This game is bundled for Playdate via CrankBoy, a Game Boy emulator.\n\n"
-                "Press Ⓐ now to learn more about CrankBoy and its developers.",
+            .description = T(setdsc_about_crankboy),
             .pref_var = NULL,
             .max_value = 0,
             .on_press = display_credits
@@ -3827,14 +3841,16 @@ static void CB_SettingsScene_menu(void* object)
 
     if (settingsScene->gameScene)
     {
-        playdate->system->addMenuItem("Resume", CB_SettingsScene_didSelectBack, settingsScene);
+        playdate->system->addMenuItem(
+            T(pdmenu_resume), CB_SettingsScene_didSelectBack, settingsScene
+        );
     }
     else
     {
         playdate->system->addMenuItem(
             T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene
         );
-        playdate->system->addMenuItem("Changelog", display_changelog_menu, NULL);
+        playdate->system->addMenuItem(T(pdmenu_changelog), display_changelog_menu, NULL);
     }
 }
 
@@ -3938,6 +3954,32 @@ static void CB_SettingsScene_free(void* object)
     {
         cb_free(itcm_restart_desc);
         itcm_restart_desc = NULL;
+    }
+
+    if (gs_desc_base_per_game)
+    {
+        cb_free(gs_desc_base_per_game);
+        gs_desc_base_per_game = NULL;
+    }
+    if (gs_desc_base_hold)
+    {
+        cb_free(gs_desc_base_hold);
+        gs_desc_base_hold = NULL;
+    }
+    if (gs_desc_base_hold_restart)
+    {
+        cb_free(gs_desc_base_hold_restart);
+        gs_desc_base_hold_restart = NULL;
+    }
+    if (gs_desc_base_restart)
+    {
+        cb_free(gs_desc_base_restart);
+        gs_desc_base_restart = NULL;
+    }
+    if (gs_desc_base_none)
+    {
+        cb_free(gs_desc_base_none);
+        gs_desc_base_none = NULL;
     }
 
     if (settingsScene->gradient)

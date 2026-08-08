@@ -205,7 +205,7 @@ typedef struct CB_GameScene
     } rewind;
 } CB_GameScene;
 
-CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode);
+CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short, bool cgb_mode);
 void CB_GameScene_apply_settings(CB_GameScene* gameScene);
 void CB_GameScene_apply_script_support(CB_GameScene* gameScene);
 void CB_GameScene_didSelectLibrary(void* userdata);

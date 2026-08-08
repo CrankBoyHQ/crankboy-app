@@ -184,7 +184,7 @@ static void draw_info_row(int y, const char* label, const char* value)
     }
     else
     {
-        playdate->graphics->drawText("N/A", strlen("N/A"), kUTF8Encoding, INFO_VALUE_X, y);
+        playdate->graphics->drawText(T(rom_na), strlen(T(rom_na)), kUTF8Encoding, INFO_VALUE_X, y);
     }
 }
 
@@ -362,7 +362,7 @@ static void delete_cover_confirmed(void* ud, int option)
     clamp_cursor(self);
 }
 
-static const char* yes_no_options[] = {"No", "Yes", NULL};
+const char* yes_no_options[3];
 
 static int count_wrapped_lines(const char* text, int max_width, LCDFont* font)
 {
@@ -447,7 +447,7 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
             filename_lines = 3;
         }
 
-        msg = aprintf("Delete this ROM?\n\n%s", display_name);
+        msg = aprintf(T(rom_delete_confirm), display_name);
         cb_free(truncated_name);
         cb = cb_delete_rom_confirmed;
     }
@@ -458,10 +458,10 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
         int sidx = self->save_slot_at_open;
         if (sidx < 0)
             sidx = 0;
-        if (sidx >= (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])))
-            sidx = (int)(sizeof(save_slot_labels) / sizeof(save_slot_labels[0])) - 1;
+        if (sidx >= SAVE_SLOT_COUNT)
+            sidx = SAVE_SLOT_COUNT - 1;
         const char* slot_label = save_slot_labels[sidx];
-        msg = aprintf("Confirm delete\nsave data for %s?", slot_label);
+        msg = aprintf(T(rom_delete_save), slot_label);
         cb = clear_save_confirmed;
     }
     else if (idx == 2)
@@ -472,7 +472,7 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
 #endif
         if (!self->game->coverPath)
             return;
-        msg = aprintf("Delete this cover art?");
+        msg = cb_strdup(T(rom_delete_cover));
         cb = delete_cover_confirmed;
     }
 
@@ -483,6 +483,9 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
         return;
     }
 
+    yes_no_options[0] = T(label_no);
+    yes_no_options[1] = T(label_yes);
+    yes_no_options[2] = NULL;
     CB_Modal* modal = CB_Modal_new(msg, yes_no_options, cb, self);
     cb_free(msg);
     if (modal)
@@ -651,7 +654,9 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     int y = INFO_TOP_Y + header_y;
 
     // filename with scroll if needed
-    playdate->graphics->drawText("Filename:", 9, kUTF8Encoding, INFO_LEFT_X, y);
+    playdate->graphics->drawText(
+        T(rom_filename_label), strlen(T(rom_filename_label)), kUTF8Encoding, INFO_LEFT_X, y
+    );
     if (self->basename)
     {
         playdate->graphics->setFont(CB_App->bodyFont);
@@ -677,14 +682,16 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
     else
     {
-        playdate->graphics->drawText("N/A", 3, kUTF8Encoding, INFO_VALUE_X, y);
+        playdate->graphics->drawText(T(rom_na), strlen(T(rom_na)), kUTF8Encoding, INFO_VALUE_X, y);
     }
     y += INFO_ROW_H;
 
     const bool is_gb = self->game->names && self->game->names->system_slug &&
                        strcmp(self->game->names->system_slug, GB_SYSTEM_SLUG) == 0;
 
-    draw_info_row(y, "Format:", self->compressed ? "compressed" : "uncompressed");
+    draw_info_row(
+        y, T(rom_format_label), self->compressed ? T(rom_compressed) : T(rom_uncompressed)
+    );
     y += INFO_ROW_H;
 
     {
@@ -702,7 +709,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             hdr =
                 (self->core_header_name && *self->core_header_name) ? self->core_header_name : NULL;
         }
-        draw_info_row(y, "Header:", hdr);
+        draw_info_row(y, T(rom_header_label), hdr);
         y += INFO_ROW_H;
     }
 
@@ -716,7 +723,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             snprintf(mapper_buf, sizeof(mapper_buf), "0x%02X", self->mapper_byte);
         else
             snprintf(mapper_buf, sizeof(mapper_buf), "?");
-        draw_info_row(y, "Mapper:", mapper_buf);
+        draw_info_row(y, T(rom_mapper_label), mapper_buf);
         y += INFO_ROW_H;
     }
     else if (self->core_info_text)
@@ -767,29 +774,29 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             snprintf(crc_buf, sizeof(crc_buf), "%08lX", (unsigned long)self->game->names->crc32);
         else
             snprintf(crc_buf, sizeof(crc_buf), "—");
-        draw_info_row(y, "CRC32:", crc_buf);
+        draw_info_row(y, T(rom_crc32_label), crc_buf);
         y += INFO_ROW_H;
     }
 
     if (is_gb)
     {
-        const char* sys_str = "DMG";
+        const char* sys_str = T(rom_system_dmg);
         if (self->header_ok)
         {
             if (self->cgb_flag == 0x80)
-                sys_str = "DMG / CGB (optional)";
+                sys_str = T(rom_system_dmg_cgb);
             else if (self->cgb_flag == 0xC0)
-                sys_str = "CGB";
+                sys_str = T(rom_system_cgb);
         }
-        draw_info_row(y, "System:", sys_str);
+        draw_info_row(y, T(rom_system_label), sys_str);
         y += INFO_ROW_H;
     }
 
     // action rows
-    static const char* action_labels[] = {
-        "Delete ROM",
-        "Clear save data",
-        "Delete cover art",
+    const char* action_labels[] = {
+        T(rom_action_delete_rom),
+        T(rom_action_clear_save),
+        T(rom_action_delete_cover),
     };
     for (int i = 0; i < self->actionCount; ++i)
     {
@@ -877,7 +884,7 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     self->header_animation_p = initial_header_p;
     self->started_without_header = (initial_header_p < 1.0f);
     self->is_dismissing = false;
-    strncpy(self->header_name, "Manage ROM", sizeof(self->header_name) - 1);
+    strncpy(self->header_name, T(rom_manage_header), sizeof(self->header_name) - 1);
     self->header_name[sizeof(self->header_name) - 1] = '\0';
     self->cursorIndex = 0;
     self->actionCount = 3;

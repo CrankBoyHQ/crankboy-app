@@ -13,10 +13,6 @@
 
 #define INFO_Y (HEADER_HEIGHT + 2 * MARGIN + ROW_HEIGHT * MAX_DISP)
 
-#define INFO                                                                                       \
-    "Press Ⓐ to toggle patches.\n \nHold Ⓐ to rearrange patches. Enabled patches will be applied " \
-    "in the order listed."
-
 extern const uint8_t lcdp_50[16];
 
 static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
@@ -155,7 +151,7 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 
     playdate->graphics->setFont(CB_App->labelFont);
 
-    const char* info = INFO;
+    const char* info = T(patches_help);
     playdate->graphics->drawTextInRect(
         info, strlen(info), kUTF8Encoding, MARGIN, INFO_Y, LCD_COLUMNS - 2 * MARGIN, 200, kWrapWord,
         kAlignTextLeft
@@ -195,7 +191,7 @@ static void CB_PatchesScene_menu(void* object)
 {
     CB_PatchesScene* patchesScene = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("back", CB_PatchesScene_didSelectBack, patchesScene);
+    playdate->system->addMenuItem(T(pdmenu_back), CB_PatchesScene_didSelectBack, patchesScene);
 }
 
 CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)

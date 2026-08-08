@@ -580,7 +580,7 @@ static void maybe_refresh_shared_forwarder(void)
             return;
     }
 
-    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Updating Forwarders...");
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_updating_forwarders));
     playdate->system->logToConsole(
         "[fwd] %s -- refreshing shared forwarder for %s", forced ? "force-update" : "fwdex stale",
         CB_App->pdxBundleID ? CB_App->pdxBundleID : "?"
@@ -969,7 +969,7 @@ static void CB_load_cores(void)
 
     if (scan.n == 0)
         return;
-    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Loading cores...");
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_loading_cores));
 
     // sort reverse-chronologically
     for (size_t i = 1; i < scan.n; ++i)
@@ -1084,13 +1084,9 @@ static void present_emucore_recovery_modal(void)
     bootScene->use_user_stack = 0;
     CB_App->scene = bootScene;
 
-    const char* options[] = {"Safe Mode", "Purge", "Ignore", NULL};
-    CB_Modal* modal = CB_Modal_new(
-        "It looks like CrankBoy failed to properly start last time. Emulation cores could be the "
-        "problem.\nYou can skip them this launch (Safe Mode), delete them all (Purge), or try to "
-        "launch normally again (Ignore).",
-        options, emucore_recovery_callback, NULL
-    );
+    const char* options[] = {T(app_safe_mode), T(app_purge), T(label_ignore), NULL};
+    CB_Modal* modal =
+        CB_Modal_new(T(app_recovery_message), options, emucore_recovery_callback, NULL);
     modal->width = 390;
     modal->height = 218;
     modal->margin = 11;
@@ -1100,7 +1096,7 @@ static void present_emucore_recovery_modal(void)
 static void non_bundle_init(void)
 {
     playdate->system->logToConsole("non_bundle_init: start");
-    cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+    cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_initializing));
     playdate->system->logToConsole("non_bundle_init: after draw");
     get_homebrew_hub_api();
     playdate->system->logToConsole("non_bundle_init: after hub api");
@@ -1122,38 +1118,26 @@ static void non_bundle_init(void)
 
 void CB_showHelp(bool first_time)
 {
-    const char* title = first_time ? "Welcome to CrankBoy!" : "CrankBoy Usage";
+    const char* title = first_time ? T(help_welcome_title) : T(help_usage_title);
 
-    const char* A0 = first_time ? "This is a quick guide to getting started.\n\nIn the future, you "
-                                  "can review these instructions from the \"help\" option in "
-                                  "CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n"
-                                : "";
+    const char* A0 = first_time ? T(help_intro_text) : "";
 
-    const char* A = first_time ? "To get started, you'll want to add some ROMs to CrankBoy.\n\n"
-                                 "We recommend using CrankBoy Manager."
-                               : "Use CrankBoy Manager to add ROMs";
+    const char* A = first_time ? T(help_add_roms_first) : T(help_add_roms);
 
-    const char* B = "                                        - OR -";
-    const char* C1 = "1. Connect your Playdate to another device via USB.\n";
-    const char* C2 =
-        "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
-    const char* C3 =
-        "3. From the connected device, copy your ROM files (.gb, .gbc, or .gbz) onto your "
-        "Playdate at the following directory: ";
+    const char* B = T(help_or_separator);
+    const char* C1 = T(help_step1);
+    const char* C2 = T(help_step2);
+    const char* C3 = T(help_step3);
 
-    const char* D =
-        "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the "
-        "main menu via ⊙ > settings > Get ROMs. ";
+    const char* D = T(help_alt_homebrew);
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-    const char* E = first_time
-                        ? "You can also press Ⓑ now to start playing the included ROMs immediately."
-                        : "";
+    const char* E = first_time ? T(help_catalog_play) : "";
 #else
-    const char* E = first_time ? "Press Ⓑ to continue." : "";
+    const char* E = first_time ? T(help_continue) : "";
 #endif
 
-    const char* F = "\n\nYou can find more info on our site:\n[qr]https://crankboy.app";
+    const char* F = T(help_website);
 
     char* s = aprintf(
         "%s%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", B, "\n\n", C1, C2, C3,
@@ -1220,7 +1204,7 @@ static bool show_changelog_if_new(void)
     if (!plain)
         return false;
 
-    CB_InfoScene* infoScene = CB_InfoScene_new("What's New", plain);
+    CB_InfoScene* infoScene = CB_InfoScene_new(T(app_whats_new), plain);
     infoScene->complete_callback = non_bundle_init;
     infoScene->min_dismiss_time = 1.0f;
     infoScene->textIsStatic = false;
@@ -1283,7 +1267,7 @@ void CB_init(void)
 
     if (!CB_App->bundled_rom)
     {
-        cb_draw_logo_screen_and_display(CB_App->subheadFont, "Initializing...");
+        cb_draw_logo_screen_and_display(CB_App->subheadFont, T(status_initializing));
         initialize_directory();
         maybe_refresh_shared_forwarder();
 #if !defined(CRANKBOY_OFFICIAL_CATALOG)
@@ -1374,13 +1358,15 @@ void CB_init(void)
             return;
         }
 
-        CB_EmucoreGameScene* es = CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, "Bundled ROM");
+        CB_EmucoreGameScene* es =
+            CB_EmucoreGameScene_new(CB_App->bundled_rom, slug, T(app_bundled_rom));
         CB_present(es->scene);
     }
     else if (CB_App->bundled_rom)
     {
-        CB_GameScene* gameScene =
-            CB_GameScene_new(CB_App->bundled_rom, "Bundled ROM", CB_App->bundled_rom_cgb_mode == 2);
+        CB_GameScene* gameScene = CB_GameScene_new(
+            CB_App->bundled_rom, T(app_bundled_rom), CB_App->bundled_rom_cgb_mode == 2
+        );
         if (gameScene)
         {
             CB_present(gameScene->scene);

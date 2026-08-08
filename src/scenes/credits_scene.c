@@ -234,7 +234,7 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
             if (CB_App->hasSystemAccess)
             {
                 playdate->graphics->drawTextInRect(
-                    "System Access", strlen((char*)"System Access"), kUTF8Encoding,
+                    T(credits_system_access), strlen(T(credits_system_access)), kUTF8Encoding,
                     margin + creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextRight
                 );
                 yr += yadv;
@@ -251,7 +251,7 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
 #ifdef CRANKBOY_NIGHTLY
             playdate->graphics->drawTextInRect(
-                "Nightly", strlen((char*)"Nightly"), kUTF8Encoding,
+                T(credits_nightly), strlen(T(credits_nightly)), kUTF8Encoding,
                 margin - creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextLeft
             );
             yl += yadv;
@@ -259,13 +259,13 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
             if (CB_App->bundled_rom)
             {
-                const char* bundle_label = "Bundle";
+                const char* bundle_label = T(credits_bundle);
                 if (CB_App->bundle_shared && CB_App->bundle_fwd_path)
-                    bundle_label = "Bundle (shared+fwd)";
+                    bundle_label = T(credits_bundle_shared_fwd);
                 else if (CB_App->bundle_shared)
-                    bundle_label = "Bundle (shared)";
+                    bundle_label = T(credits_bundle_shared);
                 else if (CB_App->bundle_fwd_path)
-                    bundle_label = "Bundle (fwd)";
+                    bundle_label = T(credits_bundle_fwd);
                 playdate->graphics->drawTextInRect(
                     bundle_label, strlen(bundle_label), kUTF8Encoding,
                     margin - creditsScene->scroll * 8, yl, width, 100, kWrapWord, kAlignTextLeft
@@ -275,7 +275,7 @@ static void CB_CreditsScene_update(void* object, uint32_t u32enc_dt)
 
 #ifdef CRANKBOY_OFFICIAL_CATALOG
             playdate->graphics->drawTextInRect(
-                "Catalog", strlen((char*)"Catalog"), kUTF8Encoding,
+                T(credits_catalog), strlen(T(credits_catalog)), kUTF8Encoding,
                 margin + creditsScene->scroll * 8, yr, width, 100, kWrapWord, kAlignTextRight
             );
             yr += yadv;
@@ -339,19 +339,25 @@ static void CB_CreditsScene_menu(void* object)
 
     if (!CB_App->bundled_rom)
     {
-        playdate->system->addMenuItem(T(pdmenu_settings), CB_CreditsScene_didSelectBack, creditsScene);
+        playdate->system->addMenuItem(
+            T(pdmenu_settings), CB_CreditsScene_didSelectBack, creditsScene
+        );
     }
     else
     {
         if (preferences_bundle_hidden != (preferences_bitfield_t)-1)
         {
             // Back to settings
-            playdate->system->addMenuItem("Back", CB_CreditsScene_didSelectBack, creditsScene);
+            playdate->system->addMenuItem(
+                T(pdmenu_back), CB_CreditsScene_didSelectBack, creditsScene
+            );
         }
         else
         {
             // Back to game
-            playdate->system->addMenuItem("Resume", CB_CreditsScene_didSelectBack, creditsScene);
+            playdate->system->addMenuItem(
+                T(pdmenu_resume), CB_CreditsScene_didSelectBack, creditsScene
+            );
         }
     }
 }

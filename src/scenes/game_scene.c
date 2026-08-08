@@ -652,7 +652,7 @@ static const char* buttonMenuOptions[] = {
     "Both",
 };
 
-static const char* quitGameOptions[] = {"No", "Yes", NULL};
+const char* quitGameOptions[3];
 
 void reconfigure_audio_source(CB_GameScene* gameScene)
 {
@@ -1128,7 +1128,7 @@ char* cb_game_config_path(const char* rom_filename)
 // see preferences_tcm_lcd
 static uint8_t* lcd_sources[2];
 
-CB_GameScene* CB_GameScene_new(const char* rom_filename, char* name_short, bool cgb_mode)
+CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short, bool cgb_mode)
 {
     // Seed the random number generator to ensure joypad interrupt timing is unpredictable.
     srand(time(NULL));
@@ -3519,7 +3519,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                 if (gameScene->rewind.show_help)
                 {
-                    const char* text = "Hold UP or Ⓑ and crank.";
+                    const char* text = T(game_rewind_help);
                     int tw = playdate->graphics->getTextWidth(
                         CB_App->labelFont, text, strlen(text), kUTF8Encoding, 0
                     );
@@ -3619,9 +3619,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         game_invert_indicator ? kDrawModeFillBlack : kDrawModeFillWhite
                     );
 
-                    const char* line1 = "Turbo";
-                    const char* line2 =
-                        (preferences_crank_mode == CRANK_MODE_TURBO_CW) ? "A/B" : "B/A";
+                    const char* line1 = T(game_turbo);
+                    const char* line2 = (preferences_crank_mode == CRANK_MODE_TURBO_CW)
+                                            ? T(game_turbo_ab)
+                                            : T(game_turbo_ba);
 
                     int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
                     int lineSpacing = 2;
@@ -3738,43 +3739,43 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
         if (gbScreenRequiresFullRefresh)
         {
-            char* errorTitle = "Oh no!";
+            const char* errorTitle = T(gameerr_title_default);
 
             int errorMessagesCount = 1;
-            char* errorMessages[4];
+            const char* errorMessages[4];
 
-            errorMessages[0] = "A generic error occurred";
+            errorMessages[0] = T(gameerr_generic);
 
             if (gameScene->error == CB_GameSceneErrorLoadingRom)
             {
-                errorMessages[0] = "Can't load the selected ROM";
+                errorMessages[0] = T(gameerr_load_rom);
             }
             else if (gameScene->error == CB_GameSceneErrorWrongLocation)
             {
-                errorTitle = "Wrong location";
+                errorTitle = T(gameerr_wrong_location_title);
                 errorMessagesCount = 2;
-                errorMessages[0] = "Please move the ROM to";
-                errorMessages[1] = "/Data/*.crankboy/games/";
+                errorMessages[0] = T(gameerr_wrong_location);
+                errorMessages[1] = T(gameerr_wrong_location_path);
             }
             else if (gameScene->error == CB_GameSceneErrorSaveData)
             {
-                errorTitle = "Save Data Error";
+                errorTitle = T(gameerr_save_data_title);
                 errorMessagesCount = 1;
-                errorMessages[0] = "Failed to load save data.";
+                errorMessages[0] = T(gameerr_save_data);
             }
             else if (gameScene->error == CB_GameSceneErrorFatal)
             {
-                errorMessages[0] = "A fatal error occurred";
+                errorMessages[0] = T(gameerr_fatal);
             }
 
             errorMessages[errorMessagesCount++] = "";
             if (CB_App->bundled_rom)
             {
-                errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to quit";
+                errorMessages[errorMessagesCount++] = T(gameerr_return_quit);
             }
             else
             {
-                errorMessages[errorMessagesCount++] = "Press Ⓐ or Ⓑ to return to Library";
+                errorMessages[errorMessagesCount++] = T(gameerr_return_library);
             }
 
             playdate->graphics->clear(kColorWhite);
@@ -3806,7 +3807,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
             for (int i = 0; i < errorMessagesCount; i++)
             {
-                char* errorMessage = errorMessages[i];
+                const char* errorMessage = errorMessages[i];
                 int messageX = (float)(playdate->display->getWidth() -
                                        playdate->graphics->getTextWidth(
                                            CB_App->bodyFont, errorMessage, strlen(errorMessage),
@@ -3859,7 +3860,7 @@ __section__(".text.tick") __space static void save_check(gb_s* gb)
     }
 }
 
-static const char* loadStateErrorOptions[] = {"OK", "Details", NULL};
+const char* loadStateErrorOptions[3];
 
 __section__(".rare") static void screen_fade(CB_GameScene* gameScene, int frame_advance)
 {
@@ -3908,9 +3909,12 @@ __section__(".rare") void CB_GameScene_didSelectLibrary_(void* userdata)
     // if playing for more than 1 minute, ask confirmation
     if (gameScene->playtime >= 60 * 60 && !gameScene->quitGameModalConfirmOverride)
     {
-        const char* options[] = {"No", "Yes", NULL};
+        quitGameOptions[0] = T(label_no);
+        quitGameOptions[1] = T(label_yes);
+        quitGameOptions[2] = NULL;
         CB_presentModal(
-            CB_Modal_new("Quit game?", quitGameOptions, CB_LibraryConfirmModal, gameScene)->scene
+            CB_Modal_new(T(game_quit_question), quitGameOptions, CB_LibraryConfirmModal, gameScene)
+                ->scene
         );
     }
     else
@@ -4000,7 +4004,7 @@ static void CB_GameScene_menu(void* object)
     }
     else
     {
-        playdate->system->addMenuItem("About", CB_showCredits, gameScene);
+        playdate->system->addMenuItem(T(pdmenu_about), CB_showCredits, gameScene);
     }
 
     unsigned script_menu_flags = script_menu(gameScene->script, gameScene);
@@ -4055,13 +4059,13 @@ static void CB_GameScene_menu(void* object)
             {
                 show_time_info = true;
                 final_timestamp = last_state_save_time;
-                line1_text = "Last save state:";
+                line1_text = T(game_last_save_state);
             }
             else if (last_cartridge_save_time > 0)
             {
                 show_time_info = true;
                 final_timestamp = last_cartridge_save_time;
-                line1_text = "Cartridge data stored:";
+                line1_text = T(game_cartridge_data);
             }
 
             // --- Drawing Logic ---
@@ -4694,11 +4698,9 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                     if (header->script_save_data_size > file_size)
                     {
                         success = false;
-                        CB_presentModal(CB_Modal_new(
-                                            "Invalid script custom data size in file", NULL, NULL,
-                                            NULL
-                        )
-                                            ->scene);
+                        CB_presentModal(
+                            CB_Modal_new(T(game_invalid_script_data), NULL, NULL, NULL)->scene
+                        );
                     }
                     else
                     {
@@ -4731,9 +4733,12 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
 
                             if (details)
                             {
-                                // First modal: generic message + OK/Details
+                                loadStateErrorOptions[0] = T(label_ok);
+                                loadStateErrorOptions[1] = T(label_details);
+                                loadStateErrorOptions[2] = NULL;
                                 CB_presentModal(CB_Modal_new(
-                                                    "Failed to load state.", loadStateErrorOptions,
+                                                    T(game_failed_load_state),
+                                                    loadStateErrorOptions,
                                                     CB_LoadStateErrorModalCallback, details
                                 )
                                                     ->scene);
@@ -4742,7 +4747,7 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             {
                                 // Fallback: 1-button modal
                                 CB_presentModal(
-                                    CB_Modal_new("Failed to load state.", NULL, NULL, NULL)->scene
+                                    CB_Modal_new(T(game_failed_load_state), NULL, NULL, NULL)->scene
                                 );
                             }
                         }
@@ -5364,12 +5369,12 @@ void show_game_script_info(const char* rompath, const char* name_short)
     // Check if name_short was provided and is not an empty string
     if (name_short && name_short[0] != '\0')
     {
-        text = aprintf("Script information:\n\n%s", info->info);
+        text = aprintf(T(game_script_info), info->info);
     }
     else
     {
         // Fallback to just the rom_name if name_short is not available
-        text = aprintf("Script information:\n\n%s", info->info);
+        text = aprintf(T(game_script_info), info->info);
     }
 
     script_info_free(info);

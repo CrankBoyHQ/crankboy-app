@@ -1,7 +1,8 @@
-#include <pd_api.h>
+#include "pd_api.h"
 #include "pd_api/pd_api_file.h"
 #include "pd_api/pd_api_sys.h"
 #include "utility.h"
+
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,11 +12,11 @@
 extern const unsigned char baked_en_strings[];
 extern const unsigned int baked_en_strings_len;
 
-extern const unsigned char baked_jp_strings[];
-extern const unsigned int baked_jp_strings_len;
+extern const unsigned char baked_ja_strings[];
+extern const unsigned int baked_ja_strings_len;
 
 #define LANGUAGE(pdlang, iso) \
-    { pdlang, #iso ".strings", baked_##iso##_strings, &baked_##iso##_strings_len },
+    {pdlang, #iso ".strings", baked_##iso##_strings, &baked_##iso##_strings_len},
 
 static const struct
 {
@@ -23,15 +24,13 @@ static const struct
     const char* fname;
     const unsigned char* strings;
     const unsigned int* strings_len;
-} languages[] = {
-    LANGUAGE(kPDLanguageEnglish, en)
-    LANGUAGE(kPDLanguageJapanese, jp)
-};
+} languages[] = {LANGUAGE(kPDLanguageEnglish, en) LANGUAGE(kPDLanguageJapanese, ja)};
 
 struct l10n
 {
     size_t count;
-    struct l10n_entry {
+    struct l10n_entry
+    {
         const char* key;
         const char* string;
     }* entries;
@@ -41,7 +40,8 @@ struct l10n
 
 static void l10n_free(struct l10n* l)
 {
-    if (!l) return;
+    if (!l)
+        return;
     cb_free(l->entries);
     cb_free(l->buff);
     cb_free(l);
@@ -49,10 +49,7 @@ static void l10n_free(struct l10n* l)
 
 static int compare_l10n_entries(const void* a, const void* b)
 {
-    return strcmp(
-        ((const struct l10n_entry*)a)->key,
-        ((const struct l10n_entry*)b)->key
-    );
+    return strcmp(((const struct l10n_entry*)a)->key, ((const struct l10n_entry*)b)->key);
 }
 
 static void binsort_l10n(struct l10n* l)
@@ -69,22 +66,42 @@ static int parse_quoted(char* buff, int offset)
     while (buff[offset] != '"')
     {
         char c = buff[offset++];
-        if (c == 0) return -1;
+        if (c == 0)
+            return -1;
         if (c == '\\')
         {
             char e = buff[offset++];
             switch (e)
             {
-            case 0: return -1;
-            case 'a': c = '\a'; break;
-            case 'b': c = '\b'; break;
-            case 'e': c = '\e'; break;
-            case 'f': c = '\f'; break;
-            case 'n': c = '\n'; break;
-            case 'r': c = '\r'; break;
-            case 't': c = '\t'; break;
-            case 'v': c = '\v'; break;
-            default: c = e; break;
+            case 0:
+                return -1;
+            case 'a':
+                c = '\a';
+                break;
+            case 'b':
+                c = '\b';
+                break;
+            case 'e':
+                c = '\e';
+                break;
+            case 'f':
+                c = '\f';
+                break;
+            case 'n':
+                c = '\n';
+                break;
+            case 'r':
+                c = '\r';
+                break;
+            case 't':
+                c = '\t';
+                break;
+            case 'v':
+                c = '\v';
+                break;
+            default:
+                c = e;
+                break;
             }
         }
         *write++ = c;
@@ -108,7 +125,8 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
             lang_idx = i;
         }
     }
-    if (lang_idx == CB_ARRAY_SIZE(languages)) return NULL;
+    if (lang_idx == CB_ARRAY_SIZE(languages))
+        return NULL;
 
     struct l10n* l = allocz(struct l10n);
 
@@ -141,15 +159,14 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
     int keystate = -1;
     while (true)
     {
-        while (isspace((unsigned char)l->buff[offset])) ++offset;
+        while (isspace((unsigned char)l->buff[offset]))
+            ++offset;
         switch (l->buff[offset++])
         {
         case 0:
             if (keystate != -1)
             {
-                playdate->system->error(
-                    "Unexpected end of %s", languages[lang_idx].fname
-                );
+                playdate->system->error("Unexpected end of %s", languages[lang_idx].fname);
                 goto fail;
             }
             binsort_l10n(l);
@@ -158,15 +175,14 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
         case '-':
         case '#':
         case '/':
-            while (l->buff[offset] != '\n' && l->buff[offset] != 0) ++offset;
+            while (l->buff[offset] != '\n' && l->buff[offset] != 0)
+                ++offset;
             break;
 
         case '=':
             if (keystate != 0)
             {
-                playdate->system->error(
-                    "Unexpected '=' in %s", languages[lang_idx].fname
-                );
+                playdate->system->error("Unexpected '=' in %s", languages[lang_idx].fname);
                 goto fail;
             }
             keystate = 1;
@@ -175,9 +191,7 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
         case ';':
             if (keystate != -1)
             {
-                playdate->system->error(
-                    "Unexpected ';' in %s", languages[lang_idx].fname
-                );
+                playdate->system->error("Unexpected ';' in %s", languages[lang_idx].fname);
                 goto fail;
             }
             break;
@@ -188,9 +202,7 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
             offset = parse_quoted(l->buff, offset);
             if (offset < 0)
             {
-                playdate->system->error(
-                    "Unterminated string in %s", languages[lang_idx].fname
-                );
+                playdate->system->error("Unterminated string in %s", languages[lang_idx].fname);
                 goto fail;
             }
 
@@ -198,8 +210,7 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
             {
             case -1:
                 l->count++;
-                l->entries =
-                    cb_realloc(l->entries, sizeof(l->entries[0]) * l->count);
+                l->entries = cb_realloc(l->entries, sizeof(l->entries[0]) * l->count);
                 l->entries[l->count - 1].key = quotestart;
                 l->entries[l->count - 1].string = NULL;
                 keystate = 0;
@@ -219,8 +230,7 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
 
         default:
             playdate->system->error(
-                "Unexpected symbol in %s: '%c'",
-                languages[lang_idx].fname, l->buff[offset - 1]
+                "Unexpected symbol in %s: '%c'", languages[lang_idx].fname, l->buff[offset - 1]
             );
             goto fail;
         }
@@ -233,16 +243,20 @@ fail:
 
 static const char* l10n_get(struct l10n* l, const char* key)
 {
-    if (!l) return NULL;
+    if (!l)
+        return NULL;
 
     size_t lo = 0, hi = l->count;
     while (lo < hi)
     {
         size_t mid = lo + (hi - lo) / 2;
         int c = strcmp(key, l->entries[mid].key);
-        if (c == 0) return l->entries[mid].string;
-        if (c < 0) hi = mid;
-        else lo = mid + 1;
+        if (c == 0)
+            return l->entries[mid].string;
+        if (c < 0)
+            hi = mid;
+        else
+            lo = mid + 1;
     }
     return NULL;
 }
@@ -268,6 +282,8 @@ static struct l10n* merge_l10n(struct l10n* a, struct l10n* b)
 
     for (size_t i = 0; i < a->count; ++i)
     {
+        if (a->entries[i].string[0] == 0)
+            continue;
         ++count;
         buffsize += strlen(a->entries[i].key) + strlen(a->entries[i].string) + 2;
     }
@@ -277,8 +293,7 @@ static struct l10n* merge_l10n(struct l10n* a, struct l10n* b)
         if (!l10n_get(a, b->entries[i].key))
         {
             ++count;
-            buffsize +=
-                strlen(b->entries[i].key) + strlen(b->entries[i].string) + 2;
+            buffsize += strlen(b->entries[i].key) + strlen(b->entries[i].string) + 2;
         }
     }
 
@@ -293,6 +308,8 @@ static struct l10n* merge_l10n(struct l10n* a, struct l10n* b)
 
     for (size_t i = 0; i < a->count; ++i)
     {
+        if (a->entries[i].string[0] == 0)
+            continue;
         append_l10n_entry(merged, a->entries[i].key, a->entries[i].string);
     }
 
@@ -313,12 +330,15 @@ static struct l10n* load_localization_with_fallback(PDLanguage lang)
     struct l10n* en_fallback = load_localization(kPDLanguageEnglish, true);
     struct l10n* l = load_localization(lang, false);
 
-    if (!l) return en_fallback;
-    if (!en_fallback) return l;
+    if (!l)
+        return en_fallback;
+    if (!en_fallback)
+        return l;
 
     struct l10n* merged = merge_l10n(l, en_fallback);
     l10n_free(l);
-    if (!merged) return en_fallback;
+    if (!merged)
+        return en_fallback;
     l10n_free(en_fallback);
     return merged;
 }

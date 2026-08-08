@@ -395,7 +395,7 @@ static void open_emucore_for_source(CB_GameScanningScene* scanScene, const CB_Sc
 
     // " (<system name>)" if derivable, otherwise " (<system slug>)".
     scanScene->progress_title =
-        aprintf("Scanning Games... (%s)", system_name ? system_name : src->slug);
+        aprintf(T(status_scanning_fmt), system_name ? system_name : src->slug);
 }
 
 static void close_emucore_for_source(CB_GameScanningScene* scanScene)
@@ -546,10 +546,10 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                 snprintf(progress_message, sizeof(progress_message), "%d%%", pct);
 #ifdef CRANKBOY_OFFICIAL_CATALOG
                 const char* scan_label = (strcmp(src->games_dir, "packed") == 0)
-                                             ? "Scanning Catalog... "
-                                             : "Scanning Games... ";
+                                             ? T(status_scanning_catalog)
+                                             : T(status_scanning);
 #else
-                const char* scan_label = "Scanning Games... ";
+                const char* scan_label = T(status_scanning);
 #endif
                 cb_draw_logo_screen_centered_split(
                     CB_App->subheadFont, scan_label, progress_message, scanScene->progress_max_width

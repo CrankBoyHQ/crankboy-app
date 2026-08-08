@@ -90,7 +90,7 @@ static void CB_InfoScene_menu(void* object)
 {
     CB_InfoScene* infoScene = object;
     playdate->system->removeAllMenuItems();
-    playdate->system->addMenuItem("back", CB_InfoScene_didSelectBack, infoScene);
+    playdate->system->addMenuItem(T(pdmenu_back), CB_InfoScene_didSelectBack, infoScene);
 }
 
 static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)

@@ -62,22 +62,22 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         char* msg;
         if (flags & HTTP_WIFI_NOT_AVAILABLE)
         {
-            msg = cb_strdup("Wi-Fi not available.");
+            msg = cb_strdup(T(net_wifi_unavailable));
         }
         else if (flags & HTTP_ENABLE_DENIED)
         {
-            msg = cb_strdup("Network permission was denied.");
+            msg = cb_strdup(T(net_permission_denied));
         }
         else
         {
-            msg = aprintf("A network error occurred. (0x%03x)", flags);
+            msg = aprintf(T(net_error), flags);
         }
         CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
         cb_free(msg);
     }
     else if (!data || !data_len)
     {
-        CB_presentModal(CB_Modal_new("ROM empty", NULL, NULL, NULL)->scene);
+        CB_presentModal(CB_Modal_new(T(hhub_rom_empty), NULL, NULL, NULL)->scene);
         return;
     }
 
@@ -112,9 +112,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     // save rom
     if (!cb_write_entire_file(hbs->target_rom_path, data, data_len))
     {
-        CB_presentModal(
-            CB_Modal_new("Filesystem error, failed to save ROM.", NULL, NULL, NULL)->scene
-        );
+        CB_presentModal(CB_Modal_new(T(hhub_rom_save_failed), NULL, NULL, NULL)->scene);
     }
     else
     {
@@ -141,13 +139,10 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
             LAST_SELECTED_FILE, hbs->target_rom_path, strlen(hbs->target_rom_path)
         );
 
-        const char* options[] = {"Restart", "Do Not", NULL};
+        const char* options[] = {T(label_restart), T(label_do_not), NULL};
 
-        char* s = aprintf(
-            "ROM downloaded successfully; you must restart CrankBoy for it to appear.%s",
-            did_doctor ? "\n\nThe ROM header was altered to indicate that it is DMG-compatible."
-                       : ""
-        );
+        const char* suffix = did_doctor ? T(hhub_rom_downloaded_dmg) : "";
+        char* s = aprintf("%s%s", T(hhub_rom_downloaded), suffix);
 
         CB_Modal* modal = CB_Modal_new(s, options, user_quit, NULL);
         modal->width = 330;
@@ -163,7 +158,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
 
 static char* context_list_files_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
-    return aprintf("Press Ⓐ to download this ROM.");
+    return aprintf(T(hhub_download_hint));
 }
 
 static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
@@ -171,7 +166,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
     switch (context->list->selectedItem)
     {
     case 0:
-        return aprintf("Use LEFT & RIGHT to switch pages.");
+        return aprintf(T(hhub_switch_page_hint));
     default:
     {
         int index = context->list->selectedItem - 1;
@@ -220,18 +215,13 @@ static char* context_top_level_hint(CB_HomebrewHubScene* pds, HomebrewHubContext
     switch (context->list->selectedItem)
     {
     case 0:
-        return aprintf("Browse GB homebrew from Homebrew Hub.");
+        return aprintf(T(hhub_browse_gb_desc));
         break;
     case 1:
-        return aprintf(
-            "Browse GB Color homebrew from Homebrew Hub.\n \nNote: CGB support in CrankBoy is "
-            "still experimental."
-        );
+        return aprintf(T(hhub_browse_cgb_desc));
         break;
     case 2:
-        return aprintf(
-            "This feature allows restricting homebrew ROM and ROM hack downloads behind a password."
-        );
+        return aprintf(T(hhub_parental_lock_desc));
         break;
     default:
         return NULL;
@@ -358,7 +348,7 @@ static void confirm_download(CB_HomebrewHubScene* hbs, int option)
         hbs->active_download_type = HB_DL_ROM;
         http_safe_replace_get(
             hbs->active_http_connection, CB_App->hbApiDomain, hbs->urlpath,
-            "to download the selected ROM", (void*)rom_get_cb, 59 * 1001, hbs
+            T(net_rom_download_reason), (void*)rom_get_cb, 59 * 1001, hbs
         );
     }
     cb_free(hbs->urlpath);
@@ -379,10 +369,7 @@ static void context_list_files_update(
         {
             // this seems to prevent a crash that occurs when two downloads are happening
             // simultaneously
-            CB_presentModal(
-                CB_Modal_new("Please wait for the current operation to finish.", NULL, NULL, NULL)
-                    ->scene
-            );
+            CB_presentModal(CB_Modal_new(T(hhub_please_wait), NULL, NULL, NULL)->scene);
         }
         else
         {
@@ -430,11 +417,9 @@ static void context_list_files_update(
             // the user should probably still be informed.
             if (cb_file_exists(hbs->target_rom_path, kFileReadData | kFileRead))
             {
-                const char* options[] = {"Cancel", "Overwrite", NULL};
-                CB_Modal* modal = CB_Modal_new(
-                    "This will replace an existing ROM of the same name. Proceed?", options,
-                    (void*)confirm_download, hbs
-                );
+                const char* options[] = {T(label_cancel), T(label_overwrite), NULL};
+                CB_Modal* modal =
+                    CB_Modal_new(T(hhub_overwrite_prompt), options, (void*)confirm_download, hbs);
                 modal->width = 350;
                 modal->height = 140;
                 CB_presentModal(modal->scene);
@@ -469,7 +454,7 @@ static void context_top_level_update(
         {
             if (CB_App->parentalLockEngaged)
             {
-                CB_presentModal(CB_Modal_new("Parental Lock engaged.", NULL, NULL, NULL)->scene);
+                CB_presentModal(CB_Modal_new(T(hhub_engaged), NULL, NULL, NULL)->scene);
             }
             else
             {
@@ -639,7 +624,8 @@ static void context_list_search_update(
                                 // get image
                                 http_safe_replace_get(
                                     hbs->active_http_connection_2, CB_App->hbApiDomain, urlpath,
-                                    "to retrieve cover art", (void*)cover_art_cb, 12 * 1000, hbs
+                                    T(net_cover_art_retrieve_reason), (void*)cover_art_cb,
+                                    12 * 1000, hbs
                                 );
 
                                 cb_free(urlpath);
@@ -661,9 +647,7 @@ static void context_list_search_update(
                 {
                     if (!push_list_files(hbs, &array->data[selected]))
                     {
-                        CB_presentModal(
-                            CB_Modal_new("Failed to list files.", NULL, NULL, NULL)->scene
-                        );
+                        CB_presentModal(CB_Modal_new(T(hhub_failed_list), NULL, NULL, NULL)->scene);
                     }
                 }
             }
@@ -748,8 +732,8 @@ static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
     CB_ListView_clear(context->list);
 
-    char* label = (hbs->max_pages) ? aprintf("Page %d of %d", context->i, hbs->max_pages)
-                                   : aprintf("Page %d", context->i);
+    char* label = (hbs->max_pages) ? aprintf(T(hhub_page_of), context->i, hbs->max_pages)
+                                   : aprintf(T(hhub_page), context->i);
     CB_ListItemButton* itemButton = CB_ListItemButton_new(label);
     itemButton->is_header = true;
     cb_free(label);
@@ -783,7 +767,7 @@ static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext
             }
             else
             {
-                array_push(context->list->items, CB_ListItemButton_new("[Error]"));
+                array_push(context->list->items, CB_ListItemButton_new(T(status_error)));
             }
         }
     }
@@ -806,15 +790,15 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
         char* msg;
         if (flags & HTTP_WIFI_NOT_AVAILABLE)
         {
-            msg = cb_strdup("Wi-Fi not available.");
+            msg = cb_strdup(T(net_wifi_unavailable));
         }
         else if (flags & HTTP_ENABLE_DENIED)
         {
-            msg = cb_strdup("Network permission was denied.");
+            msg = cb_strdup(T(net_permission_denied));
         }
         else
         {
-            msg = aprintf("A network error occurred. (0x%03x)", flags);
+            msg = aprintf(T(net_error), flags);
         }
         CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
         cb_free(msg);
@@ -825,7 +809,7 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
         if (json_begin == NULL)
         {
         err_invalid_json:
-            CB_presentModal(CB_Modal_new("Invalid JSON received", NULL, NULL, NULL)->scene);
+            CB_presentModal(CB_Modal_new(T(hhub_invalid_json), NULL, NULL, NULL)->scene);
             cb_free(data);
             return;
         }
@@ -866,7 +850,7 @@ static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* pl
 
     hbs->active_download_type = HB_DL_LIST;
     http_safe_replace_get(
-        hbs->active_http_connection, CB_App->hbApiDomain, urlpath, "to browse homebrew",
+        hbs->active_http_connection, CB_App->hbApiDomain, urlpath, T(net_browse_homebrew_reason),
         (void*)http_search_cb, 15 * 1000, hbs
     );
 
@@ -975,13 +959,13 @@ static bool push_top_level(CB_HomebrewHubScene* hbs)
 
     context->type = HBSCT_TOP_LEVEL;
 
-    itemButton = CB_ListItemButton_new("Browse GB games\t›");
+    itemButton = CB_ListItemButton_new(T(hhub_browse_gb));
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Browse CGB games\t›");
+    itemButton = CB_ListItemButton_new(T(hhub_browse_cgb));
     array_push(context->list->items, itemButton);
 
-    itemButton = CB_ListItemButton_new("Parental Lock\t›");
+    itemButton = CB_ListItemButton_new(T(hhub_parental_lock));
     array_push(context->list->items, itemButton);
 
     CB_ListView_reload(context->list);
@@ -1223,8 +1207,8 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         char dots[4] = "...";
         dots[num_dots] = '\0';
 
-        const char* base_text =
-            (hbs->active_download_type == HB_DL_ROM) ? "Downloading ROM" : "Refreshing List";
+        const char* base_text = (hbs->active_download_type == HB_DL_ROM) ? T(hhub_downloading_rom)
+                                                                         : T(hhub_refreshing_list);
 
         playdate->graphics->setFont(CB_App->bodyFont);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
