@@ -8,6 +8,7 @@
 ](https://discord.com/channels/675983554655551509/1378119815641694278)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fcrankboy.app%2F&up_message=Online&down_color=Down&logo=htmx&logoColor=white&label=Website)](https://crankboy.app/)
+[![Translation status](https://hosted.weblate.org/widget/crankboy/crankboy-app/svg-badge.svg)](https://hosted.weblate.org/engage/crankboy/)
 
 <p align="center">
   <a href="https://github.com/CrankBoyHQ/crankboy-app/">
@@ -44,7 +45,7 @@ and based on [Peanut-GB](https://github.com/deltabeard/Peanut-GB), a header-only
 - The Playdate's screen cannot fully refresh at a consistent 60 frames per second. CrankBoy has a variety of options to work around this. By default, the display will only update at 30 Hz (though the game will still run at full speed). It's quite hard to notice the difference on the Playdate screen. Games which don't have scrolling backgrounds should be able to run at 60 fps just fine, though you'll need to enable that in the options.
 - Although CrankBoy will notify you if an update is available, updates are not downloaded automatically. CrankBoy checks if one is available at most once per day, and this behaviour can be disabled by revoking network privileges from the Playdate's native settings menu. <!--no-userguide-->
 
-__Note:__ These features are currently only available in our [unstable nightly builds](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
+**Note:** These features are currently only available in our [unstable nightly builds](https://github.com/CrankBoyHQ/crankboy-app/actions/workflows/nightly.yml).
 
 ## Installing
 
