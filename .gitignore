@@ -6,6 +6,7 @@
 /Source/pdex.dylib
 /Source/pdex.elf
 /Source/pdex.so
+/Source/db/
 /Source/scripts/
 /Source/fonts/*-table-*.png
 /Source/fonts/*.fnt
