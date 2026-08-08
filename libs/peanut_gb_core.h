@@ -23,7 +23,7 @@
 #error "PGB_TEMPLATE must be defined"
 #endif
 
-#include "../src/app.h"
+#include "../src/app.h" // IWYU pragma: keep
 #include "../src/preferences.h"
 #include "../src/utility.h"
 

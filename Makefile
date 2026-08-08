@@ -277,5 +277,14 @@ clangd:
 	@echo 'CompileFlags:' > .clangd
 	@echo '  Add: ' >> .clangd
 	@echo '    - -I$(SDK)/C_API' >> .clangd
+	@$(foreach dir,$(UINCDIR),echo '    - -I$(dir)' >> .clangd;)
 	@echo '    - -DTARGET_EXTENSION=1' >> .clangd
 	@echo '    - -DTARGET_SIMULATOR=1' >> .clangd
+	@echo '    - -include' >> .clangd
+	@echo '    - stdint.h' >> .clangd
+	@echo '    - -include' >> .clangd
+	@echo '    - stdbool.h' >> .clangd
+	@echo '    - -include' >> .clangd
+	@echo '    - stddef.h' >> .clangd
+	@echo '    - -include' >> .clangd
+	@echo '    - string.h' >> .clangd
