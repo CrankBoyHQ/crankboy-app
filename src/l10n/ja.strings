@@ -50,6 +50,7 @@
 "setval_slot_7" = "スロット 7";
 "setval_slot_8" = "スロット 8";
 "setval_slot_9" = "スロット 9";
-"setopt_save_data" = "セーブデータ";
+"setopt_save_data" = "記録";
 "setopt_save_state" = "セーブ";
 "setopt_load_state" = "ロード";
+"setval_mono" = "モノ";
