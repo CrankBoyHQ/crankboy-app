@@ -276,7 +276,7 @@
 "help_step1" = "1. Connect your Playdate to another device via USB.\n";
 "help_step2" = "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
 "help_step3" = "3. From the connected device, copy your ROM files (.gb, .gbc, or .gbz) onto your Playdate at the following directory: ";
-"help_alt_homebrew" = "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the main menu via ⊙ > settings > Get ROMs. ";
+"help_alt_homebrew" = "\n\nAlternatively, you can download free \"homebrew\" titles from within CrankBoy in the library via Get ROMs. ";
 "help_catalog_play" = "You can also press Ⓑ now to start playing the included ROMs immediately.";
 "help_continue" = "Press Ⓑ to continue.";
 "help_website" = "\n\nYou can find more info on our site:\n[qr]https://crankboy.app";
