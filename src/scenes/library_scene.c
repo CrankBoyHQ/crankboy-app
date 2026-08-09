@@ -2247,9 +2247,9 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                             }
 
                             // Common messages for the footer
-                            static const char* message_or = "- or -";
+                            const char* message_or = T(cover_or_separator);
                             const char* message_connect = T(cover_connect_computer);
-                            static const char* message_copy = "and copy cover to:";
+                            const char* message_copy = T(cover_copy_to);
                             const char* message_path = cb_gb_directory_path(CB_coversPath);
 
                             LCDFont* titleFont = CB_App->bodyFont;
