@@ -2252,7 +2252,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                             }
 
                             // Common messages for the footer
-                            const char* message_or = T(cover_or_separator);
+                            const char* message_or = T(label_or_separator);
                             const char* message_connect = T(cover_connect_computer);
                             const char* message_copy = T(cover_copy_to);
                             const char* message_path = cb_gb_directory_path(CB_coversPath);
@@ -2403,7 +2403,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
         if (needsDisplay)
         {
             const char* title = T(lib_manager_title);
-            const char* message1 = T(lib_or_separator);
+            const char* message1 = T(label_or_separator);
 
             static const char* message2_num = "1.";
             const char* message2_text = T(lib_manager_usb);

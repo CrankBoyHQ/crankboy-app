@@ -75,5 +75,4 @@
 "pdmenu_changelog" = "変更履歴";
 "app_whats_new" = "新機能";
 "help_welcome_title" = "CrankBoyへようこそ！";
-"lib_or_separator" = "- または -";
-"help_or_separator" = "                                    - または -";
+"label_or_separator" = "- または -";

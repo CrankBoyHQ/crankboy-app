@@ -28,6 +28,7 @@
 "label_settings" = "Settings";
 "label_about" = "About";
 "label_details" = "Details";
+"label_or_separator" = "- OR -";
 
 // Settings: Section Headers
 // section titles in Options menu
@@ -219,7 +220,6 @@
 "lib_manager_hold" = "For about 10s, hold ";
 "lib_manager_buttons" = "LEFT + MENU + POWER";
 "lib_manager_copy" = "Copy games to ";
-"lib_or_separator" = "- OR -";
 "lib_filename_note" = "(Filenames must end with .gb, .gbc, or .gbz)";
 
 // Library Progress Labels
@@ -240,7 +240,6 @@
 "cover_missing_title" = "Missing Cover";
 "cover_no_db_match" = "No database match";
 "cover_connect_computer" = "Connect to a computer";
-"cover_or_separator" = "- or -";
 "cover_copy_to" = "and copy cover to:";
 
 // Game Scene
@@ -274,7 +273,6 @@
 "help_intro_text" = "This is a quick guide to getting started.\n\nIn the future, you can review these instructions from the \"help\" option in CrankBoy's main menu.\n\n(Scroll down with the crank!)\n\n";
 "help_add_roms_first" = "To get started, you'll want to add some ROMs to CrankBoy.\n\nWe recommend using CrankBoy Manager.";
 "help_add_roms" = "Use CrankBoy Manager to add ROMs";
-"help_or_separator" = "                                        - OR -";
 "help_step1" = "1. Connect your Playdate to another device via USB.\n";
 "help_step2" = "2. Hold LEFT + MENU + POWER for 10 seconds to put your Playdate into Data Disk mode.\n";
 "help_step3" = "3. From the connected device, copy your ROM files (.gb, .gbc, or .gbz) onto your Playdate at the following directory: ";
