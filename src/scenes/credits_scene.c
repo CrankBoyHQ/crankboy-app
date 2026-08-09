@@ -339,9 +339,7 @@ static void CB_CreditsScene_menu(void* object)
 
     if (!CB_App->bundled_rom)
     {
-        playdate->system->addMenuItem(
-            T(pdmenu_settings), CB_CreditsScene_didSelectBack, creditsScene
-        );
+        playdate->system->addMenuItem(T(pdmenu_back), CB_CreditsScene_didSelectBack, creditsScene);
     }
     else
     {
@@ -349,7 +347,7 @@ static void CB_CreditsScene_menu(void* object)
         {
             // Back to settings
             playdate->system->addMenuItem(
-                T(pdmenu_back), CB_CreditsScene_didSelectBack, creditsScene
+                T(pdmenu_settings), CB_CreditsScene_didSelectBack, creditsScene
             );
         }
         else
