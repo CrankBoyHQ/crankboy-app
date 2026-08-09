@@ -223,9 +223,9 @@
 "lib_filename_note" = "(Filenames must end with .gb, .gbc, or .gbz)";
 
 // Library Progress Labels
-"lib_building_list" = "Building Game List... ";
-"lib_caching_covers" = "Caching Covers... ";
-"lib_loading_library" = "Loading Library... ";
+"lib_building_list" = "Building Game List...";
+"lib_caching_covers" = "Caching Covers...";
+"lib_loading_library" = "Loading Library...";
 
 // Cover Download Status
 "cover_no_cover" = "No cover found.";
@@ -395,8 +395,8 @@
 "app_no_changelog" = "No changelog found.";
 
 // Progress & Status
-"status_scanning" = "Scanning Games... ";
-"status_scanning_catalog" = "Scanning Catalog... ";
+"status_scanning" = "Scanning Games...";
+"status_scanning_catalog" = "Scanning Catalog...";
 "status_scanning_fmt" = "Scanning Games... (%s)";
 "status_scanning_images" = "Scanning for new images...";
 "status_file_transfer" = "File Transfer Mode";
@@ -406,8 +406,8 @@
 "status_initializing" = "Initializing...";
 "status_updating_forwarders" = "Updating Forwarders...";
 "status_loading_cores" = "Loading cores...";
-"status_copying_files" = "Copying Files... ";
-"status_converting_images" = "Converting images... ";
+"status_copying_files" = "Copying Files...";
+"status_converting_images" = "Converting images...";
 
 // Credits Scene
 "credits_bundle" = "Bundle";
