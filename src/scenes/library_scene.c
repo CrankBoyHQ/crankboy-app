@@ -2177,6 +2177,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                             libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                         {
                             char message[32];
+                            char width_ref[32];
                             const char* width_calc_string = NULL;
 
                             if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
@@ -2186,13 +2187,17 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                 const int dot_counts[] = {0, 1, 2, 3};
                                 int num_dots = dot_counts[coverDownloadAnimationStep];
 
+                                // Use the fully-dotted form of the same string for width
+                                // calculation to prevent jitter. Must derive from the same
+                                // key so translations can't skew the centering.
+                                snprintf(width_ref, sizeof(width_ref), "%s...", base_text);
+                                width_calc_string = width_ref;
+
                                 snprintf(message, sizeof(message), "%s", base_text);
                                 for (int i = 0; i < num_dots; i++)
                                 {
                                     strncat(message, ".", sizeof(message) - strlen(message) - 1);
                                 }
-                                // Use the full string for width calculation to prevent jitter
-                                width_calc_string = T(cover_downloading_long);
                             }
                             else
                             {
