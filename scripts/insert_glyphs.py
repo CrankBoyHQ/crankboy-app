@@ -28,6 +28,15 @@ def classify(line):
         return "glyph"
     return "kern"
 
+def is_halfwidth_kana(ch):
+    # U+FF61..U+FF9F: halfwidth katakana, voiced marks, punctuation
+    return 0xFF61 <= ord(ch) <= 0xFF9F
+
+def beta_advance(ch, beta):
+    # halfwidth kana get half the beta-gumi advance, else they waste
+    # a full-width cell and defeat their purpose
+    return (beta + 1) // 2 if is_halfwidth_kana(ch) else beta
+
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     beta = None
@@ -59,13 +68,33 @@ def main(argv):
     size = beta if beta else cell_h
     font = ImageFont.truetype(ttf_path, size)
     ascent, descent = font.getmetrics()
-    
-    base_in_cell = (cell_h - (ascent + descent)) / 2 + ascent
 
     img = Image.open(png_path).convert("RGBA")
     cols = img.width // cell_w
     start = len(glyph_idx)
     new_lines = []
+
+    # Baseline row within a cell, measured from the host font so inserted
+    # glyphs share the exact baseline of the existing (e.g. romaji) glyphs.
+    # 'H' sits flat on the baseline; fall back to donor metrics if absent.
+    base_row = None
+    for ref in ("H", "A", "x"):
+        for j, li in enumerate(glyph_idx):
+            if lines[li].split("\t")[0] == ref:
+                rcx, rcy = (j % cols) * cell_w, (j // cols) * cell_h
+                for yy in range(rcy + cell_h - 1, rcy - 1, -1):
+                    if any(
+                        img.getpixel((xx, yy))[3] >= THRESHOLD
+                        for xx in range(rcx, rcx + cell_w)
+                    ):
+                        base_row = yy - rcy + 1
+                        break
+            if base_row is not None:
+                break
+        if base_row is not None:
+            break
+    if base_row is None:
+        base_row = int((cell_h - (ascent + descent)) / 2 + ascent + 0.5)
 
     rows_needed = (start + len(todo) + cols - 1) // cols
     if rows_needed * cell_h > img.height:
@@ -86,15 +115,33 @@ def main(argv):
         bbox = scratch.getbbox()
 
         if bbox is None:
-            new_lines.append("%s\t%d" % (ch, beta if beta else size))
+            new_lines.append("%s\t%d" % (ch, beta_advance(ch, beta) if beta else size))
             continue
         il, it, ir, ib = bbox
         ink_w = ir - il
-        advance = beta if beta else ink_w
-        bearing = (advance - ink_w) // 2 if beta else 0
+        # never narrower than the ink, or the left edge would clip
+        advance = max(beta_advance(ch, beta), ink_w) if beta else ink_w
+        # halfwidth kana keep left bearing so dakuten (ﾞﾟ) stay attached
+        bearing = (advance - ink_w) // 2 if beta and not is_halfwidth_kana(ch) else 0
 
         dst_x = cx + bearing
-        dst_y = int(round(cy + base_in_cell - (oy - it)))
+        # integer math only; a fractional base rounded per-glyph caused 1px
+        # baseline jitter between glyphs
+        dst_y = cy + base_row - (oy - it)
+
+        # Snap near-baseline ink bottoms onto the host baseline row: the donor
+        # rasterizer wobbles ±1px per glyph at small sizes (e.g. レ vs ク).
+        # Use thresholded ink rows, not the raw bbox (it includes faint pixels).
+        # Marks (dakuten, prolonged-sound) sit far above and stay untouched.
+        vis_bottom = max(
+            y
+            for y in range(it, ib)
+            if any(scratch.getpixel((x, y)) >= THRESHOLD for x in range(il, ir))
+        )
+        host_bottom = cy + base_row - 1
+        cell_bottom = dst_y + (vis_bottom - it)
+        if abs(cell_bottom - host_bottom) <= 1:
+            dst_y += host_bottom - cell_bottom
         for y in range(it, ib):
             for x in range(il, ir):
                 if scratch.getpixel((x, y)) >= THRESHOLD:
