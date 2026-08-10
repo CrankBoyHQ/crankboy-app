@@ -169,6 +169,14 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
                 playdate->system->error("Unexpected end of %s", languages[lang_idx].fname);
                 goto fail;
             }
+            // drop empty translations: they count as missing so the fallback fills them
+            size_t w = 0;
+            for (size_t r = 0; r < l->count; ++r)
+            {
+                if (l->entries[r].string && l->entries[r].string[0])
+                    l->entries[w++] = l->entries[r];
+            }
+            l->count = w;
             binsort_l10n(l);
             return l;
 
@@ -282,8 +290,6 @@ static struct l10n* merge_l10n(struct l10n* a, struct l10n* b)
 
     for (size_t i = 0; i < a->count; ++i)
     {
-        if (a->entries[i].string[0] == 0)
-            continue;
         ++count;
         buffsize += strlen(a->entries[i].key) + strlen(a->entries[i].string) + 2;
     }
@@ -308,8 +314,6 @@ static struct l10n* merge_l10n(struct l10n* a, struct l10n* b)
 
     for (size_t i = 0; i < a->count; ++i)
     {
-        if (a->entries[i].string[0] == 0)
-            continue;
         append_l10n_entry(merged, a->entries[i].key, a->entries[i].string);
     }
 
