@@ -185,4 +185,14 @@
 "setopt_show_fps" = "FPS表示";
 "setopt_disable_auto_lock" = "自動ロック無効";
 "setopt_lcd_acceleration" = "液晶ｱｸｾﾗﾚｰｼｮﾝ";
-"setdsc_misc" = "起動フェード";
+"setdsc_misc" = "";
+"setopt_boot_fade" = "起動フェード";
+"setopt_title_display" = "タイトル表示";
+"setval_filename" = "ﾌｧｲﾙ名";
+"setopt_article" = "冠詞";
+"setval_as_is" = "そのまま";
+"setval_leading" = "先頭表示";
+"setopt_sort" = "並べ替え";
+"setopt_ui_sounds" = "UI音";
+"setopt_cgb_prompt" = "CGBプロンプト";
+"setopt_remember_last" = "前回位置を記憶 ";
