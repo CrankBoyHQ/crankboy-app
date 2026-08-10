@@ -37,6 +37,9 @@
 #define HR_LINE_PREFIX_LEN 4
 #define HR_LINE_HEIGHT 2
 #define HR_LINE_WIDTH 372
+
+#define CENTER_LINE_PREFIX "[center]"
+#define CENTER_LINE_PREFIX_LEN 8
 #define HR_LINE_SPACING 6
 
 // Helper to detect if a line is a list item and return its prefix length
@@ -224,6 +227,22 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
                 break;
             }
 
+            if (safe_len > CENTER_LINE_PREFIX_LEN &&
+                strncmp(line_buf, CENTER_LINE_PREFIX, CENTER_LINE_PREFIX_LEN) == 0)
+            {
+                total_text_height += playdate->graphics->getTextHeightForMaxWidth(
+                    font, line_buf + CENTER_LINE_PREFIX_LEN, safe_len - CENTER_LINE_PREFIX_LEN,
+                    width, kUTF8Encoding, kWrapWord, tracking, extraLeading
+                );
+
+                if (next_newline)
+                {
+                    text_ptr = next_newline + 1;
+                    continue;
+                }
+                break;
+            }
+
             const char* buf_ptr = line_buf;
             int buf_len = safe_len;
             int current_indent = 0;
@@ -377,6 +396,28 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
                     hr_x, (int)current_y, HR_LINE_WIDTH, HR_LINE_HEIGHT, kColorBlack
                 );
                 current_y += HR_LINE_HEIGHT + HR_LINE_SPACING;
+
+                if (next_newline)
+                {
+                    text_ptr = next_newline + 1;
+                    continue;
+                }
+                break;
+            }
+
+            if (safe_len > CENTER_LINE_PREFIX_LEN &&
+                strncmp(line_buf, CENTER_LINE_PREFIX, CENTER_LINE_PREFIX_LEN) == 0)
+            {
+                const char* label = line_buf + CENTER_LINE_PREFIX_LEN;
+                int label_len = safe_len - CENTER_LINE_PREFIX_LEN;
+                int label_h = playdate->graphics->getTextHeightForMaxWidth(
+                    font, label, label_len, width, kUTF8Encoding, kWrapWord, tracking, extraLeading
+                );
+                playdate->graphics->drawTextInRect(
+                    label, label_len, kUTF8Encoding, margin, (int)current_y, width, label_h,
+                    kWrapWord, kAlignTextCenter
+                );
+                current_y += label_h;
 
                 if (next_newline)
                 {
@@ -605,7 +646,8 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                 // preserve [qr] for renderer later...
                 bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
                 bool is_hr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "hr", 2) == 0);
-                if (end_bracket && !is_qr_tag && !is_hr_tag)
+                bool is_center_tag = (end_bracket == p + 7 && strncasecmp(p + 1, "center", 6) == 0);
+                if (end_bracket && !is_qr_tag && !is_hr_tag && !is_center_tag)
                 {
                     const char* tag_name = p + 1;
                     if (strncasecmp(tag_name, "ul", 2) == 0 ||
@@ -671,7 +713,8 @@ CB_InfoScene* CB_InfoScene_new(const char* title, const char* text)
                 // preserve [qr] verbatim so the renderer can detect it
                 bool is_qr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "qr", 2) == 0);
                 bool is_hr_tag = (end_bracket == p + 3 && strncasecmp(p + 1, "hr", 2) == 0);
-                if (end_bracket && !is_qr_tag && !is_hr_tag)
+                bool is_center_tag = (end_bracket == p + 7 && strncasecmp(p + 1, "center", 6) == 0);
+                if (end_bracket && !is_qr_tag && !is_hr_tag && !is_center_tag)
                 {
                     const char* tag_name = p + 1;
                     if (strncasecmp(tag_name, "ul", 2) == 0 ||

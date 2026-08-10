@@ -1104,7 +1104,9 @@ void cb_draw_logo_screen_centered_split(
         int static_text_width = playdate->graphics->getTextWidth(
             font, static_text, strlen(static_text), kUTF8Encoding, 0
         );
-        int total_width = static_text_width + dynamic_text_max_width;
+
+        int gap_width = playdate->graphics->getTextWidth(font, " ", 1, kUTF8Encoding, 0);
+        int total_width = static_text_width + gap_width + dynamic_text_max_width;
         int block_start_x = (screenWidth - total_width) / 2;
 
         playdate->graphics->drawText(
@@ -1114,8 +1116,8 @@ void cb_draw_logo_screen_centered_split(
         int dynamic_text_width = playdate->graphics->getTextWidth(
             font, dynamic_text, strlen(dynamic_text), kUTF8Encoding, 0
         );
-        int dynamic_text_x =
-            block_start_x + static_text_width + (dynamic_text_max_width - dynamic_text_width);
+        int dynamic_text_x = block_start_x + static_text_width + gap_width +
+                             (dynamic_text_max_width - dynamic_text_width);
 
         playdate->graphics->drawText(
             dynamic_text, strlen(dynamic_text), kUTF8Encoding, dynamic_text_x, textY
@@ -1123,7 +1125,10 @@ void cb_draw_logo_screen_centered_split(
     }
     else
     {
-        char* full_message = aprintf("%s%s", static_text, dynamic_text ? dynamic_text : "");
+        char* full_message = aprintf(
+            "%s%s%s", static_text, (dynamic_text && *dynamic_text) ? " " : "",
+            dynamic_text ? dynamic_text : ""
+        );
         int textWidth = playdate->graphics->getTextWidth(
             font, full_message, strlen(full_message), kUTF8Encoding, 0
         );
