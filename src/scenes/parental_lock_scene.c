@@ -152,9 +152,7 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
         }
     }
 
-    playdate->graphics->drawText(
-        T(plock_confirm), strlen(T(plock_confirm)), kASCIIEncoding, 220, y
-    );
+    playdate->graphics->drawText(T(plock_confirm), strlen(T(plock_confirm)), kUTF8Encoding, 220, y);
     if (parentalLockScene->sel == 4)
     {
         playdate->graphics->fillRect(220 - 4, y - 4, 90, 24, kColorXOR);

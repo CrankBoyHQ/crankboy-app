@@ -254,7 +254,7 @@ void CB_Modal_update(CB_Modal* modal)
         }
 
         playdate->graphics->drawTextInRect(
-            modal->options[i], strlen(modal->options[i]), kASCIIEncoding, ox - spacing / 2,
+            modal->options[i], strlen(modal->options[i]), kUTF8Encoding, ox - spacing / 2,
             oy - option_height, spacing, option_height, kWrapClip, kAlignTextCenter
         );
     }
