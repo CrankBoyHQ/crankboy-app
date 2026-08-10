@@ -1124,7 +1124,7 @@ void CB_showHelp(bool first_time)
 
     const char* A = first_time ? T(help_add_roms_first) : T(help_add_roms);
 
-    const char* B = T(help_or_separator);
+    const char* B = T(label_or_separator);
     const char* C1 = T(help_step1);
     const char* C2 = T(help_step2);
     const char* C3 = T(help_step3);
@@ -1140,7 +1140,7 @@ void CB_showHelp(bool first_time)
     const char* F = T(help_website);
 
     char* s = aprintf(
-        "%s%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n", B, "\n\n", C1, C2, C3,
+        "%s%s%s%s%s%s%s%s%s%s%s%s", A0, A, "\n\n[center]", B, "\n\n", C1, C2, C3,
         cb_gb_directory_path(CB_gamesPath), D, E, F
     );
 
