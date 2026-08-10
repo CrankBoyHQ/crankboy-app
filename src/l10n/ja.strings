@@ -195,4 +195,8 @@
 "setopt_sort" = "並べ替え";
 "setopt_ui_sounds" = "UI音";
 "setopt_cgb_prompt" = "CGBプロンプト";
-"setopt_remember_last" = "前回位置を記憶 ";
+"setopt_remember_last" = "前回位置を記憶";
+"setval_database" = "ﾃﾞｰﾀﾍﾞｰｽ";
+"setval_db_article" = "DB (冠詞)";
+"setval_file_article" = "ﾌｧｲﾙ名 (冠詞)";
+"setopt_launch_animation" = "起動ｱﾆﾒｰｼｮﾝ";
