@@ -100,7 +100,7 @@
 "setopt_patches_hacks" = "パッチ / ハック";
 "setopt_apply_recommended" = "おすすめを適用";
 "setopt_settings_scope" = "設定スコープ";
-"setopt_mirror_aux" = "ミラー /AUX ";
+"setopt_mirror_aux" = "ﾐﾗｰ /AUX ";
 "setopt_crank" = "クランク";
 "setopt_crank_down" = "下";
 "setopt_undock" = "展開";
@@ -126,7 +126,7 @@
 "setval_darker" = "最暗";
 "setval_auto" = "自動";
 "setval_manual" = "手動";
-"setval_contrast" = "明暗";
+"setval_contrast" = "ｺﾝﾄﾗｽﾄ";
 "setval_short_w" = "短い (白)";
 "setval_long" = "長い";
 "setval_short" = "短い";
