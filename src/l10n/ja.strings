@@ -146,8 +146,8 @@
 "setval_select_a_b" = "";
 "setval_all" = "すべて";
 "setval_start_slash_select" = "";
-"setval_turbo_ab" = "TURBO A/B";
-"setval_turbo_ba" = "TURBO B/A";
+"setval_turbo_ab" = "";
+"setval_turbo_ba" = "";
 "setval_select_start" = "";
 "setval_game" = "ゲーム";
 "setval_always" = "常時";
