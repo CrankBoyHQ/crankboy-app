@@ -158,3 +158,6 @@
 "game_turbo" = "ﾀｰﾎﾞ";
 "game_turbo_ab" = "";
 "game_turbo_ba" = "";
+"setval_full" = "すべて";
+"setval_core" = "コア";
+"setval_draw" = "描画";
