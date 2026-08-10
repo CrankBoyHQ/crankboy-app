@@ -72,7 +72,7 @@
 "status_converting_images" = "画像を変換中...";
 "cover_downloading_long" = "カバーをダウンロード中...";
 "cover_searching" = "不足しているカバーを検索中...";
-"pdmenu_changelog" = "変更履歴";
+"pdmenu_changelog" = "更新情報";
 "app_whats_new" = "新機能";
 "help_welcome_title" = "CrankBoyへようこそ！";
 "label_or_separator" = "- または -";
@@ -162,4 +162,7 @@
 "setval_core" = "コア";
 "setval_draw" = "描画";
 "pdmenu_button" = "ボタン";
-"setval_both" = "両方";
+"pdmenu_button_select" = "セレクト";
+"pdmenu_button_start" = "スタート";
+"pdmenu_button_none" = "なし";
+"pdmenu_button_both" = "りょうほう";

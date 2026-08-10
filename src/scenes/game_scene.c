@@ -4008,10 +4008,10 @@ static void CB_GameScene_menu(void* object)
         !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
         // order is load-bearing: indexes are persisted in button_hold_mode
-        buttonMenuOptions[0] = T(setval_select);
-        buttonMenuOptions[1] = T(setval_none);
-        buttonMenuOptions[2] = T(setval_start);
-        buttonMenuOptions[3] = T(setval_both);
+        buttonMenuOptions[0] = T(pdmenu_button_select);
+        buttonMenuOptions[1] = T(pdmenu_button_none);
+        buttonMenuOptions[2] = T(pdmenu_button_start);
+        buttonMenuOptions[3] = T(pdmenu_button_both);
         buttonMenuItem = playdate->system->addOptionsMenuItem(
             T(pdmenu_button), buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
         );
