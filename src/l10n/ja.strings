@@ -178,4 +178,11 @@
 "setval_staggered_d" = "千鳥 (暗)";
 "setopt_lcd_ghosting" = "残像パターン";
 "setopt_stabilization" = "画面揺れ補正";
-"setopt_first_scaling_line" = "最初のスケーリングライン";
+"setopt_first_scaling_line" = "最初のｽｹｰﾘﾝｸﾞﾗｲﾝ";
+"setopt_frame_blending" = "ﾌﾚｰﾑﾌﾞﾚﾝﾃﾞｨﾝｸﾞ";
+"setopt_hle_routines" = "HLE処理";
+"setopt_grayscale_bias" = "ｸﾞﾚｰｽｹｰﾙ調整";
+"setopt_show_fps" = "FPS表示";
+"setopt_disable_auto_lock" = "自動ロック無効";
+"setopt_lcd_acceleration" = "液晶ｱｸｾﾗﾚｰｼｮﾝ";
+"setdsc_misc" = "起動フェード";
