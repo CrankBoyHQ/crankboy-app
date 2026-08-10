@@ -7,6 +7,7 @@
 "pdmenu_help" = "Help";
 "pdmenu_changelog" = "Changelog";
 "pdmenu_about" = "About";
+"pdmenu_button" = "Button";
 
 // Buttons & Labels (use in dialog options, modal buttons)
 "label_yes" = "Yes";
@@ -476,6 +477,7 @@
 "setval_start" = "Start";
 "setval_select" = "Select";
 "setval_start_select" = "Start+Select";
+"setval_both" = "Both";
 "setval_a" = "A";
 "setval_b" = "B";
 "setval_default" = "Default";

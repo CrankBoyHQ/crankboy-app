@@ -645,12 +645,7 @@ static PDMenuItem* fpsMenuItem;
 static PDMenuItem* frameSkipMenuItem;
 static PDMenuItem* buttonMenuItem = NULL;
 
-static const char* buttonMenuOptions[] = {
-    "Select",
-    "None",
-    "Start",
-    "Both",
-};
+static const char* buttonMenuOptions[4];
 
 const char* quitGameOptions[3];
 
@@ -4012,8 +4007,13 @@ static void CB_GameScene_menu(void* object)
     if (game_menu_button_input_enabled && gameScene->state == CB_GameSceneStateLoaded &&
         !(script_menu_flags & SCRIPT_MENU_SUPPRESS_BUTTON))
     {
+        // order is load-bearing: indexes are persisted in button_hold_mode
+        buttonMenuOptions[0] = T(setval_select);
+        buttonMenuOptions[1] = T(setval_none);
+        buttonMenuOptions[2] = T(setval_start);
+        buttonMenuOptions[3] = T(setval_both);
         buttonMenuItem = playdate->system->addOptionsMenuItem(
-            "Button", buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
+            T(pdmenu_button), buttonMenuOptions, 4, CB_GameScene_buttonMenuCallback, gameScene
         );
         playdate->system->setMenuItemValue(buttonMenuItem, gameScene->button_hold_mode);
     }
