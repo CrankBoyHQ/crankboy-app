@@ -111,10 +111,11 @@ static int parse_quoted(char* buff, int offset)
 }
 
 // Zero-width spaces are injected at load time so kWrapWord finds break
-// opportunities in space-less Japanese text: after CJK punctuation, and at
+// opportunities in space-less Japanese text: after CJK punctuation, at
 // kana->kanji boundaries (a cheap word-break heuristic; honorific prefixes
-// お/ご are exempt so they stay attached to their word). This keeps
-// invisible characters out of the translation files.
+// お/ご are exempt so they stay attached to their word), and at Latin<->CJK
+// script boundaries (ROM管理, CPUスピード). This keeps invisible characters
+// out of the translation files.
 #define ZWSP "\xE2\x80\x8B"
 #define ZWSP_LEN 3
 
@@ -164,6 +165,11 @@ static bool is_kanji_cp(unsigned int cp)
     return cp >= 0x4E00 && cp <= 0x9FFF;
 }
 
+static bool is_latin_cp(unsigned int cp)
+{
+    return (cp >= '0' && cp <= '9') || (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
+}
+
 static bool zwsp_break_after(const char* s, unsigned int prev_cp)
 {
     int len;
@@ -184,6 +190,18 @@ static bool zwsp_break_after(const char* s, unsigned int prev_cp)
     {
         int nlen;
         if (is_kanji_cp(utf8_decode(next, &nlen)))
+            return true;
+    }
+
+    // Latin <-> CJK script boundary (ROM管理, CPUスピード, TCMモード): either
+    // direction may break.
+    if (*next)
+    {
+        int nlen;
+        unsigned int ncp = utf8_decode(next, &nlen);
+        if (is_latin_cp(cp) && (is_kana_cp(ncp) || is_kanji_cp(ncp)))
+            return true;
+        if ((is_kana_cp(cp) || is_kanji_cp(cp)) && is_latin_cp(ncp))
             return true;
     }
 
