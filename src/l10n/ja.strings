@@ -10,7 +10,7 @@
 "sethdr_behavior" = "動作";
 "sethdr_library" = "ライブラリ";
 "sethdr_misc" = "その他";
-"setdsc_display" = "フレームレート、​ドットスタイル、​スケーリング、​映像安定化など";
+"setdsc_display" = "フレームレート、ドットスタイル、スケーリング、映像安定化など";
 "Library_GetRoms" = "ROMを取得...";
 "pdmenu_help" = "ヘルプ";
 "pdmenu_credits" = "クレジット";
@@ -97,10 +97,10 @@
 "label_settings" = "設定";
 "label_details" = "詳細";
 "setopt_manage_rom" = "ROM管理";
-"setopt_patches_hacks" = "パッチ / ハック";
+"setopt_patches_hacks" = "パッチ・ハック";
 "setopt_apply_recommended" = "おすすめを適用";
 "setopt_settings_scope" = "設定スコープ";
-"setopt_mirror_aux" = "ミラー /AUX ";
+"setopt_mirror_aux" = "ミラー・AUX";
 "setopt_crank" = "クランク";
 "setopt_crank_down" = "下";
 "setopt_undock" = "展開";
@@ -114,7 +114,7 @@
 "setdsc_tcm_device" = "(本体: %s)";
 "lib_update_modal" = "CrankBoy アップデート！\n\n%s -> %s\n\n%s";
 "game_quit_question" = "終了しますか？";
-"help_usage_title" = "CrankBoyの使い方 ";
+"help_usage_title" = "CrankBoyの使い方";
 "status_file_transfer" = "ファイル転送モード";
 "status_error" = "[エラー]";
 "status_empty" = "<空>";
@@ -145,9 +145,9 @@
 "setval_start_a_b" = "ｽﾀｰﾄ+Ⓐ+Ⓑ";
 "setval_select_a_b" = "ｾﾚｸﾄ+Ⓐ+Ⓑ";
 "setval_all" = "すべて";
-"setval_start_slash_select" = "ｽﾀｰﾄ/ｾﾚｸﾄ";
-"setval_turbo_ab" = "ﾀｰﾎﾞⒶ/Ⓑ";
-"setval_turbo_ba" = "ﾀｰﾎﾞⒷ/Ⓐ";
+"setval_start_slash_select" = "ｽﾀｰﾄ・ｾﾚｸﾄ";
+"setval_turbo_ab" = "ﾀｰﾎﾞⒶ・Ⓑ";
+"setval_turbo_ba" = "ﾀｰﾎﾞⒷ・Ⓐ";
 "setval_select_start" = "ｾﾚｸﾄ+ｽﾀｰﾄ";
 "setval_game" = "ゲーム";
 "setval_always" = "常時";

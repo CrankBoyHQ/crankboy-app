@@ -110,6 +110,147 @@ static int parse_quoted(char* buff, int offset)
     return offset + 1;
 }
 
+// Zero-width spaces are injected at load time so kWrapWord finds break
+// opportunities in space-less Japanese text: after CJK punctuation, and at
+// kana->kanji boundaries (a cheap word-break heuristic; honorific prefixes
+// お/ご are exempt so they stay attached to their word). This keeps
+// invisible characters out of the translation files.
+#define ZWSP "\xE2\x80\x8B"
+#define ZWSP_LEN 3
+
+static unsigned int utf8_decode(const char* s, int* len)
+{
+    unsigned char c = (unsigned char)s[0];
+    if (c < 0x80)
+    {
+        *len = 1;
+        return c;
+    }
+    if ((c & 0xE0) == 0xC0)
+    {
+        *len = 2;
+        return ((unsigned int)(c & 0x1F) << 6) | (s[1] & 0x3F);
+    }
+    if ((c & 0xF0) == 0xE0)
+    {
+        *len = 3;
+        return ((unsigned int)(c & 0x0F) << 12) | ((unsigned int)(s[1] & 0x3F) << 6) |
+               (s[2] & 0x3F);
+    }
+    *len = 4;
+    return ((unsigned int)(c & 0x07) << 18) | ((unsigned int)(s[1] & 0x3F) << 12) |
+           ((unsigned int)(s[2] & 0x3F) << 6) | (s[3] & 0x3F);
+}
+
+static bool is_break_punct_cp(unsigned int cp)
+{
+    return cp == 0x3001 ||  // 、
+           cp == 0x3002 ||  // 。
+           cp == 0x30FB ||  // ・
+           cp == 0xFF01 ||  // ！
+           cp == 0xFF1A ||  // ：
+           cp == 0xFF1F;    // ？
+}
+
+static bool is_kana_cp(unsigned int cp)
+{
+    return (cp >= 0x3041 && cp <= 0x3096) ||  // hiragana
+           (cp >= 0x30A1 && cp <= 0x30FC) ||  // katakana + ー
+           (cp >= 0xFF66 && cp <= 0xFF9D);    // halfwidth kana
+}
+
+static bool is_kanji_cp(unsigned int cp)
+{
+    return cp >= 0x4E00 && cp <= 0x9FFF;
+}
+
+static bool zwsp_break_after(const char* s, unsigned int prev_cp)
+{
+    int len;
+    unsigned int cp = utf8_decode(s, &len);
+    const char* next = s + len;
+
+    if (strncmp(next, ZWSP, ZWSP_LEN) == 0)
+        return false;  // never double-insert
+
+    if (is_break_punct_cp(cp))
+        return true;
+
+    // kana -> kanji boundary, except:
+    // - honorific prefixes お (U+304A) / ご (U+3054), which attach to their word
+    // - kana preceded by kanji: kanji-kana-kanji is an okurigana sandwich, i.e.
+    //   a compound (読み込み, 巻き戻し) that must not be split
+    if (is_kana_cp(cp) && cp != 0x304A && cp != 0x3054 && !is_kanji_cp(prev_cp) && *next)
+    {
+        int nlen;
+        if (is_kanji_cp(utf8_decode(next, &nlen)))
+            return true;
+    }
+
+    return false;
+}
+
+static void inject_zwsp(struct l10n* l)
+{
+    size_t needed = 0;
+    for (size_t i = 0; i < l->count; ++i)
+    {
+        const char* s = l->entries[i].string;
+        unsigned int prev_cp = 0;
+        while (*s)
+        {
+            int len;
+            unsigned int cp = utf8_decode(s, &len);
+            if (zwsp_break_after(s, prev_cp))
+                ++needed;
+            prev_cp = cp;
+            s += len;
+        }
+    }
+
+    if (!needed)
+        return;
+
+    char* nbuff = cb_malloc(l->bufflen + needed * ZWSP_LEN + 1);
+    if (!nbuff)
+        return;  // keep original rather than failing localization
+    char* w = nbuff;
+
+    for (size_t i = 0; i < l->count; ++i)
+    {
+        const char* key = l->entries[i].key;
+        const char* val = l->entries[i].string;
+
+        l->entries[i].key = w;
+        size_t klen = strlen(key) + 1;
+        memcpy(w, key, klen);
+        w += klen;
+
+        l->entries[i].string = w;
+        const char* s = val;
+        unsigned int prev_cp = 0;
+        while (*s)
+        {
+            int len;
+            unsigned int cp = utf8_decode(s, &len);
+            memcpy(w, s, len);
+            w += len;
+            if (zwsp_break_after(s, prev_cp))
+            {
+                memcpy(w, ZWSP, ZWSP_LEN);
+                w += ZWSP_LEN;
+            }
+            prev_cp = cp;
+            s += len;
+        }
+        *w++ = 0;
+    }
+
+    cb_free(l->buff);
+    l->buff = nbuff;
+    l->bufflen = (size_t)(w - nbuff);
+}
+
 static struct l10n* load_localization(PDLanguage lang, bool force_baked)
 {
     if (lang == kPDLanguageSystem)
@@ -177,6 +318,7 @@ static struct l10n* load_localization(PDLanguage lang, bool force_baked)
                     l->entries[w++] = l->entries[r];
             }
             l->count = w;
+            inject_zwsp(l);
             binsort_l10n(l);
             return l;
 
