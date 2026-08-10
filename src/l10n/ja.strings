@@ -166,3 +166,16 @@
 "pdmenu_button_start" = "スタート";
 "pdmenu_button_none" = "なし";
 "pdmenu_button_both" = "りょうほう";
+"setval_global" = "ｸﾞﾛｰﾊﾞﾙ";
+"setopt_30fps_mode" = "30 FPSモード";
+"setval_adaptive" = "可変";
+"setopt_dither" = "ディザパターン";
+"setval_grid" = "格子";
+"setval_grid_l" = "格子 (明)";
+"setval_grid_d" = "格子 (暗)";
+"setval_staggered" = "千鳥";
+"setval_staggered_l" = "千鳥 (明)";
+"setval_staggered_d" = "千鳥 (暗)";
+"setopt_lcd_ghosting" = "残像パターン";
+"setopt_stabilization" = "画面揺れ補正";
+"setopt_first_scaling_line" = "最初のスケーリングライン";
