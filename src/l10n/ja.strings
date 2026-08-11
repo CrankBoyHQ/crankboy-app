@@ -222,3 +222,4 @@
 "net_cover_art_retrieve_reason" = "";
 "net_browse_homebrew_reason" = "";
 "setdsc_general_library" = "パッチ、セーブデータ、設定スコープの管理を行います。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
+"lib_homebrew_banner" = "Homebrew Hub からホームブレューゲームを無料でダウンロードできます\n\nこの機能はまだ実験段階です\n\nペアレンタルロックを利用できます";
