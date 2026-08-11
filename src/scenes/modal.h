@@ -21,13 +21,6 @@ struct CB_Modal;
 // otherwise, option is index in options[]
 typedef void (*CB_ModalCallback)(void* ud, int option);
 
-typedef struct CB_ModalLine
-{
-    const char* start;
-    int len;
-    int width;
-} CB_ModalLine;
-
 typedef struct CB_Modal
 {
     CB_Scene* scene;
@@ -56,9 +49,6 @@ typedef struct CB_Modal
     LCDBitmap* dissolveMask;
     LCDBitmap* icon;
     bool icon_flashing : 1;
-
-    CB_ModalLine* wrapped_lines;
-    int wrapped_lines_count;
 } CB_Modal;
 
 CB_Modal* CB_Modal_new(
