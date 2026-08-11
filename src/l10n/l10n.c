@@ -111,13 +111,13 @@ static int parse_quoted(char* buff, int offset)
 }
 
 // Zero-width spaces are injected at load time so kWrapWord finds break
-// opportunities in space-less Japanese text: after CJK punctuation, at
-// kana->kanji boundaries (a cheap word-break heuristic; honorific prefixes
-// お/ご are exempt so they stay attached to their word), after particles
-// を/の, before auxiliaries します/ください, and at Latin<->CJK script
-// boundaries (ROM管理, CPUスピード), and after the conjunctive particle
-// まで. Kinsoku (gyoto) is honored: no break before characters that must
-// not start a line (small kana, ー, iteration marks, closing
+// opportunities in space-less Japanese text: after CJK punctuation and
+// closing brackets, at kana->kanji boundaries (a cheap word-break
+// heuristic; honorific prefixes お/ご are exempt so they stay attached to
+// their word), after particles を/の and まで, before auxiliaries
+// します/ください, and at Latin<->CJK script boundaries (ROM管理,
+// CPUスピード). Kinsoku (gyoto) is honored: no break before characters
+// that must not start a line (small kana, ー, iteration marks, closing
 // brackets/punctuation). This keeps invisible characters out of the
 // translation files.
 #define ZWSP "\xE2\x80\x8B"
@@ -174,6 +174,34 @@ static bool is_latin_cp(unsigned int cp)
     return (cp >= '0' && cp <= '9') || (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
 }
 
+// Closing brackets: 」』）〕〉》】〗〙〛］｝ plus ASCII ) ] }. Kinsoku allows
+// these to end a line; the gyoto rules below already prevent them starting
+// one, so a break immediately after them is always safe.
+static bool is_closing_bracket_cp(unsigned int cp)
+{
+    switch (cp)
+    {
+    case 0x300D:
+    case 0x300F:
+    case 0xFF09:
+    case 0x3015:
+    case 0x3009:
+    case 0x300B:
+    case 0x3011:
+    case 0x3017:
+    case 0x3019:
+    case 0x301B:
+    case 0xFF3B:
+    case 0xFF5D:
+    case 0x29:  // )
+    case 0x5D:  // ]
+    case 0x7D:  // }
+        return true;
+    default:
+        return false;
+    }
+}
+
 // Kinsoku shori (gyoto): characters that may never start a line. A break
 // inserted before one of these would be a kinsoku violation.
 static bool is_gyoto_cp(unsigned int cp)
@@ -213,19 +241,6 @@ static bool is_gyoto_cp(unsigned int cp)
     case 0x309E:
     case 0x30FD:
     case 0x30FE:
-    // closing brackets: 」』）〕〉》】〖〙〛］｝
-    case 0x300D:
-    case 0x300F:
-    case 0xFF09:
-    case 0x3015:
-    case 0x3009:
-    case 0x300B:
-    case 0x3011:
-    case 0x3017:
-    case 0x3019:
-    case 0x301B:
-    case 0xFF3B:
-    case 0xFF5D:
     // closing punctuation: 、。！？：；，．
     case 0x3001:
     case 0x3002:
@@ -239,6 +254,8 @@ static bool is_gyoto_cp(unsigned int cp)
     default:
         break;
     }
+    if (is_closing_bracket_cp(cp))
+        return true;
     return (cp >= 0xFF67 && cp <= 0xFF70);  // small halfwidth kana ｧ-ｮ + ｰ
 }
 
@@ -267,6 +284,10 @@ static bool zwsp_break_after(const char* s, unsigned int prev_cp)
         return false;  // kinsoku (gyoto): ncp must not start a line
 
     if (is_break_punct_cp(cp))
+        return true;
+
+    // break after closing brackets is kinsoku-safe (see is_closing_bracket_cp)
+    if (is_closing_bracket_cp(cp))
         return true;
 
     // Particles を (U+3092) / の (U+306E) attach to the word on their left and
