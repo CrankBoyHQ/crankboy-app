@@ -2176,8 +2176,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                         if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
                             libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                         {
-                            char message[32];
-                            char width_ref[32];
+                            char message[64];
+                            char width_ref[64];
                             const char* width_calc_string = NULL;
 
                             if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
