@@ -778,7 +778,7 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
                 }
                 else
                 {
-                    msg = T(lib_cgb_prompt_cgb_only);
+                    msg = T(lib_cgb_prompt_cgb_only_one_time);
                     modal_options = options_understood;
                     modal_cb = (void*)cgb_only_ack_and_launch;
                 }

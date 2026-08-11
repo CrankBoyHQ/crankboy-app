@@ -202,6 +202,7 @@
 "Library_GetRoms" = "Get ROMs...";
 "lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), or try CGB mode regardless. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only" = "This ROM is marked CGB-only.\n \nYou can try launching as a standard DMG ROM, or in CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
+"lib_cgb_prompt_cgb_only_one_time" = "This ROM is marked CGB-only.\n\nThe game will launch in CGB mode.\n\nCrankBoy only has experimental support for CGB (\"Color\") emulation."
 "lib_cgb_prompt_cgb_compat" = "This ROM supports CGB mode.\n \nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_save_slot_patch_warning" = "You have softpatches enabled, but this game's save data comes from an unpatched ROM. To keep the save data separate, you may wish to change the save slot in settings before launching.";
 "lib_save_slot_unpatched_warning" = "You have no softpatches on, but this game's save data comes from a patched ROM (code: %08X.) To keep the save data separate, you may wish to change the save slot in settings before launching.";
