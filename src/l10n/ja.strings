@@ -200,3 +200,10 @@
 "setval_db_article" = "DB (冠詞)";
 "setval_file_article" = "ﾌｧｲﾙ名 (冠詞)";
 "setopt_launch_animation" = "起動ｱﾆﾒｰｼｮﾝ";
+"cover_missing_title" = "カバーなし";
+"lib_press_download" = "Ⓑ ボタンでダウンロード";
+"cover_downloading" = "カバーをダウンロード中";
+"cover_download_failed" = "ダウンロード失敗。";
+"help_add_roms" = "ROMの追加はCrankBoy Managerを使用";
+"lib_manager_title" = "CrankBoy Managerを使用";
+"help_add_roms_first" = "CrankBoyを始めるには、まずROMを追加してください。\n\nCrankBoy Managerのご使用をおすすめします。";
