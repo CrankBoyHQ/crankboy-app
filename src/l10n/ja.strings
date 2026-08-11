@@ -185,7 +185,7 @@
 "setopt_show_fps" = "FPS表示";
 "setopt_disable_auto_lock" = "自動ロック無効";
 "setopt_lcd_acceleration" = "液晶ｱｸｾﾗﾚｰｼｮﾝ";
-"setdsc_misc" = "";
+"setdsc_misc" = "FPS表示、ターボスピード、起動時のフェード、TCMモードなど";
 "setopt_boot_fade" = "起動フェード";
 "setopt_title_display" = "タイトル表示";
 "setval_filename" = "ﾌｧｲﾙ名";
@@ -207,3 +207,18 @@
 "help_add_roms" = "ROMの追加はCrankBoy Managerを使用";
 "lib_manager_title" = "CrankBoy Managerを使用";
 "help_add_roms_first" = "CrankBoyを始めるには、まずROMを追加してください。\n\nCrankBoy Managerのご使用をおすすめします。";
+"help_intro_text" = "はじめに、簡単な使い方のガイドです。\n\n今後、これらの手順は CrankBoy のメインメニューの「ヘルプ」からいつでも確認できます。\n\n(クランクを回して下にスクロール！)\n\n";
+"setdsc_audio" = "音質、サンプルレート、ヘッドホン出力";
+"setdsc_input" = "クランクの機能、ドック・アンドック時の割り当て、ボタンの割り替えなど";
+"setdsc_behavior" = "巻き戻し、オーバークロック、スクリプトサポート";
+"setdsc_library" = "ゲームリストの外観、並べ替え、起動動作、CGBプロンプトオプションなど\n\nライブラリのスコープ内で表示。";
+"setdsc_cgb" = "CGBのCPU速度制御、HLE処理など";
+"net_cover_art_reason" = "不足しているカバーアートをダウンロードするため";
+"net_rom_download_reason" = "選択したROMをダウンロードするため";
+"net_patch_text_reason" = "このテキストファイルをダウンロードするため";
+"net_patch_file_reason" = "このパッチファイルをダウンロードするため";
+"net_patch_readme_reason" = "パッチのREADMEをダウンロードするため";
+"net_patch_changelog_reason" = "変更履歴をダウンロードするため";
+"net_cover_art_retrieve_reason" = "カバーアートを取得するため";
+"net_browse_homebrew_reason" = "ホームブリューを閲覧するため";
+"setdsc_general_library" = "パッチ、セーブデータ、設定スコープの管理を行います。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
