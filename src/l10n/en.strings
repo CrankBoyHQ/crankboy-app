@@ -265,7 +265,6 @@
 "gameerr_load_rom" = "Can't load the selected ROM";
 "gameerr_wrong_location_title" = "Wrong location";
 "gameerr_wrong_location" = "Please move the ROM to";
-"gameerr_wrong_location_path" = "/Shared/Emulation/gb/games/";
 "gameerr_save_data_title" = "Save Data Error";
 "gameerr_save_data" = "Failed to load save data.";
 "gameerr_fatal" = "A fatal error occurred";

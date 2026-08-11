@@ -3750,7 +3750,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 errorTitle = T(gameerr_wrong_location_title);
                 errorMessagesCount = 2;
                 errorMessages[0] = T(gameerr_wrong_location);
-                errorMessages[1] = T(gameerr_wrong_location_path);
+                errorMessages[1] = cb_gb_directory_path(CB_gamesPath);
             }
             else if (gameScene->error == CB_GameSceneErrorSaveData)
             {
