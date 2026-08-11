@@ -113,9 +113,12 @@ static int parse_quoted(char* buff, int offset)
 // Zero-width spaces are injected at load time so kWrapWord finds break
 // opportunities in space-less Japanese text: after CJK punctuation, at
 // kana->kanji boundaries (a cheap word-break heuristic; honorific prefixes
-// お/ご are exempt so they stay attached to their word), and at Latin<->CJK
-// script boundaries (ROM管理, CPUスピード). This keeps invisible characters
-// out of the translation files.
+// お/ご are exempt so they stay attached to their word), after particles
+// を/の, before auxiliaries します/ください, and at Latin<->CJK script
+// boundaries (ROM管理, CPUスピード). Kinsoku (gyoto) is honored: no break
+// before characters that must not start a line (small kana, ー, iteration
+// marks, closing brackets/punctuation). This keeps invisible characters out
+// of the translation files.
 #define ZWSP "\xE2\x80\x8B"
 #define ZWSP_LEN 3
 
@@ -170,40 +173,132 @@ static bool is_latin_cp(unsigned int cp)
     return (cp >= '0' && cp <= '9') || (cp >= 'A' && cp <= 'Z') || (cp >= 'a' && cp <= 'z');
 }
 
+// Kinsoku shori (gyoto): characters that may never start a line. A break
+// inserted before one of these would be a kinsoku violation.
+static bool is_gyoto_cp(unsigned int cp)
+{
+    switch (cp)
+    {
+    // small hiragana: ぁぃぅぇぉっゃゅょゎゕゖ
+    case 0x3041:
+    case 0x3043:
+    case 0x3045:
+    case 0x3047:
+    case 0x3049:
+    case 0x3063:
+    case 0x3083:
+    case 0x3085:
+    case 0x3087:
+    case 0x308E:
+    case 0x3095:
+    case 0x3096:
+    // small katakana: ァィゥェォッャュョヮヵヶ
+    case 0x30A1:
+    case 0x30A3:
+    case 0x30A5:
+    case 0x30A7:
+    case 0x30A9:
+    case 0x30C3:
+    case 0x30E3:
+    case 0x30E5:
+    case 0x30E7:
+    case 0x30EE:
+    case 0x30F5:
+    case 0x30F6:
+    // prolonged sound mark ー and iteration marks 々ゝゞヽヾ
+    case 0x30FC:
+    case 0x3005:
+    case 0x309D:
+    case 0x309E:
+    case 0x30FD:
+    case 0x30FE:
+    // closing brackets: 」』）〕〉》】〖〙〛］｝
+    case 0x300D:
+    case 0x300F:
+    case 0xFF09:
+    case 0x3015:
+    case 0x3009:
+    case 0x300B:
+    case 0x3011:
+    case 0x3017:
+    case 0x3019:
+    case 0x301B:
+    case 0xFF3B:
+    case 0xFF5D:
+    // closing punctuation: 、。！？：；，．
+    case 0x3001:
+    case 0x3002:
+    case 0xFF01:
+    case 0xFF1F:
+    case 0xFF1A:
+    case 0xFF1B:
+    case 0xFF0C:
+    case 0xFF0E:
+        return true;
+    default:
+        break;
+    }
+    return (cp >= 0xFF67 && cp <= 0xFF70);  // small halfwidth kana ｧ-ｮ + ｰ
+}
+
+// Auxiliaries that may start a line: a break BEFORE them is safe
+// (おすすめ|します, して|ください). Only unambiguous auxiliaries of >=3 kana
+// may be added here — never ます/です alone: they match at wrong offsets
+// inside します etc. and appear inside compounds.
+static const char* const break_before_aux[] = {"します", "ください"};
+
 static bool zwsp_break_after(const char* s, unsigned int prev_cp)
 {
     int len;
     unsigned int cp = utf8_decode(s, &len);
     const char* next = s + len;
 
+    if (!*next)
+        return false;  // no break at end of string
+
     if (strncmp(next, ZWSP, ZWSP_LEN) == 0)
         return false;  // never double-insert
 
+    int nlen;
+    unsigned int ncp = utf8_decode(next, &nlen);
+
+    if (is_gyoto_cp(ncp))
+        return false;  // kinsoku (gyoto): ncp must not start a line
+
     if (is_break_punct_cp(cp))
         return true;
+
+    // Particles を (U+3092) / の (U+306E) attach to the word on their left and
+    // are never okurigana: a break after them is safe even inside a kanji
+    // sandwich (画像を|検索) or before kana (使用を|おすすめ). Require a
+    // kanji/Latin predecessor so kana words like そのまま stay whole.
+    if ((cp == 0x3092 || cp == 0x306E) && (is_kanji_cp(prev_cp) || is_latin_cp(prev_cp)))
+        return true;
+
+    // break before auxiliaries (おすすめ|します, して|ください); cp must be a
+    // stem char so we don't break after punctuation or spaces
+    if (is_kana_cp(cp) || is_kanji_cp(cp))
+    {
+        for (size_t i = 0; i < CB_ARRAY_SIZE(break_before_aux); ++i)
+        {
+            if (strncmp(next, break_before_aux[i], strlen(break_before_aux[i])) == 0)
+                return true;
+        }
+    }
 
     // kana -> kanji boundary, except:
     // - honorific prefixes お (U+304A) / ご (U+3054), which attach to their word
     // - kana preceded by kanji: kanji-kana-kanji is an okurigana sandwich, i.e.
     //   a compound (読み込み, 巻き戻し) that must not be split
-    if (is_kana_cp(cp) && cp != 0x304A && cp != 0x3054 && !is_kanji_cp(prev_cp) && *next)
-    {
-        int nlen;
-        if (is_kanji_cp(utf8_decode(next, &nlen)))
-            return true;
-    }
+    if (is_kana_cp(cp) && cp != 0x304A && cp != 0x3054 && !is_kanji_cp(prev_cp) && is_kanji_cp(ncp))
+        return true;
 
     // Latin <-> CJK script boundary (ROM管理, CPUスピード, TCMモード): either
     // direction may break.
-    if (*next)
-    {
-        int nlen;
-        unsigned int ncp = utf8_decode(next, &nlen);
-        if (is_latin_cp(cp) && (is_kana_cp(ncp) || is_kanji_cp(ncp)))
-            return true;
-        if ((is_kana_cp(cp) || is_kanji_cp(cp)) && is_latin_cp(ncp))
-            return true;
-    }
+    if (is_latin_cp(cp) && (is_kana_cp(ncp) || is_kanji_cp(ncp)))
+        return true;
+    if ((is_kana_cp(cp) || is_kanji_cp(cp)) && is_latin_cp(ncp))
+        return true;
 
     return false;
 }
