@@ -10,7 +10,7 @@
 "sethdr_behavior" = "動作";
 "sethdr_library" = "ライブラリ";
 "sethdr_misc" = "その他";
-"setdsc_display" = "フレームレート、ドットスタイル、スケーリング、映像安定化など";
+"setdsc_display" = "フレームレート、ディザパターン、スケーリング、画面揺れ補正など";
 "Library_GetRoms" = "ROMを取得...";
 "pdmenu_help" = "ヘルプ";
 "pdmenu_credits" = "クレジット";
