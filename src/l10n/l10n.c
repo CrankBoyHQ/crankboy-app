@@ -115,10 +115,11 @@ static int parse_quoted(char* buff, int offset)
 // kana->kanji boundaries (a cheap word-break heuristic; honorific prefixes
 // お/ご are exempt so they stay attached to their word), after particles
 // を/の, before auxiliaries します/ください, and at Latin<->CJK script
-// boundaries (ROM管理, CPUスピード). Kinsoku (gyoto) is honored: no break
-// before characters that must not start a line (small kana, ー, iteration
-// marks, closing brackets/punctuation). This keeps invisible characters out
-// of the translation files.
+// boundaries (ROM管理, CPUスピード), and after the conjunctive particle
+// まで. Kinsoku (gyoto) is honored: no break before characters that must
+// not start a line (small kana, ー, iteration marks, closing
+// brackets/punctuation). This keeps invisible characters out of the
+// translation files.
 #define ZWSP "\xE2\x80\x8B"
 #define ZWSP_LEN 3
 
@@ -273,6 +274,12 @@ static bool zwsp_break_after(const char* s, unsigned int prev_cp)
     // sandwich (画像を|検索) or before kana (使用を|おすすめ). Require a
     // kanji/Latin predecessor so kana words like そのまま stay whole.
     if ((cp == 0x3092 || cp == 0x306E) && (is_kanji_cp(prev_cp) || is_latin_cp(prev_cp)))
+        return true;
+
+    // Conjunctive particle まで ("until"): attaches to the clause on its left,
+    // so a break after it is always safe (完了するまで|お待ちください). Hiragana
+    // まで is virtually never word-internal.
+    if (cp == 0x3067 && prev_cp == 0x307E)  // で preceded by ま
         return true;
 
     // break before auxiliaries (おすすめ|します, して|ください); cp must be a
