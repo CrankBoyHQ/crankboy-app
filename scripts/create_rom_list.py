@@ -5,12 +5,9 @@ import urllib.error
 import re
 import json
 import os
-import subprocess
-import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-COMPRESS = True
 MASK = 0xFC
 
 def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
@@ -57,7 +54,7 @@ def create_split_game_json(mask):
     Downloads and processes game DAT files, integrates local homebrew and romhack JSON files,
     and then splits the final data into n separate JSON files (00-FF)
     based on the first two characters of the ROM CRC. Files are saved in
-    the 'Source/db/' directory.
+    the 'src/db/' directory.
     """
 
     headers = {
@@ -133,7 +130,7 @@ def create_split_game_json(mask):
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 
-    output_dir = os.path.join(PROJECT_ROOT, "Source", "db")
+    output_dir = os.path.join(PROJECT_ROOT, "src", "db")
 
     hex_chars = "0123456789ABCDEF"
     prefixes = [f"{i}{j}" for i in hex_chars for j in hex_chars]
@@ -174,14 +171,6 @@ def create_split_game_json(mask):
             try:
                 with open(file_path, 'w', encoding='utf-8') as json_file:
                     json.dump(games, json_file, indent=4, ensure_ascii=False)
-                if COMPRESS:
-                    try:
-                        subprocess.run(["gzip", file_path], check=True)
-                    except Exception as e:
-                        print("ERROR: Failed to compress")
-                        sys.exit(17)
-                    if os.path.exists(file_path):
-                        os.remove(file_path)
                 files_written += 1
             except IOError as e:
                 print(f"Error: Could not write to file '{file_path}'. Details: {e}")
