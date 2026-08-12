@@ -1014,6 +1014,7 @@ void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message)
     LCDBitmap* logoBitmap = CB_App->logoBitmap;
 
     playdate->graphics->clear(kColorWhite);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
 
     if (logoBitmap)
     {
@@ -1079,6 +1080,7 @@ void cb_draw_logo_screen_centered_split(
 {
     LCDBitmap* logoBitmap = CB_App->logoBitmap;
     playdate->graphics->clear(kColorWhite);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
 
     if (logoBitmap)
     {
