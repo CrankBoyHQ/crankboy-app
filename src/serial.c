@@ -24,6 +24,14 @@
 #define TOKEN_MAX 8
 #define SERIAL_CMD_MAX 384
 
+// Timestamp (ms) of the last received serial message, 0 if none received yet.
+static uint32_t last_serial_msg_ms = 0;
+
+uint32_t serial_get_last_activity_ms(void)
+{
+    return last_serial_msg_ms;
+}
+
 // Main ft (file transfer) command handler
 // Commands:
 //   ft:b:<filename>:<size>:<crc32>    Begin transfer
@@ -1012,6 +1020,8 @@ static void CB_serial_command(char* command)
  */
 void CB_on_serial_message(const char* data)
 {
+    last_serial_msg_ms = playdate->system->getCurrentTimeMilliseconds();
+
     // Process messages immediately (keep messages small to avoid fragmentation)
     while (data[0] != 0)
     {

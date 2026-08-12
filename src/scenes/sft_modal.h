@@ -11,6 +11,7 @@
 typedef struct CB_SFTModal
 {
     CB_Scene* scene;
+    uint32_t shown_at_ms;
 } CB_SFTModal;
 
 CB_SFTModal* CB_SFTModal_new(void);
