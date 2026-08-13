@@ -66,7 +66,11 @@ First, download the zip for the [latest release](https://github.com/CrankBoyHQ/c
 
 ### Installing ROMs <!--userguide:##-->
 
-There are two methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
+There are three methods for installing ROMs on CrankBoy. Choose whichever is more convenient for you. You can even mix and match.
+
+#### CrankBoy Manager
+
+Just download [CrankBoy Manager](https://github.com/CrankBoyHQ/crankboy-manager/releases/latest) on your computer, connect your Playdate via USB and follow the on-screen instructions.
 
 #### USB
 
