@@ -158,7 +158,7 @@
 "setopt_turbo_speed" = "ターボスピード";
 "setopt_ui_sounds" = "UI音";
 "setopt_undock" = "展開";
-"setval_accurate" = "正確";
+"setval_accurate" = "普通";
 "setval_adaptive" = "可変";
 "setval_all" = "すべて";
 "setval_always" = "常時";
