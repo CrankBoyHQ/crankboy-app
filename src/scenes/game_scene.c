@@ -1062,7 +1062,8 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
     gameScene->rtc_time = now;
     gameScene->rtc_seconds_to_catch_up = 0;
 
-    gameScene->cartridge_has_rtc = (context->gb->mbc == 3 && context->gb->cart_battery);
+    gameScene->cartridge_has_rtc =
+        ((context->gb->mbc == 3 || context->gb->mbc == 9) && context->gb->cart_battery);
     gameScene->cartridge_has_accelerometer = (context->gb->mbc == 7);
 
     if (gameScene->cartridge_has_accelerometer)
@@ -1072,7 +1073,7 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 
     if (gameScene->cartridge_has_rtc)
     {
-        playdate->system->logToConsole("Cartridge is MBC3 with battery: RTC Enabled.");
+        playdate->system->logToConsole("Cartridge is MBC3/HuC3 with battery: RTC Enabled.");
 
         if (ram_load_result == 2)
         {
@@ -1098,8 +1099,10 @@ static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
             );
             time_t time_for_core = gameScene->rtc_time + 946684800;
             struct tm* timeinfo = localtime(&time_for_core);
-            if (timeinfo != NULL)
+            if (timeinfo != NULL && context->gb->mbc != 9)
             {
+                /* HuC3: fresh carts must report max time (see gb_init),
+                 * else games detect a backwards clock -> battery warning. */
                 gb_set_rtc(context->gb, timeinfo);
             }
         }
@@ -1740,7 +1743,9 @@ static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int*
     {
         // TODO: what is the default fill supposed to be?
         uint8_t fill = 0;
-        if (gb->mbc == 7)
+        /* MBC7 EEPROM and HuC RAM power up 0xFF-ish; Robopon reads
+         * all-zero RAM as a dead battery. */
+        if (gb->mbc == 7 || gb->mbc == 8 || gb->mbc == 9)
             fill = 0xFF;
         memset(gb->gb_cart_ram, fill, sram_len);
     }
@@ -1769,8 +1774,16 @@ static int read_cart_ram_file(const char* save_filename, gb_s* gb, unsigned int*
     {
         if (playdate->file->read(f, gb->cart_rtc, sizeof(gb->cart_rtc)) == sizeof(gb->cart_rtc))
         {
-            if (playdate->file->read(f, last_save_time, sizeof(unsigned int)) ==
-                sizeof(unsigned int))
+            /* HuC3 RTC state lives in the MCU memory, persisted after cart_rtc. */
+            bool rtc_ok = true;
+            if (gb->mbc == 9)
+            {
+                rtc_ok = playdate->file->read(f, gb->huc3.mem, sizeof(gb->huc3.mem)) ==
+                             sizeof(gb->huc3.mem) &&
+                         playdate->file->read(f, &gb->huc3.sub_seconds, 1) == 1;
+            }
+            if (rtc_ok && playdate->file->read(f, last_save_time, sizeof(unsigned int)) ==
+                              sizeof(unsigned int))
             {
                 code = 2;
             }
@@ -1848,6 +1861,13 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
 
     // write rtc
     playdate->file->write(f, gb->cart_rtc, sizeof(gb->cart_rtc));
+
+    // write HuC3 RTC MCU memory + sub-minute accumulator
+    if (gb->mbc == 9)
+    {
+        playdate->file->write(f, gb->huc3.mem, sizeof(gb->huc3.mem));
+        playdate->file->write(f, &gb->huc3.sub_seconds, 1);
+    }
 
     // write timestamp
     unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);

@@ -442,7 +442,13 @@ __section__(".rare") bool gb_get_rom_uses_battery(uint8_t* gb_rom)
         1, 0, 1                                         /* 20-2F */
     };
 
-    return cart_battery[gb_rom[0x0147]];
+    const uint8_t mbc_value = gb_rom[0x0147];
+
+    /* HuC3 (0xFE) and HuC1+RAM+BATTERY (0xFF) both have a battery. */
+    if (mbc_value == 0xFE || mbc_value == 0xFF)
+        return true;
+
+    return cart_battery[mbc_value];
 }
 
 /**
@@ -476,6 +482,98 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
     return title_start;
 }
 
+/* HuC3 MCU memory: 256 nybbles, packed 2 per byte, least significant
+ * nybble at the lower address. */
+__section__(".text.cb") static uint8_t __gb_huc3_get_nybble(const gb_s* gb, uint8_t addr)
+{
+    uint8_t b = gb->huc3.mem[addr >> 1];
+    return (addr & 1) ? (b >> 4) : (b & 0x0F);
+}
+
+__section__(".text.cb") static void __gb_huc3_set_nybble(gb_s* gb, uint8_t addr, uint8_t val)
+{
+    uint8_t* b = &gb->huc3.mem[addr >> 1];
+
+    if (addr & 1)
+        *b = (*b & 0x0F) | ((val & 0x0F) << 4);
+    else
+        *b = (*b & 0xF0) | (val & 0x0F);
+}
+
+/* HuC3 time: nybbles $10-12 = minute of day (rolls at 1440),
+ * $13-15 = day counter. */
+__section__(".text.cb") static unsigned __gb_huc3_get_time(const gb_s* gb, uint8_t base)
+{
+    return __gb_huc3_get_nybble(gb, base) + __gb_huc3_get_nybble(gb, base + 1) * 10 +
+           __gb_huc3_get_nybble(gb, base + 2) * 100;
+}
+
+__section__(".text.cb") static void __gb_huc3_set_time(gb_s* gb, uint8_t base, unsigned val)
+{
+    __gb_huc3_set_nybble(gb, base, val % 10);
+    __gb_huc3_set_nybble(gb, base + 1, (val / 10) % 10);
+    __gb_huc3_set_nybble(gb, base + 2, (val / 100) % 10);
+}
+
+/* Execute the HuC3 RTC mailbox command. Triggered by clearing semaphore
+ * bit 0; synchronous, so the semaphore always reads "ready". */
+__section__(".text.cb") static void __gb_huc3_rtc_exec(gb_s* gb)
+{
+    const uint8_t cmd = gb->huc3.cmd >> 4;
+    const uint8_t arg = gb->huc3.cmd & 0x0F;
+
+    switch (cmd)
+    {
+    case 0x1: /* Read value and increment access address */
+        gb->huc3.response = __gb_huc3_get_nybble(gb, gb->huc3.addr);
+        gb->huc3.addr++;
+        break;
+
+    case 0x2: /* Write, no increment (SameBoy; used by Pocket Family GB2) */
+        __gb_huc3_set_nybble(gb, gb->huc3.addr, arg);
+        break;
+
+    case 0x3: /* Write value and increment access address */
+        __gb_huc3_set_nybble(gb, gb->huc3.addr, arg);
+        gb->huc3.addr++;
+        break;
+
+    case 0x4: /* Set access address least significant nybble */
+        gb->huc3.addr = (gb->huc3.addr & 0xF0) | arg;
+        break;
+
+    case 0x5: /* Set access address most significant nybble */
+        gb->huc3.addr = (arg << 4) | (gb->huc3.addr & 0x0F);
+        break;
+
+    case 0x6: /* Extended command */
+        switch (arg)
+        {
+        case 0x0: /* Copy current time to $00-05 */
+            for (uint8_t i = 0; i < 6; i++)
+                __gb_huc3_set_nybble(gb, i, __gb_huc3_get_nybble(gb, 0x10 + i));
+            break;
+
+        case 0x1: /* Copy $00-05 to current time */
+            for (uint8_t i = 0; i < 6; i++)
+                __gb_huc3_set_nybble(gb, 0x10 + i, __gb_huc3_get_nybble(gb, i));
+            break;
+
+        case 0x2: /* Status request; games refuse to boot unless result is 1 */
+            gb->huc3.response = 1;
+            break;
+
+        case 0xE: /* Tone generator (needs two executions); no speaker - stub */
+        default:
+            break;
+        }
+        break;
+
+    default:
+        break;
+    }
+}
+
 /**
  * Directly calculates and applies the RTC state after a given
  * number of seconds have passed.
@@ -486,6 +584,22 @@ const char* gb_get_rom_name(uint8_t* gb_rom, char* title_str)
  */
 __section__(".text.cb") void gb_catch_up_rtc_direct(gb_s* gb, unsigned int seconds_to_add)
 {
+    if (gb->mbc == 9)
+    {
+        /* HuC3: minute-of-day + days. sub_seconds keeps the fractional
+         * remainder across calls so the minute counter advances. */
+        if (seconds_to_add == 0)
+            return;
+
+        unsigned long long total =
+            __gb_huc3_get_time(gb, 0x10) * 60ULL + gb->huc3.sub_seconds + seconds_to_add;
+        unsigned days = __gb_huc3_get_time(gb, 0x13);
+
+        __gb_huc3_set_time(gb, 0x10, (unsigned)((total / 60) % 1440));
+        __gb_huc3_set_time(gb, 0x13, (days + (unsigned)(total / 86400)) % 1000);
+        gb->huc3.sub_seconds = (uint8_t)(total % 60);
+        return;
+    }
     if ((gb->rtc_bits.high & 0x40) || seconds_to_add == 0)
     {
         return;
@@ -675,6 +789,12 @@ __section__(".text.cb") static void __gb_update_selected_cart_bank_addr(gb_s* gb
         }
         else if (gb->mbc == 7)
         {
+            gb->selected_cart_bank_addr = NULL;
+        }
+        else if (gb->mbc == 8 || gb->mbc == 9)
+        {
+            /* HuC1/HuC3: $A000-BFFF mapping depends on mode registers
+             * (IR/RTC select), so always use the full access path. */
             gb->selected_cart_bank_addr = NULL;
         }
         else if (
@@ -2121,6 +2241,43 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                 }
                 return 0xFF;
             }
+            else if (gb->mbc == 8)
+            {
+                if (gb->huc1.ir_mode)
+                    /* IR receiver: bit 0 = saw light. No link partner. */
+                    return 0xC0;
+
+                if (gb->cart_ram_bank < gb->num_ram_banks)
+                    return gb
+                        ->gb_cart_ram[addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE)];
+
+                return 0xFF;
+            }
+            else if (gb->mbc == 9)
+            {
+                switch (gb->huc3.ram_rtc_ir_select)
+                {
+                case 0x00: /* Cart RAM (read-only) */
+                case 0x0A: /* Cart RAM (read/write) */
+                    if (gb->cart_ram_bank < gb->num_ram_banks)
+                        return gb->gb_cart_ram
+                            [addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE)];
+                    return 0xFF;
+
+                case 0x0C: /* RTC response: result of last command. Games
+                            * compare the full byte, so keep upper bits clear. */
+                    return gb->huc3.response;
+
+                case 0x0D: /* RTC semaphore: bit 0 high = ready (exec is synchronous) */
+                    return 0x01;
+
+                case 0x0E: /* IR: no link partner, no light seen */
+                    return 0x00;
+
+                default: /* Unmapped selects read open bus */
+                    return 0xFF;
+                }
+            }
 
             if (gb->mbc == 3 && gb->cart_ram_bank >= 0x08 && gb->cart_ram_bank <= 0x0C)
             {
@@ -2480,6 +2637,13 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         {
             if (gb->mbc == 7)
                 gb->mbc7.ram_enable_1 = ((val & 0x0F) == 0x0A);
+            else if (gb->mbc == 8)
+                /* HuC1: no RAM enable; $0E maps IR register at $A000-BFFF,
+                 * anything else maps cart RAM. */
+                gb->huc1.ir_mode = ((val & 0x0F) == 0x0E);
+            else if (gb->mbc == 9)
+                /* HuC3: selects RAM / RTC registers / IR at $A000-BFFF. */
+                gb->huc3.ram_rtc_ir_select = val & 0x0F;
             else if (gb->mbc > 0 && gb->cart_ram)
                 gb->enable_cart_ram = ((val & 0x0F) == 0x0A);
         }
@@ -2524,6 +2688,16 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             {
                 gb->selected_rom_bank = val & 0x7F;
             }
+            else if (gb->mbc == 8)
+            {
+                /* HuC1: 6-bit bank, no 00->01 quirk (differs from MBC1). */
+                gb->selected_rom_bank = val & 0x3F;
+            }
+            else if (gb->mbc == 9)
+            {
+                /* HuC3: 7-bit bank; like MBC5, bank 0 may be mapped. */
+                gb->selected_rom_bank = val & 0x7F;
+            }
         }
 
         if (gb->mbc > 0)
@@ -2558,6 +2732,9 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             gb->cart_ram_bank = (val & 0x0F);
         else if (gb->mbc == 7)
             gb->mbc7.ram_enable_2 = (val == 0x40);
+        else if (gb->mbc == 8 || gb->mbc == 9)
+            /* HuC1/HuC3: 2-bit RAM bank. */
+            gb->cart_ram_bank = (val & 0x03);
 
         __gb_update_selected_cart_bank_addr(gb);
         return;
@@ -2673,6 +2850,53 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                         }
                         break;
                     }
+                }
+            }
+            else if (gb->mbc == 8)
+            {
+                if (gb->huc1.ir_mode)
+                {
+                    /* IR transmitter: bit 0 on/off. No link partner; stub. */
+                }
+                else if (gb->cart_ram_bank < gb->num_ram_banks)
+                {
+                    size_t idx = addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE);
+                    CB_ASSERT(idx < gb->gb_cart_ram_size);
+                    const u8 prev = gb->gb_cart_ram[idx];
+                    gb->gb_cart_ram[idx] = val;
+                    gb->direct.sram_updated |= prev != val;
+                }
+            }
+            else if (gb->mbc == 9)
+            {
+                switch (gb->huc3.ram_rtc_ir_select)
+                {
+                case 0x0A: /* Cart RAM (read/write) */
+                    if (gb->cart_ram_bank < gb->num_ram_banks)
+                    {
+                        size_t idx = addr - CART_RAM_ADDR + (gb->cart_ram_bank * CRAM_BANK_SIZE);
+                        CB_ASSERT(idx < gb->gb_cart_ram_size);
+                        const u8 prev = gb->gb_cart_ram[idx];
+                        gb->gb_cart_ram[idx] = val;
+                        gb->direct.sram_updated |= prev != val;
+                    }
+                    break;
+
+                case 0x0B: /* RTC command/argument mailbox (D7 not connected) */
+                    gb->huc3.cmd = val & 0x7F;
+                    break;
+
+                case 0x0D: /* RTC semaphore: clear bit 0 to execute command */
+                    if (!(val & 0x01))
+                        __gb_huc3_rtc_exec(gb);
+                    break;
+
+                case 0x0E: /* IR (stub, no link partner) */
+                    break;
+
+                default:
+                    /* $00 (read-only RAM), $0C, and unmapped selects: ignore. */
+                    break;
                 }
             }
             else if (
@@ -5644,6 +5868,18 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->enable_cart_ram = 1;
     }
 
+    /* HuC carts have no RAM enable; keep $A000-BFFF always mapped. */
+    if (gb->mbc == 8)
+    {
+        gb->huc1.ir_mode = 0;
+        gb->enable_cart_ram = 1;
+    }
+    else if (gb->mbc == 9)
+    {
+        gb->huc3.ram_rtc_ir_select = 0;
+        gb->enable_cart_ram = 1;
+    }
+
     __gb_update_selected_bank_addr(gb);
     __gb_update_selected_cart_bank_addr(gb);
     __gb_update_zero_bank_addr(gb);
@@ -5935,8 +6171,6 @@ __section__(".rare") enum gb_init_error_e gb_init(
      * TODO: MBC6 is unsupported.
      * TODO: POCKET CAMERA is unsupported.
      * TODO: BANDAI TAMA5 is unsupported.
-     * TODO: HuC3 is unsupported.
-     * TODO: HuC1 is unsupported.
      **/
     /* clang-format off */
     const uint8_t cart_mbc[] =
@@ -6015,14 +6249,39 @@ __section__(".rare") enum gb_init_error_e gb_init(
     {
         const uint8_t mbc_value = gb->gb_rom[mbc_location];
 
-        if (mbc_value > sizeof(cart_mbc) - 1 || (gb->mbc = cart_mbc[mbc_value]) == 255u)
-            return GB_INIT_CARTRIDGE_UNSUPPORTED;
+        /* HuC3 (0xFE) and HuC1 (0xFF) live outside the table range;
+         * both always have cart RAM. */
+        if (mbc_value == 0xFE || mbc_value == 0xFF)
+        {
+            gb->mbc = (mbc_value == 0xFE) ? 9 : 8;
+            gb->cart_ram = 1;
+        }
+        else
+        {
+            if (mbc_value > sizeof(cart_mbc) - 1 || (gb->mbc = cart_mbc[mbc_value]) == 255u)
+                return GB_INIT_CARTRIDGE_UNSUPPORTED;
+
+            gb->cart_ram = cart_ram[mbc_value];
+        }
     }
 
-    gb->cart_ram = cart_ram[gb->gb_rom[mbc_location]];
     gb->cart_battery = gb_get_rom_uses_battery(gb->gb_rom);
     gb->num_rom_banks_mask = num_rom_banks_mask[gb->gb_rom[bank_count_location]] - 1;
     gb->num_ram_banks = num_ram_banks[gb->gb_rom[ram_size_location]];
+
+    /* One-time HuC3 RTC init (battery-backed; not cleared in gb_reset).
+     * Time starts at max: Robopon treats "RTC < saved SRAM timestamp" as
+     * a dead battery, and fresh SRAM reads 0xFF-filled. */
+    if (gb->mbc == 9)
+    {
+        gb->huc3.cmd = 0;
+        gb->huc3.response = 0;
+        gb->huc3.addr = 0;
+        gb->huc3.sub_seconds = 0;
+        memset(gb->huc3.mem, 0, sizeof(gb->huc3.mem));
+        __gb_huc3_set_time(gb, 0x10, 0xFFF);
+        __gb_huc3_set_time(gb, 0x13, 0xFFF);
+    }
 
     gb->is_cgb_mode = (gb->gb_rom[0x0143] & 0x80) && cgb_mode;
     gb->cgb_fast_mode = false;

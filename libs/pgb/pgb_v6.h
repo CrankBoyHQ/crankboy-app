@@ -416,6 +416,28 @@ struct PGB_VERSIONED(gb_s)
             uint16_t eeprom_read_buffer;
         } mbc7;
 
+        struct
+        {
+            /* 1 when $A000-BFFF is mapped to the IR register instead of RAM. */
+            uint8_t ir_mode;
+        } huc1;
+
+        struct
+        {
+            /* Low 4 bits of last write to $0000-1FFF (RAM/RTC/IR select). */
+            uint8_t ram_rtc_ir_select;
+            /* Mailbox: command (bits 6-4) + argument (bits 3-0). */
+            uint8_t cmd;
+            /* Low 4 bits: result of last executed command. */
+            uint8_t response;
+            /* RTC MCU access address (indexes 256 nybbles). */
+            uint8_t addr;
+            /* Sub-minute RTC accumulator (0-59 s) for catch-up calls. */
+            uint8_t sub_seconds;
+            /* RTC MCU internal memory: 256 nybbles, packed 2 per byte. */
+            uint8_t mem[128];
+        } huc3;
+
         // Put other MBC-specific data in this union.
     };
 
