@@ -8,7 +8,7 @@
 "game_turbo_ab" = "";
 "game_turbo_ba" = "";
 "game_turbo" = "ﾀｰﾎﾞ";
-"help_add_roms_first" = "CrankBoyを始めるには、まずROMを追加してください。\n\nCrankBoy Managerのご使用をおすすめします。";
+"help_add_roms_first" = "この翻訳は暫定的なものです。改善にご協力いただける場合は、お問い合わせください（連絡先は下記）。\n\nCrankBoyを始めるには、まずROMを追加してください。\n\nCrankBoy Managerのご使用をおすすめします。";
 "help_add_roms" = "ROMの追加はCrankBoy Managerを使用";
 "help_intro_text" = "はじめに、簡単な使い方のガイドです。\n\n今後、これらの手順は CrankBoy のメインメニューの「ヘルプ」からいつでも確認できます。\n\n(クランクを回して下にスクロール！)\n\n";
 "help_usage_title" = "CrankBoyの使い方";
