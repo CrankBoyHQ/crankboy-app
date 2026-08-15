@@ -231,8 +231,8 @@ static ScriptData* on_begin(gb_s* gb, char* header_name)
     data->patch_no_door = code_replacement(0, 0x04C5, (0x28, 0x06), (0x00, 0x00), true);
 
     data->patch_start_flying = (config == CFG_JP)
-                                   ? code_replacement(1, 0x4495, (0x27, 0x45), (0x97, 0x44), true)
-                                   : code_replacement(1, 0x4498, (0x2A, 0x45), (0x9A, 0x44), true);
+                                   ? code_replacement(1, 0x495, (0x27, 0x45), (0x97, 0x44), true)
+                                   : code_replacement(1, 0x498, (0x2A, 0x45), (0x9A, 0x44), true);
 
     SET_BREAKPOINTS(config);
 

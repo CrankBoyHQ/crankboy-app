@@ -121,11 +121,26 @@ ScriptState* script_begin(const char* game_name, struct CB_GameScene* game_scene
 
 void script_end(ScriptState* state, struct CB_GameScene* game_scene)
 {
-    script_gb = game_scene->context->gb;
+    gb_s* gb = game_scene->context->gb;
+    script_gb = gb;
 
     if (state->c)
     {
-        state->c->on_end(game_scene->context->gb, state->ud);
+        state->c->on_end(gb, state->ud);
+    }
+
+    // Disarm breakpoints: restore ROM byte, free slot so re-enable can re-register.
+    if (gb->breakpoints)
+    {
+        for (int i = 0; i < MAX_BREAKPOINTS; ++i)
+        {
+            uint32_t addr = gb->breakpoints[i].rom_addr;
+            if (addr != 0xFFFFFF && addr < gb->gb_rom_size)
+            {
+                gb->gb_rom[addr] = gb->breakpoints[i].opcode;
+                gb->breakpoints[i].rom_addr = 0xFFFFFF;
+            }
+        }
     }
 
     if (state->cbp)
@@ -230,6 +245,8 @@ __section__(".rare") int c_script_add_hw_breakpoint(
         state->cbp = cb_realloc(state->cbp, MAX_BREAKPOINTS * sizeof(*state->cbp));
         if (!state->cbp)
             return -100;
+        // raw realloc; zero so unregistered slots stay NULL
+        memset(state->cbp, 0, MAX_BREAKPOINTS * sizeof(*state->cbp));
     }
 
     state->cbp[bp] = callback;
@@ -243,7 +260,8 @@ __section__(".rare") void script_on_breakpoint(struct CB_GameScene* gameScene, i
     ScriptState* state = gameScene->script;
     gb_s* gb = gameScene->context->gb;
 
-    if (state->c && state->cbp)
+    if (state && state->c && state->cbp && index >= 0 && index < MAX_BREAKPOINTS &&
+        state->cbp[index])
     {
         CS_OnBreakpoint cb = state->cbp[index];
         cb(gb, gb->cpu_reg.pc, index, state->ud);

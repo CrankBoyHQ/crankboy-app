@@ -1670,6 +1670,7 @@ static struct ScriptSettingsInfo script_settings_info[] = {
 
 static void clear_script_settings(void)
 {
+    cb_wrap_invalidate();  // wrap cache may point into the strings being freed
     script_settings_info_count = 0;
     for (int i = 0; i < CB_ARRAY_SIZE(script_settings_info); ++i)
     {
