@@ -2798,8 +2798,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                         {
                             float a[2];
                             playdate->system->getAccelerometer(a, a + 1, NULL);
-                            gb->mbc7.accel_x_latched = (uint16_t)(0x81D0 + 0x70 * a[0]);
-                            gb->mbc7.accel_y_latched = (uint16_t)(0x81D0 + 0x70 * a[1]);
+                            gb->mbc7.accel_x_latched = (uint16_t)(0x81D0 - 0x70 * a[0]);
+                            gb->mbc7.accel_y_latched = (uint16_t)(0x81D0 - 0x70 * a[1]);
                             gb->mbc7.accel_latch_state = 0;
                         }
                         break;
