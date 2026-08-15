@@ -2483,24 +2483,23 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         gb->mbc7.eeprom_shift_reg = (gb->mbc7.eeprom_shift_reg << 1) | di;
         gb->mbc7.eeprom_bits_shifted++;
 
-        /* All commands are 9 bits after start bit */
-        if (gb->mbc7.eeprom_bits_shifted == 9)
+        /* Commands are 10 bits after the start bit: 2 opcode + 1 "x" +
+         * 7 address (e.g. READ = "10xAAAAAAA"). */
+        if (gb->mbc7.eeprom_bits_shifted == 10)
         {
-            // playdate->system->logToConsole("mbc7 command: %3x", gb->mbc7.eeprom_shift_reg &
-            // 0x1FF);
-            uint8_t opcode = (gb->mbc7.eeprom_shift_reg >> 7) & 0x03;
+            uint8_t opcode = (gb->mbc7.eeprom_shift_reg >> 8) & 0x03;
             gb->mbc7.eeprom_addr = gb->mbc7.eeprom_shift_reg & 0x7F;
 
             gb->mbc7.eeprom_state = 0; /* Default to IDLE */
 
             switch (opcode)
             {
-            case 0b00:                                          /* Control opcodes */
-                if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0011) /* EWEN */
+            case 0b00: /* Control opcodes (sub-opcode in bits 7-6) */
+                if (((gb->mbc7.eeprom_shift_reg >> 6) & 0x03) == 0b11) /* EWEN */
                     gb->mbc7.eeprom_write_enabled = 1;
-                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0000) /* EWDS */
+                else if (((gb->mbc7.eeprom_shift_reg >> 6) & 0x03) == 0b00) /* EWDS */
                     gb->mbc7.eeprom_write_enabled = 0;
-                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0010) /* ERAL */
+                else if (((gb->mbc7.eeprom_shift_reg >> 6) & 0x03) == 0b10) /* ERAL */
                 {
                     if (gb->mbc7.eeprom_write_enabled)
                     {
@@ -2509,7 +2508,7 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                         gb->direct.sram_updated = true;
                     }
                 }
-                else if ((gb->mbc7.eeprom_shift_reg >> 5) == 0b0001) /* WRAL */
+                else if (((gb->mbc7.eeprom_shift_reg >> 6) & 0x03) == 0b01) /* WRAL */
                 {
                     if (gb->mbc7.eeprom_write_enabled)
                     {
@@ -2531,8 +2530,6 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
             case 0b10:                     /* READ */
                 gb->mbc7.eeprom_state = 2; /* READ */
                 gb->mbc7.eeprom_read_buffer = ((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr];
-                // playdate->system->logToConsole("mbc7 read: %04x -> %04x", gb->mbc7.eeprom_addr,
-                // gb->mbc7.eeprom_read_buffer);
                 gb->mbc7.eeprom_bits_shifted = 0;
                 return;
 
@@ -2813,24 +2810,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                         {
                             float a[2];
                             playdate->system->getAccelerometer(a, a + 1, NULL);
-
-                            for (int i = 0; i < 2; ++i)
-                            {
-                                float f = a[i];
-                                if (f < -300.0f)
-                                    f = -300.0f;
-                                if (f > 300.0f)
-                                    f = 300.0f;
-                                int32_t v = (int32_t)(0x81D0 + 0x70 * f + 0.5f);
-                                if (v < 0)
-                                    v = 0;
-                                if (v > 0xFFFF)
-                                    v = 0xFFFF;
-                                if (i == 0)
-                                    gb->mbc7.accel_x_latched = v;
-                                else
-                                    gb->mbc7.accel_y_latched = v;
-                            }
+                            gb->mbc7.accel_x_latched = (uint16_t)(0x81D0 + 0x70 * a[0]);
+                            gb->mbc7.accel_y_latched = (uint16_t)(0x81D0 + 0x70 * a[1]);
                             gb->mbc7.accel_latch_state = 0;
                         }
                         break;
