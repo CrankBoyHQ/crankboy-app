@@ -23,7 +23,7 @@
 #error "PGB_TEMPLATE must be defined"
 #endif
 
-#include "../src/app.h" // IWYU pragma: keep
+#include "../src/app.h"  // IWYU pragma: keep
 #include "../src/preferences.h"
 #include "../src/utility.h"
 
@@ -575,8 +575,9 @@ __draw static void $(__gb_draw_line_sprites)(
     const uint16_t OBP = gb->gb_reg.OBP0 | ((uint16_t)gb->gb_reg.OBP1 << 8);
 
     uint8_t column_decided[LCD_WIDTH];
-    for (int x = 0; x < LCD_WIDTH; x++)
-        column_decided[x] = 0;
+    if (number_of_sprites > 0)
+        for (int x = 0; x < LCD_WIDTH; x++)
+            column_decided[x] = 0;
 
     for (int8_t i = 0; i < number_of_sprites; i++)
     {
@@ -894,6 +895,29 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
 }
 #endif
 
+#if PGB_IS_DMG
+// Remap 16 background pixels (t0 = lo plane, t1 = hi plane) through BGP to
+// 2bpp via a 256-entry LUT (4 pixels per lookup). Rebuilt lazily when BGP
+// changes (checked per scanline).
+static uint8_t dmg_bg_lut[256];
+static uint8_t dmg_bg_lut_pal;
+static bool dmg_bg_lut_valid = false;
+
+static inline __attribute__((always_inline)) void __dmg_rebuild_bg_lut(uint8_t pal)
+{
+    for (int idx = 0; idx < 256; idx++)
+    {
+        uint8_t lo = idx & 0x0F;
+        uint8_t hi = idx >> 4;
+        uint8_t g0 = (pal >> (2 * (((lo >> 0) & 1) | (((hi >> 0) & 1) << 1)))) & 3;
+        uint8_t g1 = (pal >> (2 * (((lo >> 1) & 1) | (((hi >> 1) & 1) << 1)))) & 3;
+        uint8_t g2 = (pal >> (2 * (((lo >> 2) & 1) | (((hi >> 2) & 1) << 1)))) & 3;
+        uint8_t g3 = (pal >> (2 * (((lo >> 3) & 1) | (((hi >> 3) & 1) << 1)))) & 3;
+        dmg_bg_lut[idx] = (uint8_t)((g3 << 6) | (g2 << 4) | (g1 << 2) | g0);
+    }
+}
+#endif  // PGB_IS_DMG
+
 // renders one scanline
 // __draw (+noinline): dedicated relocatable section, kept out of the core
 // pocket; called from __gb_step_cpu via the offset-adjusted pointer.
@@ -981,44 +1005,6 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         for (int i = 0; i < LCD_WIDTH / 16; ++i)
             ((uint32_t*)pixels_alt)[i] = 0;
 #endif
-
-// remaps 16-bit lo (t1) and hi (t2) colours to 2bbp 32-bit v
-// Optimized version: processes 4 pixels at a time instead of 1
-// Reduces loop iterations from 16 to 4 for better performance
-#define BG_REMAP(pal, t1, t2, v)                                                       \
-    do                                                                                 \
-    {                                                                                  \
-        uint32_t _t1 = (uint16_t)(t1);                                                 \
-        uint32_t _t2 = (uint16_t)(t2);                                                 \
-        uint32_t _v = 0;                                                               \
-                                                                                       \
-        /* Process 4 pixels at a time in reverse order to match original output */     \
-        /* Original builds result from MSB to LSB, so we go from high nibble to low */ \
-        for (int _q = 3; _q >= 0; _q--)                                                \
-        {                                                                              \
-            int _shift = _q * 4;                                                       \
-            uint8_t _nib1 = (_t1 >> _shift) & 0x0F;                                    \
-            uint8_t _nib2 = (_t2 >> _shift) & 0x0F;                                    \
-                                                                                       \
-            /* Extract 4 pixels from the nibbles */                                    \
-            /* Pixel 0: bit 0 of nib1 and nib2 */                                      \
-            /* Pixel 1: bit 1 of nib1 and nib2, etc. */                                \
-            uint8_t _pix0 = ((_nib1 >> 0) & 1) | (((_nib2 >> 0) & 1) << 1);            \
-            uint8_t _pix1 = ((_nib1 >> 1) & 1) | (((_nib2 >> 1) & 1) << 1);            \
-            uint8_t _pix2 = ((_nib1 >> 2) & 1) | (((_nib2 >> 2) & 1) << 1);            \
-            uint8_t _pix3 = ((_nib1 >> 3) & 1) | (((_nib2 >> 3) & 1) << 1);            \
-                                                                                       \
-            /* Lookup colors from palette */                                           \
-            uint8_t _c0 = ((pal) >> (2 * _pix3)) & 3; /* Reverse order within byte */  \
-            uint8_t _c1 = ((pal) >> (2 * _pix2)) & 3;                                  \
-            uint8_t _c2 = ((pal) >> (2 * _pix1)) & 3;                                  \
-            uint8_t _c3 = ((pal) >> (2 * _pix0)) & 3;                                  \
-                                                                                       \
-            _v <<= 8;                                                                  \
-            _v |= (_c0 << 6) | (_c1 << 4) | (_c2 << 2) | _c3;                          \
-        }                                                                              \
-        (v) = _v;                                                                      \
-    } while (0)
 
     /* If background is enabled, draw it. */
 #if PGB_IS_CGB
@@ -1174,18 +1160,23 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
 
 #if PGB_IS_DMG
     // remap background pixel by palette, and set priority
-    uint32_t pal = gb->gb_reg.BGP;
+    if (!dmg_bg_lut_valid || gb->gb_reg.BGP != dmg_bg_lut_pal)
+    {
+        __dmg_rebuild_bg_lut(gb->gb_reg.BGP);
+        dmg_bg_lut_pal = gb->gb_reg.BGP;
+        dmg_bg_lut_valid = true;
+    }
+
     for (int i = 0; i < LCD_WIDTH / 16; ++i)
     {
         uint16_t* p = (uint16_t*)(void*)pixels + (2 * i);
         uint16_t t0 = p[0];
         uint16_t t1 = p[1];
 
-        // Initialize rm to 0. This is required because the BG_REMAP macro reads
-        // from the variable before it is fully written to.
-        uint32_t rm = 0;
-#pragma GCC unroll 16
-        BG_REMAP(pal, t0, t1, rm);
+        uint32_t rm = ((uint32_t)dmg_bg_lut[((t0 >> 12) & 0xF) | (((t1 >> 12) & 0xF) << 4)] << 24) |
+                      ((uint32_t)dmg_bg_lut[((t0 >> 8) & 0xF) | (((t1 >> 8) & 0xF) << 4)] << 16) |
+                      ((uint32_t)dmg_bg_lut[((t0 >> 4) & 0xF) | (((t1 >> 4) & 0xF) << 4)] << 8) |
+                      ((uint32_t)dmg_bg_lut[(t0 & 0xF) | ((t1 & 0xF) << 4)]);
         *(uint32_t*)p = rm;
         ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
     }
