@@ -1738,20 +1738,18 @@ __attribute__((always_inline)) static inline void high_pass_filter_fixed_asm(
         }
 
         asm volatile(
-            "asr r0, %[cap_l_in], #16\n\t"
-            "asr r1, %[cap_r_in], #16\n\t"
+            "asr r0, %[cap_l_in], #15\n\t"
+            "asr r1, %[cap_r_in], #15\n\t"
             "pkhbt r0, r0, r1, lsl #16\n\t"
 
             "qsub16 %[out_lr_out], %[in_lr_in], r0\n\t"
 
             "smulbb r1, %[out_lr_out], %[charge_in]\n\t"
-            "lsl r1, r1, #1\n\t"
-            "lsl r0, %[in_l_in], #16\n\t"
+            "lsl r0, %[in_l_in], #15\n\t"
             "sub %[cap_l_out], r0, r1\n\t"
 
             "smultb r1, %[out_lr_out], %[charge_in]\n\t"
-            "lsl r1, r1, #1\n\t"
-            "lsl r0, %[in_r_in], #16\n\t"
+            "lsl r0, %[in_r_in], #15\n\t"
             "sub %[cap_r_out], r0, r1\n\t"
 
             :
@@ -2015,16 +2013,7 @@ __audio int audio_callback(void* context, int16_t* left, int16_t* right, int len
             }
 #endif
         }
-        else
-        {
-#if TARGET_PLAYDATE
-            audio->capacitor_l = 0;
-            audio->capacitor_r = 0;
-#else
-            audio->capacitor_l = 0.0f;
-            audio->capacitor_r = 0.0f;
-#endif
-        }
+        /* All DACs off: capacitor keeps its charge. */
     }
     else
     {
