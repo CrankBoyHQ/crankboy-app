@@ -46,7 +46,8 @@
 "lib_building_list" = "ゲームリストを構築中...";
 "lib_caching_covers" = "カバーアートをキャッシュ中...";
 "lib_cgb_prompt_cgb_compat" = "このROMはCGBに対応しています。\n\nDMGで起動（推奨）するか、CGBでの起動を試せます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
-"lib_cgb_prompt_cgb_only_one_time" = "このROMはCGB専用です。\n\nCGBモードで起動します。\n\n CrankBoyのCGB（カラー）エミュレーションは実験的機能です。\"\"lib_cgb_prompt_cgb_only\" = \"このROMはCGB専用です。\n\n通常のDMG ROMとして起動を試すか、CGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
+"lib_cgb_prompt_cgb_only_one_time" = "このROMはCGB専用です。\n\nCGBモードで起動します。\n\n CrankBoyのCGB（カラー）エミュレーションは実験的機能です。"
+"lib_cgb_prompt_cgb_only" = "このROMはCGB専用です。\n\n通常のDMG ROMとして起動を試すか、CGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
 "lib_cgb_prompt_dmg" = "このROMはDMG専用です。\n\nDMGモード（推奨）または強制的にCGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
 "lib_error" = "エラー";
 "lib_homebrew_banner" = "Homebrew Hub からホームブレューゲームを無料でダウンロードできます\n\nこの機能はまだ実験段階です\n\nペアレンタルロックを利用できます";
