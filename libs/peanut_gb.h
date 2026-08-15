@@ -2236,7 +2236,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
                         return 0xFF;
 
                     case 0x8:
-                        return gb->mbc7.eeprom_pins | 0x7C;
+                        return (gb->mbc7.eeprom_pins & 0xC3) | 0x3C;
                     }
                 }
                 return 0xFF;
@@ -2510,21 +2510,15 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
                 }
                 else if (((gb->mbc7.eeprom_shift_reg >> 6) & 0x03) == 0b01) /* WRAL */
                 {
-                    if (gb->mbc7.eeprom_write_enabled)
-                    {
-                        gb->mbc7.eeprom_state = 3;   /* WRITE */
-                        gb->mbc7.eeprom_addr = 0xFF; /* WRAL flag */
-                        gb->mbc7.eeprom_bits_shifted = 0;
-                    }
+                    gb->mbc7.eeprom_state = 3;   /* WRITE */
+                    gb->mbc7.eeprom_addr = 0xFF; /* WRAL flag */
+                    gb->mbc7.eeprom_bits_shifted = 0;
                 }
                 break;
 
-            case 0b01: /* WRITE */
-                if (gb->mbc7.eeprom_write_enabled)
-                {
-                    gb->mbc7.eeprom_state = 3; /* WRITE */
-                    gb->mbc7.eeprom_bits_shifted = 0;
-                }
+            case 0b01:                     /* WRITE */
+                gb->mbc7.eeprom_state = 3; /* WRITE */
+                gb->mbc7.eeprom_bits_shifted = 0;
                 break;
 
             case 0b10:                     /* READ */
@@ -2544,21 +2538,12 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         }
         break;
 
-    /* Shifting out data for a READ command.*/
+    /* Shifting out data for a READ command. */
     case 2: /* READ */
-        if (gb->mbc7.eeprom_bits_shifted == 0)
-        {
-            /* Dummy 0 bit on the first CLK after command completes. */
-            gb->mbc7.eeprom_pins &= ~0x01;
-        }
-        else
-        {
-            gb->mbc7.eeprom_pins =
-                (gb->mbc7.eeprom_pins & ~1) | ((gb->mbc7.eeprom_read_buffer >> 15) & 1);
-            gb->mbc7.eeprom_read_buffer <<= 1;
-        }
-        gb->mbc7.eeprom_bits_shifted++;
-        if (gb->mbc7.eeprom_bits_shifted > 16) /* 1 dummy + 16 data ticks */
+        gb->mbc7.eeprom_pins =
+            (gb->mbc7.eeprom_pins & ~1) | ((gb->mbc7.eeprom_read_buffer >> 15) & 1);
+        gb->mbc7.eeprom_read_buffer <<= 1;
+        if (++gb->mbc7.eeprom_bits_shifted >= 16)
         {
             gb->mbc7.eeprom_state = 0; /* IDLE */
         }
@@ -2570,26 +2555,29 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         gb->mbc7.eeprom_shift_reg = (gb->mbc7.eeprom_shift_reg << 1) | di;
         if (++gb->mbc7.eeprom_bits_shifted >= 16)
         {
-            uint16_t data = gb->mbc7.eeprom_shift_reg;
-            if (gb->mbc7.eeprom_addr == 0xFF)
+            if (gb->mbc7.eeprom_write_enabled)
             {
-                // clear EEPROM
-                for (int i = 0; i < gb->gb_cart_ram_size / 2; i++)
-                    ((uint16_t*)gb->gb_cart_ram)[i] = data;
-                gb->direct.sram_updated = 1;
-                // playdate->system->logToConsole("mbc7 wall %04x", data);
-            }
-            else
-            {
-                // 16-bit write
-                u16* v = &((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr & 0x7F];
-                if (*v != data)
+                uint16_t data = gb->mbc7.eeprom_shift_reg;
+                if (gb->mbc7.eeprom_addr == 0xFF)
                 {
+                    // clear EEPROM
+                    for (int i = 0; i < gb->gb_cart_ram_size / 2; i++)
+                        ((uint16_t*)gb->gb_cart_ram)[i] = data;
                     gb->direct.sram_updated = 1;
-                    *v = data;
+                    // playdate->system->logToConsole("mbc7 wall %04x", data);
                 }
-                // playdate->system->logToConsole("mbc7 write %04x <- %04x",gb->mbc7.eeprom_addr,
-                // data);
+                else
+                {
+                    // 16-bit write
+                    u16* v = &((uint16_t*)gb->gb_cart_ram)[gb->mbc7.eeprom_addr & 0x7F];
+                    if (*v != data)
+                    {
+                        gb->direct.sram_updated = 1;
+                        *v = data;
+                    }
+                    // playdate->system->logToConsole("mbc7 write %04x <-
+                    // %04x",gb->mbc7.eeprom_addr, data);
+                }
             }
 
             gb->mbc7.eeprom_bits_shifted = 0;
