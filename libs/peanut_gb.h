@@ -1444,6 +1444,14 @@ enum
     HLE_MISS
 };
 
+/* __gb_hle_analyze result: whether the pc decoded to a poll-loop shape. */
+enum
+{
+    HLE_ANALYZE_SKIP = 0,  // no recognized load+compare (spam): don't cache/log
+    HLE_ANALYZE_NO,        // load+compare recognized, but jr is not a loop-back
+    HLE_ANALYZE_WARP       // full poll-loop shape, rewind set
+};
+
 typedef struct
 {
     uint16_t pc;    // post-load pc (key); 0 = empty
@@ -1796,8 +1804,8 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 // (e.g. tight-loop polling an io register)
 /* Decode the load/cmp/jr poll-loop shape around pc into a verdict slot.
  * Pure analysis: no gb side effects. rewind stays 0 (verdict NO) unless
- * the full shape matches. */
-__shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
+ * the full shape matches. Returns HLE_ANALYZE_SKIP/NO/WARP. */
+__shell static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
 {
     s->pc = gb->cpu_reg.pc;
     s->bank = (uint16_t)gb->selected_rom_bank;
@@ -1817,7 +1825,7 @@ __shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_s
         // executing from wram is okay though
         if (pc < 0xC003 || pc >= 0xEFF0)
         {
-            return;
+            return HLE_ANALYZE_SKIP;
         }
     }
 
@@ -1871,7 +1879,7 @@ __shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_s
             addr_next = pc;
             goto analyze_jr;
         }
-        goto analyze_fail;
+        goto analyze_skip;
     }
 
     {
@@ -1927,20 +1935,20 @@ __shell static void __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_s
             u8 bitop = READ8(pc + 1);
             // BIT n,A: opcodes 0x47+8n, mask 01bbb111
             if ((bitop & 0xC7) != 0x47)
-                goto analyze_fail;
+                goto analyze_skip;
             s->cmp_op = HLE_CMP_BIT_A;
             s->cmp_arg = (bitop >> 3) & 7;
         }
         else
         {
-            goto analyze_fail;
+            goto analyze_skip;
         }
     }
 
 analyze_jr:;
     // jr destination should be the read-io opcode
     if (READ8(addr_next + 1) != (uint8_t)(offset - (addr_next - pc) - 2))
-        goto analyze_fail;
+        goto analyze_no;
 
     switch (READ8(addr_next))
     {
@@ -1957,14 +1965,20 @@ analyze_jr:;
         s->jr_pol = HLE_JR_C;
         break;
     default:
-        goto analyze_fail;
+        goto analyze_no;
     }
 
     s->rewind = (int8_t)offset;
-
-analyze_fail:
 #undef READ8
-    ;
+    return HLE_ANALYZE_WARP;
+
+analyze_no:
+#undef READ8
+    return HLE_ANALYZE_NO;
+
+analyze_skip:
+#undef READ8
+    return HLE_ANALYZE_SKIP;
 }
 
 __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
@@ -1972,7 +1986,13 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
     PGB_HLE_STAT_INC(ANALYZE);
 
     hle_slot_t v;
-    __gb_hle_analyze(gb, ioaddr, &v);
+    const int result = __gb_hle_analyze(gb, ioaddr, &v);
+
+    /* Spam (no recognized load+compare shape): run normally, but never
+     * cache or log -- one-off reads would otherwise evict warpable slots
+     * and flood the fail log. */
+    if (result == HLE_ANALYZE_SKIP)
+        return ioval;
 
     if (v.pc < 0x8000)
     {
@@ -1984,7 +2004,7 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
         *s = v;
     }
 
-    if (v.rewind == 0)
+    if (result == HLE_ANALYZE_NO)
     {
         PGB_HLE_STAT_INC(FAIL);
 #ifdef TARGET_SIMULATOR
