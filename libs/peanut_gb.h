@@ -1679,7 +1679,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
             // CGB registers
 
         case 0x4C:        // KEY0 (CGB Undocumented)
-            return 0xFF;  // TODO: (?) should differ if running as cgb in compatability mode
+            return 0xFF;  // TODO: (?) differs in CGB-compat mode; low priority
 
         case 0x4D:  // KEY1 (CGB Speed Switch)
             if (gb->is_cgb_mode)
@@ -1732,9 +1732,8 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
         case 0x74:
             if (gb->is_cgb_mode)
             {
-                // TODO: the cgb can access '72 and '73,
-                // even when in DMG mode.
-                // (Do we need to emulate that?)
+                // TODO: the cgb can access '72 and '73 even when in DMG mode.
+                // Low priority - obscure quirk, game impact unknown.
                 return gb->cgb_ff7x[(addr & 0xFF) - 0x72];
             }
             return 0xFF;
@@ -4562,7 +4561,6 @@ _0x8F:
     uint16_t temp = gb->cpu_reg.a + gb->cpu_reg.a + gb->cpu_reg.f_bits.c;
     gb->cpu_reg.f_bits.z = ((temp & 0xFF) == 0x00);
     gb->cpu_reg.f_bits.n = 0;
-    /* TODO: Optimisation here? */
     gb->cpu_reg.f_bits.h = (gb->cpu_reg.a ^ gb->cpu_reg.a ^ temp) & 0x10 ? 1 : 0;
     gb->cpu_reg.f_bits.c = (temp & 0xFF00) ? 1 : 0;
     gb->cpu_reg.a = (temp & 0xFF);
@@ -5042,7 +5040,6 @@ _0xBD:
     goto exit;
 }
 
-/* TODO: Optimsation by combining similar opcode routines. */
 _0xBE:
 { /* CP B */
     uint8_t val = __gb_read_full(gb, gb->cpu_reg.hl);
@@ -5431,7 +5428,6 @@ _0xE5:
 
 _0xE6:
 { /* AND imm */
-    /* TODO: Optimisation? */
     gb->cpu_reg.a = gb->cpu_reg.a & __gb_read_full(gb, gb->cpu_reg.pc++);
     gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0x00);
     gb->cpu_reg.f_bits.n = 0;

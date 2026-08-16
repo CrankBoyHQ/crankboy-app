@@ -1028,8 +1028,6 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t* vram_line_tiles = gb->display.bg_map_base + (32 * (bg_y / 8));
 
         // points to line data for pixel offset
-        // OPTIMIZE: we could store vram tile data interleaved, e.g.
-        // row 0 of all tiles, then row 1, etc...
         uint16_t* vram_tile_data = (void*)&vram[2 * (bg_y % 8)];
 
 #if PGB_IS_CGB
@@ -1422,7 +1420,6 @@ dispatch:
             break;
         case 2:
         case 10:
-            // TODO
             cycles = 8;
             if (reg16 == 4)
                 reg16 = 2;
@@ -1924,11 +1921,6 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
 
 #if PGB_IS_CGB
     gb->gb_hle = false;
-#endif
-
-#if 0
-    // TODO: optimize serial
-    if(gb->gb_reg.SC & SERIAL_SC_TX_START) return 16;
 #endif
 
     uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
