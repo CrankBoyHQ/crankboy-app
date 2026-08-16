@@ -1728,7 +1728,6 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         jp:
-            chained = true;
             cycles = 16;
             gb->cpu_reg.pc = FETCH16(gb);
             break;
@@ -1793,7 +1792,6 @@ dispatch:
                 return chain_cycles + __gb_rare_instruction(gb, opcode);
             }
         call:
-            chained = true;
             cycles = 24;
             {
                 u16 tmp = FETCH16(gb);
