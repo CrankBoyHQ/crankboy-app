@@ -40,10 +40,7 @@
     },
     {
         "section": "Catalog Billboard Art",
-        "contributors": [
-            "Monseki (web)",
-            "rae (device)"
-        ]
+        "contributors": ["Monseki (web)", "rae (device)"]
     },
     {
         "section": "Special Thanks",
@@ -63,7 +60,9 @@
             "Christian Speckner",
             "Byuu / Near (BPS format)",
             "Marc Robledo (BPS ref. impl.)",
-            "gbdev.io community (Homebrew Hub)"
+            "gbdev.io community (Homebrew Hub)",
+            "Mr-Paul (Walnut-CGB)",
+            "Andrew O'Neil (DMG timing spec.)"
         ]
     },
     {
@@ -141,7 +140,7 @@
             "Copyright © 2003 Joergen Ibsen",
             "Copyright © 1997-2014 Simon Tatham",
             "Copyright © 2014-2020 Paul Sokolovsky",
-            "",            
+            "",
             "This software is provided 'as-is', without any express or implied warranty. In no event will the authors be held liable for any damages arising from the use of this software.",
             "",
             "Permission is granted to anyone to use this software for any purpose, including commercial applications, and to alter it and redistribute it freely, subject to the following restrictions:",
