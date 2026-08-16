@@ -280,7 +280,7 @@ __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr,
     $(__gb_write)(gb, addr + 1, v >> 8);
 }
 
-__core_section("short") static uint8_t $(__gb_fetch8)(gb_s* restrict gb)
+static inline __attribute__((always_inline)) uint8_t $(__gb_fetch8)(gb_s* restrict gb)
 {
     u16 addr = gb->cpu_reg.pc++;
     uint8_t* fetch_base = gb->ram_base[addr >> 12];
@@ -289,6 +289,8 @@ __core_section("short") static uint8_t $(__gb_fetch8)(gb_s* restrict gb)
     return $(__gb_read)(gb, addr);
 }
 
+// TODO: could probably be inlined like __gb_fetch8 for a small extra win;
+// left out-of-line for now (fetch8 carries most of the benefit).
 __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
 {
     u16 addr = gb->cpu_reg.pc;
