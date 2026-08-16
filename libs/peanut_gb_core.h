@@ -1886,7 +1886,7 @@ dispatch:
         gb->cpu_reg.hl += (opcode >= 0x20);
         gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
 #if CPU_VALIDATE == 0
-        if (inst == 0)
+        if (inst == 0 && !(PGB_IS_CGB ? gb->gb_hle : false))
         {
             if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
                 return cycles;
@@ -1896,7 +1896,7 @@ dispatch:
     }
 
 #if CPU_VALIDATE == 0
-    if (inst == 0 && chained)
+    if (inst == 0 && chained && !(PGB_IS_CGB ? gb->gb_hle : false))
     {
         if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
             return cycles;
