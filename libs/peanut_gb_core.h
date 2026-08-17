@@ -1093,7 +1093,7 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         uint8_t* vram_line_tile_attrs = vram_line_tiles + VRAM_SIZE;
 
         // points to line data for flipped-y offset
-        uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * ((7 - bg_y) % 8)];
+        uint16_t* vram_tile_data_flipped_y = (void*)&vram[2 * (7 - (bg_y % 8))];
 #endif
 
         int subx = bg_x % 8;
