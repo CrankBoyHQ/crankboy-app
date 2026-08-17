@@ -121,6 +121,7 @@
 "setopt_article" = "冠詞";
 "setopt_boot_fade" = "起動フェード";
 "setopt_bundled_games" = "同梱ゲーム";
+"setopt_cgb_gamma" = "ガンマ";
 "setopt_cgb_prompt" = "CGBプロンプト";
 "setopt_cpu_speed" = "CPUスピード";
 "setopt_crank_down" = "下";
@@ -182,6 +183,15 @@
 "setval_filename" = "ﾌｧｲﾙ名";
 "setval_full" = "すべて";
 "setval_game" = "ゲーム";
+"setval_gamma_1_0" = "1.0";
+"setval_gamma_1_2" = "1.2";
+"setval_gamma_1_4" = "1.4";
+"setval_gamma_1_6" = "1.6";
+"setval_gamma_1_8" = "1.8";
+"setval_gamma_2_0" = "2.0";
+"setval_gamma_2_2" = "2.2";
+"setval_gamma_2_4" = "2.4";
+"setval_gamma_2_6" = "2.6";
 "setval_global" = "ｸﾞﾛｰﾊﾞﾙ";
 "setval_grid_d" = "格子 (暗)";
 "setval_grid_l" = "格子 (明)";

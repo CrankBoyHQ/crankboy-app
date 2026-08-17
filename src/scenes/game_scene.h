@@ -170,6 +170,8 @@ typedef struct CB_GameScene
 
     // last applied blend bias (for change detection)
     int8_t last_cgb_bias;
+    // last applied gamma (for change detection)
+    int8_t last_cgb_gamma;
 
     // Adaptive frame_skip (preferences_frame_skip == 2)
     int adaptive_fs_headroom_counter;

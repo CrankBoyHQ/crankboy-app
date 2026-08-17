@@ -2957,6 +2957,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         gameScene->last_cgb_bias = cgb_gray_bias;
                         pgb_cgb_lut_dirty = true;
                     }
+                    if (preferences_cgb_gamma != gameScene->last_cgb_gamma)
+                    {
+                        gameScene->last_cgb_gamma = preferences_cgb_gamma;
+                        pgb_cgb_lut_dirty = true;
+                    }
                     static clalign uint8_t cb_frame_buffer[4][LCD_BUFFER_BYTES];
 
                     uint8_t* original_lcd = context->gb->lcd;
