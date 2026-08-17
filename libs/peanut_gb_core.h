@@ -920,6 +920,15 @@ static inline __attribute__((always_inline)) void __dmg_rebuild_bg_lut(uint8_t p
 }
 #endif  // PGB_IS_DMG
 
+// Per-line mode3/mode0 cycle lengths from the last rendered frame, replayed
+// during frame_skip to avoid the OAM latch + sprite-penalty scan.
+static uint16_t $(pgb_mode3_cache)[LCD_HEIGHT] = {
+    [0 ... LCD_HEIGHT - 1] = PPU_MODE_3_VRAM_MIN_CYCLES
+};
+static uint16_t $(pgb_mode0_cache)[LCD_HEIGHT] = {
+    [0 ... LCD_HEIGHT - 1] = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - PPU_MODE_3_VRAM_MIN_CYCLES
+};
+
 // renders one scanline
 // __draw (+noinline): dedicated relocatable section, kept out of the core
 // pocket; called from __gb_step_cpu via the offset-adjusted pointer.
@@ -1245,6 +1254,24 @@ __draw static void $(__gb_ppu_mode3_setup)(gb_s* gb)
     const bool besu_skip = gb->direct.first_scanline_besu_skip;
     gb->direct.first_scanline_besu_skip = 0;
 
+    if (gb->direct.frame_skip)
+    {
+        // Skipped frame: no draw, so replay the cached cycle split. The
+        // 456-cycle line cadence is unchanged; BESU first line has no penalties.
+        if (besu_skip)
+        {
+            uint16_t m3 = PPU_MODE_3_VRAM_MIN_CYCLES + (gb->gb_reg.SCX & 7);
+            gb->display.current_mode3_cycles = m3;
+            gb->display.current_mode0_cycles = LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - m3 - 2;
+        }
+        else
+        {
+            gb->display.current_mode3_cycles = $(pgb_mode3_cache)[gb->gb_reg.LY];
+            gb->display.current_mode0_cycles = $(pgb_mode0_cache)[gb->gb_reg.LY];
+        }
+        return;
+    }
+
     if (besu_skip)
     {
         // First scanline after LCD-on: BESU never sets on hardware,
@@ -1309,6 +1336,9 @@ __draw static void $(__gb_ppu_mode3_setup)(gb_s* gb)
         LCD_LINE_CYCLES - PPU_MODE_2_OAM_CYCLES - gb->display.current_mode3_cycles;
     if (besu_skip)
         gb->display.current_mode0_cycles -= 2;
+
+    $(pgb_mode3_cache)[gb->gb_reg.LY] = gb->display.current_mode3_cycles;
+    $(pgb_mode0_cache)[gb->gb_reg.LY] = gb->display.current_mode0_cycles;
 }
 
 __core_section("short") static bool $(__gb_get_op_flag)(gb_s* restrict gb, uint8_t op8)
@@ -2409,7 +2439,9 @@ done_instr_timing:
                     /* Flush batched palette gray-LUT rebuilds. Palette
                      * writes only land outside mode 3, so rebuilding here
                      * matches per-write update timing. */
-                    if unlikely (pgb_cgb_bg_pal_dirty | pgb_cgb_obj_pal_dirty)
+                    if unlikely (
+                        !gb->direct.frame_skip && (pgb_cgb_bg_pal_dirty | pgb_cgb_obj_pal_dirty)
+                    )
                         __cgb_flush_pal_dirty(gb);
 #endif
 
