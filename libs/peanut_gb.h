@@ -910,7 +910,7 @@ __shell static void __gb_do_hdma(gb_s* gb)
 #define __cgb_numer(x) ((x) < 0 ? 0 : (x) > 8 ? 8 : (x))
 
 /* Merged-blend render mode: when set, the draw cluster renders BG via the
- * pre-blended remap LUTs (slots 16-31) and sprites via pgb_obj_blend_pal.
+ * pre-blended remap LUTs (slots 16-47) and sprites via pgb_obj_blend_pal.
  * Set by the frontend around a frame render; always false between frames. */
 static bool pgb_blend_merged;
 static uint8_t pgb_obj_blend_pal[2][8];
@@ -1085,7 +1085,7 @@ __shell static void __cgb_flush_pal_dirty(gb_s* gb)
     }
 }
 
-// Build merged blend remap LUTs (BG slots 16-23 = even lines, 24-31 = odd)
+// Build merged blend remap LUTs (BG slots 16-47 = 4 variants of line parity x subx parity)
 // and OBJ blend pals from the stage-1 (bright) / stage-2 (dark) gray maps.
 // Per-byte math is exactly blend_frames' per-field SWAR with the matching
 // dither bias, so merged output is bit-identical to render+blend.
@@ -1095,11 +1095,13 @@ __section__(".rare") static void __cgb_build_blend_luts(gb_s* gb)
     {
         const uint8_t* lut_b = gb->cgb_bg_palette + 64 + pal * 256;
         const uint8_t* lut_d = gb->cgb_bg_palette + 64 + (8 + pal) * 256;
-        for (int par = 0; par < 2; par++)
+        for (int variant = 0; variant < 4; variant++)
         {
-            uint8_t* out = gb->cgb_bg_palette + 64 + (16 + par * 8 + pal) * 256;
-            uint32_t bias_e = par ? 0x11 : 0;
-            uint32_t bias_o = par ? 0 : 0x11;
+            const int line_par = (variant >> 1) & 1;
+            const int subx_par = variant & 1;
+            uint8_t* out = gb->cgb_bg_palette + 64 + (16 + variant * 8 + pal) * 256;
+            uint32_t bias_e = (line_par ^ subx_par) ? 0x11 : 0;
+            uint32_t bias_o = (line_par ^ subx_par) ? 0 : 0x11;
             for (int i = 0; i < 256; i++)
             {
                 uint32_t a = lut_b[i], b = lut_d[i];
@@ -6288,7 +6290,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_ff7x[2] = 0;
     gb->cgb_hdma_active = false;
 
-#define CGB_PALETTE_LUT_SIZE (32 * 256)
+#define CGB_PALETTE_LUT_SIZE (48 * 256)
     gb->cgb_bg_palette = malloc(64 + CGB_PALETTE_LUT_SIZE);
     gb->cgb_obj_palette = malloc(64);
     memset(gb->cgb_bg_palette, 0, 64 + CGB_PALETTE_LUT_SIZE);

@@ -763,9 +763,13 @@ static inline __attribute__((always_inline)) uint16_t __cgb_fetch_tile(
 #define CGB_LUT(gb, pal_idx) ((gb)->cgb_bg_palette + 64 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
 #define CGB_LUT_DARK(gb, pal_idx) \
     ((gb)->cgb_bg_palette + 64 + 8 * 256 + ((pal_idx) & BG_MAP_ATTR_PALETTE) * 256)
-// Merged pre-blended LUTs (slots 16-23 even lines, 24-31 odd lines)
-#define CGB_LUT_BLEND(gb, pal_idx, par) \
-    ((gb)->cgb_bg_palette + 64 + (16 + ((par) & 1) * 8 + ((pal_idx) & BG_MAP_ATTR_PALETTE)) * 256)
+// Merged pre-blended LUTs: 4 variants = line parity x subx parity.
+// Slot = 16 + ((line_par << 1) | subx_par) * 8 + palette.
+#define CGB_LUT_BLEND(gb, pal_idx, par_line, par_subx)                                          \
+    ((gb)->cgb_bg_palette + 64 +                                                                \
+     (16 +                                                                                      \
+      (((((par_line) & 1) << 1) | ((par_subx) & 1)) * 8 + ((pal_idx) & BG_MAP_ATTR_PALETTE))) * \
+         256)
 
 static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
     gb_s* restrict gb, uint8_t* restrict tile_map, uint8_t* restrict attr_map,
@@ -781,8 +785,9 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         tiledata_offset, &tile_palette_lo
     );
 
-    const uint8_t* lut_lo = pgb_blend_merged ? CGB_LUT_BLEND(gb, tile_palette_lo, gb->gb_reg.LY)
-                                             : CGB_LUT(gb, tile_palette_lo);
+    const uint8_t* lut_lo = pgb_blend_merged
+                                ? CGB_LUT_BLEND(gb, tile_palette_lo, gb->gb_reg.LY, subx)
+                                : CGB_LUT(gb, tile_palette_lo);
     uint8_t lo_p = (uint8_t)vram_tile_data_hi;
     uint8_t hi_p = (uint8_t)(vram_tile_data_hi >> 8);
     uint16_t rm_lo = __cgb_remap_tile(lo_p, hi_p, lut_lo);
@@ -826,7 +831,7 @@ static inline __attribute__((always_inline)) void __cgb_draw_tile_strip(
         uint8_t pri_hi = tile_palette_hi_val & BG_MAP_ATTR_PRIORITY;
 
         const uint8_t* lut_hi = pgb_blend_merged
-                                    ? CGB_LUT_BLEND(gb, tile_palette_hi_val, gb->gb_reg.LY)
+                                    ? CGB_LUT_BLEND(gb, tile_palette_hi_val, gb->gb_reg.LY, subx)
                                     : CGB_LUT(gb, tile_palette_hi_val);
         const uint8_t* lut_hi_dark = NULL;
         if (pixels_alt)
