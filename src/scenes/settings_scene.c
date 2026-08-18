@@ -1029,17 +1029,19 @@ static void CB_init_settings_labels(void)
     cgb_auto_bias_labels[2] = T(setval_contrast);
     cgb_auto_bias_labels[3] = NULL;
 
-    cgb_gamma_labels = cb_malloc(10 * sizeof(const char*));
-    cgb_gamma_labels[0] = T(setval_gamma_1_0);
-    cgb_gamma_labels[1] = T(setval_gamma_1_2);
-    cgb_gamma_labels[2] = T(setval_gamma_1_4);
-    cgb_gamma_labels[3] = T(setval_gamma_1_6);
-    cgb_gamma_labels[4] = T(setval_gamma_1_8);
-    cgb_gamma_labels[5] = T(setval_gamma_2_0);
-    cgb_gamma_labels[6] = T(setval_gamma_2_2);
-    cgb_gamma_labels[7] = T(setval_gamma_2_4);
-    cgb_gamma_labels[8] = T(setval_gamma_2_6);
-    cgb_gamma_labels[9] = NULL;
+    cgb_gamma_labels = cb_malloc(12 * sizeof(const char*));
+    cgb_gamma_labels[0] = T(setval_gamma_0_6);
+    cgb_gamma_labels[1] = T(setval_gamma_0_8);
+    cgb_gamma_labels[2] = T(setval_gamma_1_0);
+    cgb_gamma_labels[3] = T(setval_gamma_1_2);
+    cgb_gamma_labels[4] = T(setval_gamma_1_4);
+    cgb_gamma_labels[5] = T(setval_gamma_1_6);
+    cgb_gamma_labels[6] = T(setval_gamma_1_8);
+    cgb_gamma_labels[7] = T(setval_gamma_2_0);
+    cgb_gamma_labels[8] = T(setval_gamma_2_2);
+    cgb_gamma_labels[9] = T(setval_gamma_2_4);
+    cgb_gamma_labels[10] = T(setval_gamma_2_6);
+    cgb_gamma_labels[11] = NULL;
 
     audio_output_labels = cb_malloc(3 * sizeof(const char*));
     audio_output_labels[0] = T(setval_mono);
@@ -2540,7 +2542,7 @@ static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int
         .values = cgb_gamma_labels,
         .description = T(setdsc_cgb_gamma),
         .pref_var = &preferences_cgb_gamma,
-        .max_value = 9,
+        .max_value = 11,
     };
 
     CB_ASSERT(i < MAX_SECTION_ENTRIES - 1);

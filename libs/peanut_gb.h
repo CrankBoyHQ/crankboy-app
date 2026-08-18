@@ -936,8 +936,24 @@ static uint32_t cgb_bg_patbin[8][256];
 
 /* Perceptual (gamma) luminance correction: linear luma 0-93 -> perceptual 0-93.
  * Applied at the luma source so gray mapping, histogram and range scan all
- * operate in perceptual space. Row i = gamma (1.0 + 0.2*i); default 6 = 2.2x. */
-static const uint8_t cgb_gamma_luts[9][94] = {
+ * operate in perceptual space. Row i = gamma (0.6 + 0.2*i); default 8 = 2.2x. */
+static const uint8_t cgb_gamma_luts[11][94] = {
+    {
+        /* gamma 0.6 */
+        0,  0,  0,  0,  0,  1,  1,  1,  2,  2,  2,  3,  3,  4,  4,  4,  5,  5,  6,
+        7,  7,  8,  8,  9,  10, 10, 11, 12, 13, 13, 14, 15, 16, 17, 17, 18, 19, 20,
+        21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 38, 39, 40,
+        41, 42, 44, 45, 46, 47, 49, 50, 51, 53, 54, 55, 57, 58, 59, 61, 62, 64, 65,
+        66, 68, 69, 71, 72, 74, 75, 77, 78, 80, 82, 83, 85, 86, 88, 90, 91, 93,
+    },
+    {
+        /* gamma 0.8 */
+        0,  0,  1,  1,  2,  2,  3,  4,  4,  5,  6,  6,  7,  8,  9,  10, 10, 11, 12,
+        13, 14, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 25, 26, 27, 28, 29,
+        30, 31, 32, 33, 34, 35, 36, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
+        50, 52, 53, 54, 55, 56, 57, 58, 59, 61, 62, 63, 64, 65, 66, 68, 69, 70, 71,
+        72, 73, 75, 76, 77, 78, 79, 81, 82, 83, 84, 86, 87, 88, 89, 91, 92, 93,
+    },
     {
         /* gamma 1.0 */
         0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15, 16, 17, 18,
@@ -1017,8 +1033,8 @@ static inline int __cgb_gamma_index(void)
     int g = preferences_cgb_gamma;
     if (g < 0)
         g = 0;
-    if (g > 8)
-        g = 8;
+    if (g > 10)
+        g = 10;
     return g;
 }
 

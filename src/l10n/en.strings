@@ -172,7 +172,7 @@
 "setdsc_gray_mode" = "How the CGB grayscale conversion is tuned.\n\nManual: set the grayscale bias yourself.\n\nAuto: picks the best of Dark/Neutral/Bright for each scene.\n\nContrast: normalizes contrast to the \"colors\" actually on screen.";
 "setdsc_grayscale_bias" = "Manually shift CGB grayscale conversion between 5 levels, from darker to brighter shades.\n\nOnly available in Manual mode.";
 "setdsc_grayscale_bias_manual" = "Manually shift CGB grayscale conversion between 5 levels, from darker to brighter shades.";
-"setdsc_cgb_gamma" = "Adjusts the perceptual gamma of the CGB grayscale conversion.\n\nHigher values brighten dark areas at the cost of highlights.";
+"setdsc_cgb_gamma" = "Adjusts the perceptual gamma of the CGB grayscale conversion.\n\nHigher values brighten dark areas at the cost of highlights. Lower values darken the image.";
 "setdsc_rewind" = "Rewind up to 10 seconds of gameplay.\n\nHold Ⓑ or Up and undock the crank to enter rewind.\n\nHold Ⓑ or Up while cranking to scrub.\n\nRelease Ⓑ or Up then dock the crank to exit.\n\nDMG only.";
 "setdsc_overclock" = "Runs the emulated CPU faster between frames to reduce in-game lag.\n\nThe Playdate must work harder, so results vary and timing may be less accurate.\n\nOn Game Boy Color at double speed, x4 is limited to x2.";
 "setdsc_overclock_catalog" = "Runs the emulated CPU faster between frames to reduce in-game lag.\n\nThe Playdate must work harder, so results vary and timing may be less accurate.\n\nIn CGB double-speed mode, x4 is limited to x2.";
@@ -535,6 +535,8 @@
 "setval_1" = "1";
 "setval_2" = "2";
 "setval_3" = "3";
+"setval_gamma_0_6" = "0.6";
+"setval_gamma_0_8" = "0.8";
 "setval_gamma_1_0" = "1.0";
 "setval_gamma_1_2" = "1.2";
 "setval_gamma_1_4" = "1.4";
