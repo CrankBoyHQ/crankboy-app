@@ -202,7 +202,7 @@
 
 // Library Scene
 "Library_GetRoms" = "Get ROMs...";
-"lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), or try CGB mode regardless. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
+"lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only" = "This ROM is marked CGB-only.\n \nYou can try launching as a standard DMG ROM, or in CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only_one_time" = "This ROM is marked CGB-only.\n\nThe game will launch in CGB mode.\n\nCrankBoy only has experimental support for CGB (\"Color\") emulation."
 "lib_cgb_prompt_cgb_compat" = "This ROM supports CGB mode.\n \nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
