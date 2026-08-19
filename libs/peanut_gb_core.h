@@ -1361,6 +1361,71 @@ __core_section("short") static u16 $(__gb_add16)(gb_s* restrict gb, u16 a, u16 b
     return temp;
 }
 
+/* PPU T-cycles to next TIMA overflow (0xFFFFFFFF if disabled). Shared with
+ * __gb_calc_halt_cycles so the batch and halt paths can't drift. */
+__core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
+{
+    if (!gb->gb_reg.tac_enable)
+        return 0xFFFFFFFF;
+
+#if PGB_IS_CGB
+    uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
+#else
+    uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+#endif
+    if (tima_threshold == 0)
+        tima_threshold = 1;
+
+    uint16_t cycles_until_next_tick = tima_threshold - (gb->counter.tima_count % tima_threshold);
+    if (cycles_until_next_tick == 0)
+        cycles_until_next_tick = tima_threshold;
+    uint16_t ticks_until_overflow = 0x100 - gb->gb_reg.TIMA;
+
+    if (gb->gb_reg.tima_overflow_delay)
+        return 1;
+
+    return ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
+}
+
+/* Batch budget (CPU T): bound so the batch crosses <=1 PPU mode boundary and
+ * never runs past a pending TIMA overflow. */
+__core static unsigned $(__gb_batch_budget)(gb_s* gb)
+{
+    // PPU-domain distance to the *second* mode boundary.
+    unsigned d1, d2;
+    switch (gb->lcd_mode)
+    {
+    case LCD_SEARCH_OAM:  // mode 2 (80 T)
+        d1 = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+        d2 = PPU_MODE_3_VRAM_MIN_CYCLES;  // this line's mode 3 not computed yet
+        break;
+    case LCD_TRANSFER:  // mode 3 (172..289 T)
+        d1 = gb->display.current_mode3_cycles - gb->counter.lcd_count;
+        d2 = gb->display.current_mode0_cycles;
+        break;
+    case LCD_HBLANK:  // mode 0 (87..204 T)
+        d1 = gb->display.current_mode0_cycles - gb->counter.lcd_count;
+        d2 = PPU_MODE_2_OAM_CYCLES;
+        break;
+    case LCD_VBLANK:  // 456 T/line
+        d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
+        d2 = (gb->gb_reg.LY == 153) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
+        break;
+    }
+    unsigned budget_ppu = d1 + d2;
+
+    uint32_t timer = $(__gb_timer_distance)(gb);
+    if (timer < budget_ppu)
+        budget_ppu = timer;
+
+    if (budget_ppu > BATCH_BUDGET_MAX)
+        budget_ppu = BATCH_BUDGET_MAX;
+
+    // CPU T-cycles: shift for CGB double-speed, then subtract the overshoot.
+    unsigned budget = budget_ppu << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
+    return (budget > BATCH_OVERSHOOT) ? (budget - BATCH_OVERSHOOT) : 1;
+}
+
 __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 {
 #define FETCH8(gb) $(__gb_fetch8)(gb)
@@ -1485,8 +1550,7 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
     // accumulated T-cycles this invocation + the cycle budget
     unsigned batch_cycles = 0;
-    const unsigned batch_budget = CPU_BATCH_CYCLE_BUDGET
-                                  << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
+    const unsigned batch_budget = $(__gb_batch_budget)(gb);
 
     /* Rebase offset for the computed-goto handler table. Label addresses are
      * link-time flash addresses; the core cluster may run from a DTCM copy,
@@ -1990,31 +2054,7 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
 
     uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 
-    if (gb->gb_reg.tac_enable)
-    {
-#if PGB_IS_CGB
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
-#else
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
-#endif
-
-        if (tima_threshold == 0)
-            tima_threshold = 1;
-
-        uint16_t cycles_until_next_tick =
-            tima_threshold - (gb->counter.tima_count % tima_threshold);
-        if (cycles_until_next_tick == 0)
-            cycles_until_next_tick = tima_threshold;
-        uint16_t ticks_until_overflow = 0x100 - gb->gb_reg.TIMA;
-
-        src[1] =
-            ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
-
-        if (gb->gb_reg.tima_overflow_delay)
-        {
-            src[1] = 1;
-        }
-    }
+    src[1] = $(__gb_timer_distance)(gb);
 
     // PPU event calculation
     uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);

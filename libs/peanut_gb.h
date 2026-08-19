@@ -177,7 +177,11 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
 #define PPU_PEEK_CYCLES 24
-#define CPU_BATCH_CYCLE_BUDGET 48
+/* Batch loop can overshoot budget by one CALL (24 T): BATCH_OVERSHOOT is that
+ * (CPU T). BATCH_BUDGET_MAX caps the PPU window so timer/serial interrupts stay
+ * low-latency in mode 3 / VBlank. */
+#define BATCH_OVERSHOOT 23
+#define BATCH_BUDGET_MAX 192
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
