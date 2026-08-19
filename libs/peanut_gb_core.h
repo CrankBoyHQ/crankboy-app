@@ -289,8 +289,6 @@ static inline __attribute__((always_inline)) uint8_t $(__gb_fetch8)(gb_s* restri
     return $(__gb_read)(gb, addr);
 }
 
-// TODO: could probably be inlined like __gb_fetch8 for a small extra win;
-// left out-of-line for now (fetch8 carries most of the benefit).
 __core_section("short") static uint16_t $(__gb_fetch16)(gb_s* restrict gb)
 {
     u16 addr = gb->cpu_reg.pc;
@@ -1369,8 +1367,108 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 
 #define FETCH16(gb) $(__gb_fetch16)(gb)
 
+    /* halt-bug fixup + predecode op8 + jump to handler */
+#define NEXT_DISPATCH()                                                          \
+    do                                                                           \
+    {                                                                            \
+        if unlikely (gb->gb_halt_bug)                                            \
+        {                                                                        \
+            if (gb->gb_halt_bug == 1)                                            \
+                gb->cpu_reg.pc = gb->gb_halt_bug_pc;                             \
+            gb->gb_halt_bug--;                                                   \
+        }                                                                        \
+        op8 = ((opcode & ~0xC0) / 8) ^ 1;                                        \
+        goto*(void*)((char*)pgb_op_handlers[pgb_op_cluster[opcode]] + itcm_off); \
+    } while (0)
+
+#if CPU_VALIDATE == 0
+    /* Batch tail: accumulate cycles, refresh pgb_batch_elapsed, decrement the
+     * IME countdown, then stop on halt/stop/HLE, a dispatchable interrupt, or
+     * the cycle budget -- else fetch the next opcode and dispatch. */
+#define CHAIN_OR_RETURN()       \
+    do                          \
+    {                           \
+        batch_cycles += cycles; \
+        goto next_instruction;  \
+    } while (0)
+
+#define CHAIN_NOCLAMP_OR_RETURN()               \
+    do                                          \
+    {                                           \
+        gb->cpu_reg.hl += (opcode >= 0x20);     \
+        gb->cpu_reg.hl -= 2 * (opcode >= 0x30); \
+        batch_cycles += cycles;                 \
+        goto next_instruction;                  \
+    } while (0)
+
+#define TAIL_RARE()                                 \
+    do                                              \
+    {                                               \
+        cycles = __gb_rare_instruction(gb, opcode); \
+        CHAIN_OR_RETURN();                          \
+    } while (0)
+
+#define TAIL_CB()                        \
+    do                                   \
+    {                                    \
+        cycles = $(__gb_execute_cb)(gb); \
+        CHAIN_OR_RETURN();               \
+    } while (0)
+#else
+#define CHAIN_OR_RETURN() \
+    do                    \
+    {                     \
+        return cycles;    \
+    } while (0)
+
+#define CHAIN_NOCLAMP_OR_RETURN()               \
+    do                                          \
+    {                                           \
+        gb->cpu_reg.hl += (opcode >= 0x20);     \
+        gb->cpu_reg.hl -= 2 * (opcode >= 0x30); \
+        return cycles;                          \
+    } while (0)
+
+#define TAIL_RARE()                               \
+    do                                            \
+    {                                             \
+        return __gb_rare_instruction(gb, opcode); \
+    } while (0)
+
+#define TAIL_CB()                      \
+    do                                 \
+    {                                  \
+        return $(__gb_execute_cb)(gb); \
+    } while (0)
+#endif
+
+    /* Opcode -> handler cluster. */
+    static const uint8_t pgb_op_cluster[256] = {
+        0,  2,  3,  4,  5,  5,  6,  7,  28, 8,  3,  4,  5,  5,  6,  7,  28, 2,  3,  4,  5,  5,
+        6,  7,  1,  8,  3,  4,  5,  5,  6,  7,  1,  2,  3,  4,  5,  5,  6,  7,  1,  8,  3,  4,
+        5,  5,  6,  7,  1,  2,  3,  4,  5,  5,  6,  7,  1,  8,  3,  4,  5,  5,  6,  7,  9,  9,
+        9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
+        9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,
+        9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
+        10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 11, 19, 13, 20, 15, 21, 17, 18, 11, 12, 13, 14, 15, 16, 17, 18, 11, 19, 13, 20,
+        15, 21, 17, 18, 22, 12, 23, 25, 28, 16, 17, 18, 28, 24, 27, 26, 28, 28, 17, 18, 22, 12,
+        23, 25, 28, 16, 17, 18, 28, 24, 27, 26, 28, 28, 17, 18,
+    };
+
+    static const void* const pgb_op_handlers[] = {
+        &&h_nop,      &&h_jr,        &&h_ld_r16_d16, &&h_ld_a_r16, &&h_inc_dec_r16, &&h_inc_dec_r8,
+        &&h_ld_r8_d8, &&h_misc_flag, &&h_add_hl_r16, &&h_ld_x_x,   &&h_alu,         &&h_ret_cc,
+        &&h_pop,      &&h_jp_cc,     &&h_jp,         &&h_call_cc,  &&h_push,        &&h_alu_d8,
+        &&h_rst,      &&h_ret,       &&h_cb,         &&h_call,     &&h_ldh_a8,      &&h_ldh_c,
+        &&h_jp_hl,    &&h_di,        &&h_ei,         &&h_ld_a16,   &&h_rare,
+    };
+
     u16 _pc = gb->cpu_reg.pc;
     u8 opcode;
+    u8 op8;
     // Fast path: any region mapped in ram_base (ROM, WRAM, echo) + HRAM.
     // VRAM/IO/cart-RAM fetches fall through to preserve read side effects.
     uint8_t* fetch_base = gb->ram_base[_pc >> 12];
@@ -1382,564 +1480,496 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         opcode = $(__gb_read)(gb, _pc);
     gb->cpu_reg.pc++;
     unsigned cycles = 4;  // T-cycles (was float M-cycles)
-    unsigned chain_cycles = 0;
     unsigned src;
     u8 srcidx;
 
-    bool chained = false;
-    int inst = 0;
+    // accumulated T-cycles this invocation + the cycle budget
+    unsigned batch_cycles = 0;
+    const unsigned batch_budget = CPU_BATCH_CYCLE_BUDGET
+                                  << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
 
-    goto dispatch;
+    /* Rebase offset for the computed-goto handler table. Label addresses are
+     * link-time flash addresses; the core cluster may run from a DTCM copy,
+     * so every dispatch adds this offset (0 when running from flash). */
+#if ITCM_CORE
+    const intptr_t itcm_off = core_itcm_offset;
+#else
+    const intptr_t itcm_off = 0;
+#endif
 
-second_instruction:
-    inst = 1;
-    chain_cycles = cycles;
-    cycles = 4;
-    opcode = FETCH8(gb);
-    chained = false;
+    NEXT_DISPATCH();
 
-dispatch:
+h_nop:
+    CHAIN_OR_RETURN();
+
+h_jr:
 {
-    if unlikely (gb->gb_halt_bug)
+    // jr
+    cycles = 8;
+    bool flag = $(__gb_get_op_flag)(gb, op8);
+    if (opcode == 0x18)
+        flag = 1;
+    if (flag)
     {
-        if (gb->gb_halt_bug == 1)
-            gb->cpu_reg.pc = gb->gb_halt_bug_pc;
-        gb->gb_halt_bug--;
+        cycles = 12;
+        gb->cpu_reg.pc += (s8)FETCH8(gb);
     }
-
-    const u8 op8 = ((opcode & ~0xC0) / 8) ^ 1;
-
-    switch (opcode >> 6)
+    else
     {
-    case 0:
-    {
-        int reg8 = 2 * (opcode / 16) | (op8 & 1);  // i.e. b, c, d, e, ...
-        int reg16 = reg8 / 2;                      // i.e. bc, de, hl...
-        if (reg16 == 3)
-            reg16 = 4;  // hack for SP
-        switch (opcode % 16)
-        {
-        case 0:
-        case 8:
-            if (opcode == 0)
-            {
-                chained = true;
-                break;  // nop
-            }
-            if (opcode == 0x10)  // STOP
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            if (opcode < 0x18)
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            {
-                // jr
-                cycles = 8;
-                bool flag = $(__gb_get_op_flag)(gb, op8);
-                if (opcode == 0x18)
-                    flag = 1;
-                if (flag)
-                {
-                    cycles = 12;
-                    gb->cpu_reg.pc += (s8)FETCH8(gb);
-                }
-                else
-                {
-                    gb->cpu_reg.pc++;
-                }
-            }
-            chained = true;
-            break;
-        case 1:
-            // LD r16, d16
-            cycles = 12;
-            gb->cpu_reg_raw16[reg16] = FETCH16(gb);
-            break;
-        case 2:
-        case 10:
-            cycles = 8;
-            if (reg16 == 4)
-                reg16 = 2;
-
-            if (op8 % 2 == 1)
-            {
-                // ld (r16), a
-                $(__gb_write)(gb, gb->cpu_reg_raw16[reg16], gb->cpu_reg.a);
-            }
-            else
-            {
-                // ld a, (r16)
-                gb->cpu_reg.a = $(__gb_read)(gb, gb->cpu_reg_raw16[reg16]);
-            }
-
-            goto inc_dec_hl;
-            break;
-        case 3:
-        case 11:
-        {
-            // inc r16
-            // dec r16
-            s16 offset = (op8 % 2 == 1) ? 1 : -1;
-            gb->cpu_reg_raw16[reg16] += offset;
-            cycles = 8;
-        }
-            chained = true;
-            break;
-
-        // inc/dec 8-bit
-        case 4:
-        case 5:
-        case 12:
-        case 13:
-        {
-            const u8 is_dec = opcode & 1;
-            const s8 offset = is_dec ? -1 : 1;
-
-            u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
-            u8 tmp = src + offset;
-
-            u8 f = gb->cpu_reg.f & 0x1F;
-            f |= (tmp == 0) ? 0x80 : 0;
-            f |= is_dec ? 0x40 : 0;
-            f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? 0x20 : 0;
-            gb->cpu_reg.f = f;
-
-            if (reg8 == 7)
-            {
-                cycles = 12;
-                $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
-            }
-            else
-            {
-                gb->cpu_reg_raw[reg8] = tmp;
-            }
-        }
-            chained = true;
-            break;
-
-        case 6:
-        case 14:
-            srcidx = 0;
-            src = FETCH8(gb);
-            cycles = 8;
-            goto ld_x_x;
-            break;
-
-        case 7:
-        case 15:
-            // misc flag ops
-            if (opcode < 0x20)
-            {
-                // rlca
-                // rrca
-                // rla
-                // rra
-                u32 v = gb->cpu_reg.a << 8;
-                if (op8 & 2)
-                {
-                    // carry bit will rotate into a
-                    u32 c = gb->cpu_reg.f_bits.c;
-                    v |= (c << 7) | (c << 16);
-                }
-                else
-                {
-                    // opposite bit will rotate into a
-                    v = v | (v << 8);
-                    v = v | (v >> 8);
-                }
-                if (op8 & 1)
-                {
-                    v <<= 1;
-                }
-                else
-                {
-                    v >>= 1;
-                }
-                gb->cpu_reg.f = 0;
-                gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
-                gb->cpu_reg.a = (v >> 8) & 0xFF;
-                chained = true;
-            }
-            else if unlikely (opcode == 0x27)  // daa
-            {
-                u16 a = gb->cpu_reg.a;
-                if (gb->cpu_reg.f_bits.n)
-                {
-                    if (gb->cpu_reg.f_bits.h)
-                        a = (a - 0x06) & 0xFF;
-                    if (gb->cpu_reg.f_bits.c)
-                        a -= 0x60;
-                }
-                else
-                {
-                    if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
-                        a += 0x06;
-                    if (gb->cpu_reg.f_bits.c || a > 0x9F)
-                        a += 0x60;
-                }
-                if ((a & 0x100) == 0x100)
-                    gb->cpu_reg.f_bits.c = 1;
-                gb->cpu_reg.a = a;
-                gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
-                gb->cpu_reg.f_bits.h = 0;
-                chained = true;
-            }
-            else if (opcode == 0x2F)
-            {
-                gb->cpu_reg.a ^= 0xFF;
-                gb->cpu_reg.f_bits.n = 1;
-                gb->cpu_reg.f_bits.h = 1;
-                chained = true;
-            }
-            else if (op8 % 2 == 1)
-            {
-                gb->cpu_reg.f_bits.c = 1;
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
-                chained = true;
-            }
-            else if (op8 % 2 == 0)
-            {
-                gb->cpu_reg.f_bits.c ^= 1;
-                gb->cpu_reg.f_bits.n = 0;
-                gb->cpu_reg.f_bits.h = 0;
-                chained = true;
-            }
-            break;
-
-        case 9:
-            // add hl, r16
-            cycles = 8;
-            gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
-            chained = true;
-            break;
-
-        default:
-            __builtin_unreachable();
-        }
-    }
-    break;
-    case 1:
-    case 2:
-    {
-        chained = true;
-        srcidx = (opcode % 8) ^ 1;
-        if (srcidx == 7)
-        {
-            src = $(__gb_read)(gb, gb->cpu_reg.hl);
-            cycles = 8;
-        }
-        else
-            src = gb->cpu_reg_raw[srcidx];
-
-        switch (opcode >> 6)
-        {
-        case 1:
-            // LD x, x
-        ld_x_x:
-        {
-            u8 dstidx = op8;
-            if (dstidx == 7)
-            {
-                if unlikely (srcidx == 7)
-                {
-                    return chain_cycles + __gb_rare_instruction(gb, opcode);
-                }
-                else
-                {
-                    cycles += 4;
-                    $(__gb_write)(gb, gb->cpu_reg.hl, src);
-                }
-            }
-            else
-            {
-                gb->cpu_reg_raw[dstidx] = src;
-            }
-        }
-        break;
-        case 2:
-        arithmetic:
-            switch (op8)
-            {
-            case 0:  // ADC
-            case 1:  // ADD
-            case 2:  // SBC
-            case 3:  // SUB
-            case 6:  // CP
-            {
-                // carry bit
-                unsigned v = src;
-                if (op8 % 2 == 0 && op8 != 6)
-                {
-                    v += gb->cpu_reg.f_bits.c;
-                }
-
-                // subtraction
-                gb->cpu_reg.f_bits.n = 0;
-                if (op8 & 2)
-                {
-                    v = -v;
-                    gb->cpu_reg.f_bits.n = 1;
-                }
-
-                // adder
-                const u16 temp = gb->cpu_reg.a + v;
-                gb->cpu_reg.f_bits.z = ((temp & 0xFF) == 0x00);
-                gb->cpu_reg.f_bits.h = ((gb->cpu_reg.a ^ src ^ temp) >> 4) & 1;
-                gb->cpu_reg.f_bits.c = temp >> 8;
-
-                if (op8 != 6)
-                {
-                    gb->cpu_reg.a = temp & 0xFF;
-                }
-            }
-            break;
-            case 4:  // XOR
-                gb->cpu_reg.a ^= src;
-                gb->cpu_reg.f = 0;
-                gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
-                break;
-            case 5:  // AND
-                gb->cpu_reg.a &= src;
-                gb->cpu_reg.f = 0;
-                gb->cpu_reg.f_bits.h = 1;
-                gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
-                break;
-            case 7:  // OR
-                gb->cpu_reg.a |= src;
-                gb->cpu_reg.f = 0;
-                gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
-                break;
-            default:
-                __builtin_unreachable();
-            }
-            break;
-        }
-    }
-    break;
-    case 3:
-    {
-        bool flag = $(__gb_get_op_flag)(gb, op8);
-        if (opcode % 8 == 3)
-            flag = 1;
-        switch ((opcode % 16) | ((opcode & 0x20) >> 1))
-        {
-        case 0x00:
-        case 0x08:  // ret [flag]
-            cycles = 8;
-            if (flag)
-            {
-                goto ret;
-            }
-            break;
-        case 0x01:
-        case 0x11:  // pop
-            cycles = 12;
-            src = $(__gb_pop16)(gb);
-            if (op8 / 2 == 3)
-            {
-                gb->cpu_reg.a = src >> 8;
-                gb->cpu_reg.f = src & 0xF0;
-            }
-            else
-            {
-                gb->cpu_reg_raw16[op8 / 2] = src;
-            }
-            chained = true;
-            break;
-        case 0x02:
-        case 0xA:  // jp [flag]
-            cycles = 12;
-            if (flag)
-            {
-                goto jp;
-            }
-            gb->cpu_reg.pc += 2;
-            break;
-        case 0x03:  // jp
-            if unlikely (opcode == 0xD3)
-            {
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            }
-        jp:
-            cycles = 16;
-            gb->cpu_reg.pc = FETCH16(gb);
-            break;
-        case 0x04:
-        case 0x0C:  // call [flag]
-            cycles = 12;
-            if (flag)
-            {
-                goto call;
-            }
-            gb->cpu_reg.pc += 2;
-            break;
-        case 0x05:
-        case 0x15:  // push
-            cycles = 16;
-            src = gb->cpu_reg_raw16[op8 / 2];
-            if (op8 / 2 == 3)
-            {
-                src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
-            }
-            $(__gb_push16)(gb, src);
-            chained = true;
-            break;
-        case 0x06:
-        case 0x0E:
-        case 0x16:
-        case 0x1E:  // arith d8
-            cycles = 8;
-            src = FETCH8(gb);
-            goto arithmetic;
-            break;
-        case 0x07:
-        case 0x0F:
-        case 0x17:
-        case 0x1F:  // rst
-            chained = true;
-            cycles = 16;
-            $(__gb_push16)(gb, gb->cpu_reg.pc);
-            gb->cpu_reg.pc = 8 * (op8 ^ 1);
-            break;
-        case 0x09:  // ret, reti
-            if unlikely (opcode == 0xD9)
-            {
-                gb->gb_ime = 1;
-                gb->gb_ime_countdown = 0;
-                goto ret_common;
-            }
-        ret:
-            chained = true;
-        ret_common:
-            cycles += 12;
-            gb->cpu_reg.pc = $(__gb_pop16)(gb);
-            break;
-        case 0x0B:  // 0xCB prefix, 0xDB invalid
-            if likely (opcode == 0xCB)
-                return chain_cycles + $(__gb_execute_cb)(gb);
-            return chain_cycles + __gb_rare_instruction(gb, opcode);
-            break;
-        case 0x0D:  // call
-            if unlikely (op8 & 2)
-            {
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            }
-        call:
-            cycles = 24;
-            {
-                u16 tmp = FETCH16(gb);
-                $(__gb_push16)(gb, gb->cpu_reg.pc);
-                gb->cpu_reg.pc = tmp;
-            }
-            break;
-        case 0x10:  // ld (a8)
-        {
-            cycles = 12;
-            // repurpose 'srcidx'
-            srcidx = (FETCH8(gb));
-        hram_op:;
-            u16 addr = 0xFF00 | srcidx;
-            if (opcode & 0x10)
-            {
-                u8 v = $(__gb_read)(gb, addr);
-                gb->cpu_reg.a = v;
-            }
-            else
-            {
-                $(__gb_write)(gb, addr, gb->cpu_reg.a);
-            }
-        }
-        break;
-        case 0x12:  // ld (C)
-        {
-            cycles = 8;
-            srcidx = gb->cpu_reg.c;
-            chained = true;
-            goto hram_op;
-        }
-        break;
-        case 0x19:  // pc/sp hl (0xE9 JP HL, 0xF9 LD SP, HL)
-            if (opcode == 0xF9)
-            {
-                gb->cpu_reg.sp = gb->cpu_reg.hl;
-                cycles = 8;
-            }
-            else  // 0xE9
-            {
-                gb->cpu_reg.pc = gb->cpu_reg.hl;
-                cycles = 4;
-            }
-            chained = true;
-            break;
-        case 0x13:  // DI (0xF3), 0xE3 invalid
-            if unlikely (opcode != 0xF3)
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            chained = true;
-            cycles = 4;
-            gb->gb_ime = 0;
-            gb->gb_ime_countdown = 0;
-            break;
-        case 0x1B:  // EI (0xFB), 0xEB invalid
-            if unlikely (opcode != 0xFB)
-                return chain_cycles + __gb_rare_instruction(gb, opcode);
-            chained = true;
-            cycles = 4;
-            gb->gb_ime_countdown = 2;
-            break;
-        case 0x14:
-        case 0x1C:
-        case 0x1D:  // illegal
-        case 0x18:  // SP+8
-            return chain_cycles + __gb_rare_instruction(gb, opcode);
-            break;
-        case 0x1A:  // ld (a16)
-        {
-            cycles = 16;
-            u16 v = FETCH16(gb);
-            if (op8 & 2)
-            {
-                gb->cpu_reg.a = $(__gb_read)(gb, v);
-            }
-            else
-            {
-                $(__gb_write)(gb, v, gb->cpu_reg.a);
-            }
-        }
-        break;
-        default:
-            __builtin_unreachable();
-        }
-    }
+        gb->cpu_reg.pc++;
     }
 }
+    CHAIN_OR_RETURN();
 
-    if (false)
+h_ld_r16_d16:
+{
+    int reg8 = 2 * (opcode / 16) | (op8 & 1);
+    int reg16 = reg8 / 2;
+    if (reg16 == 3)
+        reg16 = 4;
+    cycles = 12;
+    gb->cpu_reg_raw16[reg16] = FETCH16(gb);
+}
+    CHAIN_OR_RETURN();
+
+h_ld_a_r16:
+{
+    int reg8 = 2 * (opcode / 16) | (op8 & 1);
+    int reg16 = reg8 / 2;
+    if (reg16 == 3)
+        reg16 = 4;
+    cycles = 8;
+    if (reg16 == 4)
+        reg16 = 2;
+
+    if (op8 % 2 == 1)
     {
-    inc_dec_hl:
-        gb->cpu_reg.hl += (opcode >= 0x20);
-        gb->cpu_reg.hl -= 2 * (opcode >= 0x30);
-#if CPU_VALIDATE == 0
-        if (inst == 0 && !(PGB_IS_CGB ? gb->gb_hle : false))
+        $(__gb_write)(gb, gb->cpu_reg_raw16[reg16], gb->cpu_reg.a);
+    }
+    else
+    {
+        gb->cpu_reg.a = $(__gb_read)(gb, gb->cpu_reg_raw16[reg16]);
+    }
+}
+    CHAIN_NOCLAMP_OR_RETURN();
+
+h_inc_dec_r16:
+{
+    int reg8 = 2 * (opcode / 16) | (op8 & 1);
+    int reg16 = reg8 / 2;
+    if (reg16 == 3)
+        reg16 = 4;
+    s16 offset = (op8 % 2 == 1) ? 1 : -1;
+    gb->cpu_reg_raw16[reg16] += offset;
+    cycles = 8;
+}
+    CHAIN_OR_RETURN();
+
+h_inc_dec_r8:
+{
+    int reg8 = 2 * (opcode / 16) | (op8 & 1);
+    const u8 is_dec = opcode & 1;
+    const s8 offset = is_dec ? -1 : 1;
+
+    u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
+    u8 tmp = src + offset;
+
+    u8 f = gb->cpu_reg.f & 0x1F;
+    f |= (tmp == 0) ? 0x80 : 0;
+    f |= is_dec ? 0x40 : 0;
+    f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? 0x20 : 0;
+    gb->cpu_reg.f = f;
+
+    if (reg8 == 7)
+    {
+        cycles = 12;
+        $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
+    }
+    else
+    {
+        gb->cpu_reg_raw[reg8] = tmp;
+    }
+}
+    CHAIN_OR_RETURN();
+
+h_ld_r8_d8:
+    srcidx = 0;
+    src = FETCH8(gb);
+    cycles = 8;
+    goto ld_x_x;
+
+h_misc_flag:
+    // misc flag ops
+    if (opcode < 0x20)
+    {
+        // rlca / rrca / rla / rra
+        u32 v = gb->cpu_reg.a << 8;
+        if (op8 & 2)
         {
-            if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-                return cycles;
-            goto second_instruction;
+            u32 c = gb->cpu_reg.f_bits.c;
+            v |= (c << 7) | (c << 16);
         }
-#endif
+        else
+        {
+            v = v | (v << 8);
+            v = v | (v >> 8);
+        }
+        if (op8 & 1)
+        {
+            v <<= 1;
+        }
+        else
+        {
+            v >>= 1;
+        }
+        gb->cpu_reg.f = 0;
+        gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
+        gb->cpu_reg.a = (v >> 8) & 0xFF;
     }
-
-#if CPU_VALIDATE == 0
-    if (inst == 0 && chained && !(PGB_IS_CGB ? gb->gb_hle : false))
+    else if unlikely (opcode == 0x27)  // daa
     {
-        if unlikely ((gb->gb_ime || gb->gb_halt) && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))
-            return cycles;
-        if (gb->gb_ime_countdown > 1)
-            gb->gb_ime_countdown = 1;
-        inst = 1;
-        goto second_instruction;
+        u16 a = gb->cpu_reg.a;
+        if (gb->cpu_reg.f_bits.n)
+        {
+            if (gb->cpu_reg.f_bits.h)
+                a = (a - 0x06) & 0xFF;
+            if (gb->cpu_reg.f_bits.c)
+                a -= 0x60;
+        }
+        else
+        {
+            if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
+                a += 0x06;
+            if (gb->cpu_reg.f_bits.c || a > 0x9F)
+                a += 0x60;
+        }
+        if ((a & 0x100) == 0x100)
+            gb->cpu_reg.f_bits.c = 1;
+        gb->cpu_reg.a = a;
+        gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
+        gb->cpu_reg.f_bits.h = 0;
     }
-#endif
+    else if (opcode == 0x2F)
+    {
+        gb->cpu_reg.a ^= 0xFF;
+        gb->cpu_reg.f_bits.n = 1;
+        gb->cpu_reg.f_bits.h = 1;
+    }
+    else if (op8 % 2 == 1)
+    {
+        gb->cpu_reg.f_bits.c = 1;
+        gb->cpu_reg.f_bits.n = 0;
+        gb->cpu_reg.f_bits.h = 0;
+    }
+    else if (op8 % 2 == 0)
+    {
+        gb->cpu_reg.f_bits.c ^= 1;
+        gb->cpu_reg.f_bits.n = 0;
+        gb->cpu_reg.f_bits.h = 0;
+    }
+    CHAIN_OR_RETURN();
 
-    return cycles + chain_cycles;
+h_add_hl_r16:
+{
+    int reg8 = 2 * (opcode / 16) | (op8 & 1);
+    int reg16 = reg8 / 2;
+    if (reg16 == 3)
+        reg16 = 4;
+    cycles = 8;
+    gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
+}
+    CHAIN_OR_RETURN();
+
+h_ld_x_x:
+    srcidx = (opcode % 8) ^ 1;
+    if (srcidx == 7)
+    {
+        src = $(__gb_read)(gb, gb->cpu_reg.hl);
+        cycles = 8;
+    }
+    else
+        src = gb->cpu_reg_raw[srcidx];
+    goto ld_x_x;
+
+h_alu:
+    srcidx = (opcode % 8) ^ 1;
+    if (srcidx == 7)
+    {
+        src = $(__gb_read)(gb, gb->cpu_reg.hl);
+        cycles = 8;
+    }
+    else
+        src = gb->cpu_reg_raw[srcidx];
+    goto arithmetic;
+
+ld_x_x:
+{
+    u8 dstidx = op8;
+    if (dstidx == 7)
+    {
+        if unlikely (srcidx == 7)
+        {
+            TAIL_RARE();
+        }
+        else
+        {
+            cycles += 4;
+            $(__gb_write)(gb, gb->cpu_reg.hl, src);
+        }
+    }
+    else
+    {
+        gb->cpu_reg_raw[dstidx] = src;
+    }
+}
+    CHAIN_OR_RETURN();
+
+arithmetic:
+    switch (op8)
+    {
+    case 0:  // ADC
+    case 1:  // ADD
+    case 2:  // SBC
+    case 3:  // SUB
+    case 6:  // CP
+    {
+        // carry bit
+        unsigned v = src;
+        if (op8 % 2 == 0 && op8 != 6)
+        {
+            v += gb->cpu_reg.f_bits.c;
+        }
+
+        // subtraction
+        gb->cpu_reg.f_bits.n = 0;
+        if (op8 & 2)
+        {
+            v = -v;
+            gb->cpu_reg.f_bits.n = 1;
+        }
+
+        // adder
+        const u16 temp = gb->cpu_reg.a + v;
+        gb->cpu_reg.f_bits.z = ((temp & 0xFF) == 0x00);
+        gb->cpu_reg.f_bits.h = ((gb->cpu_reg.a ^ src ^ temp) >> 4) & 1;
+        gb->cpu_reg.f_bits.c = temp >> 8;
+
+        if (op8 != 6)
+        {
+            gb->cpu_reg.a = temp & 0xFF;
+        }
+    }
+    break;
+    case 4:  // XOR
+        gb->cpu_reg.a ^= src;
+        gb->cpu_reg.f = 0;
+        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        break;
+    case 5:  // AND
+        gb->cpu_reg.a &= src;
+        gb->cpu_reg.f = 0;
+        gb->cpu_reg.f_bits.h = 1;
+        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        break;
+    case 7:  // OR
+        gb->cpu_reg.a |= src;
+        gb->cpu_reg.f = 0;
+        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        break;
+    default:
+        __builtin_unreachable();
+    }
+    CHAIN_OR_RETURN();
+
+h_ret_cc:
+    cycles = 8;
+    {
+        bool flag = $(__gb_get_op_flag)(gb, op8);
+        if (flag)
+            goto ret;
+    }
+    CHAIN_OR_RETURN();
+
+h_pop:
+    cycles = 12;
+    src = $(__gb_pop16)(gb);
+    if (op8 / 2 == 3)
+    {
+        gb->cpu_reg.a = src >> 8;
+        gb->cpu_reg.f = src & 0xF0;
+    }
+    else
+    {
+        gb->cpu_reg_raw16[op8 / 2] = src;
+    }
+    CHAIN_OR_RETURN();
+
+h_jp_cc:
+    cycles = 12;
+    {
+        bool flag = $(__gb_get_op_flag)(gb, op8);
+        if (flag)
+            goto jp;
+    }
+    gb->cpu_reg.pc += 2;
+    CHAIN_OR_RETURN();
+
+h_jp:
+    if unlikely (opcode == 0xD3)
+    {
+        TAIL_RARE();
+    }
+jp:
+    cycles = 16;
+    gb->cpu_reg.pc = FETCH16(gb);
+    CHAIN_OR_RETURN();
+
+h_call_cc:
+    cycles = 12;
+    {
+        bool flag = $(__gb_get_op_flag)(gb, op8);
+        if (flag)
+            goto call;
+    }
+    gb->cpu_reg.pc += 2;
+    CHAIN_OR_RETURN();
+
+h_push:
+    cycles = 16;
+    src = gb->cpu_reg_raw16[op8 / 2];
+    if (op8 / 2 == 3)
+    {
+        src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
+    }
+    $(__gb_push16)(gb, src);
+    CHAIN_OR_RETURN();
+
+h_alu_d8:
+    cycles = 8;
+    src = FETCH8(gb);
+    goto arithmetic;
+
+h_rst:
+    cycles = 16;
+    $(__gb_push16)(gb, gb->cpu_reg.pc);
+    gb->cpu_reg.pc = 8 * (op8 ^ 1);
+    CHAIN_OR_RETURN();
+
+h_ret:
+    if unlikely (opcode == 0xD9)
+    {
+        gb->gb_ime = 1;
+        gb->gb_ime_countdown = 0;
+        goto ret_common;
+    }
+ret:
+ret_common:
+    cycles += 12;
+    gb->cpu_reg.pc = $(__gb_pop16)(gb);
+    CHAIN_OR_RETURN();
+
+h_cb:
+    if likely (opcode == 0xCB)
+        TAIL_CB();
+    TAIL_RARE();
+
+h_call:
+    if unlikely (op8 & 2)
+    {
+        TAIL_RARE();
+    }
+call:
+    cycles = 24;
+    {
+        u16 tmp = FETCH16(gb);
+        $(__gb_push16)(gb, gb->cpu_reg.pc);
+        gb->cpu_reg.pc = tmp;
+    }
+    CHAIN_OR_RETURN();
+
+h_ldh_a8:
+    cycles = 12;
+    srcidx = (FETCH8(gb));
+    goto hram_op;
+
+h_ldh_c:
+    cycles = 8;
+    srcidx = gb->cpu_reg.c;
+    goto hram_op;
+
+hram_op:
+{
+    u16 addr = 0xFF00 | srcidx;
+    if (opcode & 0x10)
+    {
+        u8 v = $(__gb_read)(gb, addr);
+        gb->cpu_reg.a = v;
+    }
+    else
+    {
+        $(__gb_write)(gb, addr, gb->cpu_reg.a);
+    }
+}
+    CHAIN_OR_RETURN();
+
+h_jp_hl:
+    if (opcode == 0xF9)
+    {
+        gb->cpu_reg.sp = gb->cpu_reg.hl;
+        cycles = 8;
+    }
+    else  // 0xE9
+    {
+        gb->cpu_reg.pc = gb->cpu_reg.hl;
+        cycles = 4;
+    }
+    CHAIN_OR_RETURN();
+
+h_di:
+    if unlikely (opcode != 0xF3)
+        TAIL_RARE();
+    cycles = 4;
+    gb->gb_ime = 0;
+    gb->gb_ime_countdown = 0;
+    CHAIN_OR_RETURN();
+
+h_ei:
+    if unlikely (opcode != 0xFB)
+        TAIL_RARE();
+    cycles = 4;
+    gb->gb_ime_countdown = 2;
+    CHAIN_OR_RETURN();
+
+h_ld_a16:
+    cycles = 16;
+    {
+        u16 v = FETCH16(gb);
+        if (op8 & 2)
+            gb->cpu_reg.a = $(__gb_read)(gb, v);
+        else
+            $(__gb_write)(gb, v, gb->cpu_reg.a);
+    }
+    CHAIN_OR_RETURN();
+
+h_rare:
+    TAIL_RARE();
+
+next_instruction:
+    pgb_batch_elapsed = batch_cycles;
+    if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+        gb->gb_ime = 1;
+    if (gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) ||
+        (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)))
+        goto batch_done;
+    if (batch_cycles >= batch_budget)
+        goto batch_done;
+    cycles = 4;
+    opcode = FETCH8(gb);
+    NEXT_DISPATCH();
+
+batch_done:
+    pgb_batch_elapsed = 0;
+    return batch_cycles;
 }
 
 __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
@@ -2089,26 +2119,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     }
 
 #if CPU_VALIDATE == 0
-    inst_cycles = 0;
-    // Cycle-budget batching: worst-case event window = budget + 23 (one
-    // max-length instruction of overshoot). Budget doubles in CGB
-    // double-speed mode; inst_cycles is shifted back down (>>1) after the
-    // batch, so the PPU-domain window matches DMG.
-    const unsigned batch_budget = CPU_BATCH_CYCLE_BUDGET
-                                  << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
-    // Stop batching once an interrupt is dispatchable. (gb_hle: CGB-only.)
-    while (
-        !(gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) ||
-          (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR))))
-    {
-        inst_cycles += $(__gb_run_instruction_micro)(gb);
-        pgb_batch_elapsed = inst_cycles;
-        if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
-            gb->gb_ime = 1;
-        if (inst_cycles >= batch_budget)
-            break;
-    }
-    pgb_batch_elapsed = 0;
+    // __gb_run_instruction_micro runs the whole cycle-budget batch internally.
+    inst_cycles = $(__gb_run_instruction_micro)(gb);
 #else
     // run once as each, verify
 

@@ -386,6 +386,11 @@ extern volatile int g_trace_frames_remaining;
 // tcm_relocate
 extern intptr_t pgb_draw_reloc_offset;
 
+#if ITCM_CORE
+// 0 = run from flash; else DTCM relocation delta
+extern intptr_t core_itcm_offset;
+#endif
+
 // Call a draw-cluster function from core code through the relocation offset.
 #define DRAW_CALL(fn, gb_) ((void (*)(gb_s*))((char*)(fn) + pgb_draw_reloc_offset))(gb_)
 
