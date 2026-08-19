@@ -184,7 +184,9 @@
 "setval_full" = "すべて";
 "setval_game" = "ゲーム";
 "setval_gamma_0_6" = "0.6";
+"setval_gamma_0_7" = "0.7";
 "setval_gamma_0_8" = "0.8";
+"setval_gamma_0_9" = "0.9";
 "setval_gamma_1_0" = "1.0";
 "setval_gamma_1_2" = "1.2";
 "setval_gamma_1_4" = "1.4";
