@@ -192,7 +192,7 @@ static void on_end(gb_s* gb, ScriptData* data)
 }
 
 static const struct ScriptRecommendedSetting trip_recommended[] = {
-    {PREFBIT_frame_skip, 2},
+    {PREFBIT_framerate, 1},  // 50fps
     RECOMMENDED_SETTINGS_END,
 };
 

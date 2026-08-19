@@ -580,7 +580,7 @@ static void on_draw(gb_s* gb, ScriptData* data)
 }
 
 static const struct ScriptRecommendedSetting recommended[] = {
-    {PREFBIT_frame_skip, 2},  // dynamic
+    {PREFBIT_framerate, 1},  // 50fps
 
     RECOMMENDED_SETTINGS_END,
 };

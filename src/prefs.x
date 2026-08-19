@@ -20,14 +20,14 @@ PREF(headphone_audio, 1)
 PREF(high_pass_filter, 1)
 
 /* --- display ---
- *  frame_skip:      0=Off, 1=On, 2=Adaptive
+ *  framerate:       0=30FPS, 1=50FPS, 2=60FPS
  *  blend_frames:    0=Off, 1=On
  *  dither_pattern:  0=Staggered, 1=Grid, 2=Staggered (L), 3=Grid (L), 4=Staggered (D), 5=Grid (D)
  *  dither_line:     0 = Off (used for scripting), 1 = Line 1, 2= Line 2, 3 = Line 3
  *  dither_stable:   0=Off, 1=On
  *  ghosting:        0=Off, 1=On (DMG only)
  */
-PREF(frame_skip, 1)
+PREF(framerate, 0)
 PREF(blend_frames, 0)
 PREF(dither_pattern, 0)
 PREF(dither_line, 2)

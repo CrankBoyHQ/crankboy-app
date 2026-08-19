@@ -970,7 +970,7 @@ const char** crank_mode_labels;
 const char** crank_down_action_labels;
 const char** sample_rate_labels;
 const char** fps_labels;
-const char** frame_skip_labels;
+const char** framerate_labels;
 const char** slot_labels;
 const char** save_slot_labels;
 const char** dither_pattern_labels;
@@ -1138,11 +1138,11 @@ static void CB_init_settings_labels(void)
     fps_labels[2] = T(setval_playdate);
     fps_labels[3] = NULL;
 
-    frame_skip_labels = cb_malloc(4 * sizeof(const char*));
-    frame_skip_labels[0] = T(setval_off);
-    frame_skip_labels[1] = T(setval_on);
-    frame_skip_labels[2] = T(setval_adaptive);
-    frame_skip_labels[3] = NULL;
+    framerate_labels = cb_malloc(4 * sizeof(const char*));
+    framerate_labels[0] = T(setval_30fps);
+    framerate_labels[1] = T(setval_50fps);
+    framerate_labels[2] = T(setval_60fps);
+    framerate_labels[3] = NULL;
 
     slot_labels = cb_malloc(11 * sizeof(const char*));
     slot_labels[0] = T(setval_slot_0);
@@ -2226,19 +2226,19 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         .name = T(sethdr_display), .header = 1, .description = T(setdsc_display)
     };
 
-    // frame skip
+    // framerate
     section[++i] = (OptionsMenuEntry){
-        .name = T(setopt_30fps_mode),
-        .values = frame_skip_labels,
-        .description = T(setdsc_30fps_mode),
-        .pref_var = &preferences_frame_skip,
+        .name = T(setopt_framerate),
+        .values = framerate_labels,
+        .description = T(setdsc_framerate),
+        .pref_var = &preferences_framerate,
         .max_value = 3,
         .rebuild_when_changed = 1,
         .on_press = NULL,
     };
 
-    // frame blending
-    if (preferences_frame_skip != 0)
+    // frame blending (30FPS only: 30hz flicker is shown as-is at 50/60FPS)
+    if (preferences_framerate == 0)
     {
         section[++i] = (OptionsMenuEntry){
             .name = T(setopt_frame_blending),

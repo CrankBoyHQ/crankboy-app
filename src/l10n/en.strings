@@ -77,7 +77,7 @@
 "setopt_high_pass_filter" = "High-Pass Filter";
 "setopt_headphones" = "Headphones";
 "setopt_mirror_aux" = "Mirror/Aux";
-"setopt_30fps_mode" = "30 FPS Mode";
+"setopt_framerate" = "Framerate";
 "setopt_frame_blending" = "Frame Blending";
 "setopt_lcd_ghosting" = "LCD Ghosting";
 "setopt_dither" = "Dither";
@@ -145,9 +145,9 @@
 "setdsc_sample_rate" = "Adjusts audio quality.\nHigher values may impact performance.\n\nHigh:\nBest quality (44.1 kHz)\n\nMedium:\nGood quality (22.1 kHz)\n\nLow:\nReduced quality (14.7 kHz)";
 "setdsc_high_pass_filter" = "Emulates the hardware's capacitor coupling. Bass frequencies are weakend.\n\nOn:\nHardware-accurate sound. Costs a little performance.\n\nOff:\nFuller bass, but less faithful to the original hardware.";
 "setdsc_headphones" = "Select the audio output mode when an aux cable is connected.\n\nStereo:\nImmersive sound with spatial separation.\n\nMono:\n Combines channels, which improves performance.\n\nAlso used for Mirror.";
-"setdsc_30fps_mode" = "Skips displaying every second frame. Greatly improves performance for most games.\n\nCan generally be disabled if a game doesn't feature scrolling backgrounds.\n\n\"Adaptive\": switches between 30/60 depending on if the screen is scrolling etc.";
+"setdsc_framerate" = "Set the display framerate.\n\n30FPS: displays every second frame. Best performance.\n\n50FPS: displays 5 of every 6 frames. Fastest reliable full refresh.\n\n60FPS: displays every frame.";
 "setdsc_frame_blending" = "Blends two consecutive frames with dithering to reproduce the Game Boy's flicker-based transparency effects.";
-"setdsc_frame_blending_30fps_only" = "Blends two consecutive frames with dithering to reproduce the Game Boy's flicker-based transparency effects.\n\nOnly available in 30 FPS or Adaptive mode.";
+"setdsc_frame_blending_30fps_only" = "Blends two consecutive frames with dithering to reproduce the Game Boy's flicker-based transparency effects.\n\nOnly needed at 30FPS.";
 "setdsc_lcd_ghosting" = "Mimics the DMG LCD's slow pixel response, smearing motion over 100 ms.\n\nOnly available in DMG Mode.";
 "setdsc_dither" = "How to represent 4-color graphics on a 1-bit display.\n\nL: bias toward light\n\nD: bias toward dark";
 "setdsc_first_scaling_line" = "Due to the 3:5 ratio between the GB's and Playdate's vertical resolutions, 1 in every 3 scanlines must be vertically squished.\n\nThis means there are three choices for which lines are to be the ones to squish.If text is uneven, try adjusting this.";
@@ -503,7 +503,9 @@
 "setval_medium" = "Medium";
 "setval_low" = "Low";
 "setval_playdate" = "Playdate";
-"setval_adaptive" = "Adaptive";
+"setval_30fps" = "30 FPS";
+"setval_50fps" = "50 FPS";
+"setval_60fps" = "60 FPS";
 "setval_slot_0" = "Slot 0";
 "setval_slot_1" = "Slot 1";
 "setval_slot_2" = "Slot 2";

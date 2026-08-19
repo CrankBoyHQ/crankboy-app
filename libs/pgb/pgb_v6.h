@@ -475,7 +475,6 @@ struct PGB_VERSIONED(gb_s)
     uint8_t hram[HRAM_SIZE];  // note: includes registers as well as hram for some reason
     uint8_t oam[OAM_SIZE];
     uint8_t* lcd;
-    uint8_t* lcd_alt;
 
     struct
     {
@@ -517,7 +516,6 @@ struct PGB_VERSIONED(gb_s)
         uint8_t wy_latched : 1;
         uint8_t first_scanline_besu_skip : 1;
         uint8_t has_read_accelerometer_this_frame : 1;
-        uint8_t cgb_dual_output : 1;
 
         int joypad_interrupt_delay;
 
@@ -681,7 +679,6 @@ FORCE_INLINE const char* PGB_VERSIONED(gb_state_load)(
         &gb->gb_cart_ram,
         &gb->breakpoints,
         &gb->lcd,
-        &gb->lcd_alt,
         &gb->direct.priv,
         &gb->gb_error,
         &gb->gb_serial_tx,
@@ -841,7 +838,7 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     v6_gb->counter.lcd_off_count = v5_gb->counter.lcd_off_count;
     v6_gb->counter.apu_count = 0;
 
-    set_fields(v6_gb, v5_gb, ram_base, lcd_alt);
+    set_fields(v6_gb, v5_gb, ram_base, lcd);
 
     memcpy(&v6_gb->display, &v5_gb->display, sizeof(v5_gb->display));
 
@@ -857,7 +854,6 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     v6_gb->direct.first_scanline_besu_skip = 0;
     v6_gb->direct.has_read_accelerometer_this_frame =
         v5_gb->direct.has_read_accelerometer_this_frame;
-    v6_gb->direct.cgb_dual_output = v5_gb->direct.cgb_dual_output;
 
     set_fields(v6_gb, v5_gb, direct.joypad_interrupt_delay, direct.priv);
     set_fields(v6_gb, v5_gb, gb_cart_ram_size, xram);

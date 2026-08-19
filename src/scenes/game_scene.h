@@ -173,15 +173,9 @@ typedef struct CB_GameScene
     // last applied gamma (for change detection)
     int8_t last_cgb_gamma;
 
-    // Adaptive frame_skip (preferences_frame_skip == 2)
-    int adaptive_fs_headroom_counter;
-    int adaptive_fs_lock_frames;
-    bool adaptive_fs_perf_allowed;
-
-    // Probe-based deactivation: when under mitigation, periodically render
-    // one unmitigated frame to measure real performance.
-    bool adaptive_fs_probe_pending;
-    int adaptive_fs_probe_cooldown;
+    // 50fps mode (preferences_framerate == 1): position in the [2,1,1,1,1]
+    // GB-frames-per-tick pattern; phase 0 runs 2 frames, phases 1-4 run 1.
+    uint8_t fs50_phase;
 
     uint32_t patches_hash;
 

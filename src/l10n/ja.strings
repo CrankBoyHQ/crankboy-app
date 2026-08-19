@@ -115,7 +115,7 @@
 "sethdr_library" = "ライブラリ";
 "sethdr_misc" = "その他";
 "sethdr_script" = "スクリプト";
-"setopt_30fps_mode" = "30 FPSモード";
+"setopt_framerate" = "フレームレート";
 "setopt_about_crankboy" = "CrankBoyについて...";
 "setopt_apply_recommended" = "おすすめを適用";
 "setopt_article" = "冠詞";
@@ -161,7 +161,6 @@
 "setopt_ui_sounds" = "UI音";
 "setopt_undock" = "展開";
 "setval_accurate" = "普通";
-"setval_adaptive" = "可変";
 "setval_all" = "すべて";
 "setval_always" = "常時";
 "setval_as_is" = "そのまま";
