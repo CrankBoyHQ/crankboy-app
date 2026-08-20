@@ -102,12 +102,17 @@ __core static uint8_t
     if (__gb_hle_probe(gb, addr, v) != HLE_MISS)
         return v;
 
-    /* HRAM flag waits: analyze only ldh-imm reads from ROM. */
+    /* HRAM flag waits: analyze only ldh-imm / ld-abs reads from ROM. */
     if (addr >= 0xFF80)
     {
-        uint16_t pc = gb->cpu_reg.pc;
-        if (pc < 2 || pc >= 0x8000 || gb->ram_base[pc >> 12][pc - 2] != 0xF0 ||
-            gb->ram_base[pc >> 12][pc - 1] != (uint8_t)addr)
+        const uint16_t pc = gb->cpu_reg.pc;
+        if (pc < 2 || pc >= 0x8000)
+            return v;
+        const uint8_t* r = gb->ram_base[pc >> 12];
+        const bool ldh = r[pc - 2] == 0xF0 && r[pc - 1] == (uint8_t)addr;
+        const bool ldnn = pc >= 3 && r[pc - 3] == 0xFA && r[pc - 2] == (uint8_t)addr &&
+                          r[pc - 1] == (uint8_t)(addr >> 8);
+        if (!ldh && !ldnn)
             return v;
     }
     return __gb_hle_miss(gb, addr, v);

@@ -1566,7 +1566,16 @@ enum
     HLE_CMP_BIT_HL,     // bit n,(hl):    z = !(v & bit), c unknown
     HLE_CMP_AND_CP,     // and d8 + cp/sub d8: m = v & arg; z = (m == arg2), c = (m < arg2)
     HLE_CMP_AND_XOR,    // and d8 + xor d8:    z = ((v & arg) == arg2), c = 0
-    HLE_CMP_CP_R        // cp a,r:        z = (v == r), c = (v < r); arg = reg (0-5,7)
+    HLE_CMP_CP_R,       // cp a,r:        z = (v == r), c = (v < r); arg = reg (0-5)
+    HLE_CMP_AND_R,      // and a,r:       z = !(v & r), c = 0; arg = reg (0-5)
+    HLE_CMP_OR_R,       // or a,r:        z = !(v | r), c = 0; arg = reg (0-5)
+    HLE_CMP_XOR_R,      // xor a,r:       z = !(v ^ r), c = 0; arg = reg (0-5)
+    HLE_CMP_SUB_R,      // sub a,r:       z = (v == r), c = (v < r); arg = reg (0-5)
+    HLE_CMP_AND_DEC_A,  // and d8 + dec a: z = ((v & arg) == 1), c = 0
+    HLE_CMP_SUB_CP,     // sub d8 + cp d8: z = ((v-arg) == arg2), c = ((v-arg) < arg2)
+    HLE_CMP_CPL_AND,    // cpl + and d8:  z = ((v & arg) == arg), c = 0
+    HLE_CMP_ADD_A,      // add a,a:       z = (v == 0 || v == 0x80), c = (v >= 0x80)
+    HLE_CMP_SUB_R_CP    // sub a,r + cp d8: m = v - reg(arg); z = (m == arg2), c = (m < arg2)
 };
 
 enum
@@ -1622,6 +1631,7 @@ enum
     HLE_STAT_MISS,       // probe misses
     HLE_STAT_ANALYZE,    // actual decodes (miss handler entries)
     HLE_STAT_FAIL,       // decodes yielding verdict NO
+    HLE_STAT_SKIP,       // decodes yielding verdict SKIP (unrecognized shape)
     HLE_STAT_EVICT,      // store over an occupied different-pc slot
     HLE_STAT_COUNT
 };
@@ -1631,9 +1641,35 @@ __shell static void pgb_hle_stats_dump(void);
 
 #define PGB_HLE_FAIL_LOG_LIMIT 32
 static int pgb_hle_fail_logged;
+#define PGB_HLE_SKIP_LOG_LIMIT 64
+static int pgb_hle_skip_logged;
 #else
 #define PGB_HLE_STAT_INC(i) ((void)0)
 #endif
+
+/* Live register read for cp/and/or/xor/sub a,r compare forms. The register is
+ * loop-invariant but re-read each wait (mirrors cp a,r) so the verdict stays
+ * correct even if the loop reloads it between warp applications. */
+static inline __attribute__((always_inline)) uint8_t __gb_hle_get_reg(gb_s* gb, const uint8_t sel)
+{
+    switch (sel)
+    {
+    case 0:
+        return gb->cpu_reg.b;
+    case 1:
+        return gb->cpu_reg.c;
+    case 2:
+        return gb->cpu_reg.d;
+    case 3:
+        return gb->cpu_reg.e;
+    case 4:
+        return gb->cpu_reg.h;
+    case 5:
+        return gb->cpu_reg.l;
+    default:
+        return gb->cpu_reg.a;
+    }
+}
 
 /* Evaluate the cached compare+branch: true while the loop keeps waiting. */
 static inline __attribute__((always_inline)) bool __gb_hle_waiting(
@@ -1668,40 +1704,57 @@ static inline __attribute__((always_inline)) bool __gb_hle_waiting(
         c = 0;
         break;
     case HLE_CMP_CP_R:
+    case HLE_CMP_SUB_R:
     {
-        // cp a,r against the live register (0xBE excluded at decode)
-        uint8_t r;
-        switch (s->cmp_arg)
-        {
-        case 0:
-            r = gb->cpu_reg.b;
-            break;
-        case 1:
-            r = gb->cpu_reg.c;
-            break;
-        case 2:
-            r = gb->cpu_reg.d;
-            break;
-        case 3:
-            r = gb->cpu_reg.e;
-            break;
-        case 4:
-            r = gb->cpu_reg.h;
-            break;
-        case 5:
-            r = gb->cpu_reg.l;
-            break;
-        default:
-            r = gb->cpu_reg.a;
-            break;
-        }
+        // cp/sub a,r against the live register ((hl) operand excluded at decode)
+        const uint8_t r = __gb_hle_get_reg(gb, s->cmp_arg);
         z = (v == r);
         c = (v < r);
         break;
     }
-    default:  // BIT: carry unaffected -> unknown
+    case HLE_CMP_AND_R:
+        z = !(v & __gb_hle_get_reg(gb, s->cmp_arg));
+        c = 0;
+        break;
+    case HLE_CMP_OR_R:
+        z = !(v | __gb_hle_get_reg(gb, s->cmp_arg));
+        c = 0;
+        break;
+    case HLE_CMP_XOR_R:
+        z = !(v ^ __gb_hle_get_reg(gb, s->cmp_arg));
+        c = 0;
+        break;
+    case HLE_CMP_AND_DEC_A:
+        z = ((v & s->cmp_arg) == 1);
+        c = 0;
+        break;
+    case HLE_CMP_SUB_CP:
+    {
+        const uint8_t m = v - s->cmp_arg;
+        z = (m == s->cmp_arg2);
+        c = (m < s->cmp_arg2);
+        break;
+    }
+    case HLE_CMP_CPL_AND:
+        // (~v) & arg == 0  <=>  all mask bits set in v
+        z = ((v & s->cmp_arg) == s->cmp_arg);
+        c = 0;
+        break;
+    case HLE_CMP_ADD_A:
+        // shift-left: z on 0x00/0x80, carry = old bit 7
+        z = (((v << 1) & 0xFF) == 0);
+        c = (v & 0x80) != 0;
+        break;
+    case HLE_CMP_SUB_R_CP:
+    {
+        const uint8_t m = v - __gb_hle_get_reg(gb, s->cmp_arg);
+        z = (m == s->cmp_arg2);
+        c = (m < s->cmp_arg2);
+        break;
+    }
+    default:  // BIT: carry unaffected -> the branch tests the live (loop-invariant) carry
         z = !(v & (1 << (s->cmp_arg & 7)));
-        c = -1;
+        c = gb->cpu_reg.f_bits.c;
         break;
     }
     switch (s->jr_pol)
@@ -1711,7 +1764,7 @@ static inline __attribute__((always_inline)) bool __gb_hle_waiting(
     case HLE_JR_Z:
         return z == 1;
     case HLE_JR_NC:
-        return c != 1;  // c unknown: keep waiting (matches decode behavior)
+        return c != 1;  // all compare forms produce an exact c (0/1)
     default:            // HLE_JR_C
         return c != 0;
     }
@@ -2035,12 +2088,72 @@ __shell static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_sl
             s->cmp_arg2 = READ8(pc + 3);  // target
             addr_next = pc + 4;
         }
-        else if (op0 >= 0xB8 && op0 <= 0xBF && op0 != 0xBE)
+        else if (op0 >= 0xB8 && op0 <= 0xBD)
         {
             // cp a,r: register-value waits, "ldh a,(LY); cp b; jr c".
-            // (0xBE = cp a,(hl) excluded: extra memory read per iteration)
+            // (0xBE = cp a,(hl) excluded: extra memory read per iteration;
+            //  0xBF = cp a,a excluded: fixed flags, verdict can't track v)
             s->cmp_op = HLE_CMP_CP_R;
             s->cmp_arg = op0 - 0xB8;
+            addr_next = pc + 1;
+        }
+        else if (op0 >= 0xA0 && op0 <= 0xA5)
+        {
+            // and a,r: "ldh a,(IF); and b; jr nz" (r = b..l; (hl) excluded)
+            s->cmp_op = HLE_CMP_AND_R;
+            s->cmp_arg = op0 - 0xA0;
+            addr_next = pc + 1;
+        }
+        else if (op0 >= 0xB0 && op0 <= 0xB5)
+        {
+            // or a,r
+            s->cmp_op = HLE_CMP_OR_R;
+            s->cmp_arg = op0 - 0xB0;
+            addr_next = pc + 1;
+        }
+        else if (op0 >= 0xA8 && op0 <= 0xAD)
+        {
+            // xor a,r
+            s->cmp_op = HLE_CMP_XOR_R;
+            s->cmp_arg = op0 - 0xA8;
+            addr_next = pc + 1;
+        }
+        else if (op0 >= 0x90 && op0 <= 0x95 && READ8(pc + 1) == 0xFE)
+        {
+            // sub a,r + cp d8: m = v - r; z = (m == d8), c = (m < d8).
+            // Must precede the plain sub a,r arm (same opcode range).
+            s->cmp_op = HLE_CMP_SUB_R_CP;
+            s->cmp_arg = op0 - 0x90;
+            s->cmp_arg2 = READ8(pc + 2);
+            addr_next = pc + 3;
+        }
+        else if (op0 >= 0x90 && op0 <= 0x95)
+        {
+            // sub a,r
+            s->cmp_op = HLE_CMP_SUB_R;
+            s->cmp_arg = op0 - 0x90;
+            addr_next = pc + 1;
+        }
+        else if (op0 == 0x3D && READ8(pc + 1) == 0xFE)
+        {
+            // dec a + cp d8: cp clobbers dec's flags -> same shape as
+            // sub d8 + cp d8 with an implicit arg of 1
+            s->cmp_op = HLE_CMP_SUB_CP;
+            s->cmp_arg = 1;
+            s->cmp_arg2 = READ8(pc + 2);
+            addr_next = pc + 3;
+        }
+        else if (op0 == 0x2F && READ8(pc + 1) == 0xE6)
+        {
+            // cpl + and d8: "wait until all mask bits set" without a cp
+            s->cmp_op = HLE_CMP_CPL_AND;
+            s->cmp_arg = READ8(pc + 2);
+            addr_next = pc + 3;
+        }
+        else if (op0 == 0x87)
+        {
+            // add a,a: shift-left idiom; with jr c/nc a bit-7 test
+            s->cmp_op = HLE_CMP_ADD_A;
             addr_next = pc + 1;
         }
         else if (op0 == 0xA7 || op0 == 0xB7)
@@ -2057,11 +2170,33 @@ __shell static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_sl
             s->cmp_op = HLE_CMP_CP_D8;
             s->cmp_arg = d8;
         }
+        else if (op0 == 0xD6 && READ8(pc + 2) == 0xFE)
+        {
+            // sub d8 + cp d8: z = ((v-d8) == d8'), c = ((v-d8) < d8')
+            s->cmp_op = HLE_CMP_SUB_CP;
+            s->cmp_arg = d8;
+            s->cmp_arg2 = READ8(pc + 3);
+            addr_next = pc + 4;
+        }
         else if (op0 == 0xD6)
         {
             // sub d8
             s->cmp_op = HLE_CMP_SUB_D8;
             s->cmp_arg = d8;
+        }
+        else if (op0 == 0xE6 && READ8(pc + 2) == 0xB7)
+        {
+            // and d8 + or a: or a re-tests A -> flags identical to and d8
+            s->cmp_op = HLE_CMP_AND_D8;
+            s->cmp_arg = d8;
+            addr_next = pc + 3;
+        }
+        else if (op0 == 0xE6 && READ8(pc + 2) == 0x3D)
+        {
+            // and d8 + dec a: z = ((v & d8) == 1), c = 0
+            s->cmp_op = HLE_CMP_AND_DEC_A;
+            s->cmp_arg = d8;
+            addr_next = pc + 3;
         }
         else if (op0 == 0xE6)
         {
@@ -2085,26 +2220,61 @@ __shell static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_sl
     }
 
 analyze_jr:;
-    // jr destination should be the read-io opcode
-    if (READ8(addr_next + 1) != (uint8_t)(offset - (addr_next - pc) - 2))
-        goto analyze_no;
-
-    switch (READ8(addr_next))
+    // branch destination should be the read-io opcode (jr cc or jp cc)
     {
-    case 0x20:
-        s->jr_pol = HLE_JR_NZ;
-        break;
-    case 0x30:
-        s->jr_pol = HLE_JR_NC;
-        break;
-    case 0x28:
-        s->jr_pol = HLE_JR_Z;
-        break;
-    case 0x38:
-        s->jr_pol = HLE_JR_C;
-        break;
-    default:
-        goto analyze_no;
+        const u8 br_op = READ8(addr_next);
+        uint8_t pol;
+        bool is_jp;
+        switch (br_op)
+        {
+        case 0x20:
+            pol = HLE_JR_NZ;
+            is_jp = false;
+            break;
+        case 0x30:
+            pol = HLE_JR_NC;
+            is_jp = false;
+            break;
+        case 0x28:
+            pol = HLE_JR_Z;
+            is_jp = false;
+            break;
+        case 0x38:
+            pol = HLE_JR_C;
+            is_jp = false;
+            break;
+        case 0xC2:
+            pol = HLE_JR_NZ;
+            is_jp = true;
+            break;
+        case 0xD2:
+            pol = HLE_JR_NC;
+            is_jp = true;
+            break;
+        case 0xCA:
+            pol = HLE_JR_Z;
+            is_jp = true;
+            break;
+        case 0xDA:
+            pol = HLE_JR_C;
+            is_jp = true;
+            break;
+        default:
+            goto analyze_no;
+        }
+
+        if (is_jp)
+        {
+            const u16 target = READ8(addr_next + 1) | (READ8(addr_next + 2) << 8);
+            if (target != (u16)(pc + offset))
+                goto analyze_no;
+        }
+        else if (READ8(addr_next + 1) != (uint8_t)(offset - (addr_next - pc) - 2))
+        {
+            goto analyze_no;
+        }
+
+        s->jr_pol = pol;
     }
 
     s->rewind = (int8_t)offset;
@@ -2131,7 +2301,39 @@ __shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const
      * cache or log -- one-off reads would otherwise evict warpable slots
      * and flood the fail log. */
     if (result == HLE_ANALYZE_SKIP)
+    {
+        PGB_HLE_STAT_INC(SKIP);
+#ifdef TARGET_SIMULATOR
+        /* Skip sites are the "missed pattern" ground truth: log the compare
+         * opcode (post-load pc) for a capped sample so unsupported shapes can
+         * be identified without a static ROM pass. */
+        if (pgb_hle_skip_logged < PGB_HLE_SKIP_LOG_LIMIT)
+        {
+            const uint16_t spc = gb->cpu_reg.pc;
+            // ram_base can be NULL outside ROM/WRAM (e.g. VRAM/cart RAM) --
+            // unreachable in practice (pc is a code address) but guard anyway.
+            uint8_t op = 0;
+            uint8_t prev = 0;
+            if (gb->ram_base[spc >> 12])
+            {
+                op = gb->ram_base[spc >> 12][spc];
+                if (spc > 0 && gb->ram_base[(spc - 1) >> 12])
+                    prev = gb->ram_base[(spc - 1) >> 12][spc - 1];
+            }
+            ++pgb_hle_skip_logged;
+            playdate->system->logToConsole(
+                "HLE Skip %x:@%04x (%04x) op=%02x prev=%02x", gb->selected_rom_bank, spc, ioaddr,
+                op, prev
+            );
+            if (pgb_hle_skip_logged == PGB_HLE_SKIP_LOG_LIMIT)
+                playdate->system->logToConsole(
+                    "HLE Skip log limit (%d) reached, further sites suppressed",
+                    PGB_HLE_SKIP_LOG_LIMIT
+                );
+        }
+#endif
         return ioval;
+    }
 
     if (v.pc < 0x8000)
     {
@@ -2177,11 +2379,12 @@ __shell static void pgb_hle_stats_dump(void)
 {
     playdate->system->logToConsole(
         "HLE stats: probes=%u warp=%u hit_no=%u hit_met=%u miss=%u analyze=%u fail=%u "
-        "evict=%u",
+        "skip=%u evict=%u",
         (unsigned)pgb_hle_stats[HLE_STAT_PROBE], (unsigned)pgb_hle_stats[HLE_STAT_WARP],
         (unsigned)pgb_hle_stats[HLE_STAT_HIT_NO], (unsigned)pgb_hle_stats[HLE_STAT_HIT_MET],
         (unsigned)pgb_hle_stats[HLE_STAT_MISS], (unsigned)pgb_hle_stats[HLE_STAT_ANALYZE],
-        (unsigned)pgb_hle_stats[HLE_STAT_FAIL], (unsigned)pgb_hle_stats[HLE_STAT_EVICT]
+        (unsigned)pgb_hle_stats[HLE_STAT_FAIL], (unsigned)pgb_hle_stats[HLE_STAT_SKIP],
+        (unsigned)pgb_hle_stats[HLE_STAT_EVICT]
     );
 }
 #endif
@@ -5970,6 +6173,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
+    pgb_hle_skip_logged = 0;
 #endif
 
     /* Initialise MBC values. */
@@ -6420,6 +6624,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
+    pgb_hle_skip_logged = 0;
 #endif
     pgb_cgb_bg_pal_dirty = 0;
     pgb_cgb_obj_pal_dirty = 0;
