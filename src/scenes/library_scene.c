@@ -731,8 +731,10 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
     }
     else
     {
-        static const char* options[] = {"DMG", "CGB", NULL};
-        static const char* options_cgb_not_recommended[] = {"DMG", "CGB*", NULL};
+        const char* options[] = {T(rom_system_dmg), T(rom_system_cgb), NULL};
+        char cgb_star[24];
+        snprintf(cgb_star, sizeof(cgb_star), "%s*", T(rom_system_cgb));
+        const char* options_cgb_not_recommended[] = {T(rom_system_dmg), cgb_star, NULL};
         const char* options_understood[] = {T(label_understood), NULL};
 
         int launch_mode = -1;  // -1 = show modal; 0 = DMG; 1 = CGB
