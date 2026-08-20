@@ -3874,6 +3874,13 @@ static void CB_SettingsScene_free(void* object)
 
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
+    // ensures no immutable setting can be modified
+    if (settingsScene->immutable_settings)
+    {
+        preferences_restore_subset(settingsScene->immutable_settings);
+        cb_free(settingsScene->immutable_settings);
+    }
+
     if (settingsScene->gameScene)
     {
         CB_GameScene_apply_settings(settingsScene->gameScene);
@@ -3888,13 +3895,6 @@ static void CB_SettingsScene_free(void* object)
         }
 
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
-    }
-
-    // ensures no immutable setting can be modified
-    if (settingsScene->immutable_settings)
-    {
-        preferences_restore_subset(settingsScene->immutable_settings);
-        cb_free(settingsScene->immutable_settings);
     }
 
     if (settingsScene->stored_neutrals)

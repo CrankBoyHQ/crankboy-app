@@ -1445,8 +1445,11 @@ void CB_GameScene_apply_script_support(CB_GameScene* gameScene)
             playdate->system->logToConsole("ROM name: \"%s\"", scriptInfo->rom_name);
             gameScene->script = script_begin(scriptInfo->rom_name, gameScene);
             gameScene->prev_dt = 0;
+            gameScene->staticSelectorUIDrawn = false;
+
             if (!gameScene->script)
                 playdate->system->logToConsole("Associated script failed to load or not found.");
+
             script_info_free(scriptInfo);
         }
     }
