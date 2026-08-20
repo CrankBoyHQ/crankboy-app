@@ -181,7 +181,7 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
  * (CPU T). BATCH_BUDGET_MAX caps the PPU window so timer/serial interrupts stay
  * low-latency in mode 3 / VBlank. */
 #define BATCH_OVERSHOOT 23
-#define BATCH_BUDGET_MAX 192
+#define BATCH_BUDGET_MAX 256
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -2304,6 +2304,10 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
     {
         /* Short Line 153: LY wraps to 0 ~4 cycles into the line */
         if (gb->gb_reg.LY == 153 && gb->counter.lcd_count >= 4)
+            return 0;
+
+        /* Post-wrap LY stays 0 across VBlank end (line-0 mode 2 keeps LY=0). */
+        if (gb->gb_reg.LY == 0)
             return 0;
 
         /* During VBlank, LY increments at 456-cycle boundaries */

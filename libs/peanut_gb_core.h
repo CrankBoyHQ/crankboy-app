@@ -1334,7 +1334,9 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
         break;
     case LCD_VBLANK:  // 456 T/line
         d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
-        d2 = (gb->gb_reg.LY == 153) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
+        /* Last VBlank line: LY wraps 153->0 a few cycles in (short-line
+         * quirk), so test both. Second boundary is the line-0 mode3 latch. */
+        d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
         break;
     }
     unsigned budget_ppu = d1 + d2;
