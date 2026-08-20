@@ -138,7 +138,6 @@
 "setopt_high_pass_filter" = "ハイパス";
 "setopt_hle_routines" = "HLE処理";
 "setopt_launch_animation" = "起動ｱﾆﾒｰｼｮﾝ";
-"setopt_lcd_acceleration" = "液晶ｱｸｾﾗﾚｰｼｮﾝ";
 "setopt_lcd_ghosting" = "残像パターン";
 "setopt_load_state" = "ロード";
 "setopt_manage_rom" = "ROM管理";

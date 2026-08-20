@@ -989,7 +989,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene);
 static void rewind_draw_noise_bands(void);
 static void rewind_exit_scrubbing(CB_GameScene* gameScene);
 static void rewind_dmg_save(gb_s* gb, uint8_t* out);
-static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target);
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in);
 
 static bool CB_GameScene_complete_successful_init(CB_GameScene* gameScene)
 {
@@ -1105,9 +1105,8 @@ char* cb_game_config_path(const char* rom_filename)
     return path;
 }
 
-// one is static-alloc; the other is in the display frame buffer area
-// see preferences_tcm_lcd
-static uint8_t* lcd_sources[2];
+// GB internal frame buffer
+static clalign uint8_t lcd_static[LCD_BUFFER_BYTES];
 
 CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short, bool cgb_mode)
 {
@@ -1292,18 +1291,12 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
         context->rom = rom;
         context->rom_size = rom_size;
 
-        static clalign uint8_t lcd_static[LCD_BUFFER_BYTES];
-
-        lcd_sources[0] = lcd_static;
-        lcd_sources[1] = playdate->graphics->getDisplayFrame();
-        lcd_sources[1] = (uint8_t*)((((uintptr_t)lcd_sources[1] + 31) / 32) * 32);
-
         gameScene->cgb_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_CGB);
         gameScene->dmg_compatible = (gb_get_models_supported(rom) & GB_SUPPORT_DMG);
 
         enum gb_init_error_e gb_ret = gb_init(
-            context->gb, context->wram, context->vram, lcd_sources[preferences_tcm_lcd], rom,
-            rom_size, gb_error, context, cgb_mode
+            context->gb, context->wram, context->vram, lcd_static, rom, rom_size, gb_error, context,
+            cgb_mode
         );
 
         CB_ASSERT((((uintptr_t)context->gb->lcd) & 7) == 0);
@@ -2699,7 +2692,6 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         /* hle_enabled must imply is_cgb_mode: the DMG core compiles HLE out;
          * a warp there rewinds pc with gb_hle unchecked -> poll-loop hang. */
         context->gb->hle_enabled = (preferences_hle == 1) && context->gb->is_cgb_mode;
-        context->gb->lcd = lcd_sources[gameScene->rewind.active ? 0 : preferences_tcm_lcd];
 
         if (gbScreenRequiresFullRefresh)
         {
@@ -4837,7 +4829,7 @@ static void rewind_dmg_save(gb_s* gb, uint8_t* out)
     memcpy(p, gb->lcd, LCD_BUFFER_BYTES);
 }
 
-static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target)
+static void rewind_dmg_load(gb_s* gb, const uint8_t* in)
 {
     const uint8_t* p = in;
     memcpy(gb, p, sizeof(gb_s));
@@ -4851,8 +4843,7 @@ static void rewind_dmg_load(gb_s* gb, const uint8_t* in, uint8_t* lcd_target)
         memcpy(gb->gb_cart_ram, p, gb->gb_cart_ram_size);
         p += gb->gb_cart_ram_size;
     }
-    memcpy(lcd_target, p, LCD_BUFFER_BYTES);
-    gb->lcd = lcd_target;
+    memcpy(gb->lcd, p, LCD_BUFFER_BYTES);
 }
 
 static void rewind_enter_scrubbing(CB_GameScene* gameScene)
@@ -4871,7 +4862,7 @@ static void rewind_enter_scrubbing(CB_GameScene* gameScene)
     gameScene->rewind.scrub_accumulator = 0.0f;
 
     uint8_t* buf = gameScene->rewind.states[newest];
-    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
+    rewind_dmg_load(context->gb, buf);
 }
 
 static void rewind_draw_noise_bands(void)
@@ -4905,7 +4896,7 @@ static void rewind_step_back(CB_GameScene* gameScene)
         (gameScene->rewind.read_idx - 1 + gameScene->rewind.capacity) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
+    rewind_dmg_load(context->gb, buf);
     gameScene->rewind.noise_pending = true;
 
     if (gameScene->rewind.show_help && ++gameScene->rewind.help_step_count >= 3)
@@ -4930,7 +4921,7 @@ static void rewind_step_forward(CB_GameScene* gameScene)
     gameScene->rewind.read_idx = (gameScene->rewind.read_idx + 1) % gameScene->rewind.capacity;
 
     uint8_t* buf = gameScene->rewind.states[gameScene->rewind.read_idx];
-    rewind_dmg_load(context->gb, buf, lcd_sources[0]);
+    rewind_dmg_load(context->gb, buf);
     gameScene->rewind.noise_pending = true;
 }
 

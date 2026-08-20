@@ -2767,12 +2767,11 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
  * Miscellaneous
  *  Show FPS, Turbo Speed, UI sounds,
  *  Disable auto lock, Boot Fade,
- *  TCM acceleration, LCD acceleration.,
+ *  TCM acceleration,
  *  About CrankBoy...
  */
 static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, int* count)
 {
-    bool emucore_mode = cb_settings_emucore_mode(scene);
     scene->rec_entry_index = -1;
 
     OptionsMenuEntry* section = cb_malloc(sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
@@ -2875,18 +2874,6 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
         section[i].description = itcm_base_with_device_desc;
     }
 #endif
-
-    if (!emucore_mode)
-    {
-        section[++i] = (OptionsMenuEntry){
-            .name = T(setopt_lcd_acceleration),
-            .values = off_on_labels,
-            .description = T(setdsc_lcd_acceleration),
-            .pref_var = &preferences_tcm_lcd,
-            .max_value = 2,
-            .on_press = NULL
-        };
-    }
 
     if (CB_App->bundled_rom)
     {

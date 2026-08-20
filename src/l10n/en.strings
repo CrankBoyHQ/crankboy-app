@@ -114,7 +114,6 @@
 "setopt_disable_auto_lock" = "Disable Auto Lock";
 "setopt_boot_fade" = "Boot Fade";
 "setopt_tcm_mode" = "TCM Mode";
-"setopt_lcd_acceleration" = "LCD Acceleration";
 "setopt_about_crankboy" = "About CrankBoy...";
 
 // Settings: Option Descriptions
@@ -197,7 +196,6 @@
 "setdsc_tcm_mode" = "Runs emulator in TCM for better performance.\n\nFull: core + draw.\nCore: interpreter only.\nDraw: rendering only.\n\nDisable (or restrict) if you experience instability.";
 "setdsc_tcm_mode_restart" = "%s\n\nRestart the game for changes to apply.\n\n%s";
 "setdsc_tcm_device" = "(Your device: %s)";
-"setdsc_lcd_acceleration" = "Provides minor perf boost by using the Playdate's own last-frame buffer to store the GB's internal frame buffer as well.\n\nSometimes causes garbage data to become visible on screen.";
 "setdsc_about_crankboy" = "This game is bundled for Playdate via CrankBoy, a Game Boy emulator.\n\nPress Ⓐ now to learn more about CrankBoy and its developers.";
 
 // Library Scene
