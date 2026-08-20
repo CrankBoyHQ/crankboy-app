@@ -1348,8 +1348,12 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
     if (budget_ppu > BATCH_BUDGET_MAX)
         budget_ppu = BATCH_BUDGET_MAX;
 
-    // CPU T-cycles: shift for CGB double-speed, then subtract the overshoot.
+    // CPU T-cycles: shift for CGB double-speed and overclocked VBlank
+    // (inst_cycles is shifted down by the same factors in __gb_step_cpu),
+    // then subtract the overshoot.
     unsigned budget = budget_ppu << (PGB_IS_CGB ? gb->cgb_fast_mode_active : 0);
+    if (gb->lcd_mode == LCD_VBLANK)
+        budget <<= gb->overclock;
     return (budget > BATCH_OVERSHOOT) ? (budget - BATCH_OVERSHOOT) : 1;
 }
 
