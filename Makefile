@@ -42,6 +42,7 @@ SRC += src/dtcm.c
 SRC += src/http.c
 SRC += src/jparse.c
 SRC += src/listview.c
+SRC += src/coverflow.c
 SRC += src/pgmusic.c
 SRC += src/preferences.c
 SRC += src/emucore_prefs.c

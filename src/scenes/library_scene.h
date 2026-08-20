@@ -10,6 +10,7 @@
 
 #include "../app.h"
 #include "../array.h"
+#include "../coverflow.h"
 #include "../http_safe.h"
 #include "../listview.h"
 #include "../scene.h"
@@ -80,6 +81,8 @@ typedef struct CB_LibraryScene
     CB_Array* games;
     CB_LibrarySceneModel model;
     CB_ListView* listView;
+    CB_CoverFlow* coverFlow;
+    bool last_view_flow;
     CB_LibrarySceneTab tab;
 
     CB_LibraryState state;
@@ -134,6 +137,8 @@ void CB_cover_compress(
     CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
 );
 void CB_cover_free_compressed(CB_Game* game);
+
+LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size);
 
 // returns true if removal succeeded
 // does not delete game on disk

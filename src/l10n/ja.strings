@@ -162,6 +162,7 @@
 "setopt_turbo_speed" = "ターボスピード";
 "setopt_ui_sounds" = "UI音";
 "setopt_undock" = "展開";
+"setopt_view" = "表示方法";
 "setval_accurate" = "普通";
 "setval_all" = "すべて";
 "setval_always" = "常時";
@@ -170,6 +171,8 @@
 "setval_bright" = "明";
 "setval_brighter" = "最明";
 "setval_contrast" = "ｺﾝﾄﾗｽﾄ";
+"setval_cover_flow" = "ｶﾊﾞｰﾌﾛｰ";
+"setval_core" = "コア";
 "setval_dark" = "暗";
 "setval_darker" = "最暗";
 "setval_database" = "ﾃﾞｰﾀﾍﾞｰｽ";
@@ -200,6 +203,7 @@
 "setval_grid" = "格子";
 "setval_high" = "高";
 "setval_leading" = "先頭表示";
+"setval_list" = "ﾘｽﾄ";
 "setval_long_w" = "長い (白)";
 "setval_long" = "長い";
 "setval_low" = "低";

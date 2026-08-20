@@ -987,6 +987,7 @@ const char** display_name_mode_labels;
 const char** sort_labels;
 const char** article_labels;
 const char** show_hide_labels;
+const char** view_mode_labels;
 const char** next_scene;
 
 static int settings_labels_initialized = 0;
@@ -1227,6 +1228,11 @@ static void CB_init_settings_labels(void)
     show_hide_labels[0] = T(setval_hide);
     show_hide_labels[1] = T(setval_show);
     show_hide_labels[2] = NULL;
+
+    view_mode_labels = cb_malloc(3 * sizeof(const char*));
+    view_mode_labels[0] = T(setval_list);
+    view_mode_labels[1] = T(setval_cover_flow);
+    view_mode_labels[2] = NULL;
 
     next_scene = cb_malloc(2 * sizeof(const char*));
     next_scene[0] = T(setval_arrow);
@@ -2725,6 +2731,15 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .description = T(setdsc_sort),
         .pref_var = &preferences_display_sort,
         .max_value = 4,
+        .on_press = NULL
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = T(setopt_view),
+        .values = view_mode_labels,
+        .description = T(setdsc_view),
+        .pref_var = &preferences_library_view_mode,
+        .max_value = 2,
         .on_press = NULL
     };
 

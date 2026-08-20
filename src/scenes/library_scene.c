@@ -125,6 +125,84 @@ void CB_cover_free_compressed(CB_Game* game)
     }
 }
 
+LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size)
+{
+    if (!game->cover_compressed_data || !io_buffer || !io_buffer_size)
+        return NULL;
+
+    int original_size = game->cover_rowbytes * game->cover_height;
+    if (game->cover_has_mask)
+        original_size *= 2;
+
+    if (*io_buffer_size < (size_t)original_size)
+    {
+        char* new_buffer = cb_realloc(*io_buffer, original_size);
+        if (!new_buffer)
+            return NULL;
+        *io_buffer = new_buffer;
+        *io_buffer_size = original_size;
+    }
+
+    char* decompressed_buffer = *io_buffer;
+    if (!decompressed_buffer)
+        return NULL;
+
+    int decompressed_size = LZ4_decompress_safe(
+        game->cover_compressed_data, decompressed_buffer, game->cover_compressed_size, original_size
+    );
+    if (decompressed_size != original_size)
+    {
+        playdate->system->logToConsole("LZ4 decompression failed for %s", game->fullpath);
+        return NULL;
+    }
+
+    LCDBitmap* new_bitmap = NULL;
+    if (game->cover_has_mask)
+    {
+        new_bitmap =
+            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorClear);
+    }
+    else
+    {
+        new_bitmap =
+            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorWhite);
+    }
+    if (!new_bitmap)
+        return NULL;
+
+    int new_rowbytes;
+    uint8_t *new_pixel_data, *new_mask_data;
+    playdate->graphics->getBitmapData(
+        new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data, &new_pixel_data
+    );
+    size_t copy_bytes = ((size_t)game->cover_rowbytes < (size_t)new_rowbytes)
+                            ? game->cover_rowbytes
+                            : (size_t)new_rowbytes;
+
+    uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
+    uint8_t* dst_ptr = new_pixel_data;
+
+    for (int y = 0; y < game->cover_height; ++y)
+    {
+        memcpy(dst_ptr, src_ptr, copy_bytes);
+        src_ptr += game->cover_rowbytes;
+        dst_ptr += new_rowbytes;
+    }
+
+    if (game->cover_has_mask && new_mask_data)
+    {
+        dst_ptr = new_mask_data;
+        for (int y = 0; y < game->cover_height; ++y)
+        {
+            memcpy(dst_ptr, src_ptr, copy_bytes);
+            src_ptr += game->cover_rowbytes;
+            dst_ptr += new_rowbytes;
+        }
+    }
+
+    return new_bitmap;
+}
+
 static bool cover_evict_lru(CB_LibraryScene* lib)
 {
     uint32_t smallest = UINT32_MAX;
@@ -399,6 +477,8 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
                 game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
             );
             CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
+
+            CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
 
             set_download_status(libraryScene, COVER_DOWNLOAD_IDLE, NULL);
             CB_ListView_reload(libraryScene->listView);
@@ -1286,6 +1366,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
 
     libraryScene->games = CB_App->gameListCache;
     libraryScene->listView = CB_ListView_new();
+    libraryScene->coverFlow = CB_CoverFlow_new();
+    libraryScene->last_view_flow = false;
 
     libraryScene->listView->selectedItem = 0;
     libraryScene->tab = CB_LibrarySceneTabList;
@@ -1887,8 +1969,31 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
     if (libraryScene->tab == CB_LibrarySceneTabList)
     {
+        bool flowMode = (preferences_library_view_mode != 0) && libraryScene->coverFlow;
+
+        if (flowMode != libraryScene->last_view_flow)
+        {
+            libraryScene->last_view_flow = flowMode;
+            needsDisplay = true;
+            libraryScene->listView->needsDisplay = true;
+            CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
+        }
+
+        CB_CoverFlowContext flowCtx = {
+            .games = libraryScene->games,
+            .itemCount = libraryScene->games->length + (homebrew_hub_available() ? 1 : 0),
+            .selection = &libraryScene->listView->selectedItem,
+            .forceRedraw = needsDisplay && !forAnimation,
+            .statusText = NULL
+        };
+
         if (!forAnimation)
-            CB_ListView_update(libraryScene->listView);
+        {
+            if (flowMode)
+                CB_CoverFlow_update(libraryScene->coverFlow, &flowCtx);
+            else
+                CB_ListView_update(libraryScene->listView);
+        }
 
         int selectedIndex = libraryScene->listView->selectedItem;
 
@@ -1931,99 +2036,23 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                 bool foundInCache = false;
                 if (selectedGame->cover_compressed_data)
                 {
-                    int original_size = selectedGame->cover_rowbytes * selectedGame->cover_height;
-                    if (selectedGame->cover_has_mask)
-                        original_size *= 2;
-
-                    if (libraryScene->decompression_buffer_size < (size_t)original_size)
+                    LCDBitmap* new_bitmap = CB_decompress_game_cover(
+                        selectedGame, &libraryScene->decompression_buffer,
+                        &libraryScene->decompression_buffer_size
+                    );
+                    if (new_bitmap)
                     {
-                        char* new_buffer =
-                            cb_realloc(libraryScene->decompression_buffer, original_size);
-                        libraryScene->decompression_buffer = new_buffer;
-                        libraryScene->decompression_buffer_size = original_size;
-                    }
+                        CB_App->coverArtCache.art.bitmap = new_bitmap;
+                        CB_App->coverArtCache.art.original_width = selectedGame->cover_width;
+                        CB_App->coverArtCache.art.original_height = selectedGame->cover_height;
+                        CB_App->coverArtCache.art.scaled_width = selectedGame->cover_width;
+                        CB_App->coverArtCache.art.scaled_height = selectedGame->cover_height;
+                        CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
+                        CB_App->coverArtCache.rom_path = cb_strdup(selectedGame->fullpath);
+                        foundInCache = true;
 
-                    char* decompressed_buffer = libraryScene->decompression_buffer;
-                    if (decompressed_buffer)
-                    {
-                        int decompressed_size = LZ4_decompress_safe(
-                            selectedGame->cover_compressed_data, decompressed_buffer,
-                            selectedGame->cover_compressed_size, original_size
-                        );
-                        if (decompressed_size == original_size)
-                        {
-                            LCDBitmap* new_bitmap = NULL;
-                            if (selectedGame->cover_has_mask)
-                            {
-                                new_bitmap = playdate->graphics->newBitmap(
-                                    selectedGame->cover_width, selectedGame->cover_height,
-                                    kColorClear
-                                );
-                            }
-                            else
-                            {
-                                new_bitmap = playdate->graphics->newBitmap(
-                                    selectedGame->cover_width, selectedGame->cover_height,
-                                    kColorWhite
-                                );
-                            }
-
-                            if (new_bitmap)
-                            {
-                                int new_rowbytes;
-                                uint8_t *new_pixel_data, *new_mask_data;
-                                playdate->graphics->getBitmapData(
-                                    new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data,
-                                    &new_pixel_data
-                                );
-                                size_t copy_bytes =
-                                    ((size_t)selectedGame->cover_rowbytes < (size_t)new_rowbytes)
-                                        ? selectedGame->cover_rowbytes
-                                        : (size_t)new_rowbytes;
-
-                                uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
-                                uint8_t* dst_ptr = new_pixel_data;
-
-                                for (int y = 0; y < selectedGame->cover_height; ++y)
-                                {
-                                    memcpy(dst_ptr, src_ptr, copy_bytes);
-                                    src_ptr += selectedGame->cover_rowbytes;
-                                    dst_ptr += new_rowbytes;
-                                }
-
-                                if (selectedGame->cover_has_mask && new_mask_data)
-                                {
-                                    dst_ptr = new_mask_data;
-                                    for (int y = 0; y < selectedGame->cover_height; ++y)
-                                    {
-                                        memcpy(dst_ptr, src_ptr, copy_bytes);
-                                        src_ptr += selectedGame->cover_rowbytes;
-                                        dst_ptr += new_rowbytes;
-                                    }
-                                }
-
-                                CB_App->coverArtCache.art.bitmap = new_bitmap;
-                                CB_App->coverArtCache.art.original_width =
-                                    selectedGame->cover_width;
-                                CB_App->coverArtCache.art.original_height =
-                                    selectedGame->cover_height;
-                                CB_App->coverArtCache.art.scaled_width = selectedGame->cover_width;
-                                CB_App->coverArtCache.art.scaled_height =
-                                    selectedGame->cover_height;
-                                CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
-                                CB_App->coverArtCache.rom_path = cb_strdup(selectedGame->fullpath);
-                                foundInCache = true;
-
-                                selectedGame->cover_access_counter =
-                                    ++libraryScene->cover_global_access_counter;
-                            }
-                        }
-                        else
-                        {
-                            playdate->system->logToConsole(
-                                "LZ4 decompression failed for %s", selectedGame->fullpath
-                            );
-                        }
+                        selectedGame->cover_access_counter =
+                            ++libraryScene->cover_global_access_counter;
                     }
                 }
 
@@ -2053,351 +2082,392 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             }
         }
 
-        int screenWidth = playdate->display->getWidth();
-        int screenHeight = playdate->display->getHeight();
+        if (!forAnimation)
+            libraryScene->lastSelectedItem = selectedIndex;
 
-        int rightPanelWidth = THUMBNAIL_WIDTH + 1;
-
-        // use actual thumbnail width if possible
-        if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
-            CB_App->coverArtCache.art.bitmap != NULL)
+        if (flowMode)
         {
-            playdate->graphics->getBitmapData(
-                CB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL
-            );
-            if (rightPanelWidth >= THUMBNAIL_WIDTH - 1)
-                rightPanelWidth = THUMBNAIL_WIDTH;
-            rightPanelWidth++;
-        }
-
-        int leftPanelWidth = screenWidth - rightPanelWidth;
-
-        int animL = libraryScene->launchAnimShiftLeft;
-        int animR = libraryScene->launchAnimShiftRight;
-
-        libraryScene->listView->needsDisplay = libraryScene->listView->needsDisplay || needsDisplay;
-        libraryScene->listView->frame = PDRectMake(-animL, 0, leftPanelWidth, screenHeight);
-        last_panel_seam = leftPanelWidth;
-
-#ifdef TARGET_SIMULATOR
-        while (page_advance > 0)
-        {
-            --page_advance;
-            CB_App->buttons_pressed = kButtonDown;
-            CB_ListView_update(libraryScene->listView);
-        }
-        while (page_advance < 0)
-        {
-            ++page_advance;
-            CB_App->buttons_pressed = kButtonUp;
-            CB_ListView_update(libraryScene->listView);
-        }
-#endif
-
-        CB_ListView_draw(libraryScene->listView);
-
-        if (animL > 0 || animR > 0)
-        {
-            playdate->graphics->fillRect(
-                leftPanelWidth - animL, 0, animL + animR, screenHeight,
-                libraryScene->launchAnimWhiteGap ? kColorWhite : kColorBlack
-            );
-
-            if (libraryScene->launchAnimWhiteGap)
+            char statusBuf[64];
+            if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
+                libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
             {
-                int leftEdge = leftPanelWidth - animL;
-                int rightEdge = leftPanelWidth + animR;
-                playdate->graphics->fillRect(leftEdge + 1, 0, 5, screenHeight, (uintptr_t)&lcdp_50);
-                playdate->graphics->fillRect(
-                    rightEdge - 6, 0, 5, screenHeight, (uintptr_t)&lcdp_50
-                );
-                playdate->graphics->fillRect(leftEdge, 0, 1, screenHeight, kColorBlack);
-                playdate->graphics->fillRect(rightEdge - 1, 0, 1, screenHeight, kColorBlack);
-            }
-        }
-
-        if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
-        {
-            if (!forAnimation)
-                libraryScene->lastSelectedItem = selectedIndex;
-            playdate->graphics->setDrawOffset(animR, 0);
-
-            playdate->graphics->fillRect(
-                leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorWhite
-            );
-
-            if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
-            {
-                if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
-                    CB_App->coverArtCache.art.bitmap != NULL)
+                if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
                 {
-                    int panel_content_width = rightPanelWidth - 1;
-                    int coverX = leftPanelWidth + 1 +
-                                 (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
-                    int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
-
-                    playdate->graphics->fillRect(
-                        leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
-                    );
-                    playdate->graphics->setDrawMode(kDrawModeCopy);
-                    playdate->graphics->drawBitmap(
-                        CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
-                    );
+                    const int dot_counts[] = {0, 1, 2, 3};
+                    int num_dots = dot_counts[coverDownloadAnimationStep];
+                    snprintf(statusBuf, sizeof(statusBuf), "%s", T(cover_downloading));
+                    for (int i = 0; i < num_dots; i++)
+                    {
+                        strncat(statusBuf, ".", sizeof(statusBuf) - strlen(statusBuf) - 1);
+                    }
                 }
                 else
                 {
-                    bool had_error_loading =
-                        CB_App->coverArtCache.art.status != CB_COVER_ART_FILE_NOT_FOUND;
+                    snprintf(
+                        statusBuf, sizeof(statusBuf), "%s",
+                        libraryScene->coverDownloadMessage ? libraryScene->coverDownloadMessage
+                                                           : T(lib_please_wait)
+                    );
+                }
+                flowCtx.statusText = statusBuf;
+            }
 
-                    if (had_error_loading)
+            CB_CoverFlow_draw(libraryScene->coverFlow, &flowCtx);
+        }
+        else
+        {
+            int screenWidth = playdate->display->getWidth();
+            int screenHeight = playdate->display->getHeight();
+
+            int rightPanelWidth = THUMBNAIL_WIDTH + 1;
+
+            // use actual thumbnail width if possible
+            if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+                CB_App->coverArtCache.art.bitmap != NULL)
+            {
+                playdate->graphics->getBitmapData(
+                    CB_App->coverArtCache.art.bitmap, &rightPanelWidth, NULL, NULL, NULL, NULL
+                );
+                if (rightPanelWidth >= THUMBNAIL_WIDTH - 1)
+                    rightPanelWidth = THUMBNAIL_WIDTH;
+                rightPanelWidth++;
+            }
+
+            int leftPanelWidth = screenWidth - rightPanelWidth;
+
+            int animL = libraryScene->launchAnimShiftLeft;
+            int animR = libraryScene->launchAnimShiftRight;
+
+            libraryScene->listView->needsDisplay =
+                libraryScene->listView->needsDisplay || needsDisplay;
+            libraryScene->listView->frame = PDRectMake(-animL, 0, leftPanelWidth, screenHeight);
+            last_panel_seam = leftPanelWidth;
+
+#ifdef TARGET_SIMULATOR
+            while (page_advance > 0)
+            {
+                --page_advance;
+                CB_App->buttons_pressed = kButtonDown;
+                CB_ListView_update(libraryScene->listView);
+            }
+            while (page_advance < 0)
+            {
+                ++page_advance;
+                CB_App->buttons_pressed = kButtonUp;
+                CB_ListView_update(libraryScene->listView);
+            }
+#endif
+
+            CB_ListView_draw(libraryScene->listView);
+
+            if (animL > 0 || animR > 0)
+            {
+                playdate->graphics->fillRect(
+                    leftPanelWidth - animL, 0, animL + animR, screenHeight,
+                    libraryScene->launchAnimWhiteGap ? kColorWhite : kColorBlack
+                );
+
+                if (libraryScene->launchAnimWhiteGap)
+                {
+                    int leftEdge = leftPanelWidth - animL;
+                    int rightEdge = leftPanelWidth + animR;
+                    playdate->graphics->fillRect(
+                        leftEdge + 1, 0, 5, screenHeight, (uintptr_t)&lcdp_50
+                    );
+                    playdate->graphics->fillRect(
+                        rightEdge - 6, 0, 5, screenHeight, (uintptr_t)&lcdp_50
+                    );
+                    playdate->graphics->fillRect(leftEdge, 0, 1, screenHeight, kColorBlack);
+                    playdate->graphics->fillRect(rightEdge - 1, 0, 1, screenHeight, kColorBlack);
+                }
+            }
+
+            if (needsDisplay || libraryScene->listView->needsDisplay || selectionChanged)
+            {
+                playdate->graphics->setDrawOffset(animR, 0);
+
+                playdate->graphics->fillRect(
+                    leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorWhite
+                );
+
+                if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
+                {
+                    if (CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
+                        CB_App->coverArtCache.art.bitmap != NULL)
                     {
-                        const char* message = T(lib_error);
-
-                        if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
-                        {
-                            message = T(lib_invalid_image);
-                        }
-
-                        playdate->graphics->setFont(CB_App->bodyFont);
-                        int textWidth = playdate->graphics->getTextWidth(
-                            CB_App->bodyFont, message, cb_strlen(message), kUTF8Encoding, 0
-                        );
                         int panel_content_width = rightPanelWidth - 1;
-                        int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
-                        int textY =
-                            (screenHeight - playdate->graphics->getFontHeight(CB_App->bodyFont)) /
-                            2;
+                        int coverX =
+                            leftPanelWidth + 1 +
+                            (panel_content_width - CB_App->coverArtCache.art.scaled_width) / 2;
+                        int coverY = (screenHeight - CB_App->coverArtCache.art.scaled_height) / 2;
 
-                        playdate->graphics->setDrawMode(kDrawModeFillBlack);
-                        playdate->graphics->drawText(
-                            message, cb_strlen(message), kUTF8Encoding, textX, textY
+                        playdate->graphics->fillRect(
+                            leftPanelWidth + 1, 0, rightPanelWidth - 1, screenHeight, kColorBlack
+                        );
+                        playdate->graphics->setDrawMode(kDrawModeCopy);
+                        playdate->graphics->drawBitmap(
+                            CB_App->coverArtCache.art.bitmap, coverX, coverY, kBitmapUnflipped
                         );
                     }
                     else
                     {
-                        if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
-                            libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
+                        bool had_error_loading =
+                            CB_App->coverArtCache.art.status != CB_COVER_ART_FILE_NOT_FOUND;
+
+                        if (had_error_loading)
                         {
-                            char message[64];
-                            char width_ref[64];
-                            const char* width_calc_string = NULL;
+                            const char* message = T(lib_error);
 
-                            if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+                            if (CB_App->coverArtCache.art.status == CB_COVER_ART_INVALID_IMAGE)
                             {
-                                const char* base_text = T(cover_downloading);
-                                // Animation sequence: 0 dots, 1 dots, 2 dot, 3 dots
-                                const int dot_counts[] = {0, 1, 2, 3};
-                                int num_dots = dot_counts[coverDownloadAnimationStep];
-
-                                // Use the fully-dotted form of the same string for width
-                                // calculation to prevent jitter. Must derive from the same
-                                // key so translations can't skew the centering.
-                                snprintf(width_ref, sizeof(width_ref), "%s...", base_text);
-                                width_calc_string = width_ref;
-
-                                snprintf(message, sizeof(message), "%s", base_text);
-                                for (int i = 0; i < num_dots; i++)
-                                {
-                                    strncat(message, ".", sizeof(message) - strlen(message) - 1);
-                                }
-                            }
-                            else
-                            {
-                                const char* defaultMessage =
-                                    libraryScene->coverDownloadMessage
-                                        ? libraryScene->coverDownloadMessage
-                                        : T(lib_please_wait);
-                                snprintf(message, sizeof(message), "%s", defaultMessage);
-                            }
-
-                            if (width_calc_string == NULL)
-                            {
-                                width_calc_string = message;
+                                message = T(lib_invalid_image);
                             }
 
                             playdate->graphics->setFont(CB_App->bodyFont);
                             int textWidth = playdate->graphics->getTextWidth(
-                                CB_App->bodyFont, width_calc_string, strlen(width_calc_string),
-                                kUTF8Encoding, 0
+                                CB_App->bodyFont, message, cb_strlen(message), kUTF8Encoding, 0
                             );
                             int panel_content_width = rightPanelWidth - 1;
                             int textX = leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
                             int textY = (screenHeight -
                                          playdate->graphics->getFontHeight(CB_App->bodyFont)) /
                                         2;
+
                             playdate->graphics->setDrawMode(kDrawModeFillBlack);
                             playdate->graphics->drawText(
-                                message, strlen(message), kUTF8Encoding, textX, textY
+                                message, cb_strlen(message), kUTF8Encoding, textX, textY
                             );
                         }
                         else
                         {
-                            CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                            bool hasDBMatch = (selectedGame->names->name_database != NULL);
-
-                            const char* title = T(cover_missing_title);
-                            char middle_message[32];
-
-                            if (hasDBMatch)
+                            if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
+                                libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
                             {
-                                snprintf(
-                                    middle_message, sizeof(middle_message), "%s",
-                                    T(lib_press_download)
+                                char message[64];
+                                char width_ref[64];
+                                const char* width_calc_string = NULL;
+
+                                if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+                                {
+                                    const char* base_text = T(cover_downloading);
+                                    // Animation sequence: 0 dots, 1 dots, 2 dot, 3 dots
+                                    const int dot_counts[] = {0, 1, 2, 3};
+                                    int num_dots = dot_counts[coverDownloadAnimationStep];
+
+                                    // Use the fully-dotted form of the same string for width
+                                    // calculation to prevent jitter. Must derive from the same
+                                    // key so translations can't skew the centering.
+                                    snprintf(width_ref, sizeof(width_ref), "%s...", base_text);
+                                    width_calc_string = width_ref;
+
+                                    snprintf(message, sizeof(message), "%s", base_text);
+                                    for (int i = 0; i < num_dots; i++)
+                                    {
+                                        strncat(
+                                            message, ".", sizeof(message) - strlen(message) - 1
+                                        );
+                                    }
+                                }
+                                else
+                                {
+                                    const char* defaultMessage =
+                                        libraryScene->coverDownloadMessage
+                                            ? libraryScene->coverDownloadMessage
+                                            : T(lib_please_wait);
+                                    snprintf(message, sizeof(message), "%s", defaultMessage);
+                                }
+
+                                if (width_calc_string == NULL)
+                                {
+                                    width_calc_string = message;
+                                }
+
+                                playdate->graphics->setFont(CB_App->bodyFont);
+                                int textWidth = playdate->graphics->getTextWidth(
+                                    CB_App->bodyFont, width_calc_string, strlen(width_calc_string),
+                                    kUTF8Encoding, 0
+                                );
+                                int panel_content_width = rightPanelWidth - 1;
+                                int textX =
+                                    leftPanelWidth + 1 + (panel_content_width - textWidth) / 2;
+                                int textY = (screenHeight -
+                                             playdate->graphics->getFontHeight(CB_App->bodyFont)) /
+                                            2;
+                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                                playdate->graphics->drawText(
+                                    message, strlen(message), kUTF8Encoding, textX, textY
                                 );
                             }
                             else
                             {
-                                snprintf(
-                                    middle_message, sizeof(middle_message), "%s",
-                                    T(cover_no_db_match)
-                                );
-                            }
+                                CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
+                                bool hasDBMatch = (selectedGame->names->name_database != NULL);
 
-                            // Common messages for the footer
-                            const char* message_or = T(label_or_separator);
-                            const char* message_connect = T(cover_connect_computer);
-                            const char* message_copy = T(cover_copy_to);
-                            const char* message_path = cb_gb_directory_path(CB_coversPath);
+                                const char* title = T(cover_missing_title);
+                                char middle_message[32];
 
-                            LCDFont* titleFont = CB_App->bodyFont;
-                            LCDFont* bodyFont = CB_App->subheadFont;
-                            int large_gap = 12;
-                            int small_gap = 3;
-                            int titleHeight = playdate->graphics->getFontHeight(titleFont);
-                            int messageHeight = playdate->graphics->getFontHeight(bodyFont);
+                                if (hasDBMatch)
+                                {
+                                    snprintf(
+                                        middle_message, sizeof(middle_message), "%s",
+                                        T(lib_press_download)
+                                    );
+                                }
+                                else
+                                {
+                                    snprintf(
+                                        middle_message, sizeof(middle_message), "%s",
+                                        T(cover_no_db_match)
+                                    );
+                                }
 
-                            // Calculate total height dynamically based on whether the "- or -" is
-                            // shown
-                            int containerHeight = titleHeight + large_gap + messageHeight +
-                                                  large_gap + messageHeight + small_gap +
-                                                  messageHeight + small_gap + messageHeight;
-                            if (hasDBMatch)
-                            {
-                                containerHeight += large_gap + messageHeight;
-                            }
+                                // Common messages for the footer
+                                const char* message_or = T(label_or_separator);
+                                const char* message_connect = T(cover_connect_computer);
+                                const char* message_copy = T(cover_copy_to);
+                                const char* message_path = cb_gb_directory_path(CB_coversPath);
 
-                            int currentY = (screenHeight - containerHeight) / 2;
-                            int panel_content_width = rightPanelWidth - 1;
+                                LCDFont* titleFont = CB_App->bodyFont;
+                                LCDFont* bodyFont = CB_App->subheadFont;
+                                int large_gap = 12;
+                                int small_gap = 3;
+                                int titleHeight = playdate->graphics->getFontHeight(titleFont);
+                                int messageHeight = playdate->graphics->getFontHeight(bodyFont);
 
-                            playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                                // Calculate total height dynamically based on whether the "- or -"
+                                // is shown
+                                int containerHeight = titleHeight + large_gap + messageHeight +
+                                                      large_gap + messageHeight + small_gap +
+                                                      messageHeight + small_gap + messageHeight;
+                                if (hasDBMatch)
+                                {
+                                    containerHeight += large_gap + messageHeight;
+                                }
 
-                            // Draw Title (common)
-                            playdate->graphics->setFont(titleFont);
-                            int titleX = leftPanelWidth + 1 +
-                                         (panel_content_width -
-                                          playdate->graphics->getTextWidth(
-                                              titleFont, title, strlen(title), kUTF8Encoding, 0
-                                          )) /
-                                             2;
-                            playdate->graphics->drawText(
-                                title, strlen(title), kUTF8Encoding, titleX, currentY
-                            );
-                            currentY += titleHeight + large_gap;
+                                int currentY = (screenHeight - containerHeight) / 2;
+                                int panel_content_width = rightPanelWidth - 1;
 
-                            // Draw Middle Message (dynamic)
-                            playdate->graphics->setFont(bodyFont);
-                            int middle_message_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width - playdate->graphics->getTextWidth(
-                                                           bodyFont, middle_message,
-                                                           strlen(middle_message), kUTF8Encoding, 0
-                                                       )) /
-                                    2;
-                            playdate->graphics->drawText(
-                                middle_message, strlen(middle_message), kUTF8Encoding,
-                                middle_message_X, currentY
-                            );
-                            currentY += messageHeight + large_gap;
+                                playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
-                            // Draw Footer (partially conditional)
-                            if (hasDBMatch)
-                            {
-                                int message_or_X =
-                                    leftPanelWidth + 1 +
-                                    (panel_content_width -
-                                     playdate->graphics->getTextWidth(
-                                         bodyFont, message_or, strlen(message_or), kUTF8Encoding, 0
-                                     )) /
-                                        2;
+                                // Draw Title (common)
+                                playdate->graphics->setFont(titleFont);
+                                int titleX = leftPanelWidth + 1 +
+                                             (panel_content_width -
+                                              playdate->graphics->getTextWidth(
+                                                  titleFont, title, strlen(title), kUTF8Encoding, 0
+                                              )) /
+                                                 2;
                                 playdate->graphics->drawText(
-                                    message_or, strlen(message_or), kUTF8Encoding, message_or_X,
-                                    currentY
+                                    title, strlen(title), kUTF8Encoding, titleX, currentY
+                                );
+                                currentY += titleHeight + large_gap;
+
+                                // Draw Middle Message (dynamic)
+                                playdate->graphics->setFont(bodyFont);
+                                int middle_message_X = leftPanelWidth + 1 +
+                                                       (panel_content_width -
+                                                        playdate->graphics->getTextWidth(
+                                                            bodyFont, middle_message,
+                                                            strlen(middle_message), kUTF8Encoding, 0
+                                                        )) /
+                                                           2;
+                                playdate->graphics->drawText(
+                                    middle_message, strlen(middle_message), kUTF8Encoding,
+                                    middle_message_X, currentY
                                 );
                                 currentY += messageHeight + large_gap;
+
+                                // Draw Footer (partially conditional)
+                                if (hasDBMatch)
+                                {
+                                    int message_or_X = leftPanelWidth + 1 +
+                                                       (panel_content_width -
+                                                        playdate->graphics->getTextWidth(
+                                                            bodyFont, message_or,
+                                                            strlen(message_or), kUTF8Encoding, 0
+                                                        )) /
+                                                           2;
+                                    playdate->graphics->drawText(
+                                        message_or, strlen(message_or), kUTF8Encoding, message_or_X,
+                                        currentY
+                                    );
+                                    currentY += messageHeight + large_gap;
+                                }
+
+                                int message_connect_X =
+                                    leftPanelWidth + 1 +
+                                    (panel_content_width - playdate->graphics->getTextWidth(
+                                                               bodyFont, message_connect,
+                                                               strlen(message_connect),
+                                                               kUTF8Encoding, 0
+                                                           )) /
+                                        2;
+                                playdate->graphics->drawText(
+                                    message_connect, strlen(message_connect), kUTF8Encoding,
+                                    message_connect_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+
+                                int message_copy_X = leftPanelWidth + 1 +
+                                                     (panel_content_width -
+                                                      playdate->graphics->getTextWidth(
+                                                          bodyFont, message_copy,
+                                                          strlen(message_copy), kUTF8Encoding, 0
+                                                      )) /
+                                                         2;
+                                playdate->graphics->drawText(
+                                    message_copy, strlen(message_copy), kUTF8Encoding,
+                                    message_copy_X, currentY
+                                );
+                                currentY += messageHeight + small_gap;
+
+                                int message_path_X = leftPanelWidth + 1 +
+                                                     (panel_content_width -
+                                                      playdate->graphics->getTextWidth(
+                                                          bodyFont, message_path,
+                                                          strlen(message_path), kUTF8Encoding, 0
+                                                      )) /
+                                                         2;
+                                playdate->graphics->drawText(
+                                    message_path, strlen(message_path), kUTF8Encoding,
+                                    message_path_X, currentY
+                                );
                             }
-
-                            int message_connect_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width - playdate->graphics->getTextWidth(
-                                                           bodyFont, message_connect,
-                                                           strlen(message_connect), kUTF8Encoding, 0
-                                                       )) /
-                                    2;
-                            playdate->graphics->drawText(
-                                message_connect, strlen(message_connect), kUTF8Encoding,
-                                message_connect_X, currentY
-                            );
-                            currentY += messageHeight + small_gap;
-
-                            int message_copy_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message_copy, strlen(message_copy), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            playdate->graphics->drawText(
-                                message_copy, strlen(message_copy), kUTF8Encoding, message_copy_X,
-                                currentY
-                            );
-                            currentY += messageHeight + small_gap;
-
-                            int message_path_X =
-                                leftPanelWidth + 1 +
-                                (panel_content_width -
-                                 playdate->graphics->getTextWidth(
-                                     bodyFont, message_path, strlen(message_path), kUTF8Encoding, 0
-                                 )) /
-                                    2;
-                            playdate->graphics->drawText(
-                                message_path, strlen(message_path), kUTF8Encoding, message_path_X,
-                                currentY
-                            );
                         }
                     }
                 }
-            }
-            else if (selectedIndex == libraryScene->games->length)
-            {
-                const char* text = T(lib_homebrew_banner);
+                else if (selectedIndex == libraryScene->games->length)
+                {
+                    const char* text = T(lib_homebrew_banner);
 
-                LCDFont* font = CB_App->subheadFont;
-                int margin = 6;
-                int textX = leftPanelWidth + 1 + margin;
-                int textWidth = rightPanelWidth - 1 - margin * 2;
+                    LCDFont* font = CB_App->subheadFont;
+                    int margin = 6;
+                    int textX = leftPanelWidth + 1 + margin;
+                    int textWidth = rightPanelWidth - 1 - margin * 2;
 
-                playdate->graphics->setFont(font);
-                playdate->graphics->setDrawMode(kDrawModeFillBlack);
+                    playdate->graphics->setFont(font);
+                    playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
-                int textHeight = playdate->graphics->getTextHeightForMaxWidth(
-                    font, text, strlen(text), textWidth, kUTF8Encoding, kWrapWord, 0, 0
+                    int textHeight = playdate->graphics->getTextHeightForMaxWidth(
+                        font, text, strlen(text), textWidth, kUTF8Encoding, kWrapWord, 0, 0
+                    );
+                    int textY = (screenHeight - textHeight) / 2;
+                    if (textY < 0)
+                        textY = 0;
+
+                    playdate->graphics->drawTextInRect(
+                        text, strlen(text), kUTF8Encoding, textX, textY, textWidth,
+                        screenHeight - textY, kWrapWord, kAlignTextCenter
+                    );
+                }
+
+                // Draw separator line
+                playdate->graphics->drawLine(
+                    leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
                 );
-                int textY = (screenHeight - textHeight) / 2;
-                if (textY < 0)
-                    textY = 0;
 
-                playdate->graphics->drawTextInRect(
-                    text, strlen(text), kUTF8Encoding, textX, textY, textWidth,
-                    screenHeight - textY, kWrapWord, kAlignTextCenter
-                );
+                playdate->graphics->setDrawOffset(0, 0);
             }
-
-            // Draw separator line
-            playdate->graphics->drawLine(
-                leftPanelWidth, 0, leftPanelWidth, screenHeight, 1, kColorBlack
-            );
-
-            playdate->graphics->setDrawOffset(0, 0);
         }
     }
     else if (libraryScene->tab == CB_LibrarySceneTabEmpty)
@@ -2568,6 +2638,8 @@ static void CB_LibraryScene_free(void* object)
     CB_Scene_free(libraryScene->scene);
 
     CB_ListView_free(libraryScene->listView);
+
+    CB_CoverFlow_free(libraryScene->coverFlow);
 
     if (libraryScene->coverDownloadMessage)
     {
@@ -2786,6 +2858,7 @@ bool CB_LibraryScene_removeGame(CB_Game* game)
     libraryScene->scene->forceFullRefresh = true;
 
     cb_clear_global_cover_cache();
+    CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
 
     CB_Game_free(game);
     return true;

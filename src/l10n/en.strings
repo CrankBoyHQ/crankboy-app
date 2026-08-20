@@ -106,6 +106,7 @@
 "setopt_title_display" = "Title Display";
 "setopt_article" = "Article";
 "setopt_sort" = "Sort";
+"setopt_view" = "View";
 "setopt_remember_last" = "Remember Last";
 "setopt_launch_animation" = "Launch Animation";
 "setopt_cgb_prompt" = "CGB Prompt";
@@ -186,6 +187,7 @@
 "setdsc_title_display" = "Choose how game titlesare displayed in the list.\n\nShort:\nThe common game title\n(by database match).\n\nDetailed:\nThe full title, including region and version info.\n\nFilename:\nThe original ROM filename.\n\n";
 "setdsc_article" = "If a game title ends with an article, such as\n\n      \"Mummy, The (USA)\"\n\nit can be displayed at the start instead, i.e.\n\n      \"The Mummy (USA)\"";
 "setdsc_sort" = "Sort the games list either by database name or by filename.\n\nCan also choose to include articles that have been moved to the front of the name toward sorting.";
+"setdsc_view" = "Choose how to browse the game library.\n\nList:\nGame titles on the left, cover art on the right.\n\nCover Flow:\nFlip through large cover art with left/right or the crank.";
 "setdsc_remember_last" = "When opening the library, initial selection will be the last game played.";
 "setdsc_launch_animation" = "Animation when launching a ROM from the library.";
 "setdsc_cgb_prompt" = "When launching a ROM, show a prompt to choose:\n\n1. DMG (original) emulation\n2. CGB (\"Color\") emulation\n\nNo: never prompt\nYes: CGB-compatible ROMs\nAlways: CGB and DMG ROMs\n\nCGB-only ROMs always show a one-time notice.";
@@ -563,6 +565,8 @@
 "setval_as_is" = "As-is";
 "setval_hide" = "Hide";
 "setval_show" = "Show";
+"setval_list" = "List";
+"setval_cover_flow" = "Cover Flow";
 "setval_arrow" = "›";
 
 // Additional Strings not used currently
