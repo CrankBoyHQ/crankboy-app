@@ -64,6 +64,8 @@ static void on_tick(gb_s* gb, ScriptData* data, int frames_elapsed)
 {
     bool show_sidebar = gb->gb_reg.WY == 0x80;
 
+    game_hide_indicator = show_sidebar;
+
     if (show_sidebar)
     {
         // flush left
