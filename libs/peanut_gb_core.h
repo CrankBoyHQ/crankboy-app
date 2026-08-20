@@ -1312,8 +1312,10 @@ __core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
     return ((uint32_t)(ticks_until_overflow - 1) * tima_threshold) + cycles_until_next_tick + 1;
 }
 
-/* Batch budget (CPU T): bound so the batch crosses <=1 PPU mode boundary and
- * never runs past a pending TIMA overflow. */
+/* Batch budget (CPU T): bound so the batch crosses <=1 PPU mode boundary by at
+ * most BATCH_CROSS_MAX (keeping the pgb_batch_elapsed lag + PPU_PEEK
+ * compensation and STAT/LYC ISR latency bounded) and never runs past a pending
+ * TIMA overflow. */
 __core static unsigned $(__gb_batch_budget)(gb_s* gb)
 {
     // PPU-domain distance to the *second* mode boundary.
@@ -1339,7 +1341,9 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
         d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
         break;
     }
-    unsigned budget_ppu = d1 + d2;
+    /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
+     * the first one. */
+    unsigned budget_ppu = d1 + MIN(d2, BATCH_CROSS_MAX);
 
     uint32_t timer = $(__gb_timer_distance)(gb);
     if (timer < budget_ppu)
