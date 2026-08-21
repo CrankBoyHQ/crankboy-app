@@ -1484,9 +1484,17 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
      * the first one. */
     unsigned budget_ppu = d1 + MIN(d2, BATCH_CROSS_MAX);
 
-    uint32_t timer = $(__gb_timer_distance)(gb);
-    if (timer < budget_ppu)
-        budget_ppu = timer;
+    /* Timer clamp only matters when the timer can raise an interrupt.
+     * With TIMER_INTR disabled in IE, TIMA overflow processing happens at
+     * the next batch end anyway (same granularity as TIMA/IF reads), so the
+     * batch may run past it -- this avoids 2x batch churn in CGB double
+     * speed, where TIMA overflows twice as often per frame. */
+    if (gb->gb_reg.IE & TIMER_INTR)
+    {
+        uint32_t timer = $(__gb_timer_distance)(gb);
+        if (timer < budget_ppu)
+            budget_ppu = timer;
+    }
 
     if (budget_ppu > BATCH_BUDGET_MAX)
         budget_ppu = BATCH_BUDGET_MAX;
@@ -2128,7 +2136,11 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
 
     uint32_t src[3] = {0xFFFFFFFF, 0xFFFFFFFF, 0xFFFFFFFF};
 
-    src[1] = $(__gb_timer_distance)(gb);
+    /* Timer term only if the timer interrupt is enabled (a disabled TIMA
+     * overflow cannot wake HALT; the step-tail catch-up loop absorbs the
+     * missed ticks). */
+    if (gb->gb_reg.IE & TIMER_INTR)
+        src[1] = $(__gb_timer_distance)(gb);
 
     // PPU event calculation
     uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
