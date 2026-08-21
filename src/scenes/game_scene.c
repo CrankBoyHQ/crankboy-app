@@ -702,6 +702,9 @@ volatile int g_trace_frames_remaining = 0;
 // Offset of the relocated draw cluster (0 = run from flash).
 // Set by tcm_relocate on RevA; always 0 elsewhere.
 intptr_t pgb_draw_reloc_offset = 0;
+// Same for the rare and HLE clusters.
+intptr_t pgb_rare_reloc_offset = 0;
+intptr_t pgb_hle_reloc_offset = 0;
 
 #if ITCM_CORE
 void* core_itcm_reloc = NULL;
@@ -719,6 +722,12 @@ extern char __draw_dmg_start[];
 extern char __draw_dmg_end[];
 extern char __draw_cgb_start[];
 extern char __draw_cgb_end[];
+extern char __rare_dmg_start[];
+extern char __rare_dmg_end[];
+extern char __rare_cgb_start[];
+extern char __rare_cgb_end[];
+extern char __hle_cgb_start[];
+extern char __hle_cgb_end[];
 
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 
@@ -831,6 +840,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // enough for pockets. Priority: core's pocket slack -> any other pocket
     // -> main pool (only if core is NOT in the main pool) -> flash. This
     // keeps core and draw from ever sharing the main pool.
+    bool draw_in_main_pool = false;
+    int draw_pocket = -1;
     if (draw_on)
     {
         void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
@@ -840,7 +851,6 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
         void* draw_reloc = NULL;
         const char* draw_where = "flash";
-        int draw_pocket = -1;
 
         // core's pocket first (its brk continues after the core block),
         // then any other pocket with room
@@ -864,6 +874,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
         {
             draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
             draw_where = "main pool";
+            draw_in_main_pool = true;
         }
 
         if (draw_reloc)
@@ -899,6 +910,106 @@ __section__(".rare") void tcm_relocate(bool cgb)
         );
     }
 
+    // Cluster placement/eviction priority: core > draw > rare > hle.
+    // core: most-slack pocket -> main pool (never flash).
+    // draw: core-pocket-first -> any pocket -> main pool -> flash.
+    // rare/hle: share used pockets first (core's slack, then draw's slack),
+    // then the smallest fresh pocket that fits (best-fit) -> main pool ->
+    // flash. hle is skipped when the HLE preference is off (the cluster is
+    // never called at runtime then).
+    pgb_rare_reloc_offset = 0;
+    pgb_hle_reloc_offset = 0;
+    if (core_on)
+    {
+        const struct
+        {
+            const char* name;
+            char* start;
+            char* end;
+            intptr_t* offset;
+            bool cgb_only;
+        } clusters[] = {
+            {"rare", cgb ? __rare_cgb_start : __rare_dmg_start,
+             cgb ? __rare_cgb_end : __rare_dmg_end, &pgb_rare_reloc_offset, false},
+            {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true},
+        };
+
+        bool pool_claimed = core_in_main_pool || draw_in_main_pool;
+
+        for (int c = 0; c < 2; c++)
+        {
+            if (clusters[c].cgb_only && !cgb)
+                continue;
+            if (c == 1 && preferences_hle != 1)
+                continue;
+
+            const size_t size = clusters[c].end - clusters[c].start;
+            if (size == 0)
+                continue;
+
+            const size_t need = size + MARGIN + DTCM_ALIGN_PAD;
+            int pick = -1;
+
+            // Pass 1: share an already-used pocket (core's, then draw's).
+            const int shared[2] = {best, draw_pocket};
+            for (int s = 0; s < 2 && pick < 0; s++)
+            {
+                const int p = shared[s];
+                if (p < 0 || (s == 1 && p == shared[0]) || !dtcm_pocket_enabled(p))
+                    continue;
+                if ((uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool >= need)
+                    pick = p;
+            }
+
+            // Pass 2: best-fit over the remaining pockets.
+            if (pick < 0)
+            {
+                size_t best_fit = SIZE_MAX;
+                for (int i = 0; i < dtcm_num_pockets; i++)
+                {
+                    if (i == best || i == draw_pocket || !dtcm_pocket_enabled(i))
+                        continue;
+                    const size_t avail =
+                        (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
+                    if (avail >= need && avail < best_fit)
+                    {
+                        pick = i;
+                        best_fit = avail;
+                    }
+                }
+            }
+
+            void* reloc = NULL;
+            const char* where = "flash";
+            if (pick >= 0)
+            {
+                reloc =
+                    dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)clusters[c].start);
+                where = "pocket";
+            }
+            else if (!pool_claimed)
+            {
+                reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)clusters[c].start);
+                where = "main pool";
+                pool_claimed = true;
+            }
+
+            if (reloc)
+            {
+                DTCM_VERIFY();
+                memcpy(reloc, clusters[c].start, size);
+                DTCM_VERIFY();
+                *clusters[c].offset = (char*)reloc - clusters[c].start;
+            }
+
+            playdate->system->logToConsole(
+                "itcm[%s]: %s 0x%X bytes at %p (%s%d)", cgb ? "cgb" : "dmg", clusters[c].name,
+                (unsigned)size, reloc ? reloc : (void*)clusters[c].start, where,
+                pick >= 0 ? pick : -1
+            );
+        }
+    }
+
     playdate->system->clearICache();
 }
 
@@ -919,6 +1030,8 @@ __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
 
     core_itcm_offset = 0;
     pgb_draw_reloc_offset = 0;
+    pgb_rare_reloc_offset = 0;
+    pgb_hle_reloc_offset = 0;
     core_itcm_reloc = itcm_start;
 
     dtcm_pocket_fill_and_reset();
@@ -946,6 +1059,8 @@ __section__(".rare") void tcm_apply(bool cgb)
         void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
         core_itcm_offset = 0;
         pgb_draw_reloc_offset = 0;
+        pgb_rare_reloc_offset = 0;
+        pgb_hle_reloc_offset = 0;
         core_itcm_reloc = itcm_start;
         dtcm_pocket_fill_and_reset();
         playdate->system->clearICache();

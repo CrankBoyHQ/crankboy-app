@@ -331,10 +331,9 @@ void dtcm_probe_lower_bound(void)
     uintptr_t probe = (uintptr_t)dtcm_mempool_start;
     uintptr_t lowest_ok = probe;
 
-// clean run tracking - top N (currently up to 2)
-#define MAX_RUNS 4
-    uintptr_t run_starts[MAX_RUNS] = {0};
-    unsigned run_sizes[MAX_RUNS] = {0};
+    // clean run tracking - top DTCM_MAX_POCKETS runs
+    uintptr_t run_starts[DTCM_MAX_POCKETS] = {0};
+    unsigned run_sizes[DTCM_MAX_POCKETS] = {0};
 
     uintptr_t cur_run_start = 0;
     unsigned cur_run = 0;
@@ -343,23 +342,23 @@ void dtcm_probe_lower_bound(void)
     unsigned blocks_clean = 0;
     unsigned blocks_dirty = 0;
 
-#define INSERT_RUN(start, size)                            \
-    do                                                     \
-    {                                                      \
-        for (int _i = 0; _i < MAX_RUNS; _i++)              \
-        {                                                  \
-            if (size > run_sizes[_i])                      \
-            {                                              \
-                for (int _j = MAX_RUNS - 1; _j > _i; _j--) \
-                {                                          \
-                    run_starts[_j] = run_starts[_j - 1];   \
-                    run_sizes[_j] = run_sizes[_j - 1];     \
-                }                                          \
-                run_starts[_i] = start;                    \
-                run_sizes[_i] = size;                      \
-                break;                                     \
-            }                                              \
-        }                                                  \
+#define INSERT_RUN(start, size)                                    \
+    do                                                             \
+    {                                                              \
+        for (int _i = 0; _i < DTCM_MAX_POCKETS; _i++)              \
+        {                                                          \
+            if (size > run_sizes[_i])                              \
+            {                                                      \
+                for (int _j = DTCM_MAX_POCKETS - 1; _j > _i; _j--) \
+                {                                                  \
+                    run_starts[_j] = run_starts[_j - 1];           \
+                    run_sizes[_j] = run_sizes[_j - 1];             \
+                }                                                  \
+                run_starts[_i] = start;                            \
+                run_sizes[_i] = size;                              \
+                break;                                             \
+            }                                                      \
+        }                                                          \
     } while (0)
 
     while (probe > (uintptr_t)DTCM_PROBE_MIN_ADDR)
@@ -455,7 +454,7 @@ void dtcm_probe_lower_bound(void)
 
     // init pockets from top clean runs
     dtcm_num_pockets = 0;
-    for (int i = 0; i < MAX_RUNS && run_sizes[i] > 0; i++)
+    for (int i = 0; i < DTCM_MAX_POCKETS && run_sizes[i] > 0; i++)
     {
         // Guard band: trim one probe step off the pocket top. The pocket
         // bottom stays at the lowest verified-clean word (already exact).

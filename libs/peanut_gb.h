@@ -390,9 +390,39 @@ extern volatile int g_trace_frames_remaining;
     __attribute__((short_call))
 #endif
 
+// Rare cluster (HALT/STOP/misc + HDMA) and HLE cluster: like the draw
+// cluster, relocated as separate blocks into DTCM pockets (or main pool).
+// Intra-cluster calls only (short_call); calls out to flash need long_call.
+#ifdef TARGET_SIMULATOR
+#define __rare_dmg
+#define __rare_cgb
+#define __hle_cgb
+#else
+#define __rare_dmg                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".rare.dmg"))) \
+    __attribute__((short_call))
+#define __rare_cgb                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".rare.cgb"))) \
+    __attribute__((short_call))
+#define __hle_cgb \
+    __attribute__((optimize("Os"))) __attribute__((section(".hle.cgb"))) __attribute__((short_call))
+#endif
+
+// Cold (.rare) function callable from a relocated cluster: shell calling
+// convention on device, plain noinline in the simulator (clang lacks
+// long_call).
+#ifdef TARGET_SIMULATOR
+#define __rare_shell __section__(".rare") __attribute__((noinline))
+#else
+#define __rare_shell __section__(".rare") __attribute__((noinline, long_call))
+#endif
+
 // Offset of the relocated draw cluster (0 = run from flash). Set by
 // tcm_relocate
 extern intptr_t pgb_draw_reloc_offset;
+// Same for the rare and HLE clusters.
+extern intptr_t pgb_rare_reloc_offset;
+extern intptr_t pgb_hle_reloc_offset;
 
 #if ITCM_CORE
 // 0 = run from flash; else DTCM relocation delta
@@ -401,6 +431,31 @@ extern intptr_t core_itcm_offset;
 
 // Call a draw-cluster function from core code through the relocation offset.
 #define DRAW_CALL(fn, gb_) ((void (*)(gb_s*))((char*)(fn) + pgb_draw_reloc_offset))(gb_)
+
+// Same for the rare cluster (void return) and a u8-returning rare op.
+#define RARE_CALL(fn, gb_) ((void (*)(gb_s*))((char*)(fn) + pgb_rare_reloc_offset))(gb_)
+#define RARE_CALL_U8(fn, gb_, op_) \
+    ((u8 (*)(gb_s*, uint8_t))((char*)(fn) + pgb_rare_reloc_offset))(gb_, op_)
+
+// HLE cluster gated read: u8 fn(gb, addr, v).
+#define HLE_CALL_READ(fn, gb_, a_, v_) \
+    ((u8 (*)(gb_s*, uint16_t, uint8_t))((char*)(fn) + pgb_hle_reloc_offset))(gb_, a_, v_)
+
+/* Cluster -> core calls: the core block is independently relocated, so a
+ * plain (PC-relative) bl from a relocated cluster would jump into the void.
+ * Call core functions through the core relocation offset instead (0 = flash
+ * copy, also correct). Never mark the small core read/write helpers
+ * long_call: that would slow every interpreter memory op. */
+#if defined(ITCM_CORE) && !defined(TARGET_SIMULATOR)
+#define CORE_CALL_PTR(fn) ((char*)(void*)(fn) + core_itcm_offset)
+#else
+#define CORE_CALL_PTR(fn) ((char*)(void*)(fn))
+#endif
+#define CORE_CALL_READ(fn, gb_, a_) ((u8 (*)(gb_s*, u16))CORE_CALL_PTR(fn))(gb_, a_)
+#define CORE_CALL_READ32(fn, gb_, a_) ((uint32_t (*)(gb_s*, u16))CORE_CALL_PTR(fn))(gb_, a_)
+#define CORE_CALL_FETCH16(fn, gb_) ((u16 (*)(gb_s*))CORE_CALL_PTR(fn))(gb_)
+#define CORE_CALL_WRITE16(fn, gb_, a_, v_) \
+    ((void (*)(gb_s*, u16, u16))CORE_CALL_PTR(fn))(gb_, a_, v_)
 
 __draw_cgb static void __gb_check_lyc__cgb(gb_s* gb);
 __draw_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);
@@ -870,7 +925,7 @@ __section__(".rare") static uint8_t __gb_detect_mbc1m(const gb_s* gb)
     return 0;
 }
 
-__shell static void __gb_do_hdma(gb_s* gb)
+__rare_cgb static void __gb_do_hdma(gb_s* gb)
 {
     int hdma_remaning = (unsigned)gb->cgb_hdma_len;
 
@@ -890,7 +945,7 @@ __shell static void __gb_do_hdma(gb_s* gb)
 
         if (aligned && no_wrap && same_region && src_ok)
         {
-            uint32_t v = __gb_read32__cgb(gb, src + i);
+            uint32_t v = CORE_CALL_READ32(__gb_read32__cgb, gb, src + i);
             if (base + i < 0x1800)
             {
                 uint8_t b0 = reverse_bits_u8((uint8_t)(v));
@@ -907,7 +962,7 @@ __shell static void __gb_do_hdma(gb_s* gb)
             for (int j = i; j < i + 4; ++j)
             {
                 unsigned off = (base + j) % VRAM_SIZE;
-                uint8_t v = __gb_read__cgb(gb, src + j);
+                uint8_t v = CORE_CALL_READ(__gb_read__cgb, gb, src + j);
                 gb->vram_base[VRAM_ADDR + off] = (off < 0x1800) ? reverse_bits_u8(v) : v;
             }
         }
@@ -1330,7 +1385,7 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
 
 static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
 static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb);
-static uint8_t __gb_ppu_mode_for_lock(gb_s* gb);
+static uint8_t __gb_ppu_mode_for_lock(gb_s* gb) __attribute__((always_inline));
 
 __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t val)
 {
@@ -1818,7 +1873,7 @@ static inline __attribute__((always_inline)) int __gb_hle_probe(
     return HLE_WARPED;
 }
 
-__shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
+__hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
 
 __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t addr)
 {
@@ -1997,7 +2052,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 /* Decode the load/cmp/jr poll-loop shape around pc into a verdict slot.
  * Pure analysis: no gb side effects. rewind stays 0 (verdict NO) unless
  * the full shape matches. Returns HLE_ANALYZE_SKIP/NO/WARP. */
-__shell static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
+__hle_cgb static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
 {
     s->pc = gb->cpu_reg.pc;
     s->bank = (uint16_t)gb->selected_rom_bank;
@@ -2290,7 +2345,7 @@ analyze_skip:
     return HLE_ANALYZE_SKIP;
 }
 
-__shell static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
+__hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
 {
     PGB_HLE_STAT_INC(ANALYZE);
 
@@ -2459,7 +2514,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb
  * legal late-mode-2 writes), but release early (matching the STAT/LY
  * peek) so STAT-timed writes at scanline end aren't dropped.
  */
-__section__(".text.cb") static uint8_t __gb_ppu_mode_for_lock(gb_s* gb)
+__attribute__((always_inline)) static inline uint8_t __gb_ppu_mode_for_lock(gb_s* gb)
 {
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
     if (remaining == 0)
@@ -3665,8 +3720,6 @@ struct sprite_data
     uint8_t x;
 };
 #pragma pack(pop)
-
-__shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode);
 
 __shell static unsigned __gb_run_instruction(gb_s* gb, uint8_t opcode)
 {
@@ -6757,7 +6810,7 @@ void gb_init_lcd(gb_s* gb)
     return;
 }
 
-__section__(".rare") static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8_t opcode)
+__rare_shell static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8_t opcode)
 {
     if (opcode == CB_HW_BREAKPOINT_OPCODE)
     {
@@ -6771,151 +6824,6 @@ __section__(".rare") static u8 __gb_invalid_instruction(gb_s* restrict gb, uint8
     (gb->gb_error)(gb, GB_INVALID_OPCODE, opcode);
     gb->gb_frame = 1;
     return 0;
-}
-
-__shell static u8 __gb_rare_instruction(gb_s* restrict gb, uint8_t opcode)
-{
-    switch (opcode)
-    {
-    case 0x08:  // ld (a16), SP
-        if (gb->is_cgb_mode)
-        {
-            __gb_write16__cgb(gb, __gb_fetch16__cgb(gb), gb->cpu_reg.sp);
-        }
-        else
-        {
-            __gb_write16__dmg(gb, __gb_fetch16__dmg(gb), gb->cpu_reg.sp);
-        }
-        return 5 * 4;
-    case 0x10:  // stop
-    {
-        unsigned cycles = 1 * 4;
-
-        // 1. Advance PC over the required operand byte (0x00).
-        gb->cpu_reg.pc++;  // PC is now at (PC_0x10 + 2)
-
-        // CGB speed switch
-        if (gb->is_cgb_mode && gb->cgb_fast_mode_armed)
-        {
-            gb->cgb_fast_mode_armed = false;
-            gb->gb_reg.DIV = 0;
-
-            gb->cgb_fast_mode = !gb->cgb_fast_mode;
-            gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
-            /* Keep the combined vblank cycle shift at most >>2 (see game_scene):
-             * cap overclock at x2 the moment fast mode engages, not next frame. */
-            if (gb->cgb_fast_mode_active)
-                gb->overclock = MIN(gb->overclock, 1);
-            gb->gb_halt = 1;
-            gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
-            return cycles;
-        }
-
-        // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
-        if (!gb->is_cgb_mode && (gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
-        {
-            /* STOP Glitch: STOP acts as a 1-byte NOP.
-               PC must rewind to (PC_0x10 + 1) to point to the instruction *after* STOP. */
-            gb->cpu_reg.pc--;
-            // No STOP, no HALT, no DIV reset. Cycles remain 4.
-            return cycles;
-        }
-
-        // 3. Check for Pending Interrupts / STOP Bug
-        gb->gb_reg.DIV = 0;
-
-        if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
-        {
-            if (gb->gb_ime == 0)
-            {
-                /* STOP/HALT Bug Triggered: CPU does not stop.
-                   PC must be set to the operand address (PC_0x10 + 1) to repeat it. */
-
-                // PC is currently at PC_0x10 + 2. Decrement to PC_0x10 + 1.
-                gb->cpu_reg.pc--;
-            }
-        }
-        else
-        {
-            /* 4. Normal STOP Operation: Enter low-power STOP mode. */
-            gb->gb_stop = 1;
-        }
-
-        return cycles;
-    }
-    case 0x76:
-        if ((gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0)
-        {
-            if (gb->gb_ime)
-            {
-                /* Interrupt pending with IME=1: the halt latch never sets.
-                 * The interrupt dispatch pushes HALT's own address, so the
-                 * handler returns to HALT, which then halts normally. */
-                gb->cpu_reg.pc--;
-            }
-            else if (gb->gb_ime_countdown > 0)
-            {
-                /* HALT bug (IME=0, pending interrupt) with active EI delay.
-                 * Rewind PC to HALT address so the pending interrupt returns to
-                 * HALT, which then re-executes and properly halts. */
-                gb->cpu_reg.pc--;
-                gb->gb_halt = 1;
-            }
-            else
-            {
-                /* HALT bug (IME=0, pending interrupt) without EI delay.
-                 * HALT reads the operand byte (hardware bus cycle), then the
-                 * same byte is read once as the next opcode: PC increment is
-                 * inhibited for one fetch. */
-                __gb_read_full(gb, gb->cpu_reg.pc);
-                gb->gb_halt_bug = 1;
-                gb->gb_halt_bug_pc = gb->cpu_reg.pc;
-            }
-        }
-        else
-        {
-            gb->gb_halt = 1;
-        }
-        return 1 * 4;
-    case 0xE8:
-    case 0xF8:
-    {
-        int8_t offset;
-        if (gb->is_cgb_mode)
-        {
-            offset = (int8_t)__gb_read__cgb(gb, gb->cpu_reg.pc++);
-        }
-        else
-        {
-            offset = (int8_t)__gb_read__dmg(gb, gb->cpu_reg.pc++);
-        }
-
-        if (opcode == 0xF8)
-        {
-            uint16_t sp = gb->cpu_reg.sp;
-            gb->cpu_reg.hl = sp + offset;
-
-            gb->cpu_reg.f_bits.z = 0;
-            gb->cpu_reg.f_bits.n = 0;
-            gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
-            gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
-            return 3 * 4;
-        }
-        else
-        {
-            uint16_t old_sp = gb->cpu_reg.sp;
-            gb->cpu_reg.sp += offset;
-
-            gb->cpu_reg.f_bits.z = 0;
-            gb->cpu_reg.f_bits.n = 0;
-            gb->cpu_reg.f_bits.h = ((old_sp & 0xF) + (offset & 0xF) > 0xF);
-            gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
-            return 4 * 4;
-        }
-    }
-    default:
-        return __gb_invalid_instruction(gb, opcode);
-    }
 }
 
 // allows us to reuse the same code for different systems.
@@ -6939,12 +6847,14 @@ extern uint8_t pgb_dirty_skip;
 #define __core __core_dmg
 #define __core_section(x) __core_dmg_section(x)
 #define __draw __draw_dmg
+#define __rare __rare_dmg
 
 #include "peanut_gb_core.h"
 
 #undef __core
 #undef __core_section
 #undef __draw
+#undef __rare
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
 
@@ -6956,12 +6866,14 @@ extern uint8_t pgb_dirty_skip;
 #define __core __core_cgb
 #define __core_section(x) __core_cgb_section(x)
 #define __draw __draw_cgb
+#define __rare __rare_cgb
 
 #include "peanut_gb_core.h"
 
 #undef __core
 #undef __core_section
 #undef __draw
+#undef __rare
 #undef PGB_IS_DMG
 #undef PGB_IS_CGB
 

@@ -93,6 +93,25 @@ SECTIONS
 			*(.dtcm.draw.cgb.*)
         __draw_cgb_end = .;
 
+		/* rare cluster: HALT/STOP etc. + HDMA; own DTCM pocket placement */
+		. = ALIGN(32);
+        __rare_dmg_start = .;
+			*(.rare.dmg)
+			*(.rare.dmg.*)
+        __rare_dmg_end = .;
+		. = ALIGN(32);
+        __rare_cgb_start = .;
+			*(.rare.cgb)
+			*(.rare.cgb.*)
+        __rare_cgb_end = .;
+
+		/* HLE cluster (CGB only): poll-loop verdict miss/analyze + gated read */
+		. = ALIGN(32);
+        __hle_cgb_start = .;
+			*(.hle.cgb)
+			*(.hle.cgb.*)
+        __hle_cgb_end = .;
+
 		. = ALIGN(0x1000);
 		__audio_start__ = .;
 		*(.audio)
@@ -102,7 +121,6 @@ SECTIONS
 		__rare_start__ = .;
 		*(.rare.cb)
 		*(.rare)
-		*(.rare.*)
 
 		KEEP(*(.init))
 		KEEP(*(.fini))

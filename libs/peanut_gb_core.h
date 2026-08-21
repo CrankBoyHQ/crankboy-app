@@ -96,7 +96,7 @@ __draw static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
 }
 
 #if PGB_IS_CGB
-__core static uint8_t
+__hle_cgb static uint8_t
     __attribute__((noinline)) $(__gb_hle_read)(gb_s* gb, const uint16_t addr, const uint8_t v)
 {
     if (__gb_hle_probe(gb, addr, v) != HLE_MISS)
@@ -133,7 +133,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         // HLE is CGB-only (hle_enabled implies cgb_mode): games wait on HRAM
         // flags set by ISRs ("ldh a,(x); and a; jr z").
         if (gb->hle_enabled)
-            return $(__gb_hle_read)(gb, addr, val);
+            return HLE_CALL_READ($(__gb_hle_read), gb, addr, val);
 #endif
         return val;
     }
@@ -156,21 +156,21 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
             uint8_t v = __gb_read_stat_synced(gb);
             if (!gb->hle_enabled)
                 return v;
-            return $(__gb_hle_read)(gb, addr, v);
+            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
         }
         case 0x44:
         {
             uint8_t v = __gb_read_ly_synced(gb);
             if (!gb->hle_enabled)
                 return v;
-            return $(__gb_hle_read)(gb, addr, v);
+            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
         }
         case 0x0F:
         {
             uint8_t v = gb->gb_reg.IF;
             if (!gb->hle_enabled)
                 return v;
-            return $(__gb_hle_read)(gb, addr, v);
+            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
         }
 #else
         case 0x41:
@@ -346,6 +346,140 @@ __core_section("short") static void $(__gb_push16)(gb_s* restrict gb, u16 v)
 
         gb->cpu_reg.sp--;
         $(__gb_write)(gb, gb->cpu_reg.sp, v & 0xFF);
+    }
+}
+
+__rare static u8 $(__gb_rare_instruction)(gb_s* restrict gb, uint8_t opcode)
+{
+    switch (opcode)
+    {
+    case 0x08:  // ld (a16), SP
+        CORE_CALL_WRITE16(
+            $(__gb_write16), gb, CORE_CALL_FETCH16($(__gb_fetch16), gb), gb->cpu_reg.sp
+        );
+        return 5 * 4;
+    case 0x10:  // stop
+    {
+        unsigned cycles = 1 * 4;
+
+        // 1. Advance PC over the required operand byte (0x00).
+        gb->cpu_reg.pc++;  // PC is now at (PC_0x10 + 2)
+
+#if PGB_IS_CGB
+        // CGB speed switch
+        if (gb->cgb_fast_mode_armed)
+        {
+            gb->cgb_fast_mode_armed = false;
+            gb->gb_reg.DIV = 0;
+
+            gb->cgb_fast_mode = !gb->cgb_fast_mode;
+            gb->cgb_fast_mode_active = gb->cgb_fast_mode && (preferences_cgb_speed == 0);
+            /* Keep the combined vblank cycle shift at most >>2 (see game_scene):
+             * cap overclock at x2 the moment fast mode engages, not next frame. */
+            if (gb->cgb_fast_mode_active)
+                gb->overclock = MIN(gb->overclock, 1);
+            gb->gb_halt = 1;
+            gb->cgb_speed_switch_halt_period = CGB_SPEED_SWITCH_HALT_T_CYCLES;
+            return cycles;
+        }
+#else
+        // 2. Check for DMG Button Glitch (STOP becomes a 1-byte NOP)
+        if ((gb->direct.joypad != 0xFF) && ((gb->gb_reg.P1 & 0x30) != 0x30))
+        {
+            /* STOP Glitch: STOP acts as a 1-byte NOP.
+               PC must rewind to (PC_0x10 + 1) to point to the instruction *after* STOP. */
+            gb->cpu_reg.pc--;
+            // No STOP, no HALT, no DIV reset. Cycles remain 4.
+            return cycles;
+        }
+#endif
+
+        // 3. Check for Pending Interrupts / STOP Bug
+        gb->gb_reg.DIV = 0;
+
+        if (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)
+        {
+            if (gb->gb_ime == 0)
+            {
+                /* STOP/HALT Bug Triggered: CPU does not stop.
+                   PC must be set to the operand address (PC_0x10 + 1) to repeat it. */
+
+                // PC is currently at PC_0x10 + 2. Decrement to PC_0x10 + 1.
+                gb->cpu_reg.pc--;
+            }
+        }
+        else
+        {
+            /* 4. Normal STOP Operation: Enter low-power STOP mode. */
+            gb->gb_stop = 1;
+        }
+
+        return cycles;
+    }
+    case 0x76:
+        if ((gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0)
+        {
+            if (gb->gb_ime)
+            {
+                /* Interrupt pending with IME=1: the halt latch never sets.
+                 * The interrupt dispatch pushes HALT's own address, so the
+                 * handler returns to HALT, which then halts normally. */
+                gb->cpu_reg.pc--;
+            }
+            else if (gb->gb_ime_countdown > 0)
+            {
+                /* HALT bug (IME=0, pending interrupt) with active EI delay.
+                 * Rewind PC to HALT address so the pending interrupt returns to
+                 * HALT, which then re-executes and properly halts. */
+                gb->cpu_reg.pc--;
+                gb->gb_halt = 1;
+            }
+            else
+            {
+                /* HALT bug (IME=0, pending interrupt) without EI delay.
+                 * HALT reads the operand byte (hardware bus cycle), then the
+                 * same byte is read once as the next opcode: PC increment is
+                 * inhibited for one fetch. */
+                __gb_read_full(gb, gb->cpu_reg.pc);
+                gb->gb_halt_bug = 1;
+                gb->gb_halt_bug_pc = gb->cpu_reg.pc;
+            }
+        }
+        else
+        {
+            gb->gb_halt = 1;
+        }
+        return 1 * 4;
+    case 0xE8:
+    case 0xF8:
+    {
+        int8_t offset = (int8_t)CORE_CALL_READ($(__gb_read), gb, gb->cpu_reg.pc++);
+
+        if (opcode == 0xF8)
+        {
+            uint16_t sp = gb->cpu_reg.sp;
+            gb->cpu_reg.hl = sp + offset;
+
+            gb->cpu_reg.f_bits.z = 0;
+            gb->cpu_reg.f_bits.n = 0;
+            gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
+            gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
+            return 3 * 4;
+        }
+        else
+        {
+            uint16_t old_sp = gb->cpu_reg.sp;
+            gb->cpu_reg.sp += offset;
+
+            gb->cpu_reg.f_bits.z = 0;
+            gb->cpu_reg.f_bits.n = 0;
+            gb->cpu_reg.f_bits.h = ((old_sp & 0xF) + (offset & 0xF) > 0xF);
+            gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
+            return 4 * 4;
+        }
+    }
+    default:
+        return __gb_invalid_instruction(gb, opcode);
     }
 }
 
@@ -1406,11 +1540,11 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         goto next_instruction;                  \
     } while (0)
 
-#define TAIL_RARE()                                 \
-    do                                              \
-    {                                               \
-        cycles = __gb_rare_instruction(gb, opcode); \
-        CHAIN_OR_RETURN();                          \
+#define TAIL_RARE()                                                  \
+    do                                                               \
+    {                                                                \
+        cycles = RARE_CALL_U8($(__gb_rare_instruction), gb, opcode); \
+        CHAIN_OR_RETURN();                                           \
     } while (0)
 
 #define TAIL_CB()                        \
@@ -1434,10 +1568,10 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         return cycles;                          \
     } while (0)
 
-#define TAIL_RARE()                               \
-    do                                            \
-    {                                             \
-        return __gb_rare_instruction(gb, opcode); \
+#define TAIL_RARE()                                                \
+    do                                                             \
+    {                                                              \
+        return RARE_CALL_U8($(__gb_rare_instruction), gb, opcode); \
     } while (0)
 
 #define TAIL_CB()                      \
@@ -2465,7 +2599,7 @@ done_instr_timing:
                     DRAW_CALL($(__gb_update_stat_irq), gb);
 #if PGB_IS_CGB
                     if (gb->cgb_hdma_active)
-                        __gb_do_hdma(gb);
+                        RARE_CALL(__gb_do_hdma, gb);
 #endif
                     ticked = true;
                 }
@@ -2523,7 +2657,7 @@ done_instr_timing:
 #if PGB_IS_CGB
                     /* HBlank HDMA continues during VBlank: one block per line. */
                     if (gb->cgb_hdma_active)
-                        __gb_do_hdma(gb);
+                        RARE_CALL(__gb_do_hdma, gb);
 #endif
 
                     if (gb->gb_reg.LY == 0)
