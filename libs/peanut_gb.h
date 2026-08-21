@@ -1601,6 +1601,7 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0xFF:
             gb->gb_reg.IE = val;
             gb->hram[0xFF] = gb->gb_reg.IE;
+            gb->direct.intr_pending = 1;  // conservative: re-checked at batch start
             return;
         }
     }
@@ -3395,6 +3396,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                     // Early boot (e.g., Alleyway) expects instant completion when unplugged.
                     gb->gb_reg.SB = 0xFF;
                     gb->gb_reg.IF |= SERIAL_INTR;
+                    gb->direct.intr_pending = 1;
                     gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
                     gb->counter.serial_count = 0;
                     gb->printer_stub_state = 0;
@@ -3487,6 +3489,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
                     // Instantly trigger the interrupt and clear the start flag
                     gb->gb_reg.IF |= SERIAL_INTR;
+                    gb->direct.intr_pending = 1;
                     gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
                 }
                 else
@@ -3564,6 +3567,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         /* Interrupt Flag Register */
         case 0x0F:
             gb->gb_reg.IF = (val | 0b11100000);
+            gb->direct.intr_pending = 1;  // conservative: re-checked at batch start
             return;
 
         /* LCD Registers */
@@ -3633,6 +3637,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 if (!gb->direct.stat_line && gb->lcd_mode == LCD_VBLANK)
                 {
                     gb->gb_reg.IF |= LCDC_INTR;
+                    gb->direct.intr_pending = 1;
                 }
             }
 

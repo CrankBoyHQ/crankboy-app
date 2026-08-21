@@ -49,6 +49,7 @@ __draw static void $(__gb_update_stat_irq)(gb_s* gb)
     if (!gb->direct.stat_line && line_is_high)
     {
         gb->gb_reg.IF |= LCDC_INTR;
+        gb->direct.intr_pending = 1;  // may fire mid-batch via STAT write
     }
 
     gb->direct.stat_line = line_is_high;
@@ -90,7 +91,10 @@ __draw static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
         ((gb->gb_reg.STAT & STAT_LYC_INTR) && (gb->gb_reg.STAT & STAT_LYC_COINC));
 
     if (!gb->direct.stat_line && line_is_high)
+    {
         gb->gb_reg.IF |= LCDC_INTR;
+        gb->direct.intr_pending = 1;  // may fire mid-batch via LYC/LCDC write
+    }
 
     gb->direct.stat_line = line_is_high;
 }
@@ -1634,6 +1638,10 @@ __core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     unsigned batch_cycles = 0;
     const unsigned batch_budget = $(__gb_batch_budget)(gb);
 
+    /* Exact refresh at batch start: covers all IF/IE/ime changes made
+     * between batches (step tail, draw cluster, interrupt dispatch). */
+    gb->direct.intr_pending = gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR);
+
     /* Rebase offset for the computed-goto handler table. Label addresses are
      * link-time flash addresses; the core cluster may run from a DTCM copy,
      * so every dispatch adds this offset (0 when running from flash). */
@@ -2006,6 +2014,7 @@ h_ret:
     {
         gb->gb_ime = 1;
         gb->gb_ime_countdown = 0;
+        gb->direct.intr_pending = (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0;
         goto ret_common;
     }
 ret:
@@ -2077,6 +2086,7 @@ h_di:
     cycles = 4;
     gb->gb_ime = 0;
     gb->gb_ime_countdown = 0;
+    gb->direct.intr_pending = 0;
     CHAIN_OR_RETURN();
 
 h_ei:
@@ -2102,10 +2112,14 @@ h_rare:
 
 next_instruction:
     pgb_batch_elapsed = batch_cycles;
-    if (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+    if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+    {
         gb->gb_ime = 1;
-    if (gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) ||
-        (gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)))
+        gb->direct.intr_pending = (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0;
+    }
+    if unlikely (
+        gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) || gb->direct.intr_pending
+    )
         goto batch_done;
     if (batch_cycles >= batch_budget)
         goto batch_done;
@@ -2114,6 +2128,13 @@ next_instruction:
     NEXT_DISPATCH();
 
 batch_done:
+#ifdef TARGET_SIMULATOR
+    /* intr_pending may over-report (shell IF/IE writers set it
+     * conservatively) but must never under-report. */
+    CB_ASSERT(
+        !(gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR)) || gb->direct.intr_pending
+    );
+#endif
     pgb_batch_elapsed = 0;
     return batch_cycles;
 }
@@ -2296,6 +2317,9 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         uint8_t inst_cycles_m = $(__gb_run_instruction_micro)(gb);
 
         gb->cpu_reg.f_bits.unused = 0;
+        // intr_pending is a derived cache of ime/IF/IE, maintained only by
+        // the micro path; sync it from the reference result before comparing.
+        gb->direct.intr_pending = _gb[1].direct.intr_pending;
 
         if (memcmp(gb->wram, _wram[1], WRAM_SIZE_CGB))
         {
