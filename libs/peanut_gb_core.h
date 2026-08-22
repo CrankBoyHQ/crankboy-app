@@ -171,7 +171,8 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         }
         case 0x0F:
         {
-            uint8_t v = gb->gb_reg.IF;
+            uint8_t tima_scratch;
+            uint8_t v = gb->gb_reg.IF | (__gb_timer_peek(gb, &tima_scratch) ? TIMER_INTR : 0);
             if (!gb->hle_enabled)
                 return v;
             return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
@@ -182,12 +183,21 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         case 0x44:
             return __gb_read_ly_synced(gb);
         case 0x0F:
-            return gb->gb_reg.IF;
+        {
+            uint8_t tima_scratch;
+            return gb->gb_reg.IF | (__gb_timer_peek(gb, &tima_scratch) ? TIMER_INTR : 0);
+        }
 #endif
         case 0x04:
             return gb->gb_reg.DIV;
         case 0x05:
-            return gb->gb_reg.tima_overflow_delay ? gb->gb_reg.TMA : gb->gb_reg.TIMA;
+        {
+            if (gb->gb_reg.tima_overflow_delay)
+                return gb->gb_reg.TMA;
+            uint8_t tima;
+            __gb_timer_peek(gb, &tima);
+            return tima;
+        }
         case 0x45:
             return gb->gb_reg.LYC;
         }

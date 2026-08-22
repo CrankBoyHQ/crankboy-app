@@ -2590,6 +2590,49 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
 }
 
 /**
+ * Timer read synchronization: project TIMA/IF.TIMER at the current batch
+ * offset, so polling loops see the timer as of this read, not the last
+ * batch boundary (batch no longer clamps to overflow when IE.TIMER is
+ * clear). Non-mutating; the step tail stays authoritative. Same-batch
+ * write-then-read skews <1 tick.
+ */
+static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint8_t* tima_out)
+{
+    bool ofl = gb->gb_reg.tima_overflow_delay;
+    *tima_out = gb->gb_reg.TIMA;
+
+    if (ofl || !gb->gb_reg.tac_enable)
+        return ofl;
+
+    /* Same shifts the step tail applies to inst_cycles (VBlank overclock,
+     * then CGB fast mode). */
+    uint16_t elapsed = pgb_batch_elapsed;
+    if (gb->lcd_mode == LCD_VBLANK)
+        elapsed >>= gb->overclock;
+    elapsed >>= gb->cgb_fast_mode_active;
+    if (elapsed == 0)
+        return false;
+
+    uint16_t threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
+    if (threshold == 0)
+        threshold = 1;
+
+    uint32_t count = gb->counter.tima_count + elapsed;
+    uint8_t tima = *tima_out;
+    while (count >= threshold)
+    {
+        count -= threshold;
+        if (++tima == 0x00)
+        {
+            tima = gb->gb_reg.TMA;
+            ofl = true;
+        }
+    }
+    *tima_out = tima;
+    return ofl;
+}
+
+/**
  * Internal function used to read bytes.
  */
 __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
@@ -2793,9 +2836,13 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
             return gb->gb_reg.DIV;
 
         case 0x05:
+        {
             if (gb->gb_reg.tima_overflow_delay)
                 return gb->gb_reg.TMA;
-            return gb->gb_reg.TIMA;
+            uint8_t tima;
+            __gb_timer_peek(gb, &tima);
+            return tima;
+        }
 
         case 0x06:
             return gb->gb_reg.TMA;
@@ -2806,7 +2853,8 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         /* Interrupt Flag Register */
         case 0x0F:
         {
-            const uint8_t v = gb->gb_reg.IF;
+            uint8_t tima_scratch;
+            const uint8_t v = gb->gb_reg.IF | (__gb_timer_peek(gb, &tima_scratch) ? TIMER_INTR : 0);
             if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
                 return __gb_hle_miss(gb, addr, v);
             return v;
