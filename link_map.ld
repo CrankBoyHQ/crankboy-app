@@ -122,10 +122,19 @@ SECTIONS
 			*(.hle.cgb.*)
         __hle_cgb_end = .;
 
-		. = ALIGN(0x1000);
-		__audio_start__ = .;
-		*(.audio)
-		*(.audio.*)
+		/* APU clusters: apu_write = emu-interface write path (both sound modes);
+		 * apu_sample_gen = sample generation engines + audio callback. Untemplated,
+		 * own DTCM pocket placement each. */
+		. = ALIGN(32);
+        __apu_write_start = .;
+			*(.apu_write)
+			*(.apu_write.*)
+        __apu_write_end = .;
+		. = ALIGN(32);
+        __apu_sample_gen_start = .;
+			*(.apu_sample_gen)
+			*(.apu_sample_gen.*)
+        __apu_sample_gen_end = .;
 
 		. = ALIGN(32);
 		__rare_start__ = .;

@@ -423,6 +423,8 @@ extern intptr_t pgb_draw_reloc_offset;
 // Same for the rare and HLE clusters.
 extern intptr_t pgb_rare_reloc_offset;
 extern intptr_t pgb_hle_reloc_offset;
+extern intptr_t pgb_apu_write_reloc_offset;
+extern intptr_t pgb_apu_sample_gen_reloc_offset;
 
 #if ITCM_CORE
 // 0 = run from flash; else DTCM relocation delta.
@@ -443,6 +445,11 @@ extern intptr_t core_itcm_offset_b;
 // HLE cluster gated read: u8 fn(gb, addr, v).
 #define HLE_CALL_READ(fn, gb_, a_, v_) \
     ((u8 (*)(gb_s*, uint16_t, uint8_t))((char*)(fn) + pgb_hle_reloc_offset))(gb_, a_, v_)
+
+// APU write cluster calls.
+#define APU_CALL_PTR(fn) ((char*)(void*)(fn) + pgb_apu_write_reloc_offset)
+#define APU_CALL_WR(fn, a_, ad_, v_, c_) \
+    ((void (*)(audio_data*, uint16_t, uint8_t, uint32_t))APU_CALL_PTR(fn))(a_, ad_, v_, c_)
 
 /* Cluster -> core calls: the core block is independently relocated, so a
  * plain (PC-relative) bl from a relocated cluster would jump into the void.
@@ -3417,7 +3424,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         {
             if (gb->direct.sound)
             {
-                audio_write(&gb->audio, addr, val, gb->counter.apu_count);
+                APU_CALL_WR(audio_write, &gb->audio, addr, val, gb->counter.apu_count);
             }
             else
             {

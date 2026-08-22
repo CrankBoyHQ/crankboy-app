@@ -4,6 +4,8 @@
  * https://github.com/baines/MiniGBS
  */
 
+#include "minigb_apu.h"
+
 #include "../../src/app.h"
 #include "../../src/dtcm.h"
 #include "../../src/preferences.h"
@@ -162,13 +164,6 @@ static void apu_gain_fill(uint16_t* gain, uint32_t a_q16, uint32_t b_q16, uint16
 
 #define MAX_CHAN_VOLUME 15
 
-#ifdef TARGET_SIMULATOR
-#define __audio
-#else
-#define __audio \
-    __attribute__((optimize("O3"))) __attribute__((section(".audio"))) __attribute__((short_call))
-#endif
-
 #if TARGET_PLAYDATE
 /* Q1.15 fixed-point equivalents of the factors below. */
 static const int16_t get_charge_factors_q15[2][3] = {{32637, 32507, 32378}, {29632, 26797, 24233}};
@@ -187,31 +182,35 @@ static inline int16_t clamp16(float s)
 }
 #endif
 
-static inline int get_effective_sample_rate(void)
+static inline __attribute__((always_inline)) int get_effective_sample_rate(void)
 {
     return (preferences_sound_mode == 2) ? 0 : preferences_sample_rate;
 }
 
-static inline int get_sample_replication(void)
+static inline __attribute__((always_inline)) int get_sample_replication(void)
 {
     return get_effective_sample_rate() + 1;
 }
 
-static inline int get_audio_sample_rate(void)
+static inline __attribute__((always_inline)) int get_audio_sample_rate(void)
 {
     return FREQ_INC_REF / get_sample_replication();
 }
 
 static uint32_t precomputed_noise_freqs[8][16];
 
-__audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i);
+static inline __attribute__((always_inline)) bool calculate_new_sweep_freq(
+    audio_data* audio, chan* c, int i
+);
 
-__audio static void set_note_freq(chan* c, const uint32_t freq)
+static inline __attribute__((always_inline)) void set_note_freq(chan* c, const uint32_t freq)
 {
     c->freq_inc = freq;  // freq >= 64
 }
 
-static void chan_enable(audio_data* audio, const uint_fast8_t i, const bool enable)
+static inline __attribute__((always_inline)) void chan_enable(
+    audio_data* audio, const uint_fast8_t i, const bool enable
+)
 {
     uint8_t val;
     chan* chans = audio->chans;
@@ -366,7 +365,9 @@ __shell void audio_div_apu_tick(audio_data* audio)
     }
 }
 
-__audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t old_val)
+static inline __attribute__((always_inline)) void _nrx2_glitch(
+    chan* chans, int i, uint8_t new_val, uint8_t old_val
+)
 {
     bool env_running = (chans[i].env.step != 0);
     if (env_running)
@@ -411,7 +412,9 @@ __audio static void _nrx2_glitch(chan* chans, int i, uint8_t new_val, uint8_t ol
 
 /* NRx2 write side effects: zombie volume glitch + envelope fields.
  * Shared by audio_write and the square-PCM gain pre-pass (shadow chan). */
-__audio static void apply_nrx2(chan* chans, int i, uint8_t val, uint8_t old_val, bool is_cgb)
+static inline __attribute__((always_inline)) void apply_nrx2(
+    chan* chans, int i, uint8_t val, uint8_t old_val, bool is_cgb
+)
 {
     // SameBoy _nrx2_glitch: adjust volume on NRx2 write while channel active.
     // DMG: 2-pass via 0xFF intermediate. CGB: single pass.
@@ -445,7 +448,9 @@ __audio static void apply_nrx2(chan* chans, int i, uint8_t val, uint8_t old_val,
     }
 }
 
-__audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
+static inline __attribute__((always_inline)) bool calculate_new_sweep_freq(
+    audio_data* audio, chan* c, int i
+)
 {
     uint16_t new_freq;
     new_freq = c->sweep.freq >> c->sweep.shift;
@@ -477,7 +482,9 @@ __audio static bool calculate_new_sweep_freq(audio_data* audio, chan* c, int i)
 }
 
 /* Returns the sample index at which the length counter expires (<= len). */
-__audio static int update_len(audio_data* restrict audio, chan* c, int len)
+static inline __attribute__((always_inline)) int update_len(
+    audio_data* restrict audio, chan* c, int len
+)
 {
     if (!c->enabled)
         return 0;
@@ -519,7 +526,7 @@ __attribute__((always_inline)) static inline bool update_freq(
  * PCM). When non-NULL it carries the write-driven volume: envelope_smooth is
  * bypassed and the above-Nyquist early-out is lifted (PCM players park the
  * carrier at max frequency and stay audible via the averaged DC mean). */
-__audio static void update_square(
+__apu_sample_gen static void update_square(
     audio_data* restrict audio, int16_t* left, int16_t* right, const bool ch2, int len,
     const uint16_t* gain_q4
 )
@@ -690,9 +697,8 @@ __audio static void update_square(
     }
 }
 
-__audio static int8_t wave_sample(
-    audio_data* audio, const unsigned int pos, const unsigned int volume
-)
+static inline __attribute__((always_inline)) int8_t
+wave_sample(audio_data* audio, const unsigned int pos, const unsigned int volume)
 {
     uint8_t sample;
 
@@ -712,7 +718,7 @@ __audio static int8_t wave_sample(
 
 /* Sum of wave_sample over all 32 wave positions with the given volume.
  * Used by the extreme-frequency fast path in update_wave. */
-__audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c, unsigned volume)
+__apu_sample_gen static int16_t wave_cycle_sum(audio_data* audio, const chan* c, unsigned volume)
 {
     int16_t sum = 0;
     for (int p = 0; p < 32; p++)
@@ -725,7 +731,7 @@ __audio static int16_t wave_cycle_sum(audio_data* audio, const chan* c, unsigned
  * scaled by gain_q8[i]; the muted early-out is bypassed (gain 0 handles
  * silence while the carrier keeps advancing). Accurate mode only:
  * sample_replication is 1, so gain_q8[i] aligns with output index i. */
-__audio static void update_wave(
+__apu_sample_gen static void update_wave(
     audio_data* restrict audio, int16_t* left, int16_t* right, int len, const uint16_t* gain_q8
 )
 {
@@ -769,10 +775,10 @@ __audio static void update_wave(
      * frequency, volume 0). */
     if (!gain_q8 && c->volume == 0)
     {
-        uint64_t total = (uint64_t)c->freq_inc * (uint32_t)len + c->freq_counter;
-        uint32_t steps = (uint32_t)(total / (uint32_t)sample_rate);
+        uint32_t total = c->freq_inc * (uint32_t)len + c->freq_counter;
+        uint32_t steps = total / (uint32_t)sample_rate;
         c->val = (c->val + steps) & 31;
-        c->freq_counter = (uint32_t)(total % (uint32_t)sample_rate);
+        c->freq_counter = total % (uint32_t)sample_rate;
         if (steps)
             c->wave.just_read = true;
         return;
@@ -895,7 +901,9 @@ __audio static void update_wave(
     }
 }
 
-__audio static void update_noise(audio_data* restrict audio, int16_t* left, int16_t* right, int len)
+__apu_sample_gen static void update_noise(
+    audio_data* restrict audio, int16_t* left, int16_t* right, int len
+)
 {
     chan* c = audio->chans + 3;
 
@@ -1072,7 +1080,7 @@ __audio static void update_noise(audio_data* restrict audio, int16_t* left, int1
     }
 }
 
-static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
+__apu_write static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
 {
     chan* chans = audio->chans;
     chan* c = chans + i;
@@ -1187,7 +1195,10 @@ static void chan_trigger(audio_data* restrict audio, uint_fast8_t i)
                 else
                 {
                     int aligned = byte_idx & ~3;
-                    memcpy(wave_ram, wave_ram + aligned, 4);
+                    wave_ram[0] = wave_ram[aligned + 0];
+                    wave_ram[1] = wave_ram[aligned + 1];
+                    wave_ram[2] = wave_ram[aligned + 2];
+                    wave_ram[3] = wave_ram[aligned + 3];
                 }
             }
         }
@@ -1304,7 +1315,7 @@ uint8_t audio_read(audio_data* audio, const uint16_t addr)
 }
 
 /* Write audio register (0xFF10 <= addr <= 0xFF3F, unchecked). */
-void audio_write(
+__apu_write void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
@@ -1325,7 +1336,8 @@ void audio_write(
         // On APU power off, clear all registers apart from wave RAM.
         if ((val & 0x80) == 0)
         {
-            memset(audio_mem(audio), 0x00, 0xFF26 - AUDIO_ADDR_COMPENSATION);
+            for (int r = 0; r < 0xFF26 - AUDIO_ADDR_COMPENSATION; r++)
+                audio_mem(audio)[r] = 0x00;
             chans[0].enabled = false;
             chans[1].enabled = false;
             chans[2].enabled = false;
@@ -1831,7 +1843,7 @@ __attribute__((always_inline)) static inline void clear_audio_buffers(
 #endif
 
 /* Playdate audio callback. */
-__audio int audio_callback(void* context, int16_t* left, int16_t* right, int len)
+__apu_sample_gen int audio_callback(void* context, int16_t* left, int16_t* right, int len)
 {
     if (!audio_enabled || audio_muted)
         return 0;
@@ -2260,19 +2272,22 @@ __shell static int replay_event_span(
                 if (generated + chunk > seg)
                     chunk = seg - generated;
 
-                update_wave(
-                    audio, left + offset + generated, right + offset + generated, chunk,
-                    ch3_gain ? ch3_gain + offset + generated : NULL
+                APU_GEN_WV(
+                    update_wave, audio, left + offset + generated, right + offset + generated,
+                    chunk, ch3_gain ? ch3_gain + offset + generated : NULL
                 );
-                update_square(
-                    audio, left + offset + generated, right + offset + generated, 0, chunk,
-                    sq_gain[0] ? sq_gain[0] + offset + generated : NULL
+                APU_GEN_SQ(
+                    update_square, audio, left + offset + generated, right + offset + generated, 0,
+                    chunk, sq_gain[0] ? sq_gain[0] + offset + generated : NULL
                 );
-                update_square(
-                    audio, left + offset + generated, right + offset + generated, 1, chunk,
-                    sq_gain[1] ? sq_gain[1] + offset + generated : NULL
+                APU_GEN_SQ(
+                    update_square, audio, left + offset + generated, right + offset + generated, 1,
+                    chunk, sq_gain[1] ? sq_gain[1] + offset + generated : NULL
                 );
-                update_noise(audio, left + offset + generated, right + offset + generated, chunk);
+                APU_GEN_NZ(
+                    update_noise, audio, left + offset + generated, right + offset + generated,
+                    chunk
+                );
 
                 generated += chunk;
 
@@ -2311,19 +2326,21 @@ __shell static int replay_event_span(
             if (generated + chunk > rem)
                 chunk = rem - generated;
 
-            update_wave(
-                audio, left + offset + generated, right + offset + generated, chunk,
+            APU_GEN_WV(
+                update_wave, audio, left + offset + generated, right + offset + generated, chunk,
                 ch3_gain ? ch3_gain + offset + generated : NULL
             );
-            update_square(
-                audio, left + offset + generated, right + offset + generated, 0, chunk,
-                sq_gain[0] ? sq_gain[0] + offset + generated : NULL
+            APU_GEN_SQ(
+                update_square, audio, left + offset + generated, right + offset + generated, 0,
+                chunk, sq_gain[0] ? sq_gain[0] + offset + generated : NULL
             );
-            update_square(
-                audio, left + offset + generated, right + offset + generated, 1, chunk,
-                sq_gain[1] ? sq_gain[1] + offset + generated : NULL
+            APU_GEN_SQ(
+                update_square, audio, left + offset + generated, right + offset + generated, 1,
+                chunk, sq_gain[1] ? sq_gain[1] + offset + generated : NULL
             );
-            update_noise(audio, left + offset + generated, right + offset + generated, chunk);
+            APU_GEN_NZ(
+                update_noise, audio, left + offset + generated, right + offset + generated, chunk
+            );
 
             generated += chunk;
 
@@ -2435,10 +2452,10 @@ __shell void audio_generate_accurate(
         if (generated + chunk > len)
             chunk = len - generated;
 
-        update_wave(audio, left + generated, right + generated, chunk, NULL);
-        update_square(audio, left + generated, right + generated, 0, chunk, NULL);
-        update_square(audio, left + generated, right + generated, 1, chunk, NULL);
-        update_noise(audio, left + generated, right + generated, chunk);
+        APU_GEN_WV(update_wave, audio, left + generated, right + generated, chunk, NULL);
+        APU_GEN_SQ(update_square, audio, left + generated, right + generated, 0, chunk, NULL);
+        APU_GEN_SQ(update_square, audio, left + generated, right + generated, 1, chunk, NULL);
+        APU_GEN_NZ(update_noise, audio, left + generated, right + generated, chunk);
 
         generated += chunk;
 

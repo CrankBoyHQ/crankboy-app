@@ -31,16 +31,45 @@ typedef struct PGB_AD(audio_data_v, PGB_VERSION) audio_data;
 
 #define VERTICAL_SYNC (DMG_CLOCK_FREQ / SCREEN_REFRESH_CYCLES)
 
+/* TCM clusters (see tcm_relocate): intra-cluster calls only.
+ * Shared helpers are always_inline, not cross-cluster calls. */
+#ifdef TARGET_SIMULATOR
+#define __apu_write
+#define __apu_sample_gen
+#else
+#define __apu_write                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".apu_write"))) \
+    __attribute__((short_call))
+#define __apu_sample_gen                                                        \
+    __attribute__((optimize("Os"))) __attribute__((section(".apu_sample_gen"))) \
+    __attribute__((short_call))
+#endif
+
 // master audio control
 extern int audio_enabled;
 extern int audio_muted;
 
+// update_* live in .apu_sample_gen; flash-side replay enters via relocation offset.
+extern intptr_t pgb_apu_sample_gen_reloc_offset;
+#define APU_GEN_PTR(fn) ((char*)(void*)(fn) + pgb_apu_sample_gen_reloc_offset)
+#define APU_GEN_WV(fn, a_, l_, r_, n_, g_)                                              \
+    ((void (*)(audio_data*, int16_t*, int16_t*, int, const uint16_t*))APU_GEN_PTR(fn))( \
+        a_, l_, r_, n_, g_                                                              \
+    )
+#define APU_GEN_SQ(fn, a_, l_, r_, c_, n_, g_)                                                \
+    ((void (*)(audio_data*, int16_t*, int16_t*, bool, int, const uint16_t*))APU_GEN_PTR(fn))( \
+        a_, l_, r_, c_, n_, g_                                                                \
+    )
+#define APU_GEN_NZ(fn, a_, l_, r_, n_) \
+    ((void (*)(audio_data*, int16_t*, int16_t*, int))APU_GEN_PTR(fn))(a_, l_, r_, n_)
 /* Read audio register at addr. */
 uint8_t audio_read(audio_data* audio, const uint16_t addr);
 
 /* Write val to audio register addr. apu_count is the emulator cycle counter,
  * reset per frame. */
-void audio_write(audio_data* audio, const uint16_t addr, const uint8_t val, uint32_t apu_count);
+__apu_write void audio_write(
+    audio_data* audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
+);
 
 /* Initialise audio driver. */
 void audio_init(audio_data* audio);

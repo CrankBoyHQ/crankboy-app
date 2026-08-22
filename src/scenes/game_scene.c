@@ -54,6 +54,15 @@ uint8_t* pgb_dirty_prev = NULL;
 uint16_t* pgb_dirty_flags = NULL;
 uint8_t pgb_dirty_skip = 0;
 
+// APU cluster relocation offsets (untemplated; 0 = flash copy, also correct).
+intptr_t pgb_apu_write_reloc_offset = 0;
+intptr_t pgb_apu_sample_gen_reloc_offset = 0;
+
+// Entry into the relocated sample-gen cluster from flash code (audio source
+// registration; emu-side writes use APU_CALL_* in peanut_gb.h, replay-side
+// sample-gen calls use APU_GEN_* there too).
+#define APU_RELOC_FN(fn) ((void*)((char*)(void*)(fn) + pgb_apu_sample_gen_reloc_offset))
+
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208
 
@@ -681,7 +690,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
         }
 
         CB_App->soundSource =
-            playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
+            playdate->sound->addSource(APU_RELOC_FN(audio_callback), &audioGameScene, use_stereo);
         sound_source_stereo = use_stereo;
     }
 
@@ -737,6 +746,10 @@ extern char __rare_cgb_start[];
 extern char __rare_cgb_end[];
 extern char __hle_cgb_start[];
 extern char __hle_cgb_end[];
+extern char __apu_write_start[];
+extern char __apu_write_end[];
+extern char __apu_sample_gen_start[];
+extern char __apu_sample_gen_end[];
 
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 #define ITCM_CORE_FN_B(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset_b))
@@ -1002,6 +1015,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // the HLE preference is off (the cluster is never called at runtime then).
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
+    pgb_apu_write_reloc_offset = 0;
+    pgb_apu_sample_gen_reloc_offset = 0;
     if (core_on)
     {
         const struct
@@ -1016,11 +1031,15 @@ __section__(".rare") void tcm_relocate(bool cgb)
             {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true},
             {"rare", cgb ? __rare_cgb_start : __rare_dmg_start,
              cgb ? __rare_cgb_end : __rare_dmg_end, &pgb_rare_reloc_offset, false, false},
+            {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false,
+             false},
+            {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
+             &pgb_apu_sample_gen_reloc_offset, false, false},
         };
 
         bool pool_claimed = core_in_main_pool || core_b_in_main_pool || draw_in_main_pool;
 
-        for (int c = 0; c < 2; c++)
+        for (int c = 0; c < 4; c++)
         {
             if (clusters[c].cgb_only && !cgb)
                 continue;
@@ -1117,6 +1136,8 @@ __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
     pgb_draw_reloc_offset = 0;
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
+    pgb_apu_write_reloc_offset = 0;
+    pgb_apu_sample_gen_reloc_offset = 0;
     core_itcm_reloc = itcm_start;
     core_itcm_reloc_b = cgb ? (void*)&__itcm_cgb_b_start : (void*)&__itcm_dmg_b_start;
 
@@ -1148,6 +1169,8 @@ __section__(".rare") void tcm_apply(bool cgb)
         pgb_draw_reloc_offset = 0;
         pgb_rare_reloc_offset = 0;
         pgb_hle_reloc_offset = 0;
+        pgb_apu_write_reloc_offset = 0;
+        pgb_apu_sample_gen_reloc_offset = 0;
         core_itcm_reloc = itcm_start;
         core_itcm_reloc_b = cgb ? (void*)&__itcm_cgb_b_start : (void*)&__itcm_dmg_b_start;
         dtcm_pocket_fill_and_reset();
