@@ -10,7 +10,12 @@ extern bool is_dtcm_init;
 void dtcm_set_mempool(void* addr);
 void dtcm_init(void);
 void dtcm_deinit(void);
+
+#ifdef TARGET_SIMULATOR
 bool dtcm_verify(const char* context);
+#else
+__attribute__((long_call)) bool dtcm_verify(const char* context);
+#endif
 
 // dtcm_free: no-op for pointers into the DTCM main region or pockets
 // (bump-allocated, never individually freed); frees heap-fallback
