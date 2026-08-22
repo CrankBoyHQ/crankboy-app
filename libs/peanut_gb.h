@@ -318,9 +318,9 @@ typedef struct StateHeader
 #endif
 
 // ---------------------
-// On struct version update, please change these two lines
+// Struct version bump: see header comment in pgb/pgb_v6.h
 #include "pgb/pgb_v6.h"
-#define PGB_VERSION 6
+#include "pgb/pgb_version.h"
 // ---------------------
 
 typedef struct PGB_VERSIONED(gb_s) gb_s;

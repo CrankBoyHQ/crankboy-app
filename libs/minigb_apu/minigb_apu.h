@@ -6,13 +6,18 @@
 
 #pragma once
 
+#include "../../src/app.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
-// Note: included by peanut_gb.h when PGB_IMPL is defined; do not include
-// directly. The audio_data type is defined in peanut_gb.h.
+// Fallback when included before peanut_gb.h (which owns the real typedef).
+// Two-level paste: PGB_VERSION must expand before token-pasting.
 #ifndef PEANUT_GB_H
-typedef struct audio_data audio_data;
+#include "../pgb/pgb_version.h"
+#define PGB_AD_(X, Y) X##Y
+#define PGB_AD(X, Y) PGB_AD_(X, Y)
+typedef struct PGB_AD(audio_data_v, PGB_VERSION) audio_data;
 #endif
 
 // Calculating VSYNC.

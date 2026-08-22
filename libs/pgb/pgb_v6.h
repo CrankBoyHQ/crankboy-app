@@ -1,13 +1,16 @@
 #include "pgb_common.h"
 
-/* DEVELOPMENT VERSION RANGE: (v2.2.1, TBD] */
+/* DEVELOPMENT VERSION RANGE: (TBD] */
 
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
-// Bump PGB_VERSION and replace savestate_upgrade_to_*
+// On version bump: bump pgb/pgb_version.h, point the NEW file at it,
+// and pin this file with a literal `#define PGB_VERSION 6` in place of
+// the include (its structs must stay _v6 for savestate upgrading).
+// Also replace savestate_upgrade_to_*.
 
-// Compatability version (for save state upgrading).
-#define PGB_VERSION 6
+// Compatibility version (for save state upgrading).
+#include "pgb_version.h"
 
 struct PGB_VERSIONED(gb_breakpoint)
 {
