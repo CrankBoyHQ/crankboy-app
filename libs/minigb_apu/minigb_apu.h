@@ -62,6 +62,8 @@ extern intptr_t pgb_apu_sample_gen_reloc_offset;
     )
 #define APU_GEN_NZ(fn, a_, l_, r_, n_) \
     ((void (*)(audio_data*, int16_t*, int16_t*, int))APU_GEN_PTR(fn))(a_, l_, r_, n_)
+#define APU_GEN_CALL_CB(fn, g_, l_, r_, n_) \
+    ((int (*)(CB_GameScene*, int16_t*, int16_t*, int))APU_GEN_PTR(fn))(g_, l_, r_, n_)
 /* Read audio register at addr. */
 uint8_t audio_read(audio_data* audio, const uint16_t addr);
 

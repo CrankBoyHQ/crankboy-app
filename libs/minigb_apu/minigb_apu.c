@@ -1842,22 +1842,12 @@ __attribute__((always_inline)) static inline void clear_audio_buffers(
 }
 #endif
 
-/* Playdate audio callback. */
-__apu_sample_gen int audio_callback(void* context, int16_t* left, int16_t* right, int len)
+/* Engine body in TCM; entered only while a scene is active (wipe-safe). */
+__apu_sample_gen static int audio_callback_render(
+    CB_GameScene* gameScene, int16_t* left, int16_t* right, int len
+)
 {
-    if (!audio_enabled || audio_muted)
-        return 0;
-
     DTCM_VERIFY_DEBUG();
-
-    CB_GameScene** gameScene_ptr = context;
-    CB_GameScene* gameScene = *gameScene_ptr;
-
-    if (!gameScene)
-    {
-        clear_audio_buffers(left, right, len);
-        return 1;
-    }
 
     audio_data* audio = &gameScene->context->gb->audio;
 
@@ -2047,6 +2037,21 @@ __apu_sample_gen int audio_callback(void* context, int16_t* left, int16_t* right
     DTCM_VERIFY_DEBUG();
 
     return 1;
+}
+/* Playdate audio callback. */
+int audio_callback(void* context, int16_t* left, int16_t* right, int len)
+{
+    if (!audio_enabled || audio_muted)
+        return 0;
+
+    CB_GameScene* gameScene = *(CB_GameScene**)context;
+    if (!gameScene)
+    {
+        clear_audio_buffers(left, right, len);
+        return 1;
+    }
+
+    return APU_GEN_CALL_CB(audio_callback_render, gameScene, left, right, len);
 }
 
 void audio_update_square(

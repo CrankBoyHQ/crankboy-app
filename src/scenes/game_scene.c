@@ -58,11 +58,6 @@ uint8_t pgb_dirty_skip = 0;
 intptr_t pgb_apu_write_reloc_offset = 0;
 intptr_t pgb_apu_sample_gen_reloc_offset = 0;
 
-// Entry into the relocated sample-gen cluster from flash code (audio source
-// registration; emu-side writes use APU_CALL_* in peanut_gb.h, replay-side
-// sample-gen calls use APU_GEN_* there too).
-#define APU_RELOC_FN(fn) ((void*)((char*)(void*)(fn) + pgb_apu_sample_gen_reloc_offset))
-
 // The maximum Playdate screen lines that can be updated (seems to be 208).
 #define PLAYDATE_LINE_COUNT_MAX 208
 
@@ -690,7 +685,7 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
         }
 
         CB_App->soundSource =
-            playdate->sound->addSource(APU_RELOC_FN(audio_callback), &audioGameScene, use_stereo);
+            playdate->sound->addSource(audio_callback, &audioGameScene, use_stereo);
         sound_source_stereo = use_stereo;
     }
 
@@ -1468,7 +1463,13 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
 #if ITCM_CORE
     core_itcm_reloc = NULL;
     core_itcm_reloc_b = NULL;
+    core_itcm_offset = 0;
+    core_itcm_offset_b = 0;
     pgb_draw_reloc_offset = 0;
+    pgb_rare_reloc_offset = 0;
+    pgb_hle_reloc_offset = 0;
+    pgb_apu_write_reloc_offset = 0;
+    pgb_apu_sample_gen_reloc_offset = 0;
     s_tcm_store = NULL;
 #endif
     dtcm_deinit();
@@ -5293,6 +5294,13 @@ static void CB_GameScene_free(void* object)
 #if ITCM_CORE
     core_itcm_reloc = NULL;
     core_itcm_reloc_b = NULL;
+    core_itcm_offset = 0;
+    core_itcm_offset_b = 0;
+    pgb_draw_reloc_offset = 0;
+    pgb_rare_reloc_offset = 0;
+    pgb_hle_reloc_offset = 0;
+    pgb_apu_write_reloc_offset = 0;
+    pgb_apu_sample_gen_reloc_offset = 0;
     // Free any outstanding lock snapshot (pool is about to be deinited).
     cb_free(s_tcm_store);
     s_tcm_store = NULL;
