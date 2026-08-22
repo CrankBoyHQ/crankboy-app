@@ -497,7 +497,9 @@ __rare static u8 $(__gb_rare_instruction)(gb_s* restrict gb, uint8_t opcode)
     }
 }
 
-__core static uint8_t $(__gb_execute_cb)(gb_s* gb)
+/* CB sub-interpreter: per-instruction hot path, keep in the A (hot) block
+ * even if the compiler chooses not to inline it into micro. */
+__core_section("cb") static uint8_t $(__gb_execute_cb)(gb_s* gb)
 {
     uint8_t inst_cycles;
     uint8_t cbop = $(__gb_fetch8)(gb);
@@ -1522,7 +1524,9 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
     return (budget > BATCH_OVERSHOOT) ? (budget - BATCH_OVERSHOOT) : 1;
 }
 
-__core static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
+/* Micro interpreter: per-instruction hot loop, lives in the A (hot) block.
+ * step_cpu (B block) calls it through MICRO_CALL. */
+__core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
 {
 #define FETCH8(gb) $(__gb_fetch8)(gb)
 
@@ -2171,7 +2175,7 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
      * overflow cannot wake HALT; the step-tail catch-up loop absorbs the
      * missed ticks). */
     if (gb->gb_reg.IE & TIMER_INTR)
-        src[1] = $(__gb_timer_distance)(gb);
+        src[1] = CORE_CALL_U32($(__gb_timer_distance), gb);
 
     // PPU event calculation
     uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
@@ -2277,7 +2281,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
 #if CPU_VALIDATE == 0
     // __gb_run_instruction_micro runs the whole cycle-budget batch internally.
-    inst_cycles = $(__gb_run_instruction_micro)(gb);
+    inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
 #else
     // run once as each, verify
 
@@ -2324,7 +2328,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_cart_ram_size > 0)
             memcpy(gb->gb_cart_ram, _cart_ram[0], gb->gb_cart_ram_size);
 
-        uint8_t inst_cycles_m = $(__gb_run_instruction_micro)(gb);
+        uint8_t inst_cycles_m = MICRO_CALL($(__gb_run_instruction_micro), gb);
 
         gb->cpu_reg.f_bits.unused = 0;
         // intr_pending is a derived cache of ime/IF/IE, maintained only by
@@ -2437,7 +2441,9 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
         while (dma_bytes > 0 && gb->dma_dest < 0xA0)
         {
-            gb->oam[gb->dma_dest++] = $(__gb_read)(gb, gb->dma_src++);
+            /* CORE_CALL_READ: step tail lives in the B block, __gb_read in A;
+             * the blocks relocate independently. */
+            gb->oam[gb->dma_dest++] = CORE_CALL_READ($(__gb_read), gb, gb->dma_src++);
             dma_bytes--;
         }
 

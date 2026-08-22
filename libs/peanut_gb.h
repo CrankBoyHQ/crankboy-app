@@ -425,8 +425,11 @@ extern intptr_t pgb_rare_reloc_offset;
 extern intptr_t pgb_hle_reloc_offset;
 
 #if ITCM_CORE
-// 0 = run from flash; else DTCM relocation delta
+// 0 = run from flash; else DTCM relocation delta.
+// core_itcm_offset: A block (hot: read/write helpers, CB, micro interpreter).
+// core_itcm_offset_b: B block (batch-level: step_cpu, run_frame).
 extern intptr_t core_itcm_offset;
+extern intptr_t core_itcm_offset_b;
 #endif
 
 // Call a draw-cluster function from core code through the relocation offset.
@@ -456,6 +459,18 @@ extern intptr_t core_itcm_offset;
 #define CORE_CALL_FETCH16(fn, gb_) ((u16 (*)(gb_s*))CORE_CALL_PTR(fn))(gb_)
 #define CORE_CALL_WRITE16(fn, gb_, a_, v_) \
     ((void (*)(gb_s*, u16, u16))CORE_CALL_PTR(fn))(gb_, a_, v_)
+
+/* step_cpu (B block) -> micro interpreter (A block): the blocks relocate
+ * independently, so call through the A offset (0 = flash copy, also correct;
+ * a flash-resident step_cpu can safely enter the relocated micro). Same for
+ * the other B->A calls (halt calc -> timer_distance, OAM DMA -> read). */
+#if defined(ITCM_CORE) && !defined(TARGET_SIMULATOR)
+#define MICRO_CALL(fn, gb_) ((unsigned (*)(gb_s*))((char*)(void*)(fn) + core_itcm_offset))(gb_)
+#define CORE_CALL_U32(fn, gb_) ((uint32_t (*)(gb_s*))CORE_CALL_PTR(fn))(gb_)
+#else
+#define MICRO_CALL(fn, gb_) (fn)(gb_)
+#define CORE_CALL_U32(fn, gb_) (fn)(gb_)
+#endif
 
 __draw_cgb static void __gb_check_lyc__cgb(gb_s* gb);
 __draw_cgb static void __gb_update_stat_irq__cgb(gb_s* gb);

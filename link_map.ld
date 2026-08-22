@@ -55,30 +55,40 @@ SECTIONS
 		/* code to copy to TCM, seemingly runs faster */
 		. = ALIGN(0x1000);
 		. += 0xDE6;
+		/* Core split: A block (hot: helpers+cb+micro) and B block (batch-level:
+		 * step_cpu/run_frame) relocate independently into separate pockets. */
         __itcm_dmg_start = .;
 			*(.itcm.dmg.short)
-			*(.itcm.dmg)
-			. = ALIGN(32);
-			*(.itcm.dmg.draw)
 			. = ALIGN(32); . += 0x6;
 			*(.itcm.dmg.cb)
 			. = ALIGN(32);
 			*(.itcm.dmg.micro)
+        __itcm_dmg_a_end = .;
+		. = ALIGN(32);
+        __itcm_dmg_b_start = .;
+			*(.itcm.dmg)
+			. = ALIGN(32);
+			*(.itcm.dmg.draw)
 			*(.itcm.dmg.*)
+        __itcm_dmg_b_end = .;
         __itcm_dmg_end = .;
 
 		. = ALIGN(0x1000);
 		. += 0xDE6;
         __itcm_cgb_start = .;
 			*(.itcm.cgb.short)
-			*(.itcm.cgb)
-			. = ALIGN(32);
-			*(.itcm.cgb.draw)
 			. = ALIGN(32); . += 0x6;
 			*(.itcm.cgb.cb)
 			. = ALIGN(32);
 			*(.itcm.cgb.micro)
+        __itcm_cgb_a_end = .;
+		. = ALIGN(32);
+        __itcm_cgb_b_start = .;
+			*(.itcm.cgb)
+			. = ALIGN(32);
+			*(.itcm.cgb.draw)
 			*(.itcm.cgb.*)
+        __itcm_cgb_b_end = .;
         __itcm_cgb_end = .;
 
 		/* draw cluster: relocated into main DTCM pool*/
