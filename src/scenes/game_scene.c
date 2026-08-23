@@ -809,6 +809,9 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // preference: 0=Off, 1=Both, 2=Core, 3=Draw
     const bool core_on = (preferences_itcm == 1 || preferences_itcm == 2);
     const bool draw_on = (preferences_itcm == 1 || preferences_itcm == 3);
+    // Satellite clusters (hle/rare/apu_*) relocate only in Full mode; Core
+    // relocates just the interpreter blocks, Draw just the draw cluster.
+    const bool clusters_on = (preferences_itcm == 1);
     bool core_in_main_pool = false;
     bool core_b_in_main_pool = false;
     int best = -1;
@@ -999,20 +1002,22 @@ __section__(".rare") void tcm_relocate(bool cgb)
         );
     }
 
-    // Cluster placement/eviction priority: core > coreB > draw > hle > rare.
+    // Cluster placement/eviction priority: core > coreB > draw > hle > rare >
+    // apu_write > apu_sample_gen.
     // core: most-slack pocket -> main pool (never flash).
     // coreB: core-pocket-slack -> any pocket -> main pool -> flash.
     // draw: core-pocket-first -> any pocket -> main pool -> flash.
-    // hle/rare: share used pockets first (core's slack, then draw's slack),
-    // then the smallest fresh pocket that fits (best-fit) -> main pool ->
-    // flash. On CGB hle outranks rare (poll-loop warps beat HALT/HDMA skips);
-    // on DMG the hle entry self-skips (cgb_only). hle is also skipped when
-    // the HLE preference is off (the cluster is never called at runtime then).
+    // hle/rare/apu_*: share used pockets first (core's slack, then draw's
+    // slack), then the smallest fresh pocket that fits (best-fit) -> main pool
+    // -> flash. On CGB hle outranks rare (poll-loop warps beat HALT/HDMA
+    // skips); on DMG the hle entry self-skips (cgb_only). hle is also skipped
+    // when the HLE preference is off (the cluster is never called at runtime
+    // then). Satellites relocate in Full mode only (see clusters_on).
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
     pgb_apu_sample_gen_reloc_offset = 0;
-    if (core_on)
+    if (clusters_on)
     {
         const struct
         {
