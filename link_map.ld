@@ -65,12 +65,12 @@ SECTIONS
 			*(.itcm.dmg.micro)
         __itcm_dmg_a_end = .;
 		. = ALIGN(32);
-        __itcm_dmg_b_start = .;
+        __itcm_dmg_batch_start = .;
 			*(.itcm.dmg)
 			. = ALIGN(32);
 			*(.itcm.dmg.draw)
 			*(.itcm.dmg.*)
-        __itcm_dmg_b_end = .;
+        __itcm_dmg_batch_end = .;
         __itcm_dmg_end = .;
 
 		. = ALIGN(0x1000);
@@ -83,12 +83,12 @@ SECTIONS
 			*(.itcm.cgb.micro)
         __itcm_cgb_a_end = .;
 		. = ALIGN(32);
-        __itcm_cgb_b_start = .;
+        __itcm_cgb_batch_start = .;
 			*(.itcm.cgb)
 			. = ALIGN(32);
 			*(.itcm.cgb.draw)
 			*(.itcm.cgb.*)
-        __itcm_cgb_b_end = .;
+        __itcm_cgb_batch_end = .;
         __itcm_cgb_end = .;
 
 		/* draw cluster: relocated into main DTCM pool*/

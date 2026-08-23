@@ -714,8 +714,8 @@ intptr_t pgb_hle_reloc_offset = 0;
 void* core_itcm_reloc = NULL;
 intptr_t core_itcm_offset = 0;
 // B block (batch-level core: step_cpu/run_frame), relocated independently.
-void* core_itcm_reloc_b = NULL;
-intptr_t core_itcm_offset_b = 0;
+void* core_itcm_reloc_batch = NULL;
+intptr_t core_itcm_offset_batch = 0;
 
 // DTCM snapshot of the main pool (gb struct) taken on lock/menu, restored on
 // resume so system writes into DTCM can't corrupt emulator state.
@@ -724,13 +724,13 @@ static struct dtcm_store_t* s_tcm_store = NULL;
 extern char __itcm_dmg_start[];
 extern char __itcm_dmg_end[];
 extern char __itcm_dmg_a_end[];
-extern char __itcm_dmg_b_start[];
-extern char __itcm_dmg_b_end[];
+extern char __itcm_dmg_batch_start[];
+extern char __itcm_dmg_batch_end[];
 extern char __itcm_cgb_start[];
 extern char __itcm_cgb_end[];
 extern char __itcm_cgb_a_end[];
-extern char __itcm_cgb_b_start[];
-extern char __itcm_cgb_b_end[];
+extern char __itcm_cgb_batch_start[];
+extern char __itcm_cgb_batch_end[];
 extern char __draw_dmg_start[];
 extern char __draw_dmg_end[];
 extern char __draw_cgb_start[];
@@ -747,7 +747,7 @@ extern char __apu_sample_gen_start[];
 extern char __apu_sample_gen_end[];
 
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
-#define ITCM_CORE_FN_B(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset_b))
+#define ITCM_CORE_FN_BATCH(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset_batch))
 
 __section__(".rare") void tcm_relocate(bool cgb)
 {
@@ -760,15 +760,15 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     void* itcm_start = cgb ? &__itcm_cgb_start : &__itcm_dmg_start;
     void* itcm_a_end = cgb ? &__itcm_cgb_a_end : &__itcm_dmg_a_end;
-    void* itcm_b_start = cgb ? &__itcm_cgb_b_start : &__itcm_dmg_b_start;
-    void* itcm_b_end = cgb ? &__itcm_cgb_b_end : &__itcm_dmg_b_end;
+    void* itcm_batch_start = cgb ? &__itcm_cgb_batch_start : &__itcm_dmg_batch_start;
+    void* itcm_batch_end = cgb ? &__itcm_cgb_batch_end : &__itcm_dmg_batch_end;
 
     // Core is split into two independently-relocatable blocks:
-    // A (hot: read/write helpers + cb + micro) and B (batch-level:
+    // A (hot: read/write helpers + cb + micro) and batch (batch-level:
     // step_cpu/run_frame). Splitting lets the blocks fit smaller pockets
-    // and allows B to fall back to flash when space runs out.
+    // and allows batch to fall back to flash when space runs out.
     uintptr_t core_size = itcm_a_end - itcm_start;
-    uintptr_t core_b_size = itcm_b_end - itcm_b_start;
+    uintptr_t core_batch_size = itcm_batch_end - itcm_batch_start;
 
     // DTCM relocation controlled by the TCM Mode preference (default on).
     // Manual escape hatch if a device/rev misbehaves.
@@ -777,8 +777,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
         core_itcm_offset = 0;
-        core_itcm_reloc_b = itcm_b_start;
-        core_itcm_offset_b = 0;
+        core_itcm_reloc_batch = itcm_batch_start;
+        core_itcm_offset_batch = 0;
 
         playdate->system->logToConsole("itcm[%s]: off - running from flash", cgb ? "cgb" : "dmg");
         return;
@@ -787,13 +787,13 @@ __section__(".rare") void tcm_relocate(bool cgb)
     if (core_itcm_reloc == (void*)&__itcm_dmg_start)
     {
         core_itcm_reloc = NULL;
-        core_itcm_reloc_b = NULL;
+        core_itcm_reloc_batch = NULL;
     }
 
     if (core_itcm_reloc == (void*)&__itcm_cgb_start)
     {
         core_itcm_reloc = NULL;
-        core_itcm_reloc_b = NULL;
+        core_itcm_reloc_batch = NULL;
     }
 
     if (core_itcm_reloc != NULL)
@@ -808,8 +808,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     bool core_in_main_pool = false;
     int best = -1;
-    int best_b = -1;
-    const char* b_where = "flash";
+    int best_batch = -1;
+    const char* batch_where = "flash";
 
     // choose the pocket with the most slack
     size_t best_slack = 0;
@@ -857,9 +857,9 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     // B block: A's pocket slack first, then any pocket with room, then
     // the main pool, else flash (offset 0, correct).
-    void* b_reloc = NULL;
-    const size_t b_need = core_b_size + MARGIN + DTCM_ALIGN_PAD;
-    for (int i = 0; i < dtcm_num_pockets && !b_reloc; i++)
+    void* batch_reloc = NULL;
+    const size_t b_need = core_batch_size + MARGIN + DTCM_ALIGN_PAD;
+    for (int i = 0; i < dtcm_num_pockets && !batch_reloc; i++)
     {
         int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
         if (!dtcm_pocket_enabled(p))
@@ -867,30 +867,31 @@ __section__(".rare") void tcm_relocate(bool cgb)
         size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
         if (avail >= b_need)
         {
-            b_reloc = dtcm_pocket_alloc_aligned(p, core_b_size + MARGIN, (uintptr_t)itcm_b_start);
-            b_where = "pocket";
-            best_b = p;
+            batch_reloc =
+                dtcm_pocket_alloc_aligned(p, core_batch_size + MARGIN, (uintptr_t)itcm_batch_start);
+            batch_where = "pocket";
+            best_batch = p;
         }
     }
-    if (!b_reloc)
+    if (!batch_reloc)
     {
-        b_reloc = dtcm_alloc_aligned(core_b_size + MARGIN, (uintptr_t)itcm_b_start);
-        if (b_reloc)
-            b_where = "main pool";
+        batch_reloc = dtcm_alloc_aligned(core_batch_size + MARGIN, (uintptr_t)itcm_batch_start);
+        if (batch_reloc)
+            batch_where = "main pool";
     }
-    if (b_reloc)
+    if (batch_reloc)
     {
         DTCM_VERIFY();
-        memcpy(b_reloc, itcm_b_start, core_b_size);
+        memcpy(batch_reloc, itcm_batch_start, core_batch_size);
         DTCM_VERIFY();
-        core_itcm_reloc_b = b_reloc;
-        core_itcm_offset_b = (char*)b_reloc - (char*)itcm_b_start;
+        core_itcm_reloc_batch = batch_reloc;
+        core_itcm_offset_batch = (char*)batch_reloc - (char*)itcm_batch_start;
     }
     else
     {
         // Tolerated: B is per-batch code, flash wait states cost ~1-2%.
-        core_itcm_reloc_b = itcm_b_start;
-        core_itcm_offset_b = 0;
+        core_itcm_reloc_batch = itcm_batch_start;
+        core_itcm_offset_batch = 0;
     }
 
     // Unified placement log: itcm[<mode>]: <cluster> <size> at <addr> (<where>)
@@ -904,85 +905,30 @@ __section__(".rare") void tcm_relocate(bool cgb)
             "itcm[%s]: core 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", core_size, core_itcm_reloc,
             core_in_main_pool ? "main pool" : "flash"
         );
-    if (best_b >= 0)
+    if (best_batch >= 0)
         playdate->system->logToConsole(
-            "itcm[%s]: coreB 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", core_b_size,
-            core_itcm_reloc_b, best_b
+            "itcm[%s]: batch 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", core_batch_size,
+            core_itcm_reloc_batch, best_batch
         );
     else
         playdate->system->logToConsole(
-            "itcm[%s]: coreB 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", core_b_size,
-            core_itcm_reloc_b, b_where
+            "itcm[%s]: batch 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", core_batch_size,
+            core_itcm_reloc_batch, batch_where
         );
 
-    // Draw cluster as a separate block so the core stays small enough for
-    // pockets. Priority: core's pocket slack -> any other pocket -> main pool
-    // -> flash.
-    int draw_pocket = -1;
-    void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
-    void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
-    size_t draw_size = draw_end - draw_start;
-    size_t draw_need = draw_size + MARGIN + DTCM_ALIGN_PAD;
-
-    void* draw_reloc = NULL;
-    const char* draw_where = "flash";
-
-    // core's pocket first (its brk continues after the core block),
-    // then any other pocket with room
-    for (int i = 0; i < dtcm_num_pockets && !draw_reloc; i++)
-    {
-        int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
-        if (!dtcm_pocket_enabled(p))
-            continue;
-        size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
-        if (avail >= draw_need)
-        {
-            draw_reloc = dtcm_pocket_alloc_aligned(p, draw_size + MARGIN, (uintptr_t)draw_start);
-            draw_where = "pocket";
-            draw_pocket = p;
-        }
-    }
-
-    if (!draw_reloc)
-    {
-        draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
-        if (draw_reloc)
-            draw_where = "main pool";
-    }
-
-    if (draw_reloc)
-    {
-        DTCM_VERIFY();
-        memcpy(draw_reloc, draw_start, draw_size);
-        DTCM_VERIFY();
-        pgb_draw_reloc_offset = (char*)draw_reloc - (char*)draw_start;
-    }
-    else
-    {
-        pgb_draw_reloc_offset = 0;
-    }
-
-    if (draw_pocket >= 0)
-        playdate->system->logToConsole(
-            "itcm[%s]: draw 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", draw_size,
-            draw_reloc, draw_pocket
-        );
-    else
-        playdate->system->logToConsole(
-            "itcm[%s]: draw 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", draw_size,
-            draw_reloc ? draw_reloc : draw_start, draw_where
-        );
-
-    // Placement priority: core > coreB > draw > hle > apu_write > rare >
+    // Placement priority: core > batch > hle > apu_write > draw > rare >
     // apu_sample_gen. Each: pockets (share used pockets' slack, then best-fit
     // fresh) -> main pool (budget-bounded, multi-claim) -> flash.
     // hle: CGB only (self-skips on DMG) and needs the HLE pref on.
-    // apu_write outranks rare: PCM voice streaming hammers the write path;
-    // rare is cold HALT/STOP/HDMA code.
+    // apu_write outranks draw/rare: PCM voice streaming hammers the write
+    // path, and draw is cheaper than the HLE/APU write clusters in practice.
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
     pgb_apu_sample_gen_reloc_offset = 0;
+    pgb_draw_reloc_offset = 0;
+
+    int draw_pocket = -1;
 
     const struct
     {
@@ -992,17 +938,21 @@ __section__(".rare") void tcm_relocate(bool cgb)
         intptr_t* offset;
         bool cgb_only;
         bool needs_hle_pref;
+        bool is_draw;
     } clusters[] = {
-        {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true},
-        {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false,
+        {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true, false},
+        {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false, false,
          false},
+        {"draw", cgb ? (char*)__draw_cgb_start : (char*)__draw_dmg_start,
+         cgb ? (char*)__draw_cgb_end : (char*)__draw_dmg_end, &pgb_draw_reloc_offset, false, false,
+         true},
         {"rare", cgb ? __rare_cgb_start : __rare_dmg_start, cgb ? __rare_cgb_end : __rare_dmg_end,
-         &pgb_rare_reloc_offset, false, false},
+         &pgb_rare_reloc_offset, false, false, false},
         {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
-         &pgb_apu_sample_gen_reloc_offset, false, false},
+         &pgb_apu_sample_gen_reloc_offset, false, false, false},
     };
 
-    for (int c = 0; c < 4; c++)
+    for (int c = 0; c < 5; c++)
     {
         if (clusters[c].cgb_only && !cgb)
             continue;
@@ -1051,6 +1001,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
         {
             reloc = dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)clusters[c].start);
             where = "pocket";
+            if (clusters[c].is_draw)
+                draw_pocket = pick;
         }
         else
         {
@@ -1103,14 +1055,14 @@ __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
     void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
 
     core_itcm_offset = 0;
-    core_itcm_offset_b = 0;
+    core_itcm_offset_batch = 0;
     pgb_draw_reloc_offset = 0;
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
     pgb_apu_sample_gen_reloc_offset = 0;
     core_itcm_reloc = itcm_start;
-    core_itcm_reloc_b = cgb ? (void*)&__itcm_cgb_b_start : (void*)&__itcm_dmg_b_start;
+    core_itcm_reloc_batch = cgb ? (void*)&__itcm_cgb_batch_start : (void*)&__itcm_dmg_batch_start;
 
     dtcm_pocket_fill_and_reset();
 
@@ -1136,14 +1088,15 @@ __section__(".rare") void tcm_apply(bool cgb)
     {
         void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
         core_itcm_offset = 0;
-        core_itcm_offset_b = 0;
+        core_itcm_offset_batch = 0;
         pgb_draw_reloc_offset = 0;
         pgb_rare_reloc_offset = 0;
         pgb_hle_reloc_offset = 0;
         pgb_apu_write_reloc_offset = 0;
         pgb_apu_sample_gen_reloc_offset = 0;
         core_itcm_reloc = itcm_start;
-        core_itcm_reloc_b = cgb ? (void*)&__itcm_cgb_b_start : (void*)&__itcm_dmg_b_start;
+        core_itcm_reloc_batch =
+            cgb ? (void*)&__itcm_cgb_batch_start : (void*)&__itcm_dmg_batch_start;
         dtcm_pocket_fill_and_reset();
         playdate->system->clearICache();
     }
@@ -1155,7 +1108,7 @@ __section__(".rare") void tcm_apply(bool cgb)
 #else
 
 #define ITCM_CORE_FN(fn) fn
-#define ITCM_CORE_FN_B(fn) fn
+#define ITCM_CORE_FN_BATCH(fn) fn
 
 void tcm_relocate(bool cgb)
 {
@@ -1438,9 +1391,9 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
-    core_itcm_reloc_b = NULL;
+    core_itcm_reloc_batch = NULL;
     core_itcm_offset = 0;
-    core_itcm_offset_b = 0;
+    core_itcm_offset_batch = 0;
     pgb_draw_reloc_offset = 0;
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
@@ -2976,7 +2929,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 void* gb_run_frame_ =
                     (context->gb->is_cgb_mode) ? gb_run_frame__cgb : gb_run_frame__dmg;
 #ifdef DTCM_ALLOC
-                void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN_B(gb_run_frame_);
+                void (*run_frame_function_pointer)(gb_s*) = ITCM_CORE_FN_BATCH(gb_run_frame_);
 #else
                 void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
@@ -5279,9 +5232,9 @@ static void CB_GameScene_free(void* object)
 
 #if ITCM_CORE
     core_itcm_reloc = NULL;
-    core_itcm_reloc_b = NULL;
+    core_itcm_reloc_batch = NULL;
     core_itcm_offset = 0;
-    core_itcm_offset_b = 0;
+    core_itcm_offset_batch = 0;
     pgb_draw_reloc_offset = 0;
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;

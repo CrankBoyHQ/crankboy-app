@@ -429,9 +429,9 @@ extern intptr_t pgb_apu_sample_gen_reloc_offset;
 #if ITCM_CORE
 // 0 = run from flash; else DTCM relocation delta.
 // core_itcm_offset: A block (hot: read/write helpers, CB, micro interpreter).
-// core_itcm_offset_b: B block (batch-level: step_cpu, run_frame).
+// core_itcm_offset_batch: batch block (batch-level: step_cpu, run_frame).
 extern intptr_t core_itcm_offset;
-extern intptr_t core_itcm_offset_b;
+extern intptr_t core_itcm_offset_batch;
 #endif
 
 // Call a draw-cluster function from core code through the relocation offset.
