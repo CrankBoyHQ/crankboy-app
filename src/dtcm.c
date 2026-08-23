@@ -13,17 +13,13 @@ static uint32_t* dtcm_low_canary_addr = NULL;
 static void* dtcm_mempool_hwm = NULL;
 #define DTCM_CANARY 0xDE0DCA94
 
-// Stack-depth measurement: the main pool shares DTCM with the stack reserve
-// (dtcm_mempool_start = frame - PLAYDATE_STACK_SIZE). The reserve above the
-// pool top is painted and its low-water mark tracked, so pool placement can
-// know how much room is actually left before the stack (dtcm_stack_hwm /
-// dtcm_pool_free). Distinct from DTCM_PROBE_CLEAN (0xA5, pockets below) and
-// DTCM_CANARY so a bug can't be misread as clean/unpainted.
+// Stack-depth measurement: the pool shares DTCM with the stack reserve
+// (mempool_start = frame - PLAYDATE_STACK_SIZE); the reserve is painted and
+// its low-water mark tracked. Marker distinct from probe-clean/canary values.
 #define DTCM_STACK_PAINT 0x5ACB5ACB
 static uint32_t* dtcm_stack_paint_top = NULL;
-// DTCM address window (64KB at 0x20000000). The main stack SP is a valid
-// paint anchor only inside this window; the user stack and other contexts
-// live above it, so an out-of-window SP must never drive the paint loop.
+// DTCM window (64KB at 0x20000000). SP outside it = user stack; never paint
+// from a foreign SP.
 #define DTCM_BASE 0x20000000u
 #define DTCM_END (0x20000000u + 0x10000u)
 #endif
@@ -112,10 +108,8 @@ void dtcm_pocket_fill_and_reset(void)
 }
 
 #ifdef DTCM_ALLOC
-// Budget check: refuse an allocation whose top (plus the high canary and a
-// guard band) would reach past the stack low-water mark. Returns false (and
-// logs) on overflow; caller must fall back instead of bumping into the stack.
-// Permissive when no measurement exists (hwm NULL: paint unavailable).
+// Refuse an allocation whose top (+ canary + guard) would pass the stack
+// low-water mark; caller falls back to flash. Permissive when unmeasured.
 static bool dtcm_pool_budget(uintptr_t top)
 {
     void* hwm = dtcm_stack_hwm();
@@ -255,10 +249,8 @@ __dtcm_ctrl void dtcm_set_mempool(void* addr)
 #ifdef DTCM_ALLOC
     dtcm_mempool_hwm = addr;
 #ifndef TARGET_SIMULATOR
-    // Paint the shared stack/pool reserve so later stack depth is measurable.
-    // Below the current SP is free stack by definition: safe to write. Only
-    // when SP is the DTCM main stack (and the window is sane), else painting
-    // from a foreign SP would run off into unrelated memory.
+    // Paint the stack/pool reserve (below SP is free stack by definition).
+    // Only when SP is the DTCM main stack, else we'd paint foreign memory.
     uint32_t sp;
     asm volatile("mov %0, sp" : "=r"(sp) : : "memory");
     uint32_t lo = (uint32_t)(uintptr_t)addr;
@@ -276,11 +268,9 @@ __dtcm_ctrl void dtcm_set_mempool(void* addr)
 }
 
 #ifdef DTCM_ALLOC
-// Lowest address the main stack has reached since painting (low-water mark).
-// Extends the painted ceiling to the current SP first: the steady-state loop
-// can be shallower than the kEventInit frame that seeded the paint, and any
-// region below the current SP is free (stack grows down). Returns NULL when
-// measurement is unavailable (simulator / not yet initialized).
+// Lowest address the main stack has reached since painting. Ceiling extends
+// to SP only for the DTCM main stack (foreign contexts just read). NULL when
+// unmeasured.
 void* dtcm_stack_hwm(void)
 {
 #ifndef TARGET_SIMULATOR
@@ -291,10 +281,7 @@ void* dtcm_stack_hwm(void)
     asm volatile("mov %0, sp" : "=r"(sp) : : "memory");
     uint32_t* top = (uint32_t*)sp;
 
-    // Raise the painted ceiling: [old_top, sp) is now below SP, hence free.
-    // Only when SP is the DTCM main stack - the user stack (scene switching)
-    // sits above DTCM and would otherwise compare > paint_top and paint off
-    // through live memory. Foreign contexts just read the current HWM.
+    // Raise the painted ceiling to SP (DTCM main stack only).
     uint32_t* p = dtcm_stack_paint_top;
     if (sp >= DTCM_BASE && sp < DTCM_END && top > p)
     {

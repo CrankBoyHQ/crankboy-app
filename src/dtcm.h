@@ -11,15 +11,14 @@ void dtcm_set_mempool(void* addr);
 void dtcm_init(void);
 void dtcm_deinit(void);
 
-// Stack low-water mark (lowest address the main stack has reached) and free
-// pool bytes up to it. The main pool shares DTCM with the stack reserve; these
-// let placement size its claims instead of bump-allocating blindly. NULL/0 on
-// the simulator.
+// Stack low-water mark, and free pool bytes up to it (the pool shares DTCM
+// with the stack reserve). NULL/0 on the simulator.
 void* dtcm_stack_hwm(void);
 size_t dtcm_pool_free(void);
 // Minimum stack headroom kept below the measured low-water mark.
 #define DTCM_POOL_STACK_GUARD 0x400
 
+// long_call: DTCM_VERIFY* is called from relocated clusters (bl would break).
 #ifdef TARGET_SIMULATOR
 bool dtcm_verify(const char* context);
 #else

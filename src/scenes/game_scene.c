@@ -809,8 +809,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // preference: 0=Off, 1=Both, 2=Core, 3=Draw
     const bool core_on = (preferences_itcm == 1 || preferences_itcm == 2);
     const bool draw_on = (preferences_itcm == 1 || preferences_itcm == 3);
-    // Satellite clusters (hle/rare/apu_*) relocate only in Full mode; Core
-    // relocates just the interpreter blocks, Draw just the draw cluster.
+    // Satellites (hle/rare/apu_*) relocate in Full mode only.
     const bool clusters_on = (preferences_itcm == 1);
     bool core_in_main_pool = false;
     int best = -1;
@@ -843,9 +842,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
                 dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
         else
         {
-            // No pocket fits: fall back to the main DTCM pool. Enforced
-            // against the stack low-water mark; if even that refuses, run the
-            // interpreter from flash (slow but safe).
+            // No pocket fits: main pool (budget-enforced); if even that
+            // refuses, core runs from flash (slow but safe).
             core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
             core_in_main_pool = (core_itcm_reloc != NULL);
         }
@@ -934,10 +932,9 @@ __section__(".rare") void tcm_relocate(bool cgb)
             core_itcm_reloc_b, b_where
         );
 
-    // Relocate the draw cluster as a separate block so the core stays small
-    // enough for pockets. Priority: core's pocket slack -> any other pocket
-    // -> main pool -> flash. Pool sharing is bounded by the measured stack
-    // budget, not by a hard single-claim rule.
+    // Draw cluster as a separate block so the core stays small enough for
+    // pockets. Priority: core's pocket slack -> any other pocket -> main pool
+    // -> flash.
     int draw_pocket = -1;
     if (draw_on)
     {
@@ -966,7 +963,6 @@ __section__(".rare") void tcm_relocate(bool cgb)
             }
         }
 
-        // main pool (enforced against the stack low-water mark)
         if (!draw_reloc)
         {
             draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
@@ -1007,22 +1003,12 @@ __section__(".rare") void tcm_relocate(bool cgb)
         );
     }
 
-    // Cluster placement/eviction priority: core > coreB > draw > hle >
-    // apu_write > rare > apu_sample_gen.
-    // core: most-slack pocket -> main pool -> flash (pool refusal is a loud
-    // fallback, never silent corruption into the stack).
-    // coreB: core-pocket-slack -> any pocket -> main pool -> flash.
-    // draw: core-pocket-first -> any pocket -> main pool -> flash.
-    // hle/rare/apu_*: share used pockets first (core's slack, then draw's
-    // slack), then the smallest fresh pocket that fits (best-fit) -> main pool
-    // -> flash. All main-pool claims are bounded by the measured stack budget
-    // (dtcm_pool_budget), so any number of clusters may share the pool.
-    // On CGB hle outranks rare (poll-loop warps beat HALT/HDMA skips); on
-    // DMG the hle entry self-skips (cgb_only). hle is also skipped when the
-    // HLE preference is off (the cluster is never called at runtime then).
-    // apu_write outranks rare: PCM voice streaming hammers the write path
-    // (per-sample register writes); rare is cold HALT/STOP/HDMA code.
-    // Satellites relocate in Full mode only (see clusters_on).
+    // Placement priority: core > coreB > draw > hle > apu_write > rare >
+    // apu_sample_gen. Each: pockets (share used pockets' slack, then best-fit
+    // fresh) -> main pool (budget-bounded, multi-claim) -> flash.
+    // hle: CGB only (self-skips on DMG) and needs the HLE pref on.
+    // apu_write outranks rare: PCM voice streaming hammers the write path;
+    // rare is cold HALT/STOP/HDMA code. Satellites relocate in Full mode only.
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
@@ -1100,8 +1086,6 @@ __section__(".rare") void tcm_relocate(bool cgb)
             }
             else
             {
-                // Main pool, bounded by the measured stack budget (NULL ->
-                // flash). Multiple clusters may share the pool.
                 reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)clusters[c].start);
                 if (reloc)
                     where = "main pool";
@@ -1123,7 +1107,6 @@ __section__(".rare") void tcm_relocate(bool cgb)
         }
     }
 
-    // Report pool/stack headroom: real numbers drive the placement budget
     {
         void* hwm = dtcm_stack_hwm();
         size_t free_bytes = dtcm_pool_free();
@@ -1596,9 +1579,8 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
                 }
                 else
                 {
-                    // Pool full: keep the flash-RAM fallback gb struct. Slow
-                    // but functional; lock/store-restore simply has nothing to
-                    // snapshot here.
+                    // Pool full: keep the flash-RAM gb_fallback (nothing to
+                    // snapshot on lock).
                     playdate->system->logToConsole("dtcm pool full: gb_s stays in flash RAM");
                 }
             }
