@@ -62,6 +62,7 @@ SRC += src/scenes/sft_modal.c
 SRC += src/script.c
 SRC += src/scriptutil.c
 SRC += src/softpatch.c
+SRC += src/tcm_relocate.c
 SRC += src/userstack.c
 SRC += src/utility.c
 SRC += src/version.c
