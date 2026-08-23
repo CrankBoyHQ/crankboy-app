@@ -270,12 +270,30 @@ static bool action_is_disabled(CB_ManageRomScene* self, int idx)
     return false;
 }
 
-static void clamp_cursor(CB_ManageRomScene* self)
+static void clamp_cursor(CB_ManageRomScene* self, int dir)
 {
-    while (self->cursorIndex < self->actionCount - 1 && action_is_disabled(self, self->cursorIndex))
-        self->cursorIndex++;
-    while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
-        self->cursorIndex--;
+    if (dir < 0)
+    {
+        while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex--;
+        if (action_is_disabled(self, self->cursorIndex))
+        {
+            while (self->cursorIndex < self->actionCount - 1 &&
+                   action_is_disabled(self, self->cursorIndex))
+                self->cursorIndex++;
+        }
+    }
+    else
+    {
+        while (self->cursorIndex < self->actionCount - 1 &&
+               action_is_disabled(self, self->cursorIndex))
+            self->cursorIndex++;
+        if (action_is_disabled(self, self->cursorIndex))
+        {
+            while (self->cursorIndex > 0 && action_is_disabled(self, self->cursorIndex))
+                self->cursorIndex--;
+        }
+    }
     if (action_is_disabled(self, self->cursorIndex))
         self->cursorIndex = -1;
 }
@@ -337,7 +355,7 @@ static void clear_save_confirmed(void* ud, int option)
         cb_free(base_no_ext);
     }
 
-    clamp_cursor(self);
+    clamp_cursor(self, 1);
 }
 
 static void delete_cover_confirmed(void* ud, int option)
@@ -359,7 +377,7 @@ static void delete_cover_confirmed(void* ud, int option)
     }
     cb_clear_global_cover_cache();
     self->cursorIndex = 1;
-    clamp_cursor(self);
+    clamp_cursor(self, 1);
 }
 
 const char* yes_no_options[3];
@@ -587,7 +605,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
                 self->cursorIndex--;
             else
                 self->cursorIndex = maxIndex;
-            clamp_cursor(self);
+            clamp_cursor(self, -1);
             cb_play_ui_sound(CB_UISound_Navigate);
         }
         if (pushed & kButtonDown)
@@ -599,7 +617,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
                 self->cursorIndex++;
             else
                 self->cursorIndex = 0;
-            clamp_cursor(self);
+            clamp_cursor(self, 1);
             cb_play_ui_sound(CB_UISound_Navigate);
         }
         if (pushed & kButtonA)
@@ -888,7 +906,7 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     self->header_name[sizeof(self->header_name) - 1] = '\0';
     self->cursorIndex = 0;
     self->actionCount = 3;
-    clamp_cursor(self);
+    clamp_cursor(self, 1);
     self->save_slot_at_open = preferences_save_slot;
     self->basename = cb_basename(game->fullpath, false);
 
