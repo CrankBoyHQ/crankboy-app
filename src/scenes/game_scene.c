@@ -1002,8 +1002,8 @@ __section__(".rare") void tcm_relocate(bool cgb)
         );
     }
 
-    // Cluster placement/eviction priority: core > coreB > draw > hle > rare >
-    // apu_write > apu_sample_gen.
+    // Cluster placement/eviction priority: core > coreB > draw > hle >
+    // apu_write > rare > apu_sample_gen.
     // core: most-slack pocket -> main pool (never flash).
     // coreB: core-pocket-slack -> any pocket -> main pool -> flash.
     // draw: core-pocket-first -> any pocket -> main pool -> flash.
@@ -1012,7 +1012,9 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // -> flash. On CGB hle outranks rare (poll-loop warps beat HALT/HDMA
     // skips); on DMG the hle entry self-skips (cgb_only). hle is also skipped
     // when the HLE preference is off (the cluster is never called at runtime
-    // then). Satellites relocate in Full mode only (see clusters_on).
+    // then). apu_write outranks rare: PCM voice streaming hammers the write
+    // path (per-sample register writes); rare is cold HALT/STOP/HDMA code.
+    // Satellites relocate in Full mode only (see clusters_on).
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
@@ -1029,10 +1031,10 @@ __section__(".rare") void tcm_relocate(bool cgb)
             bool needs_hle_pref;
         } clusters[] = {
             {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true},
-            {"rare", cgb ? __rare_cgb_start : __rare_dmg_start,
-             cgb ? __rare_cgb_end : __rare_dmg_end, &pgb_rare_reloc_offset, false, false},
             {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false,
              false},
+            {"rare", cgb ? __rare_cgb_start : __rare_dmg_start,
+             cgb ? __rare_cgb_end : __rare_dmg_end, &pgb_rare_reloc_offset, false, false},
             {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
              &pgb_apu_sample_gen_reloc_offset, false, false},
         };
