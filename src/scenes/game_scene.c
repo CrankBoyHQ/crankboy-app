@@ -1115,6 +1115,18 @@ __section__(".rare") void tcm_relocate(bool cgb)
         }
     }
 
+    // Report pool/stack headroom: real numbers drive the placement budget
+    {
+        void* hwm = dtcm_stack_hwm();
+        size_t free_bytes = dtcm_pool_free();
+        playdate->system->logToConsole(
+            "dtcm pool: used %uB, stack hwm %p, free %uB (guard-adj %uB)",
+            (unsigned)((uintptr_t)dtcm_mempool - (uintptr_t)dtcm_mempool_start), hwm,
+            (unsigned)free_bytes,
+            (unsigned)(free_bytes > DTCM_POOL_STACK_GUARD ? free_bytes - DTCM_POOL_STACK_GUARD : 0)
+        );
+    }
+
     playdate->system->clearICache();
 }
 
