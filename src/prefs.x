@@ -31,7 +31,7 @@ PREF(framerate, 0)
 PREF(blend_frames, 0)
 PREF(dither_pattern, 0)
 PREF(dither_line, 2)
-PREF(dither_stable, (pd_rev != PD_REV_A))
+PREF(dither_stable, 1)
 PREF(ghosting, 0)
 
 /* --- input ---
