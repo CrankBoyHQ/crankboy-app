@@ -820,10 +820,13 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
 
     // v6 deltas vs v5:
     //  - counter grew (apu_count added)
-    //  - direct gained wy_latched and first_scanline_besu_skip bits mid-block
+    //  - direct gained wy_latched, first_scanline_besu_skip and intr_pending bits
+    //    mid-block; cgb_dual_output removed
+    //  - MBC union grew (huc1 + huc3 added)
     //  - audio: env grew (should_lock, clock), sweep grew (enabled, divider),
     //    wave grew (pulsed, sum, sum_volume, sum_valid), pre_frame_* snapshot added
     //  - zero32 removed (was between xram and audio)
+    //  - lcd_alt removed
     //  - cgb_gdma_halt_period added
 
     set_fields(v6_gb, v5_gb, gb_rom, cgb_hdma_dst);
@@ -833,7 +836,16 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     v6_gb->cgb_gdma_halt_period = 0;
     v6_gb->dma_active = v5_gb->dma_active;
 
-    set_fields(v6_gb, v5_gb, dma_src, gb_reg);
+    set_fields(v6_gb, v5_gb, dma_src, latched_rtc);
+
+    // MBC union grew in v6 (huc1/huc3 added); copy only the v5 union so the
+    // new members stay zeroed (HuC carts don't exist in v<=5 states).
+    memcpy(
+        &v6_gb->rtc_bits, &v5_gb->rtc_bits,
+        offsetof(struct gb_s_v5, cpu_reg) - offsetof(struct gb_s_v5, rtc_bits)
+    );
+
+    set_fields(v6_gb, v5_gb, cpu_reg, gb_reg);
 
     v6_gb->counter.lcd_count = v5_gb->counter.lcd_count;
     v6_gb->counter.div_count = v5_gb->counter.div_count;
@@ -858,6 +870,7 @@ char* savestate_upgrade_to_v6(char** out, size_t* out_size, char* in, size_t in_
     v6_gb->direct.first_scanline_besu_skip = 0;
     v6_gb->direct.has_read_accelerometer_this_frame =
         v5_gb->direct.has_read_accelerometer_this_frame;
+    v6_gb->direct.intr_pending = v6_gb->gb_ime && (v6_gb->gb_reg.IF & v6_gb->gb_reg.IE & ANY_INTR);
 
     set_fields(v6_gb, v5_gb, direct.joypad_interrupt_delay, direct.priv);
     set_fields(v6_gb, v5_gb, gb_cart_ram_size, xram);
