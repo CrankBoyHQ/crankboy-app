@@ -749,6 +749,93 @@ extern char __apu_sample_gen_end[];
 #define ITCM_CORE_FN(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset))
 #define ITCM_CORE_FN_BATCH(fn) ((void*)((uintptr_t)(void*)fn + core_itcm_offset_batch))
 
+// Relocation placement constants.
+#define MARGIN 4
+#define DTCM_ALIGN_PAD 31
+#define TCM_NCLUSTERS 5
+
+typedef struct
+{
+    const char* name;
+    char* start;
+    char* end;
+    intptr_t* offset;
+    bool cgb_only;
+    bool needs_hle_pref;
+    bool is_draw;
+} tcm_cluster_t;
+
+// Simulate an aligned pocket allocation (mirrors dtcm_pocket_alloc_aligned).
+// Returns the post-allocation brk, or 0 if it does not fit.
+static uintptr_t tcm_pocket_fit(uintptr_t sim, int p, uintptr_t align, size_t size)
+{
+    uintptr_t m = sim;
+    align %= 32;
+    while (m % 32 != align)
+        m++;
+    m += size;
+    return (m > (uintptr_t)dtcm_pockets[p].end) ? 0 : m;
+}
+
+// Backtracking search for an all-pocket assignment: clusters in priority
+// order, pockets in ascending-remaining-slack order (best-fit first). Found
+// only when the greedy pass left something in pool/flash; never reorders
+// clusters, so priority is preserved.
+static bool tcm_pack_dfs(
+    const tcm_cluster_t* clusters, int n, int c, bool cgb, uintptr_t* sim, int* decisions
+)
+{
+    if (c == n)
+        return true;
+
+    const tcm_cluster_t* e = &clusters[c];
+    if ((e->cgb_only && !cgb) || (e->needs_hle_pref && preferences_hle != 1) || e->end == e->start)
+    {
+        return tcm_pack_dfs(clusters, n, c + 1, cgb, sim, decisions);
+    }
+
+    const size_t size = (size_t)(e->end - e->start);
+    const size_t need = size + MARGIN;
+
+    int order[DTCM_MAX_POCKETS];
+    int cnt = 0;
+    for (int i = 0; i < dtcm_num_pockets; i++)
+        if (dtcm_pocket_enabled(i))
+            order[cnt++] = i;
+
+    // insertion sort by ascending remaining slack (best-fit first)
+    for (int a = 1; a < cnt; a++)
+        for (int b = a; b > 0; b--)
+        {
+            const uintptr_t sa = (uintptr_t)dtcm_pockets[order[b]].end - sim[order[b]];
+            const uintptr_t sb = (uintptr_t)dtcm_pockets[order[b - 1]].end - sim[order[b - 1]];
+            if (sa < sb)
+            {
+                int t = order[b];
+                order[b] = order[b - 1];
+                order[b - 1] = t;
+            }
+            else
+                break;
+        }
+
+    for (int oi = 0; oi < cnt; oi++)
+    {
+        const int p = order[oi];
+        const uintptr_t brk = tcm_pocket_fit(sim[p], p, (uintptr_t)e->start, need);
+        if (!brk)
+            continue;
+        const uintptr_t save = sim[p];
+        sim[p] = brk;
+        decisions[c] = p;
+        if (tcm_pack_dfs(clusters, n, c + 1, cgb, sim, decisions))
+            return true;
+        sim[p] = save;  // backtrack: undo cluster c from pocket p
+    }
+    decisions[c] = -1;
+    return false;
+}
+
 __section__(".rare") void tcm_relocate(bool cgb)
 {
     // Restore the main-pool snapshot (gb struct) taken on lock/menu, if any.
@@ -798,10 +885,6 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     if (core_itcm_reloc != NULL)
         return;
-
-    // paranoia
-    int MARGIN = 4;
-    int DTCM_ALIGN_PAD = 31;
 
     // probe for clean DTCM pockets (needed for core and/or draw placement)
     dtcm_probe_lower_bound();
@@ -918,7 +1001,9 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     // Placement priority: core > batch > hle > apu_write > draw > rare >
     // apu_sample_gen. Each: pockets (share used pockets' slack, then best-fit
-    // fresh) -> main pool (budget-bounded, multi-claim) -> flash.
+    // fresh) -> main pool (budget-bounded, multi-claim) -> flash. If greedy
+    // leaves a cluster in pool/flash but pockets can hold everything, a DFS
+    // repack finds the all-pocket arrangement (priority order preserved).
     // hle: CGB only (self-skips on DMG) and needs the HLE pref on.
     // apu_write outranks draw/rare: PCM voice streaming hammers the write
     // path, and draw is cheaper than the HLE/APU write clusters in practice.
@@ -930,16 +1015,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     int draw_pocket = -1;
 
-    const struct
-    {
-        const char* name;
-        char* start;
-        char* end;
-        intptr_t* offset;
-        bool cgb_only;
-        bool needs_hle_pref;
-        bool is_draw;
-    } clusters[] = {
+    const tcm_cluster_t clusters[] = {
         {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true, false},
         {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false, false,
          false},
@@ -952,18 +1028,29 @@ __section__(".rare") void tcm_relocate(bool cgb)
          &pgb_apu_sample_gen_reloc_offset, false, false, false},
     };
 
-    for (int c = 0; c < 5; c++)
+    // Snapshot pocket brks: the search phases mutate only sim, the real
+    // pockets stay untouched until the final apply.
+    void* saved_brk[DTCM_MAX_POCKETS];
+    for (int i = 0; i < dtcm_num_pockets; i++)
+        saved_brk[i] = dtcm_pockets[i].mempool;
+
+    uintptr_t sim[DTCM_MAX_POCKETS];
+    for (int i = 0; i < dtcm_num_pockets; i++)
+        sim[i] = (uintptr_t)dtcm_pockets[i].mempool;
+
+    int decisions[TCM_NCLUSTERS];
+    bool all_pockets = true;
+
+    // Greedy pass: priority order, share used pockets then best-fit.
+    for (int c = 0; c < TCM_NCLUSTERS; c++)
     {
-        if (clusters[c].cgb_only && !cgb)
-            continue;
-        if (clusters[c].needs_hle_pref && preferences_hle != 1)
-            continue;
-
-        const size_t size = clusters[c].end - clusters[c].start;
-        if (size == 0)
+        decisions[c] = -1;
+        const tcm_cluster_t* e = &clusters[c];
+        if ((e->cgb_only && !cgb) || (e->needs_hle_pref && preferences_hle != 1) ||
+            e->end == e->start)
             continue;
 
-        const size_t need = size + MARGIN + DTCM_ALIGN_PAD;
+        const size_t size = (size_t)(e->end - e->start);
         int pick = -1;
 
         // Pass 1: share an already-used pocket (core's, then draw's).
@@ -973,7 +1060,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
             const int p = shared[s];
             if (p < 0 || (s == 1 && p == shared[0]) || !dtcm_pocket_enabled(p))
                 continue;
-            if ((uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool >= need)
+            if (tcm_pocket_fit(sim[p], p, (uintptr_t)e->start, size + MARGIN))
                 pick = p;
         }
 
@@ -985,28 +1072,69 @@ __section__(".rare") void tcm_relocate(bool cgb)
             {
                 if (i == best || i == draw_pocket || !dtcm_pocket_enabled(i))
                     continue;
-                const size_t avail =
-                    (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
-                if (avail >= need && avail < best_fit)
+                const uintptr_t brk = tcm_pocket_fit(sim[i], i, (uintptr_t)e->start, size + MARGIN);
+                if (!brk)
+                    continue;
+                const size_t slack = (uintptr_t)dtcm_pockets[i].end - brk;
+                if (slack < best_fit)
                 {
+                    best_fit = slack;
                     pick = i;
-                    best_fit = avail;
                 }
             }
         }
 
-        void* reloc = NULL;
-        const char* where = "flash";
         if (pick >= 0)
         {
-            reloc = dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)clusters[c].start);
-            where = "pocket";
-            if (clusters[c].is_draw)
+            sim[pick] = tcm_pocket_fit(sim[pick], pick, (uintptr_t)e->start, size + MARGIN);
+            decisions[c] = pick;
+            if (e->is_draw)
                 draw_pocket = pick;
         }
         else
         {
-            reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)clusters[c].start);
+            all_pockets = false;
+        }
+    }
+
+    // Repack pass: only when greedy fell back, try for an all-pocket layout.
+    if (!all_pockets)
+    {
+        uintptr_t repack_sim[DTCM_MAX_POCKETS];
+        for (int i = 0; i < dtcm_num_pockets; i++)
+            repack_sim[i] = (uintptr_t)saved_brk[i];
+        int repack_decisions[TCM_NCLUSTERS];
+        for (int c = 0; c < TCM_NCLUSTERS; c++)
+            repack_decisions[c] = -1;
+
+        if (tcm_pack_dfs(clusters, TCM_NCLUSTERS, 0, cgb, repack_sim, repack_decisions))
+        {
+            for (int c = 0; c < TCM_NCLUSTERS; c++)
+                decisions[c] = repack_decisions[c];
+            playdate->system->logToConsole("itcm: repacked clusters into pockets");
+        }
+    }
+
+    // Apply the chosen decisions.
+    for (int c = 0; c < TCM_NCLUSTERS; c++)
+    {
+        const tcm_cluster_t* e = &clusters[c];
+        if ((e->cgb_only && !cgb) || (e->needs_hle_pref && preferences_hle != 1) ||
+            e->end == e->start)
+            continue;
+
+        const size_t size = (size_t)(e->end - e->start);
+        const int pick = decisions[c];
+        void* reloc = NULL;
+        const char* where = "flash";
+        if (pick >= 0)
+        {
+            reloc = dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)e->start);
+            where = "pocket";
+        }
+        else
+        {
+            reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)e->start);
             if (reloc)
                 where = "main pool";
         }
@@ -1014,14 +1142,14 @@ __section__(".rare") void tcm_relocate(bool cgb)
         if (reloc)
         {
             DTCM_VERIFY();
-            memcpy(reloc, clusters[c].start, size);
+            memcpy(reloc, e->start, size);
             DTCM_VERIFY();
-            *clusters[c].offset = (char*)reloc - clusters[c].start;
+            *e->offset = (char*)reloc - e->start;
         }
 
         playdate->system->logToConsole(
-            "itcm[%s]: %s 0x%X bytes at %p (%s%d)", cgb ? "cgb" : "dmg", clusters[c].name,
-            (unsigned)size, reloc ? reloc : (void*)clusters[c].start, where, pick >= 0 ? pick : -1
+            "itcm[%s]: %s 0x%X bytes at %p (%s%d)", cgb ? "cgb" : "dmg", e->name, (unsigned)size,
+            reloc ? reloc : (void*)e->start, where, pick >= 0 ? pick : -1
         );
     }
 
