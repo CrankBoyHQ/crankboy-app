@@ -111,14 +111,39 @@ void dtcm_pocket_fill_and_reset(void)
     }
 }
 
+#ifdef DTCM_ALLOC
+// Budget check: refuse an allocation whose top (plus the high canary and a
+// guard band) would reach past the stack low-water mark. Returns false (and
+// logs) on overflow; caller must fall back instead of bumping into the stack.
+// Permissive when no measurement exists (hwm NULL: paint unavailable).
+static bool dtcm_pool_budget(uintptr_t top)
+{
+    void* hwm = dtcm_stack_hwm();
+    if (!hwm)
+        return true;
+    if (top + sizeof(uint32_t) + DTCM_POOL_STACK_GUARD > (uintptr_t)hwm)
+    {
+        playdate->system->logToConsole(
+            "dtcm pool: refuse %uB alloc (free %uB)", (unsigned)(top - (uintptr_t)dtcm_mempool),
+            (unsigned)((uintptr_t)hwm - (uintptr_t)dtcm_mempool)
+        );
+        return false;
+    }
+    return true;
+}
+#endif
+
 __dtcm_ctrl void* dtcm_alloc(size_t size)
 {
 #ifdef DTCM_ALLOC
     if (is_dtcm_init)
     {
+        uintptr_t top = (uintptr_t)dtcm_mempool + size;
+        if (!dtcm_pool_budget(top))
+            return NULL;
         void* tmp = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = 0;  // remove canary
-        dtcm_mempool = (void*)(size + (uintptr_t)dtcm_mempool);
+        dtcm_mempool = (void*)top;
         if (dtcm_mempool > dtcm_mempool_hwm)
             dtcm_mempool_hwm = dtcm_mempool;
         // high canary
@@ -143,11 +168,16 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
     if (is_dtcm_init)
     {
         alignment %= 32;
+        uintptr_t aligned_start = (uintptr_t)dtcm_mempool;
+        while (aligned_start % 32 != alignment)
+            aligned_start++;
+        uintptr_t top = aligned_start + size;
+        if (!dtcm_pool_budget(top))
+            return NULL;
         *(uint32_t*)dtcm_mempool = 0;
-        while ((uintptr_t)dtcm_mempool % 32 != alignment)
-            dtcm_mempool = (void*)(dtcm_mempool + 1);
+        dtcm_mempool = (void*)aligned_start;
         void* tmp = dtcm_mempool;
-        dtcm_mempool = (void*)(size + (uintptr_t)dtcm_mempool);
+        dtcm_mempool = (void*)top;
         if (dtcm_mempool > dtcm_mempool_hwm)
             dtcm_mempool_hwm = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
@@ -202,7 +232,8 @@ __dtcm_ctrl void dtcm_init(void)
 #ifdef DTCM_ALLOC
     *(uint32_t*)dtcm_mempool_start = DTCM_CANARY;
     dtcm_low_canary_addr = (uint32_t*)dtcm_alloc(sizeof(uint32_t));
-    *dtcm_low_canary_addr = DTCM_CANARY;
+    if (dtcm_low_canary_addr)
+        *dtcm_low_canary_addr = DTCM_CANARY;
     playdate->system->logToConsole("DTCM init");
 #endif
 }
