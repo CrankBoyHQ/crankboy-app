@@ -167,7 +167,6 @@
 "setval_bright" = "明";
 "setval_brighter" = "最明";
 "setval_contrast" = "ｺﾝﾄﾗｽﾄ";
-"setval_core" = "コア";
 "setval_dark" = "暗";
 "setval_darker" = "最暗";
 "setval_database" = "ﾃﾞｰﾀﾍﾞｰｽ";
@@ -175,11 +174,9 @@
 "setval_default" = "標準";
 "setval_detailed" = "詳細";
 "setval_display_short" = "短い";
-"setval_draw" = "描画";
 "setval_fast" = "高速";
 "setval_file_article" = "ﾌｧｲﾙ名 (冠詞)";
 "setval_filename" = "ﾌｧｲﾙ名";
-"setval_full" = "すべて";
 "setval_game" = "ゲーム";
 "setval_gamma_0_6" = "0.6";
 "setval_gamma_0_7" = "0.7";

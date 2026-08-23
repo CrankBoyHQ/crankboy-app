@@ -954,7 +954,6 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
 
 const char** sound_mode_labels;
 const char** off_on_labels;
-const char** itcm_labels;
 const char** cgb_dmg_labels;
 const char** cgb_bias_labels;
 const char** cgb_auto_bias_labels;
@@ -1002,13 +1001,6 @@ static void CB_init_settings_labels(void)
     off_on_labels[0] = T(setval_off);
     off_on_labels[1] = T(setval_on);
     off_on_labels[2] = NULL;
-
-    itcm_labels = cb_malloc(5 * sizeof(const char*));
-    itcm_labels[0] = T(setval_off);
-    itcm_labels[1] = T(setval_full);
-    itcm_labels[2] = T(setval_core);
-    itcm_labels[3] = T(setval_draw);
-    itcm_labels[4] = NULL;
 
     cgb_dmg_labels = cb_malloc(3 * sizeof(const char*));
     cgb_dmg_labels[0] = T(setval_standard);
@@ -2857,9 +2849,9 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
 
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_tcm_mode),
-        .values = itcm_labels,
+        .values = off_on_labels,
         .pref_var = &preferences_itcm,
-        .max_value = 4,
+        .max_value = 2,
         .on_press = NULL
     };
 

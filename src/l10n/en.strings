@@ -193,7 +193,7 @@
 "setdsc_disable_auto_lock" = "Prevents the device from auto-locking after 3 minutes of inactivity.\n\nNote: This only applies while a game is running.";
 "setdsc_boot_fade" = "Fade from black/white on game start. Masks visual glitches.\n\nThe options marked (W) fade from white.";
 "setdsc_boot_fade_bundled" = "Fade from black on game start.\n\nIn bundled mode, fade from white is not currently possible.";
-"setdsc_tcm_mode" = "Runs emulator in TCM for better performance.\n\nFull: everything.\nCore: interpreter only.\nDraw: rendering only.\n\nDisable (or restrict) if you experience instability.";
+"setdsc_tcm_mode" = "Run emulator core and rendering from TCM for better performance.\n\nDisable if you experience instability.";
 "setdsc_tcm_mode_restart" = "%s\n\nRestart the game for changes to apply.\n\n%s";
 "setdsc_tcm_device" = "(Your device: %s)";
 "setdsc_about_crankboy" = "This game is bundled for Playdate via CrankBoy, a Game Boy emulator.\n\nPress Ⓐ now to learn more about CrankBoy and its developers.";
@@ -458,9 +458,6 @@
 "setval_fast" = "Fast";
 "setval_accurate" = "Accurate";
 "setval_on" = "On";
-"setval_full" = "Full";
-"setval_core" = "Core";
-"setval_draw" = "Draw";
 "setval_standard" = "Standard";
 "setval_dmg" = "DMG";
 "setval_darker" = "Darker";

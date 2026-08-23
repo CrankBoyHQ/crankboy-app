@@ -806,106 +806,89 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // probe for clean DTCM pockets (needed for core and/or draw placement)
     dtcm_probe_lower_bound();
 
-    // preference: 0=Off, 1=Both, 2=Core, 3=Draw
-    const bool core_on = (preferences_itcm == 1 || preferences_itcm == 2);
-    const bool draw_on = (preferences_itcm == 1 || preferences_itcm == 3);
-    // Satellites (hle/rare/apu_*) relocate in Full mode only.
-    const bool clusters_on = (preferences_itcm == 1);
     bool core_in_main_pool = false;
     int best = -1;
     int best_b = -1;
     const char* b_where = "flash";
 
-    if (core_on)
+    // choose the pocket with the most slack
+    size_t best_slack = 0;
+
+    for (int i = 0; i < dtcm_num_pockets; i++)
     {
-        // choose the pocket with the most slack
-        size_t best_slack = 0;
-
-        for (int i = 0; i < dtcm_num_pockets; i++)
+        if (!dtcm_pocket_enabled(i))
+            continue;
+        size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
+        if (avail >= core_size + MARGIN + DTCM_ALIGN_PAD)
         {
-            if (!dtcm_pocket_enabled(i))
-                continue;
-            size_t avail = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].start;
-            if (avail >= core_size + MARGIN + DTCM_ALIGN_PAD)
+            size_t slack = avail - (core_size + MARGIN + DTCM_ALIGN_PAD);
+            if (best == -1 || slack > best_slack)
             {
-                size_t slack = avail - (core_size + MARGIN + DTCM_ALIGN_PAD);
-                if (best == -1 || slack > best_slack)
-                {
-                    best = i;
-                    best_slack = slack;
-                }
+                best = i;
+                best_slack = slack;
             }
         }
+    }
 
-        if (best >= 0)
-            core_itcm_reloc =
-                dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
-        else
-        {
-            // No pocket fits: main pool (budget-enforced); if even that
-            // refuses, core runs from flash (slow but safe).
-            core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
-            core_in_main_pool = (core_itcm_reloc != NULL);
-        }
+    if (best >= 0)
+        core_itcm_reloc =
+            dtcm_pocket_alloc_aligned(best, core_size + MARGIN, (uintptr_t)itcm_start);
+    else
+    {
+        // No pocket fits: main pool (budget-enforced); if even that
+        // refuses, core runs from flash (slow but safe).
+        core_itcm_reloc = dtcm_alloc_aligned(core_size + MARGIN, (uintptr_t)itcm_start);
+        core_in_main_pool = (core_itcm_reloc != NULL);
+    }
 
-        if (core_itcm_reloc)
-        {
-            DTCM_VERIFY();
-            memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
-            DTCM_VERIFY();
-            core_itcm_offset = core_itcm_reloc - itcm_start;
-        }
-        else
-        {
-            core_itcm_reloc = (void*)itcm_start;
-            core_itcm_offset = 0;
-            playdate->system->logToConsole("dtcm pool full: core runs from flash");
-        }
-
-        // B block: A's pocket slack first, then any pocket with room, then
-        // the main pool, else flash (offset 0, correct).
-        void* b_reloc = NULL;
-        const size_t b_need = core_b_size + MARGIN + DTCM_ALIGN_PAD;
-        for (int i = 0; i < dtcm_num_pockets && !b_reloc; i++)
-        {
-            int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
-            if (!dtcm_pocket_enabled(p))
-                continue;
-            size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
-            if (avail >= b_need)
-            {
-                b_reloc =
-                    dtcm_pocket_alloc_aligned(p, core_b_size + MARGIN, (uintptr_t)itcm_b_start);
-                b_where = "pocket";
-                best_b = p;
-            }
-        }
-        if (!b_reloc)
-        {
-            b_reloc = dtcm_alloc_aligned(core_b_size + MARGIN, (uintptr_t)itcm_b_start);
-            if (b_reloc)
-                b_where = "main pool";
-        }
-        if (b_reloc)
-        {
-            DTCM_VERIFY();
-            memcpy(b_reloc, itcm_b_start, core_b_size);
-            DTCM_VERIFY();
-            core_itcm_reloc_b = b_reloc;
-            core_itcm_offset_b = (char*)b_reloc - (char*)itcm_b_start;
-        }
-        else
-        {
-            // Tolerated: B is per-batch code, flash wait states cost ~1-2%.
-            core_itcm_reloc_b = itcm_b_start;
-            core_itcm_offset_b = 0;
-        }
+    if (core_itcm_reloc)
+    {
+        DTCM_VERIFY();
+        memcpy(core_itcm_reloc, (void*)itcm_start, core_size);
+        DTCM_VERIFY();
+        core_itcm_offset = core_itcm_reloc - itcm_start;
     }
     else
     {
-        // Draw-only: core runs from flash.
-        core_itcm_reloc = itcm_start;
+        core_itcm_reloc = (void*)itcm_start;
         core_itcm_offset = 0;
+        playdate->system->logToConsole("dtcm pool full: core runs from flash");
+    }
+
+    // B block: A's pocket slack first, then any pocket with room, then
+    // the main pool, else flash (offset 0, correct).
+    void* b_reloc = NULL;
+    const size_t b_need = core_b_size + MARGIN + DTCM_ALIGN_PAD;
+    for (int i = 0; i < dtcm_num_pockets && !b_reloc; i++)
+    {
+        int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
+        if (!dtcm_pocket_enabled(p))
+            continue;
+        size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
+        if (avail >= b_need)
+        {
+            b_reloc = dtcm_pocket_alloc_aligned(p, core_b_size + MARGIN, (uintptr_t)itcm_b_start);
+            b_where = "pocket";
+            best_b = p;
+        }
+    }
+    if (!b_reloc)
+    {
+        b_reloc = dtcm_alloc_aligned(core_b_size + MARGIN, (uintptr_t)itcm_b_start);
+        if (b_reloc)
+            b_where = "main pool";
+    }
+    if (b_reloc)
+    {
+        DTCM_VERIFY();
+        memcpy(b_reloc, itcm_b_start, core_b_size);
+        DTCM_VERIFY();
+        core_itcm_reloc_b = b_reloc;
+        core_itcm_offset_b = (char*)b_reloc - (char*)itcm_b_start;
+    }
+    else
+    {
+        // Tolerated: B is per-batch code, flash wait states cost ~1-2%.
         core_itcm_reloc_b = itcm_b_start;
         core_itcm_offset_b = 0;
     }
@@ -936,175 +919,158 @@ __section__(".rare") void tcm_relocate(bool cgb)
     // pockets. Priority: core's pocket slack -> any other pocket -> main pool
     // -> flash.
     int draw_pocket = -1;
-    if (draw_on)
+    void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
+    void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
+    size_t draw_size = draw_end - draw_start;
+    size_t draw_need = draw_size + MARGIN + DTCM_ALIGN_PAD;
+
+    void* draw_reloc = NULL;
+    const char* draw_where = "flash";
+
+    // core's pocket first (its brk continues after the core block),
+    // then any other pocket with room
+    for (int i = 0; i < dtcm_num_pockets && !draw_reloc; i++)
     {
-        void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
-        void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
-        size_t draw_size = draw_end - draw_start;
-        size_t draw_need = draw_size + MARGIN + DTCM_ALIGN_PAD;
-
-        void* draw_reloc = NULL;
-        const char* draw_where = "flash";
-
-        // core's pocket first (its brk continues after the core block),
-        // then any other pocket with room
-        for (int i = 0; i < dtcm_num_pockets && !draw_reloc; i++)
+        int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
+        if (!dtcm_pocket_enabled(p))
+            continue;
+        size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
+        if (avail >= draw_need)
         {
-            int p = (best >= 0) ? (best + i) % dtcm_num_pockets : i;
-            if (!dtcm_pocket_enabled(p))
-                continue;
-            size_t avail = (uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool;
-            if (avail >= draw_need)
-            {
-                draw_reloc =
-                    dtcm_pocket_alloc_aligned(p, draw_size + MARGIN, (uintptr_t)draw_start);
-                draw_where = "pocket";
-                draw_pocket = p;
-            }
+            draw_reloc = dtcm_pocket_alloc_aligned(p, draw_size + MARGIN, (uintptr_t)draw_start);
+            draw_where = "pocket";
+            draw_pocket = p;
         }
+    }
 
-        if (!draw_reloc)
-        {
-            draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
-            if (draw_reloc)
-                draw_where = "main pool";
-        }
-
+    if (!draw_reloc)
+    {
+        draw_reloc = dtcm_alloc_aligned(draw_size + MARGIN, (uintptr_t)draw_start);
         if (draw_reloc)
-        {
-            DTCM_VERIFY();
-            memcpy(draw_reloc, draw_start, draw_size);
-            DTCM_VERIFY();
-            pgb_draw_reloc_offset = (char*)draw_reloc - (char*)draw_start;
-        }
-        else
-        {
-            pgb_draw_reloc_offset = 0;
-        }
+            draw_where = "main pool";
+    }
 
-        if (draw_pocket >= 0)
-            playdate->system->logToConsole(
-                "itcm[%s]: draw 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", draw_size,
-                draw_reloc, draw_pocket
-            );
-        else
-            playdate->system->logToConsole(
-                "itcm[%s]: draw 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", draw_size,
-                draw_reloc ? draw_reloc : draw_start, draw_where
-            );
+    if (draw_reloc)
+    {
+        DTCM_VERIFY();
+        memcpy(draw_reloc, draw_start, draw_size);
+        DTCM_VERIFY();
+        pgb_draw_reloc_offset = (char*)draw_reloc - (char*)draw_start;
     }
     else
     {
-        void* draw_start = cgb ? (void*)__draw_cgb_start : (void*)__draw_dmg_start;
-        void* draw_end = cgb ? (void*)__draw_cgb_end : (void*)__draw_dmg_end;
-        playdate->system->logToConsole(
-            "itcm[%s]: draw 0x%X bytes at %p (flash)", cgb ? "cgb" : "dmg", draw_end - draw_start,
-            draw_start
-        );
+        pgb_draw_reloc_offset = 0;
     }
+
+    if (draw_pocket >= 0)
+        playdate->system->logToConsole(
+            "itcm[%s]: draw 0x%X bytes at %p (pocket[%d])", cgb ? "cgb" : "dmg", draw_size,
+            draw_reloc, draw_pocket
+        );
+    else
+        playdate->system->logToConsole(
+            "itcm[%s]: draw 0x%X bytes at %p (%s)", cgb ? "cgb" : "dmg", draw_size,
+            draw_reloc ? draw_reloc : draw_start, draw_where
+        );
 
     // Placement priority: core > coreB > draw > hle > apu_write > rare >
     // apu_sample_gen. Each: pockets (share used pockets' slack, then best-fit
     // fresh) -> main pool (budget-bounded, multi-claim) -> flash.
     // hle: CGB only (self-skips on DMG) and needs the HLE pref on.
     // apu_write outranks rare: PCM voice streaming hammers the write path;
-    // rare is cold HALT/STOP/HDMA code. Satellites relocate in Full mode only.
+    // rare is cold HALT/STOP/HDMA code.
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
     pgb_apu_sample_gen_reloc_offset = 0;
-    if (clusters_on)
+
+    const struct
     {
-        const struct
+        const char* name;
+        char* start;
+        char* end;
+        intptr_t* offset;
+        bool cgb_only;
+        bool needs_hle_pref;
+    } clusters[] = {
+        {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true},
+        {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false,
+         false},
+        {"rare", cgb ? __rare_cgb_start : __rare_dmg_start, cgb ? __rare_cgb_end : __rare_dmg_end,
+         &pgb_rare_reloc_offset, false, false},
+        {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
+         &pgb_apu_sample_gen_reloc_offset, false, false},
+    };
+
+    for (int c = 0; c < 4; c++)
+    {
+        if (clusters[c].cgb_only && !cgb)
+            continue;
+        if (clusters[c].needs_hle_pref && preferences_hle != 1)
+            continue;
+
+        const size_t size = clusters[c].end - clusters[c].start;
+        if (size == 0)
+            continue;
+
+        const size_t need = size + MARGIN + DTCM_ALIGN_PAD;
+        int pick = -1;
+
+        // Pass 1: share an already-used pocket (core's, then draw's).
+        const int shared[2] = {best, draw_pocket};
+        for (int s = 0; s < 2 && pick < 0; s++)
         {
-            const char* name;
-            char* start;
-            char* end;
-            intptr_t* offset;
-            bool cgb_only;
-            bool needs_hle_pref;
-        } clusters[] = {
-            {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true},
-            {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false,
-             false},
-            {"rare", cgb ? __rare_cgb_start : __rare_dmg_start,
-             cgb ? __rare_cgb_end : __rare_dmg_end, &pgb_rare_reloc_offset, false, false},
-            {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
-             &pgb_apu_sample_gen_reloc_offset, false, false},
-        };
+            const int p = shared[s];
+            if (p < 0 || (s == 1 && p == shared[0]) || !dtcm_pocket_enabled(p))
+                continue;
+            if ((uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool >= need)
+                pick = p;
+        }
 
-        for (int c = 0; c < 4; c++)
+        // Pass 2: best-fit over the remaining pockets.
+        if (pick < 0)
         {
-            if (clusters[c].cgb_only && !cgb)
-                continue;
-            if (clusters[c].needs_hle_pref && preferences_hle != 1)
-                continue;
-
-            const size_t size = clusters[c].end - clusters[c].start;
-            if (size == 0)
-                continue;
-
-            const size_t need = size + MARGIN + DTCM_ALIGN_PAD;
-            int pick = -1;
-
-            // Pass 1: share an already-used pocket (core's, then draw's).
-            const int shared[2] = {best, draw_pocket};
-            for (int s = 0; s < 2 && pick < 0; s++)
+            size_t best_fit = SIZE_MAX;
+            for (int i = 0; i < dtcm_num_pockets; i++)
             {
-                const int p = shared[s];
-                if (p < 0 || (s == 1 && p == shared[0]) || !dtcm_pocket_enabled(p))
+                if (i == best || i == draw_pocket || !dtcm_pocket_enabled(i))
                     continue;
-                if ((uintptr_t)dtcm_pockets[p].end - (uintptr_t)dtcm_pockets[p].mempool >= need)
-                    pick = p;
-            }
-
-            // Pass 2: best-fit over the remaining pockets.
-            if (pick < 0)
-            {
-                size_t best_fit = SIZE_MAX;
-                for (int i = 0; i < dtcm_num_pockets; i++)
+                const size_t avail =
+                    (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
+                if (avail >= need && avail < best_fit)
                 {
-                    if (i == best || i == draw_pocket || !dtcm_pocket_enabled(i))
-                        continue;
-                    const size_t avail =
-                        (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
-                    if (avail >= need && avail < best_fit)
-                    {
-                        pick = i;
-                        best_fit = avail;
-                    }
+                    pick = i;
+                    best_fit = avail;
                 }
             }
-
-            void* reloc = NULL;
-            const char* where = "flash";
-            if (pick >= 0)
-            {
-                reloc =
-                    dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)clusters[c].start);
-                where = "pocket";
-            }
-            else
-            {
-                reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)clusters[c].start);
-                if (reloc)
-                    where = "main pool";
-            }
-
-            if (reloc)
-            {
-                DTCM_VERIFY();
-                memcpy(reloc, clusters[c].start, size);
-                DTCM_VERIFY();
-                *clusters[c].offset = (char*)reloc - clusters[c].start;
-            }
-
-            playdate->system->logToConsole(
-                "itcm[%s]: %s 0x%X bytes at %p (%s%d)", cgb ? "cgb" : "dmg", clusters[c].name,
-                (unsigned)size, reloc ? reloc : (void*)clusters[c].start, where,
-                pick >= 0 ? pick : -1
-            );
         }
+
+        void* reloc = NULL;
+        const char* where = "flash";
+        if (pick >= 0)
+        {
+            reloc = dtcm_pocket_alloc_aligned(pick, size + MARGIN, (uintptr_t)clusters[c].start);
+            where = "pocket";
+        }
+        else
+        {
+            reloc = dtcm_alloc_aligned(size + MARGIN, (uintptr_t)clusters[c].start);
+            if (reloc)
+                where = "main pool";
+        }
+
+        if (reloc)
+        {
+            DTCM_VERIFY();
+            memcpy(reloc, clusters[c].start, size);
+            DTCM_VERIFY();
+            *clusters[c].offset = (char*)reloc - clusters[c].start;
+        }
+
+        playdate->system->logToConsole(
+            "itcm[%s]: %s 0x%X bytes at %p (%s%d)", cgb ? "cgb" : "dmg", clusters[c].name,
+            (unsigned)size, reloc ? reloc : (void*)clusters[c].start, where, pick >= 0 ? pick : -1
+        );
     }
 
     {
