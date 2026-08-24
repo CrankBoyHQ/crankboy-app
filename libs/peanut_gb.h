@@ -2355,22 +2355,20 @@ analyze_jr:;
 
         // Loop head is normally the load instruction itself. Some routines
         // wrap the poll in an "ei; di" pair so interrupts stay serviced each
-        // iteration ("ei; di; ldh a,(STAT); and 2; jr nz"): accept the branch
-        // landing 2 bytes before the load. ROM-only -- the lookback is safe
-        // there and WRAM polls never use the prefix.
-        int16_t head = (int16_t)(pc + offset);
-        if (pc < 0x8000 && READ8(head - 2) == 0xFB && READ8(head - 1) == 0xF3)
-            head -= 2;
+        // iteration ("ei; di; ldh a,(STAT); and 2; jr nz"): also accept the
+        // branch landing 2 bytes before the load. ROM-only -- the lookback
+        // is safe there and WRAM polls never use the prefix.
+        const u16 landing = is_jp ? (READ8(addr_next + 1) | (READ8(addr_next + 2) << 8))
+                                  : (u16)(addr_next + 2 + (int8_t)READ8(addr_next + 1));
 
-        if (is_jp)
+        int16_t head = (int16_t)(pc + offset);
+        if (landing != (u16)head)
         {
-            const u16 target = READ8(addr_next + 1) | (READ8(addr_next + 2) << 8);
-            if (target != (u16)head)
+            if (pc < 0x8000 && landing == (u16)(head - 2) && READ8(head - 2) == 0xFB &&
+                READ8(head - 1) == 0xF3)
+                head -= 2;
+            else
                 goto analyze_no;
-        }
-        else if (READ8(addr_next + 1) != (uint8_t)(head - addr_next - 2))
-        {
-            goto analyze_no;
         }
 
         s->jr_pol = pol;
