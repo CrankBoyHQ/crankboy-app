@@ -1682,7 +1682,7 @@ enum
 typedef struct
 {
     uint16_t pc;    // post-load pc (key); 0 = empty
-    uint16_t bank;  // selected_rom_bank at analyze time
+    uint16_t bank;  // bank key (__gb_hle_bank_key)
     uint8_t addr;   // ioaddr & 0xFF
     int8_t rewind;  // 0 = verdict NO; else -1..-5 (pc offset to loop head)
     uint8_t cmp_op;
@@ -1855,6 +1855,17 @@ static inline __attribute__((always_inline)) void __gb_hle_apply_warp(gb_s* gb, 
     gb->hle_ioaddr = s->addr;
 }
 
+/* Bank identity of the code at pc. 0000-3FFF maps to the zero bank (fixed,
+ * except MBC1 mode-select), 4000-7FFF to the selected bank. Keying bank-0
+ * code by selected_rom_bank would invalidate its cache slot on every bank
+ * switch. */
+static inline __attribute__((always_inline)) uint16_t
+__gb_hle_bank_key(const gb_s* gb, const uint16_t pc)
+{
+    return (pc < 0x4000) ? (uint16_t)(gb->zero_bank_base >> 14)
+                         : (uint16_t)(gb->selected_rom_bank & gb->num_rom_banks_mask);
+}
+
 /* Probe the verdict cache. HLE_WARPED: warp applied, return ioval.
  * HLE_NO_WARP: return ioval. HLE_MISS: call __gb_hle_miss. */
 static inline __attribute__((always_inline)) int __gb_hle_probe(
@@ -1873,7 +1884,7 @@ static inline __attribute__((always_inline)) int __gb_hle_probe(
     const uint16_t pc = gb->cpu_reg.pc;
     hle_slot_t* s = &pgb_hle_cache[(pc >> 1) & PGB_HLE_CACHE_MASK];
 
-    if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != (uint16_t)gb->selected_rom_bank)
+    if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != __gb_hle_bank_key(gb, pc))
     {
         PGB_HLE_STAT_INC(MISS);
         return HLE_MISS;
@@ -2078,7 +2089,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
 __hle_cgb static int __gb_hle_analyze(gb_s* gb, const uint_fast16_t ioaddr, hle_slot_t* s)
 {
     s->pc = gb->cpu_reg.pc;
-    s->bank = (uint16_t)gb->selected_rom_bank;
+    s->bank = __gb_hle_bank_key(gb, s->pc);
     s->addr = ioaddr & 0xFF;
     s->rewind = 0;
     s->cmp_op = HLE_CMP_AND_A;
