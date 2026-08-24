@@ -2420,8 +2420,8 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
             }
             ++pgb_hle_skip_logged;
             playdate->system->logToConsole(
-                "HLE Skip %x:@%04x (%04x) op=%02x prev=%02x", gb->selected_rom_bank, spc, ioaddr,
-                op, prev
+                "HLE Skip %x:@%04x (%04x) op=%02x prev=%02x", __gb_hle_bank_key(gb, spc), spc,
+                ioaddr, op, prev
             );
             if (pgb_hle_skip_logged == PGB_HLE_SKIP_LOG_LIMIT)
                 playdate->system->logToConsole(
@@ -2454,7 +2454,7 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
         {
             ++pgb_hle_fail_logged;
             playdate->system->logToConsole(
-                "HLE Fail %x:@%04x (%04x)", gb->selected_rom_bank, v.pc, ioaddr
+                "HLE Fail %x:@%04x (%04x)", __gb_hle_bank_key(gb, v.pc), v.pc, ioaddr
             );
             if (pgb_hle_fail_logged == PGB_HLE_FAIL_LOG_LIMIT)
                 playdate->system->logToConsole(
