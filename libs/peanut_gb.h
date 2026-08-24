@@ -1691,10 +1691,29 @@ typedef struct
     uint8_t cmp_arg2;  // target byte (HLE_CMP_AND_CP / HLE_CMP_AND_XOR)
 } hle_slot_t;
 
-#define PGB_HLE_CACHE_SIZE 16
-#define PGB_HLE_CACHE_MASK (PGB_HLE_CACHE_SIZE - 1)
+#define PGB_HLE_SETS 128
+#define PGB_HLE_WAYS 2
+#define PGB_HLE_CACHE_SIZE (PGB_HLE_SETS * PGB_HLE_WAYS)
+#define PGB_HLE_SETS_MASK (PGB_HLE_SETS - 1)
 
 static hle_slot_t pgb_hle_cache[PGB_HLE_CACHE_SIZE];
+static uint64_t pgb_hle_victim[2];  // per-set round-robin victim bit (2-way)
+
+/* lowbias32 finalizer: mixes the packed key (pc>>1|bank<<15|addr<<24) so
+ * every set-index bit depends on all of pc/bank/addr -- correlated fields
+ * (addr ~0x90-0xFF, bank mostly 0) would otherwise pile into one set.
+ * Packing is exact: pc>>1 = bits 0-13, bank key <= 511 = bits 15-23,
+ * addr = bits 24-31. */
+static inline __attribute__((always_inline)) uint32_t
+__gb_hle_set_index(const uint16_t pc, const uint16_t bank, const uint8_t addr)
+{
+    uint32_t x = (uint32_t)(pc >> 1) | ((uint32_t)bank << 15) | ((uint32_t)addr << 24);
+    x *= 0x7feb352d;
+    x ^= x >> 15;
+    x *= 0x846ca68b;
+    x ^= x >> 16;
+    return x & PGB_HLE_SETS_MASK;
+}
 
 /* Simulator-only diagnostics for cache validation: always on in sim
  * builds (host cost is noise), nothing emitted on device. Periodic
@@ -1882,9 +1901,14 @@ static inline __attribute__((always_inline)) int __gb_hle_probe(
 #endif
 
     const uint16_t pc = gb->cpu_reg.pc;
-    hle_slot_t* s = &pgb_hle_cache[(pc >> 1) & PGB_HLE_CACHE_MASK];
-
-    if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != __gb_hle_bank_key(gb, pc))
+    const uint16_t bank = __gb_hle_bank_key(gb, pc);
+    hle_slot_t* const s0 = &pgb_hle_cache[__gb_hle_set_index(pc, bank, (uint8_t)ioaddr) << 1];
+    hle_slot_t* s =
+        (s0->pc == pc && s0->addr == (uint8_t)ioaddr && s0->bank == bank)
+            ? s0
+            : ((s0[1].pc == pc && s0[1].addr == (uint8_t)ioaddr && s0[1].bank == bank) ? s0 + 1
+                                                                                       : NULL);
+    if (s == NULL)
     {
         PGB_HLE_STAT_INC(MISS);
         return HLE_MISS;
@@ -2393,9 +2417,32 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
     hle_slot_t v;
     const int result = __gb_hle_analyze(gb, ioaddr, &v);
 
-    /* Spam (no recognized load+compare shape): run normally, but never
-     * cache or log -- one-off reads would otherwise evict warpable slots
-     * and flood the fail log. */
+    /* Cache every ROM verdict, incl. SKIP. Skip sites (no recognized shape)
+     * are the dominant analyze cost in IO/HRAM-heavy games -- uncached they
+     * re-analyze per read. rewind=0 => probe returns HLE_NO_WARP. 256 slots
+     * absorbs the one-off reads that used to evict warpable slots. */
+    if (v.pc != 0 && v.pc < 0x8000)
+    {
+        const uint32_t set = __gb_hle_set_index(v.pc, v.bank, v.addr);
+        hle_slot_t* const s0 = &pgb_hle_cache[set << 1];
+        hle_slot_t* s;
+        if (s0->pc == 0)
+            s = s0;
+        else if (s0[1].pc == 0)
+            s = s0 + 1;
+        else
+        {
+            const int way = (int)((pgb_hle_victim[set >> 6] >> (set & 63)) & 1);
+            s = s0 + way;
+            pgb_hle_victim[set >> 6] ^= (uint64_t)1 << (set & 63);
+        }
+#ifdef TARGET_SIMULATOR
+        if (s->pc != 0 && s->pc != v.pc)
+            ++pgb_hle_stats[HLE_STAT_EVICT];
+#endif
+        *s = v;
+    }
+
     if (result == HLE_ANALYZE_SKIP)
     {
         PGB_HLE_STAT_INC(SKIP);
@@ -2429,16 +2476,6 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
         }
 #endif
         return ioval;
-    }
-
-    if (v.pc < 0x8000)
-    {
-        hle_slot_t* s = &pgb_hle_cache[(v.pc >> 1) & PGB_HLE_CACHE_MASK];
-#ifdef TARGET_SIMULATOR
-        if (s->pc != 0 && s->pc != v.pc)
-            ++pgb_hle_stats[HLE_STAT_EVICT];
-#endif
-        *s = v;
     }
 
     if (result == HLE_ANALYZE_NO)
@@ -6317,6 +6354,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->gb_halt_bug = 0;
     gb->gb_ime = 0;
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+    memset(pgb_hle_victim, 0, sizeof(pgb_hle_victim));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
     pgb_hle_skip_logged = 0;
@@ -6768,6 +6806,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_speed_switch_halt_period = 0;
     gb->cgb_gdma_halt_period = 0;
     memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+    memset(pgb_hle_victim, 0, sizeof(pgb_hle_victim));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
     pgb_hle_skip_logged = 0;
