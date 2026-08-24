@@ -27,6 +27,13 @@
 #include "../src/preferences.h"
 #include "../src/utility.h"
 
+/* Flag register bit positions (gb->cpu_reg.f). Computed as a byte rather than
+ * f_bits bitfields to avoid ubfx/bfi read-modify-write codegen in hot paths. */
+#define GB_FLAG_Z 0x80
+#define GB_FLAG_N 0x40
+#define GB_FLAG_H 0x20
+#define GB_FLAG_C 0x10
+
 /**
  * Checks all STAT interrupt sources and requests an interrupt on a rising edge.
  */
@@ -474,10 +481,8 @@ __rare static u8 $(__gb_rare_instruction)(gb_s* restrict gb, uint8_t opcode)
             uint16_t sp = gb->cpu_reg.sp;
             gb->cpu_reg.hl = sp + offset;
 
-            gb->cpu_reg.f_bits.z = 0;
-            gb->cpu_reg.f_bits.n = 0;
-            gb->cpu_reg.f_bits.h = ((sp & 0xF) + (offset & 0xF) > 0xF);
-            gb->cpu_reg.f_bits.c = ((sp & 0xFF) + (offset & 0xFF) > 0xFF);
+            gb->cpu_reg.f = (((sp & 0xF) + (offset & 0xF) > 0xF) ? GB_FLAG_H : 0) |
+                            (((sp & 0xFF) + (offset & 0xFF) > 0xFF) ? GB_FLAG_C : 0);
             return 3 * 4;
         }
         else
@@ -485,10 +490,8 @@ __rare static u8 $(__gb_rare_instruction)(gb_s* restrict gb, uint8_t opcode)
             uint16_t old_sp = gb->cpu_reg.sp;
             gb->cpu_reg.sp += offset;
 
-            gb->cpu_reg.f_bits.z = 0;
-            gb->cpu_reg.f_bits.n = 0;
-            gb->cpu_reg.f_bits.h = ((old_sp & 0xF) + (offset & 0xF) > 0xF);
-            gb->cpu_reg.f_bits.c = ((old_sp & 0xFF) + (offset & 0xFF) > 0xFF);
+            gb->cpu_reg.f = (((old_sp & 0xF) + (offset & 0xF) > 0xF) ? GB_FLAG_H : 0) |
+                            (((old_sp & 0xFF) + (offset & 0xFF) > 0xFF) ? GB_FLAG_C : 0);
             return 4 * 4;
         }
     }
@@ -537,74 +540,58 @@ __core_section("cb") static uint8_t $(__gb_execute_cb)(gb_s* gb)
     {
     case 0x0:
         cbop = (cbop >> 4) & 0x3;
-
-        gb->cpu_reg.f_bits.n = 0;
-        gb->cpu_reg.f_bits.h = 0;
-
-        switch (cbop)
         {
-        case 0x0:  /* RdC R */
-        case 0x1:  /* Rd R */
-            if (d) /* RRC R / RR R */
+            const uint8_t oldc = (gb->cpu_reg.f >> 4) & 1;
+            uint8_t c;
+            switch (cbop)
             {
-                uint8_t temp = val;
-                val = (val >> 1);
-                val |= cbop ? (gb->cpu_reg.f_bits.c << 7) : (temp << 7);
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.c = (temp & 0x01);
+            case 0x0:  /* RLC R / RRC R */
+            case 0x1:  /* RL R / RR R */
+                if (d) /* RRC R / RR R */
+                {
+                    const uint8_t temp = val;
+                    val = (val >> 1) | ((cbop ? oldc : temp) << 7);
+                    c = temp & 0x01;
+                }
+                else /* RLC R / RL R */
+                {
+                    const uint8_t temp = val;
+                    val = (val << 1) | (cbop ? oldc : (temp >> 7));
+                    c = temp >> 7;
+                }
+                break;
+            case 0x2:  /* SLA R / SRA R */
+                if (d) /* SRA R */
+                {
+                    c = val & 0x01;
+                    val = (val >> 1) | (val & 0x80);
+                }
+                else /* SLA R */
+                {
+                    c = val >> 7;
+                    val <<= 1;
+                }
+                break;
+            case 0x3:  /* SWAP R / SRL R */
+                if (d) /* SRL R */
+                {
+                    c = val & 0x01;
+                    val >>= 1;
+                }
+                else /* SWAP R */
+                {
+                    c = 0;
+                    val = (val >> 4) | (val << 4);
+                }
+                break;
             }
-            else /* RLC R / RL R */
-            {
-                uint8_t temp = val;
-                val = (val << 1);
-                val |= cbop ? gb->cpu_reg.f_bits.c : (temp >> 7);
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.c = (temp >> 7);
-            }
-
-            break;
-
-        case 0x2:
-            if (d) /* SRA R */
-            {
-                gb->cpu_reg.f_bits.c = val & 0x01;
-                val = (val >> 1) | (val & 0x80);
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-            }
-            else /* SLA R */
-            {
-                gb->cpu_reg.f_bits.c = (val >> 7);
-                val = val << 1;
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-            }
-
-            break;
-
-        case 0x3:
-            if (d) /* SRL R */
-            {
-                gb->cpu_reg.f_bits.c = val & 0x01;
-                val = val >> 1;
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-            }
-            else /* SWAP R */
-            {
-                uint8_t temp = (val >> 4) & 0x0F;
-                temp |= (val << 4) & 0xF0;
-                val = temp;
-                gb->cpu_reg.f_bits.z = (val == 0x00);
-                gb->cpu_reg.f_bits.c = 0;
-            }
-
-            break;
+            gb->cpu_reg.f = (c ? GB_FLAG_C : 0) | (val == 0 ? GB_FLAG_Z : 0);
         }
-
         break;
 
     case 0x1: /* BIT B, R */
-        gb->cpu_reg.f_bits.z = !((val >> b) & 0x1);
-        gb->cpu_reg.f_bits.n = 0;
-        gb->cpu_reg.f_bits.h = 1;
+        gb->cpu_reg.f =
+            (gb->cpu_reg.f & GB_FLAG_C) | GB_FLAG_H | (((val >> b) & 0x1) ? 0 : GB_FLAG_Z);
         writeback = 0;
         break;
 
@@ -1427,7 +1414,7 @@ __draw static void $(__gb_ppu_mode3_setup)(gb_s* gb)
 __core_section("short") static bool $(__gb_get_op_flag)(gb_s* restrict gb, uint8_t op8)
 {
     op8 %= 4;
-    bool flag = (op8 <= 1) ? gb->cpu_reg.f_bits.z : gb->cpu_reg.f_bits.c;
+    bool flag = (op8 <= 1) ? (gb->cpu_reg.f & GB_FLAG_Z) != 0 : (gb->cpu_reg.f & GB_FLAG_C) != 0;
     flag ^= (op8 % 2);
     return flag;
 }
@@ -1435,9 +1422,8 @@ __core_section("short") static bool $(__gb_get_op_flag)(gb_s* restrict gb, uint8
 __core_section("short") static u16 $(__gb_add16)(gb_s* restrict gb, u16 a, u16 b)
 {
     unsigned temp = a + b;
-    gb->cpu_reg.f_bits.n = 0;
-    gb->cpu_reg.f_bits.h = ((temp ^ a ^ b) >> 12) & 1;
-    gb->cpu_reg.f_bits.c = temp >> 16;
+    gb->cpu_reg.f = (gb->cpu_reg.f & GB_FLAG_Z) | ((((temp ^ a ^ b) >> 12) & 1) ? GB_FLAG_H : 0) |
+                    ((temp >> 16) ? GB_FLAG_C : 0);
     return temp;
 }
 
@@ -1742,10 +1728,11 @@ h_inc_dec_r8:
     u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
     u8 tmp = src + offset;
 
+    // preserve C (and the unused nibble, always 0)
     u8 f = gb->cpu_reg.f & 0x1F;
-    f |= (tmp == 0) ? 0x80 : 0;
-    f |= is_dec ? 0x40 : 0;
-    f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? 0x20 : 0;
+    f |= (tmp == 0) ? GB_FLAG_Z : 0;
+    f |= is_dec ? GB_FLAG_N : 0;
+    f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? GB_FLAG_H : 0;
     gb->cpu_reg.f = f;
 
     if (reg8 == 7)
@@ -1774,7 +1761,7 @@ h_misc_flag:
         u32 v = gb->cpu_reg.a << 8;
         if (op8 & 2)
         {
-            u32 c = gb->cpu_reg.f_bits.c;
+            u32 c = (gb->cpu_reg.f >> 4) & 1;
             v |= (c << 7) | (c << 16);
         }
         else
@@ -1790,50 +1777,46 @@ h_misc_flag:
         {
             v >>= 1;
         }
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.f_bits.c = (v >> (7 + 9 * (op8 & 1))) & 1;
+        gb->cpu_reg.f = ((v >> (7 + 9 * (op8 & 1))) & 1) ? GB_FLAG_C : 0;
         gb->cpu_reg.a = (v >> 8) & 0xFF;
     }
     else if unlikely (opcode == 0x27)  // daa
     {
         u16 a = gb->cpu_reg.a;
-        if (gb->cpu_reg.f_bits.n)
+        const u8 f = gb->cpu_reg.f;
+        u8 c = (f >> 4) & 1;
+        if (f & GB_FLAG_N)
         {
-            if (gb->cpu_reg.f_bits.h)
+            if (f & GB_FLAG_H)
                 a = (a - 0x06) & 0xFF;
-            if (gb->cpu_reg.f_bits.c)
+            if (c)
                 a -= 0x60;
         }
         else
         {
-            if (gb->cpu_reg.f_bits.h || (a & 0x0F) > 9)
+            if ((f & GB_FLAG_H) || (a & 0x0F) > 9)
                 a += 0x06;
-            if (gb->cpu_reg.f_bits.c || a > 0x9F)
+            if (c || a > 0x9F)
                 a += 0x60;
         }
         if ((a & 0x100) == 0x100)
-            gb->cpu_reg.f_bits.c = 1;
+            c = 1;
         gb->cpu_reg.a = a;
-        gb->cpu_reg.f_bits.z = (gb->cpu_reg.a == 0);
-        gb->cpu_reg.f_bits.h = 0;
+        gb->cpu_reg.f =
+            (f & GB_FLAG_N) | (c ? GB_FLAG_C : 0) | (gb->cpu_reg.a == 0 ? GB_FLAG_Z : 0);
     }
     else if (opcode == 0x2F)
     {
         gb->cpu_reg.a ^= 0xFF;
-        gb->cpu_reg.f_bits.n = 1;
-        gb->cpu_reg.f_bits.h = 1;
+        gb->cpu_reg.f = (gb->cpu_reg.f & (GB_FLAG_Z | GB_FLAG_C)) | GB_FLAG_N | GB_FLAG_H;
     }
     else if (op8 % 2 == 1)
     {
-        gb->cpu_reg.f_bits.c = 1;
-        gb->cpu_reg.f_bits.n = 0;
-        gb->cpu_reg.f_bits.h = 0;
+        gb->cpu_reg.f = (gb->cpu_reg.f & GB_FLAG_Z) | GB_FLAG_C;
     }
     else if (op8 % 2 == 0)
     {
-        gb->cpu_reg.f_bits.c ^= 1;
-        gb->cpu_reg.f_bits.n = 0;
-        gb->cpu_reg.f_bits.h = 0;
+        gb->cpu_reg.f = (gb->cpu_reg.f & GB_FLAG_Z) | ((gb->cpu_reg.f & GB_FLAG_C) ? 0 : GB_FLAG_C);
     }
     CHAIN_OR_RETURN();
 
@@ -1905,22 +1888,19 @@ arithmetic:
         unsigned v = src;
         if (op8 % 2 == 0 && op8 != 6)
         {
-            v += gb->cpu_reg.f_bits.c;
+            v += (gb->cpu_reg.f >> 4) & 1;
         }
 
         // subtraction
-        gb->cpu_reg.f_bits.n = 0;
-        if (op8 & 2)
-        {
+        const bool n = (op8 & 2) != 0;
+        if (n)
             v = -v;
-            gb->cpu_reg.f_bits.n = 1;
-        }
 
         // adder
         const u16 temp = gb->cpu_reg.a + v;
-        gb->cpu_reg.f_bits.z = ((temp & 0xFF) == 0x00);
-        gb->cpu_reg.f_bits.h = ((gb->cpu_reg.a ^ src ^ temp) >> 4) & 1;
-        gb->cpu_reg.f_bits.c = temp >> 8;
+        gb->cpu_reg.f = (n ? GB_FLAG_N : 0) | (((temp & 0xFF) == 0x00) ? GB_FLAG_Z : 0) |
+                        ((((gb->cpu_reg.a ^ src ^ temp) >> 4) & 1) ? GB_FLAG_H : 0) |
+                        ((temp >> 8) ? GB_FLAG_C : 0);
 
         if (op8 != 6)
         {
@@ -1930,19 +1910,15 @@ arithmetic:
     break;
     case 4:  // XOR
         gb->cpu_reg.a ^= src;
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        gb->cpu_reg.f = gb->cpu_reg.a == 0 ? GB_FLAG_Z : 0;
         break;
     case 5:  // AND
         gb->cpu_reg.a &= src;
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.f_bits.h = 1;
-        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        gb->cpu_reg.f = GB_FLAG_H | (gb->cpu_reg.a == 0 ? GB_FLAG_Z : 0);
         break;
     case 7:  // OR
         gb->cpu_reg.a |= src;
-        gb->cpu_reg.f = 0;
-        gb->cpu_reg.f_bits.z = gb->cpu_reg.a == 0;
+        gb->cpu_reg.f = gb->cpu_reg.a == 0 ? GB_FLAG_Z : 0;
         break;
     default:
         __builtin_unreachable();
@@ -2314,7 +2290,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         }
         inst_cycles = __gb_run_instruction(gb, opcode);
 
-        gb->cpu_reg.f_bits.unused = 0;
+        gb->cpu_reg.f &= 0xF0;
 
         memcpy(_wram[1], gb->wram, WRAM_SIZE_CGB);
         memcpy(_vram[1], gb->vram, VRAM_SIZE_CGB);
@@ -2330,7 +2306,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
         uint8_t inst_cycles_m = MICRO_CALL($(__gb_run_instruction_micro), gb);
 
-        gb->cpu_reg.f_bits.unused = 0;
+        gb->cpu_reg.f &= 0xF0;
         // intr_pending is a derived cache of ime/IF/IE, maintained only by
         // the micro path; sync it from the reference result before comparing.
         gb->direct.intr_pending = _gb[1].direct.intr_pending;
