@@ -2636,6 +2636,10 @@ __shell static void pgb_hle_stats_dump(void)
  * PPU counters. Transient; set by the batch loop, zeroed when it ends. */
 static uint16_t pgb_batch_elapsed;
 
+/* CPU-T cycle of the current instruction's write bus end (same domain as
+ * pgb_batch_elapsed). Write handlers set it; APU write timestamps use it. */
+static uint16_t pgb_write_cycle;
+
 /**
  * Cycles remaining until next PPU mode boundary.
  */
@@ -3582,7 +3586,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             if (gb->direct.sound)
             {
                 uint32_t apu_ts = gb->counter.apu_count;
-                uint32_t in_batch = pgb_batch_elapsed;
+                uint32_t in_batch = pgb_write_cycle;
                 if (gb->lcd_mode == LCD_VBLANK)
                     in_batch >>= gb->overclock;
                 in_batch >>= gb->cgb_fast_mode_active;

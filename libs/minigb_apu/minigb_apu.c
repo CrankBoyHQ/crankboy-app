@@ -61,8 +61,10 @@ static uint16_t s_apu_tick_rem_accum;  // fractional interval, 512ths of a sampl
 static bool s_ch3_cursor_valid;
 static uint8_t s_ch3_cursor_pos;    // sample index 0-31
 static uint32_t s_ch3_step_period;  // apu_count cycles per step: 2 * (2048 - freq)
-static uint32_t s_ch3_last_step;    // apu_count of most recent step
-static uint32_t s_ch3_next_step;    // apu_count of next scheduled step
+static int64_t s_ch3_last_step;     // apu_count of most recent step (may precede frame start)
+static int64_t s_ch3_next_step;     // apu_count of next scheduled step
+
+static inline __attribute__((always_inline)) int get_audio_sample_rate(void);
 
 static inline uint32_t ch3_step_period(const chan* c)
 {
@@ -76,8 +78,12 @@ __shell static void ch3_cursor_reanchor(const audio_data* audio, uint32_t apu_co
     const chan* c = &audio->chans[2];
     s_ch3_cursor_pos = c->val & 31;
     s_ch3_step_period = ch3_step_period(c);
-    s_ch3_last_step = apu_count;
-    s_ch3_next_step = apu_count + s_ch3_step_period;
+    // freq_counter holds fractional progress toward the next step;
+    // backdate last_step by it.
+    uint32_t frac = (uint32_t)(((uint64_t)c->freq_counter * s_ch3_step_period) /
+                               (uint64_t)get_audio_sample_rate());
+    s_ch3_last_step = (int64_t)apu_count - (int64_t)frac;
+    s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
 __shell static void ch3_cursor_reset(const audio_data* audio, uint32_t base_count)
@@ -91,24 +97,26 @@ __shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_cou
     const chan* c = &audio->chans[2];
     if (!(c->powered && c->enabled))
         return;
-    if (apu_count < s_ch3_next_step)
-        return;  // covers mid-frame restart (count < last_step) and no-step case
+    int64_t dist = (int64_t)apu_count - s_ch3_last_step;
+    if (dist < (int64_t)s_ch3_step_period)
+        return;  // mid-frame restart (dist < 0) or no full step yet
     // div/mod instead of per-step loop: PDM carriers step every 2 cycles.
-    uint32_t steps = (apu_count - s_ch3_last_step) / s_ch3_step_period;
+    uint32_t steps = (uint32_t)(dist / s_ch3_step_period);
     s_ch3_cursor_pos = (s_ch3_cursor_pos + steps) & 31;
-    s_ch3_last_step += steps * s_ch3_step_period;
+    s_ch3_last_step += (int64_t)steps * s_ch3_step_period;
     s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
-/* DMG write window: write must coincide with CH3's byte read (position
- * stepping to an even index). Hardware allows ~1 dot; allow up to 4 dots
- * (one M-cycle) to cover cursor anchor error. A full-period window could
- * never fail: apu_count is always within one period of last_step. */
+/* DMG write window: the write's 4-dot bus transaction must overlap CH3's byte
+ * read (writes are timestamped at their end). min(step_period, 4) bounds the
+ * PDM carrier. */
 static inline bool ch3_cursor_just_read(uint32_t apu_count)
 {
-    uint32_t last_byte_read = s_ch3_last_step - ((s_ch3_cursor_pos & 1) ? s_ch3_step_period : 0);
+    int64_t last_byte_read =
+        s_ch3_last_step - ((s_ch3_cursor_pos & 1) ? (int64_t)s_ch3_step_period : 0);
+    int64_t delta = (int64_t)apu_count - last_byte_read;
     uint32_t window = s_ch3_step_period < 4u ? s_ch3_step_period : 4u;
-    return apu_count - last_byte_read <= window;
+    return delta >= 0 && delta <= (int64_t)window;
 }
 
 /* Fractional CH3 gain for NR32 PDM (Pokemon Yellow cries): per-sample
@@ -2419,9 +2427,8 @@ __shell void audio_generate_accurate(
             if (frame_samples < 0)
                 frame_samples = 0;
 
-            // Anchor CH3 cursor to the frame's first event (frame start
-            // for write-less frames).
-            ch3_cursor_reset(audio, span_end > span_start ? s_apu_events[span_start].apu_count : 0);
+            // Anchor CH3 cursor to frame start (apu_count resets each frame).
+            ch3_cursor_reset(audio, 0);
 
             offset += replay_event_span(
                 audio, left + offset, right + offset, span_start, span_end, frame_samples,

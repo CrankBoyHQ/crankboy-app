@@ -1683,6 +1683,7 @@ h_ld_a_r16:
 
     if (op8 % 2 == 1)
     {
+        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
         $(__gb_write)(gb, gb->cpu_reg_raw16[reg16], gb->cpu_reg.a);
     }
     else
@@ -1723,6 +1724,7 @@ h_inc_dec_r8:
     if (reg8 == 7)
     {
         cycles = 12;
+        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
         $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
     }
     else
@@ -1850,6 +1852,7 @@ ld_x_x:
         else
         {
             cycles += 4;
+            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
             $(__gb_write)(gb, gb->cpu_reg.hl, src);
         }
     }
@@ -2037,6 +2040,7 @@ hram_op:
     }
     else
     {
+        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
         $(__gb_write)(gb, addr, gb->cpu_reg.a);
     }
 }
@@ -2078,7 +2082,10 @@ h_ld_a16:
         if (op8 & 2)
             gb->cpu_reg.a = $(__gb_read)(gb, v);
         else
+        {
+            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
             $(__gb_write)(gb, v, gb->cpu_reg.a);
+        }
     }
     CHAIN_OR_RETURN();
 
@@ -2087,6 +2094,7 @@ h_rare:
 
 next_instruction:
     pgb_batch_elapsed = batch_cycles;
+    pgb_write_cycle = (uint16_t)batch_cycles;
     if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
     {
         gb->gb_ime = 1;
@@ -2111,6 +2119,7 @@ batch_done:
     );
 #endif
     pgb_batch_elapsed = 0;
+    pgb_write_cycle = 0;
     return batch_cycles;
 }
 
