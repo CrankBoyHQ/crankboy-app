@@ -1068,6 +1068,10 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
             }
 
             tcm_relocate(context->gb->is_cgb_mode);
+
+            /* Precompute the static HLE poll-site table. */
+            if (context->gb->is_cgb_mode && preferences_hle == 1)
+                __gb_hle_scan_rom(context->gb);
         }
         else
         {

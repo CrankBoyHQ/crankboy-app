@@ -334,6 +334,9 @@ typedef struct PGB_VERSIONED(chan) chan;
 void gb_step_cpu(gb_s* gb);
 void gb_recompute_cgb_gray_palettes(gb_s* gb);
 
+/* Precompute the static HLE poll-site table; re-run after a script patch. */
+void __gb_hle_scan_rom(gb_s* gb);
+
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom);
 bool gb_get_rom_uses_battery(uint8_t* gb_rom);
 
@@ -1691,10 +1694,11 @@ typedef struct
     uint8_t cmp_arg2;  // target byte (HLE_CMP_AND_CP / HLE_CMP_AND_XOR)
 } hle_slot_t;
 
-#define PGB_HLE_CACHE_SIZE 16
-#define PGB_HLE_CACHE_MASK (PGB_HLE_CACHE_SIZE - 1)
+/* Precomputed WARP verdicts, extended at runtime by __gb_hle_miss. */
+#define PGB_HLE_TABLE_SIZE 64
+#define PGB_HLE_TABLE_MASK (PGB_HLE_TABLE_SIZE - 1)
 
-static hle_slot_t pgb_hle_cache[PGB_HLE_CACHE_SIZE];
+static hle_slot_t pgb_hle_table[PGB_HLE_TABLE_SIZE];
 
 /* Simulator-only diagnostics for cache validation: always on in sim
  * builds (host cost is noise), nothing emitted on device. Periodic
@@ -1866,46 +1870,31 @@ __gb_hle_bank_key(const gb_s* gb, const uint16_t pc)
                          : (uint16_t)(gb->selected_rom_bank & gb->num_rom_banks_mask);
 }
 
-/* Probe the verdict cache. HLE_WARPED: warp applied, return ioval.
- * HLE_NO_WARP: return ioval. HLE_MISS: call __gb_hle_miss. */
-static inline __attribute__((always_inline)) int __gb_hle_probe(
-    gb_s* gb, const uint_fast16_t ioaddr, const uint8_t ioval
+/* Hash (bank, pc, addr) so poll sites spread across slots. */
+static inline __attribute__((always_inline)) uint32_t
+__gb_hle_table_index(const uint16_t bank, const uint16_t pc, const uint8_t addr)
+{
+    uint32_t x = (uint32_t)(pc >> 1) ^ ((uint32_t)bank << 8) ^ ((uint32_t)addr << 16);
+    x *= 0x9E3779B9u;
+    x ^= x >> 16;
+    return x & PGB_HLE_TABLE_MASK;
+}
+
+/* Return the matching precomputed slot, or NULL. */
+static inline __attribute__((always_inline)) hle_slot_t* __gb_hle_static_probe(
+    gb_s* gb, const uint16_t ioaddr
 )
 {
-    if (!gb->hle_enabled)
-        return HLE_NO_WARP;
-
-    PGB_HLE_STAT_INC(PROBE);
-#ifdef TARGET_SIMULATOR
-    if ((pgb_hle_stats[HLE_STAT_PROBE] & 0xFFFFF) == 0)
-        pgb_hle_stats_dump();
-#endif
-
     const uint16_t pc = gb->cpu_reg.pc;
-    hle_slot_t* s = &pgb_hle_cache[(pc >> 1) & PGB_HLE_CACHE_MASK];
-
-    if (s->pc != pc || s->addr != (uint8_t)ioaddr || s->bank != __gb_hle_bank_key(gb, pc))
-    {
-        PGB_HLE_STAT_INC(MISS);
-        return HLE_MISS;
-    }
-
-    if (s->rewind == 0)
-    {
-        PGB_HLE_STAT_INC(HIT_NO);
-        return HLE_NO_WARP;
-    }
-
-    if (!__gb_hle_waiting(gb, s, ioval))
-    {
-        PGB_HLE_STAT_INC(HIT_MET);
-        return HLE_NO_WARP;
-    }
-
-    __gb_hle_apply_warp(gb, s);
-    PGB_HLE_STAT_INC(WARP);
-    return HLE_WARPED;
+    const uint16_t bank = __gb_hle_bank_key(gb, pc);
+    hle_slot_t* s = &pgb_hle_table[__gb_hle_table_index(bank, pc, (uint8_t)ioaddr)];
+    if (s->pc == pc && s->bank == bank && s->addr == (uint8_t)ioaddr)
+        return s;
+    return NULL;
 }
+
+/* Shared HLE-gated read used by the fast and reference read paths. */
+__hle_cgb static uint8_t __gb_hle_read_shared(gb_s* gb, const uint16_t addr, const uint8_t v);
 
 __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, u8 ioval);
 
@@ -1988,9 +1977,7 @@ __section__(".rare.cb") static uint8_t __gb_rare_read(gb_s* gb, const uint16_t a
             {
                 const uint8_t v =
                     ((uint8_t)gb->cgb_hdma_len & 0x7F) | ((gb->cgb_hdma_active) ? 0 : 0x80);
-                if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
-                    return __gb_hle_miss(gb, addr, v);
-                return v;
+                return __gb_hle_read_shared(gb, addr, v);
             }
             return 0xFF;
 
@@ -2386,6 +2373,104 @@ analyze_skip:
     return HLE_ANALYZE_SKIP;
 }
 
+/* Build pgb_hle_table: run __gb_hle_analyze over every bank's ldh/ld-abs poll
+ * sites (position-independent forms only; (hl)/(c)/WRAM use the fallback). */
+void __gb_hle_scan_rom(gb_s* gb)
+{
+    memset(pgb_hle_table, 0, sizeof(pgb_hle_table));
+
+    int (*analyze)(gb_s*, uint_fast16_t, hle_slot_t*) =
+        (int (*)(gb_s*, uint_fast16_t, hle_slot_t*))(
+            (char*)(void*)__gb_hle_analyze + pgb_hle_reloc_offset
+        );
+
+    /* Save context; the scan repoints ram_base per bank. */
+    uint8_t* saved_zero[4];
+    uint8_t* saved_sel[4];
+    for (int i = 0; i < 4; i++)
+    {
+        saved_zero[i] = gb->rom_bank_base[0][i];
+        saved_sel[i] = gb->rom_bank_base[1][i];
+    }
+    const uint32_t saved_zero_bank = gb->zero_bank_base;
+    const uint16_t saved_sel_bank = gb->selected_rom_bank;
+    const uint16_t saved_pc = gb->cpu_reg.pc;
+    const uint16_t saved_hl = gb->cpu_reg.hl;
+    const uint8_t saved_c = gb->cpu_reg.c;
+
+    int num_banks = (int)(gb->num_rom_banks_mask + 1);
+    const int max_banks = (int)((gb->gb_rom_size + ROM_BANK_SIZE - 1) / ROM_BANK_SIZE);
+    if (num_banks > max_banks)
+        num_banks = max_banks;
+
+    for (int b = 0; b < num_banks; b++)
+    {
+        /* Map 0000-7FFF onto physical bank b. */
+        const uint8_t* base = gb->gb_rom + (uint32_t)b * ROM_BANK_SIZE;
+        for (int i = 0; i < 4; i++)
+        {
+            gb->rom_bank_base[0][i] = (uint8_t*)base;
+            gb->rom_bank_base[1][i] = (uint8_t*)(base - ROM_BANK_SIZE);
+        }
+        gb->zero_bank_base = (uint32_t)b * ROM_BANK_SIZE;
+        gb->selected_rom_bank = (uint16_t)b;
+
+        /* Keep post-load pc < 0x7FF8 and operand reads in-bank. */
+        for (uint16_t pc = 0; pc < 0x7FF0; pc++)
+        {
+            const uint8_t op = gb->ram_base[pc >> 12][pc];
+            uint16_t ioaddr;
+            uint16_t post;
+            if (op == 0xF0)
+            {
+                ioaddr = 0xFF00 | gb->ram_base[(pc + 1) >> 12][pc + 1];
+                post = pc + 2;
+            }
+            else if (op == 0xFA)
+            {
+                ioaddr = (uint16_t)gb->ram_base[(pc + 1) >> 12][pc + 1] |
+                         ((uint16_t)gb->ram_base[(pc + 2) >> 12][pc + 2] << 8);
+                post = pc + 3;
+            }
+            else
+            {
+                continue;
+            }
+
+            /* STAT/LY/IF, HDMA5, or HRAM only. */
+            if (ioaddr != 0xFF41 && ioaddr != 0xFF44 && ioaddr != 0xFF0F && ioaddr != 0xFF55 &&
+                ioaddr < 0xFF80)
+                continue;
+
+            if (post < 5)
+                continue;
+
+            gb->cpu_reg.pc = post;
+            gb->cpu_reg.hl = 0;
+            gb->cpu_reg.c = 0;
+
+            hle_slot_t slot;
+            if (analyze(gb, ioaddr, &slot) != HLE_ANALYZE_WARP)
+                continue;
+
+            hle_slot_t* s = &pgb_hle_table[__gb_hle_table_index(slot.bank, slot.pc, slot.addr)];
+            *s = slot;
+        }
+    }
+
+    /* Restore context. */
+    for (int i = 0; i < 4; i++)
+    {
+        gb->rom_bank_base[0][i] = saved_zero[i];
+        gb->rom_bank_base[1][i] = saved_sel[i];
+    }
+    gb->zero_bank_base = saved_zero_bank;
+    gb->selected_rom_bank = saved_sel_bank;
+    gb->cpu_reg.pc = saved_pc;
+    gb->cpu_reg.hl = saved_hl;
+    gb->cpu_reg.c = saved_c;
+}
+
 __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, const u8 ioval)
 {
     PGB_HLE_STAT_INC(ANALYZE);
@@ -2431,9 +2516,10 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
         return ioval;
     }
 
-    if (v.pc < 0x8000)
+    /* Cache WARP verdicts so (hl)/(c)/bit loops stop re-analyzing; never cache NO. */
+    if (v.pc < 0x8000 && v.rewind != 0)
     {
-        hle_slot_t* s = &pgb_hle_cache[(v.pc >> 1) & PGB_HLE_CACHE_MASK];
+        hle_slot_t* s = &pgb_hle_table[__gb_hle_table_index(v.bank, v.pc, v.addr)];
 #ifdef TARGET_SIMULATOR
         if (s->pc != 0 && s->pc != v.pc)
             ++pgb_hle_stats[HLE_STAT_EVICT];
@@ -2468,6 +2554,69 @@ __hle_cgb static uint8_t __gb_hle_miss(gb_s* gb, const uint_fast16_t ioaddr, con
         __gb_hle_apply_warp(gb, &v);
 
     return ioval;
+}
+
+__hle_cgb static uint8_t __gb_hle_read_shared(gb_s* gb, const uint16_t addr, const uint8_t v)
+{
+    if (!gb->hle_enabled)
+        return v;
+
+    const uint16_t pc = gb->cpu_reg.pc;
+
+    if (pc < 0x8000)
+    {
+        PGB_HLE_STAT_INC(PROBE);
+#ifdef TARGET_SIMULATOR
+        if ((pgb_hle_stats[HLE_STAT_PROBE] & 0xFFFFF) == 0)
+            pgb_hle_stats_dump();
+#endif
+
+        hle_slot_t* s = __gb_hle_static_probe(gb, addr);
+        if (s)
+        {
+            if (__gb_hle_waiting(gb, s, v))
+            {
+                __gb_hle_apply_warp(gb, s);
+                PGB_HLE_STAT_INC(WARP);
+            }
+            else
+            {
+                PGB_HLE_STAT_INC(HIT_MET);
+            }
+            return v;
+        }
+        PGB_HLE_STAT_INC(MISS);
+
+        /* HRAM: only ldh/ld-abs waits are HLE'd (now via the table); (hl)/(c)/bit
+         * HRAM reads are routine access. */
+        if (addr >= 0xFF80)
+            return v;
+
+        /* ldh/ld-abs not in the table: scan proved it isn't a loop. */
+        if (pc >= 3)
+        {
+            if (gb->ram_base[(pc - 2) >> 12][pc - 2] == 0xF0 ||
+                gb->ram_base[(pc - 3) >> 12][pc - 3] == 0xFA)
+                return v;
+        }
+
+        /* Only (hl)/(c)/bit load forms can be poll loops; skip the analyzer otherwise. */
+        if (pc >= 2)
+        {
+            const uint8_t b1 = gb->ram_base[(pc - 1) >> 12][pc - 1];
+            if (b1 == 0xF2 || b1 == 0x7E || b1 == 0x2A || b1 == 0x3A)
+                return __gb_hle_miss(gb, addr, v);
+            if (pc >= 3 && gb->ram_base[(pc - 2) >> 12][pc - 2] == 0xCB && (b1 & 0xC7) == 0x46)
+                return __gb_hle_miss(gb, addr, v);
+        }
+        return v;
+    }
+
+    /* WRAM-resident poll loops only; HRAM/VRAM/OAM-executed code is not HLE. */
+    if (pc >= 0xC003 && pc < 0xEFF0)
+        return __gb_hle_miss(gb, addr, v);
+
+    return v;
 }
 
 #ifdef TARGET_SIMULATOR
@@ -2895,9 +3044,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         {
             uint8_t tima_scratch;
             const uint8_t v = gb->gb_reg.IF | (__gb_timer_peek(gb, &tima_scratch) ? TIMER_INTR : 0);
-            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
-                return __gb_hle_miss(gb, addr, v);
-            return v;
+            return __gb_hle_read_shared(gb, addr, v);
         }
 
         /* LCD Registers */
@@ -2907,9 +3054,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         case 0x41:
         {
             const uint8_t v = __gb_read_stat_synced(gb);
-            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
-                return __gb_hle_miss(gb, addr, v);
-            return v;
+            return __gb_hle_read_shared(gb, addr, v);
         }
 
         case 0x42:
@@ -2921,9 +3066,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         case 0x44:
         {
             const uint8_t v = __gb_read_ly_synced(gb);
-            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
-                return __gb_hle_miss(gb, addr, v);
-            return v;
+            return __gb_hle_read_shared(gb, addr, v);
         }
 
         case 0x45:
@@ -2933,9 +3076,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
         case 0x46:
         {
             const uint8_t v = gb->gb_reg.DMA;
-            if (__gb_hle_probe(gb, addr, v) == HLE_MISS)
-                return __gb_hle_miss(gb, addr, v);
-            return v;
+            return __gb_hle_read_shared(gb, addr, v);
         }
 
         /* DMG Palette Registers */
@@ -6316,7 +6457,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->cgb_gdma_halt_period = 0;  // stale period would gate interrupt dispatch
     gb->gb_halt_bug = 0;
     gb->gb_ime = 0;
-    memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+    memset(pgb_hle_table, 0, sizeof(pgb_hle_table));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
     pgb_hle_skip_logged = 0;
@@ -6767,7 +6908,7 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_fast_mode_armed = false;
     gb->cgb_speed_switch_halt_period = 0;
     gb->cgb_gdma_halt_period = 0;
-    memset(pgb_hle_cache, 0, sizeof(pgb_hle_cache));
+    memset(pgb_hle_table, 0, sizeof(pgb_hle_table));
 #ifdef TARGET_SIMULATOR
     pgb_hle_fail_logged = 0;
     pgb_hle_skip_logged = 0;

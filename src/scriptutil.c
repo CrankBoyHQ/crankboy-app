@@ -50,6 +50,13 @@ void script_patch_record_reset(void)
     s_patch_count = 0;
 }
 
+/* Rebuild the static HLE table after a script mutates the ROM. */
+static void script_hle_rescan(void)
+{
+    if (script_gb->is_cgb_mode && preferences_hle == 1)
+        __gb_hle_scan_rom(script_gb);
+}
+
 void script_patch_restore(void)
 {
     for (int i = 0; i < s_patch_count; i++)
@@ -57,6 +64,7 @@ void script_patch_restore(void)
         GB->gb_rom[s_patches[i].addr] = s_patches[i].orig;
     }
     s_patch_count = 0;
+    script_hle_rescan();
 }
 
 void rom_poke(romaddr_t addr, u8 v)
@@ -80,6 +88,7 @@ void rom_poke(romaddr_t addr, u8 v)
         }
     }
     GB->gb_rom[addr] = v;
+    script_hle_rescan();
 }
 
 u8 ram_peek(addr16_t addr)

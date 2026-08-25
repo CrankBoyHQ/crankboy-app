@@ -106,30 +106,6 @@ __draw static void $(__gb_update_lyc_and_stat_irq)(gb_s* gb)
     gb->direct.stat_line = line_is_high;
 }
 
-#if PGB_IS_CGB
-__hle_cgb static uint8_t
-    __attribute__((noinline)) $(__gb_hle_read)(gb_s* gb, const uint16_t addr, const uint8_t v)
-{
-    if (__gb_hle_probe(gb, addr, v) != HLE_MISS)
-        return v;
-
-    /* HRAM flag waits: analyze only ldh-imm / ld-abs reads from ROM. */
-    if (addr >= 0xFF80)
-    {
-        const uint16_t pc = gb->cpu_reg.pc;
-        if (pc < 2 || pc >= 0x8000)
-            return v;
-        const uint8_t* r = gb->ram_base[pc >> 12];
-        const bool ldh = r[pc - 2] == 0xF0 && r[pc - 1] == (uint8_t)addr;
-        const bool ldnn = pc >= 3 && r[pc - 3] == 0xFA && r[pc - 2] == (uint8_t)addr &&
-                          r[pc - 1] == (uint8_t)(addr >> 8);
-        if (!ldh && !ldnn)
-            return v;
-    }
-    return __gb_hle_miss(gb, addr, v);
-}
-#endif
-
 __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t addr)
 {
     uint8_t* ram_region_base = gb->ram_base[addr >> 12];
@@ -144,7 +120,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         // HLE is CGB-only (hle_enabled implies cgb_mode): games wait on HRAM
         // flags set by ISRs ("ldh a,(x); and a; jr z").
         if (gb->hle_enabled)
-            return HLE_CALL_READ($(__gb_hle_read), gb, addr, val);
+            return HLE_CALL_READ(__gb_hle_read_shared, gb, addr, val);
 #endif
         return val;
     }
@@ -167,14 +143,14 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
             uint8_t v = __gb_read_stat_synced(gb);
             if (!gb->hle_enabled)
                 return v;
-            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
+            return HLE_CALL_READ(__gb_hle_read_shared, gb, addr, v);
         }
         case 0x44:
         {
             uint8_t v = __gb_read_ly_synced(gb);
             if (!gb->hle_enabled)
                 return v;
-            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
+            return HLE_CALL_READ(__gb_hle_read_shared, gb, addr, v);
         }
         case 0x0F:
         {
@@ -182,7 +158,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
             uint8_t v = gb->gb_reg.IF | (__gb_timer_peek(gb, &tima_scratch) ? TIMER_INTR : 0);
             if (!gb->hle_enabled)
                 return v;
-            return HLE_CALL_READ($(__gb_hle_read), gb, addr, v);
+            return HLE_CALL_READ(__gb_hle_read_shared, gb, addr, v);
         }
 #else
         case 0x41:
