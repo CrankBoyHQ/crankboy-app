@@ -3581,7 +3581,13 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         {
             if (gb->direct.sound)
             {
-                APU_CALL_WR(audio_write, &gb->audio, addr, val, gb->counter.apu_count);
+                uint32_t apu_ts = gb->counter.apu_count;
+                uint32_t in_batch = pgb_batch_elapsed;
+                if (gb->lcd_mode == LCD_VBLANK)
+                    in_batch >>= gb->overclock;
+                in_batch >>= gb->cgb_fast_mode_active;
+                apu_ts += in_batch;
+                APU_CALL_WR(audio_write, &gb->audio, addr, val, apu_ts);
             }
             else
             {
