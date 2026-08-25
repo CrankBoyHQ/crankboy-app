@@ -70,6 +70,12 @@ static uint8_t s_ch3_cursor_pos;    // sample index 0-31
 static uint32_t s_ch3_step_period;  // apu_count cycles per step: 2 * (2048 - freq)
 static int64_t s_ch3_last_step;     // apu_count of most recent step (may precede frame start)
 
+/* Partial-frame resume state: when a generate call's sample budget is smaller
+ * than the pending event span, we stop applying events at the budget and hold
+ * the rest for the next call (instead of applying-then-dropping their samples). */
+static int s_apu_resume_event = -1;  // index of first un-applied event, -1 = none
+static int s_apu_resume_offset = 0;  // samples already rendered of the pending span
+
 static inline __attribute__((always_inline)) int get_audio_sample_rate(void);
 
 static inline uint32_t ch3_step_period(const chan* c)
@@ -1636,6 +1642,8 @@ void audio_reset(audio_data* audio)
     s_ch3_cursor_valid = false;
     s_apu_tick_left = 0;
     s_apu_tick_rem_accum = 0;
+    s_apu_resume_event = -1;
+    s_apu_resume_offset = 0;
     audio->pre_frame_valid = false;
 
     // Zero the audio registers so the core's writes
@@ -1677,6 +1685,8 @@ void audio_reset_replay_state(audio_data* audio)
     s_ch3_cursor_valid = false;
     s_apu_tick_left = 0;
     s_apu_tick_rem_accum = 0;
+    s_apu_resume_event = -1;
+    s_apu_resume_offset = 0;
     audio->pre_frame_valid = false;
 }
 
@@ -2108,18 +2118,22 @@ __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
 }
 
 /* Render one emulated frame's event span [span_start, span_end) plus the
- * tail after its last event, emitting up to frame_samples samples.
- * Events beyond frame_samples (buffer clamp) are still applied so channel
- * state stays correct. Returns samples emitted. */
+ * tail after its last event, emitting up to frame_samples samples, covering
+ * frame positions [start_offset, start_offset + frame_samples).
+ * Stops before the first event beyond the budget and returns its index
+ * (span_end if the whole span was consumed); the caller holds the remainder
+ * for the next call via s_apu_resume_event / s_apu_resume_offset. */
 __shell static int replay_event_span(
     audio_data* restrict audio, int16_t* left, int16_t* right, int span_start, int span_end,
-    int frame_samples, int sample_rate
+    int frame_samples, int sample_rate, int start_offset
 )
 {
     int samples_per_tick = sample_rate / 512;
     int samples_per_tick_rem = sample_rate % 512;
     int tick_accum = 0;
     int offset = 0;
+
+    const uint32_t start_q16 = (uint32_t)start_offset << 16;
 
     /* Fractional CH3 gain pre-pass: sweep NR32 (CH3 volume) writes into
      * per-sample weighted gains (Q16 sub-sample positions) instead of
@@ -2148,8 +2162,11 @@ __shell static int replay_event_span(
                 uint32_t pos_q16 = (uint32_t)(((uint64_t)s_apu_events[i].apu_count *
                                                (uint64_t)sample_rate * 65536u) /
                                               DMG_CLOCK_FREQ_U);
+                if (pos_q16 < start_q16)
+                    continue;  // already applied in a prior partial call
+                pos_q16 -= start_q16;
                 if (pos_q16 > span_end_q16)
-                    pos_q16 = span_end_q16;
+                    break;  // beyond budget: defer to next call
                 if (pos_q16 < cursor_q16)
                     pos_q16 = cursor_q16;
                 apu_gain_fill(s_ch3_gain_q8, cursor_q16, pos_q16, cur, frame_samples);
@@ -2210,8 +2227,11 @@ __shell static int replay_event_span(
                 uint32_t pos_q16 = (uint32_t)(((uint64_t)s_apu_events[i].apu_count *
                                                (uint64_t)sample_rate * 65536u) /
                                               DMG_CLOCK_FREQ_U);
+                if (pos_q16 < start_q16)
+                    continue;  // already applied in a prior partial call
+                pos_q16 -= start_q16;
                 if (pos_q16 > span_end_q16)
-                    pos_q16 = span_end_q16;
+                    break;  // beyond budget: defer to next call
                 if (pos_q16 < cursor_q16)
                     pos_q16 = cursor_q16;
 
@@ -2245,13 +2265,18 @@ __shell static int replay_event_span(
         }
     }
 
+    int resume_idx = span_end;  // first un-applied event, or span_end if all consumed
     for (int i = span_start; i < span_end; i++)
     {
         // Absolute sample position: avoids cumulative floor drift.
-        int seg =
-            (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) - offset;
+        int seg = (int)((uint64_t)s_apu_events[i].apu_count * sample_rate / DMG_CLOCK_FREQ_U) -
+                  start_offset - offset;
         if (seg > frame_samples - offset)
-            seg = frame_samples - offset;
+        {
+            // Event beyond this call's budget: defer it (and the rest).
+            resume_idx = i;
+            break;
+        }
         if (seg < 0)
             seg = 0;
 
@@ -2367,7 +2392,7 @@ __shell static int replay_event_span(
         if (sq_gain[ch])
             audio->chans[ch].envelope_smooth = (int32_t)audio->chans[ch].volume << 8;
 
-    return offset;
+    return resume_idx;
 }
 
 __shell void audio_generate_accurate(
@@ -2392,7 +2417,8 @@ __shell void audio_generate_accurate(
          * on skipped generation ticks or frame-skip; without splitting, later
          * frames' events clamp to one sample point (audible flutter). Sentinels
          * also mark write-less frames, undetectable by apu_count decrease. */
-        int span_start = 0;
+        int span_start = (s_apu_resume_event >= 0) ? s_apu_resume_event : 0;
+        int start_offset = (s_apu_resume_event >= 0) ? s_apu_resume_offset : 0;
         int offset = 0;
 
         while (span_start < s_apu_event_count)
@@ -2410,31 +2436,56 @@ __shell void audio_generate_accurate(
                 if (s_apu_events[i].apu_count > end_count)
                     end_count = s_apu_events[i].apu_count;
 
-            int frame_samples;
+            int full_frame_samples;
             if (frame_complete)
             {
                 // Full frame: render to the sentinel's apu_count, not the
                 // last write — audio continues past the final event.
-                frame_samples = (int)((uint64_t)s_apu_events[span_end].apu_count * sample_rate /
-                                      DMG_CLOCK_FREQ_U);
+                full_frame_samples = (int)((uint64_t)s_apu_events[span_end].apu_count *
+                                           sample_rate / DMG_CLOCK_FREQ_U);
             }
             else
             {
-                frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
+                full_frame_samples = (int)((uint64_t)end_count * sample_rate / DMG_CLOCK_FREQ_U);
             }
+
+            // Remaining samples of this span, clamped to this call's budget.
+            int frame_samples = full_frame_samples - start_offset;
             if (frame_samples > len - offset)
                 frame_samples = len - offset;
             if (frame_samples < 0)
                 frame_samples = 0;
 
-            // Anchor to the span's first event, not 0 (split frames start mid-frame).
-            ch3_cursor_reset(audio, s_apu_events[span_start].apu_count);
+            if (frame_samples <= 0)
+            {
+                // No budget left for this span: hold it for the next call.
+                s_apu_resume_event = span_start;
+                s_apu_resume_offset = start_offset;
+                break;
+            }
 
-            offset += replay_event_span(
+            // Anchor cursor for fresh spans only; resume keeps the live cursor.
+            if (start_offset == 0)
+                ch3_cursor_reset(audio, s_apu_events[span_start].apu_count);
+
+            int resume = replay_event_span(
                 audio, left + offset, right + offset, span_start, span_end, frame_samples,
-                sample_rate
+                sample_rate, start_offset
             );
+            offset += frame_samples;
 
+            if (resume < span_end)
+            {
+                // Partial span: hold the un-applied events for the next call.
+                s_apu_resume_event = resume;
+                s_apu_resume_offset = start_offset + frame_samples;
+                break;
+            }
+
+            // Span fully consumed; any following span starts fresh.
+            s_apu_resume_event = -1;
+            s_apu_resume_offset = 0;
+            start_offset = 0;
             span_start = frame_complete ? span_end + 1 : span_end;
         }
 
@@ -2442,8 +2493,12 @@ __shell void audio_generate_accurate(
         right += offset;
         len -= offset;
 
-        s_apu_event_count = 0;
-        s_ch3_cursor_valid = false;
+        if (s_apu_resume_event < 0)
+        {
+            // All spans consumed: drop the batch and reset the cursor.
+            s_apu_event_count = 0;
+            s_ch3_cursor_valid = false;
+        }
     }
 
     int sample_rate = get_audio_sample_rate();
