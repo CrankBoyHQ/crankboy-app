@@ -279,6 +279,7 @@ __core_section("short") static void $(__gb_write16)(gb_s* restrict gb, u16 addr,
 
     // Fallback for other memory regions
     $(__gb_write)(gb, addr, v & 0xFF);
+    pgb_write_cycle += 4;
     $(__gb_write)(gb, addr + 1, v >> 8);
 }
 
@@ -351,7 +352,7 @@ __rare static u8 $(__gb_rare_instruction)(gb_s* restrict gb, uint8_t opcode)
     switch (opcode)
     {
     case 0x08:  // ld (a16), SP
-        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + 5 * 4);
+        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + 4 * 4);
         CORE_CALL_WRITE16(
             $(__gb_write16), gb, CORE_CALL_FETCH16($(__gb_fetch16), gb), gb->cpu_reg.sp
         );
