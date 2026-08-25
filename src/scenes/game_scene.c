@@ -1034,7 +1034,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
             {
                 DTCM_VERIFY();
 
-                audio_init(&context->gb->audio);
                 CB_GameScene_apply_settings(gameScene);
                 CB_reset_audio_sync_state();
 

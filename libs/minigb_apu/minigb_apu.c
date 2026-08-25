@@ -1596,7 +1596,7 @@ __apu_write void audio_write(
     }
 }
 
-void audio_init(audio_data* audio)
+void audio_reset(audio_data* audio)
 {
     chan* chans = audio->chans;
 
@@ -1616,49 +1616,16 @@ void audio_init(audio_data* audio)
     audio->capacitor_l = 0.0f;
     audio->capacitor_r = 0.0f;
 #endif
-    audio->div_apu_step = 3;
-    audio->pre_frame_div_apu_step = 3;
     audio->skip_next_apu_tick = false;
     s_apu_event_count = 0;
     s_ch3_cursor_valid = false;
     s_apu_tick_left = 0;
     s_apu_tick_rem_accum = 0;
-    audio->pre_frame_valid = true;
+    audio->pre_frame_valid = false;
 
-    memcpy(audio->pre_frame_chans, chans, sizeof(audio->pre_frame_chans));
-
-    // NRx4 registers set to $3F instead of the Pan Docs post-boot $BF: bit 7
-    // (trigger) must stay clear with skip-BIOS, or the game gets a spurious
-    // "ba-ding" at launch.
-
-    // Initialise IO registers.
-    { /* clang-format off */
-        static const uint8_t regs_init[] = {
-            0x80, 0xBF, 0xF3, 0xFF, 0x3F,
-            0xFF, 0x3F, 0x00, 0xFF, 0x3F,
-            0x7F, 0xFF, 0x9F, 0xFF, 0x3F,
-            0xFF, 0xFF, 0x00, 0x00, 0x3F,
-            0x77, 0xF3, 0xF1
-        };
-        /* clang-format on */
-
-        for (uint_fast8_t i = 0; i < sizeof(regs_init); ++i)
-            audio_write(audio, 0xFF10 + i, regs_init[i], 0);
-    }
-
-    // Initialise Wave Pattern RAM.
-    { /* clang-format off */
-        static const uint8_t wave_init[] = {
-            0xac, 0xdd, 0xda, 0x48,
-            0x36, 0x02, 0xcf, 0x16,
-            0x2c, 0x04, 0xe5, 0x2c,
-            0xac, 0xdd, 0xda, 0x48
-        };
-        /* clang-format on */
-
-        for (uint_fast8_t i = 0; i < sizeof(wave_init); ++i)
-            audio_write(audio, 0xFF30 + i, wave_init[i], 0);
-    }
+    // Zero the audio registers so the core's writes
+    // (incl. NR52 power-on) are deterministic across launches.
+    memset(audio_mem(audio), 0, AUDIO_MEM_SIZE);
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8; ++lfsr_selector_idx)
     {
@@ -1679,6 +1646,14 @@ void audio_init(audio_data* audio)
             }
         }
     }
+}
+
+void audio_reset_snapshot(audio_data* audio)
+{
+    memcpy(audio->pre_frame_chans, audio->chans, sizeof(audio->pre_frame_chans));
+    audio->pre_frame_div_apu_step = audio->div_apu_step;
+    audio->pre_frame_skip_apu_tick = audio->skip_next_apu_tick;
+    audio->pre_frame_valid = true;
 }
 
 void audio_reset_replay_state(audio_data* audio)

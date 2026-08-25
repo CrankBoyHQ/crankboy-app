@@ -73,8 +73,12 @@ __apu_write void audio_write(
     audio_data* audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 );
 
-/* Initialise audio driver. */
-void audio_init(audio_data* audio);
+/* Reset internal APU state and zero the audio registers; the core writes the
+ * register values and then seeds the replay snapshot via audio_reset_snapshot. */
+void audio_reset(audio_data* audio);
+
+/* Seed the replay snapshot from the current channel state. */
+void audio_reset_snapshot(audio_data* audio);
 
 /* Debug: skip rendering per channel (bit0=CH1,1=CH2,2=CH3,
  * 3=CH4). Freezes channel state while set; measurement only. */

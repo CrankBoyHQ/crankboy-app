@@ -6471,6 +6471,9 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     pgb_hle_skip_logged = 0;
 #endif
 
+    /* Reset APU internal state + zero registers; values written below. */
+    audio_reset(&gb->audio);
+
     /* Initialise MBC values. */
     gb->selected_rom_bank = 1;
     gb->cart_ram_bank = 0;
@@ -6529,6 +6532,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7F;
         gb->gb_reg.DIV = 0xAC;
+        gb->counter.div_count = 0x28;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
@@ -6554,20 +6558,22 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF11, 0xBF);
         __gb_write_full(gb, 0xFF12, 0xF3);
         __gb_write_full(gb, 0xFF13, 0xFF);
-        __gb_write_full(gb, 0xFF14, 0xBF);
+        __gb_write_full(gb, 0xFF14, 0x3F);
+        __gb_write_full(gb, 0xFF15, 0xFF);
         __gb_write_full(gb, 0xFF16, 0x3F);
         __gb_write_full(gb, 0xFF17, 0x00);
         __gb_write_full(gb, 0xFF18, 0xFF);
-        __gb_write_full(gb, 0xFF19, 0xBF);
+        __gb_write_full(gb, 0xFF19, 0x3F);
         __gb_write_full(gb, 0xFF1A, 0x7F);
         __gb_write_full(gb, 0xFF1B, 0xFF);
         __gb_write_full(gb, 0xFF1C, 0x9F);
         __gb_write_full(gb, 0xFF1D, 0xFF);
-        __gb_write_full(gb, 0xFF1E, 0xBF);
+        __gb_write_full(gb, 0xFF1E, 0x3F);
+        __gb_write_full(gb, 0xFF1F, 0xFF);
         __gb_write_full(gb, 0xFF20, 0xFF);
         __gb_write_full(gb, 0xFF21, 0x00);
         __gb_write_full(gb, 0xFF22, 0x00);
-        __gb_write_full(gb, 0xFF23, 0xBF);
+        __gb_write_full(gb, 0xFF23, 0x3F);
         __gb_write_full(gb, 0xFF24, 0x77);
         __gb_write_full(gb, 0xFF25, 0xF3);
         __gb_write_full(gb, 0xFF26, 0xF1);
@@ -6613,7 +6619,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         memset(gb->cgb_obj_palette_gray_alt, 0, sizeof(gb->cgb_obj_palette_gray_alt));
 
         /* CGB internal timer is 0xAC28 */
-        gb->counter.div_count = 0x28;
         gb->counter.lcd_count = 0;
         gb->lcd_mode = LCD_VBLANK;
     }
@@ -6637,6 +6642,7 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.SB = 0x00;
         gb->gb_reg.SC = 0x7E;
         gb->gb_reg.DIV = 0xAB;
+        gb->counter.div_count = 0xCC;
         gb->gb_reg.TIMA = 0x00;
         gb->gb_reg.TMA = 0x00;
         gb->gb_reg.TAC = 0xF8;
@@ -6647,20 +6653,22 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF11, 0xBF);
         __gb_write_full(gb, 0xFF12, 0xF3);
         __gb_write_full(gb, 0xFF13, 0xFF);
-        __gb_write_full(gb, 0xFF14, 0xBF);
+        __gb_write_full(gb, 0xFF14, 0x3F);
+        __gb_write_full(gb, 0xFF15, 0xFF);
         __gb_write_full(gb, 0xFF16, 0x3F);
         __gb_write_full(gb, 0xFF17, 0x00);
         __gb_write_full(gb, 0xFF18, 0xFF);
-        __gb_write_full(gb, 0xFF19, 0xBF);
+        __gb_write_full(gb, 0xFF19, 0x3F);
         __gb_write_full(gb, 0xFF1A, 0x7F);
         __gb_write_full(gb, 0xFF1B, 0xFF);
         __gb_write_full(gb, 0xFF1C, 0x9F);
         __gb_write_full(gb, 0xFF1D, 0xFF);
-        __gb_write_full(gb, 0xFF1E, 0xBF);
+        __gb_write_full(gb, 0xFF1E, 0x3F);
+        __gb_write_full(gb, 0xFF1F, 0xFF);
         __gb_write_full(gb, 0xFF20, 0xFF);
         __gb_write_full(gb, 0xFF21, 0x00);
         __gb_write_full(gb, 0xFF22, 0x00);
-        __gb_write_full(gb, 0xFF23, 0xBF);
+        __gb_write_full(gb, 0xFF23, 0x3F);
         __gb_write_full(gb, 0xFF24, 0x77);
         __gb_write_full(gb, 0xFF25, 0xF3);
         __gb_write_full(gb, 0xFF26, 0xF1);
@@ -6702,7 +6710,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
 
         // DMG internal timer: DIV=0xAB, sub-tick=0xCC
         // (204 T-cycles per dmg-timing-spec post-boot)
-        gb->counter.div_count = 0xCC;
         gb->display.current_mode3_cycles = 172;
         gb->display.current_mode0_cycles = 204;
         gb->counter.lcd_count = 144;
@@ -6713,6 +6720,9 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
     gb->counter.tima_count = 0;
     gb->counter.serial_count = 0;
     gb->counter.lcd_off_count = 0;
+
+    /* Seed the replay snapshot now that the register values are final. */
+    audio_reset_snapshot(&gb->audio);
 
     gb->printer_stub_state = 0;
     gb->printer_data_len = 0;
