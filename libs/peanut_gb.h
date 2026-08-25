@@ -184,8 +184,6 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
  * STAT/LYC ISR latency and the STAT/LY peek window independently of total
  * batch length (VBlank LYC chains need cross + dispatch + ISR < 456). */
 #define BATCH_CROSS_MAX 64
-/* Total-length backstop (PPU T). */
-#define BATCH_BUDGET_MAX 512
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
