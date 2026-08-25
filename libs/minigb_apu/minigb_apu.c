@@ -62,7 +62,6 @@ static bool s_ch3_cursor_valid;
 static uint8_t s_ch3_cursor_pos;    // sample index 0-31
 static uint32_t s_ch3_step_period;  // apu_count cycles per step: 2 * (2048 - freq)
 static int64_t s_ch3_last_step;     // apu_count of most recent step (may precede frame start)
-static int64_t s_ch3_next_step;     // apu_count of next scheduled step
 
 static inline __attribute__((always_inline)) int get_audio_sample_rate(void);
 
@@ -83,7 +82,6 @@ __shell static void ch3_cursor_reanchor(const audio_data* audio, uint32_t apu_co
     uint32_t frac = (uint32_t)(((uint64_t)c->freq_counter * s_ch3_step_period) /
                                (uint64_t)get_audio_sample_rate());
     s_ch3_last_step = (int64_t)apu_count - (int64_t)frac;
-    s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
 __shell static void ch3_cursor_reset(const audio_data* audio, uint32_t base_count)
@@ -104,7 +102,6 @@ __shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_cou
     uint32_t steps = (uint32_t)(dist / s_ch3_step_period);
     s_ch3_cursor_pos = (s_ch3_cursor_pos + steps) & 31;
     s_ch3_last_step += (int64_t)steps * s_ch3_step_period;
-    s_ch3_next_step = s_ch3_last_step + s_ch3_step_period;
 }
 
 /* DMG write window: the write's 4-dot bus transaction must overlap CH3's byte
