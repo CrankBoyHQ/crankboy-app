@@ -32,7 +32,14 @@ typedef struct
     uint32_t apu_count;
     uint16_t addr;
     uint8_t val;
+    /* NR52 power-on only: frame-sequencer phase captured at emulation time
+     * (replay would re-derive it from post-frame DIV). bits 0-2 = div_apu_step,
+     * bit 6 = valid, bit 7 = skip_next_apu_tick. */
+    uint8_t div_step;
 } apu_event_t;
+#define APU_EVENT_PHASE_MASK 0x07u
+#define APU_EVENT_PHASE_VALID 0x40u
+#define APU_EVENT_PHASE_SKIP 0x80u
 static apu_event_t s_apu_events[APU_EVENT_CAP];
 static uint16_t s_apu_event_count;
 
@@ -79,7 +86,8 @@ __shell static void ch3_cursor_reanchor(const audio_data* audio, uint32_t apu_co
     s_ch3_step_period = ch3_step_period(c);
     // freq_counter holds fractional progress toward the next step;
     // backdate last_step by it.
-    uint32_t frac = (uint32_t)(((uint64_t)c->freq_counter * s_ch3_step_period) /
+    uint32_t frac = (uint32_t)(((uint64_t)c->freq_counter * s_ch3_step_period +
+                                (uint64_t)get_audio_sample_rate() / 2) /
                                (uint64_t)get_audio_sample_rate());
     s_ch3_last_step = (int64_t)apu_count - (int64_t)frac;
 }
@@ -105,15 +113,13 @@ __shell static void ch3_cursor_advance(const audio_data* audio, uint32_t apu_cou
 }
 
 /* DMG write window: the write's 4-dot bus transaction must overlap CH3's byte
- * read (writes are timestamped at their end). min(step_period, 4) bounds the
- * PDM carrier. */
+ * read (writes are timestamped at their end). */
 static inline bool ch3_cursor_just_read(uint32_t apu_count)
 {
     int64_t last_byte_read =
         s_ch3_last_step - ((s_ch3_cursor_pos & 1) ? (int64_t)s_ch3_step_period : 0);
     int64_t delta = (int64_t)apu_count - last_byte_read;
-    uint32_t window = s_ch3_step_period < 4u ? s_ch3_step_period : 4u;
-    return delta >= 0 && delta <= (int64_t)window;
+    return delta >= 0 && delta <= 4;
 }
 
 /* Fractional CH3 gain for NR32 PDM (Pokemon Yellow cries): per-sample
@@ -1329,6 +1335,7 @@ __apu_write void audio_write(
         s_apu_events[s_apu_event_count].apu_count = apu_count;
         s_apu_events[s_apu_event_count].addr = addr;
         s_apu_events[s_apu_event_count].val = val;
+        s_apu_events[s_apu_event_count].div_step = 0;
         s_apu_event_count++;
     }
     uint_fast8_t i;
@@ -1359,14 +1366,21 @@ __apu_write void audio_write(
             if (gb->gb_reg.DIV & mask)
                 audio->skip_next_apu_tick = true;
 
-            int cgb_fast = gb->cgb_fast_mode_active;
-            if (!cgb_fast)
-            {
-                uint32_t reg_div16 = ((uint32_t)gb->gb_reg.DIV << 8) | gb->counter.div_count;
-                int S_pon = (reg_div16 >> 11) & 7;
-                int a = ((reg_div16 & 0x7FF) >= 1023) ? 1 : 0;
-                audio->div_apu_step = (S_pon + a - 1) & 7;
-            }
+            /* CGB fast mode: DIV runs at 2x with a 7-bit sub-count, so the
+             * frame sequencer (512 Hz) sits on DIV bits 4-6 instead of 3-5. */
+            uint32_t reg_div16 = ((uint32_t)gb->gb_reg.DIV << (gb->cgb_fast_mode_active ? 7 : 8)) |
+                                 gb->counter.div_count;
+            int S_pon = (reg_div16 >> 11) & 7;
+            int a = ((reg_div16 & 0x7FF) >= 1023) ? 1 : 0;
+            audio->div_apu_step = (S_pon + a - 1) & 7;
+
+            /* Capture the phase for replay (replay re-runs audio_write with
+             * post-frame DIV). Store it in the just-logged event. */
+            if (audio->pre_frame_valid && preferences_sound_mode == 2 && s_apu_event_count > 0 &&
+                s_apu_events[s_apu_event_count - 1].addr == 0xFF26)
+                s_apu_events[s_apu_event_count - 1].div_step =
+                    (audio->div_apu_step & APU_EVENT_PHASE_MASK) | APU_EVENT_PHASE_VALID |
+                    (audio->skip_next_apu_tick ? APU_EVENT_PHASE_SKIP : 0);
         }
         return;
     }
@@ -1401,6 +1415,10 @@ __apu_write void audio_write(
                     return;
             }
             uint8_t wave_idx = (s_ch3_cursor_valid ? s_ch3_cursor_pos : (uint8_t)c->val) >> 1;
+            // CGB: on the exact fetch cycle the channel's fetch wins and the
+            // access targets the next byte (vba-m 912cc37).
+            if (s_ch3_cursor_valid && apu_count == s_ch3_last_step && !(s_ch3_cursor_pos & 1))
+                wave_idx = (wave_idx + 1) & 0xF;
             c->wave.sum_valid = false;
             audio_mem(audio)[0xFF30 + wave_idx - AUDIO_ADDR_COMPENSATION] = val;
             return;
@@ -2084,6 +2102,7 @@ __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
         s_apu_events[s_apu_event_count].apu_count = apu_count;
         s_apu_events[s_apu_event_count].addr = APU_FRAME_END_ADDR;
         s_apu_events[s_apu_event_count].val = 0;
+        s_apu_events[s_apu_event_count].div_step = 0;
         s_apu_event_count++;
     }
 }
@@ -2286,6 +2305,15 @@ __shell static int replay_event_span(
 
         audio_write(audio, s_apu_events[i].addr, s_apu_events[i].val, s_apu_events[i].apu_count);
 
+        // NR52 power-on: restore the phase captured at emulation time (audio_write
+        // re-derived it from post-frame DIV).
+        if (s_apu_events[i].addr == 0xFF26 && (s_apu_events[i].val & 0x80) &&
+            (s_apu_events[i].div_step & APU_EVENT_PHASE_VALID))
+        {
+            audio->div_apu_step = s_apu_events[i].div_step & APU_EVENT_PHASE_MASK;
+            audio->skip_next_apu_tick = (s_apu_events[i].div_step & APU_EVENT_PHASE_SKIP) != 0;
+        }
+
         // Re-anchor cursor on CH3-affecting writes (NR30/NR33/NR34/NR52).
         if (s_ch3_cursor_valid)
         {
@@ -2399,8 +2427,8 @@ __shell void audio_generate_accurate(
             if (frame_samples < 0)
                 frame_samples = 0;
 
-            // Anchor CH3 cursor to frame start (apu_count resets each frame).
-            ch3_cursor_reset(audio, 0);
+            // Anchor to the span's first event, not 0 (split frames start mid-frame).
+            ch3_cursor_reset(audio, s_apu_events[span_start].apu_count);
 
             offset += replay_event_span(
                 audio, left + offset, right + offset, span_start, span_end, frame_samples,
