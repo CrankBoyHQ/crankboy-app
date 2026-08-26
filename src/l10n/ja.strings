@@ -274,3 +274,4 @@
 "setdsc_load_state" = "作成したスナップショットを復元します。";
 "setdsc_load_state_unavailable" = "このemucoreはステートセーブに対応していません。";
 "setdsc_manage_rom" = "ROM情報の表示と、ROMや記録、カバーアートの削除。";
+"setdsc_patches_hacks" = "ゲームパッチ（ハックロム）の管理やダウンロードができます。\n\nパッチを適用する前に、ゲームに対応しているかチェックしてください。\n\nペアレンタルロックは使用できます。";
