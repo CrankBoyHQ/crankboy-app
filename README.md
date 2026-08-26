@@ -8,6 +8,7 @@
 ](https://discord.com/channels/675983554655551509/1378119815641694278)
 [![Forum Thread](https://img.shields.io/badge/Forum_Thread-yellow?logo=discourse&label=PlayDate)](https://devforum.play.date/t/60-fps-gameboy-emulation/22865)
 [![Website](https://img.shields.io/website?url=https%3A%2F%2Fcrankboy.app%2F&up_message=Online&down_color=Down&logo=htmx&logoColor=white&label=Website)](https://crankboy.app/)
+[![Translate on Weblate](https://img.shields.io/badge/translate-weblate-brightgreen?logo=weblate&logoColor=white)](https://hosted.weblate.org/projects/crankboy)
 [![Translation status](https://hosted.weblate.org/widget/crankboy/crankboy-app/svg-badge.svg)](https://hosted.weblate.org/engage/crankboy/)
 
 <p align="center">
