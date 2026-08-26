@@ -2482,14 +2482,6 @@ __shell void audio_generate_accurate(
                 break;
             }
 
-            if (frame_samples < full_frame_samples - start_offset)
-            {
-                // Tail truncated: resume as an empty span to render the rest.
-                s_apu_resume_event = span_end;
-                s_apu_resume_offset = start_offset + frame_samples;
-                break;
-            }
-
             // Span fully consumed; any following span starts fresh.
             s_apu_resume_event = -1;
             s_apu_resume_offset = 0;
