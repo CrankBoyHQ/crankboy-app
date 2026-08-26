@@ -6556,7 +6556,10 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         /* Sound registers. NR52 first: audio_write drops NRx writes while
          * the APU is off (audio_reset zeroed NR52); power-on must precede
          * the register writes or they are lost (Road Rash stayed silent
-         * until its sound driver did a full init mid-race). */
+         * until its sound driver did a full init mid-race).
+         * NRx4 stay $3F (trigger clear), not Pan Docs' post-boot $BF: a
+         * trigger at init causes a spurious "ba-ding". Reads are masked
+         * with $BF in audio_read, so games see the Pan Docs value anyway. */
         __gb_write_full(gb, 0xFF26, 0xF1);
         __gb_write_full(gb, 0xFF10, 0x80);
         __gb_write_full(gb, 0xFF11, 0xBF);
@@ -6654,7 +6657,10 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         /* Sound registers. NR52 first: audio_write drops NRx writes while
          * the APU is off (audio_reset zeroed NR52); power-on must precede
          * the register writes or they are lost (Road Rash stayed silent
-         * until its sound driver did a full init mid-race). */
+         * until its sound driver did a full init mid-race).
+         * NRx4 stay $3F (trigger clear), not Pan Docs' post-boot $BF: a
+         * trigger at init causes a spurious "ba-ding". Reads are masked
+         * with $BF in audio_read, so games see the Pan Docs value anyway. */
         __gb_write_full(gb, 0xFF26, 0xF1);
         __gb_write_full(gb, 0xFF10, 0x80);
         __gb_write_full(gb, 0xFF11, 0xBF);
