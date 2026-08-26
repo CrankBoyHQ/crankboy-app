@@ -46,8 +46,7 @@
 "lib_building_list" = "ゲームリストを構築中...";
 "lib_caching_covers" = "カバーアートをキャッシュ中...";
 "lib_cgb_prompt_cgb_compat" = "このROMはCGBに対応しています。\n\nDMGで起動（推奨）するか、CGBでの起動を試せます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
-"lib_cgb_prompt_cgb_only_one_time" = "このROMはCGB専用です。\n\nCGBモードで起動します。\n\n CrankBoyのCGB（カラー）エミュレーションは実験的機能です。"
-"lib_cgb_prompt_cgb_only" = "このROMはCGB専用です。\n\n通常のDMG ROMとして起動を試すか、CGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
+"lib_cgb_prompt_cgb_only_one_time" = "このROMはCGB専用です。\n\nCGBモードで起動します。\n\n CrankBoyのCGB（カラー）エミュレーションは実験的機能です。\"\"lib_cgb_prompt_cgb_only\" = \"このROMはCGB専用です。\n\n通常のDMG ROMとして起動を試すか、CGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
 "lib_cgb_prompt_dmg" = "このROMはDMG専用です。\n\nDMGモード（推奨）または強制的にCGBモードで起動できます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
 "lib_error" = "エラー";
 "lib_homebrew_banner" = "Homebrew Hub からホームブレューゲームを無料でダウンロードできます\n\nこの機能はまだ実験段階です\n\nペアレンタルロックを利用できます";
@@ -99,7 +98,7 @@
 "setdsc_behavior" = "巻き戻し、オーバークロック、スクリプトサポート";
 "setdsc_cgb" = "CGBのCPU速度制御、HLE処理など";
 "setdsc_display" = "フレームレート、ディザパターン、スケーリング、画面揺れ補正など";
-"setdsc_general_library" = "パッチ、セーブデータ、設定スコープの管理を行います。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
+"setdsc_general_library" = "パッチ、セーブデータ、設定スコープの管理を行えます。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
 "setdsc_input" = "クランクの機能、ドック・アンドック時の割り当て、ボタンの割り替えなど";
 "setdsc_just_now" = "たった今";
 "setdsc_library" = "ゲームリストの外観、並べ替え、起動動作、CGBプロンプトオプションなど\n\nライブラリのスコープ内で表示。";
@@ -264,3 +263,13 @@
 "status_scanning_images" = "新しい画像を検索中...";
 "status_scanning" = "ゲームを検索中...";
 "status_updating_forwarders" = "フォワーダーを更新中...";
+"setdsc_general_game" = "スナップショットのセーブやロード、設定スコープの管理を行えます。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
+"setdsc_general_noscope" = "設定スコープの管理";
+"setdsc_script" = "ゲーム特有の設定はカスタムスクリプトにより提供されています。";
+"setdsc_ui_sounds" = "インターフェイスのサウンドのON/OFFを設定します。";
+"setopt_lock_override" = "ロックボタン変更";
+"setdsc_save_state" = "今後ロードできるスナップショットを作成します。";
+"setdsc_save_state_unavailable" = "このemucoreはステートセーブに対応していません。";
+"setdsc_load_state" = "作成したスナップショットを復元します。";
+"setdsc_load_state_unavailable" = "このemucoreはステートセーブに対応していません。";
+"setdsc_manage_rom" = "ROM情報の表示と、ROMや記録、カバーアートの削除。";
