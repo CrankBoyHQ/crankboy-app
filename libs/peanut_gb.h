@@ -6553,7 +6553,11 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.WX = 0x00;
         gb->gb_reg.IE = 0x00;
 
-        /* Sound registers */
+        /* Sound registers. NR52 first: audio_write drops NRx writes while
+         * the APU is off (audio_reset zeroed NR52); power-on must precede
+         * the register writes or they are lost (Road Rash stayed silent
+         * until its sound driver did a full init mid-race). */
+        __gb_write_full(gb, 0xFF26, 0xF1);
         __gb_write_full(gb, 0xFF10, 0x80);
         __gb_write_full(gb, 0xFF11, 0xBF);
         __gb_write_full(gb, 0xFF12, 0xF3);
@@ -6576,7 +6580,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF23, 0x3F);
         __gb_write_full(gb, 0xFF24, 0x77);
         __gb_write_full(gb, 0xFF25, 0xF3);
-        __gb_write_full(gb, 0xFF26, 0xF1);
 
         /* Wave RAM */
         __gb_write_full(gb, 0xFF30, 0xAC);
@@ -6648,7 +6651,11 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         gb->gb_reg.TAC = 0xF8;
         gb->gb_reg.IF = 0xE1;
 
-        /* Sound registers */
+        /* Sound registers. NR52 first: audio_write drops NRx writes while
+         * the APU is off (audio_reset zeroed NR52); power-on must precede
+         * the register writes or they are lost (Road Rash stayed silent
+         * until its sound driver did a full init mid-race). */
+        __gb_write_full(gb, 0xFF26, 0xF1);
         __gb_write_full(gb, 0xFF10, 0x80);
         __gb_write_full(gb, 0xFF11, 0xBF);
         __gb_write_full(gb, 0xFF12, 0xF3);
@@ -6671,7 +6678,6 @@ __section__(".rare") void gb_reset(gb_s* gb, bool cgb_mode)
         __gb_write_full(gb, 0xFF23, 0x3F);
         __gb_write_full(gb, 0xFF24, 0x77);
         __gb_write_full(gb, 0xFF25, 0xF3);
-        __gb_write_full(gb, 0xFF26, 0xF1);
 
         /* Wave RAM */
         __gb_write_full(gb, 0xFF30, 0xAC);
