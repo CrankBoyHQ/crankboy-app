@@ -1360,7 +1360,10 @@ __apu_write void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
-    if (audio->pre_frame_valid && preferences_sound_mode == 2)
+    /* No recording under turbo (uncap fps): generation can never keep up
+     * with unthrottled emulation; the batch would only overflow. Live state
+     * application continues, and generation falls through to live render. */
+    if (audio->pre_frame_valid && preferences_sound_mode == 2 && preferences_uncap_fps == 0)
     {
         if (s_apu_event_count < APU_EVENT_CAP)
         {
@@ -2166,7 +2169,8 @@ __shell int audio_replay_pending_frames(void)
  * core at the end of gb_run_frame with the frame's final apu_count. */
 __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
 {
-    if (audio->pre_frame_valid && preferences_sound_mode == 2)
+    /* No recording under turbo (uncap fps): see audio_write. */
+    if (audio->pre_frame_valid && preferences_sound_mode == 2 && preferences_uncap_fps == 0)
     {
         if (s_apu_event_count < APU_EVENT_CAP)
         {

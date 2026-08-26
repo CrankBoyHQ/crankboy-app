@@ -2488,9 +2488,11 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
          * frames-equivalent; the event batch would absorb the mismatch and
          * grow without bound. While a large backlog persists, skip emulation
          * this tick and drain instead; the display holds the last frame.
-         * Engages ~1 tick per few seconds in steady state. */
+         * Engages ~1 tick per few seconds in steady state. Turbo (uncap
+         * fps) is exempt: recording is off, so there is no backlog. */
         if (!skip_frame && !gameScene->rewind.active && preferences_sound_mode == 2 &&
-            gameScene->audioEnabled && audio_replay_pending_frames() > 8)
+            preferences_uncap_fps == 0 && gameScene->audioEnabled &&
+            audio_replay_pending_frames() > 8)
         {
             skip_frame = true;
             tick_audio_sync(gameScene);
