@@ -24,9 +24,10 @@
 
 /* Per-frame APU register write events for cycle-accurate replay.
  * File-static in main RAM (gb_s is DTCM-resident); transient, never
- * serialized. Sized for two frames at the CPU-max write rate (LDH every
- * 12 dots = 5852/frame). */
-#define APU_EVENT_CAP 16384
+ * serialized. Sized for ~7 frames at the CPU-max write rate
+ * (LDH every 12 dots = 5852/frame); the shell throttles emulation
+ * (audio_replay_pending_frames) long before this fills. */
+#define APU_EVENT_CAP 32768
 typedef struct
 {
     uint32_t apu_count;
@@ -75,6 +76,23 @@ static int64_t s_ch3_last_step;     // apu_count of most recent step (may preced
  * the rest for the next call (instead of applying-then-dropping their samples). */
 static int s_apu_resume_event = -1;  // index of first un-applied event, -1 = none
 static int s_apu_resume_offset = 0;  // samples already rendered of the pending span
+
+/* Replay overflow + backlog state. If the event batch hits APU_EVENT_CAP,
+ * dropped events/sentinels leave holes — replaying would corrupt audio — so
+ * the shell drops the batch and rebaselines (audio_take_replay_overflow).
+ * s_apu_pending_frames tracks frames recorded but not yet consumed by
+ * replay; the shell uses it for drain override and pause-throttling. */
+static bool s_apu_replay_overflow;
+static int s_apu_pending_frames;
+
+/* Replay-domain wave RAM image. Replay renders CH3 behind emulation, but
+ * wave RAM writes land in live audio_mem immediately (CPU-visible). At
+ * stream boundaries (sample end -> wave RAM zeroed/reloaded) replay would
+ * read future data in span-start windows and frame tails = silence gaps.
+ * Renderers (and wave writes during replay) use this image instead; it is
+ * synced from live state whenever the batch drains. */
+static uint8_t s_replay_wave[16];
+static uint8_t* s_wave_render_src;  // NULL = live audio_mem
 
 static inline __attribute__((always_inline)) int get_audio_sample_rate(void);
 
@@ -714,12 +732,18 @@ __apu_sample_gen static void update_square(
     }
 }
 
+static inline __attribute__((always_inline)) uint8_t* wave_render_ram(audio_data* audio)
+{
+    return s_wave_render_src ? s_wave_render_src
+                             : audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
+}
+
 static inline __attribute__((always_inline)) int8_t
 wave_sample(audio_data* audio, const unsigned int pos, const unsigned int volume)
 {
     uint8_t sample;
 
-    sample = audio_mem(audio)[(0xFF30 + pos / 2) - AUDIO_ADDR_COMPENSATION];
+    sample = wave_render_ram(audio)[pos / 2];
     if (pos & 1)
     {
         sample &= 0xF;
@@ -765,7 +789,7 @@ __apu_sample_gen static void update_wave(
         if (c->powered && c->wave.pulsed)
         {
             gb_s* gb = (gb_s*)((uint8_t*)audio - offsetof(gb_s, audio));
-            uint8_t* wave_ram = audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION);
+            uint8_t* wave_ram = wave_render_ram(audio);
             uint8_t corrupt_byte = wave_ram[gb->cpu_reg.pc & 0xF];
             int8_t nibble = (int8_t)(corrupt_byte >> 4) - 8;
             c->wave.sample = c->volume ? (nibble >> (c->volume - 1)) : 0;
@@ -1336,13 +1360,20 @@ __apu_write void audio_write(
     audio_data* restrict audio, const uint16_t addr, const uint8_t val, uint32_t apu_count
 )
 {
-    if (audio->pre_frame_valid && s_apu_event_count < APU_EVENT_CAP && preferences_sound_mode == 2)
+    if (audio->pre_frame_valid && preferences_sound_mode == 2)
     {
-        s_apu_events[s_apu_event_count].apu_count = apu_count;
-        s_apu_events[s_apu_event_count].addr = addr;
-        s_apu_events[s_apu_event_count].val = val;
-        s_apu_events[s_apu_event_count].div_step = 0;
-        s_apu_event_count++;
+        if (s_apu_event_count < APU_EVENT_CAP)
+        {
+            s_apu_events[s_apu_event_count].apu_count = apu_count;
+            s_apu_events[s_apu_event_count].addr = addr;
+            s_apu_events[s_apu_event_count].val = val;
+            s_apu_events[s_apu_event_count].div_step = 0;
+            s_apu_event_count++;
+        }
+        else
+        {
+            s_apu_replay_overflow = true;
+        }
     }
     uint_fast8_t i;
     chan* chans = audio->chans;
@@ -1399,6 +1430,8 @@ __apu_write void audio_write(
         {
             audio->chans[2].wave.sum_valid = false;
             audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
+            if (s_wave_render_src)
+                s_wave_render_src[addr - 0xFF30] = val;
         }
         return;
     }
@@ -1427,12 +1460,16 @@ __apu_write void audio_write(
                 wave_idx = (wave_idx + 1) & 0xF;
             c->wave.sum_valid = false;
             audio_mem(audio)[0xFF30 + wave_idx - AUDIO_ADDR_COMPENSATION] = val;
+            if (s_wave_render_src)
+                s_wave_render_src[wave_idx] = val;
             return;
         }
         c->wave.sum_valid = false;
     }
 
     audio_mem(audio)[addr - AUDIO_ADDR_COMPENSATION] = val;
+    if (s_wave_render_src && addr >= 0xFF30 && addr <= 0xFF3F)
+        s_wave_render_src[addr - 0xFF30] = val;
 
     i = (addr - AUDIO_ADDR_COMPENSATION) / 5;
 
@@ -1644,11 +1681,15 @@ void audio_reset(audio_data* audio)
     s_apu_tick_rem_accum = 0;
     s_apu_resume_event = -1;
     s_apu_resume_offset = 0;
+    s_apu_replay_overflow = false;
+    s_apu_pending_frames = 0;
     audio->pre_frame_valid = false;
 
     // Zero the audio registers so the core's writes
     // (incl. NR52 power-on) are deterministic across launches.
     memset(audio_mem(audio), 0, AUDIO_MEM_SIZE);
+    memset(s_replay_wave, 0, sizeof(s_replay_wave));
+    s_wave_render_src = NULL;
 
     for (uint8_t lfsr_selector_idx = 0; lfsr_selector_idx < 8; ++lfsr_selector_idx)
     {
@@ -1687,6 +1728,12 @@ void audio_reset_replay_state(audio_data* audio)
     s_apu_tick_rem_accum = 0;
     s_apu_resume_event = -1;
     s_apu_resume_offset = 0;
+    s_apu_replay_overflow = false;
+    s_apu_pending_frames = 0;
+    s_wave_render_src = NULL;
+    memcpy(
+        s_replay_wave, audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION), sizeof(s_replay_wave)
+    );
     audio->pre_frame_valid = false;
 }
 
@@ -2103,17 +2150,37 @@ __shell static void apu_div_tick_sched_advance(audio_data* audio, int samples, i
     s_apu_tick_left -= (uint16_t)samples;
 }
 
+__shell bool audio_take_replay_overflow(void)
+{
+    bool v = s_apu_replay_overflow;
+    s_apu_replay_overflow = false;
+    return v;
+}
+
+__shell int audio_replay_pending_frames(void)
+{
+    return s_apu_pending_frames;
+}
+
 /* Record an emulated frame's end as a sentinel event. Called by the CPU
  * core at the end of gb_run_frame with the frame's final apu_count. */
 __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
 {
-    if (audio->pre_frame_valid && s_apu_event_count < APU_EVENT_CAP && preferences_sound_mode == 2)
+    if (audio->pre_frame_valid && preferences_sound_mode == 2)
     {
-        s_apu_events[s_apu_event_count].apu_count = apu_count;
-        s_apu_events[s_apu_event_count].addr = APU_FRAME_END_ADDR;
-        s_apu_events[s_apu_event_count].val = 0;
-        s_apu_events[s_apu_event_count].div_step = 0;
-        s_apu_event_count++;
+        if (s_apu_event_count < APU_EVENT_CAP)
+        {
+            s_apu_events[s_apu_event_count].apu_count = apu_count;
+            s_apu_events[s_apu_event_count].addr = APU_FRAME_END_ADDR;
+            s_apu_events[s_apu_event_count].val = 0;
+            s_apu_events[s_apu_event_count].div_step = 0;
+            s_apu_event_count++;
+            s_apu_pending_frames++;
+        }
+        else
+        {
+            s_apu_replay_overflow = true;
+        }
     }
 }
 
@@ -2421,6 +2488,9 @@ __shell void audio_generate_accurate(
         int start_offset = (s_apu_resume_event >= 0) ? s_apu_resume_offset : 0;
         int offset = 0;
 
+        /* Render CH3 (and apply wave writes) against the replay-domain wave
+         * image for the whole replay block. */
+        s_wave_render_src = s_replay_wave;
         while (span_start < s_apu_event_count)
         {
             // Span = run of write events up to the next sentinel or batch end.
@@ -2482,12 +2552,42 @@ __shell void audio_generate_accurate(
                 break;
             }
 
+            if (frame_samples < full_frame_samples - start_offset)
+            {
+                if (frame_complete)
+                {
+                    /* Tail truncated (all events fit, trailing samples
+                     * didn't): resume at the sentinel as an empty span so
+                     * the tail renders as live samples. Dropping it would
+                     * advance CH3 position and the 512 Hz schedule by fewer
+                     * samples on small chunks than large ones, drifting the
+                     * wave position against the absolute event timeline. */
+                    s_apu_resume_event = span_end;
+                    s_apu_resume_offset = start_offset + frame_samples;
+                }
+                else
+                {
+                    /* Incomplete span (batch end without sentinel => event
+                     * cap overflow). Never resume: the next events start a
+                     * new frame at apu_count 0, and the stale start_offset
+                     * would skip their gain-timeline entries. Drop the tail;
+                     * overflow handling drops the batch and rebaselines. */
+                    s_apu_resume_event = -1;
+                    s_apu_resume_offset = 0;
+                }
+                break;
+            }
+
             // Span fully consumed; any following span starts fresh.
             s_apu_resume_event = -1;
             s_apu_resume_offset = 0;
+            if (frame_complete)
+                s_apu_pending_frames--;
             start_offset = 0;
             span_start = frame_complete ? span_end + 1 : span_end;
         }
+
+        s_wave_render_src = NULL;
 
         left += offset;
         right += offset;
@@ -2495,9 +2595,27 @@ __shell void audio_generate_accurate(
 
         if (s_apu_resume_event < 0)
         {
-            // All spans consumed: drop the batch and reset the cursor.
+            /* All spans consumed: drop the batch, reset the cursor, and
+             * re-sync the wave image (live and replay positions coincide). */
             s_apu_event_count = 0;
             s_ch3_cursor_valid = false;
+            memcpy(
+                s_replay_wave, audio_mem(audio) + (0xFF30 - AUDIO_ADDR_COMPENSATION),
+                sizeof(s_replay_wave)
+            );
+        }
+        else if (s_apu_resume_event > 0)
+        {
+            /* Partial consumption: purge the consumed prefix so the array
+             * tracks pending frames instead of growing to the cap. The
+             * resume offset counts samples within the now-first span, so it
+             * carries over unchanged. */
+            s_apu_event_count -= (uint16_t)s_apu_resume_event;
+            memmove(
+                s_apu_events, s_apu_events + s_apu_resume_event,
+                (size_t)s_apu_event_count * sizeof(s_apu_events[0])
+            );
+            s_apu_resume_event = 0;
         }
     }
 

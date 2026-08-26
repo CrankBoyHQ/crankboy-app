@@ -160,6 +160,19 @@ static void tick_audio_sync(CB_GameScene* gameScene)
     if (s_resync_cooldown > 0)
         s_resync_cooldown--;
 
+    /* APU write-event batch overflowed: the batch has holes, replaying it
+     * would corrupt audio. Always drop the batch; rebaseline the ring when
+     * not in cooldown. */
+    if (audio_take_replay_overflow())
+    {
+        audio_reset_replay_state(&gameScene->context->gb->audio);
+        if (s_resync_cooldown <= 0)
+        {
+            CB_reset_audio_sync_state();
+            s_resync_cooldown = 10;
+        }
+    }
+
     uint32_t samples_played = playdate->sound->getCurrentTime();
     uint32_t samples_generated = atomic_load(&g_samples_generated_total);
 
@@ -179,13 +192,36 @@ static void tick_audio_sync(CB_GameScene* gameScene)
         samples_to_generate = max_gen_this_frame;
     }
 
+    /* Backlog drain: the lead math above only regenerates what playback
+     * consumed, so a backlog beyond the lead target could never drain. While
+     * one persists, allow up to +2 frames of extra lead. The ceiling keeps
+     * ring space free so 30fps produce ticks (2 frames = 1476 samples) still
+     * self-drain; the pause-throttle in CB_GameScene_update bounds the
+     * backlog itself. */
+    int pending_frames = audio_replay_pending_frames();
+    if (pending_frames > 4)
+    {
+        int lead = (int)(samples_generated - samples_played);
+        int room = (int)target_lead_samples + 2 * (44100 / 60) - lead;
+        if (room > max_gen_this_frame)
+            room = max_gen_this_frame;
+        if (room > samples_to_generate)
+            samples_to_generate = room;
+    }
+
     if (samples_to_generate > 0)
     {
         uint32_t write_pos = atomic_load(&g_audio_sync_buffer.write_pos);
         uint32_t read_pos = atomic_load(&g_audio_sync_buffer.read_pos);
         uint32_t available_space = AUDIO_RING_BUFFER_SIZE - (write_pos - read_pos);
 
-        if ((uint32_t)samples_to_generate <= available_space)
+        /* Drain what fits rather than skipping wholesale: a skipped tick
+         * lets the event batch grow unbounded. Partial chunks are safe:
+         * replay resume state holds the unconsumed spans for the next call. */
+        if ((uint32_t)samples_to_generate > available_space)
+            samples_to_generate = (int)available_space;
+
+        if (samples_to_generate > 0)
         {
             generate_audio_chunk(gameScene, samples_to_generate);
             atomic_fetch_add(&g_samples_generated_total, samples_to_generate);
@@ -2446,6 +2482,22 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 script_tick(context->scene->script, gameScene, gameScene->next_frames_elapsed);
         }
         gameScene->next_frames_elapsed = 0;
+
+        /* Audio backlog pause-throttle (accurate sound): the scene produces
+         * 60 GB frames/s wall-clock while playback consumes 59.73
+         * frames-equivalent; the event batch would absorb the mismatch and
+         * grow without bound. While a large backlog persists, skip emulation
+         * this tick and drain instead; the display holds the last frame.
+         * Engages ~1 tick per few seconds in steady state. */
+        if (!skip_frame && !gameScene->rewind.active && preferences_sound_mode == 2 &&
+            gameScene->audioEnabled && audio_replay_pending_frames() > 8)
+        {
+            skip_frame = true;
+            tick_audio_sync(gameScene);
+            /* Keep the requested refresh rate consistent with the frame path
+             * we skipped (30fps mode keys off next_frames_elapsed == 2). */
+            gameScene->next_frames_elapsed = (preferences_framerate == 0) ? 2 : 1;
+        }
 
         if (gameScene->rewind.active && !preferences_rewind_enabled)
         {

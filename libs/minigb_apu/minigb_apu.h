@@ -108,6 +108,16 @@ __shell void audio_generate_accurate(
 
 __shell void audio_reset_replay_state(audio_data* audio);
 
+/* Accurate-mode replay overflow: set when the write-event batch hit
+ * APU_EVENT_CAP and events/sentinels were dropped (the batch now has holes).
+ * Returns true once per episode and clears the flag; the caller should drop
+ * the batch (audio_reset_replay_state) and rebaseline the ring. */
+__shell bool audio_take_replay_overflow(void);
+
+/* Frames recorded in the event batch but not yet consumed by replay; the
+ * shell uses this for backpressure (drain override + pause-throttle). */
+__shell int audio_replay_pending_frames(void);
+
 /* Record an emulated frame's end in the write-event stream (accurate mode).
  * Called by the CPU core at the end of gb_run_frame. */
 __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count);
