@@ -147,6 +147,7 @@
 "setopt_remember_last" = "前回位置を記憶";
 "setopt_rewind" = "巻き戻し";
 "setopt_sample_rate" = "サンプルレート";
+"setopt_audio_latency" = "遅延";
 "setopt_save_data" = "記録";
 "setopt_save_state" = "セーブ";
 "setopt_settings_scope" = "設定スコープ";
@@ -200,6 +201,7 @@
 "setval_long_w" = "長い (白)";
 "setval_long" = "長い";
 "setval_low" = "低";
+"setval_buffered" = "バッファード";
 "setval_manual" = "手動";
 "setval_medium" = "中";
 "setval_mono" = "モノ";

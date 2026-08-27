@@ -176,8 +176,10 @@ static void tick_audio_sync(CB_GameScene* gameScene)
     uint32_t samples_played = playdate->sound->getCurrentTime();
     uint32_t samples_generated = atomic_load(&g_samples_generated_total);
 
-    // Target having a buffer of ~4 frames of audio (at 60fps)
-    uint32_t target_lead_samples = (44100 / 60) * 4;
+    /* Target lead: Buffered keeps 4 frames (glitch-free music); Low trades
+     * jitter tolerance for latency (2 frames, ~33 ms). Worst case in Low is
+     * an occasional underrun -> existing resync, instead of constant delay. */
+    uint32_t target_lead_samples = (preferences_audio_latency == 1 ? 4 : 2) * (44100 / 60);
     uint32_t target_sample_count = samples_played + target_lead_samples;
 
     int samples_to_generate = 0;
@@ -194,12 +196,12 @@ static void tick_audio_sync(CB_GameScene* gameScene)
 
     /* Backlog drain: the lead math above only regenerates what playback
      * consumed, so a backlog beyond the lead target could never drain. While
-     * one persists, allow up to +2 frames of extra lead. The ceiling keeps
-     * ring space free so 30fps produce ticks (2 frames = 1476 samples) still
-     * self-drain; the pause-throttle in CB_GameScene_update bounds the
-     * backlog itself. */
+     * one persists, allow extra lead (Buffered mode only) so 30fps produce
+     * ticks (2 frames = 1476 samples) still self-drain; the pause-throttle
+     * in CB_GameScene_update bounds the backlog itself. Low latency mode
+     * keeps the plain 4-frame lead. */
     int pending_frames = audio_replay_pending_frames();
-    if (pending_frames > 4)
+    if (pending_frames > 4 && preferences_audio_latency == 1)
     {
         int lead = (int)(samples_generated - samples_played);
         int room = (int)target_lead_samples + 2 * (44100 / 60) - lead;
@@ -2514,11 +2516,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
          * frames-equivalent; the event batch would absorb the mismatch and
          * grow without bound. While a large backlog persists, skip emulation
          * this tick and drain instead; the display holds the last frame.
-         * Engages ~1 tick per few seconds in steady state. Turbo (uncap
-         * fps) is exempt: recording is off, so there is no backlog. */
+         * Turbo (uncap fps) is exempt: recording is off, so there is no
+         * backlog. Threshold is tighter in Low latency mode to keep the
+         * audio pipeline short for gameplay SFX. */
         if (!skip_frame && !gameScene->rewind.active && preferences_sound_mode == 2 &&
             preferences_uncap_fps == 0 && gameScene->audioEnabled &&
-            audio_replay_pending_frames() > 8)
+            audio_replay_pending_frames() > (preferences_audio_latency == 1 ? 8 : 2))
         {
             skip_frame = true;
             tick_audio_sync(gameScene);

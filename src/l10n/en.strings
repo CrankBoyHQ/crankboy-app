@@ -74,6 +74,7 @@
 "setopt_apply_recommended" = "Apply recommended";
 "setopt_sound" = "Sound";
 "setopt_sample_rate" = "Sample Rate";
+"setopt_audio_latency" = "Latency";
 "setopt_high_pass_filter" = "High-Pass Filter";
 "setopt_headphones" = "Headphones";
 "setopt_mirror_aux" = "Mirror/Aux";
@@ -141,6 +142,7 @@
 "setdsc_disabled_by_script" = "Disabled by game script.";
 "setdsc_sound_mode" = "Fast:\nGood performance. Sound timing is less precise.\n\nAccurate:\nMost faithful audio. Uses a buffer to ensure correct sound pitch and speed.\nMinor performance cost.";
 "setdsc_sample_rate_accurate" = "Accurate sound mode requires High sample rate.";
+"setdsc_audio_latency" = "Low:\nTight timing, best for gameplay.\n\nBuffered:\nMaximum robustness for music and voice-sample ROMs, at the cost of added delay.\n\nAccurate sound mode only.";
 "setdsc_sample_rate" = "Adjusts audio quality.\nHigher values may impact performance.\n\nHigh:\nBest quality (44.1 kHz)\n\nMedium:\nGood quality (22.1 kHz)\n\nLow:\nReduced quality (14.7 kHz)";
 "setdsc_high_pass_filter" = "Emulates the hardware's capacitor coupling. Bass frequencies are weakend.\n\nOn:\nHardware-accurate sound. Costs a little performance.\n\nOff:\nFuller bass, but less faithful to the original hardware.";
 "setdsc_headphones" = "Select the audio output mode when an aux cable is connected.\n\nStereo:\nImmersive sound with spatial separation.\n\nMono:\n Combines channels, which improves performance.\n\nAlso used for Mirror.";
@@ -497,6 +499,7 @@
 "setval_high" = "High";
 "setval_medium" = "Medium";
 "setval_low" = "Low";
+"setval_buffered" = "Buffered";
 "setval_playdate" = "Playdate";
 "setval_30fps" = "30 FPS";
 "setval_50fps" = "50 FPS";

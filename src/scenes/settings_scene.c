@@ -953,6 +953,7 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
     })
 
 const char** sound_mode_labels;
+const char** audio_latency_labels;
 const char** off_on_labels;
 const char** cgb_dmg_labels;
 const char** cgb_bias_labels;
@@ -996,6 +997,11 @@ static void CB_init_settings_labels(void)
     sound_mode_labels[1] = T(setval_fast);
     sound_mode_labels[2] = T(setval_accurate);
     sound_mode_labels[3] = NULL;
+
+    audio_latency_labels = cb_malloc(3 * sizeof(const char*));
+    audio_latency_labels[0] = T(setval_low);
+    audio_latency_labels[1] = T(setval_buffered);
+    audio_latency_labels[2] = NULL;
 
     off_on_labels = cb_malloc(3 * sizeof(const char*));
     off_on_labels[0] = T(setval_off);
@@ -2175,6 +2181,15 @@ static OptionsMenuEntry* build_audio(SectionDef* def, CB_SettingsScene* scene, i
         .pref_var = &preferences_sample_rate,
         .max_value = 3,
         .locked = (preferences_sound_mode == 2),
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = T(setopt_audio_latency),
+        .values = audio_latency_labels,
+        .description = T(setdsc_audio_latency),
+        .pref_var = &preferences_audio_latency,
+        .max_value = 2,
+        .locked = (preferences_sound_mode != 2),
     };
 
     section[++i] = (OptionsMenuEntry){
