@@ -66,7 +66,7 @@ PREF(menu_button, 0)
  * hle:             0=Off, 1=On
  * cgb_blend_bias:  0=Darker, 1=Dark, 2=Neutral, 3=Bright, 4=Brighter
  * cgb_bias_auto:   0=Manual, 1=Auto, 2=Contrast (ignores cgb_blend_bias)
- * cgb_gamma:       0..12 -> gamma 0.6..2.6 (0.1 steps below 1.0, 0.2 above; default 10 = 2.2)
+ * cgb_gamma:       0..12 -> gamma 0.6..2.6 (0.1 steps below 1.0, 0.2 above; default 4 = 1.0)
  */
 PREF(cgb_speed, 0)
 PREF(hle, 1)
