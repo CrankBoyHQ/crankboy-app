@@ -1089,7 +1089,6 @@ CB_GameScene* CB_GameScene_new(const char* rom_filename, const char* name_short,
                 DTCM_VERIFY();
 
                 CB_GameScene_apply_settings(gameScene);
-                CB_reset_audio_sync_state();
 
                 gb_init_lcd(context->gb);
                 memset(context->previous_lcd, 0, sizeof(context->previous_lcd));
@@ -1292,14 +1291,18 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     if (preferences_sound_mode != 2)
     {
         CB_reset_audio_sync_state();
-        memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
-        memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
     }
     else
     {
         // pre_frame snapshot is stale after fast mode (renderer ran in the
         // callback); invalidate so accurate starts from live chans.
         audio_reset_replay_state(&context->gb->audio);
+        if (gameScene->audioEnabled)
+        {
+            CB_reset_audio_sync_state();
+            generate_audio_chunk(gameScene, MAX_AUDIO_SAMPLES_PER_CHUNK);
+            s_resync_cooldown = 10;
+        }
     }
 
     if (preferences_crank_down_action == 0)
@@ -4440,6 +4443,9 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
 
         // Re-apply the user's auto-lock preference on resume.
         playdate->system->setAutoLockDisabled(preferences_disable_autolock);
+        // Silence the ring before the source re-arms.
+        if (preferences_sound_mode == 2)
+            CB_reset_audio_sync_state();
         reconfigure_audio_source(gameScene);
         if (gameScene->menu_open_seconds > 0)
         {
@@ -4754,7 +4760,11 @@ static void rewind_exit_scrubbing(CB_GameScene* gameScene)
     gameScene->context->ghost_resnap = true;
 
     if (preferences_sound_mode == 2)
+    {
         CB_reset_audio_sync_state();
+        // gb was replaced wholesale: drop stale replay state.
+        audio_reset_replay_state(&gameScene->context->gb->audio);
+    }
 
     playdate->graphics->clear(game_picture_background_color);
 
@@ -4807,8 +4817,6 @@ static void CB_GameScene_free(void* object)
         if (preferences_sound_mode == 2)
         {
             CB_reset_audio_sync_state();
-            memset(g_audio_sync_buffer.left, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
-            memset(g_audio_sync_buffer.right, 0, AUDIO_RING_BUFFER_SIZE * sizeof(int16_t));
         }
 
         audioGameScene = NULL;

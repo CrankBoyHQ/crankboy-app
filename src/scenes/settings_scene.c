@@ -3877,15 +3877,6 @@ static void CB_SettingsScene_free(void* object)
     {
         CB_GameScene_apply_settings(settingsScene->gameScene);
 
-        // If the buffered audio sync is the active mode upon leaving the settings,
-        // we MUST reset our timing baseline. This recalibrates our sample counter
-        // against the hardware clock, closing the "time gap" that was created
-        // while the settings menu was open.
-        if (preferences_sound_mode == 2)
-        {
-            CB_reset_audio_sync_state();
-        }
-
         settingsScene->gameScene->audioLocked = settingsScene->wasAudioLocked;
     }
 
