@@ -2515,13 +2515,10 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
          * grow without bound. While a large backlog persists, skip emulation
          * this tick and drain instead; the display holds the last frame.
          * Engages ~1 tick per few seconds in steady state. Turbo (uncap
-         * fps) is exempt: recording is off, so there is no backlog.
-         * The event trigger covers max-rate wave streamers: worst case is
-         * 2 frames/tick x 8778 writes (LD (hl+),a at 8 cycles), so 8192
-         * keeps the batch peak ~7k events below APU_EVENT_CAP. */
+         * fps) is exempt: recording is off, so there is no backlog. */
         if (!skip_frame && !gameScene->rewind.active && preferences_sound_mode == 2 &&
             preferences_uncap_fps == 0 && gameScene->audioEnabled &&
-            (audio_replay_pending_frames() > 8 || audio_replay_event_count() > 8192))
+            audio_replay_pending_frames() > 8)
         {
             skip_frame = true;
             tick_audio_sync(gameScene);
