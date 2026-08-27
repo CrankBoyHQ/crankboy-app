@@ -160,18 +160,12 @@ static void tick_audio_sync(CB_GameScene* gameScene)
     if (s_resync_cooldown > 0)
         s_resync_cooldown--;
 
-    /* APU write-event batch overflowed: the batch has holes, replaying it
-     * would corrupt audio. Always drop the batch; rebaseline the ring when
-     * not in cooldown. */
+    // APU write-event batch overflowed: the batch has holes, replaying it
+    // would corrupt audio. Drop the batch and re-sync the wave image via
+    // audio_reset_replay_state, but keep the ring. The queued frames hold
+    // generated, valid audio, and wiping them caused voice-sample silence gaps.
     if (audio_take_replay_overflow())
-    {
         audio_reset_replay_state(&gameScene->context->gb->audio);
-        if (s_resync_cooldown <= 0)
-        {
-            CB_reset_audio_sync_state();
-            s_resync_cooldown = 10;
-        }
-    }
 
     uint32_t samples_played = playdate->sound->getCurrentTime();
     uint32_t samples_generated = atomic_load(&g_samples_generated_total);
