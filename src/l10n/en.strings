@@ -140,7 +140,7 @@
 "setdsc_save_snapshot_ago" = "Overwrite snapshot from\n%s ago.";
 "setdsc_load_snapshot_ago" = "Restore snapshot from\n%s ago.";
 "setdsc_disabled_by_script" = "Disabled by game script.";
-"setdsc_sound_mode" = "Fast:\nGood performance. Sound timing is less precise.\n\nAccurate:\nMost faithful audio. Uses a buffer to ensure correct sound pitch and speed.\nMinor performance cost.";
+"setdsc_sound_mode" = "Fast:\nGood performance and lowest latency. Sound timing is less precise; voice samples are not supported.\n\nAccurate:\nMost faithful audio with correct voice samples. Uses a buffer, so playback is slightly delayed (see Latency setting).";
 "setdsc_sample_rate_accurate" = "Accurate sound mode requires High sample rate.";
 "setdsc_audio_latency" = "Low:\nTight timing, best for gameplay.\n\nBuffered:\nMaximum robustness for music and voice-sample ROMs, at the cost of added delay.\n\nAccurate sound mode only.";
 "setdsc_sample_rate" = "Adjusts audio quality.\nHigher values may impact performance.\n\nHigh:\nBest quality (44.1 kHz)\n\nMedium:\nGood quality (22.1 kHz)\n\nLow:\nReduced quality (14.7 kHz)";
