@@ -1746,6 +1746,9 @@ int audio_enabled;
 // cpu-visible audio state still updated, but most of it is skipped
 int audio_muted;
 
+// see minigb_apu.h
+volatile int audio_inflight = 0;
+
 #if TARGET_PLAYDATE
 __attribute__((always_inline)) static inline void replicate_samples_interpolated(
     int16_t* left_ptr, int16_t* right_ptr, int chunksize, int sample_replication, bool is_stereo
@@ -2109,7 +2112,24 @@ int audio_callback(void* context, int16_t* left, int16_t* right, int len)
         return 1;
     }
 
-    return APU_GEN_CALL_CB(audio_callback_render, gameScene, left, right, len);
+    /* Increment first, then re-check the scene pointer: the wipe side sets
+     * it NULL, then waits for audio_inflight == 0 (see minigb_apu.h). */
+    __sync_add_and_fetch(&audio_inflight, 1);
+    gameScene = *(CB_GameScene**)context;
+
+    int result;
+    if (!gameScene)
+    {
+        clear_audio_buffers(left, right, len);
+        result = 1;
+    }
+    else
+    {
+        result = APU_GEN_CALL_CB(audio_callback_render, gameScene, left, right, len);
+    }
+
+    __sync_sub_and_fetch(&audio_inflight, 1);
+    return result;
 }
 
 void audio_update_square(

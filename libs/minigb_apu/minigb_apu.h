@@ -49,6 +49,10 @@ typedef struct PGB_AD(audio_data_v, PGB_VERSION) audio_data;
 extern int audio_enabled;
 extern int audio_muted;
 
+/* In-flight audio callback count. The render body runs from a wipeable TCM
+ * cluster, so TCM wipes (lock/menu) wait for this to hit 0. */
+extern volatile int audio_inflight;
+
 // update_* live in .apu_sample_gen; flash-side replay enters via relocation offset.
 extern intptr_t pgb_apu_sample_gen_reloc_offset;
 #define APU_GEN_PTR(fn) ((char*)(void*)(fn) + pgb_apu_sample_gen_reloc_offset)

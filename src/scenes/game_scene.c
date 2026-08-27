@@ -732,6 +732,24 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
     }
 }
 
+/* Drain in-flight audio callbacks before wiping relocated TCM code. */
+static void CB_GameScene_drain_audio(void)
+{
+    audioGameScene = NULL;
+    __sync_synchronize();
+    if (audio_inflight <= 0)
+        return;
+    unsigned start_ms = playdate->system->getCurrentTimeMilliseconds();
+    while (audio_inflight > 0)
+    {
+        if (playdate->system->getCurrentTimeMilliseconds() - start_ms > 20)
+        {
+            playdate->system->logToConsole("audio drain timeout (%d in flight)", audio_inflight);
+            break;
+        }
+    }
+}
+
 #ifdef TARGET_SIMULATOR
 volatile int g_trace_frames_remaining = 0;
 #endif
@@ -1299,7 +1317,12 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     // separately after the gb struct is moved into the DTCM pool).
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
+        // TCM-off path wipes pockets: drain first, re-arm after.
+        if (preferences_itcm == 0)
+            CB_GameScene_drain_audio();
         tcm_apply(context->gb->is_cgb_mode);
+        if (preferences_itcm == 0)
+            reconfigure_audio_source(gameScene);
         CB_GameScene_apply_script_support(gameScene);
     }
 }
@@ -4375,11 +4398,14 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
     switch (event)
     {
     case kEventLock:
-        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE)
+        // Lock-as-button presses during gameplay are aborted (CB_GameScene_lock);
+        // a real lock with the pref only happens from the menu.
+        if (CB_App->hasSystemAccess && preferences_lock_button != PREF_BUTTON_NONE &&
+            !CB_App->currentlyPaused)
             return;
         // fallthrough
     case kEventPause:
-        audioGameScene = NULL;
+        CB_GameScene_drain_audio();
 
         // System may write into TCM pockets while locked/menu open; clear
         // code to flash. gb struct (main pool) stays; re-placed on resume.
@@ -4787,6 +4813,7 @@ static void CB_GameScene_free(void* object)
 
         audioGameScene = NULL;
         audio_enabled = 0;
+        CB_GameScene_drain_audio();
     }
 
     // Ensure UI/library sounds are audible after leaving the game, even if game audio was off.
