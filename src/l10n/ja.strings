@@ -272,8 +272,10 @@
 "setdsc_ui_sounds" = "インターフェイスのサウンドのON/OFFを設定します。";
 "setopt_lock_override" = "ロックボタン変更";
 "setdsc_save_state" = "今後ロードできるスナップショットを作成します。";
-"setdsc_save_state_unavailable" = "このemucoreはステートセーブに対応していません。";
+"setdsc_save_state_unavailable" = "このエミュコアはステートセーブに対応していません。";
 "setdsc_load_state" = "作成したスナップショットを復元します。";
-"setdsc_load_state_unavailable" = "このemucoreはステートセーブに対応していません。";
+"setdsc_load_state_unavailable" = "このエミュコアはステートセーブに対応していません。";
 "setdsc_manage_rom" = "ROM情報の表示と、ROMや記録、カバーアートの削除。";
 "setdsc_patches_hacks" = "ゲームパッチ（ハックロム）の管理やダウンロードができます。\n\nパッチを適用する前に、ゲームに対応しているかチェックしてください。\n\nペアレンタルロックは使用できます。";
+"setdsc_save_data" = "ROMの記録データに使う記録ファイルを選択してください。\n\nソフトパッチをつける場合、別の記録を使用できます。\n\n注：記録は「ステートセーブ」とは異なります。";
+"setdsc_save_data_disabled" = "このROMは記録データを使わないため、この機能は使用できません。";
