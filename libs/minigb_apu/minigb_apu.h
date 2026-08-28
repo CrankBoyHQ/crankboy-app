@@ -115,7 +115,9 @@ __shell void audio_reset_replay_state(audio_data* audio);
 /* Accurate-mode replay overflow: set when the write-event batch hit
  * APU_EVENT_CAP and events/sentinels were dropped (the batch now has holes).
  * Returns true once per episode and clears the flag; the caller should drop
- * the batch (audio_reset_replay_state) and rebaseline the ring. */
+ * the batch (audio_reset_replay_state) but keep the ring, since its queued
+ * samples are valid and already rendered. Real starvation is handled by the
+ * underrun resync path instead. */
 __shell bool audio_take_replay_overflow(void);
 
 /* Frames recorded in the event batch but not yet consumed by replay; used

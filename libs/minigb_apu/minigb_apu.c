@@ -2595,7 +2595,8 @@ __shell void audio_generate_accurate(
                      * cap overflow). Never resume: the next events start a
                      * new frame at apu_count 0, and the stale start_offset
                      * would skip their gain-timeline entries. Drop the tail;
-                     * overflow handling drops the batch and rebaselines. */
+                     * overflow handling drops the batch but keeps the ring
+                     * (its queued samples are already valid). */
                     s_apu_resume_event = -1;
                     s_apu_resume_offset = 0;
                 }
