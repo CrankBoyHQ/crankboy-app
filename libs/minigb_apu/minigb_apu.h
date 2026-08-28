@@ -94,6 +94,13 @@ __shell void audio_div_apu_tick(audio_data* audio);
 
 __shell void __apu_div_tick_detect(audio_data* audio, uint8_t old_div, uint8_t inc, unsigned mask);
 
+/* Emulator-side frame-sequencer step tracking for accurate-mode replay
+ * (counts DIV falling edges; replay re-anchors div_apu_step from it). */
+__shell void __apu_div_step_track(uint8_t old_div, uint8_t inc, unsigned mask);
+__shell void __apu_div_step_write(uint8_t old_div, unsigned mask);
+__shell uint8_t audio_emu_div_step(void);
+__shell void audio_emu_div_step_sync(const audio_data* audio);
+
 /* Playdate audio callback. */
 int audio_callback(void* context, int16_t* left, int16_t* right, int len);
 

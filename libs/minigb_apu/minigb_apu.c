@@ -24,10 +24,11 @@
 
 /* Per-frame APU register write events for cycle-accurate replay.
  * File-static in main RAM (gb_s is DTCM-resident); transient, never
- * serialized. Sized for ~7 frames at the CPU-max write rate
- * (LDH every 12 dots = 5852/frame); the pause-throttle engages long
- * before this fills. */
-#define APU_EVENT_CAP 32768
+ * serialized. The pause-throttle bounds the backlog to ~8 frames (buffered)
+ * and the heaviest observed CGB voice streaming peaks ~100 writes/frame, so
+ * 1024 (8 frames x 128/frame) is adequate headroom. Overflow, if it ever
+ * happens, is a recoverable skip (the ring is kept), not silence. */
+#define APU_EVENT_CAP 1024
 typedef struct
 {
     uint32_t apu_count;
@@ -1715,20 +1716,77 @@ void audio_reset(audio_data* audio)
     }
 }
 
+/* Samples until the next 512 Hz tick, from the DIV-APU clock (DIV + div_count). */
+static uint16_t apu_div_substep_samples(const audio_data* audio, int sample_rate)
+{
+    const gb_s* gb = (const gb_s*)((const uint8_t*)audio - offsetof(gb_s, audio));
+    uint32_t reg_div16 =
+        ((uint32_t)gb->gb_reg.DIV << (gb->cgb_fast_mode_active ? 7 : 8)) | gb->counter.div_count;
+    uint32_t r = reg_div16 & 0x1FFFu;
+    uint32_t cycles_to_next = (r == 0) ? 8192u : (8192u - r);
+    uint32_t samples =
+        (cycles_to_next * (uint32_t)sample_rate + DMG_CLOCK_FREQ_U / 2u) / DMG_CLOCK_FREQ_U;
+    if (samples < 1)
+        samples = 1;
+    if (samples > (uint32_t)(sample_rate / 512))
+        samples = (uint32_t)(sample_rate / 512);
+    return (uint16_t)samples;
+}
+
+/* Emulator-side frame-sequencer step (DIV falling edges mod 8); captured into
+ * the frame-end sentinel so the replay re-anchors its div_apu_step. */
+static uint8_t s_emu_div_step;
+
+__shell void __apu_div_step_track(uint8_t old_div, uint8_t inc, unsigned mask)
+{
+    while (inc--)
+    {
+        old_div++;
+        if ((old_div & mask) == 0 && ((old_div - 1) & mask) != 0)
+            s_emu_div_step = (s_emu_div_step + 1) & 7;
+    }
+}
+
+/* Count the falling edge when a DIV write (0xFF04) resets the register. */
+__shell void __apu_div_step_write(uint8_t old_div, unsigned mask)
+{
+    if (old_div & mask)
+        s_emu_div_step = (s_emu_div_step + 1) & 7;
+}
+
+__shell uint8_t audio_emu_div_step(void)
+{
+    return s_emu_div_step;
+}
+
+/* Re-sync the step from DIV (boot/resume). Double-speed wrap parity is assumed 0. */
+__shell void audio_emu_div_step_sync(const audio_data* audio)
+{
+    const gb_s* gb = (const gb_s*)((const uint8_t*)audio - offsetof(gb_s, audio));
+    uint32_t reg_div16 =
+        ((uint32_t)gb->gb_reg.DIV << (gb->cgb_fast_mode_active ? 7 : 8)) | gb->counter.div_count;
+    s_emu_div_step = (uint8_t)((reg_div16 >> 13) & 7);
+}
+
 void audio_reset_snapshot(audio_data* audio)
 {
     memcpy(audio->pre_frame_chans, audio->chans, sizeof(audio->pre_frame_chans));
     audio->pre_frame_div_apu_step = audio->div_apu_step;
     audio->pre_frame_skip_apu_tick = audio->skip_next_apu_tick;
     audio->pre_frame_valid = true;
+
+    audio_emu_div_step_sync(audio);
+    s_apu_tick_rem_accum = 0;
+    s_apu_tick_left = apu_div_substep_samples(audio, get_audio_sample_rate());
 }
 
 void audio_reset_replay_state(audio_data* audio)
 {
     s_apu_event_count = 0;
     s_ch3_cursor_valid = false;
-    s_apu_tick_left = 0;
+    audio_emu_div_step_sync(audio);
     s_apu_tick_rem_accum = 0;
+    s_apu_tick_left = apu_div_substep_samples(audio, get_audio_sample_rate());
     s_apu_resume_event = -1;
     s_apu_resume_offset = 0;
     s_apu_replay_overflow = false;
@@ -2196,8 +2254,10 @@ __shell void audio_note_frame_end(audio_data* audio, uint32_t apu_count)
         {
             s_apu_events[s_apu_event_count].apu_count = apu_count;
             s_apu_events[s_apu_event_count].addr = APU_FRAME_END_ADDR;
-            s_apu_events[s_apu_event_count].val = 0;
-            s_apu_events[s_apu_event_count].div_step = 0;
+            /* val = step, div_step = samples until next tick. */
+            s_apu_events[s_apu_event_count].val = audio_emu_div_step();
+            s_apu_events[s_apu_event_count].div_step =
+                (uint8_t)apu_div_substep_samples(audio, get_audio_sample_rate());
             s_apu_event_count++;
             s_apu_pending_frames++;
         }
@@ -2607,7 +2667,13 @@ __shell void audio_generate_accurate(
             s_apu_resume_event = -1;
             s_apu_resume_offset = 0;
             if (frame_complete)
+            {
                 s_apu_pending_frames--;
+                /* Re-anchor the 512 Hz scheduler to the phase captured at frame end. */
+                audio->div_apu_step = s_apu_events[span_end].val & 7;
+                s_apu_tick_rem_accum = 0;
+                s_apu_tick_left = (uint16_t)s_apu_events[span_end].div_step;
+            }
             start_offset = 0;
             span_start = frame_complete ? span_end + 1 : span_end;
         }

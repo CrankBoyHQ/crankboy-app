@@ -2530,6 +2530,8 @@ done_instr_timing:
 
             if (preferences_sound_mode == 1)
                 __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x20u);
+            else if (preferences_sound_mode == 2)
+                __apu_div_step_track(old_div, div_inc, 0x20u);
         }
         else
 #endif
@@ -2541,6 +2543,8 @@ done_instr_timing:
 
             if (preferences_sound_mode == 1)
                 __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x10u);
+            else if (preferences_sound_mode == 2)
+                __apu_div_step_track(old_div, div_inc, 0x10u);
         }
     }
 
