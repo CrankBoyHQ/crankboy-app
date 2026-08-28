@@ -960,10 +960,10 @@ static void launch_game(void* ud, int option)
 
     case 3:  // launch game normally (don't alter settings)
     launch_normal:
-    {
-        _launch_game_check_sram(game);
-    }
-    break;
+        {
+            _launch_game_check_sram(game);
+        }
+        break;
 
     default:
         // do nothing

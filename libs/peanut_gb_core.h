@@ -1645,96 +1645,96 @@ h_nop:
     CHAIN_OR_RETURN();
 
 h_jr:
-{
-    // jr
-    cycles = 8;
-    bool flag = $(__gb_get_op_flag)(gb, op8);
-    if (opcode == 0x18)
-        flag = 1;
-    if (flag)
     {
-        cycles = 12;
-        gb->cpu_reg.pc += (s8)FETCH8(gb);
+        // jr
+        cycles = 8;
+        bool flag = $(__gb_get_op_flag)(gb, op8);
+        if (opcode == 0x18)
+            flag = 1;
+        if (flag)
+        {
+            cycles = 12;
+            gb->cpu_reg.pc += (s8)FETCH8(gb);
+        }
+        else
+        {
+            gb->cpu_reg.pc++;
+        }
     }
-    else
-    {
-        gb->cpu_reg.pc++;
-    }
-}
     CHAIN_OR_RETURN();
 
 h_ld_r16_d16:
-{
-    int reg8 = 2 * (opcode / 16) | (op8 & 1);
-    int reg16 = reg8 / 2;
-    if (reg16 == 3)
-        reg16 = 4;
-    cycles = 12;
-    gb->cpu_reg_raw16[reg16] = FETCH16(gb);
-}
+    {
+        int reg8 = 2 * (opcode / 16) | (op8 & 1);
+        int reg16 = reg8 / 2;
+        if (reg16 == 3)
+            reg16 = 4;
+        cycles = 12;
+        gb->cpu_reg_raw16[reg16] = FETCH16(gb);
+    }
     CHAIN_OR_RETURN();
 
 h_ld_a_r16:
-{
-    int reg8 = 2 * (opcode / 16) | (op8 & 1);
-    int reg16 = reg8 / 2;
-    if (reg16 == 3)
-        reg16 = 4;
-    cycles = 8;
-    if (reg16 == 4)
-        reg16 = 2;
+    {
+        int reg8 = 2 * (opcode / 16) | (op8 & 1);
+        int reg16 = reg8 / 2;
+        if (reg16 == 3)
+            reg16 = 4;
+        cycles = 8;
+        if (reg16 == 4)
+            reg16 = 2;
 
-    if (op8 % 2 == 1)
-    {
-        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
-        $(__gb_write)(gb, gb->cpu_reg_raw16[reg16], gb->cpu_reg.a);
+        if (op8 % 2 == 1)
+        {
+            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
+            $(__gb_write)(gb, gb->cpu_reg_raw16[reg16], gb->cpu_reg.a);
+        }
+        else
+        {
+            gb->cpu_reg.a = $(__gb_read)(gb, gb->cpu_reg_raw16[reg16]);
+        }
     }
-    else
-    {
-        gb->cpu_reg.a = $(__gb_read)(gb, gb->cpu_reg_raw16[reg16]);
-    }
-}
     CHAIN_NOCLAMP_OR_RETURN();
 
 h_inc_dec_r16:
-{
-    int reg8 = 2 * (opcode / 16) | (op8 & 1);
-    int reg16 = reg8 / 2;
-    if (reg16 == 3)
-        reg16 = 4;
-    s16 offset = (op8 % 2 == 1) ? 1 : -1;
-    gb->cpu_reg_raw16[reg16] += offset;
-    cycles = 8;
-}
+    {
+        int reg8 = 2 * (opcode / 16) | (op8 & 1);
+        int reg16 = reg8 / 2;
+        if (reg16 == 3)
+            reg16 = 4;
+        s16 offset = (op8 % 2 == 1) ? 1 : -1;
+        gb->cpu_reg_raw16[reg16] += offset;
+        cycles = 8;
+    }
     CHAIN_OR_RETURN();
 
 h_inc_dec_r8:
-{
-    int reg8 = 2 * (opcode / 16) | (op8 & 1);
-    const u8 is_dec = opcode & 1;
-    const s8 offset = is_dec ? -1 : 1;
-
-    u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
-    u8 tmp = src + offset;
-
-    // preserve C (and the unused nibble, always 0)
-    u8 f = gb->cpu_reg.f & 0x1F;
-    f |= (tmp == 0) ? GB_FLAG_Z : 0;
-    f |= is_dec ? GB_FLAG_N : 0;
-    f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? GB_FLAG_H : 0;
-    gb->cpu_reg.f = f;
-
-    if (reg8 == 7)
     {
-        cycles = 12;
-        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
-        $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
+        int reg8 = 2 * (opcode / 16) | (op8 & 1);
+        const u8 is_dec = opcode & 1;
+        const s8 offset = is_dec ? -1 : 1;
+
+        u8 src = (reg8 == 7) ? $(__gb_read)(gb, gb->cpu_reg.hl) : gb->cpu_reg_raw[reg8];
+        u8 tmp = src + offset;
+
+        // preserve C (and the unused nibble, always 0)
+        u8 f = gb->cpu_reg.f & 0x1F;
+        f |= (tmp == 0) ? GB_FLAG_Z : 0;
+        f |= is_dec ? GB_FLAG_N : 0;
+        f |= ((tmp & 0x0F) == (is_dec ? 0x0F : 0x00)) ? GB_FLAG_H : 0;
+        gb->cpu_reg.f = f;
+
+        if (reg8 == 7)
+        {
+            cycles = 12;
+            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
+            $(__gb_write)(gb, gb->cpu_reg.hl, tmp);
+        }
+        else
+        {
+            gb->cpu_reg_raw[reg8] = tmp;
+        }
     }
-    else
-    {
-        gb->cpu_reg_raw[reg8] = tmp;
-    }
-}
     CHAIN_OR_RETURN();
 
 h_ld_r8_d8:
@@ -1811,14 +1811,14 @@ h_misc_flag:
     CHAIN_OR_RETURN();
 
 h_add_hl_r16:
-{
-    int reg8 = 2 * (opcode / 16) | (op8 & 1);
-    int reg16 = reg8 / 2;
-    if (reg16 == 3)
-        reg16 = 4;
-    cycles = 8;
-    gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
-}
+    {
+        int reg8 = 2 * (opcode / 16) | (op8 & 1);
+        int reg16 = reg8 / 2;
+        if (reg16 == 3)
+            reg16 = 4;
+        cycles = 8;
+        gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
+    }
     CHAIN_OR_RETURN();
 
 h_ld_x_x:
@@ -1844,26 +1844,26 @@ h_alu:
     goto arithmetic;
 
 ld_x_x:
-{
-    u8 dstidx = op8;
-    if (dstidx == 7)
     {
-        if unlikely (srcidx == 7)
+        u8 dstidx = op8;
+        if (dstidx == 7)
         {
-            TAIL_RARE();
+            if unlikely (srcidx == 7)
+            {
+                TAIL_RARE();
+            }
+            else
+            {
+                cycles += 4;
+                pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
+                $(__gb_write)(gb, gb->cpu_reg.hl, src);
+            }
         }
         else
         {
-            cycles += 4;
-            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
-            $(__gb_write)(gb, gb->cpu_reg.hl, src);
+            gb->cpu_reg_raw[dstidx] = src;
         }
     }
-    else
-    {
-        gb->cpu_reg_raw[dstidx] = src;
-    }
-}
     CHAIN_OR_RETURN();
 
 arithmetic:
@@ -2034,19 +2034,19 @@ h_ldh_c:
     goto hram_op;
 
 hram_op:
-{
-    u16 addr = 0xFF00 | srcidx;
-    if (opcode & 0x10)
     {
-        u8 v = $(__gb_read)(gb, addr);
-        gb->cpu_reg.a = v;
+        u16 addr = 0xFF00 | srcidx;
+        if (opcode & 0x10)
+        {
+            u8 v = $(__gb_read)(gb, addr);
+            gb->cpu_reg.a = v;
+        }
+        else
+        {
+            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
+            $(__gb_write)(gb, addr, gb->cpu_reg.a);
+        }
     }
-    else
-    {
-        pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
-        $(__gb_write)(gb, addr, gb->cpu_reg.a);
-    }
-}
     CHAIN_OR_RETURN();
 
 h_jp_hl:
@@ -2440,297 +2440,298 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 #endif
 
 done_instr_timing:
-{
-#if PGB_IS_CGB
-    unsigned cgb_fast = gb->cgb_fast_mode_active;
-#endif
-    if (gb->counter.serial_count > 0)
     {
-        /* Overshoot-safe expiry: subtracting inst_cycles can skip past zero
-         * (an interrupt mid-wait shifts the cycle grid), and with an unsigned
-         * counter that wraps to a huge value and never completes, hanging any
-         * game that polls SC bit 7 (F-1 Pole Position on hardware). */
-        if (gb->counter.serial_count <= inst_cycles)
+#if PGB_IS_CGB
+        unsigned cgb_fast = gb->cgb_fast_mode_active;
+#endif
+        if (gb->counter.serial_count > 0)
         {
-            if ((gb->gb_reg.SC & SERIAL_SC_TX_START) && (gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC))
+            /* Overshoot-safe expiry: subtracting inst_cycles can skip past zero
+             * (an interrupt mid-wait shifts the cycle grid), and with an unsigned
+             * counter that wraps to a huge value and never completes, hanging any
+             * game that polls SC bit 7 (F-1 Pole Position on hardware). */
+            if (gb->counter.serial_count <= inst_cycles)
             {
-                // Simulate disconnected cable input
-                gb->gb_reg.SB = 0xFF;
-                // Request Serial interrupt
-                gb->gb_reg.IF |= SERIAL_INTR;
-                // Clear transfer start flag
-                gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
-            }
-            gb->counter.serial_count = 0;
-        }
-        else
-        {
-            gb->counter.serial_count -= inst_cycles;
-        }
-    }
-
-    if (gb->direct.joypad_interrupt_delay > 0)
-    {
-        if (gb->direct.joypad_interrupt_delay <= (int)inst_cycles)
-        {
-            gb->gb_reg.IF |= CONTROL_INTR;
-            gb->direct.joypad_interrupt_delay = 0;
-        }
-        else
-        {
-            gb->direct.joypad_interrupt_delay -= inst_cycles;
-        }
-    }
-
-    /* Handle delayed TIMA reload from the previous cycle. */
-    if (gb->gb_reg.tima_overflow_delay)
-    {
-        gb->gb_reg.IF |= TIMER_INTR;
-        gb->gb_reg.tima_overflow_delay = 0;
-    }
-
-    /* TIMA register timing */
-    if (gb->gb_reg.tac_enable)
-    {
-        uint16_t tima_threshold = gb->gb_reg.tac_cycles;
-#if PGB_IS_CGB
-        tima_threshold >>= cgb_fast;
-#endif
-        gb->counter.tima_count += inst_cycles;
-        while (gb->counter.tima_count >= tima_threshold)
-        {
-            gb->counter.tima_count -= tima_threshold;
-            gb->gb_reg.TIMA++;
-
-            if (gb->gb_reg.TIMA == 0x00)
-            {
-                gb->gb_reg.TIMA = gb->gb_reg.TMA;
-                gb->gb_reg.tima_overflow_delay = 1;
-            }
-        }
-    }
-
-    /* DIV register timing */
-    // update DIV timer
-    uint16_t div_threshold = DIV_CYCLES;
-#if PGB_IS_CGB
-    div_threshold >>= cgb_fast;
-#endif
-    gb->counter.div_count += inst_cycles;
-
-    if (gb->counter.div_count >= div_threshold)
-    {
-#if PGB_IS_CGB
-        if (cgb_fast)
-        {
-            uint8_t old_div = gb->gb_reg.DIV;
-            uint8_t div_inc = gb->counter.div_count >> 7;
-            gb->gb_reg.DIV += div_inc;
-            gb->counter.div_count &= 0x7F;
-
-            if (preferences_sound_mode == 1)
-                __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x20u);
-            else if (preferences_sound_mode == 2)
-                __apu_div_step_track(old_div, div_inc, 0x20u);
-        }
-        else
-#endif
-        {
-            uint8_t old_div = gb->gb_reg.DIV;
-            uint8_t div_inc = gb->counter.div_count >> 8;
-            gb->gb_reg.DIV += div_inc;
-            gb->counter.div_count &= 0xFF;
-
-            if (preferences_sound_mode == 1)
-                __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x10u);
-            else if (preferences_sound_mode == 2)
-                __apu_div_step_track(old_div, div_inc, 0x10u);
-        }
-    }
-
-    gb->counter.lcd_count += inst_cycles;
-    gb->counter.apu_count += inst_cycles;
-
-    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
-    {
-        gb->counter.lcd_off_count += inst_cycles;
-        if (gb->counter.lcd_off_count >= LCD_FRAME_CYCLES)
-        {
-            gb->counter.lcd_off_count -= LCD_FRAME_CYCLES;
-            gb->gb_frame = 1;
-            if (!gb->direct.frame_skip)
-            {
-                uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
-                uint32_t fill_word = (uint32_t)fill * 0x01010101u;
-                for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-                    ((uint32_t*)gb->lcd)[i] = fill_word;
-                if (pgb_dirty_prev && pgb_dirty_flags && !pgb_dirty_skip)
+                if ((gb->gb_reg.SC & SERIAL_SC_TX_START) && (gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC))
                 {
+                    // Simulate disconnected cable input
+                    gb->gb_reg.SB = 0xFF;
+                    // Request Serial interrupt
+                    gb->gb_reg.IF |= SERIAL_INTR;
+                    // Clear transfer start flag
+                    gb->gb_reg.SC &= ~SERIAL_SC_TX_START;
+                }
+                gb->counter.serial_count = 0;
+            }
+            else
+            {
+                gb->counter.serial_count -= inst_cycles;
+            }
+        }
+
+        if (gb->direct.joypad_interrupt_delay > 0)
+        {
+            if (gb->direct.joypad_interrupt_delay <= (int)inst_cycles)
+            {
+                gb->gb_reg.IF |= CONTROL_INTR;
+                gb->direct.joypad_interrupt_delay = 0;
+            }
+            else
+            {
+                gb->direct.joypad_interrupt_delay -= inst_cycles;
+            }
+        }
+
+        /* Handle delayed TIMA reload from the previous cycle. */
+        if (gb->gb_reg.tima_overflow_delay)
+        {
+            gb->gb_reg.IF |= TIMER_INTR;
+            gb->gb_reg.tima_overflow_delay = 0;
+        }
+
+        /* TIMA register timing */
+        if (gb->gb_reg.tac_enable)
+        {
+            uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+#if PGB_IS_CGB
+            tima_threshold >>= cgb_fast;
+#endif
+            gb->counter.tima_count += inst_cycles;
+            while (gb->counter.tima_count >= tima_threshold)
+            {
+                gb->counter.tima_count -= tima_threshold;
+                gb->gb_reg.TIMA++;
+
+                if (gb->gb_reg.TIMA == 0x00)
+                {
+                    gb->gb_reg.TIMA = gb->gb_reg.TMA;
+                    gb->gb_reg.tima_overflow_delay = 1;
+                }
+            }
+        }
+
+        /* DIV register timing */
+        // update DIV timer
+        uint16_t div_threshold = DIV_CYCLES;
+#if PGB_IS_CGB
+        div_threshold >>= cgb_fast;
+#endif
+        gb->counter.div_count += inst_cycles;
+
+        if (gb->counter.div_count >= div_threshold)
+        {
+#if PGB_IS_CGB
+            if (cgb_fast)
+            {
+                uint8_t old_div = gb->gb_reg.DIV;
+                uint8_t div_inc = gb->counter.div_count >> 7;
+                gb->gb_reg.DIV += div_inc;
+                gb->counter.div_count &= 0x7F;
+
+                if (preferences_sound_mode == 1)
+                    __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x20u);
+                else if (preferences_sound_mode == 2)
+                    __apu_div_step_track(old_div, div_inc, 0x20u);
+            }
+            else
+#endif
+            {
+                uint8_t old_div = gb->gb_reg.DIV;
+                uint8_t div_inc = gb->counter.div_count >> 8;
+                gb->gb_reg.DIV += div_inc;
+                gb->counter.div_count &= 0xFF;
+
+                if (preferences_sound_mode == 1)
+                    __apu_div_tick_detect(&gb->audio, old_div, div_inc, 0x10u);
+                else if (preferences_sound_mode == 2)
+                    __apu_div_step_track(old_div, div_inc, 0x10u);
+            }
+        }
+
+        gb->counter.lcd_count += inst_cycles;
+        gb->counter.apu_count += inst_cycles;
+
+        if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+        {
+            gb->counter.lcd_off_count += inst_cycles;
+            if (gb->counter.lcd_off_count >= LCD_FRAME_CYCLES)
+            {
+                gb->counter.lcd_off_count -= LCD_FRAME_CYCLES;
+                gb->gb_frame = 1;
+                if (!gb->direct.frame_skip)
+                {
+                    uint8_t fill = (gb->gb_reg.BGP & 3) * 0x55;
+                    uint32_t fill_word = (uint32_t)fill * 0x01010101u;
                     for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
-                        ((uint32_t*)pgb_dirty_prev)[i] = fill_word;
-                    for (int i = 0; i < LCD_HEIGHT / 16; i++)
-                        pgb_dirty_flags[i] = 0xFFFF;
+                        ((uint32_t*)gb->lcd)[i] = fill_word;
+                    if (pgb_dirty_prev && pgb_dirty_flags && !pgb_dirty_skip)
+                    {
+                        for (int i = 0; i < LCD_BUFFER_BYTES / 4; i++)
+                            ((uint32_t*)pgb_dirty_prev)[i] = fill_word;
+                        for (int i = 0; i < LCD_HEIGHT / 16; i++)
+                            pgb_dirty_flags[i] = 0xFFFF;
+                    }
                 }
             }
         }
-    }
-    else
-    {
-        /* LCD Timing */
-        bool ticked;
-        do
+        else
         {
-            ticked = false;
-            switch (gb->lcd_mode)
+            /* LCD Timing */
+            bool ticked;
+            do
             {
-            // Mode 2: OAM Search (80 cycles)
-            // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current line.
-            case LCD_SEARCH_OAM:
-                if (gb->counter.lcd_count >= PPU_MODE_2_OAM_CYCLES)
+                ticked = false;
+                switch (gb->lcd_mode)
                 {
-                    gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
-                    gb->lcd_mode = LCD_TRANSFER;
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
+                // Mode 2: OAM Search (80 cycles)
+                // The PPU is reading OAM (Sprite Attribute Table) to find sprites for the current
+                // line.
+                case LCD_SEARCH_OAM:
+                    if (gb->counter.lcd_count >= PPU_MODE_2_OAM_CYCLES)
+                    {
+                        gb->counter.lcd_count -= PPU_MODE_2_OAM_CYCLES;
+                        gb->lcd_mode = LCD_TRANSFER;
+                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_TRANSFER;
 
 #if PGB_IS_CGB
-                    /* Flush batched palette gray-LUT rebuilds. Palette
-                     * writes only land outside mode 3, so rebuilding here
-                     * matches per-write update timing. */
-                    if unlikely (
-                        !gb->direct.frame_skip && (pgb_cgb_bg_pal_dirty | pgb_cgb_obj_pal_dirty)
-                    )
-                        __cgb_flush_pal_dirty(gb);
+                        /* Flush batched palette gray-LUT rebuilds. Palette
+                         * writes only land outside mode 3, so rebuilding here
+                         * matches per-write update timing. */
+                        if unlikely (
+                            !gb->direct.frame_skip && (pgb_cgb_bg_pal_dirty | pgb_cgb_obj_pal_dirty)
+                        )
+                            __cgb_flush_pal_dirty(gb);
 #endif
 
-                    DRAW_CALL($(__gb_ppu_mode3_setup), gb);
-                    DRAW_CALL($(__gb_update_stat_irq), gb);
-                    ticked = true;
-                }
-                break;
-
-            // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
-            case LCD_TRANSFER:
-                if (gb->counter.lcd_count >= gb->display.current_mode3_cycles)
-                {
-                    gb->counter.lcd_count -= gb->display.current_mode3_cycles;
-
-                    if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
-                    {
-                        // draw cluster may be relocated into the main DTCM
-                        // pool (rev A); call via the offset-adjusted pointer.
-                        void (*draw_line)(gb_s*) =
-                            (void (*)(gb_s*))((char*)$(__gb_draw_line) + pgb_draw_reloc_offset);
-                        draw_line(gb);
-                    }
-
-                    gb->lcd_mode = LCD_HBLANK;
-                    gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
-                    DRAW_CALL($(__gb_update_stat_irq), gb);
-#if PGB_IS_CGB
-                    if (gb->cgb_hdma_active)
-                        RARE_CALL(__gb_do_hdma, gb);
-#endif
-                    ticked = true;
-                }
-                break;
-
-            // Mode 0: H-Blank (remaining cycles of the 456 total)
-            // The PPU is idle until the end of the scanline.
-            case LCD_HBLANK:
-                if (gb->counter.lcd_count >= gb->display.current_mode0_cycles)
-                {
-                    gb->counter.lcd_count -= gb->display.current_mode0_cycles;
-                    gb->gb_reg.LY++;
-
-                    if (gb->gb_reg.LY == LCD_HEIGHT)
-                    {
-                        gb->lcd_mode = LCD_VBLANK;
-                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
-                        gb->gb_frame = 1;
-                        gb->gb_reg.IF |= VBLANK_INTR;
-                        gb->direct.wy_latched = 0;
-
-                        // VBlank entry STAT glitch (Case 1): if LYC and Mode 1
-                        // interrupts are both enabled, the LYC leg drops (fast)
-                        // before Mode 1 rises (slow), creating a brief through-zero.
-                        if ((gb->gb_reg.STAT & STAT_LYC_COINC) &&
-                            (gb->gb_reg.STAT & STAT_LYC_INTR) &&
-                            (gb->gb_reg.STAT & STAT_MODE_1_INTR))
-                        {
-                            gb->gb_reg.IF |= LCDC_INTR;
-                            gb->direct.stat_line = 1;
-                        }
-
+                        DRAW_CALL($(__gb_ppu_mode3_setup), gb);
                         DRAW_CALL($(__gb_update_stat_irq), gb);
-
-                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        ticked = true;
                     }
-                    else
+                    break;
+
+                // Mode 3: Pixel Transfer (variable, 172-289 cycles on hardware).
+                case LCD_TRANSFER:
+                    if (gb->counter.lcd_count >= gb->display.current_mode3_cycles)
                     {
-                        gb->lcd_mode = LCD_SEARCH_OAM;
-                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+                        gb->counter.lcd_count -= gb->display.current_mode3_cycles;
 
-                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
-                    }
-                    ticked = true;
-                }
-                break;
-
-            // Mode 1: V-Blank (10 lines, 4560 cycles total)
-            // The PPU is idle, giving the CPU time to update VRAM.
-            case LCD_VBLANK:
-                if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
-                {
-                    gb->counter.lcd_count -= LCD_LINE_CYCLES;
-
-#if PGB_IS_CGB
-                    /* HBlank HDMA continues during VBlank: one block per line. */
-                    if (gb->cgb_hdma_active)
-                        RARE_CALL(__gb_do_hdma, gb);
-#endif
-
-                    if (gb->gb_reg.LY == 0)
-                    {
-                        gb->lcd_mode = LCD_SEARCH_OAM;
-                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
-
-                        // VBlank exit STAT glitch (Case 4): if Mode 1 and Mode 2
-                        // interrupts are both enabled, Mode 1 drops (fast) before
-                        // Mode 2 rises (slow), creating a brief through-zero.
-                        if ((gb->gb_reg.STAT & STAT_MODE_1_INTR) &&
-                            (gb->gb_reg.STAT & STAT_MODE_2_INTR))
+                        if likely (!gb->direct.frame_skip && gb->lcd_master_enable)
                         {
-                            gb->gb_reg.IF |= LCDC_INTR;
-                            gb->direct.stat_line = 1;
+                            // draw cluster may be relocated into the main DTCM
+                            // pool (rev A); call via the offset-adjusted pointer.
+                            void (*draw_line)(gb_s*) =
+                                (void (*)(gb_s*))((char*)$(__gb_draw_line) + pgb_draw_reloc_offset);
+                            draw_line(gb);
                         }
 
-                        gb->display.window_clear = 0;
+                        gb->lcd_mode = LCD_HBLANK;
+                        gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_HBLANK;
+                        DRAW_CALL($(__gb_update_stat_irq), gb);
+#if PGB_IS_CGB
+                        if (gb->cgb_hdma_active)
+                            RARE_CALL(__gb_do_hdma, gb);
+#endif
+                        ticked = true;
+                    }
+                    break;
 
-                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
-                    }
-                    else
+                // Mode 0: H-Blank (remaining cycles of the 456 total)
+                // The PPU is idle until the end of the scanline.
+                case LCD_HBLANK:
+                    if (gb->counter.lcd_count >= gb->display.current_mode0_cycles)
                     {
+                        gb->counter.lcd_count -= gb->display.current_mode0_cycles;
                         gb->gb_reg.LY++;
-                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+
+                        if (gb->gb_reg.LY == LCD_HEIGHT)
+                        {
+                            gb->lcd_mode = LCD_VBLANK;
+                            gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_VBLANK;
+                            gb->gb_frame = 1;
+                            gb->gb_reg.IF |= VBLANK_INTR;
+                            gb->direct.wy_latched = 0;
+
+                            // VBlank entry STAT glitch (Case 1): if LYC and Mode 1
+                            // interrupts are both enabled, the LYC leg drops (fast)
+                            // before Mode 1 rises (slow), creating a brief through-zero.
+                            if ((gb->gb_reg.STAT & STAT_LYC_COINC) &&
+                                (gb->gb_reg.STAT & STAT_LYC_INTR) &&
+                                (gb->gb_reg.STAT & STAT_MODE_1_INTR))
+                            {
+                                gb->gb_reg.IF |= LCDC_INTR;
+                                gb->direct.stat_line = 1;
+                            }
+
+                            DRAW_CALL($(__gb_update_stat_irq), gb);
+
+                            DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        }
+                        else
+                        {
+                            gb->lcd_mode = LCD_SEARCH_OAM;
+                            gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                            DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        }
+                        ticked = true;
                     }
-                    ticked = true;
+                    break;
+
+                // Mode 1: V-Blank (10 lines, 4560 cycles total)
+                // The PPU is idle, giving the CPU time to update VRAM.
+                case LCD_VBLANK:
+                    if (gb->counter.lcd_count >= LCD_LINE_CYCLES)
+                    {
+                        gb->counter.lcd_count -= LCD_LINE_CYCLES;
+
+#if PGB_IS_CGB
+                        /* HBlank HDMA continues during VBlank: one block per line. */
+                        if (gb->cgb_hdma_active)
+                            RARE_CALL(__gb_do_hdma, gb);
+#endif
+
+                        if (gb->gb_reg.LY == 0)
+                        {
+                            gb->lcd_mode = LCD_SEARCH_OAM;
+                            gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+
+                            // VBlank exit STAT glitch (Case 4): if Mode 1 and Mode 2
+                            // interrupts are both enabled, Mode 1 drops (fast) before
+                            // Mode 2 rises (slow), creating a brief through-zero.
+                            if ((gb->gb_reg.STAT & STAT_MODE_1_INTR) &&
+                                (gb->gb_reg.STAT & STAT_MODE_2_INTR))
+                            {
+                                gb->gb_reg.IF |= LCDC_INTR;
+                                gb->direct.stat_line = 1;
+                            }
+
+                            gb->display.window_clear = 0;
+
+                            DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        }
+                        else
+                        {
+                            gb->gb_reg.LY++;
+                            DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        }
+                        ticked = true;
+                    }
+                    // "Short Line 153" Fix: during VBlank line 153, LY wraps to 0 very early
+                    // (after just a few cycles), but the PPU remains in VBlank for the full
+                    // line duration. Placed inside the case so the check only evaluates
+                    // during VBlank steps, not every CPU step.
+                    else if (gb->gb_reg.LY == 153)
+                    {
+                        gb->gb_reg.LY = 0;
+                        DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
+                        ticked = true;
+                    }
+                    break;
                 }
-                // "Short Line 153" Fix: during VBlank line 153, LY wraps to 0 very early
-                // (after just a few cycles), but the PPU remains in VBlank for the full
-                // line duration. Placed inside the case so the check only evaluates
-                // during VBlank steps, not every CPU step.
-                else if (gb->gb_reg.LY == 153)
-                {
-                    gb->gb_reg.LY = 0;
-                    DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
-                    ticked = true;
-                }
-                break;
-            }
-        } while (ticked);
+            } while (ticked);
+        }
+        return inst_cycles;
     }
-    return inst_cycles;
-}
 }
 
 __core void $(gb_run_frame)(gb_s* gb)
