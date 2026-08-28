@@ -25,8 +25,8 @@
 /* Per-frame APU register write events for cycle-accurate replay.
  * File-static in main RAM (gb_s is DTCM-resident); transient, never
  * serialized. Sized for ~7 frames at the CPU-max write rate
- * (LDH every 12 dots = 5852/frame); the shell throttles emulation
- * (audio_replay_pending_frames) long before this fills. */
+ * (LDH every 12 dots = 5852/frame); the pause-throttle engages long
+ * before this fills. */
 #define APU_EVENT_CAP 32768
 typedef struct
 {
@@ -78,10 +78,10 @@ static int s_apu_resume_event = -1;  // index of first un-applied event, -1 = no
 static int s_apu_resume_offset = 0;  // samples already rendered of the pending span
 
 /* Replay overflow + backlog state. If the event batch hits APU_EVENT_CAP,
- * dropped events/sentinels leave holes — replaying would corrupt audio — so
- * the shell drops the batch and rebaselines (audio_take_replay_overflow).
+ * dropped events/sentinels leave holes - replaying would corrupt audio - so
+ * the batch is dropped and the ring rebaselined (audio_take_replay_overflow).
  * s_apu_pending_frames tracks frames recorded but not yet consumed by
- * replay; the shell uses it for drain override and pause-throttling. */
+ * replay; used for drain override and pause-throttling. */
 static bool s_apu_replay_overflow;
 static int s_apu_pending_frames;
 

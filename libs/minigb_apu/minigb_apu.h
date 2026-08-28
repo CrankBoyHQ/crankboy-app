@@ -118,8 +118,8 @@ __shell void audio_reset_replay_state(audio_data* audio);
  * the batch (audio_reset_replay_state) and rebaseline the ring. */
 __shell bool audio_take_replay_overflow(void);
 
-/* Frames recorded in the event batch but not yet consumed by replay; the
- * shell uses this for backpressure (drain override + pause-throttle). */
+/* Frames recorded in the event batch but not yet consumed by replay; used
+ * for backpressure (drain override + pause-throttle). */
 __shell int audio_replay_pending_frames(void);
 
 /* Record an emulated frame's end in the write-event stream (accurate mode).
