@@ -728,19 +728,26 @@ void reconfigure_audio_source(CB_GameScene* gameScene)
     }
 }
 
-/* Drain in-flight audio callbacks before wiping relocated TCM code. */
-static void CB_GameScene_drain_audio(void)
+/* Stop the audio source before wiping relocated TCM code, and drain the
+ * in-flight callback so no thread executes code being wiped. */
+static void CB_GameScene_stop_audio_source(void)
 {
     audioGameScene = NULL;
     __sync_synchronize();
-    if (audio_inflight <= 0)
-        return;
+    if (CB_App->soundSource != NULL)
+    {
+        playdate->sound->removeSource(CB_App->soundSource);
+        CB_App->soundSource = NULL;
+    }
+
+    /* Only one callback can still be mid-render now; it finishes in µs.
+     * Watchdog only — a hit here is a separate bug, not this race. */
     unsigned start_ms = playdate->system->getCurrentTimeMilliseconds();
     while (audio_inflight > 0)
     {
-        if (playdate->system->getCurrentTimeMilliseconds() - start_ms > 20)
+        if (playdate->system->getCurrentTimeMilliseconds() - start_ms > 50)
         {
-            playdate->system->logToConsole("audio drain timeout (%d in flight)", audio_inflight);
+            playdate->system->logToConsole("audio stop timeout (%d in flight)", audio_inflight);
             break;
         }
     }
@@ -1316,9 +1323,9 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     // separately after the gb struct is moved into the DTCM pool).
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
-        // TCM-off path wipes pockets: drain first, re-arm after.
+        // TCM-off path wipes pockets: stop the source first, re-arm after.
         if (preferences_itcm == 0)
-            CB_GameScene_drain_audio();
+            CB_GameScene_stop_audio_source();
         tcm_apply(context->gb->is_cgb_mode);
         if (preferences_itcm == 0)
             reconfigure_audio_source(gameScene);
@@ -4405,7 +4412,7 @@ __section__(".rare") static void CB_GameScene_event(void* object, PDSystemEvent 
             return;
         // fallthrough
     case kEventPause:
-        CB_GameScene_drain_audio();
+        CB_GameScene_stop_audio_source();
 
         // System may write into TCM pockets while locked/menu open; clear
         // code to flash. gb struct (main pool) stays; re-placed on resume.
@@ -4805,12 +4812,6 @@ static void CB_GameScene_free(void* object)
 
     if (audioGameScene == gameScene)
     {
-        if (CB_App->soundSource != NULL)
-        {
-            playdate->sound->removeSource(CB_App->soundSource);
-            CB_App->soundSource = NULL;
-        }
-
         if (preferences_sound_mode == 2)
         {
             CB_reset_audio_sync_state();
@@ -4818,7 +4819,7 @@ static void CB_GameScene_free(void* object)
 
         audioGameScene = NULL;
         audio_enabled = 0;
-        CB_GameScene_drain_audio();
+        CB_GameScene_stop_audio_source();
     }
 
     // Ensure UI/library sounds are audible after leaving the game, even if game audio was off.
