@@ -467,13 +467,10 @@ __section__(".rare") void tcm_relocate(bool cgb)
     }
 
     {
-        void* hwm = dtcm_stack_hwm();
-        size_t free_bytes = dtcm_pool_free();
+        unsigned used = (unsigned)((uintptr_t)dtcm_mempool - (uintptr_t)dtcm_mempool_start);
         playdate->system->logToConsole(
-            "dtcm pool: used %uB, stack hwm %p, free %uB (guard-adj %uB)",
-            (unsigned)((uintptr_t)dtcm_mempool - (uintptr_t)dtcm_mempool_start), hwm,
-            (unsigned)free_bytes,
-            (unsigned)(free_bytes > DTCM_POOL_STACK_GUARD ? free_bytes - DTCM_POOL_STACK_GUARD : 0)
+            "DTCM pool: used %uB, free %uB (limit %uB)", used, (unsigned)DTCM_POOL_LIMIT - used,
+            (unsigned)DTCM_POOL_LIMIT
         );
     }
 

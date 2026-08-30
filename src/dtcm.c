@@ -12,16 +12,6 @@ static uint32_t* dtcm_low_canary_addr = NULL;
 // pointers even after dtcm_deinit/dtcm_restore moved dtcm_mempool back.
 static void* dtcm_mempool_hwm = NULL;
 #define DTCM_CANARY 0xDE0DCA94
-
-// Stack-depth measurement: the pool shares DTCM with the stack reserve
-// (mempool_start = frame - PLAYDATE_STACK_SIZE); the reserve is painted and
-// its low-water mark tracked. Marker distinct from probe-clean/canary values.
-#define DTCM_STACK_PAINT 0x5ACB5ACB
-static uint32_t* dtcm_stack_paint_top = NULL;
-// DTCM window (64KB at 0x20000000). SP outside it = user stack; never paint
-// from a foreign SP.
-#define DTCM_BASE 0x20000000u
-#define DTCM_END (0x20000000u + 0x10000u)
 #endif
 
 bool is_dtcm_init = false;
@@ -108,18 +98,14 @@ void dtcm_pocket_fill_and_reset(void)
 }
 
 #ifdef DTCM_ALLOC
-// Refuse an allocation whose top (+ canary + guard) would pass the stack
-// low-water mark; caller falls back to flash. Permissive when unmeasured.
+// Hard cap on main-pool size; over it the caller falls back to a pocket or flash.
 static bool dtcm_pool_budget(uintptr_t top)
 {
-    void* hwm = dtcm_stack_hwm();
-    if (!hwm)
-        return true;
-    if (top + sizeof(uint32_t) + DTCM_POOL_STACK_GUARD > (uintptr_t)hwm)
+    if ((top - (uintptr_t)dtcm_mempool_start) > DTCM_POOL_LIMIT)
     {
         playdate->system->logToConsole(
-            "dtcm pool: refuse %uB alloc (free %uB)", (unsigned)(top - (uintptr_t)dtcm_mempool),
-            (unsigned)((uintptr_t)hwm - (uintptr_t)dtcm_mempool)
+            "dtcm pool: refuse %uB alloc (limit %uB)", (unsigned)(top - (uintptr_t)dtcm_mempool),
+            (unsigned)DTCM_POOL_LIMIT
         );
         return false;
     }
@@ -248,77 +234,9 @@ __dtcm_ctrl void dtcm_set_mempool(void* addr)
     dtcm_mempool_start = addr;
 #ifdef DTCM_ALLOC
     dtcm_mempool_hwm = addr;
-#ifndef TARGET_SIMULATOR
-    // Paint the stack/pool reserve (below SP is free stack by definition).
-    // Only when SP is the DTCM main stack, else we'd paint foreign memory.
-    uint32_t sp;
-    asm volatile("mov %0, sp" : "=r"(sp) : : "memory");
-    uint32_t lo = (uint32_t)(uintptr_t)addr;
-    if (sp >= DTCM_BASE && sp < DTCM_END && sp > lo && sp - lo <= 0x4000)
-    {
-        uint32_t* p = (uint32_t*)addr;
-        uint32_t* top = (uint32_t*)sp;
-        while (p < top)
-            *p++ = DTCM_STACK_PAINT;
-        dtcm_stack_paint_top = top;
-    }
-#endif
     playdate->system->logToConsole("DTCM mempool: %p\n", dtcm_mempool_start);
 #endif
 }
-
-#ifdef DTCM_ALLOC
-// Lowest address the main stack has reached since painting. Ceiling extends
-// to SP only for the DTCM main stack (foreign contexts just read). NULL when
-// unmeasured.
-void* dtcm_stack_hwm(void)
-{
-#ifndef TARGET_SIMULATOR
-    if (!dtcm_stack_paint_top)
-        return NULL;
-
-    uint32_t sp;
-    asm volatile("mov %0, sp" : "=r"(sp) : : "memory");
-    uint32_t* top = (uint32_t*)sp;
-
-    // Raise the painted ceiling to SP (DTCM main stack only).
-    uint32_t* p = dtcm_stack_paint_top;
-    if (sp >= DTCM_BASE && sp < DTCM_END && top > p)
-    {
-        uint32_t* base = (uint32_t*)dtcm_mempool;
-        if (p < base)
-            p = base;  // never paint over live pool data/canary
-        while (p < top)
-            *p++ = DTCM_STACK_PAINT;
-        dtcm_stack_paint_top = top;
-    }
-
-    // Scan the reserve (dtcm_mempool, paint_top] for the deepest stack touch.
-    uint32_t* lo = (uint32_t*)dtcm_mempool;  // pool top (canary), not stack
-    p = dtcm_stack_paint_top;
-    while (p > lo + 1)
-    {
-        p--;
-        if (*p != DTCM_STACK_PAINT)
-            return p;  // stack dipped to here
-    }
-    return (void*)dtcm_stack_paint_top;  // reserve untouched
-#else
-    (void)dtcm_mempool;
-    return NULL;
-#endif
-}
-
-// Free bytes between the current pool top and the stack low-water mark.
-size_t dtcm_pool_free(void)
-{
-    void* hwm = dtcm_stack_hwm();
-    if (!hwm)
-        return 0;
-    uintptr_t free_bytes = (uintptr_t)hwm - (uintptr_t)dtcm_mempool;
-    return (free_bytes > 0) ? free_bytes : 0;
-}
-#endif
 
 __dtcm_ctrl bool dtcm_verify(const char* context)
 {

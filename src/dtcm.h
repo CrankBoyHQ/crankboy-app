@@ -7,16 +7,16 @@ extern void* dtcm_mempool;
 extern void* dtcm_mempool_start;
 extern bool is_dtcm_init;
 
+// The pool shares DTCM with the stack reserve: pool grows up from
+// boot_frame - PLAYDATE_STACK_SIZE, stack grows down into the same window.
+// DTCM_STACK_GROWTH is the headroom kept for the stack; the pool gets the rest.
+#define PLAYDATE_STACK_SIZE 0x2700
+#define DTCM_STACK_GROWTH 0x1000
+#define DTCM_POOL_LIMIT (PLAYDATE_STACK_SIZE - DTCM_STACK_GROWTH)
+
 void dtcm_set_mempool(void* addr);
 void dtcm_init(void);
 void dtcm_deinit(void);
-
-// Stack low-water mark, and free pool bytes up to it (the pool shares DTCM
-// with the stack reserve). NULL/0 on the simulator.
-void* dtcm_stack_hwm(void);
-size_t dtcm_pool_free(void);
-// Minimum stack headroom kept below the measured low-water mark.
-#define DTCM_POOL_STACK_GUARD 0x400
 
 // long_call: DTCM_VERIFY* is called from relocated clusters (bl would break).
 #ifdef TARGET_SIMULATOR

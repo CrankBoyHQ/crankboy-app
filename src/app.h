@@ -69,15 +69,6 @@ enum cgb_support_e
     GB_SUPPORT_DMG_AND_CGB = 3,
 };
 
-/*
- * Defines the main stack size. This value provides a necessary safety
- * margin to prevent intermittent crashes.
- *
- * 0x2700 is the max we should use. 0x2760 is possible but leaves no
- * headroom if there are any changes to the Playdate OS in the future.
- */
-#define PLAYDATE_STACK_SIZE 0x2700
-
 #define FPS_AVG_DECAY 0.8f
 
 typedef struct
