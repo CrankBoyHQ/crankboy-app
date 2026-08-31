@@ -503,15 +503,30 @@ void free_subimages(LCDBitmap** imgs)
     cb_free(imgs);
 }
 
-void draw_spinny(int x, int y, int r)
+void draw_progress_ring(int x, int y, int r, int line_width)
 {
     unsigned t = playdate->system->getCurrentTimeMilliseconds();
 
-    float theta = (t % 512) / 512.0f * 360.0f;
+    float p = (t % 2000) / 2000.0f;
 
-    playdate->graphics->drawEllipse(
-        x - r, y - r, r * 2, r * 2, MIN(4, r / 4), theta, theta + 110.0f, kColorBlack
-    );
+    float start, end;
+    if (p < 0.5f)
+    {
+        start = 0.0f;
+        end = p * 720.0f;
+    }
+    else
+    {
+        start = (p - 0.5f) * 720.0f;
+        end = 360.0f;
+    }
+
+    if (end - start > 0.0f)
+    {
+        playdate->graphics->drawEllipse(
+            x - r, y - r, r * 2, r * 2, line_width, start, end, kColorBlack
+        );
+    }
 }
 
 bool cb_valid_basename(const char* fname)

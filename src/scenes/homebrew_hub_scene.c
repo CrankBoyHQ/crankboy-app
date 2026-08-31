@@ -1175,7 +1175,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         HomebrewHubContext* current_context = &hbs->context[hbs->context_depth - 1];
         if (current_context->list && current_context->list->selectedItem > 0)
         {
-            draw_spinny((kDividerX + LCD_COLUMNS) / 2, 180, 34);
+            draw_progress_ring((kDividerX + LCD_COLUMNS) / 2, 180, 34, 4);
         }
     }
 
