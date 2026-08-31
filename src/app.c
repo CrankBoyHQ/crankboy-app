@@ -1506,12 +1506,15 @@ __section__(".text.main") void CB_update(float dt)
     }
 
 #if CAP_FRAME_RATE
-    // cap frame rate
-    if (refreshRate > 0)
     {
-        float refreshInterval = 1.0f / refreshRate;
-        while (playdate->system->getElapsedTime() < refreshInterval)
-            ;
+        static float applied_refresh_rate = -1.0f;
+
+        float target = (refreshRate > 0.0f) ? refreshRate : 0.0f;
+        if (target != applied_refresh_rate)
+        {
+            applied_refresh_rate = target;
+            playdate->display->setRefreshRate(target);
+        }
     }
 #endif
 
