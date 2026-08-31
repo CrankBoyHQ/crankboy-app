@@ -312,14 +312,14 @@ __section__(".rare") void tcm_relocate(bool cgb)
             core_itcm_reloc_batch, batch_where
         );
 
-    // Placement priority: core > batch > hle > apu_write > draw > rare >
-    // apu_sample_gen. Each: pockets (share used pockets' slack, then best-fit
+    // Placement priority: core > batch > hle > apu_sample_gen > draw > rare >
+    // apu_write. Each: pockets (share used pockets' slack, then best-fit
     // fresh) -> main pool (budget-bounded, multi-claim) -> flash. If greedy
     // leaves a cluster in pool/flash but pockets can hold everything, a DFS
     // repack finds the all-pocket arrangement (priority order preserved).
     // hle: CGB only (self-skips on DMG) and needs the HLE pref on.
-    // apu_write outranks draw/rare: PCM voice streaming hammers the write
-    // path, and draw is cheaper than the HLE/APU write clusters in practice.
+    // apu_sample_gen outranks draw/rare: it is the audio render path, hammers
+    // the sample engine every audio frame and is cheaper to run from DTCM.
     pgb_rare_reloc_offset = 0;
     pgb_hle_reloc_offset = 0;
     pgb_apu_write_reloc_offset = 0;
@@ -330,15 +330,15 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     const tcm_cluster_t clusters[] = {
         {"hle", __hle_cgb_start, __hle_cgb_end, &pgb_hle_reloc_offset, true, true, false},
-        {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false, false,
-         false},
+        {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
+         &pgb_apu_sample_gen_reloc_offset, false, false, false},
         {"draw", cgb ? (char*)__draw_cgb_start : (char*)__draw_dmg_start,
          cgb ? (char*)__draw_cgb_end : (char*)__draw_dmg_end, &pgb_draw_reloc_offset, false, false,
          true},
         {"rare", cgb ? __rare_cgb_start : __rare_dmg_start, cgb ? __rare_cgb_end : __rare_dmg_end,
          &pgb_rare_reloc_offset, false, false, false},
-        {"apu_sample_gen", __apu_sample_gen_start, __apu_sample_gen_end,
-         &pgb_apu_sample_gen_reloc_offset, false, false, false},
+        {"apu_write", __apu_write_start, __apu_write_end, &pgb_apu_write_reloc_offset, false, false,
+         false},
     };
 
     // Snapshot pocket brks: the search phases mutate only sim, the real
