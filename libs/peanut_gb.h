@@ -6961,8 +6961,8 @@ __section__(".rare") enum gb_init_error_e gb_init(
     gb->cgb_hdma_active = false;
 
 #define CGB_PALETTE_LUT_SIZE (48 * 256)
-    gb->cgb_bg_palette = malloc(64 + CGB_PALETTE_LUT_SIZE);
-    gb->cgb_obj_palette = malloc(64);
+    gb->cgb_bg_palette = cb_malloc(64 + CGB_PALETTE_LUT_SIZE);
+    gb->cgb_obj_palette = cb_malloc(64);
     memset(gb->cgb_bg_palette, 0, 64 + CGB_PALETTE_LUT_SIZE);
     memset(gb->cgb_obj_palette, 0, 64);
 
