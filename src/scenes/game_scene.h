@@ -198,6 +198,7 @@ typedef struct CB_GameScene
         bool noise_pending;
         bool show_help;
         int help_step_count;
+        bool unsupported;
     } rewind;
 } CB_GameScene;
 

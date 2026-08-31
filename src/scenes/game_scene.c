@@ -2541,7 +2541,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             rewind_free(gameScene);
         }
 
-        if (preferences_rewind_enabled && !gameScene->rewind.states)
+        if (preferences_rewind_enabled && !gameScene->rewind.states &&
+            !gameScene->rewind.unsupported)
         {
             rewind_init(gameScene);
         }
@@ -4555,7 +4556,10 @@ static void rewind_init(CB_GameScene* gameScene)
     CB_GameSceneContext* context = gameScene->context;
 
     if (context->gb->is_cgb_mode)
+    {
+        gameScene->rewind.unsupported = true;
         return;
+    }
 
     size_t state_size =
         sizeof(gb_s) + WRAM_SIZE + VRAM_SIZE + LCD_BUFFER_BYTES + context->gb->gb_cart_ram_size;
@@ -4566,7 +4570,10 @@ static void rewind_init(CB_GameScene* gameScene)
     {
         capacity = (int)(REWIND_MAX_MEMORY / state_size);
         if (capacity < 2)
+        {
+            gameScene->rewind.unsupported = true;
             return;
+        }
     }
 
     gameScene->rewind.states = cb_malloc((size_t)capacity * sizeof(uint8_t*));
@@ -4620,6 +4627,7 @@ static void rewind_free(CB_GameScene* gameScene)
     gameScene->rewind.active = false;
     gameScene->rewind.noise_pending = false;
     gameScene->rewind.state_size = 0;
+    gameScene->rewind.unsupported = false;
 }
 
 static void rewind_record_state(CB_GameScene* gameScene)
