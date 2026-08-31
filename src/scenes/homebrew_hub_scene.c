@@ -478,9 +478,9 @@ const char* get_best_screenshot(JsonArray* screenshots)
                 return s;
             else if (!strcasecmp(s, "cover.jpg"))
                 return s;
-            else if (endswithi(s, ".png"))
+            else if (cb_file_has_extension(s, ".png"))
                 bestidx = i;
-            else if (endswithi(s, ".bmp"))
+            else if (cb_file_has_extension(s, ".bmp"))
                 bestidx = i;
         }
     }
@@ -891,7 +891,8 @@ static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry)
         json_value jf = a->data[i];
         const char* fname = json_as_string(json_get_table_value(jf, "filename"));
         bool playable = json_get_table_value(jf, "playable").type == kJSONTrue;
-        if (playable && fname && (endswithi(fname, ".gb") || endswithi(fname, ".gbc")))
+        if (playable && fname &&
+            (cb_file_has_extension(fname, ".gb") || cb_file_has_extension(fname, ".gbc")))
         {
             has_playable = true;
             include[i] = true;

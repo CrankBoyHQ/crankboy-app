@@ -37,22 +37,6 @@ struct ListPatchAcc
     const char* patch_dir;
 };
 
-bool extension_is_supported_patch_file(const char* extension)
-{
-    if (!extension)
-        return false;
-    return !strcasecmp(extension, ".ips") || !strcasecmp(extension, ".bps") ||
-           !strcasecmp(extension, ".ups");
-}
-
-bool extension_is_unsupported_patch_file(const char* extension)
-{
-    if (!extension)
-        return false;
-    return !strcasecmp(extension, ".bsdiff") || !strcasecmp(extension, ".cht") ||
-           !strcasecmp(extension, ".xdelta") || !strcasecmp(extension, ".vcdiff");
-}
-
 void list_patch_cb(const char* filename, void* ud)
 {
     struct ListPatchAcc* acc = ud;
@@ -61,9 +45,9 @@ void list_patch_cb(const char* filename, void* ud)
     for (SoftPatch* patch = acc->list; patch && patch->fullpath; ++patch, ++n)
         ;
 
-    bool ips = endswithi(filename, ".ips");
-    bool bps = endswithi(filename, ".bps");
-    bool ups = endswithi(filename, ".ups");
+    bool ips = cb_file_has_extension(filename, ".ips");
+    bool bps = cb_file_has_extension(filename, ".bps");
+    bool ups = cb_file_has_extension(filename, ".ups");
 
     if (ips || bps || ups)
     {

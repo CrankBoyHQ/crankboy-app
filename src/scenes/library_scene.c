@@ -37,7 +37,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
 static void collect_cover_filenames_callback(const char* filename, void* userdata)
 {
-    if (endswithi(filename, ".pdi"))
+    if (cb_file_has_extension(filename, ".pdi"))
     {
         CB_Array* covers_array = userdata;
         char* basename_no_ext = cb_basename(filename, true);

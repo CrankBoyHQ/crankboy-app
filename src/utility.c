@@ -583,6 +583,23 @@ const char* get_extension(const char* filename)
     return filename + strlen(filename) - diff;
 }
 
+static const char* cb_file_extension(const char* filename)
+{
+    if (!filename)
+        return "";
+    const char* ext = get_extension(filename);
+    if (ext == filename || *ext == '\0')
+        return "";
+    if (ext[-1] == '/' || ext[-1] == '\\')
+        return "";
+    return ext;
+}
+
+bool cb_file_has_extension(const char* filename, const char* ext)
+{
+    return strcasecmp(cb_file_extension(filename), ext) == 0;
+}
+
 char* cb_strip_extension(const char* path)
 {
     if (!path)
@@ -1595,48 +1612,6 @@ bool startswith(const char* str, const char* prefix)
         return false;
 
     return strncmp(str, prefix, prefix_len) == 0;
-}
-
-bool endswith(const char* str, const char* suffix)
-{
-    if (!str || !suffix)
-        return false;
-
-    size_t str_len = strlen(str);
-    size_t suffix_len = strlen(suffix);
-
-    if (suffix_len > str_len)
-        return false;
-
-    return strncmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
-}
-
-bool startswithi(const char* str, const char* prefix)
-{
-    if (!str || !prefix)
-        return false;
-
-    size_t str_len = strlen(str);
-    size_t prefix_len = strlen(prefix);
-
-    if (prefix_len > str_len)
-        return false;
-
-    return strncasecmp(str, prefix, prefix_len) == 0;
-}
-
-bool endswithi(const char* str, const char* suffix)
-{
-    if (!str || !suffix)
-        return false;
-
-    size_t str_len = strlen(str);
-    size_t suffix_len = strlen(suffix);
-
-    if (suffix_len > str_len)
-        return false;
-
-    return strncasecmp(str + (str_len - suffix_len), suffix, suffix_len) == 0;
 }
 
 int cb_file_exists(const char* path, FileOptions fopts)

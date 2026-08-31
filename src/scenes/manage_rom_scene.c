@@ -52,32 +52,12 @@ static const char* mapper_name_for(uint8_t v)
     return NULL;
 }
 
-static bool ends_with_icase(const char* s, const char* suffix)
-{
-    size_t ls = strlen(s);
-    size_t lf = strlen(suffix);
-    if (lf > ls)
-        return false;
-    for (size_t i = 0; i < lf; ++i)
-    {
-        char a = s[ls - lf + i];
-        char b = suffix[i];
-        if (a >= 'A' && a <= 'Z')
-            a = (char)(a - 'A' + 'a');
-        if (b >= 'A' && b <= 'Z')
-            b = (char)(b - 'A' + 'a');
-        if (a != b)
-            return false;
-    }
-    return true;
-}
-
 static void read_rom_header(CB_ManageRomScene* self)
 {
     self->mapper_byte = 0;
     self->cgb_flag = 0;
     self->header_ok = false;
-    self->compressed = ends_with_icase(self->game->fullpath, ".gbz");
+    self->compressed = cb_file_has_extension(self->game->fullpath, ".gbz");
 
     if (self->compressed)
     {

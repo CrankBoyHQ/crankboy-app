@@ -61,29 +61,27 @@ struct list_files_ud
 
 static bool copy_one_file(const char* full_path, const char* filename)
 {
-    const char* extension = get_extension(filename);
-
     char* dst_path = NULL;
 
-    if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
-        !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp") ||
-        !strcasecmp(extension, ".pdi"))
+    if (cb_file_has_extension(filename, ".png") || cb_file_has_extension(filename, ".jpg") ||
+        cb_file_has_extension(filename, ".jpeg") || cb_file_has_extension(filename, ".bmp") ||
+        cb_file_has_extension(filename, ".pdi"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), filename);
     }
-    else if (!strcasecmp(extension, ".gb") || !strcasecmp(extension, ".gbc"))
+    else if (cb_file_has_extension(filename, ".gb") || cb_file_has_extension(filename, ".gbc"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
     }
-    else if (!strcasecmp(extension, ".gbz"))
+    else if (cb_file_has_extension(filename, ".gbz"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_gamesPath), filename);
     }
-    else if (!strcasecmp(extension, ".sav"))
+    else if (cb_file_has_extension(filename, ".sav"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_savesPath), filename);
     }
-    else if (!strcasecmp(extension, ".state"))
+    else if (cb_file_has_extension(filename, ".state"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_statesPath), filename);
     }
@@ -134,27 +132,25 @@ static void collect_files_callback(const char* filename, void* userdata)
     char* stripped_filename = NULL;
     filename_parse_version(filename, &stripped_filename);
     const char* name_for_ext = stripped_filename ? stripped_filename : filename;
-    const char* extension = get_extension(name_for_ext);
     bool should_copy = false;
 
-    if (extension)
+    if (cb_file_has_extension(name_for_ext, ".png") ||
+        cb_file_has_extension(name_for_ext, ".jpg") ||
+        cb_file_has_extension(name_for_ext, ".jpeg") || cb_file_has_extension(name_for_ext, ".bmp"))
     {
-        if (!strcasecmp(extension, ".png") || !strcasecmp(extension, ".jpg") ||
-            !strcasecmp(extension, ".jpeg") || !strcasecmp(extension, ".bmp"))
-        {
-            should_copy = true;
-        }
-#ifndef CRANKBOY_OFFICIAL_CATALOG
-        else if (
-            !strcasecmp(extension, ".pdi") || !strcasecmp(extension, ".gb") ||
-            !strcasecmp(extension, ".gbc") || !strcasecmp(extension, ".gbz") ||
-            !strcasecmp(extension, ".sav") || !strcasecmp(extension, ".state")
-        )
-        {
-            should_copy = true;
-        }
-#endif
+        should_copy = true;
     }
+#ifndef CRANKBOY_OFFICIAL_CATALOG
+    else if (
+        cb_file_has_extension(name_for_ext, ".pdi") || cb_file_has_extension(name_for_ext, ".gb") ||
+        cb_file_has_extension(name_for_ext, ".gbc") ||
+        cb_file_has_extension(name_for_ext, ".gbz") ||
+        cb_file_has_extension(name_for_ext, ".sav") || cb_file_has_extension(name_for_ext, ".state")
+    )
+    {
+        should_copy = true;
+    }
+#endif
 
     if (should_copy)
     {

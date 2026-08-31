@@ -603,8 +603,8 @@ void CB_ImageConversionScene_free(void* object)
 bool filename_has_stbi_extension(const char* fname)
 {
     return (
-        endswithi(fname, ".png") || endswithi(fname, ".jpg") || endswithi(fname, ".jpeg") ||
-        endswithi(fname, ".bmp")
+        cb_file_has_extension(fname, ".png") || cb_file_has_extension(fname, ".jpg") ||
+        cb_file_has_extension(fname, ".jpeg") || cb_file_has_extension(fname, ".bmp")
     );
 }
 

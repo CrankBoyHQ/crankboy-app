@@ -124,6 +124,9 @@ char* common_article_form(const char* input);
 // extracts final '.' and what follows it
 const char* get_extension(const char* filename);
 
+// dotfile-safe extension check (".gb", ".pdi", ...)
+bool cb_file_has_extension(const char* filename, const char* ext);
+
 // caller-freed
 char* cb_strip_extension(const char* path);
 
@@ -440,9 +443,6 @@ static inline unsigned next_pow2(unsigned v)
 #define STRINGIFY(x) STRINGIFY_(x)
 
 bool startswith(const char* str, const char* prefix);
-bool startswithi(const char* str, const char* prefix);
-bool endswith(const char* str, const char* suffix);
-bool endswithi(const char* str, const char* suffix);
 
 void setCrankSoundsEnabled(bool enabled);
 

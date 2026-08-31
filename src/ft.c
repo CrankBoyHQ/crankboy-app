@@ -324,13 +324,8 @@ static void ft_send_cumulative_ack(bool force, bool is_error)
 // Check if extension is valid (.gb, .gbc, .gbz, .pdi)
 static bool is_valid_extension(const char* filename)
 {
-    const char* ext = get_extension(filename);
-    if (!ext)
-        return false;
-    return (
-        strcasecmp(ext, ".gb") == 0 || strcasecmp(ext, ".gbc") == 0 ||
-        strcasecmp(ext, ".gbz") == 0 || strcasecmp(ext, ".pdi") == 0
-    );
+    return cb_file_has_extension(filename, ".gb") || cb_file_has_extension(filename, ".gbc") ||
+           cb_file_has_extension(filename, ".gbz") || cb_file_has_extension(filename, ".pdi");
 }
 
 // Handle ft:b command - Begin transfer
@@ -449,8 +444,7 @@ bool ft_handle_begin(
     }
     else
     {
-        const char* ext = get_extension(basename_ptr);
-        bool is_cover = (ext && strcasecmp(ext, ".pdi") == 0);
+        bool is_cover = cb_file_has_extension(basename_ptr, ".pdi");
         const char* target_dir =
             is_cover ? cb_gb_directory_path(CB_coversPath) : cb_gb_directory_path(CB_gamesPath);
 
@@ -646,8 +640,7 @@ bool ft_handle_end(const char* crc_str)
     }
 
     // Check if this is a GBZ file that needs decompression
-    const char* ext = get_extension(ft_ctx.filename);
-    bool is_gbz = ext && strcasecmp(ext, ".gbz") == 0;
+    bool is_gbz = cb_file_has_extension(ft_ctx.filename, ".gbz");
 
     if (is_gbz && ft_ctx.original_filename)
     {

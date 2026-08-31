@@ -108,6 +108,18 @@ static void CB_PatchDownloadScene_menu(void* object)
     playdate->system->addMenuItem(T(pdmenu_settings), CB_PatchDownloadScene_didSelectSettings, pds);
 }
 
+static bool is_supported_patch_filename(const char* name)
+{
+    return cb_file_has_extension(name, ".ips") || cb_file_has_extension(name, ".bps") ||
+           cb_file_has_extension(name, ".ups");
+}
+
+static bool is_unsupported_patch_filename(const char* name)
+{
+    return cb_file_has_extension(name, ".bsdiff") || cb_file_has_extension(name, ".cht") ||
+           cb_file_has_extension(name, ".xdelta") || cb_file_has_extension(name, ".vcdiff");
+}
+
 static void check_for_patches_callback(const char* path, void* userdata)
 {
     bool* has_patches_flag = userdata;
@@ -115,8 +127,7 @@ static void check_for_patches_callback(const char* path, void* userdata)
     {
         return;
     }
-    const char* extension = strrchr(path, '.');
-    if (extension_is_supported_patch_file(extension))
+    if (is_supported_patch_filename(path))
         *has_patches_flag = true;
 }
 
@@ -1382,8 +1393,7 @@ static void list_local_patches_callback(const char* path, void* userdata)
         return;
 
     // Check if the file is a patch file before adding
-    const char* extension = strrchr(basename, '.');
-    if (extension_is_supported_patch_file(extension))
+    if (is_supported_patch_filename(basename))
     {
         file_set->count++;
         char** new_files = cb_realloc(file_set->files, sizeof(char*) * file_set->count);
@@ -1790,11 +1800,8 @@ static bool has_supported_files_recursive(json_value fs)
         }
         else
         {
-            const char* extension = strrchr(key, '.');
-            if (!extension)
-                extension = key + strlen(key);
-            if (extension_is_supported_patch_file(extension) || !strcasecmp(extension, ".txt") ||
-                !strcasecmp(extension, ".md") || !strcasecmp(key, "readme") ||
+            if (is_supported_patch_filename(key) || cb_file_has_extension(key, ".txt") ||
+                cb_file_has_extension(key, ".md") || !strcasecmp(key, "readme") ||
                 !strcasecmp(key, "license"))
                 return true;
         }
@@ -1842,20 +1849,16 @@ static bool push_file_browser(CB_PatchDownloadScene* pds, json_value fs)
         }
         else
         {
-            const char* extension = strrchr(key, '.');
-            if (!extension)
-                extension = key + strlen(key);
-
-            if (extension_is_supported_patch_file(extension))
+            if (is_supported_patch_filename(key))
             {
                 ft = FT_PATCH_SUPPORTED;
             }
-            else if (extension_is_unsupported_patch_file(extension))
+            else if (is_unsupported_patch_filename(key))
             {
                 ft = FT_PATCH_UNSUPPORTED;
             }
             else if (
-                !strcasecmp(extension, ".txt") || !strcasecmp(extension, ".md") ||
+                cb_file_has_extension(key, ".txt") || cb_file_has_extension(key, ".md") ||
                 !strcasecmp(key, "readme") || !strcasecmp(key, "license")
             )
             {
