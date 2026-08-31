@@ -1592,10 +1592,10 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
         return;
     }
 
-    // Generate .tmp and .bak filenames
+    // Generate .tmp and .bak filenames. Filenames always end in ".sav".
     size_t len = strlen(save_filename);
-    char* tmp_filename = cb_malloc(len + 2);
-    char* bak_filename = cb_malloc(len + 2);
+    char* tmp_filename = cb_malloc(len + 1);
+    char* bak_filename = cb_malloc(len + 1);
 
     if (!tmp_filename || !bak_filename)
     {
@@ -1605,26 +1605,8 @@ static void write_cart_ram_file(const char* save_filename, gb_s* gb)
 
     strcpy(tmp_filename, save_filename);
     strcpy(bak_filename, save_filename);
-
-    char* ext_tmp = strrchr(tmp_filename, '.');
-    if (ext_tmp && strcmp(ext_tmp, ".sav") == 0)
-    {
-        strcpy(ext_tmp, ".tmp");
-    }
-    else
-    {
-        strcat(tmp_filename, ".tmp");
-    }
-
-    char* ext_bak = strrchr(bak_filename, '.');
-    if (ext_bak && strcmp(ext_bak, ".sav") == 0)
-    {
-        strcpy(ext_bak, ".bak");
-    }
-    else
-    {
-        strcat(bak_filename, ".bak");
-    }
+    strcpy(tmp_filename + len - 4, ".tmp");
+    strcpy(bak_filename + len - 4, ".bak");
 
     playdate->file->unlink(tmp_filename, false);
 
