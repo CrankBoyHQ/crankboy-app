@@ -1397,20 +1397,9 @@ void CB_headphone_state_changed(int headphone, int mic)
 void collect_game_filenames_callback(const char* filename, void* userdata)
 {
     CB_Array* filenames_array = userdata;
-    char* extension;
-    char* dot = cb_strrchr(filename, '.');
+    const char* ext = get_extension(filename);
 
-    if (!dot || dot == filename)
-    {
-        extension = "";
-    }
-    else
-    {
-        extension = dot + 1;
-    }
-
-    if ((cb_strcmp(extension, "gb") == 0 || cb_strcmp(extension, "gbc") == 0 ||
-         cb_strcmp(extension, "gbz") == 0))
+    if (strcasecmp(ext, ".gb") == 0 || strcasecmp(ext, ".gbc") == 0 || strcasecmp(ext, ".gbz") == 0)
     {
         array_push(filenames_array, cb_strdup(filename));
     }
