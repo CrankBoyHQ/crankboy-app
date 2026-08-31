@@ -27,6 +27,9 @@
 #define GBZ_FF_CHECK_END 0x150 /* exclusive */
 #define GBZ_GZ_OFFSET 0x150
 
+/* Largest Game Boy ROM: MBC5 = 512 banks x 16 KB. */
+#define GB_ROM_MAX_SIZE (512 * 0x4000)
+
 typedef struct
 {
     uint8_t version;

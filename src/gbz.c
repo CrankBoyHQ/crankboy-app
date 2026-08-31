@@ -39,6 +39,9 @@ bool gbz_parse_header(GBZ_Header* out_header, const uint8_t* data, size_t size)
     out_header->original_size =
         (size_t)p[14] | ((size_t)p[15] << 8) | ((size_t)p[16] << 16) | ((size_t)p[17] << 24);
 
+    if (out_header->original_size == 0 || out_header->original_size > GB_ROM_MAX_SIZE)
+        return false;
+
     memcpy(out_header->gb_header, p + 18, GBZ_ROM_HDR_SIZE);
 
     if (size == GBZ_GZ_OFFSET)

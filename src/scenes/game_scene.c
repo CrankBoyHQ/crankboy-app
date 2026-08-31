@@ -1426,6 +1426,18 @@ static uint8_t* read_rom_to_ram(
 
     playdate->file->seek(rom_file, 0, SEEK_END);
     int rom_size = playdate->file->tell(rom_file);
+
+    if (rom_size <= 0 || rom_size > GB_ROM_MAX_SIZE)
+    {
+        playdate->system->logToConsole(
+            "%s:%i: Implausible ROM size %d for %s", __FILE__, __LINE__, rom_size, filename
+        );
+
+        playdate->file->close(rom_file);
+        *sceneError = CB_GameSceneErrorLoadingRom;
+        return NULL;
+    }
+
     *o_rom_size = rom_size;
     playdate->file->seek(rom_file, 0, SEEK_SET);
 

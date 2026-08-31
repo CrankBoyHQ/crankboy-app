@@ -663,6 +663,14 @@ bool ft_handle_end(const char* crc_str)
         int gbz_size = playdate->file->tell(gbz_file);
         playdate->file->seek(gbz_file, 0, SEEK_SET);
 
+        if (gbz_size <= 0)
+        {
+            playdate->file->close(gbz_file);
+            serial_send_response("ft:x:read");
+            ft_cleanup();
+            return false;
+        }
+
         uint8_t* gbz_data = cb_malloc(gbz_size);
 
         int bytes_read = playdate->file->read(gbz_file, gbz_data, gbz_size);
