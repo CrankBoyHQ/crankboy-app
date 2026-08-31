@@ -276,6 +276,11 @@ static bool cb_settings_emucore_mode(CB_SettingsScene* scene)
     return scene && (scene->emucoreGameScene != NULL || scene->emu_prefs != NULL);
 }
 
+static bool scene_is_cgb_active(CB_SettingsScene* scene)
+{
+    return scene && scene->gameScene && scene->gameScene->context->cgb_mode;
+}
+
 static OptionsMenuEntry make_emucore_entry(ce_preference_t* p)
 {
     OptionsMenuEntry e = {0};
@@ -2270,14 +2275,12 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     }
 
     // ghosting
-    CB_GameScene* gameScene = scene->gameScene;
-    bool cgb_active = gameScene && gameScene->context->cgb_mode;
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_lcd_ghosting),
         .values = off_on_labels,
         .description = T(setdsc_lcd_ghosting),
         .pref_var = &preferences_ghosting,
-        .max_value = cgb_active ? 0 : 2,
+        .max_value = scene_is_cgb_active(scene) ? 0 : 2,
         .on_press = NULL,
     };
 
@@ -2585,7 +2588,7 @@ static OptionsMenuEntry* build_behavior(SectionDef* def, CB_SettingsScene* scene
         .values = off_on_labels,
         .description = T(setdsc_rewind),
         .pref_var = &preferences_rewind_enabled,
-        .max_value = 2,
+        .max_value = scene_is_cgb_active(scene) ? 0 : 2,
     };
 
     section[++i] = (OptionsMenuEntry){
