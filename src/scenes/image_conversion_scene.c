@@ -147,16 +147,16 @@ __space bool errdiff_dither(
 
     int error_row = 0;
 
-    fw_t* error = cb_malloc(sizeof(fw_t) * err_stride);
+    fw_t* error = cb_malloc(mh * out_width * sizeof(fw_t));
     if (!error)
         return false;
-    memset(error, 0, sizeof(fw_t) * err_stride);
+    memset(error, 0, mh * out_width * sizeof(fw_t));
 
     for (unsigned y = 0; y < out_height; ++y)
     {
         int err_row_idx[MATRIX_FLOYD_STEINBERG_HEIGHT];
         for (int i = 0; i < mh; ++i)
-            err_row_idx[i] = (error_row = i) % mh;
+            err_row_idx[i] = (error_row + i) % mh;
         error_row = (error_row + 1) % mh;
 
         for (unsigned x = 0; x < out_width; ++x)
@@ -206,7 +206,7 @@ __space bool errdiff_dither(
                 {
                     if (j + x - mx >= 0 && j + x - mx < out_width)
                     {
-                        int c = matrix[i * mh + j];
+                        int c = matrix[i * mw + j];
                         error[err_row_idx[i] * out_width + j + x - mx] += c * ediff;
                     }
                 }
