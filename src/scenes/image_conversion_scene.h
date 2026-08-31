@@ -11,6 +11,15 @@ void* png_to_pdi(
     int max_height
 );
 
+unsigned char* cb_decode_png(
+    const char* context_fname, const void* png_data, int png_size, int* out_width, int* out_height
+);
+void cb_free_decoded_image(unsigned char* img_data);
+void* rgba_to_pdi(
+    const char* context_fname, unsigned char* img_data, int width, int height, size_t* out_size,
+    int max_width, int max_height
+);
+
 /* Converts PNG cover art into PDI, then launches LibraryScene */
 
 typedef enum

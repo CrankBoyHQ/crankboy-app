@@ -221,14 +221,15 @@ __space bool errdiff_dither(
     return true;
 }
 
-void* png_to_pdi(
-    const char* context_filename, const void* png_data, int png_size, size_t* out_size,
-    int max_width, int max_height
+unsigned char* cb_decode_png(
+    const char* context_filename, const void* png_data, int png_size, int* out_width,
+    int* out_height
 )
 {
-    int width, height, channels;
-    unsigned char* img_data =
-        stbi_load_from_memory((const stbi_uc*)png_data, png_size, &width, &height, &channels, 4);
+    int channels;
+    unsigned char* img_data = stbi_load_from_memory(
+        (const stbi_uc*)png_data, png_size, out_width, out_height, &channels, 4
+    );
 
     if (!img_data)
     {
@@ -239,6 +240,20 @@ void* png_to_pdi(
         return NULL;
     }
 
+    return img_data;
+}
+
+void cb_free_decoded_image(unsigned char* img_data)
+{
+    if (img_data)
+        stbi_image_free(img_data);
+}
+
+void* rgba_to_pdi(
+    const char* context_filename, unsigned char* img_data, int width, int height, size_t* out_size,
+    int max_width, int max_height
+)
+{
     float wscale = 1.0f, hscale = 1.0f;
     if (max_width >= 0 && max_width < width)
     {
@@ -275,7 +290,6 @@ void* png_to_pdi(
 
     if (max_width == 0 || max_height == 0)
     {
-        stbi_image_free(img_data);
         spoolError("Failed to decode %s -- requested dimension 0", context_filename);
         return NULL;
     }
@@ -320,7 +334,6 @@ void* png_to_pdi(
     void* pdi_data = cb_malloc(total_size);
     if (!pdi_data)
     {
-        stbi_image_free(img_data);
         spoolError("Failed to allocate memory for PDI for %s", context_filename);
         return NULL;
     }
@@ -402,12 +415,27 @@ void* png_to_pdi(
     }
 
     // Clean up
-    stbi_image_free(img_data);
-
     if (out_size)
     {
         *out_size = total_size;
     }
+    return pdi_data;
+}
+
+void* png_to_pdi(
+    const char* context_filename, const void* png_data, int png_size, size_t* out_size,
+    int max_width, int max_height
+)
+{
+    int width, height;
+    unsigned char* img_data = cb_decode_png(context_filename, png_data, png_size, &width, &height);
+    if (!img_data)
+        return NULL;
+
+    void* pdi_data =
+        rgba_to_pdi(context_filename, img_data, width, height, out_size, max_width, max_height);
+
+    cb_free_decoded_image(img_data);
     return pdi_data;
 }
 

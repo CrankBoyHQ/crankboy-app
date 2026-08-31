@@ -499,14 +499,28 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
     }
     else
     {
-        size_t pdi_size;
-        void* pdi_data = png_to_pdi(
-            hbs->download_image_name, data, data_len, &pdi_size, LCD_COLUMNS - kDividerX, 160
-        );
+        int img_width = 0, img_height = 0;
+        unsigned char* img =
+            cb_decode_png(hbs->download_image_name, data, data_len, &img_width, &img_height);
+
+        size_t pdi_size = 0;
+        void* pdi_data = NULL;
         cb_free(hbs->cover_art_data);
-        hbs->cover_art_data = png_to_pdi(
-            hbs->download_image_name, data, data_len, &hbs->cover_art_len, 240, 240
-        ); /* 240 x 240 is the preferred cover art dimensions */
+        hbs->cover_art_data = NULL;
+        hbs->cover_art_len = 0;
+
+        if (img)
+        {
+            pdi_data = rgba_to_pdi(
+                hbs->download_image_name, img, img_width, img_height, &pdi_size,
+                LCD_COLUMNS - kDividerX, 160
+            );
+            hbs->cover_art_data = rgba_to_pdi(
+                hbs->download_image_name, img, img_width, img_height, &hbs->cover_art_len, 240, 240
+            );
+
+            cb_free_decoded_image(img);
+        }
         if (pdi_data && pdi_size)
         {
             if (pdi_size < (1 << 16))
