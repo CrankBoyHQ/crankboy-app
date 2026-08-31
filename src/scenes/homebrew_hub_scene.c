@@ -805,6 +805,9 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
     }
     else
     {
+        if (!data || data_len == 0)
+            goto err_invalid_json;
+
         char* json_begin = memchr(data, '{', data_len);
         if (json_begin == NULL)
         {
