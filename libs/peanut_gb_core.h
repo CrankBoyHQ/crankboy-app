@@ -1520,7 +1520,6 @@ __core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         goto*(void*)((char*)pgb_op_handlers[pgb_op_cluster[opcode]] + itcm_off); \
     } while (0)
 
-#if CPU_VALIDATE == 0
     /* Batch tail: accumulate cycles, refresh pgb_batch_elapsed, decrement the
      * IME countdown, then stop on halt/stop/HLE, a dispatchable interrupt, or
      * the cycle budget -- else fetch the next opcode and dispatch. */
@@ -1553,33 +1552,6 @@ __core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
         cycles = $(__gb_execute_cb)(gb); \
         BATCH_TAIL();                    \
     } while (0)
-#else
-#define BATCH_TAIL()   \
-    do                 \
-    {                  \
-        return cycles; \
-    } while (0)
-
-#define BATCH_TAIL_HLADJ()                      \
-    do                                          \
-    {                                           \
-        gb->cpu_reg.hl += (opcode >= 0x20);     \
-        gb->cpu_reg.hl -= 2 * (opcode >= 0x30); \
-        return cycles;                          \
-    } while (0)
-
-#define TAIL_RARE()                                                \
-    do                                                             \
-    {                                                              \
-        return RARE_CALL_U8($(__gb_rare_instruction), gb, opcode); \
-    } while (0)
-
-#define TAIL_CB()                      \
-    do                                 \
-    {                                  \
-        return $(__gb_execute_cb)(gb); \
-    } while (0)
-#endif
 
     /* Opcode -> handler cluster. */
     static const uint8_t pgb_op_cluster[256] = {
@@ -2224,6 +2196,57 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
     return (uint16_t)cycles;
 }
 
+#if CPU_VALIDATE == 1
+/* Batch-aware reference: replay the micro's batch loop one instruction at a
+ * time via __gb_run_instruction, mirroring the tail exactly, so the final
+ * state can be diffed against the micro batch. Validation-only (simulator). */
+static unsigned $(__gb_run_instruction_reference_batch)(gb_s* gb)
+{
+    unsigned batch_cycles = 0;
+    const unsigned batch_budget = $(__gb_batch_budget)(gb);
+
+    gb->direct.intr_pending = gb->gb_ime && (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR);
+
+    u8 opcode = $(__gb_fetch8)(gb);
+
+    for (;;)
+    {
+        /* halt-bug fixup (mirrors NEXT_DISPATCH) */
+        if unlikely (gb->gb_halt_bug)
+        {
+            if (gb->gb_halt_bug == 1)
+                gb->cpu_reg.pc = gb->gb_halt_bug_pc;
+            gb->gb_halt_bug--;
+        }
+
+        unsigned cycles = __gb_run_instruction(gb, opcode);
+        batch_cycles += cycles;
+
+        /* batch tail (mirrors next_instruction, duplicated by design) */
+        pgb_batch_elapsed = (batch_cycles > BATCH_LAG_T) ? (batch_cycles - BATCH_LAG_T) : 0;
+        pgb_write_cycle = (uint16_t)batch_cycles;
+        if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
+        {
+            gb->gb_ime = 1;
+            gb->direct.intr_pending = (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0;
+        }
+        if unlikely (
+            gb->gb_halt || gb->gb_stop || (PGB_IS_CGB ? gb->gb_hle : false) ||
+            gb->direct.intr_pending
+        )
+            break;
+        if (batch_cycles >= batch_budget)
+            break;
+
+        opcode = $(__gb_fetch8)(gb);
+    }
+
+    pgb_batch_elapsed = 0;
+    pgb_write_cycle = 0;
+    return batch_cycles;
+}
+#endif
+
 /**
  * Internal function used to step the CPU.
  */
@@ -2258,12 +2281,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
     // __gb_run_instruction_micro runs the whole cycle-budget batch internally.
     inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
 #else
-    // run once as each, verify
+    // Run the micro batch, then replay it via the batch-aware reference and
+    // diff the final state.
 
     if (gb->cpu_reg.pc < 0x8000 && __gb_read_full(gb, gb->cpu_reg.pc) == CB_HW_BREAKPOINT_OPCODE)
     {
         // can't validate if breakpoint
-        $(__gb_run_instruction_micro)(gb);
+        inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
     }
     else
     {
@@ -2279,15 +2303,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
             memcpy(_cart_ram[0], gb->gb_cart_ram, gb->gb_cart_ram_size);
         memcpy(&_gb[0], gb, sizeof(_gb));
 
-        uint8_t opcode = (gb->gb_halt ? 0 : $(__gb_fetch8)(gb));
-        if unlikely (gb->gb_halt_bug)
-        {
-            /* HALT bug: PC increment is inhibited for this fetch, so the
-             * byte after HALT is re-read as the next opcode's first byte. */
-            gb->cpu_reg.pc--;
-            gb->gb_halt_bug = 0;
-        }
-        inst_cycles = __gb_run_instruction(gb, opcode);
+        inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
 
         gb->cpu_reg.f &= 0xF0;
 
@@ -2303,33 +2319,30 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_cart_ram_size > 0)
             memcpy(gb->gb_cart_ram, _cart_ram[0], gb->gb_cart_ram_size);
 
-        uint8_t inst_cycles_m = MICRO_CALL($(__gb_run_instruction_micro), gb);
+        unsigned inst_cycles_ref = $(__gb_run_instruction_reference_batch)(gb);
 
         gb->cpu_reg.f &= 0xF0;
-        // intr_pending is a derived cache of ime/IF/IE, maintained only by
-        // the micro path; sync it from the reference result before comparing.
-        gb->direct.intr_pending = _gb[1].direct.intr_pending;
 
         if (memcmp(gb->wram, _wram[1], WRAM_SIZE_CGB))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in wram on opcode %x", opcode);
+            playdate->system->error("difference in wram after batch (pc=%x)", pc);
         }
         if (memcmp(gb->vram, _vram[1], VRAM_SIZE_CGB))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in vram on opcode %x", opcode);
+            playdate->system->error("difference in vram after batch (pc=%x)", pc);
         }
         if (memcmp(gb->gb_cart_ram, _cart_ram[1], gb->gb_cart_ram_size))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in cart ram on opcode %x", opcode);
+            playdate->system->error("difference in cart ram after batch (pc=%x)", pc);
         }
 
         if (memcmp(&gb->cpu_reg, &_gb[1].cpu_reg, sizeof(struct PGB_VERSIONED(cpu_registers_s))))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in CPU regs on opcode %x", opcode);
+            playdate->system->error("difference in CPU regs after batch (pc=%x)", pc);
             if (gb->cpu_reg.af != _gb[1].cpu_reg.af)
             {
                 playdate->system->error(
@@ -2374,7 +2387,7 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (memcmp(gb, &_gb[1], offsetof(gb_s, audio)))
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in gb struct on opcode %x, pc=%x", opcode, pc);
+            playdate->system->error("difference in gb struct after batch (pc=%x)", pc);
             goto printregs;
         }
 
@@ -2389,22 +2402,13 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
             playdate->system->logToConsole("PC %x -> %x", _gb[0].cpu_reg.pc, gb->cpu_reg.pc);
         }
 
-        if (inst_cycles != inst_cycles_m)
+        if (inst_cycles != inst_cycles_ref)
         {
             gb->gb_frame = 1;
             playdate->system->error(
-                "cycle difference on opcode %x (expected %d, was %d)", opcode, inst_cycles,
-                inst_cycles_m
+                "cycle difference after batch (pc=%x, expected %d, was %d)", pc, inst_cycles,
+                inst_cycles_ref
             );
-        }
-    }
-
-    // EI delay handling
-    if (gb->gb_ime_countdown > 0)
-    {
-        if (--gb->gb_ime_countdown == 0)
-        {
-            gb->gb_ime = 1;
         }
     }
 #endif
