@@ -1524,14 +1524,14 @@ __core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     /* Batch tail: accumulate cycles, refresh pgb_batch_elapsed, decrement the
      * IME countdown, then stop on halt/stop/HLE, a dispatchable interrupt, or
      * the cycle budget -- else fetch the next opcode and dispatch. */
-#define CHAIN_OR_RETURN()       \
+#define BATCH_TAIL()            \
     do                          \
     {                           \
         batch_cycles += cycles; \
         goto next_instruction;  \
     } while (0)
 
-#define CHAIN_NOCLAMP_OR_RETURN()               \
+#define BATCH_TAIL_HLADJ()                      \
     do                                          \
     {                                           \
         gb->cpu_reg.hl += (opcode >= 0x20);     \
@@ -1544,23 +1544,23 @@ __core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     do                                                               \
     {                                                                \
         cycles = RARE_CALL_U8($(__gb_rare_instruction), gb, opcode); \
-        CHAIN_OR_RETURN();                                           \
+        BATCH_TAIL();                                                \
     } while (0)
 
 #define TAIL_CB()                        \
     do                                   \
     {                                    \
         cycles = $(__gb_execute_cb)(gb); \
-        CHAIN_OR_RETURN();               \
+        BATCH_TAIL();                    \
     } while (0)
 #else
-#define CHAIN_OR_RETURN() \
-    do                    \
-    {                     \
-        return cycles;    \
+#define BATCH_TAIL()   \
+    do                 \
+    {                  \
+        return cycles; \
     } while (0)
 
-#define CHAIN_NOCLAMP_OR_RETURN()               \
+#define BATCH_TAIL_HLADJ()                      \
     do                                          \
     {                                           \
         gb->cpu_reg.hl += (opcode >= 0x20);     \
@@ -1642,7 +1642,7 @@ __core_section("micro") static unsigned $(__gb_run_instruction_micro)(gb_s* gb)
     NEXT_DISPATCH();
 
 h_nop:
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_jr:
     {
@@ -1661,7 +1661,7 @@ h_jr:
             gb->cpu_reg.pc++;
         }
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ld_r16_d16:
     {
@@ -1672,7 +1672,7 @@ h_ld_r16_d16:
         cycles = 12;
         gb->cpu_reg_raw16[reg16] = FETCH16(gb);
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ld_a_r16:
     {
@@ -1694,7 +1694,7 @@ h_ld_a_r16:
             gb->cpu_reg.a = $(__gb_read)(gb, gb->cpu_reg_raw16[reg16]);
         }
     }
-    CHAIN_NOCLAMP_OR_RETURN();
+    BATCH_TAIL_HLADJ();
 
 h_inc_dec_r16:
     {
@@ -1706,7 +1706,7 @@ h_inc_dec_r16:
         gb->cpu_reg_raw16[reg16] += offset;
         cycles = 8;
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_inc_dec_r8:
     {
@@ -1735,7 +1735,7 @@ h_inc_dec_r8:
             gb->cpu_reg_raw[reg8] = tmp;
         }
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ld_r8_d8:
     srcidx = 0;
@@ -1808,7 +1808,7 @@ h_misc_flag:
     {
         gb->cpu_reg.f = (gb->cpu_reg.f & GB_FLAG_Z) | ((gb->cpu_reg.f & GB_FLAG_C) ? 0 : GB_FLAG_C);
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_add_hl_r16:
     {
@@ -1819,7 +1819,7 @@ h_add_hl_r16:
         cycles = 8;
         gb->cpu_reg.hl = $(__gb_add16)(gb, gb->cpu_reg.hl, gb->cpu_reg_raw16[reg16]);
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ld_x_x:
     srcidx = (opcode % 8) ^ 1;
@@ -1864,7 +1864,7 @@ ld_x_x:
             gb->cpu_reg_raw[dstidx] = src;
         }
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 arithmetic:
     switch (op8)
@@ -1914,7 +1914,7 @@ arithmetic:
     default:
         __builtin_unreachable();
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ret_cc:
     cycles = 8;
@@ -1923,7 +1923,7 @@ h_ret_cc:
         if (flag)
             goto ret;
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_pop:
     cycles = 12;
@@ -1937,7 +1937,7 @@ h_pop:
     {
         gb->cpu_reg_raw16[op8 / 2] = src;
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_jp_cc:
     cycles = 12;
@@ -1947,7 +1947,7 @@ h_jp_cc:
             goto jp;
     }
     gb->cpu_reg.pc += 2;
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_jp:
     if unlikely (opcode == 0xD3)
@@ -1957,7 +1957,7 @@ h_jp:
 jp:
     cycles = 16;
     gb->cpu_reg.pc = FETCH16(gb);
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_call_cc:
     cycles = 12;
@@ -1967,7 +1967,7 @@ h_call_cc:
             goto call;
     }
     gb->cpu_reg.pc += 2;
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_push:
     cycles = 16;
@@ -1977,7 +1977,7 @@ h_push:
         src = (gb->cpu_reg.a << 8) | (gb->cpu_reg.f & 0xF0);
     }
     $(__gb_push16)(gb, src);
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_alu_d8:
     cycles = 8;
@@ -1988,7 +1988,7 @@ h_rst:
     cycles = 16;
     $(__gb_push16)(gb, gb->cpu_reg.pc);
     gb->cpu_reg.pc = 8 * (op8 ^ 1);
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ret:
     if unlikely (opcode == 0xD9)
@@ -2002,7 +2002,7 @@ ret:
 ret_common:
     cycles += 12;
     gb->cpu_reg.pc = $(__gb_pop16)(gb);
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_cb:
     if likely (opcode == 0xCB)
@@ -2021,7 +2021,7 @@ call:
         $(__gb_push16)(gb, gb->cpu_reg.pc);
         gb->cpu_reg.pc = tmp;
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ldh_a8:
     cycles = 12;
@@ -2047,7 +2047,7 @@ hram_op:
             $(__gb_write)(gb, addr, gb->cpu_reg.a);
         }
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_jp_hl:
     if (opcode == 0xF9)
@@ -2060,7 +2060,7 @@ h_jp_hl:
         gb->cpu_reg.pc = gb->cpu_reg.hl;
         cycles = 4;
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_di:
     if unlikely (opcode != 0xF3)
@@ -2069,14 +2069,14 @@ h_di:
     gb->gb_ime = 0;
     gb->gb_ime_countdown = 0;
     gb->direct.intr_pending = 0;
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ei:
     if unlikely (opcode != 0xFB)
         TAIL_RARE();
     cycles = 4;
     gb->gb_ime_countdown = 2;
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_ld_a16:
     cycles = 16;
@@ -2090,7 +2090,7 @@ h_ld_a16:
             $(__gb_write)(gb, v, gb->cpu_reg.a);
         }
     }
-    CHAIN_OR_RETURN();
+    BATCH_TAIL();
 
 h_rare:
     TAIL_RARE();
