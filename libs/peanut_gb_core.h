@@ -2222,6 +2222,13 @@ static unsigned $(__gb_run_instruction_reference_batch)(gb_s* gb)
         unsigned cycles = __gb_run_instruction(gb, opcode);
         batch_cycles += cycles;
 
+        /* Mirror the micro's intr_pending cache maintenance: __gb_run_instruction
+         * predates the cache and only updates ime/ime_countdown for DI/RETI. */
+        if (opcode == 0xF3) /* DI */
+            gb->direct.intr_pending = 0;
+        else if (opcode == 0xD9) /* RETI */
+            gb->direct.intr_pending = (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0;
+
         /* batch tail (mirrors next_instruction, duplicated by design) */
         pgb_batch_elapsed = (batch_cycles > BATCH_LAG_T) ? (batch_cycles - BATCH_LAG_T) : 0;
         pgb_write_cycle = (uint16_t)batch_cycles;
@@ -2303,7 +2310,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
             memcpy(_cart_ram[0], gb->gb_cart_ram, gb->gb_cart_ram_size);
         memcpy(&_gb[0], gb, sizeof(_gb));
 
-        inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
+        // reference first: replay the batch one instruction at a time
+        unsigned inst_cycles_ref = $(__gb_run_instruction_reference_batch)(gb);
 
         gb->cpu_reg.f &= 0xF0;
 
@@ -2319,7 +2327,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         if (gb->gb_cart_ram_size > 0)
             memcpy(gb->gb_cart_ram, _cart_ram[0], gb->gb_cart_ram_size);
 
-        unsigned inst_cycles_ref = $(__gb_run_instruction_reference_batch)(gb);
+        // micro last, so gb ends as the micro result (the on-device state)
+        inst_cycles = MICRO_CALL($(__gb_run_instruction_micro), gb);
 
         gb->cpu_reg.f &= 0xF0;
 
@@ -2384,10 +2393,18 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
 
         // assert audio data is final member of gb_s
         CB_ASSERT(sizeof(gb_s) - sizeof(audio_data) == offsetof(gb_s, audio));
-        if (memcmp(gb, &_gb[1], offsetof(gb_s, audio)))
+        const size_t gb_cmp_len = offsetof(gb_s, audio);
+        size_t gb_off = 0;
+        const uint8_t* gb_pa = (const uint8_t*)gb;
+        const uint8_t* gb_pb = (const uint8_t*)&_gb[1];
+        while (gb_off < gb_cmp_len && gb_pa[gb_off] == gb_pb[gb_off])
+            gb_off++;
+        if (gb_off < gb_cmp_len)
         {
             gb->gb_frame = 1;
-            playdate->system->error("difference in gb struct after batch (pc=%x)", pc);
+            playdate->system->error(
+                "difference in gb struct after batch (pc=%x, off=%u)", pc, (unsigned)gb_off
+            );
             goto printregs;
         }
 
@@ -2406,8 +2423,8 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         {
             gb->gb_frame = 1;
             playdate->system->error(
-                "cycle difference after batch (pc=%x, expected %d, was %d)", pc, inst_cycles,
-                inst_cycles_ref
+                "cycle difference after batch (pc=%x, expected %d, was %d)", pc, inst_cycles_ref,
+                inst_cycles
             );
         }
     }
