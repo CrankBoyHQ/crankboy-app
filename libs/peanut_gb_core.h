@@ -2096,7 +2096,9 @@ h_rare:
     TAIL_RARE();
 
 next_instruction:
-    pgb_batch_elapsed = batch_cycles;
+    /* Lag pgb_batch_elapsed so the STAT/LY synced read and the VRAM/OAM lock
+     * report the mode boundary slightly late (see BATCH_LAG_T). */
+    pgb_batch_elapsed = (batch_cycles > BATCH_LAG_T) ? (batch_cycles - BATCH_LAG_T) : 0;
     pgb_write_cycle = (uint16_t)batch_cycles;
     if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
     {

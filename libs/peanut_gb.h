@@ -176,7 +176,6 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_2_OAM_CYCLES 80
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
-#define PPU_PEEK_CYCLES 24
 /* Batch loop can overshoot budget by one CALL (24 T): BATCH_OVERSHOOT is that
  * (CPU T). */
 #define BATCH_OVERSHOOT 23
@@ -184,6 +183,9 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
  * STAT/LYC ISR latency and the STAT/LY peek window independently of total
  * batch length (VBlank LYC chains need cross + dispatch + ISR < 456). */
 #define BATCH_CROSS_MAX 64
+/* Fixed slack (CPU T) subtracted from pgb_batch_elapsed so the STAT/LY synced
+ * read and the VRAM/OAM lock report the mode boundary slightly late. */
+#define BATCH_LAG_T 14
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -2701,24 +2703,20 @@ static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb
 }
 
 /**
- * Effective PPU mode for VRAM/OAM/palette access locks. Asymmetric:
- * locks engage only at the exact boundary (a constant peek would drop
- * legal late-mode-2 writes), but release early (matching the STAT/LY
- * peek) so STAT-timed writes at scanline end aren't dropped.
+ * Effective PPU mode for VRAM/OAM/palette access locks.
  */
 __attribute__((always_inline)) static inline uint8_t __gb_ppu_mode_for_lock(gb_s* gb)
 {
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
     if (remaining == 0)
-        return __gb_ppu_next_mode(gb);  // exact engage
-    if (remaining <= PPU_PEEK_CYCLES && gb->lcd_mode == LCD_TRANSFER)
-        return __gb_ppu_next_mode(gb);  // early release (mode 3 -> 0 only)
+        return __gb_ppu_next_mode(gb);  // exact engage/release
     return gb->lcd_mode;
 }
 
 /**
- * PPU read synchronization: peek ahead to the next mode boundary so
- * polling loops don't miss STAT/LY transitions.
+ * PPU read synchronization: project STAT/LY to the current batch position so
+ * polling loops see the transition as the batch crosses the boundary, rather
+ * than reading a stale (batch-start) value and never observing the change.
  */
 static inline __attribute__((always_inline)) uint8_t __gb_read_stat_synced(gb_s* gb)
 {
@@ -2727,7 +2725,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_stat_synced(gb_s*
 
     uint16_t remaining = __gb_ppu_cycles_remaining(gb);
 
-    if ((int16_t)remaining <= PPU_PEEK_CYCLES)
+    if (remaining == 0)
     {
         uint8_t new_stat = (gb->gb_reg.STAT & ~STAT_MODE) | __gb_ppu_next_mode(gb);
         return new_stat | 0x80;
@@ -2747,7 +2745,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
     {
         /* LY increments at end of HBlank */
         uint16_t remaining = __gb_ppu_cycles_remaining(gb);
-        if ((int16_t)remaining <= PPU_PEEK_CYCLES)
+        if (remaining == 0)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;
             return (next_ly >= 154) ? 0 : next_ly;
@@ -2766,7 +2764,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
 
         /* During VBlank, LY increments at 456-cycle boundaries */
         uint16_t remaining = __gb_ppu_cycles_remaining(gb);
-        if ((int16_t)remaining <= PPU_PEEK_CYCLES)
+        if (remaining == 0)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;
             if (next_ly >= 154)
