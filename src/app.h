@@ -9,6 +9,7 @@
 #ifndef app_h
 #define app_h
 
+#include "categories.h"
 #include "scene.h"
 #include "utility.h"
 
@@ -50,6 +51,7 @@ extern volatile int g_audio_resync_requested;
 // #define CRANKBOY_OFFICIAL_CATALOG
 
 typedef struct pdll_s pdll_t;
+typedef struct RomCategory RomCategory;
 
 typedef struct
 {
@@ -69,7 +71,9 @@ enum cgb_support_e
     GB_SUPPORT_DMG_AND_CGB = 3,
 };
 
-typedef struct
+#define FPS_AVG_DECAY 0.8f
+
+typedef struct CB_GameName
 {
     // basename, including extension
     char* filename;
@@ -142,7 +146,8 @@ typedef struct CB_Application
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
     CB_GlobalCoverCache coverArtCache;
-    CB_Array* gameNameCache;
+    CB_Array* /*<CB_GameName>*/ gameNameCache; // note: immutable after first load. SOT.
+    RomCategory** romcategories;
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
     bool rhdb_present;
@@ -313,6 +318,7 @@ const char* CB_get_forwarded_path(const char* path);
 #define LAST_SELECTED_FILE "library_last_selected.txt"
 #define HOMEBREW_HUB_API_FILE "hbapi.txt"
 #define PARENTAL_LOCK_FILE "parental_lock.bin"
+#define CATEGORY_PATH "/Shared/Emulation/misc/cbcats.json"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define DEFAULT_CORES_DIRECTORY "/Shared/Emulation/cores"

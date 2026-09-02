@@ -462,6 +462,8 @@ size_t getSpooledErrors(void);
 const char* getSpooledErrorMessage(void);
 void freeSpool(void);
 
+size_t len_nullterm(void const* const*);
+
 // malloc and memset to zero
 void* mallocz(size_t size);
 

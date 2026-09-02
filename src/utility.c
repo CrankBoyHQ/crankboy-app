@@ -2370,3 +2370,13 @@ char* cb_markdown_to_plaintext(const char* md)
     *dst = '\0';
     return out;
 }
+
+size_t len_nullterm(const void** a)
+{
+    size_t i = 0;
+    if (!a) return 0;
+    
+    for (void** b = a; *b; ++b, ++i);
+    
+    return i;
+}
