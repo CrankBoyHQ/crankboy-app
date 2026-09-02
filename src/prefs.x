@@ -29,7 +29,7 @@ PREF(high_pass_filter, 1)
  *  dither_stable:   0=Off, 1=On
  *  ghosting:        0=Off, 1=On (DMG only)
  */
-PREF(framerate, 0)
+PREF(framerate, 1)
 PREF(blend_frames, 0)
 PREF(dither_pattern, 0)
 PREF(dither_line, 2)
