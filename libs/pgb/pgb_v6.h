@@ -1,6 +1,6 @@
 #include "pgb_common.h"
 
-/* DEVELOPMENT VERSION RANGE: (TBD] */
+/* DEVELOPMENT VERSION RANGE: (v3.0.0] */
 
 // To edit the structs in this file, please make a wholesale
 // copy of this file instead of editing it directly.
