@@ -3,6 +3,7 @@
     "settings": {
         "sound_mode": 2,
         "sample_rate": 0,
+        "audio_latency": 1,
         "headphone_audio": 1,
         "framerate": 0,
         "dither_stable": 0,

@@ -8,6 +8,9 @@
         "framerate": 0,
         "dither_stable": 0,
         "overclock": 0,
+        "hle": 0,
+        "cgb_bias_auto": 2,
+        "cgb_gamma": 4,
         "disable_autolock": 1,
         "uncap_fps": 0
     }
