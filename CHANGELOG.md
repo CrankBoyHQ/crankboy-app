@@ -1,21 +1,70 @@
-# v2.2.2 - 
+# v3.0.0 - (2026-09-02)
 
-こんいちは! This version introduces WIP Japanese language support.
+More performance and better Audio. Also: 日本語 is arriving.
+
+## Japanese Language (WIP)
+
+- Roughly 50% of the UI has been translated.
+- Spotted a mistake or want to help? Reach out to us.
+
+## Emulation
+
+- Improved accuracy and more supported games.
+- Roughly 40% performance improvement.
+
+## Audio
+
+- Voice Sample support!!! (Cowabunga!)
+- New Latency setting for accurate sound mode.
+- New High-Pass filter toggle.
+- "OFF" is gone. Instead, if you mute your Playdate the normal way, CrankBoy can detect this now (it's a new OS feature! Thanks, Panic!) and give you a small perf boost.
+- Improved cycle-accurate APU replay.
+
+## Display
+
+- New framerate settings. Instead of "30 FPS Mode", we now have 30 / 50 / 60 Framerate mode. To be clear: none of these limit emulation speed; 30 and 50 just skip some frames to keep up the pace.
+- (50 is new, and it's our recommendation.)
+
+## CGB
+
+- Configurable grayscale **gamma correction** (with steps below 1.0, for darkening the dark).
+- New Auto and Contrast grayscale modes.
+- A one-time-per-game notice when a ROM is CGB-only.
+- The Rewind toggle is now hidden for CGB games.
 
 ## Combo Inputs
 
 - Fixed behaviour when Ⓐ›Ⓑ or Ⓑ›Ⓐ mappings contained Ⓐ/Ⓑ
 - Added mappings for releasing Ⓑ+Ⓐ
 
-## Misc
+## Performance (TCM)
+
+- TCM mode changes apply live. No restart needed.
+- TCM relocation has been hardened. No crashes in CGB mode anymore!
+
+## Scripts
+
+- Toggle game scripts mid-session (for supported games).
+
+## Catalog
+
+- Bundled Games: show/hide, to your taste. (But why would you...)
+- New bundled game: Synthwave World by beatscribe (Amazing CGB and Voice Sample showcase)
+
+## Homebrew Hub
 
 - Moved "Get ROMs..." to the main library menu.
-- Forgets last-selected-preference when starting or exiting a game
-- Audio can no longer be set to "OFF". Instead, muting the system enables the fast path.
+
+## Compatibility
+
+- New mapper support: HuC1 and HuC3.
+- Accelerometer support for MBC7 mapper. (It tilts 'n' tumbles now.)
 
 ## Bug Fixes
 
 - Fixed rare glitches when loading save states from older versions of CrankBoy.
+- Forgets last-selected-preference when starting or exiting a game
+- A pile of crash and stability fixes.
 
 # v2.2.1 - (2026-07-09)
 

@@ -43,6 +43,8 @@
 "label_understood" = "了解";
 "label_unknown" = "不明";
 "label_yes" = "はい";
+"lang_en"="英語";
+"lang_jp"="日本語"
 "lib_building_list" = "ゲームリストを構築中...";
 "lib_caching_covers" = "カバーアートをキャッシュ中...";
 "lib_cgb_prompt_cgb_compat" = "このROMはCGBに対応しています。\n\nDMGで起動（推奨）するか、CGBでの起動を試せます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";

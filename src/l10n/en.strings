@@ -564,3 +564,7 @@
 "setval_hide" = "Hide";
 "setval_show" = "Show";
 "setval_arrow" = "›";
+
+// Additional Strings not used currently
+"lang_en"="English";
+"lang_jp"="Japanse"
