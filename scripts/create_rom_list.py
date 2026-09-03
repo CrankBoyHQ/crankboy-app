@@ -132,6 +132,16 @@ def create_split_game_json(mask):
     integrate_json_file(all_games_dict, "romhacks.json", SCRIPT_DIR, "romhacks", "ROM Hack")
     integrate_json_file(all_games_dict, "lsdj.json", SCRIPT_DIR, "LSDj versions", "Music / Dancing")
 
+    # --- GENRE SUMMARY ---
+    genre_counts = {}
+    for game_data in all_games_dict.values():
+        genre = game_data.get("genre", "")
+        genre_counts[genre] = genre_counts.get(genre, 0) + 1
+
+    print(f"\nGenres found:")
+    for genre, count in sorted(genre_counts.items(), key=lambda x: (-x[1], x[0])):
+        print(f"  {count:>5}  {genre if genre else '(none)'}")
+
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 
     output_dir = os.path.join(PROJECT_ROOT, "src", "db")
