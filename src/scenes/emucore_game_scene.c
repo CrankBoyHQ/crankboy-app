@@ -211,7 +211,6 @@ static void emucore_update_override(void* ud)
     if (frames < 1)
         frames = 1;
 
-    CB_App->avg_dt_mult = (preferences_display_fps == 1) ? (1.0f / frames) : 1.0f;
     CB_account_frame_timing(dt);
 
     if (es->fade_frames > 0)

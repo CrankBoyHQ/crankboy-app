@@ -67,6 +67,16 @@ CB_GameScene* audioGameScene = NULL;
 
 volatile int g_audio_resync_requested = 0;
 
+// FPS "On" (GB rate): emulated frames over a rolling 0.5s window.
+static uint32_t fps_on_frames;
+static uint32_t fps_on_window_ms;
+static float fps_on_value = 60.0f;
+
+// FPS presentation "Playdate": presented ticks over a rolling 0.5s window.
+static uint32_t fps_pd_ticks;
+static uint32_t fps_pd_window_ms;
+static float fps_pd_value = 60.0f;
+
 /* Frames to ignore further resync requests after handling one, so a single
  * reset is guaranteed time to refill the ring before another can trigger.
  * Breaks reset -> starve -> reset oscillation (e.g. after sleep/resume). */
@@ -2074,6 +2084,18 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
         return;
     }
 
+    fps_pd_ticks++;
+    uint32_t now_ms = playdate->system->getCurrentTimeMilliseconds();
+    if (fps_pd_window_ms == 0)
+        fps_pd_window_ms = now_ms;
+    if (now_ms - fps_pd_window_ms >= 500)
+    {
+        float elapsed = (float)(now_ms - fps_pd_window_ms) / 1000.0f;
+        fps_pd_value = (float)fps_pd_ticks / elapsed;
+        fps_pd_ticks = 0;
+        fps_pd_window_ms = now_ms;
+    }
+
     bool force_all_lines_dirty = false;
 
     setCrankSoundsEnabled(
@@ -2901,14 +2923,22 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     }
                 }
 
-                CB_App->avg_dt_mult =
-                    (gameScene->next_frames_elapsed == 2 && preferences_display_fps == 1) ? 0.5f
-                                                                                          : 1.0f;
-
                 if (preferences_framerate == 1)
                     gameScene->fs50_phase = (gameScene->fs50_phase + 1) % 5;
 
                 gameScene->playtime += gameScene->next_frames_elapsed;
+
+                fps_on_frames += gameScene->next_frames_elapsed;
+                uint32_t now_ms = playdate->system->getCurrentTimeMilliseconds();
+                if (fps_on_window_ms == 0)
+                    fps_on_window_ms = now_ms;
+                if (now_ms - fps_on_window_ms >= 500)
+                {
+                    float elapsed = (float)(now_ms - fps_on_window_ms) / 1000.0f;
+                    fps_on_value = (float)fps_on_frames / elapsed;
+                    fps_on_frames = 0;
+                    fps_on_window_ms = now_ms;
+                }
 
                 if (preferences_rewind_enabled && !context->gb->is_cgb_mode &&
                     gameScene->rewind.states)
@@ -5002,13 +5032,13 @@ __section__(".text.tick") void cb_render_fps(void)
     if ((++fps_draw_timer & 3) == 0)
     {
         float fps;
-        if (CB_App->avg_dt <= 1.0f / 98.5f)
+        if (preferences_display_fps == 1)
         {
-            fps = 99.9f;
+            fps = fps_on_value;
         }
         else
         {
-            fps = 1.0f / CB_App->avg_dt;
+            fps = fps_pd_value;
         }
 
         // for rounding

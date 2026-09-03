@@ -69,8 +69,6 @@ enum cgb_support_e
     GB_SUPPORT_DMG_AND_CGB = 3,
 };
 
-#define FPS_AVG_DECAY 0.8f
-
 typedef struct
 {
     // basename, including extension
@@ -131,8 +129,6 @@ typedef struct CB_Application
     void* update_override_ud;
 
     float dt;
-    float avg_dt;       // for fps calculation (scaled by avg_dt_mult)
-    float avg_dt_mult;  // reciprocal number of emulated frames last frame
     float crankChange;
     CB_Scene* scene;
     CB_Scene* pendingScene;
