@@ -1433,9 +1433,8 @@ __core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
 }
 
 /* Batch budget (CPU T): bound so the batch crosses <=1 PPU mode boundary by at
- * most BATCH_CROSS_MAX (keeping the pgb_batch_elapsed lag + PPU_PEEK
- * compensation and STAT/LYC ISR latency bounded) and never runs past a pending
- * TIMA overflow. */
+ * most BATCH_CROSS_MAX (keeping STAT/LYC ISR latency bounded), never crosses the
+ * mode-3 -> HBlank boundary, and never runs past a pending TIMA overflow. */
 __core static unsigned $(__gb_batch_budget)(gb_s* gb)
 {
     unsigned budget_ppu;
@@ -1473,8 +1472,11 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
             break;
         }
         /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
-         * the first one. */
-        budget_ppu = d1 + MIN(d2, BATCH_CROSS_MAX);
+         * the first one. Mode 3 is the exception: it must end exactly at the
+         * mode-3 -> HBlank boundary so __gb_draw_line runs before any HBlank
+         * VRAM/OAM writes (a cross would leak those writes into the live-vram
+         * draw and corrupt the line). */
+        budget_ppu = (gb->lcd_mode == LCD_TRANSFER) ? d1 : (d1 + MIN(d2, BATCH_CROSS_MAX));
     }
 
     /* Timer clamp only matters when the timer can raise an interrupt.
@@ -2068,9 +2070,7 @@ h_rare:
     TAIL_RARE();
 
 next_instruction:
-    /* Lag pgb_batch_elapsed so the STAT/LY synced read and the VRAM/OAM lock
-     * report the mode boundary slightly late (see BATCH_LAG_T). */
-    pgb_batch_elapsed = (batch_cycles > BATCH_LAG_T) ? (batch_cycles - BATCH_LAG_T) : 0;
+    pgb_batch_elapsed = batch_cycles;
     pgb_write_cycle = (uint16_t)batch_cycles;
     if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
     {
@@ -2230,7 +2230,7 @@ static unsigned $(__gb_run_instruction_reference_batch)(gb_s* gb)
             gb->direct.intr_pending = (gb->gb_reg.IF & gb->gb_reg.IE & ANY_INTR) != 0;
 
         /* batch tail (mirrors next_instruction, duplicated by design) */
-        pgb_batch_elapsed = (batch_cycles > BATCH_LAG_T) ? (batch_cycles - BATCH_LAG_T) : 0;
+        pgb_batch_elapsed = batch_cycles;
         pgb_write_cycle = (uint16_t)batch_cycles;
         if unlikely (gb->gb_ime_countdown > 0 && --gb->gb_ime_countdown == 0)
         {
