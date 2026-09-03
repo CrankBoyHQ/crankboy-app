@@ -1,238 +1,297 @@
 {
     "A91EC059": {
         "long": "Aladdin (USA)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "ABA42B78": {
         "long": "Austin Powers - Welcome to My Underground Lair! (USA)",
-        "short": "Austin Powers - Welcome to My Underground Lair!"
+        "short": "Austin Powers - Welcome to My Underground Lair!",
+        "genre": "Platform"
     },
     "A9050F72": {
         "long": "Ballistic (USA) (GB Compatible)",
-        "short": "Ballistic"
+        "short": "Ballistic",
+        "genre": "Strategy"
     },
     "A8EBD88B": {
         "long": "Bob the Builder - Fix it Fun! (Europe) (En,Fr,It)",
-        "short": "Bob the Builder - Fix it Fun!"
+        "short": "Bob the Builder - Fix it Fun!",
+        "genre": "Educational"
     },
     "AAFC35C3": {
         "long": "Denki Blocks! (USA) (En,Es) (Proto)",
-        "short": "Denki Blocks!"
+        "short": "Denki Blocks!",
+        "genre": "Strategy"
     },
     "A8397183": {
         "long": "Dogz (USA)",
-        "short": "Dogz"
+        "short": "Dogz",
+        "genre": "Simulation"
     },
     "A9E62F1A": {
         "long": "Doug - La Grande Aventure (France)",
-        "short": "Doug - La Grande Aventure"
+        "short": "Doug - La Grande Aventure",
+        "genre": "Adventure"
     },
     "A888A049": {
         "long": "Dragon Ball Z - I Leggendari Super Guerrieri (Italy)",
-        "short": "Dragon Ball Z - I Leggendari Super Guerrieri"
+        "short": "Dragon Ball Z - I Leggendari Super Guerrieri",
+        "genre": "Role-playing (RPG)"
     },
     "AB7BFDD5": {
         "long": "Dragon Warrior Monsters 2 - Cobi's Journey (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Warrior Monsters 2 - Cobi's Journey"
+        "short": "Dragon Warrior Monsters 2 - Cobi's Journey",
+        "genre": "Role-playing (RPG)"
     },
     "A86DE7B7": {
         "long": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki! (Japan) (Beta 1) (SGB Enhanced) (GB Compatible)",
-        "short": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki!"
+        "short": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki!",
+        "genre": "Role-playing (RPG)"
     },
     "AABA1EA4": {
         "long": "GB Karan Koron Gakuen - Hanafuda Mahjong (Japan)",
-        "short": "GB Karan Koron Gakuen - Hanafuda Mahjong"
+        "short": "GB Karan Koron Gakuen - Hanafuda Mahjong",
+        "genre": "Board"
     },
     "AB5738A1": {
         "long": "Harvest Moon GBC (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Harvest Moon GBC"
+        "short": "Harvest Moon GBC",
+        "genre": "Simulation"
     },
     "ABD8CEAE": {
         "long": "Holy Magic Century (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Holy Magic Century"
+        "short": "Holy Magic Century",
+        "genre": "Action"
     },
     "A9B8F072": {
         "long": "Hyper Olympic - Winter 2000 (Japan)",
-        "short": "Hyper Olympic - Winter 2000"
+        "short": "Hyper Olympic - Winter 2000",
+        "genre": "Sports"
     },
     "A8855C67": {
         "long": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (Beta) (1999-08-19) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "A890ADB2": {
         "long": "NHL Blades of Steel (USA)",
-        "short": "NHL Blades of Steel"
+        "short": "NHL Blades of Steel",
+        "genre": "Sports"
     },
     "A92DCB79": {
         "long": "Planet of the Apes (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Planet of the Apes"
+        "short": "Planet of the Apes",
+        "genre": "Adventure"
     },
     "A9905932": {
         "long": "Pro Foot (France) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Pro Foot"
+        "short": "Pro Foot",
+        "genre": "Sports"
     },
     "A97EA742": {
         "long": "Puchi Carat (USA) (Proto) (SGB Enhanced) (GB Compatible)",
-        "short": "Puchi Carat"
+        "short": "Puchi Carat",
+        "genre": "Puzzle"
     },
     "A9A89DDA": {
         "long": "Puchi Carat (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Puchi Carat"
+        "short": "Puchi Carat",
+        "genre": "Puzzle"
     },
     "AB8C3A31": {
         "long": "Rip-Tide Racer (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Rip-Tide Racer"
+        "short": "Rip-Tide Racer",
+        "genre": "Racing"
     },
     "A856C066": {
         "long": "Ronaldo V-Football (Europe) (En,Fr,De,Es,It,Nl,Pt) (GB Compatible)",
-        "short": "Ronaldo V-Football"
+        "short": "Ronaldo V-Football",
+        "genre": "Sports"
     },
     "A80EEEAD": {
         "long": "Soreike! Anpanman - Fushigi na Nikoniko Album (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Soreike! Anpanman - Fushigi na Nikoniko Album"
+        "short": "Soreike! Anpanman - Fushigi na Nikoniko Album",
+        "genre": "Role-playing (RPG)"
     },
     "AA5F14D2": {
         "long": "Street Fighter Alpha - Warriors' Dreams (USA)",
-        "short": "Street Fighter Alpha - Warriors' Dreams"
+        "short": "Street Fighter Alpha - Warriors' Dreams",
+        "genre": "Action"
     },
     "AB8B25D8": {
         "long": "Survival Kids 2 - Dasshutsu!! Futago-Jima! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Survival Kids 2 - Dasshutsu!! Futago-Jima!"
+        "short": "Survival Kids 2 - Dasshutsu!! Futago-Jima!",
+        "genre": "Role-playing (RPG)"
     },
     "ABF32B8B": {
         "long": "Sylvanian Families 3 - Hoshi Furu Yoru no Sunadokei (Japan)",
-        "short": "Sylvanian Families 3 - Hoshi Furu Yoru no Sunadokei"
+        "short": "Sylvanian Families 3 - Hoshi Furu Yoru no Sunadokei",
+        "genre": "Role-playing (RPG)"
     },
     "A8628F7A": {
         "long": "Tonic Trouble (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Tonic Trouble"
+        "short": "Tonic Trouble",
+        "genre": "Platform"
     },
     "A99A33DC": {
         "long": "Wizardry I - Proving Grounds of the Mad Overlord (Japan)",
-        "short": "Wizardry I - Proving Grounds of the Mad Overlord"
+        "short": "Wizardry I - Proving Grounds of the Mad Overlord",
+        "genre": "Role-playing (RPG)"
     },
     "AB3477C4": {
         "long": "Bakuchou Retsuden Shou - Hyper Fishing (Japan) (SGB Enhanced)",
-        "short": "Bakuchou Retsuden Shou - Hyper Fishing"
+        "short": "Bakuchou Retsuden Shou - Hyper Fishing",
+        "genre": "Hunting and Fishing"
     },
     "A99242C0": {
         "long": "Battle Dodge Ball (Japan)",
-        "short": "Battle Dodge Ball"
+        "short": "Battle Dodge Ball",
+        "genre": "Sports"
     },
     "A828FD4F": {
         "long": "Battle Space (Japan)",
-        "short": "Battle Space"
+        "short": "Battle Space",
+        "genre": "Action"
     },
     "A973E604": {
         "long": "Bugs Bunny Crazy Castle 2, The (USA)",
-        "short": "Bugs Bunny Crazy Castle 2, The"
+        "short": "Bugs Bunny Crazy Castle 2, The",
+        "genre": "Strategy"
     },
     "AA920298": {
         "long": "Chachamaru Panic (Japan)",
-        "short": "Chachamaru Panic"
+        "short": "Chachamaru Panic",
+        "genre": "Action"
     },
     "ABFF3314": {
         "long": "Chibi Maruko-chan 2 - Deluxe Maruko World (Japan)",
-        "short": "Chibi Maruko-chan 2 - Deluxe Maruko World"
+        "short": "Chibi Maruko-chan 2 - Deluxe Maruko World",
+        "genre": "Adventure"
     },
     "AA133439": {
         "long": "Cliffhanger (USA, Europe)",
-        "short": "Cliffhanger"
+        "short": "Cliffhanger",
+        "genre": "Platform"
     },
     "ABA1DAC9": {
         "long": "Cool Spot (USA)",
-        "short": "Cool Spot"
+        "short": "Cool Spot",
+        "genre": "Platform"
     },
     "A8301BDD": {
         "long": "Dead Heat Scramble (Japan)",
-        "short": "Dead Heat Scramble"
+        "short": "Dead Heat Scramble",
+        "genre": "Racing"
     },
     "AAAAD0B6": {
         "long": "Diablo (USA) (Proto)",
-        "short": "Diablo"
+        "short": "Diablo",
+        "genre": "Role-playing (RPG)"
     },
     "AB83BD70": {
         "long": "F-1 Race (World) (Rev 1)",
-        "short": "F-1 Race"
+        "short": "F-1 Race",
+        "genre": "Racing"
     },
     "AABE61BB": {
         "long": "F1 Pole Position (USA, Europe)",
-        "short": "F1 Pole Position"
+        "short": "F1 Pole Position",
+        "genre": "Racing"
     },
     "A9BA7875": {
         "long": "Fastest Lap (USA)",
-        "short": "Fastest Lap"
+        "short": "Fastest Lap",
+        "genre": "Racing"
     },
     "A93E125B": {
         "long": "Game Boy Gallery (Japan) (SGB Enhanced)",
-        "short": "Game Boy Gallery"
+        "short": "Game Boy Gallery",
+        "genre": "Compilation"
     },
     "AB367915": {
         "long": "Ishido - The Way of Stones (Japan)",
-        "short": "Ishido - The Way of Stones"
+        "short": "Ishido - The Way of Stones",
+        "genre": "Puzzle"
     },
     "AAF6366C": {
         "long": "Kinin Koumaroku Oni (Japan) (Rev 1)",
-        "short": "Kinin Koumaroku Oni"
+        "short": "Kinin Koumaroku Oni",
+        "genre": "Role-playing (RPG)"
     },
     "ABCEA00D": {
         "long": "Mega Man IV (USA)",
-        "short": "Mega Man IV"
+        "short": "Mega Man IV",
+        "genre": "Platform"
     },
     "ABF9B517": {
         "long": "Monster Truck (Japan)",
-        "short": "Monster Truck"
+        "short": "Monster Truck",
+        "genre": "Racing"
     },
     "A9D7E152": {
         "long": "Mystic Quest (World) (De) (Collection of Mana)",
-        "short": "Mystic Quest (Collection of Mana)"
+        "short": "Mystic Quest (Collection of Mana)",
+        "genre": "Role-playing (RPG)"
     },
     "ABFB84DF": {
         "long": "Nekketsu! Beach Volley Da yo Kunio-kun (Japan) (SGB Enhanced)",
-        "short": "Nekketsu! Beach Volley Da yo Kunio-kun"
+        "short": "Nekketsu! Beach Volley Da yo Kunio-kun",
+        "genre": "Sports"
     },
     "AA98687F": {
         "long": "Nettou Garou Densetsu 2 - Aratanaru Tatakai (Japan) (SGB Enhanced)",
-        "short": "Nettou Garou Densetsu 2 - Aratanaru Tatakai"
+        "short": "Nettou Garou Densetsu 2 - Aratanaru Tatakai",
+        "genre": "Fighting"
     },
     "AAEBD509": {
         "long": "Pac-Panic (Japan) (SGB Enhanced)",
-        "short": "Pac-Panic"
+        "short": "Pac-Panic",
+        "genre": "Puzzle"
     },
     "A9E62E88": {
         "long": "Penguin Land (Japan)",
-        "short": "Penguin Land"
+        "short": "Penguin Land",
+        "genre": "Platform"
     },
     "ABEF175B": {
         "long": "Pyramids of Ra (USA)",
-        "short": "Pyramids of Ra"
+        "short": "Pyramids of Ra",
+        "genre": "Puzzle"
     },
     "A8A43013": {
         "long": "Shin Nihon Pro Wrestling - Toukon Sanjuushi (Japan)",
-        "short": "Shin Nihon Pro Wrestling - Toukon Sanjuushi"
+        "short": "Shin Nihon Pro Wrestling - Toukon Sanjuushi",
+        "genre": "Sports"
     },
     "AA4E9379": {
         "long": "Sonic 6 (Unknown) (En) (Pirate)",
-        "short": "Sonic 6"
+        "short": "Sonic 6",
+        "genre": "Platform"
     },
     "A817450D": {
         "long": "Teke Teke! Asmik-kun World (Japan)",
-        "short": "Teke Teke! Asmik-kun World"
+        "short": "Teke Teke! Asmik-kun World",
+        "genre": "Action"
     },
     "A9018354": {
         "long": "Tenchi o Kurau (Japan)",
-        "short": "Tenchi o Kurau"
+        "short": "Tenchi o Kurau",
+        "genre": "Role-playing (RPG)"
     },
     "AA4A1EDB": {
         "long": "Tetris 2 (USA)",
-        "short": "Tetris 2"
+        "short": "Tetris 2",
+        "genre": "Action"
     },
     "A86BD81B": {
         "long": "Yogi Bear's Gold Rush (USA)",
-        "short": "Yogi Bear's Gold Rush"
+        "short": "Yogi Bear's Gold Rush",
+        "genre": "Platform"
     },
     "A9FCD6F7": {
         "long": "Shin Pokémon Red (origback) (v1.24.6h3)",
-        "short": "Shin Pokémon Red"
+        "short": "Shin Pokémon Red",
+        "genre": "ROM Hack"
     }
 }

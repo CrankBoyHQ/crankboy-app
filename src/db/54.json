@@ -1,242 +1,302 @@
 {
     "5449CAC0": {
         "long": "10-Pin Bowling (Europe)",
-        "short": "10-Pin Bowling"
+        "short": "10-Pin Bowling",
+        "genre": "Sports"
     },
     "56B83539": {
         "long": "102 Dalmatians - Puppies to the Rescue (USA, Europe)",
-        "short": "102 Dalmatians - Puppies to the Rescue"
+        "short": "102 Dalmatians - Puppies to the Rescue",
+        "genre": "Platform"
     },
     "547A9A69": {
         "long": "B-Daman Bakugaiden V - Final Mega Tune (Japan)",
-        "short": "B-Daman Bakugaiden V - Final Mega Tune"
+        "short": "B-Daman Bakugaiden V - Final Mega Tune",
+        "genre": "Strategy"
     },
     "570BAFDB": {
         "long": "Bakusou Senki Metal Walker GB - Koutetsu no Yuujou (Japan) (Rev 1) (Proto) (GB Compatible)",
-        "short": "Bakusou Senki Metal Walker GB - Koutetsu no Yuujou"
+        "short": "Bakusou Senki Metal Walker GB - Koutetsu no Yuujou",
+        "genre": "Role-playing (RPG)"
     },
     "57F1A202": {
         "long": "Barbie - Magic Genie Adventure (USA)",
-        "short": "Barbie - Magic Genie Adventure"
+        "short": "Barbie - Magic Genie Adventure",
+        "genre": "Adventure"
     },
     "545E0DA2": {
         "long": "Bomberman Max - Ain Version (Japan)",
-        "short": "Bomberman Max - Ain Version"
+        "short": "Bomberman Max - Ain Version",
+        "genre": "Role-playing (RPG)"
     },
     "55210934": {
         "long": "Bomberman Quest (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Bomberman Quest"
+        "short": "Bomberman Quest",
+        "genre": "Role-playing (RPG)"
     },
     "5692E262": {
         "long": "Buffy the Vampire Slayer (USA, Europe)",
-        "short": "Buffy the Vampire Slayer"
+        "short": "Buffy the Vampire Slayer",
+        "genre": "Action"
     },
     "5622B551": {
         "long": "Bundesliga Stars 2001 (Germany)",
-        "short": "Bundesliga Stars 2001"
+        "short": "Bundesliga Stars 2001",
+        "genre": "Sports"
     },
     "565FEC36": {
         "long": "Dance Dance Revolution GB 2 (Japan)",
-        "short": "Dance Dance Revolution GB 2"
+        "short": "Dance Dance Revolution GB 2",
+        "genre": "Music / Dancing"
     },
     "56095F86": {
         "long": "Diva Starz (Germany)",
-        "short": "Diva Starz"
+        "short": "Diva Starz",
+        "genre": "Educational"
     },
     "54617416": {
         "long": "Estpolis Denki - Yomigaeru Densetsu (Japan)",
-        "short": "Estpolis Denki - Yomigaeru Densetsu"
+        "short": "Estpolis Denki - Yomigaeru Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "542C78B6": {
         "long": "Hamster Paradise 2 (Japan)",
-        "short": "Hamster Paradise 2"
+        "short": "Hamster Paradise 2",
+        "genre": "Simulation"
     },
     "57EA1EC8": {
         "long": "International Superstar Soccer 2000 (Europe)",
-        "short": "International Superstar Soccer 2000"
+        "short": "International Superstar Soccer 2000",
+        "genre": "Sports"
     },
     "558F4631": {
         "long": "J.League Excite Stage Tactics (Japan)",
-        "short": "J.League Excite Stage Tactics"
+        "short": "J.League Excite Stage Tactics",
+        "genre": "Sports"
     },
     "55EFA05E": {
         "long": "Jissen ni Yakudatsu Tsumego (Japan) (Rev 1)",
-        "short": "Jissen ni Yakudatsu Tsumego"
+        "short": "Jissen ni Yakudatsu Tsumego",
+        "genre": "Board"
     },
     "577E1521": {
         "long": "Klustar (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Klustar"
+        "short": "Klustar",
+        "genre": "Puzzle"
     },
     "5715D896": {
         "long": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (Beta) (1999-09-07) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "54509D24": {
         "long": "Looney Tunes Collector - Alert! (USA) (En,Fr,Es)",
-        "short": "Looney Tunes Collector - Alert!"
+        "short": "Looney Tunes Collector - Alert!",
+        "genre": "Action"
     },
     "55DD0BA6": {
         "long": "Love Hina Pocket (Japan) (Rev 1)",
-        "short": "Love Hina Pocket"
+        "short": "Love Hina Pocket",
+        "genre": "Adventure"
     },
     "54D90A4C": {
         "long": "NASCAR 2000 (USA, Europe)",
-        "short": "NASCAR 2000"
+        "short": "NASCAR 2000",
+        "genre": "Racing"
     },
     "56F52663": {
         "long": "Network Boukenki Bugsite - Beta Version (Japan)",
-        "short": "Network Boukenki Bugsite - Beta Version"
+        "short": "Network Boukenki Bugsite - Beta Version",
+        "genre": "Role-playing (RPG)"
     },
     "573613D7": {
         "long": "Pocket Puyo Puyo-n (Japan) (Rev 2)",
-        "short": "Pocket Puyo Puyo-n"
+        "short": "Pocket Puyo Puyo-n",
+        "genre": "Puzzle"
     },
     "576F5CED": {
         "long": "Pokémon - Silberne Edition (Germany) (Beta) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Silberne Edition"
+        "short": "Pokémon - Silberne Edition",
+        "genre": "Role-playing (RPG)"
     },
     "548A287A": {
         "long": "Powerpuff Girls, The - Bad Mojo Jojo (USA) (Rev 1)",
-        "short": "Powerpuff Girls, The - Bad Mojo Jojo"
+        "short": "Powerpuff Girls, The - Bad Mojo Jojo",
+        "genre": "Platform"
     },
     "56D76BA2": {
         "long": "Qui Qui (Japan) (GB Compatible)",
-        "short": "Qui Qui"
+        "short": "Qui Qui",
+        "genre": "Strategy"
     },
     "57F82031": {
         "long": "RPG Tsukuru GB (Japan) (Rev 1) (NP)",
-        "short": "RPG Tsukuru GB"
+        "short": "RPG Tsukuru GB",
+        "genre": "Role-playing (RPG)"
     },
     "55BE1A6E": {
         "long": "Sesame Street Sports (Europe)",
-        "short": "Sesame Street Sports"
+        "short": "Sesame Street Sports",
+        "genre": "Sports"
     },
     "5730393D": {
         "long": "Shaman King Card Game - Chou Senjiryakketsu - Meramera Hen (Japan)",
-        "short": "Shaman King Card Game - Chou Senjiryakketsu - Meramera Hen"
+        "short": "Shaman King Card Game - Chou Senjiryakketsu - Meramera Hen",
+        "genre": "Action"
     },
     "55B9AF51": {
         "long": "Shin Megami Tensei Devil Children - Kuro no Sho (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Shin Megami Tensei Devil Children - Kuro no Sho"
+        "short": "Shin Megami Tensei Devil Children - Kuro no Sho",
+        "genre": "Role-playing (RPG)"
     },
     "549BF1E4": {
         "long": "Spy vs Spy (USA) (En,Fr,De,Es,It,Nl,Sv) (Rev 1) (Proto)",
-        "short": "Spy vs Spy"
+        "short": "Spy vs Spy",
+        "genre": "Action"
     },
     "5784BCE0": {
         "long": "Towers II - Plight of the Stargazer (USA) (Proto 1) (2000-05-07)",
-        "short": "Towers II - Plight of the Stargazer"
+        "short": "Towers II - Plight of the Stargazer",
+        "genre": "Demo"
     },
     "543ABB1B": {
         "long": "Wacky Races (USA) (En,Fr,Es)",
-        "short": "Wacky Races"
+        "short": "Wacky Races",
+        "genre": "Racing"
     },
     "56BEB694": {
         "long": "Walt Disney World Quest - Magical Racing Tour (USA, Europe)",
-        "short": "Walt Disney World Quest - Magical Racing Tour"
+        "short": "Walt Disney World Quest - Magical Racing Tour",
+        "genre": "Racing"
     },
     "5546A382": {
         "long": "Bart Simpson's Escape from Camp Deadly (USA, Europe)",
-        "short": "Bart Simpson's Escape from Camp Deadly"
+        "short": "Bart Simpson's Escape from Camp Deadly",
+        "genre": "Platform"
     },
     "54B67501": {
         "long": "Block Kuzushi GB (Japan) (SGB Enhanced)",
-        "short": "Block Kuzushi GB"
+        "short": "Block Kuzushi GB",
+        "genre": "Action"
     },
     "548CE311": {
         "long": "Castlevania - The Adventure (USA) (Castlevania Anniversary Collection)",
-        "short": "Castlevania - The Adventure (Castlevania Anniversary Collection)"
+        "short": "Castlevania - The Adventure (Castlevania Anniversary Collection)",
+        "genre": "Action"
     },
     "5721E7D6": {
         "long": "Konamic Sports in Barcelona (Japan)",
-        "short": "Konamic Sports in Barcelona"
+        "short": "Konamic Sports in Barcelona",
+        "genre": "Sports"
     },
     "545613E9": {
         "long": "Lawnmower Man, The (USA) (Proto 2) (1993-11-10)",
-        "short": "Lawnmower Man, The"
+        "short": "Lawnmower Man, The",
+        "genre": "Platform"
     },
     "560D71EB": {
         "long": "Lemmings (Europe) (Rev 1)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Strategy"
     },
     "5532B3D1": {
         "long": "Minesweeper - Soukaitei (Japan)",
-        "short": "Minesweeper - Soukaitei"
+        "short": "Minesweeper - Soukaitei",
+        "genre": "Puzzle"
     },
     "562C8F7F": {
         "long": "Momotarou Collection 2 (Japan) (SGB Enhanced)",
-        "short": "Momotarou Collection 2"
+        "short": "Momotarou Collection 2",
+        "genre": "Compilation"
     },
     "56BA6A71": {
         "long": "Monster Maker - Barcode Saga (Japan)",
-        "short": "Monster Maker - Barcode Saga"
+        "short": "Monster Maker - Barcode Saga",
+        "genre": "Strategy"
     },
     "55300D0A": {
         "long": "Mortal Kombat & Mortal Kombat II (USA, Europe)",
-        "short": "Mortal Kombat & Mortal Kombat II"
+        "short": "Mortal Kombat & Mortal Kombat II",
+        "genre": "Compilation"
     },
     "57BA5D56": {
         "long": "Mortal Kombat II - Kyuukyoku Shinken (Japan)",
-        "short": "Mortal Kombat II - Kyuukyoku Shinken"
+        "short": "Mortal Kombat II - Kyuukyoku Shinken",
+        "genre": "Fighting"
     },
     "57D95C92": {
         "long": "Mystic Quest (Europe)",
-        "short": "Mystic Quest"
+        "short": "Mystic Quest",
+        "genre": "Role-playing (RPG)"
     },
     "54913227": {
         "long": "Osawagase! Penguin Boy (Japan)",
-        "short": "Osawagase! Penguin Boy"
+        "short": "Osawagase! Penguin Boy",
+        "genre": "Action"
     },
     "54D2754A": {
         "long": "Pang (Europe) (Beta)",
-        "short": "Pang"
+        "short": "Pang",
+        "genre": "Action"
     },
     "55DA3515": {
         "long": "Pri Pri - Primitive Princess! (Japan)",
-        "short": "Pri Pri - Primitive Princess!"
+        "short": "Pri Pri - Primitive Princess!",
+        "genre": "Puzzle"
     },
     "57E9C17D": {
         "long": "Purikura Pocket - Fukanzen Joshikousei Manual (Japan) (Rev 1) (NP)",
-        "short": "Purikura Pocket - Fukanzen Joshikousei Manual"
+        "short": "Purikura Pocket - Fukanzen Joshikousei Manual",
+        "genre": "Adventure"
     },
     "55BBA483": {
         "long": "Robin Hood - Prince of Thieves (Europe)",
-        "short": "Robin Hood - Prince of Thieves"
+        "short": "Robin Hood - Prince of Thieves",
+        "genre": "Action"
     },
     "575D6D9D": {
         "long": "Sa-Ga 3 - Jikuu no Hasha (Japan)",
-        "short": "Sa-Ga 3 - Jikuu no Hasha"
+        "short": "Sa-Ga 3 - Jikuu no Hasha",
+        "genre": "Role-playing (RPG)"
     },
     "56410442": {
         "long": "Shippo de Bun (Japan)",
-        "short": "Shippo de Bun"
+        "short": "Shippo de Bun",
+        "genre": "Platform"
     },
     "552A53B9": {
         "long": "Spot - Cool Adventure (Japan)",
-        "short": "Spot - Cool Adventure"
+        "short": "Spot - Cool Adventure",
+        "genre": "Platform"
     },
     "54A0AAA3": {
         "long": "Street Fighter II (USA, Europe) (Rev 1) (SGB Enhanced)",
-        "short": "Street Fighter II"
+        "short": "Street Fighter II",
+        "genre": "Action"
     },
     "55153BB5": {
         "long": "Teenage Mutant Ninja Turtles 3 - Turtles Kikiippatsu (Japan)",
-        "short": "Teenage Mutant Ninja Turtles 3 - Turtles Kikiippatsu"
+        "short": "Teenage Mutant Ninja Turtles 3 - Turtles Kikiippatsu",
+        "genre": "Platform"
     },
     "55FC585F": {
         "long": "Tintin - Prisoners of the Sun (Europe) (En,Fr,De)",
-        "short": "Tintin - Prisoners of the Sun"
+        "short": "Tintin - Prisoners of the Sun",
+        "genre": "Platform"
     },
     "56AFCA4C": {
         "long": "Tokoro's Mahjong Jr. (Japan) (SGB Enhanced)",
-        "short": "Tokoro's Mahjong Jr."
+        "short": "Tokoro's Mahjong Jr.",
+        "genre": "Board"
     },
     "56800C6B": {
         "long": "Urusei Yatsura - Miss Tomobiki o Sagase! (Japan)",
-        "short": "Urusei Yatsura - Miss Tomobiki o Sagase!"
+        "short": "Urusei Yatsura - Miss Tomobiki o Sagase!",
+        "genre": "Role-playing (RPG)"
     },
     "57D21EF4": {
         "long": "World Soccer GB (Japan) (SGB Enhanced)",
-        "short": "World Soccer GB"
+        "short": "World Soccer GB",
+        "genre": "Sports"
     }
 }

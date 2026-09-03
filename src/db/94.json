@@ -1,166 +1,207 @@
 {
     "952B94E5": {
         "long": "All Star Tennis 2000 (Europe) (AZTP) (GB Compatible)",
-        "short": "All Star Tennis 2000"
+        "short": "All Star Tennis 2000",
+        "genre": "Sports"
     },
     "9562E7E8": {
         "long": "Cruis'n Exotica (USA)",
-        "short": "Cruis'n Exotica"
+        "short": "Cruis'n Exotica",
+        "genre": "Racing"
     },
     "96071AD0": {
         "long": "Data-Navi Pro Yakyuu 2 (Japan)",
-        "short": "Data-Navi Pro Yakyuu 2"
+        "short": "Data-Navi Pro Yakyuu 2",
+        "genre": "Sports"
     },
     "969C8961": {
         "long": "Game & Watch Gallery 2 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Game & Watch Gallery 2"
+        "short": "Game & Watch Gallery 2",
+        "genre": "Compilation"
     },
     "9606A07F": {
         "long": "Hello Kitty's Cube Frenzy (Europe) (Proto) (GB Compatible)",
-        "short": "Hello Kitty's Cube Frenzy"
+        "short": "Hello Kitty's Cube Frenzy",
+        "genre": "Puzzle"
     },
     "97822948": {
         "long": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "947D45AE": {
         "long": "Lemmings VS (Japan)",
-        "short": "Lemmings VS"
+        "short": "Lemmings VS",
+        "genre": "Puzzle"
     },
     "97E5CE2F": {
         "long": "Lemmings & Oh No! More Lemmings (USA)",
-        "short": "Lemmings & Oh No! More Lemmings"
+        "short": "Lemmings & Oh No! More Lemmings",
+        "genre": "Puzzle"
     },
     "96C9DB95": {
         "long": "Pokémon - Silberne Edition (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Silberne Edition"
+        "short": "Pokémon - Silberne Edition",
+        "genre": "Role-playing (RPG)"
     },
     "966DAEF1": {
         "long": "Pokémon Trading Card Game (Europe) (En,Es,It) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Trading Card Game"
+        "short": "Pokémon Trading Card Game",
+        "genre": "Card"
     },
     "942D0B7F": {
         "long": "Pokémon Trading Card Game (Europe) (En,Fr,De) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Trading Card Game"
+        "short": "Pokémon Trading Card Game",
+        "genre": "Card"
     },
     "9401BA47": {
         "long": "Shanghai Pocket (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Shanghai Pocket"
+        "short": "Shanghai Pocket",
+        "genre": "Board"
     },
     "95310C8B": {
         "long": "Taisen Tsume Shougi (Japan) (NP) (GB Compatible)",
-        "short": "Taisen Tsume Shougi"
+        "short": "Taisen Tsume Shougi",
+        "genre": "Board"
     },
     "94AED620": {
         "long": "Tintin - Le Temple Du Soleil (Europe) (En,Fr,De) (Beta)",
-        "short": "Tintin - Le Temple Du Soleil"
+        "short": "Tintin - Le Temple Du Soleil",
+        "genre": "Platform"
     },
     "96461918": {
         "long": "Zoids - Jashin Fukkatsu! Genobreaker Hen (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Zoids - Jashin Fukkatsu! Genobreaker Hen"
+        "short": "Zoids - Jashin Fukkatsu! Genobreaker Hen",
+        "genre": "Role-playing (RPG)"
     },
     "95398DA5": {
         "long": "4 in 1 (Europe) (4B-006, Sachen) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "94C26CDF": {
         "long": "Barbie - Game Girl (USA, Europe)",
-        "short": "Barbie - Game Girl"
+        "short": "Barbie - Game Girl",
+        "genre": "Action"
     },
     "943059BA": {
         "long": "Cult Jump (Japan)",
-        "short": "Cult Jump"
+        "short": "Cult Jump",
+        "genre": "Quiz"
     },
     "974A3CBE": {
         "long": "Dirty Racing (Europe) (Proto)",
-        "short": "Dirty Racing"
+        "short": "Dirty Racing",
+        "genre": "Racing"
     },
     "9677D157": {
         "long": "Dynablaster (Europe)",
-        "short": "Dynablaster"
+        "short": "Dynablaster",
+        "genre": "Puzzle"
     },
     "96ECC1E0": {
         "long": "Game & Watch Gallery (Europe) (SGB Enhanced)",
-        "short": "Game & Watch Gallery"
+        "short": "Game & Watch Gallery",
+        "genre": "Compilation"
     },
     "94563424": {
         "long": "Game Boy Wars Turbo (Japan) (SGB Enhanced)",
-        "short": "Game Boy Wars Turbo"
+        "short": "Game Boy Wars Turbo",
+        "genre": "Strategy"
     },
     "9694D69D": {
         "long": "Game de Hakken!! Tamagotchi - Osutchi to Mesutchi (Japan) (SGB Enhanced)",
-        "short": "Game de Hakken!! Tamagotchi - Osutchi to Mesutchi"
+        "short": "Game de Hakken!! Tamagotchi - Osutchi to Mesutchi",
+        "genre": "Strategy"
     },
     "95E8FCB1": {
         "long": "Genjin Cottsu (Japan) (SGB Enhanced)",
-        "short": "Genjin Cottsu"
+        "short": "Genjin Cottsu",
+        "genre": "Action"
     },
     "94757BE8": {
         "long": "International Superstar Soccer (USA, Europe) (SGB Enhanced)",
-        "short": "International Superstar Soccer"
+        "short": "International Superstar Soccer",
+        "genre": "Sports"
     },
     "951B9907": {
         "long": "Judge Dredd (Japan)",
-        "short": "Judge Dredd"
+        "short": "Judge Dredd",
+        "genre": "Platform"
     },
     "96555E9A": {
         "long": "Jungle no Ouja Tar-chan (Japan) (SGB Enhanced)",
-        "short": "Jungle no Ouja Tar-chan"
+        "short": "Jungle no Ouja Tar-chan",
+        "genre": "Action"
     },
     "94838A81": {
         "long": "Magic Knight Rayearth (Japan) (SGB Enhanced)",
-        "short": "Magic Knight Rayearth"
+        "short": "Magic Knight Rayearth",
+        "genre": "Role-playing (RPG)"
     },
     "97EBD21D": {
         "long": "Mini Yonku GB Let's & Go!! - All-Star Battle Max (Japan) (SGB Enhanced)",
-        "short": "Mini Yonku GB Let's & Go!! - All-Star Battle Max"
+        "short": "Mini Yonku GB Let's & Go!! - All-Star Battle Max",
+        "genre": "Strategy"
     },
     "97BD3E8F": {
         "long": "Muhammad Ali Heavyweight Boxing (USA, Europe)",
-        "short": "Muhammad Ali Heavyweight Boxing"
+        "short": "Muhammad Ali Heavyweight Boxing",
+        "genre": "Sports"
     },
     "96C24E13": {
         "long": "Nintendo World Cup (USA, Europe)",
-        "short": "Nintendo World Cup"
+        "short": "Nintendo World Cup",
+        "genre": "Sports"
     },
     "94E0AF9C": {
         "long": "Pac-Attack (USA) (SGB Enhanced)",
-        "short": "Pac-Attack"
+        "short": "Pac-Attack",
+        "genre": "Puzzle"
     },
     "955B25BA": {
         "long": "Pachinko Data Card - Chou Ataru-kun (Japan) (SGB Enhanced)",
-        "short": "Pachinko Data Card - Chou Ataru-kun"
+        "short": "Pachinko Data Card - Chou Ataru-kun",
+        "genre": "Gambling"
     },
     "964B7A10": {
         "long": "Pokémon - Edicion Amarilla - Edicion Especial Pikachu (Spain) (CGB+SGB Enhanced)",
-        "short": "Pokémon - Edicion Amarilla - Edicion Especial Pikachu"
+        "short": "Pokémon - Edicion Amarilla - Edicion Especial Pikachu",
+        "genre": "Role-playing (RPG)"
     },
     "952920BA": {
         "long": "Puzzle Nintama Rantarou GB (Japan) (SGB Enhanced)",
-        "short": "Puzzle Nintama Rantarou GB"
+        "short": "Puzzle Nintama Rantarou GB",
+        "genre": "Puzzle"
     },
     "979ED154": {
         "long": "Q Billion (Japan)",
-        "short": "Q Billion"
+        "short": "Q Billion",
+        "genre": "Strategy"
     },
     "96A4C720": {
         "long": "Rampart (Japan)",
-        "short": "Rampart"
+        "short": "Rampart",
+        "genre": "Action"
     },
     "948F64FE": {
         "long": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness (USA, Europe) (Beta)",
-        "short": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness"
+        "short": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness",
+        "genre": "Sports"
     },
     "956B603C": {
         "long": "Vattle Giuce (Japan)",
-        "short": "Vattle Giuce"
+        "short": "Vattle Giuce",
+        "genre": "Shoot'em Up"
     },
     "974E712B": {
         "long": "WCW - The Main Event (USA, Europe)",
-        "short": "WCW - The Main Event"
+        "short": "WCW - The Main Event",
+        "genre": "Sports"
     },
     "94E79347": {
         "long": "Little Sound Dj (v7.0.2)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

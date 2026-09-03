@@ -1,210 +1,262 @@
 {
     "51972995": {
         "long": "Benjamin Bluemchen - Ein verrueckter Tag im Zoo (Germany)",
-        "short": "Benjamin Bluemchen - Ein verrueckter Tag im Zoo"
+        "short": "Benjamin Bluemchen - Ein verrueckter Tag im Zoo",
+        "genre": "Platform"
     },
     "53155E60": {
         "long": "Bugs Bunny in - Crazy Castle 4 (Europe)",
-        "short": "Bugs Bunny in - Crazy Castle 4"
+        "short": "Bugs Bunny in - Crazy Castle 4",
+        "genre": "Strategy"
     },
     "53E02B87": {
         "long": "Crazy Bikers (Europe)",
-        "short": "Crazy Bikers"
+        "short": "Crazy Bikers",
+        "genre": "Racing"
     },
     "53C069E9": {
         "long": "DynaMike (Europe) (Proto)",
-        "short": "DynaMike"
+        "short": "DynaMike",
+        "genre": "Puzzle"
     },
     "51E951B5": {
         "long": "Evel Knievel (USA) (GB Compatible)",
-        "short": "Evel Knievel"
+        "short": "Evel Knievel",
+        "genre": "Racing"
     },
     "53156D4D": {
         "long": "Heroes of Might and Magic II (USA) (En,Fr,De)",
-        "short": "Heroes of Might and Magic II"
+        "short": "Heroes of Might and Magic II",
+        "genre": "Strategy"
     },
     "5042450B": {
         "long": "Magi Nation (USA)",
-        "short": "Magi Nation"
+        "short": "Magi Nation",
+        "genre": "Strategy"
     },
     "515C1459": {
         "long": "Mat Hoffman's Pro BMX (USA, Europe)",
-        "short": "Mat Hoffman's Pro BMX"
+        "short": "Mat Hoffman's Pro BMX",
+        "genre": "Sports"
     },
     "504F55C5": {
         "long": "Microsoft Pinball Arcade (USA)",
-        "short": "Microsoft Pinball Arcade"
+        "short": "Microsoft Pinball Arcade",
+        "genre": "Pinball"
     },
     "50DDF120": {
         "long": "Monster Rancher Battle Card GB (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Monster Rancher Battle Card GB"
+        "short": "Monster Rancher Battle Card GB",
+        "genre": "Role-playing (RPG)"
     },
     "5011A419": {
         "long": "NBA Hoopz (USA)",
-        "short": "NBA Hoopz"
+        "short": "NBA Hoopz",
+        "genre": "Sports"
     },
     "524478D4": {
         "long": "Pocket Monsters Kin (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket Monsters Kin"
+        "short": "Pocket Monsters Kin",
+        "genre": "Role-playing (RPG)"
     },
     "53F7BBA1": {
         "long": "Resident Evil (World) (Proto 2)",
-        "short": "Resident Evil"
+        "short": "Resident Evil",
+        "genre": "Adventure"
     },
     "521A2F77": {
         "long": "Sgt. Rock - On the Frontline (USA)",
-        "short": "Sgt. Rock - On the Frontline"
+        "short": "Sgt. Rock - On the Frontline",
+        "genre": "Shooter"
     },
     "5337FF55": {
         "long": "Shinseiki Evangelion - Mahjong Hokan Keikaku (Japan)",
-        "short": "Shinseiki Evangelion - Mahjong Hokan Keikaku"
+        "short": "Shinseiki Evangelion - Mahjong Hokan Keikaku",
+        "genre": "Board"
     },
     "52F51CB5": {
         "long": "Super Breakout! (USA) (GB Compatible)",
-        "short": "Super Breakout!"
+        "short": "Super Breakout!",
+        "genre": "Action"
     },
     "53B1E661": {
         "long": "Supreme Snowboarding (Europe) (En,Fr,De)",
-        "short": "Supreme Snowboarding"
+        "short": "Supreme Snowboarding",
+        "genre": "Sports"
     },
     "5333C5DB": {
         "long": "Test Drive 6 (USA) (Rev 1) (Proto)",
-        "short": "Test Drive 6"
+        "short": "Test Drive 6",
+        "genre": "Racing"
     },
     "530705A1": {
         "long": "Zoids - Shirogane no Juukishin Liger Zero (Japan)",
-        "short": "Zoids - Shirogane no Juukishin Liger Zero"
+        "short": "Zoids - Shirogane no Juukishin Liger Zero",
+        "genre": "Role-playing (RPG)"
     },
     "53918941": {
         "long": "Aladdin (World) (Disney Classic Games) (SGB Enhanced)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "5143E227": {
         "long": "Asterix & Obelix (Europe) (Fr,De) (SGB Enhanced)",
-        "short": "Asterix & Obelix"
+        "short": "Asterix & Obelix",
+        "genre": "Platform"
     },
     "5124BBEC": {
         "long": "Batman - Return of the Joker (USA, Europe)",
-        "short": "Batman - Return of the Joker"
+        "short": "Batman - Return of the Joker",
+        "genre": "Platform"
     },
     "51FF6E53": {
         "long": "Blodia (Japan)",
-        "short": "Blodia"
+        "short": "Blodia",
+        "genre": "Puzzle"
     },
     "509A6B73": {
         "long": "Bomberman Collection (Japan) (SGB Enhanced)",
-        "short": "Bomberman Collection"
+        "short": "Bomberman Collection",
+        "genre": "Action"
     },
     "5109F484": {
         "long": "Choplifter II (Japan)",
-        "short": "Choplifter II"
+        "short": "Choplifter II",
+        "genre": "Shooter"
     },
     "51300CFD": {
         "long": "Crystal Quest (USA)",
-        "short": "Crystal Quest"
+        "short": "Crystal Quest",
+        "genre": "Adventure"
     },
     "5333D083": {
         "long": "Doraemon no Study Boy 2 - Shou 1 Sansuu Keisan (Japan)",
-        "short": "Doraemon no Study Boy 2 - Shou 1 Sansuu Keisan"
+        "short": "Doraemon no Study Boy 2 - Shou 1 Sansuu Keisan",
+        "genre": "Educational"
     },
     "5129A518": {
         "long": "DragonHeart (USA, Europe)",
-        "short": "DragonHeart"
+        "short": "DragonHeart",
+        "genre": "Adventure"
     },
     "52678AE8": {
         "long": "Fighting Simulator 2 in 1 - Flying Warriors (USA, Europe)",
-        "short": "Fighting Simulator 2 in 1 - Flying Warriors"
+        "short": "Fighting Simulator 2 in 1 - Flying Warriors",
+        "genre": "Platform"
     },
     "503D3613": {
         "long": "Flintstones, The (USA, Europe)",
-        "short": "Flintstones, The"
+        "short": "Flintstones, The",
+        "genre": "Platform"
     },
     "508282D0": {
         "long": "Flintstones, The - King Rock Treasure Island (USA, Europe)",
-        "short": "Flintstones, The - King Rock Treasure Island"
+        "short": "Flintstones, The - King Rock Treasure Island",
+        "genre": "Platform"
     },
     "532036D5": {
         "long": "Galaga & Galaxian (Japan) (SGB Enhanced)",
-        "short": "Galaga & Galaxian"
+        "short": "Galaga & Galaxian",
+        "genre": "Compilation"
     },
     "51B8626D": {
         "long": "Garfield Labyrinth (Europe)",
-        "short": "Garfield Labyrinth"
+        "short": "Garfield Labyrinth",
+        "genre": "Puzzle"
     },
     "533FA979": {
         "long": "Goal! (Europe)",
-        "short": "Goal!"
+        "short": "Goal!",
+        "genre": "Sports"
     },
     "5206FD09": {
         "long": "Jeopardy! - Platinum Edition (USA) (SGB Enhanced)",
-        "short": "Jeopardy! - Platinum Edition"
+        "short": "Jeopardy! - Platinum Edition",
+        "genre": "Quiz"
     },
     "53FF8041": {
         "long": "Koukiatsu Boy (Japan) (SGB Enhanced)",
-        "short": "Koukiatsu Boy"
+        "short": "Koukiatsu Boy",
+        "genre": "Role-playing (RPG)"
     },
     "51627213": {
         "long": "Legend of the River King GB (Australia) (SGB Enhanced)",
-        "short": "Legend of the River King GB"
+        "short": "Legend of the River King GB",
+        "genre": "Role-playing (RPG)"
     },
     "531A3E16": {
         "long": "Loopz (World)",
-        "short": "Loopz"
+        "short": "Loopz",
+        "genre": "Puzzle"
     },
     "538E0591": {
         "long": "Lucky Luke (Europe) (En,Fr,De,Es)",
-        "short": "Lucky Luke"
+        "short": "Lucky Luke",
+        "genre": "Platform"
     },
     "5175D761": {
         "long": "Mega Man III (USA)",
-        "short": "Mega Man III"
+        "short": "Mega Man III",
+        "genre": "Platform"
     },
     "50C2ADA1": {
         "long": "Nekketsu Koukou Soccer-bu - World Cup Hen (Japan)",
-        "short": "Nekketsu Koukou Soccer-bu - World Cup Hen"
+        "short": "Nekketsu Koukou Soccer-bu - World Cup Hen",
+        "genre": "Sports"
     },
     "5110E971": {
         "long": "Nemesis (USA)",
-        "short": "Nemesis"
+        "short": "Nemesis",
+        "genre": "Shoot'em Up"
     },
     "50A15DC8": {
         "long": "Pac-In-Time (USA) (SGB Enhanced)",
-        "short": "Pac-In-Time"
+        "short": "Pac-In-Time",
+        "genre": "Platform"
     },
     "52ADB7F9": {
         "long": "Pachinko Monogatari Gaiden (Japan) (SGB Enhanced)",
-        "short": "Pachinko Monogatari Gaiden"
+        "short": "Pachinko Monogatari Gaiden",
+        "genre": "Gambling"
     },
     "526942E1": {
         "long": "Palamedes (Europe)",
-        "short": "Palamedes"
+        "short": "Palamedes",
+        "genre": "Puzzle"
     },
     "50E2FC1D": {
         "long": "Pokémon - Version Bleue (France) (SGB Enhanced)",
-        "short": "Pokémon - Version Bleue"
+        "short": "Pokémon - Version Bleue",
+        "genre": "Role-playing (RPG)"
     },
     "504CBD1D": {
         "long": "Ren & Stimpy Show, The - Veediots! (USA, Europe)",
-        "short": "Ren & Stimpy Show, The - Veediots!"
+        "short": "Ren & Stimpy Show, The - Veediots!",
+        "genre": "Platform"
     },
     "52F5E960": {
         "long": "Renju Club - Gomoku Narabe (Japan) (SGB Enhanced)",
-        "short": "Renju Club - Gomoku Narabe"
+        "short": "Renju Club - Gomoku Narabe",
+        "genre": "Board"
     },
     "517A614C": {
         "long": "Simpsons, The - Bart & the Beanstalk (USA, Europe)",
-        "short": "Simpsons, The - Bart & the Beanstalk"
+        "short": "Simpsons, The - Bart & the Beanstalk",
+        "genre": "Platform"
     },
     "50930D9C": {
         "long": "TaleSpin (Spain) (Proto)",
-        "short": "TaleSpin"
+        "short": "TaleSpin",
+        "genre": "Shoot'em Up"
     },
     "5009215F": {
         "long": "Tennis (World)",
-        "short": "Tennis"
+        "short": "Tennis",
+        "genre": "Sports"
     },
     "518C2D2F": {
         "long": "Turok - Battle of the Bionosaurs (USA, Europe) (En,Fr,De,Es)",
-        "short": "Turok - Battle of the Bionosaurs"
+        "short": "Turok - Battle of the Bionosaurs",
+        "genre": "Platform"
     }
 }

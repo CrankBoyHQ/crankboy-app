@@ -1,206 +1,257 @@
 {
     "3199F65F": {
         "long": "Alice in Wonderland (USA, Australia)",
-        "short": "Alice in Wonderland"
+        "short": "Alice in Wonderland",
+        "genre": "Platform"
     },
     "3263F692": {
         "long": "Dancing Furby (Japan) (GB Compatible)",
-        "short": "Dancing Furby"
+        "short": "Dancing Furby",
+        "genre": "Music / Dancing"
     },
     "333C124C": {
         "long": "Donald Duck - Daisy o Sukue! (Japan)",
-        "short": "Donald Duck - Daisy o Sukue!"
+        "short": "Donald Duck - Daisy o Sukue!",
+        "genre": "Platform"
     },
     "33E9D438": {
         "long": "Driver (Europe) (En,Fr,De,Es,It) (Beta)",
-        "short": "Driver"
+        "short": "Driver",
+        "genre": "Racing"
     },
     "32C87958": {
         "long": "E.T. - The Extra-Terrestrial and the Cosmic Garden (USA)",
-        "short": "E.T. - The Extra-Terrestrial and the Cosmic Garden"
+        "short": "E.T. - The Extra-Terrestrial and the Cosmic Garden",
+        "genre": "Strategy"
     },
     "3122807B": {
         "long": "F-1 World Grand Prix (Japan) (En) (Beta 1)",
-        "short": "F-1 World Grand Prix"
+        "short": "F-1 World Grand Prix",
+        "genre": "Racing"
     },
     "30C26262": {
         "long": "Game Boy Wars 3 (Japan)",
-        "short": "Game Boy Wars 3"
+        "short": "Game Boy Wars 3",
+        "genre": "Strategy"
     },
     "308A4CCB": {
         "long": "Games Frenzy (Europe) (En,Fr,De)",
-        "short": "Games Frenzy"
+        "short": "Games Frenzy",
+        "genre": "Puzzle"
     },
     "3019B4E7": {
         "long": "Golf King (Europe) (En,Fr,De) (Proto)",
-        "short": "Golf King"
+        "short": "Golf King",
+        "genre": "Sports"
     },
     "3207B7D9": {
         "long": "Hang Time Basketball (Europe) (Unl)",
-        "short": "Hang Time Basketball"
+        "short": "Hang Time Basketball",
+        "genre": "Sports"
     },
     "32A04C29": {
         "long": "Harvest Moon 2 GBC (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Harvest Moon 2 GBC"
+        "short": "Harvest Moon 2 GBC",
+        "genre": "Strategy"
     },
     "3390B056": {
         "long": "Inspector Gadget - Operation Madkactus (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Inspector Gadget - Operation Madkactus"
+        "short": "Inspector Gadget - Operation Madkactus",
+        "genre": "Strategy"
     },
     "327EC81F": {
         "long": "International Track & Field (Europe) (En,Fr,De,It) (SGB Enhanced) (GB Compatible)",
-        "short": "International Track & Field"
+        "short": "International Track & Field",
+        "genre": "Sports"
     },
     "32C8EE13": {
         "long": "Janosch - Das grosse Panama-Spiel (Germany)",
-        "short": "Janosch - Das grosse Panama-Spiel"
+        "short": "Janosch - Das grosse Panama-Spiel",
+        "genre": "Educational"
     },
     "3204B92C": {
         "long": "Jim Henson's Muppets (Europe) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Jim Henson's Muppets"
+        "short": "Jim Henson's Muppets",
+        "genre": "Platform"
     },
     "33C65722": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (Rev 1) (Beta) (1999-09-04) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "3358E30A": {
         "long": "Pokémon - Crystal Version (USA, Europe) (Rev 1)",
-        "short": "Pokémon - Crystal Version"
+        "short": "Pokémon - Crystal Version",
+        "genre": "Role-playing (RPG)"
     },
     "30E1E567": {
         "long": "Power Quest (Europe) (En-US,En-GB,Fr,De,Es,It) (SGB Enhanced) (GB Compatible)",
-        "short": "Power Quest"
+        "short": "Power Quest",
+        "genre": "Role-playing (RPG)"
     },
     "310B52F7": {
         "long": "Powerpuff Girls, The - Paint the Townsville Green (Europe) (BPTX) (Proto)",
-        "short": "Powerpuff Girls, The - Paint the Townsville Green"
+        "short": "Powerpuff Girls, The - Paint the Townsville Green",
+        "genre": "Beat'em Up"
     },
     "32CAEF11": {
         "long": "Robopon - Sun Version (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Robopon - Sun Version"
+        "short": "Robopon - Sun Version",
+        "genre": "Role-playing (RPG)"
     },
     "32739B34": {
         "long": "Street Fighter Alpha - Warriors' Dreams (Japan)",
-        "short": "Street Fighter Alpha - Warriors' Dreams"
+        "short": "Street Fighter Alpha - Warriors' Dreams",
+        "genre": "Action"
     },
     "337E5DD3": {
         "long": "Top Gear Rally (Europe) (Rumble Version)",
-        "short": "Top Gear Rally"
+        "short": "Top Gear Rally",
+        "genre": "Racing"
     },
     "31740097": {
         "long": "Trickboarder GP (Japan)",
-        "short": "Trickboarder GP"
+        "short": "Trickboarder GP",
+        "genre": "Sports"
     },
     "30132AB8": {
         "long": "Xtreme Wheels (Japan) (NP)",
-        "short": "Xtreme Wheels"
+        "short": "Xtreme Wheels",
+        "genre": "Racing"
     },
     "338E2CDA": {
         "long": "Yu-Gi-Oh! - Dark Duel Stories (Europe)",
-        "short": "Yu-Gi-Oh! - Dark Duel Stories"
+        "short": "Yu-Gi-Oh! - Dark Duel Stories",
+        "genre": "Card"
     },
     "3272E6F9": {
         "long": "Zelda no Densetsu - Fushigi no Kinomi - Jikuu no Shou (Japan)",
-        "short": "Zelda no Densetsu - Fushigi no Kinomi - Jikuu no Shou"
+        "short": "Zelda no Densetsu - Fushigi no Kinomi - Jikuu no Shou",
+        "genre": "Role-playing (RPG)"
     },
     "3011D5CA": {
         "long": "Amazing Penguin (USA, Europe)",
-        "short": "Amazing Penguin"
+        "short": "Amazing Penguin",
+        "genre": "Action"
     },
     "331CF7DE": {
         "long": "Battletoads (Japan)",
-        "short": "Battletoads"
+        "short": "Battletoads",
+        "genre": "Beat'em Up"
     },
     "33574ECB": {
         "long": "Beetlejuice (USA)",
-        "short": "Beetlejuice"
+        "short": "Beetlejuice",
+        "genre": "Platform"
     },
     "33A1E1CF": {
         "long": "Captain Tsubasa J - Zenkoku Seiha e no Chousen (Japan) (SGB Enhanced)",
-        "short": "Captain Tsubasa J - Zenkoku Seiha e no Chousen"
+        "short": "Captain Tsubasa J - Zenkoku Seiha e no Chousen",
+        "genre": "Sports"
     },
     "308A2465": {
         "long": "Dragon Slayer I (Japan)",
-        "short": "Dragon Slayer I"
+        "short": "Dragon Slayer I",
+        "genre": "Role-playing (RPG)"
     },
     "33261C11": {
         "long": "Ganbare Goemon - Sarawareta Ebisumaru (Japan)",
-        "short": "Ganbare Goemon - Sarawareta Ebisumaru"
+        "short": "Ganbare Goemon - Sarawareta Ebisumaru",
+        "genre": "Action"
     },
     "30AE39B6": {
         "long": "Go! Go! Tank (Japan)",
-        "short": "Go! Go! Tank"
+        "short": "Go! Go! Tank",
+        "genre": "Strategy"
     },
     "32DD6FD6": {
         "long": "Hook (Europe) (Beta)",
-        "short": "Hook"
+        "short": "Hook",
+        "genre": "Platform"
     },
     "32A81A49": {
         "long": "Hyper Black Bass '95 (Japan) (En,Ja)",
-        "short": "Hyper Black Bass '95"
+        "short": "Hyper Black Bass '95",
+        "genre": "Hunting and Fishing"
     },
     "326273B7": {
         "long": "Keitai Keiba Eight Special (Japan)",
-        "short": "Keitai Keiba Eight Special"
+        "short": "Keitai Keiba Eight Special",
+        "genre": "Sports with Animals"
     },
     "31CB6526": {
         "long": "Kirby's Pinball Land (USA, Europe)",
-        "short": "Kirby's Pinball Land"
+        "short": "Kirby's Pinball Land",
+        "genre": "Pinball"
     },
     "3340E600": {
         "long": "Kung-Fu Master (USA, Europe)",
-        "short": "Kung-Fu Master"
+        "short": "Kung-Fu Master",
+        "genre": "Action"
     },
     "31FB404B": {
         "long": "Lazlos' Leap (USA)",
-        "short": "Lazlos' Leap"
+        "short": "Lazlos' Leap",
+        "genre": "Puzzle"
     },
     "31CD9670": {
         "long": "Little Master - Raikuban no Densetsu (Japan)",
-        "short": "Little Master - Raikuban no Densetsu"
+        "short": "Little Master - Raikuban no Densetsu",
+        "genre": "Strategy"
     },
     "3378064B": {
         "long": "Metal Masters (USA) (Beta)",
-        "short": "Metal Masters"
+        "short": "Metal Masters",
+        "genre": "Fighting"
     },
     "33CD7550": {
         "long": "Mini-Putt (Japan)",
-        "short": "Mini-Putt"
+        "short": "Mini-Putt",
+        "genre": "Sports"
     },
     "300B1D2D": {
         "long": "Monster Max (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Monster Max"
+        "short": "Monster Max",
+        "genre": "Action"
     },
     "318DBDE1": {
         "long": "Motocross Maniacs (USA)",
-        "short": "Motocross Maniacs"
+        "short": "Motocross Maniacs",
+        "genre": "Racing"
     },
     "32909F62": {
         "long": "NBA Jam - Tournament Edition (Japan)",
-        "short": "NBA Jam - Tournament Edition"
+        "short": "NBA Jam - Tournament Edition",
+        "genre": "Sports"
     },
     "337FCE11": {
         "long": "Pokémon - Version Rouge (France) (SGB Enhanced)",
-        "short": "Pokémon - Version Rouge"
+        "short": "Pokémon - Version Rouge",
+        "genre": "Role-playing (RPG)"
     },
     "31A3BD99": {
         "long": "seaQuest DSV (USA, Europe) (SGB Enhanced)",
-        "short": "seaQuest DSV"
+        "short": "seaQuest DSV",
+        "genre": "Shooter"
     },
     "31A227ED": {
         "long": "Super Battletank (Europe)",
-        "short": "Super Battletank"
+        "short": "Super Battletank",
+        "genre": "Simulation"
     },
     "32C94538": {
         "long": "Wizardry Gaiden III - Yami no Seiten (Japan)",
-        "short": "Wizardry Gaiden III - Yami no Seiten"
+        "short": "Wizardry Gaiden III - Yami no Seiten",
+        "genre": "Role-playing (RPG)"
     },
     "3134EA60": {
         "long": "Yakuman (Japan)",
-        "short": "Yakuman"
+        "short": "Yakuman",
+        "genre": "Board"
     },
     "32F920FD": {
         "long": "Little Sound Dj (v9.4.1)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

@@ -1,178 +1,222 @@
 {
     "3C39BCAB": {
         "long": "Chi to Ase to Namida no Koukou Yakyuu (Japan)",
-        "short": "Chi to Ase to Namida no Koukou Yakyuu"
+        "short": "Chi to Ase to Namida no Koukou Yakyuu",
+        "genre": "Simulation"
     },
     "3F511F57": {
         "long": "Dragon Ball Z - Densetsu no Chou Senshi-tachi (Japan) (Beta)",
-        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi"
+        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi",
+        "genre": "Role-playing (RPG)"
     },
     "3F1E076C": {
         "long": "DX Monopoly GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "DX Monopoly GB"
+        "short": "DX Monopoly GB",
+        "genre": "Board"
     },
     "3C476C6F": {
         "long": "Jim Henson's Muppets (USA)",
-        "short": "Jim Henson's Muppets"
+        "short": "Jim Henson's Muppets",
+        "genre": "Platform"
     },
     "3F8D6041": {
         "long": "Klustar (USA) (GB Compatible)",
-        "short": "Klustar"
+        "short": "Klustar",
+        "genre": "Puzzle"
     },
     "3E88A24A": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (Rev 1) (Beta) (1999-09-22) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "3EF25533": {
         "long": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou"
+        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou",
+        "genre": "Puzzle"
     },
     "3C193973": {
         "long": "Moomin no Daibouken (Japan) (Beta)",
-        "short": "Moomin no Daibouken"
+        "short": "Moomin no Daibouken",
+        "genre": "Platform"
     },
     "3EAC3D1C": {
         "long": "Ottifanten - Kommando Stoertebeker (Germany)",
-        "short": "Ottifanten - Kommando Stoertebeker"
+        "short": "Ottifanten - Kommando Stoertebeker",
+        "genre": "Platform"
     },
     "3F635A4F": {
         "long": "Owarai Yoiko no Geemumichi - Oyaji Sagashite 3 Choume (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Owarai Yoiko no Geemumichi - Oyaji Sagashite 3 Choume"
+        "short": "Owarai Yoiko no Geemumichi - Oyaji Sagashite 3 Choume",
+        "genre": "Action"
     },
     "3E43F25F": {
         "long": "Phantom Zona (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Phantom Zona"
+        "short": "Phantom Zona",
+        "genre": "Strategy"
     },
     "3ED30908": {
         "long": "Pocket Bowling (USA) (GB Compatible)",
-        "short": "Pocket Bowling"
+        "short": "Pocket Bowling",
+        "genre": "Sports"
     },
     "3F1D7E58": {
         "long": "Pokémon Trading Card Game (Europe) (En,Es,It) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Trading Card Game"
+        "short": "Pokémon Trading Card Game",
+        "genre": "Card"
     },
     "3FDE5BAC": {
         "long": "Rayman - Mister Dark no Wana (Japan)",
-        "short": "Rayman - Mister Dark no Wana"
+        "short": "Rayman - Mister Dark no Wana",
+        "genre": "Platform"
     },
     "3D4AE536": {
         "long": "Shin Megami Tensei Devil Children - Kuro no Sho (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Shin Megami Tensei Devil Children - Kuro no Sho"
+        "short": "Shin Megami Tensei Devil Children - Kuro no Sho",
+        "genre": "Role-playing (RPG)"
     },
     "3FFCD45B": {
         "long": "Soul Getter - Houkago Bouken RPG (Japan) (GB Compatible)",
-        "short": "Soul Getter - Houkago Bouken RPG"
+        "short": "Soul Getter - Houkago Bouken RPG",
+        "genre": "Role-playing (RPG)"
     },
     "3E9BC90B": {
         "long": "Spirou - The Robot Invasion (Europe) (En,Fr,De,Es,It,Nl,Da)",
-        "short": "Spirou - The Robot Invasion"
+        "short": "Spirou - The Robot Invasion",
+        "genre": "Platform"
     },
     "3E17D04A": {
         "long": "Tom and Jerry - Mousehunt (Europe) (En,Fr,De,Es,It)",
-        "short": "Tom and Jerry - Mousehunt"
+        "short": "Tom and Jerry - Mousehunt",
+        "genre": "Action"
     },
     "3D6B598C": {
         "long": "Toobin' (USA)",
-        "short": "Toobin'"
+        "short": "Toobin'",
+        "genre": "Sports"
     },
     "3CC6B1F9": {
         "long": "Zebco Fishing! (USA) (Rumble Version)",
-        "short": "Zebco Fishing!"
+        "short": "Zebco Fishing!",
+        "genre": "Hunting and Fishing"
     },
     "3C63E083": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Beta) (1998-07-05 21.55.32) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "3CAB28D9": {
         "long": "Alfred Chicken (Europe)",
-        "short": "Alfred Chicken"
+        "short": "Alfred Chicken",
+        "genre": "Platform"
     },
     "3F73FE7A": {
         "long": "Baby T-Rex (Europe)",
-        "short": "Baby T-Rex"
+        "short": "Baby T-Rex",
+        "genre": "Platform"
     },
     "3D13EC6A": {
         "long": "Banishing Racer (Japan)",
-        "short": "Banishing Racer"
+        "short": "Banishing Racer",
+        "genre": "Platform"
     },
     "3F4D5C84": {
         "long": "Bionic Commando (Japan)",
-        "short": "Bionic Commando"
+        "short": "Bionic Commando",
+        "genre": "Platform"
     },
     "3C86F5DB": {
         "long": "Burai Fighter Deluxe (USA, Europe)",
-        "short": "Burai Fighter Deluxe"
+        "short": "Burai Fighter Deluxe",
+        "genre": "Shoot'em Up"
     },
     "3F0AAFEC": {
         "long": "Dino Breeder (Japan) (SGB Enhanced)",
-        "short": "Dino Breeder"
+        "short": "Dino Breeder",
+        "genre": "Simulation"
     },
     "3D04B8E7": {
         "long": "Dr. Franken (Japan)",
-        "short": "Dr. Franken"
+        "short": "Dr. Franken",
+        "genre": "Platform"
     },
     "3EF2E823": {
         "long": "DX Bakenou Z (Japan)",
-        "short": "DX Bakenou Z"
+        "short": "DX Bakenou Z",
+        "genre": "Sports with Animals"
     },
     "3D3C059E": {
         "long": "Famista (Japan)",
-        "short": "Famista"
+        "short": "Famista",
+        "genre": "Sports"
     },
     "3E454710": {
         "long": "Final Fantasy Legend III (USA)",
-        "short": "Final Fantasy Legend III"
+        "short": "Final Fantasy Legend III",
+        "genre": "Role-playing (RPG)"
     },
     "3D0BAC10": {
         "long": "Fushigi na Blobby - Princess Blob o Sukue! (Japan)",
-        "short": "Fushigi na Blobby - Princess Blob o Sukue!"
+        "short": "Fushigi na Blobby - Princess Blob o Sukue!",
+        "genre": "Platform"
     },
     "3FC21B74": {
         "long": "Hyper Lode Runner (Japan) (En) (Possible Proto)",
-        "short": "Hyper Lode Runner"
+        "short": "Hyper Lode Runner",
+        "genre": "Action"
     },
     "3FCB174D": {
         "long": "Jordan vs Bird - One on One (Japan)",
-        "short": "Jordan vs Bird - One on One"
+        "short": "Jordan vs Bird - One on One",
+        "genre": "Sports"
     },
     "3FAC2661": {
         "long": "Mickey's Ultimate Challenge (USA, Europe) (Beta) (1993-11-12)",
-        "short": "Mickey's Ultimate Challenge"
+        "short": "Mickey's Ultimate Challenge",
+        "genre": "Puzzle"
     },
     "3C1C5EB4": {
         "long": "Momotarou Dengeki 2 (Japan) (SGB Enhanced)",
-        "short": "Momotarou Dengeki 2"
+        "short": "Momotarou Dengeki 2",
+        "genre": "Action"
     },
     "3D6D309B": {
         "long": "Nekojara Monogatari (Japan)",
-        "short": "Nekojara Monogatari"
+        "short": "Nekojara Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "3E8D0AE9": {
         "long": "Pachio-kun 2 (Japan)",
-        "short": "Pachio-kun 2"
+        "short": "Pachio-kun 2",
+        "genre": "Gambling"
     },
     "3E2810BE": {
         "long": "Super Off Road (USA, Europe)",
-        "short": "Super Off Road"
+        "short": "Super Off Road",
+        "genre": "Racing"
     },
     "3FA10931": {
         "long": "Tiny Toon Adventures 3 - Dokidoki Sport Festival (Japan)",
-        "short": "Tiny Toon Adventures 3 - Dokidoki Sport Festival"
+        "short": "Tiny Toon Adventures 3 - Dokidoki Sport Festival",
+        "genre": "Sports"
     },
     "3C4E29B4": {
         "long": "Top Rank Tennis (USA)",
-        "short": "Top Rank Tennis"
+        "short": "Top Rank Tennis",
+        "genre": "Sports"
     },
     "3C4CD245": {
         "long": "Winter Gold (Europe)",
-        "short": "Winter Gold"
+        "short": "Winter Gold",
+        "genre": "Sports"
     },
     "3E7C6B2B": {
         "long": "Yu Yu Hakusho Dai-4-dan - Makai Touitsu Hen (Japan) (SGB Enhanced)",
-        "short": "Yu Yu Hakusho Dai-4-dan - Makai Touitsu Hen"
+        "short": "Yu Yu Hakusho Dai-4-dan - Makai Touitsu Hen",
+        "genre": "Action"
     },
     "3CA00A00": {
         "long": "Little Sound Dj (v3.6.8)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

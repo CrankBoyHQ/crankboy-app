@@ -1,210 +1,262 @@
 {
     "C62A4C30": {
         "long": "Animal Breeder 3 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Animal Breeder 3"
+        "short": "Animal Breeder 3",
+        "genre": "Role-playing (RPG)"
     },
     "C775D653": {
         "long": "Casper (USA)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "C64FF2B6": {
         "long": "Dance Dance Revolution GB (Japan)",
-        "short": "Dance Dance Revolution GB"
+        "short": "Dance Dance Revolution GB",
+        "genre": "Music / Dancing"
     },
     "C5501FCE": {
         "long": "Dejiko no Mahjong Party (Japan)",
-        "short": "Dejiko no Mahjong Party"
+        "short": "Dejiko no Mahjong Party",
+        "genre": "Board"
     },
     "C6E7F3C6": {
         "long": "Deja Vu I & II - The Casebooks of Ace Harding (Europe) (Fr,De)",
-        "short": "Deja Vu I & II - The Casebooks of Ace Harding"
+        "short": "Deja Vu I & II - The Casebooks of Ace Harding",
+        "genre": "Adventure"
     },
     "C693AA37": {
         "long": "From TV Animation One Piece - Yume no Luffy Kaizokudan Tanjou! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "From TV Animation One Piece - Yume no Luffy Kaizokudan Tanjou!"
+        "short": "From TV Animation One Piece - Yume no Luffy Kaizokudan Tanjou!",
+        "genre": "Strategy"
     },
     "C69DC37B": {
         "long": "Game Boy Wars 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Game Boy Wars 2"
+        "short": "Game Boy Wars 2",
+        "genre": "Strategy"
     },
     "C5A47896": {
         "long": "Grinch, The (USA)",
-        "short": "Grinch, The"
+        "short": "Grinch, The",
+        "genre": "Puzzle"
     },
     "C460DC88": {
         "long": "Hamster Paradise 4 (Japan)",
-        "short": "Hamster Paradise 4"
+        "short": "Hamster Paradise 4",
+        "genre": "Simulation"
     },
     "C6758B0B": {
         "long": "Konchuu Fighters (Japan)",
-        "short": "Konchuu Fighters"
+        "short": "Konchuu Fighters",
+        "genre": "Role-playing (RPG)"
     },
     "C6859B34": {
         "long": "Lil' Monster (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Lil' Monster"
+        "short": "Lil' Monster",
+        "genre": "Role-playing (RPG)"
     },
     "C5290CEE": {
         "long": "Merlin (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Merlin"
+        "short": "Merlin",
+        "genre": "Platform"
     },
     "C6BA9F27": {
         "long": "Mummy, The (USA)",
-        "short": "Mummy, The"
+        "short": "Mummy, The",
+        "genre": "Platform"
     },
     "C7800576": {
         "long": "Othello Millennium (Japan) (GB Compatible)",
-        "short": "Othello Millennium"
+        "short": "Othello Millennium",
+        "genre": "Board"
     },
     "C6F1ABD4": {
         "long": "Other Life - Azure Dreams GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Other Life - Azure Dreams GB"
+        "short": "Other Life - Azure Dreams GB",
+        "genre": "Role-playing (RPG)"
     },
     "C424874E": {
         "long": "Pocket GI Stable (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket GI Stable"
+        "short": "Pocket GI Stable",
+        "genre": "Sports with Animals"
     },
     "C4387812": {
         "long": "Pocket Music (USA) (En,Fr,De,Es,It) (Proto)",
-        "short": "Pocket Music"
+        "short": "Pocket Music",
+        "genre": "Music / Dancing"
     },
     "C430A89A": {
         "long": "Rayman (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Rayman"
+        "short": "Rayman",
+        "genre": "Platform"
     },
     "C7AAE1B3": {
         "long": "Roi Lion, Le - La Formidable Aventure de Simba (France) (Rev 1)",
-        "short": "Roi Lion, Le - La Formidable Aventure de Simba"
+        "short": "Roi Lion, Le - La Formidable Aventure de Simba",
+        "genre": "Platform"
     },
     "C46ABA56": {
         "long": "Survival Kids (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Survival Kids"
+        "short": "Survival Kids",
+        "genre": "Role-playing (RPG)"
     },
     "C6FE4497": {
         "long": "Sylvanian Families - Otogi no Kuni no Pendant (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sylvanian Families - Otogi no Kuni no Pendant"
+        "short": "Sylvanian Families - Otogi no Kuni no Pendant",
+        "genre": "Adventure"
     },
     "C503AFBB": {
         "long": "Tarzan (France)",
-        "short": "Tarzan"
+        "short": "Tarzan",
+        "genre": "Platform"
     },
     "C7B61220": {
         "long": "Tweenies - Doodles' Bones (Europe) (En,Nl,Sv,No,Da)",
-        "short": "Tweenies - Doodles' Bones"
+        "short": "Tweenies - Doodles' Bones",
+        "genre": "Platform"
     },
     "C69A19F6": {
         "long": "4 in 1 (Europe) (4B-004, Sachen-Commin) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "C4720897": {
         "long": "Atomic Punk (USA)",
-        "short": "Atomic Punk"
+        "short": "Atomic Punk",
+        "genre": "Puzzle"
     },
     "C762B783": {
         "long": "Captain America and the Avengers (USA)",
-        "short": "Captain America and the Avengers"
+        "short": "Captain America and the Avengers",
+        "genre": "Beat'em Up"
     },
     "C5951D9E": {
         "long": "Chuck Rock (USA, Europe)",
-        "short": "Chuck Rock"
+        "short": "Chuck Rock",
+        "genre": "Platform"
     },
     "C47671F3": {
         "long": "Daffy Duck (USA, Europe) (SGB Enhanced)",
-        "short": "Daffy Duck"
+        "short": "Daffy Duck",
+        "genre": "Action"
     },
     "C46BBD49": {
         "long": "Fire Fighter (Europe)",
-        "short": "Fire Fighter"
+        "short": "Fire Fighter",
+        "genre": "Platform"
     },
     "C4CBF6B1": {
         "long": "Great Greed (USA)",
-        "short": "Great Greed"
+        "short": "Great Greed",
+        "genre": "Role-playing (RPG)"
     },
     "C529A96A": {
         "long": "Kaijuu Ou Gojira (Japan)",
-        "short": "Kaijuu Ou Gojira"
+        "short": "Kaijuu Ou Gojira",
+        "genre": "Action"
     },
     "C7F7F0AC": {
         "long": "Kidou Keisatsu Patlabor - Nerawareta Machi 1990 (Japan)",
-        "short": "Kidou Keisatsu Patlabor - Nerawareta Machi 1990"
+        "short": "Kidou Keisatsu Patlabor - Nerawareta Machi 1990",
+        "genre": "Adventure"
     },
     "C6F24D2F": {
         "long": "Knight Quest (Japan)",
-        "short": "Knight Quest"
+        "short": "Knight Quest",
+        "genre": "Role-playing (RPG)"
     },
     "C764B1F2": {
         "long": "Megalit (Japan)",
-        "short": "Megalit"
+        "short": "Megalit",
+        "genre": "Puzzle"
     },
     "C60D032A": {
         "long": "Mighty Morphin Power Rangers (USA, Europe) (SGB Enhanced)",
-        "short": "Mighty Morphin Power Rangers"
+        "short": "Mighty Morphin Power Rangers",
+        "genre": "Beat'em Up"
     },
     "C7FFC203": {
         "long": "New Chessmaster, The (USA, Europe)",
-        "short": "New Chessmaster, The"
+        "short": "New Chessmaster, The",
+        "genre": "Board"
     },
     "C7838830": {
         "long": "NFL Quarterback Club (USA, Europe)",
-        "short": "NFL Quarterback Club"
+        "short": "NFL Quarterback Club",
+        "genre": "Sports"
     },
     "C53EBFBD": {
         "long": "Ninja Taro (USA)",
-        "short": "Ninja Taro"
+        "short": "Ninja Taro",
+        "genre": "Role-playing (RPG)"
     },
     "C6DD7D92": {
         "long": "Pachio-kun 3 (Japan)",
-        "short": "Pachio-kun 3"
+        "short": "Pachio-kun 3",
+        "genre": "Gambling"
     },
     "C7BD9228": {
         "long": "Pocket Stadium (Japan)",
-        "short": "Pocket Stadium"
+        "short": "Pocket Stadium",
+        "genre": "Sports"
     },
     "C5571F88": {
         "long": "Pokémon - Blue Version (Hong Kong) (SGB Enhanced) (Pirate)",
-        "short": "Pokémon - Blue Version"
+        "short": "Pokémon - Blue Version",
+        "genre": "Role-playing (RPG)"
     },
     "C5204156": {
         "long": "Prehistorik Man (USA, Europe)",
-        "short": "Prehistorik Man"
+        "short": "Prehistorik Man",
+        "genre": "Platform"
     },
     "C4D09768": {
         "long": "SD Hiryuu no Ken Gaiden (Japan) (SGB Enhanced)",
-        "short": "SD Hiryuu no Ken Gaiden"
+        "short": "SD Hiryuu no Ken Gaiden",
+        "genre": "Fighting"
     },
     "C775F488": {
         "long": "Street Fighter II (Japan) (SGB Enhanced)",
-        "short": "Street Fighter II"
+        "short": "Street Fighter II",
+        "genre": "Action"
     },
     "C7E48C7C": {
         "long": "Sword of Hope, The (Sweden)",
-        "short": "Sword of Hope, The"
+        "short": "Sword of Hope, The",
+        "genre": "Role-playing (RPG)"
     },
     "C58BB4F5": {
         "long": "Taito Chase H.Q. (Japan)",
-        "short": "Taito Chase H.Q."
+        "short": "Taito Chase H.Q.",
+        "genre": "Racing"
     },
     "C5ACCE7C": {
         "long": "Tail 'Gator (USA, Europe)",
-        "short": "Tail 'Gator"
+        "short": "Tail 'Gator",
+        "genre": "Platform"
     },
     "C77E316F": {
         "long": "Tesserae (USA)",
-        "short": "Tesserae"
+        "short": "Tesserae",
+        "genre": "Puzzle"
     },
     "C6F2D5FA": {
         "long": "Tesserae (USA) (Beta)",
-        "short": "Tesserae"
+        "short": "Tesserae",
+        "genre": "Puzzle"
     },
     "C5C7868D": {
         "long": "Tiny Toon Adventures 2 - Montana's Movie Madness (USA, Europe)",
-        "short": "Tiny Toon Adventures 2 - Montana's Movie Madness"
+        "short": "Tiny Toon Adventures 2 - Montana's Movie Madness",
+        "genre": "Platform"
     },
     "C449FBBF": {
         "long": "Ultima - Runes of Virtue II (USA)",
-        "short": "Ultima - Runes of Virtue II"
+        "short": "Ultima - Runes of Virtue II",
+        "genre": "Role-playing (RPG)"
     },
     "C44A0F1E": {
         "long": "Ultima - Runes of Virtue (USA)",
-        "short": "Ultima - Runes of Virtue"
+        "short": "Ultima - Runes of Virtue",
+        "genre": "Role-playing (RPG)"
     }
 }

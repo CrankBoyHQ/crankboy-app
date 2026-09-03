@@ -1,174 +1,217 @@
 {
     "746936C6": {
         "long": "Barbie - Ocean Discovery (USA) (GB Compatible)",
-        "short": "Barbie - Ocean Discovery"
+        "short": "Barbie - Ocean Discovery",
+        "genre": "Action"
     },
     "748D1345": {
         "long": "Blue's Clues - Blue's Alphabet Book (USA)",
-        "short": "Blue's Clues - Blue's Alphabet Book"
+        "short": "Blue's Clues - Blue's Alphabet Book",
+        "genre": "Educational"
     },
     "75AF0E84": {
         "long": "Bokujou Monogatari 3 GB - Boy Meets Girl (Japan) (Rev 1)",
-        "short": "Bokujou Monogatari 3 GB - Boy Meets Girl"
+        "short": "Bokujou Monogatari 3 GB - Boy Meets Girl",
+        "genre": "Simulation"
     },
     "769A2C5A": {
         "long": "Catz (USA)",
-        "short": "Catz"
+        "short": "Catz",
+        "genre": "Simulation"
     },
     "753BDCE4": {
         "long": "David Beckham Soccer (Europe) (En,Fr,De,Es,It)",
-        "short": "David Beckham Soccer"
+        "short": "David Beckham Soccer",
+        "genre": "Sports"
     },
     "77D7E5B7": {
         "long": "Hollywood Pinball (Japan) (GB Compatible)",
-        "short": "Hollywood Pinball"
+        "short": "Hollywood Pinball",
+        "genre": "Pinball"
     },
     "77F76EBC": {
         "long": "Hyper Olympic Series - Track & Field GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hyper Olympic Series - Track & Field GB"
+        "short": "Hyper Olympic Series - Track & Field GB",
+        "genre": "Sports"
     },
     "77E13DBE": {
         "long": "Kaept'n Blaubaer - Die verrueckte Schatzsuche (Germany)",
-        "short": "Kaept'n Blaubaer - Die verrueckte Schatzsuche"
+        "short": "Kaept'n Blaubaer - Die verrueckte Schatzsuche",
+        "genre": "Puzzle"
     },
     "76CF3E3A": {
         "long": "Looney Tunes (Europe) (GB Compatible)",
-        "short": "Looney Tunes"
+        "short": "Looney Tunes",
+        "genre": "Platform"
     },
     "773729AF": {
         "long": "Mr. Driller (Japan)",
-        "short": "Mr. Driller"
+        "short": "Mr. Driller",
+        "genre": "Strategy"
     },
     "744561F3": {
         "long": "MTV Sports - Skateboarding Featuring Andy MacDonald (USA, Europe)",
-        "short": "MTV Sports - Skateboarding Featuring Andy MacDonald"
+        "short": "MTV Sports - Skateboarding Featuring Andy MacDonald",
+        "genre": "Sports"
     },
     "748564AE": {
         "long": "NBA Pro 99 (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "NBA Pro 99"
+        "short": "NBA Pro 99",
+        "genre": "Sports"
     },
     "75D1063A": {
         "long": "Powerpuff Girls, The - Bad Mojo Jojo (Europe) (BJJP)",
-        "short": "Powerpuff Girls, The - Bad Mojo Jojo"
+        "short": "Powerpuff Girls, The - Bad Mojo Jojo",
+        "genre": "Platform"
     },
     "77A4DC63": {
         "long": "Rescue Heroes - Fire Frenzy (USA)",
-        "short": "Rescue Heroes - Fire Frenzy"
+        "short": "Rescue Heroes - Fire Frenzy",
+        "genre": "Action"
     },
     "767CAA42": {
         "long": "Shelly Club (Europe) (En,Fr,De,Es,It)",
-        "short": "Shelly Club"
+        "short": "Shelly Club",
+        "genre": "Adventure"
     },
     "74E04C07": {
         "long": "Triple Play 2001 (USA, Europe)",
-        "short": "Triple Play 2001"
+        "short": "Triple Play 2001",
+        "genre": "Sports"
     },
     "740E9BC8": {
         "long": "4 in 1 (Europe) (4B-008, Sachen) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "7625E5A5": {
         "long": "Bass Fishing Tatsujin Techou (Japan)",
-        "short": "Bass Fishing Tatsujin Techou"
+        "short": "Bass Fishing Tatsujin Techou",
+        "genre": "Hunting and Fishing"
     },
     "74D50B47": {
         "long": "Chalvo 55 - Super Puzzle Action (Japan)",
-        "short": "Chalvo 55 - Super Puzzle Action"
+        "short": "Chalvo 55 - Super Puzzle Action",
+        "genre": "Platform"
     },
     "7582AE14": {
         "long": "Dracula Densetsu II (Japan)",
-        "short": "Dracula Densetsu II"
+        "short": "Dracula Densetsu II",
+        "genre": "Platform"
     },
     "77083AE0": {
         "long": "Foreman for Real (USA, Europe)",
-        "short": "Foreman for Real"
+        "short": "Foreman for Real",
+        "genre": "Sports"
     },
     "7635F28B": {
         "long": "Hatris (Japan, USA) (En)",
-        "short": "Hatris"
+        "short": "Hatris",
+        "genre": "Puzzle"
     },
     "740552ED": {
         "long": "Hero Shuugou!! Pinball Party (Japan)",
-        "short": "Hero Shuugou!! Pinball Party"
+        "short": "Hero Shuugou!! Pinball Party",
+        "genre": "Pinball"
     },
     "74AA5E0F": {
         "long": "Hugo (Europe) (SGB Enhanced)",
-        "short": "Hugo"
+        "short": "Hugo",
+        "genre": "Platform"
     },
     "754496BB": {
         "long": "InfoGenius Productivity Pak - Spell Checker and Calculator (USA)",
-        "short": "InfoGenius Productivity Pak - Spell Checker and Calculator"
+        "short": "InfoGenius Productivity Pak - Spell Checker and Calculator",
+        "genre": "Various"
     },
     "763ABABB": {
         "long": "Jungle Strike (Europe)",
-        "short": "Jungle Strike"
+        "short": "Jungle Strike",
+        "genre": "Shooter"
     },
     "74A52399": {
         "long": "Kizuchi da Quiz da Gen-san da! (Japan)",
-        "short": "Kizuchi da Quiz da Gen-san da!"
+        "short": "Kizuchi da Quiz da Gen-san da!",
+        "genre": "Quiz"
     },
     "760AB4E7": {
         "long": "Legend of Zelda, The - Link's Awakening (Germany)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "7740341E": {
         "long": "Namco Gallery Vol.3 (Japan) (SGB Enhanced)",
-        "short": "Namco Gallery Vol.3"
+        "short": "Namco Gallery Vol.3",
+        "genre": "Compilation"
     },
     "755152BB": {
         "long": "Pocket Golf (Japan)",
-        "short": "Pocket Golf"
+        "short": "Pocket Golf",
+        "genre": "Sports"
     },
     "758C7B2A": {
         "long": "Sanrio Carnival 2 (Japan)",
-        "short": "Sanrio Carnival 2"
+        "short": "Sanrio Carnival 2",
+        "genre": "Puzzle"
     },
     "74D466D7": {
         "long": "Serpent (USA)",
-        "short": "Serpent"
+        "short": "Serpent",
+        "genre": "Action"
     },
     "76F67428": {
         "long": "Spot - The Cool Adventure (USA)",
-        "short": "Spot - The Cool Adventure"
+        "short": "Spot - The Cool Adventure",
+        "genre": "Platform"
     },
     "76AE62C8": {
         "long": "Swamp Thing (USA, Europe)",
-        "short": "Swamp Thing"
+        "short": "Swamp Thing",
+        "genre": "Platform"
     },
     "74078236": {
         "long": "Teenage Mutant Ninja Turtles (Japan)",
-        "short": "Teenage Mutant Ninja Turtles"
+        "short": "Teenage Mutant Ninja Turtles",
+        "genre": "Platform"
     },
     "77D69349": {
         "long": "Tokyo Disneyland - Mickey no Cinderella-jou Mystery Tour (Japan) (SGB Enhanced)",
-        "short": "Tokyo Disneyland - Mickey no Cinderella-jou Mystery Tour"
+        "short": "Tokyo Disneyland - Mickey no Cinderella-jou Mystery Tour",
+        "genre": "Action"
     },
     "746159B2": {
         "long": "Triumph (USA) (Proto)",
-        "short": "Triumph"
+        "short": "Triumph",
+        "genre": "Role-playing (RPG)"
     },
     "77C3AA0B": {
         "long": "World Circuit Series (USA)",
-        "short": "World Circuit Series"
+        "short": "World Circuit Series",
+        "genre": "Racing"
     },
     "75E1D268": {
         "long": "X (Japan)",
-        "short": "X"
+        "short": "X",
+        "genre": "Action"
     },
     "75336712": {
         "long": "Yoshi's Cookie (USA, Europe)",
-        "short": "Yoshi's Cookie"
+        "short": "Yoshi's Cookie",
+        "genre": "Puzzle"
     },
     "774F3421": {
         "long": "Squid Game: Game Boy Demake (64 Bits Animation)",
-        "short": "Squid Game"
+        "short": "Squid Game",
+        "genre": "Homebrew"
     },
     "7568510B": {
         "long": "Shin Pokémon Red (LITE) (v1.24.6h3)",
-        "short": "Shin Pokémon Red"
+        "short": "Shin Pokémon Red",
+        "genre": "ROM Hack"
     },
     "76D8E386": {
         "long": "Little Sound Dj (v4.0.4)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

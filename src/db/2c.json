@@ -1,234 +1,292 @@
 {
     "2FCECB70": {
         "long": "BattleTanx (Europe) (En,Fr,De)",
-        "short": "BattleTanx"
+        "short": "BattleTanx",
+        "genre": "Action"
     },
     "2F91E17C": {
         "long": "Blaster Master - Enemy Below (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Blaster Master - Enemy Below"
+        "short": "Blaster Master - Enemy Below",
+        "genre": "Platform"
     },
     "2DD5907F": {
         "long": "Blade (USA, Europe)",
-        "short": "Blade"
+        "short": "Blade",
+        "genre": "Beat'em Up"
     },
     "2F368DA6": {
         "long": "Daikaijuu Monogatari - Poyon no Dungeon Room (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Daikaijuu Monogatari - Poyon no Dungeon Room"
+        "short": "Daikaijuu Monogatari - Poyon no Dungeon Room",
+        "genre": "Role-playing (RPG)"
     },
     "2DF6E230": {
         "long": "Dave Mirra Freestyle BMX (USA, Europe)",
-        "short": "Dave Mirra Freestyle BMX"
+        "short": "Dave Mirra Freestyle BMX",
+        "genre": "Sports"
     },
     "2FA46211": {
         "long": "Doraemon - Kimi to Pet no Monogatari (Japan) (GB Compatible)",
-        "short": "Doraemon - Kimi to Pet no Monogatari"
+        "short": "Doraemon - Kimi to Pet no Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "2F7AEF51": {
         "long": "Dracula - Crazy Vampire (Europe) (En,Fr,De,Es,It)",
-        "short": "Dracula - Crazy Vampire"
+        "short": "Dracula - Crazy Vampire",
+        "genre": "Adventure"
     },
     "2C428A87": {
         "long": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi"
+        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi",
+        "genre": "Role-playing (RPG)"
     },
     "2E65DAAF": {
         "long": "Earthworm Jim - Menace 2 the Galaxy (USA, Europe) (GB Compatible)",
-        "short": "Earthworm Jim - Menace 2 the Galaxy"
+        "short": "Earthworm Jim - Menace 2 the Galaxy",
+        "genre": "Adventure"
     },
     "2DCD0A0A": {
         "long": "Force 21 (USA) (En,Fr,De)",
-        "short": "Force 21"
+        "short": "Force 21",
+        "genre": "Strategy"
     },
     "2C97E90F": {
         "long": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou (Japan) (AFMJ)",
-        "short": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou"
+        "short": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou",
+        "genre": "Role-playing (RPG)"
     },
     "2EA8D9D4": {
         "long": "Ganbare Goemon - Seikuushi Dynamites Arawaru!! (Japan)",
-        "short": "Ganbare Goemon - Seikuushi Dynamites Arawaru!!"
+        "short": "Ganbare Goemon - Seikuushi Dynamites Arawaru!!",
+        "genre": "Action"
     },
     "2E61C391": {
         "long": "Gobs of Games (USA) (En,Fr,De)",
-        "short": "Gobs of Games"
+        "short": "Gobs of Games",
+        "genre": "Compilation"
     },
     "2FB398F9": {
         "long": "Hamster Club 2 (Japan) (GB Compatible)",
-        "short": "Hamster Club 2"
+        "short": "Hamster Club 2",
+        "genre": "Strategy"
     },
     "2DA2686A": {
         "long": "Harry Potter to Kenja no Ishi (Japan)",
-        "short": "Harry Potter to Kenja no Ishi"
+        "short": "Harry Potter to Kenja no Ishi",
+        "genre": "Role-playing (RPG)"
     },
     "2C6BDCFA": {
         "long": "Hexcite (Europe) (En,Fr,De) (Proto) (SGB Enhanced) (GB Compatible)",
-        "short": "Hexcite"
+        "short": "Hexcite",
+        "genre": "Puzzle"
     },
     "2C92AD12": {
         "long": "Mask of Zorro, The (USA)",
-        "short": "Mask of Zorro, The"
+        "short": "Mask of Zorro, The",
+        "genre": "Platform"
     },
     "2F8FEF3F": {
         "long": "Razmoket, Les - Voyage dans le Temps (France)",
-        "short": "Razmoket, Les - Voyage dans le Temps"
+        "short": "Razmoket, Les - Voyage dans le Temps",
+        "genre": "Action"
     },
     "2E944775": {
         "long": "Rox (USA, Europe) (GB Compatible)",
-        "short": "Rox"
+        "short": "Rox",
+        "genre": "Puzzle"
     },
     "2CF48188": {
         "long": "Sabrina - The Animated Series - Spooked! (USA, Europe)",
-        "short": "Sabrina - The Animated Series - Spooked!"
+        "short": "Sabrina - The Animated Series - Spooked!",
+        "genre": "Platform"
     },
     "2C4C2A5F": {
         "long": "Sesame Street - The Adventures of Elmo in Grouchland (USA) (GB Compatible)",
-        "short": "Sesame Street - The Adventures of Elmo in Grouchland"
+        "short": "Sesame Street - The Adventures of Elmo in Grouchland",
+        "genre": "Platform"
     },
     "2F179045": {
         "long": "Test Drive 6 (Europe) (En,Fr,De,Es,It) (Sample) (GB Compatible)",
-        "short": "Test Drive 6"
+        "short": "Test Drive 6",
+        "genre": "Racing"
     },
     "2F9F19DE": {
         "long": "Titus the Fox (Europe) (GB Compatible)",
-        "short": "Titus the Fox"
+        "short": "Titus the Fox",
+        "genre": "Platform"
     },
     "2C27C61F": {
         "long": "Tony Hawk's Pro Skater 2 (USA, Europe)",
-        "short": "Tony Hawk's Pro Skater 2"
+        "short": "Tony Hawk's Pro Skater 2",
+        "genre": "Sports"
     },
     "2E19F638": {
         "long": "Alfred Chicken (Europe) (Beta)",
-        "short": "Alfred Chicken"
+        "short": "Alfred Chicken",
+        "genre": "Platform"
     },
     "2D0C1073": {
         "long": "Battle Arena Toshinden (USA) (SGB Enhanced)",
-        "short": "Battle Arena Toshinden"
+        "short": "Battle Arena Toshinden",
+        "genre": "Action"
     },
     "2DB3DACE": {
         "long": "Black Bass - Lure Fishing (USA)",
-        "short": "Black Bass - Lure Fishing"
+        "short": "Black Bass - Lure Fishing",
+        "genre": "Hunting and Fishing"
     },
     "2F752404": {
         "long": "Castelian (Europe)",
-        "short": "Castelian"
+        "short": "Castelian",
+        "genre": "Platform"
     },
     "2F8AAF6F": {
         "long": "Castle Quest (Europe)",
-        "short": "Castle Quest"
+        "short": "Castle Quest",
+        "genre": "Role-playing (RPG)"
     },
     "2E767D25": {
         "long": "Cosmo Tank (USA)",
-        "short": "Cosmo Tank"
+        "short": "Cosmo Tank",
+        "genre": "Action"
     },
     "2E5497EF": {
         "long": "Exodus - Journey to the Promised Land (USA) (Unl)",
-        "short": "Exodus - Journey to the Promised Land"
+        "short": "Exodus - Journey to the Promised Land",
+        "genre": "Action"
     },
     "2C77F399": {
         "long": "Hit the Ice - VHL - The Official Video Hockey League (USA, Europe)",
-        "short": "Hit the Ice - VHL - The Official Video Hockey League"
+        "short": "Hit the Ice - VHL - The Official Video Hockey League",
+        "genre": "Sports"
     },
     "2C8AD255": {
         "long": "Jurassic Park (Europe) (En,Fr,De,Es,It)",
-        "short": "Jurassic Park"
+        "short": "Jurassic Park",
+        "genre": "Adventure"
     },
     "2D439D0D": {
         "long": "Mahoujin GuruGuru - Yuusha to Kukuri no Daibouken (Japan) (SGB Enhanced)",
-        "short": "Mahoujin GuruGuru - Yuusha to Kukuri no Daibouken"
+        "short": "Mahoujin GuruGuru - Yuusha to Kukuri no Daibouken",
+        "genre": "Role-playing (RPG)"
     },
     "2EA4B976": {
         "long": "Mega Man - Dr. Wily's Revenge (Europe)",
-        "short": "Mega Man - Dr. Wily's Revenge"
+        "short": "Mega Man - Dr. Wily's Revenge",
+        "genre": "Platform"
     },
     "2C36C74C": {
         "long": "Mole Mania (USA, Europe) (SGB Enhanced)",
-        "short": "Mole Mania"
+        "short": "Mole Mania",
+        "genre": "Action"
     },
     "2CBE5381": {
         "long": "Navyblue 98 (Japan)",
-        "short": "Navyblue 98"
+        "short": "Navyblue 98",
+        "genre": "Strategy"
     },
     "2D08D27F": {
         "long": "Oira Jajamaru! Sekai Daibouken (Japan)",
-        "short": "Oira Jajamaru! Sekai Daibouken"
+        "short": "Oira Jajamaru! Sekai Daibouken",
+        "genre": "Platform"
     },
     "2F895DF5": {
         "long": "Oni II - Oni Densetsu (Japan)",
-        "short": "Oni II - Oni Densetsu"
+        "short": "Oni II - Oni Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "2EBBC1AE": {
         "long": "Operation C (USA)",
-        "short": "Operation C"
+        "short": "Operation C",
+        "genre": "Shooter"
     },
     "2D924E46": {
         "long": "Pinocchio (USA)",
-        "short": "Pinocchio"
+        "short": "Pinocchio",
+        "genre": "Platform"
     },
     "2C88F996": {
         "long": "Pocket Bass Fishing (Japan)",
-        "short": "Pocket Bass Fishing"
+        "short": "Pocket Bass Fishing",
+        "genre": "Hunting and Fishing"
     },
     "2FA1BDE6": {
         "long": "Pocket Shougi (Japan) (SGB Enhanced)",
-        "short": "Pocket Shougi"
+        "short": "Pocket Shougi",
+        "genre": "Board"
     },
     "2FB4DA21": {
         "long": "Popeye (Japan)",
-        "short": "Popeye"
+        "short": "Popeye",
+        "genre": "Action"
     },
     "2E123F5B": {
         "long": "Power Pro GB (Japan) (SGB Enhanced)",
-        "short": "Power Pro GB"
+        "short": "Power Pro GB",
+        "genre": "Sports"
     },
     "2FE2A72D": {
         "long": "R-Type II (Europe)",
-        "short": "R-Type II"
+        "short": "R-Type II",
+        "genre": "Action"
     },
     "2D33E175": {
         "long": "Reservoir Rat (Europe) (En,Fr,De,Es,It)",
-        "short": "Reservoir Rat"
+        "short": "Reservoir Rat",
+        "genre": "Puzzle"
     },
     "2FE38E18": {
         "long": "Sa-Ga 2 - Hihou Densetsu (World) (Ja) (Rev 1) (Collection of SaGa)",
-        "short": "Sa-Ga 2 - Hihou Densetsu (Collection of SaGa)"
+        "short": "Sa-Ga 2 - Hihou Densetsu (Collection of SaGa)",
+        "genre": "Role-playing (RPG)"
     },
     "2F0F7F63": {
         "long": "Sakigake!! Otoko Juku - Meioutou Kessen (Japan)",
-        "short": "Sakigake!! Otoko Juku - Meioutou Kessen"
+        "short": "Sakigake!! Otoko Juku - Meioutou Kessen",
+        "genre": "Action"
     },
     "2F0F7C6E": {
         "long": "Shougi Saikyou (Japan) (SGB Enhanced)",
-        "short": "Shougi Saikyou"
+        "short": "Shougi Saikyou",
+        "genre": "Board"
     },
     "2D03DC38": {
         "long": "Space Invaders (Europe) (Beta) (SGB Enhanced)",
-        "short": "Space Invaders"
+        "short": "Space Invaders",
+        "genre": "Shooter"
     },
     "2CA58280": {
         "long": "Spot (Japan)",
-        "short": "Spot"
+        "short": "Spot",
+        "genre": "Puzzle"
     },
     "2C27EC70": {
         "long": "Super Mario Land (World) (Rev 1)",
-        "short": "Super Mario Land"
+        "short": "Super Mario Land",
+        "genre": "Platform"
     },
     "2EC9120A": {
         "long": "Tetris Plus (Japan) (SGB Enhanced)",
-        "short": "Tetris Plus"
+        "short": "Tetris Plus",
+        "genre": "Action"
     },
     "2EBC40C2": {
         "long": "Worms (Europe)",
-        "short": "Worms"
+        "short": "Worms",
+        "genre": "Strategy"
     },
     "2FEB70D2": {
         "long": "Xenon 2 - Megablast (Japan)",
-        "short": "Xenon 2 - Megablast"
+        "short": "Xenon 2 - Megablast",
+        "genre": "Shoot'em Up"
     },
     "2D12223C": {
         "long": "Taiyaki Fabulous Museum of Fish (objetdiscret)",
-        "short": "Taiyaki Fabulous Museum of Fish"
+        "short": "Taiyaki Fabulous Museum of Fish",
+        "genre": "Homebrew"
     },
     "2C99CDAF": {
         "long": "Little Sound Dj (v4.6.2)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

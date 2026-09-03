@@ -1,214 +1,267 @@
 {
     "025AA88A": {
         "long": "Dragon Ball Z - Legendary Super Warriors (USA)",
-        "short": "Dragon Ball Z - Legendary Super Warriors"
+        "short": "Dragon Ball Z - Legendary Super Warriors",
+        "genre": "Role-playing (RPG)"
     },
     "0180364B": {
         "long": "Dungeon Savior (Japan) (Rev 1) (Proto) (SGB Enhanced) (GB Compatible)",
-        "short": "Dungeon Savior"
+        "short": "Dungeon Savior",
+        "genre": "Role-playing (RPG)"
     },
     "025F305D": {
         "long": "Gex 3 - Deep Cover Gecko (Europe) (En,Fr,De,Es,It)",
-        "short": "Gex 3 - Deep Cover Gecko"
+        "short": "Gex 3 - Deep Cover Gecko",
+        "genre": "Platform"
     },
     "018EED29": {
         "long": "Hello Kitty to Dear Daniel no Dream Adventure (Japan)",
-        "short": "Hello Kitty to Dear Daniel no Dream Adventure"
+        "short": "Hello Kitty to Dear Daniel no Dream Adventure",
+        "genre": "Action"
     },
     "034D2686": {
         "long": "Love Hina Party (Japan)",
-        "short": "Love Hina Party"
+        "short": "Love Hina Party",
+        "genre": "Adventure"
     },
     "014083A8": {
         "long": "Medarot 5 - Susutake Mura no Tenkousei - Kuwagata (Japan)",
-        "short": "Medarot 5 - Susutake Mura no Tenkousei - Kuwagata"
+        "short": "Medarot 5 - Susutake Mura no Tenkousei - Kuwagata",
+        "genre": "Role-playing (RPG)"
     },
     "00733C77": {
         "long": "MetaFight EX (Japan)",
-        "short": "MetaFight EX"
+        "short": "MetaFight EX",
+        "genre": "Platform"
     },
     "001F4754": {
         "long": "NBA 3 on 3 Featuring Kobe Bryant (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "NBA 3 on 3 Featuring Kobe Bryant"
+        "short": "NBA 3 on 3 Featuring Kobe Bryant",
+        "genre": "Sports"
     },
     "03CE8D9A": {
         "long": "Pokémon Pinball (USA, Australia) (Rumble Version) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Pinball"
+        "short": "Pokémon Pinball",
+        "genre": "Pinball"
     },
     "00FDED94": {
         "long": "Puzzle Bobble Millennium (Japan)",
-        "short": "Puzzle Bobble Millennium"
+        "short": "Puzzle Bobble Millennium",
+        "genre": "Puzzle"
     },
     "026C4794": {
         "long": "Rugrats - Typisch Angelica (Germany)",
-        "short": "Rugrats - Typisch Angelica"
+        "short": "Rugrats - Typisch Angelica",
+        "genre": "Puzzle"
     },
     "01F96353": {
         "long": "Space-Net - Cosmo Red (Japan)",
-        "short": "Space-Net - Cosmo Red"
+        "short": "Space-Net - Cosmo Red",
+        "genre": "Role-playing (RPG)"
     },
     "00865161": {
         "long": "Super Real Fishing (Japan) (Rumble Version)",
-        "short": "Super Real Fishing"
+        "short": "Super Real Fishing",
+        "genre": "Hunting and Fishing"
     },
     "03EDB574": {
         "long": "Super Nenas, Las - Panico en Townsville (Spain)",
-        "short": "Super Nenas, Las - Panico en Townsville"
+        "short": "Super Nenas, Las - Panico en Townsville",
+        "genre": "Beat'em Up"
     },
     "00A14D18": {
         "long": "TNN Outdoors Fishing Champ (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "TNN Outdoors Fishing Champ"
+        "short": "TNN Outdoors Fishing Champ",
+        "genre": "Hunting and Fishing"
     },
     "02C1035A": {
         "long": "Tomb Raider - Curse of the Sword (USA, Europe)",
-        "short": "Tomb Raider - Curse of the Sword"
+        "short": "Tomb Raider - Curse of the Sword",
+        "genre": "Platform"
     },
     "017773CD": {
         "long": "Top Gear Rally 2 (Europe)",
-        "short": "Top Gear Rally 2"
+        "short": "Top Gear Rally 2",
+        "genre": "Racing"
     },
     "03380957": {
         "long": "UEFA 2000 (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "UEFA 2000"
+        "short": "UEFA 2000",
+        "genre": "Sports"
     },
     "018B4A02": {
         "long": "4-in-1 Funpak - Volume II (USA, Europe)",
-        "short": "4-in-1 Funpak - Volume II"
+        "short": "4-in-1 Funpak - Volume II",
+        "genre": "Board"
     },
     "0050B16F": {
         "long": "Asterix (USA) (Proto 2)",
-        "short": "Asterix"
+        "short": "Asterix",
+        "genre": "Platform"
     },
     "00CD1876": {
         "long": "Bram Stoker's Dracula (USA, Europe)",
-        "short": "Bram Stoker's Dracula"
+        "short": "Bram Stoker's Dracula",
+        "genre": "Platform"
     },
     "000AAA74": {
         "long": "Caesars Palace (Japan)",
-        "short": "Caesars Palace"
+        "short": "Caesars Palace",
+        "genre": "Gambling"
     },
     "02852E24": {
         "long": "Chessmaster, The (Europe)",
-        "short": "Chessmaster, The"
+        "short": "Chessmaster, The",
+        "genre": "Board"
     },
     "0356A509": {
         "long": "Doraemon no Study Boy 3 - Ku Ku Master (Japan)",
-        "short": "Doraemon no Study Boy 3 - Ku Ku Master"
+        "short": "Doraemon no Study Boy 3 - Ku Ku Master",
+        "genre": "Educational"
     },
     "00A14889": {
         "long": "Dragon's Lair - The Legend (Europe)",
-        "short": "Dragon's Lair - The Legend"
+        "short": "Dragon's Lair - The Legend",
+        "genre": "Adventure"
     },
     "0325E729": {
         "long": "Family Jockey 2 - Meiba no Kettou (Japan)",
-        "short": "Family Jockey 2 - Meiba no Kettou"
+        "short": "Family Jockey 2 - Meiba no Kettou",
+        "genre": "Sports with Animals"
     },
     "00388844": {
         "long": "Final Fantasy Legend, The (World) (Collection of SaGa)",
-        "short": "Final Fantasy Legend, The (Collection of SaGa)"
+        "short": "Final Fantasy Legend, The (Collection of SaGa)",
+        "genre": "Role-playing (RPG)"
     },
     "004443E6": {
         "long": "Ganso!! Yancha Maru (Japan)",
-        "short": "Ganso!! Yancha Maru"
+        "short": "Ganso!! Yancha Maru",
+        "genre": "Platform"
     },
     "0030E61F": {
         "long": "Gargoyle's Quest (USA, Europe)",
-        "short": "Gargoyle's Quest"
+        "short": "Gargoyle's Quest",
+        "genre": "Platform"
     },
     "00D4CAF2": {
         "long": "Goal! (USA)",
-        "short": "Goal!"
+        "short": "Goal!",
+        "genre": "Sports"
     },
     "00A9001E": {
         "long": "Hercules (USA, Europe) (SGB Enhanced)",
-        "short": "Hercules"
+        "short": "Hercules",
+        "genre": "Platform"
     },
     "02D09CE3": {
         "long": "Hyper Dunk (Europe)",
-        "short": "Hyper Dunk"
+        "short": "Hyper Dunk",
+        "genre": "Sports"
     },
     "01AEE24B": {
         "long": "Karakuri Kengou Den Musashi Lord (Japan)",
-        "short": "Karakuri Kengou Den Musashi Lord"
+        "short": "Karakuri Kengou Den Musashi Lord",
+        "genre": "Action"
     },
     "01FBC9F6": {
         "long": "Krusty World (Japan)",
-        "short": "Krusty World"
+        "short": "Krusty World",
+        "genre": "Puzzle"
     },
     "00DEF37A": {
         "long": "Little Mermaid, The (Europe)",
-        "short": "Little Mermaid, The"
+        "short": "Little Mermaid, The",
+        "genre": "Platform"
     },
     "030D2054": {
         "long": "Lunar Lander (Japan)",
-        "short": "Lunar Lander"
+        "short": "Lunar Lander",
+        "genre": "Action"
     },
     "00202DFA": {
         "long": "Magic Knight Rayearth 2nd. - The Missing Colors (Japan) (SGB Enhanced)",
-        "short": "Magic Knight Rayearth 2nd. - The Missing Colors"
+        "short": "Magic Knight Rayearth 2nd. - The Missing Colors",
+        "genre": "Role-playing (RPG)"
     },
     "0006612D": {
         "long": "Makai Toushi Sa-Ga (World) (Ja) (Rev 1) (Collection of SaGa)",
-        "short": "Makai Toushi Sa-Ga (Collection of SaGa)"
+        "short": "Makai Toushi Sa-Ga (Collection of SaGa)",
+        "genre": "Role-playing (RPG)"
     },
     "03B0D4EC": {
         "long": "Mega Man III (Europe)",
-        "short": "Mega Man III"
+        "short": "Mega Man III",
+        "genre": "Platform"
     },
     "03B64A35": {
         "long": "Mr. Nutz (Europe)",
-        "short": "Mr. Nutz"
+        "short": "Mr. Nutz",
+        "genre": "Platform"
     },
     "0351B9A6": {
         "long": "Mystic Quest (Germany)",
-        "short": "Mystic Quest"
+        "short": "Mystic Quest",
+        "genre": "Role-playing (RPG)"
     },
     "011E75FB": {
         "long": "NFL Quarterback Club 96 (Japan) (En) (Proto)",
-        "short": "NFL Quarterback Club 96"
+        "short": "NFL Quarterback Club 96",
+        "genre": "Sports"
     },
     "03E84D7D": {
         "long": "Nigel Mansell's World Championship Racing (USA)",
-        "short": "Nigel Mansell's World Championship Racing"
+        "short": "Nigel Mansell's World Championship Racing",
+        "genre": "Racing"
     },
     "0145BB6C": {
         "long": "Pierre le Chef is... Out to Lunch (Europe)",
-        "short": "Pierre le Chef is... Out to Lunch"
+        "short": "Pierre le Chef is... Out to Lunch",
+        "genre": "Platform"
     },
     "02864C32": {
         "long": "Pinball Deluxe (Europe)",
-        "short": "Pinball Deluxe"
+        "short": "Pinball Deluxe",
+        "genre": "Compilation"
     },
     "016A0552": {
         "long": "SD Gundam - SD Sengokuden - Kunitori Monogatari (Japan)",
-        "short": "SD Gundam - SD Sengokuden - Kunitori Monogatari"
+        "short": "SD Gundam - SD Sengokuden - Kunitori Monogatari",
+        "genre": "Strategy"
     },
     "02B77C09": {
         "long": "Skate or Die - Tour de Thrash (USA)",
-        "short": "Skate or Die - Tour de Thrash"
+        "short": "Skate or Die - Tour de Thrash",
+        "genre": "Sports"
     },
     "037D966A": {
         "long": "Super Chinese Land (Japan)",
-        "short": "Super Chinese Land"
+        "short": "Super Chinese Land",
+        "genre": "Adventure"
     },
     "00F09C7F": {
         "long": "T2 - The Arcade Game (USA, Europe)",
-        "short": "T2 - The Arcade Game"
+        "short": "T2 - The Arcade Game",
+        "genre": "Shooter"
     },
     "017FD6F5": {
         "long": "TwinBee da!! (Japan)",
-        "short": "TwinBee da!!"
+        "short": "TwinBee da!!",
+        "genre": "Action"
     },
     "02C29C7D": {
         "long": "Pokémon Kanto Expansion Pak (Blue Version) (v1.1)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     },
     "03B0E4E7": {
         "long": "Pokémon Kanto Expansion Pak (Blue Version) (v1.3.1)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     },
     "030B6F43": {
         "long": "Little Sound Dj (v3.1.5)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

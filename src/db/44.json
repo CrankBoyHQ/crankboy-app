@@ -1,234 +1,292 @@
 {
     "446573CD": {
         "long": "Aladdin (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "476EDE93": {
         "long": "Atsumete Asobu Kuma no Pooh-san - Mori no Takaramono (Japan)",
-        "short": "Atsumete Asobu Kuma no Pooh-san - Mori no Takaramono"
+        "short": "Atsumete Asobu Kuma no Pooh-san - Mori no Takaramono",
+        "genre": "Adventure"
     },
     "4431F8E7": {
         "long": "BattleTanx (USA)",
-        "short": "BattleTanx"
+        "short": "BattleTanx",
+        "genre": "Action"
     },
     "4664A167": {
         "long": "Croc (USA, Europe)",
-        "short": "Croc"
+        "short": "Croc",
+        "genre": "Platform"
     },
     "45EBF09C": {
         "long": "Daffy Duck - Fowl Play (USA, Europe) (GB Compatible)",
-        "short": "Daffy Duck - Fowl Play"
+        "short": "Daffy Duck - Fowl Play",
+        "genre": "Platform"
     },
     "4476E79F": {
         "long": "Diva Starz (Europe)",
-        "short": "Diva Starz"
+        "short": "Diva Starz",
+        "genre": "Educational"
     },
     "4685909B": {
         "long": "Donald Duck - Goin' Quackers (USA) (En,Fr,De,Es,It)",
-        "short": "Donald Duck - Goin' Quackers"
+        "short": "Donald Duck - Goin' Quackers",
+        "genre": "Platform"
     },
     "4702C4F1": {
         "long": "Dragon Quest Monsters - Terry no Wonderland (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters - Terry no Wonderland"
+        "short": "Dragon Quest Monsters - Terry no Wonderland",
+        "genre": "Role-playing (RPG)"
     },
     "45BE9D9B": {
         "long": "Hamtaro - Ham-Hams Unite! (Europe) (En,Fr,De,Es,It)",
-        "short": "Hamtaro - Ham-Hams Unite!"
+        "short": "Hamtaro - Ham-Hams Unite!",
+        "genre": "Role-playing (RPG)"
     },
     "45F4159B": {
         "long": "Hello Kitty no Sweet Adventure - Daniel-kun ni Aitai (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hello Kitty no Sweet Adventure - Daniel-kun ni Aitai"
+        "short": "Hello Kitty no Sweet Adventure - Daniel-kun ni Aitai",
+        "genre": "Action"
     },
     "459A126B": {
         "long": "Kakutou Ryouri Densetsu Bistro Recipe - Gekitou Foodon Battle Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kakutou Ryouri Densetsu Bistro Recipe - Gekitou Foodon Battle Hen"
+        "short": "Kakutou Ryouri Densetsu Bistro Recipe - Gekitou Foodon Battle Hen",
+        "genre": "Role-playing (RPG)"
     },
     "456D4DFC": {
         "long": "Kawa no Nushi Tsuri 4 (Japan) (Rev 1) (Rumble Version) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Kawa no Nushi Tsuri 4"
+        "short": "Kawa no Nushi Tsuri 4",
+        "genre": "Hunting and Fishing"
     },
     "44767443": {
         "long": "Kawaii Pet Shop Monogatari (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kawaii Pet Shop Monogatari"
+        "short": "Kawaii Pet Shop Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "470DCB1D": {
         "long": "Lufia - The Legend Returns (Europe) (En,De)",
-        "short": "Lufia - The Legend Returns"
+        "short": "Lufia - The Legend Returns",
+        "genre": "Role-playing (RPG)"
     },
     "46FAA730": {
         "long": "Mary-Kate & Ashley - Get a Clue! (USA, Europe) (GB Compatible)",
-        "short": "Mary-Kate & Ashley - Get a Clue!"
+        "short": "Mary-Kate & Ashley - Get a Clue!",
+        "genre": "Adventure"
     },
     "47543C51": {
         "long": "Missile Command (USA) (Rumble Version)",
-        "short": "Missile Command"
+        "short": "Missile Command",
+        "genre": "Shoot'em Up"
     },
     "45543BA2": {
         "long": "Moomin's Tale (Europe) (En,Fr,De)",
-        "short": "Moomin's Tale"
+        "short": "Moomin's Tale",
+        "genre": "Platform"
     },
     "45661EC3": {
         "long": "Pocket Puyo Puyo Sun (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket Puyo Puyo Sun"
+        "short": "Pocket Puyo Puyo Sun",
+        "genre": "Puzzle"
     },
     "4523376E": {
         "long": "Pokémon Trading Card Game (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Trading Card Game"
+        "short": "Pokémon Trading Card Game",
+        "genre": "Card"
     },
     "476BD39D": {
         "long": "Pong - The Next Level (USA, Europe)",
-        "short": "Pong - The Next Level"
+        "short": "Pong - The Next Level",
+        "genre": "Puzzle"
     },
     "443367AE": {
         "long": "Powerpuff Girls, The - Paint the Townsville Green (USA) (Rev 2)",
-        "short": "Powerpuff Girls, The - Paint the Townsville Green"
+        "short": "Powerpuff Girls, The - Paint the Townsville Green",
+        "genre": "Beat'em Up"
     },
     "47636A2C": {
         "long": "Sakura Taisen GB 2 - Thunderbolt Sakusen (Japan)",
-        "short": "Sakura Taisen GB 2 - Thunderbolt Sakusen"
+        "short": "Sakura Taisen GB 2 - Thunderbolt Sakusen",
+        "genre": "Role-playing (RPG)"
     },
     "44A9DDFB": {
         "long": "Samurai Kid (Japan)",
-        "short": "Samurai Kid"
+        "short": "Samurai Kid",
+        "genre": "Action"
     },
     "458B579D": {
         "long": "Sanrio Timenet - Kako Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sanrio Timenet - Kako Hen"
+        "short": "Sanrio Timenet - Kako Hen",
+        "genre": "Role-playing (RPG)"
     },
     "44D30B7A": {
         "long": "SWiV (Europe) (En,Fr,De,Es,It)",
-        "short": "SWiV"
+        "short": "SWiV",
+        "genre": "Shoot'em Up"
     },
     "47AECB95": {
         "long": "Toy Story 2 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Toy Story 2"
+        "short": "Toy Story 2",
+        "genre": "Platform"
     },
     "4660E0AB": {
         "long": "Barbie - Game Girl (USA) (Beta)",
-        "short": "Barbie - Game Girl"
+        "short": "Barbie - Game Girl",
+        "genre": "Action"
     },
     "44256A2F": {
         "long": "Cave Noire (Japan)",
-        "short": "Cave Noire"
+        "short": "Cave Noire",
+        "genre": "Role-playing (RPG)"
     },
     "44E933C8": {
         "long": "Chibi Maruko-chan 3 - Mezase! Game Taishou no Maki (Japan)",
-        "short": "Chibi Maruko-chan 3 - Mezase! Game Taishou no Maki"
+        "short": "Chibi Maruko-chan 3 - Mezase! Game Taishou no Maki",
+        "genre": "Action"
     },
     "45E3E8F2": {
         "long": "Doraemon no Study Boy 4 - Shou ni Kokugo Kanji (Japan)",
-        "short": "Doraemon no Study Boy 4 - Shou ni Kokugo Kanji"
+        "short": "Doraemon no Study Boy 4 - Shou ni Kokugo Kanji",
+        "genre": "Educational"
     },
     "4640909F": {
         "long": "Game Boy Camera (USA, Europe) (SGB Enhanced)",
-        "short": "Game Boy Camera"
+        "short": "Game Boy Camera",
+        "genre": "Action"
     },
     "46AF90DA": {
         "long": "Goukaku Boy Series - Eiken 2kyuu Level no Kaiwa Hyougen 333 (Japan)",
-        "short": "Goukaku Boy Series - Eiken 2kyuu Level no Kaiwa Hyougen 333"
+        "short": "Goukaku Boy Series - Eiken 2kyuu Level no Kaiwa Hyougen 333",
+        "genre": "Educational"
     },
     "47F42F42": {
         "long": "Kirby no Kirakira Kids (Japan) (SGB Enhanced)",
-        "short": "Kirby no Kirakira Kids"
+        "short": "Kirby no Kirakira Kids",
+        "genre": "Puzzle"
     },
     "4407C759": {
         "long": "Legend of Zelda, The - Link's Awakening (Canada) (Fr)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "4627D88B": {
         "long": "Mario & Yoshi (Europe)",
-        "short": "Mario & Yoshi"
+        "short": "Mario & Yoshi",
+        "genre": "Puzzle"
     },
     "478F573C": {
         "long": "Maus, Die (Europe) (En,Fr,De,Es)",
-        "short": "Maus, Die"
+        "short": "Maus, Die",
+        "genre": "Puzzle"
     },
     "47E70E08": {
         "long": "Mega Man - Dr. Wily's Revenge (USA)",
-        "short": "Mega Man - Dr. Wily's Revenge"
+        "short": "Mega Man - Dr. Wily's Revenge",
+        "genre": "Platform"
     },
     "44CD01DD": {
         "long": "Mickey Mouse V (Japan)",
-        "short": "Mickey Mouse V"
+        "short": "Mickey Mouse V",
+        "genre": "Puzzle"
     },
     "464EAA5D": {
         "long": "Mickey Mouse V (Japan) (Rev 1)",
-        "short": "Mickey Mouse V"
+        "short": "Mickey Mouse V",
+        "genre": "Puzzle"
     },
     "44BADBB7": {
         "long": "Nail 'n Scale (USA, Europe)",
-        "short": "Nail 'n Scale"
+        "short": "Nail 'n Scale",
+        "genre": "Action"
     },
     "47658ADE": {
         "long": "Pachinko Time (Japan)",
-        "short": "Pachinko Time"
+        "short": "Pachinko Time",
+        "genre": "Gambling"
     },
     "46DE32BA": {
         "long": "Paperboy (USA, Europe)",
-        "short": "Paperboy"
+        "short": "Paperboy",
+        "genre": "Sports"
     },
     "453057AC": {
         "long": "Populous (Europe)",
-        "short": "Populous"
+        "short": "Populous",
+        "genre": "Strategy"
     },
     "46CB2F33": {
         "long": "Power Mission (USA)",
-        "short": "Power Mission"
+        "short": "Power Mission",
+        "genre": "Strategy"
     },
     "458DD05D": {
         "long": "Purikura Pocket 3 - Talent Debut Daisakusen (Japan) (Rev 1) (SGB Enhanced) (NP)",
-        "short": "Purikura Pocket 3 - Talent Debut Daisakusen"
+        "short": "Purikura Pocket 3 - Talent Debut Daisakusen",
+        "genre": "Adventure"
     },
     "471C237B": {
         "long": "Quiz Nihon Mukashibanashi - Athena no Hatena (Japan)",
-        "short": "Quiz Nihon Mukashibanashi - Athena no Hatena"
+        "short": "Quiz Nihon Mukashibanashi - Athena no Hatena",
+        "genre": "Quiz"
     },
     "442420B3": {
         "long": "Race Days (USA)",
-        "short": "Race Days"
+        "short": "Race Days",
+        "genre": "Racing"
     },
     "4789295C": {
         "long": "Stargate (USA, Europe)",
-        "short": "Stargate"
+        "short": "Stargate",
+        "genre": "Puzzle"
     },
     "44F51C73": {
         "long": "Teenage Mutant Ninja Turtles II - Back from the Sewers (USA)",
-        "short": "Teenage Mutant Ninja Turtles II - Back from the Sewers"
+        "short": "Teenage Mutant Ninja Turtles II - Back from the Sewers",
+        "genre": "Platform"
     },
     "46DF91AD": {
         "long": "Tetris (World) (Rev 1)",
-        "short": "Tetris"
+        "short": "Tetris",
+        "genre": "Puzzle"
     },
     "4415CC6B": {
         "long": "Tom and Jerry - Frantic Antics! (USA, Europe) (Beta)",
-        "short": "Tom and Jerry - Frantic Antics!"
+        "short": "Tom and Jerry - Frantic Antics!",
+        "genre": "Platform"
     },
     "468D1A2E": {
         "long": "Ultraman Ball (Japan) (SGB Enhanced)",
-        "short": "Ultraman Ball"
+        "short": "Ultraman Ball",
+        "genre": "Platform"
     },
     "449CF2E4": {
         "long": "Versus Hero - Kakutou Ou e no Michi (Japan)",
-        "short": "Versus Hero - Kakutou Ou e no Michi"
+        "short": "Versus Hero - Kakutou Ou e no Michi",
+        "genre": "Fighting"
     },
     "4786FD6E": {
         "long": "Waterworld (Europe)",
-        "short": "Waterworld"
+        "short": "Waterworld",
+        "genre": "Adventure"
     },
     "46AEE47A": {
         "long": "Wordtris (Europe) (Proto)",
-        "short": "Wordtris"
+        "short": "Wordtris",
+        "genre": "Puzzle"
     },
     "47FEADF2": {
         "long": "World Bowling (Japan)",
-        "short": "World Bowling"
+        "short": "World Bowling",
+        "genre": "Sports"
     },
     "46D74E64": {
         "long": "Pokémon Kanto Expansion Pak (Blue Version) (v1.0)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     },
     "47DCC949": {
         "long": "Little Sound Dj (v4.6.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

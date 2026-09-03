@@ -1,238 +1,297 @@
 {
     "F2128908": {
         "long": "102 Dalmatas - Cachorros Al Rescate (Spain)",
-        "short": "102 Dalmatas - Cachorros Al Rescate"
+        "short": "102 Dalmatas - Cachorros Al Rescate",
+        "genre": "Platform"
     },
     "F287FC49": {
         "long": "Antz (Europe) (En,Fr,De,Es,It,Nl) (Beta) (GB Compatible)",
-        "short": "Antz"
+        "short": "Antz",
+        "genre": "Platform"
     },
     "F03599A3": {
         "long": "Arthur's Absolutely Fun Day! (USA)",
-        "short": "Arthur's Absolutely Fun Day!"
+        "short": "Arthur's Absolutely Fun Day!",
+        "genre": "Casual Game"
     },
     "F319E823": {
         "long": "Bob the Builder - Fix it Fun! (Europe) (En,Sv,No,Da,Fi)",
-        "short": "Bob the Builder - Fix it Fun!"
+        "short": "Bob the Builder - Fix it Fun!",
+        "genre": "Educational"
     },
     "F0CC407F": {
         "long": "Bugs Bunny & Lola Bunny - Operation Carrot Patch (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Bugs Bunny & Lola Bunny - Operation Carrot Patch"
+        "short": "Bugs Bunny & Lola Bunny - Operation Carrot Patch",
+        "genre": "Platform"
     },
     "F06D296C": {
         "long": "Captain Buzz Lightyear - Star Command (Germany)",
-        "short": "Captain Buzz Lightyear - Star Command"
+        "short": "Captain Buzz Lightyear - Star Command",
+        "genre": "Platform"
     },
     "F017924F": {
         "long": "Dragon Ball Z - Guerreros de Leyenda (Spain) (Beta)",
-        "short": "Dragon Ball Z - Guerreros de Leyenda"
+        "short": "Dragon Ball Z - Guerreros de Leyenda",
+        "genre": "Role-playing (RPG)"
     },
     "F3C20FBE": {
         "long": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou (Japan) (BFWJ)",
-        "short": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou"
+        "short": "Fushigi no Dungeon - Fuurai no Shiren GB 2 - Sabaku no Majou",
+        "genre": "Role-playing (RPG)"
     },
     "F1908391": {
         "long": "Glocal Hexcite (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Glocal Hexcite"
+        "short": "Glocal Hexcite",
+        "genre": "Puzzle"
     },
     "F0F9ABE6": {
         "long": "Jeremy McGrath Supercross 2000 (USA, Europe)",
-        "short": "Jeremy McGrath Supercross 2000"
+        "short": "Jeremy McGrath Supercross 2000",
+        "genre": "Racing"
     },
     "F0B09DDB": {
         "long": "Kawa no Nushi Tsuri 4 (Japan) (Rumble Version) (SGB Enhanced) (GB Compatible)",
-        "short": "Kawa no Nushi Tsuri 4"
+        "short": "Kawa no Nushi Tsuri 4",
+        "genre": "Hunting and Fishing"
     },
     "F253E082": {
         "long": "Land Before Time, The (Europe) (En,Fr,De,Es,It)",
-        "short": "Land Before Time, The"
+        "short": "Land Before Time, The",
+        "genre": "Platform"
     },
     "F24D010A": {
         "long": "Legend of the River King 2 (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of the River King 2"
+        "short": "Legend of the River King 2",
+        "genre": "Hunting and Fishing"
     },
     "F2335DA9": {
         "long": "Ms. Pac-Man - Special Colour Edition (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Ms. Pac-Man - Special Colour Edition"
+        "short": "Ms. Pac-Man - Special Colour Edition",
+        "genre": "Action"
     },
     "F39A5C4F": {
         "long": "NASCAR Racers (USA)",
-        "short": "NASCAR Racers"
+        "short": "NASCAR Racers",
+        "genre": "Racing"
     },
     "F03016F5": {
         "long": "Pro Mahjong Tsuwamono GB 2 (Japan)",
-        "short": "Pro Mahjong Tsuwamono GB 2"
+        "short": "Pro Mahjong Tsuwamono GB 2",
+        "genre": "Board"
     },
     "F0D0C36D": {
         "long": "Puchi Carat (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Puchi Carat"
+        "short": "Puchi Carat",
+        "genre": "Puzzle"
     },
     "F03FFDAF": {
         "long": "Puzzled (USA)",
-        "short": "Puzzled"
+        "short": "Puzzled",
+        "genre": "Strategy"
     },
     "F0463D51": {
         "long": "Spy vs Spy (USA)",
-        "short": "Spy vs Spy"
+        "short": "Spy vs Spy",
+        "genre": "Action"
     },
     "F09F92D7": {
         "long": "Tabaluga (Germany) (GB Compatible)",
-        "short": "Tabaluga"
+        "short": "Tabaluga",
+        "genre": "Adventure"
     },
     "F2005973": {
         "long": "Tarzan (Japan)",
-        "short": "Tarzan"
+        "short": "Tarzan",
+        "genre": "Platform"
     },
     "F1FBCF84": {
         "long": "Tottoko Hamutarou 2 - Hamu-chan Zu Daishuugou Dechu (Japan)",
-        "short": "Tottoko Hamutarou 2 - Hamu-chan Zu Daishuugou Dechu"
+        "short": "Tottoko Hamutarou 2 - Hamu-chan Zu Daishuugou Dechu",
+        "genre": "Role-playing (RPG)"
     },
     "F095B446": {
         "long": "Turok 2 - Jikku Senshi (Japan) (GB Compatible)",
-        "short": "Turok 2 - Jikku Senshi"
+        "short": "Turok 2 - Jikku Senshi",
+        "genre": "Action"
     },
     "F026D509": {
         "long": "Uno (USA) (GB Compatible)",
-        "short": "Uno"
+        "short": "Uno",
+        "genre": "Card"
     },
     "F0DE3CE7": {
         "long": "Xena - Warrior Princess (USA, Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Xena - Warrior Princess"
+        "short": "Xena - Warrior Princess",
+        "genre": "Adventure"
     },
     "F36C874D": {
         "long": "Zoids - Jashin Fukkatsu! Genobreaker Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Zoids - Jashin Fukkatsu! Genobreaker Hen"
+        "short": "Zoids - Jashin Fukkatsu! Genobreaker Hen",
+        "genre": "Role-playing (RPG)"
     },
     "F1C0FB1D": {
         "long": "Blues Brothers, The - Jukebox Adventure (Europe)",
-        "short": "Blues Brothers, The - Jukebox Adventure"
+        "short": "Blues Brothers, The - Jukebox Adventure",
+        "genre": "Platform"
     },
     "F372D175": {
         "long": "Bomberman GB (USA, Europe) (SGB Enhanced)",
-        "short": "Bomberman GB"
+        "short": "Bomberman GB",
+        "genre": "Action"
     },
     "F1344B78": {
         "long": "Bonk's Revenge (USA) (SGB Enhanced)",
-        "short": "Bonk's Revenge"
+        "short": "Bonk's Revenge",
+        "genre": "Platform"
     },
     "F2D739E4": {
         "long": "Castelian (USA)",
-        "short": "Castelian"
+        "short": "Castelian",
+        "genre": "Platform"
     },
     "F1C81EB0": {
         "long": "Contra - The Alien Wars (USA) (SGB Enhanced)",
-        "short": "Contra - The Alien Wars"
+        "short": "Contra - The Alien Wars",
+        "genre": "Shooter"
     },
     "F13A60B8": {
         "long": "Dr. Franken (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Dr. Franken"
+        "short": "Dr. Franken",
+        "genre": "Platform"
     },
     "F0225DD0": {
         "long": "Dr. Mario (World) (Rev 1)",
-        "short": "Dr. Mario"
+        "short": "Dr. Mario",
+        "genre": "Puzzle"
     },
     "F2600F02": {
         "long": "Eddie's Puzzle Time (USA) (Proto)",
-        "short": "Eddie's Puzzle Time"
+        "short": "Eddie's Puzzle Time",
+        "genre": "Puzzle"
     },
     "F0321342": {
         "long": "J.League Live 95 (Japan) (SGB Enhanced)",
-        "short": "J.League Live 95"
+        "short": "J.League Live 95",
+        "genre": "Sports"
     },
     "F27294B7": {
         "long": "Kid Dracula (USA, Europe)",
-        "short": "Kid Dracula"
+        "short": "Kid Dracula",
+        "genre": "Adventure"
     },
     "F3CC5E62": {
         "long": "Kikou Keisatsu Metal Jack (Japan)",
-        "short": "Kikou Keisatsu Metal Jack"
+        "short": "Kikou Keisatsu Metal Jack",
+        "genre": "Strategy"
     },
     "F3E1E652": {
         "long": "Koi wa Kakehiki (Japan)",
-        "short": "Koi wa Kakehiki"
+        "short": "Koi wa Kakehiki",
+        "genre": "Puzzle"
     },
     "F2D1C19D": {
         "long": "Lemmings (USA)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Strategy"
     },
     "F2D652AD": {
         "long": "Mario's Picross (USA, Europe) (SGB Enhanced)",
-        "short": "Mario's Picross"
+        "short": "Mario's Picross",
+        "genre": "Puzzle"
     },
     "F315B842": {
         "long": "Megalit (USA, Europe)",
-        "short": "Megalit"
+        "short": "Megalit",
+        "genre": "Puzzle"
     },
     "F0482567": {
         "long": "Mickey Mouse - Magic Wands! (USA, Europe) (SGB Enhanced)",
-        "short": "Mickey Mouse - Magic Wands!"
+        "short": "Mickey Mouse - Magic Wands!",
+        "genre": "Puzzle"
     },
     "F188C94C": {
         "long": "Milon no Meikyuu Kumikyoku (Japan)",
-        "short": "Milon no Meikyuu Kumikyoku"
+        "short": "Milon no Meikyuu Kumikyoku",
+        "genre": "Platform"
     },
     "F09B34AB": {
         "long": "Momotarou Dengeki (Japan)",
-        "short": "Momotarou Dengeki"
+        "short": "Momotarou Dengeki",
+        "genre": "Action"
     },
     "F22346A4": {
         "long": "Mortal Kombat (USA, Europe) (Beta)",
-        "short": "Mortal Kombat"
+        "short": "Mortal Kombat",
+        "genre": "Action"
     },
     "F25BA8BF": {
         "long": "NBA All-Star Challenge (USA, Europe)",
-        "short": "NBA All-Star Challenge"
+        "short": "NBA All-Star Challenge",
+        "genre": "Sports"
     },
     "F15B708A": {
         "long": "Ninja Taro (USA) (Beta 2)",
-        "short": "Ninja Taro"
+        "short": "Ninja Taro",
+        "genre": "Role-playing (RPG)"
     },
     "F23E5F91": {
         "long": "Otto's Ottifanten - Baby Bruno's Alptraum (Europe) (En,Fr,De,Es) (Beta)",
-        "short": "Otto's Ottifanten - Baby Bruno's Alptraum"
+        "short": "Otto's Ottifanten - Baby Bruno's Alptraum",
+        "genre": "Platform"
     },
     "F056A911": {
         "long": "Pinball Fantasies (USA, Europe)",
-        "short": "Pinball Fantasies"
+        "short": "Pinball Fantasies",
+        "genre": "Pinball"
     },
     "F327167E": {
         "long": "Populous Gaiden (Japan)",
-        "short": "Populous Gaiden"
+        "short": "Populous Gaiden",
+        "genre": "Strategy"
     },
     "F27C06DA": {
         "long": "Pro Wrestling (Japan)",
-        "short": "Pro Wrestling"
+        "short": "Pro Wrestling",
+        "genre": "Sports"
     },
     "F0B73DB4": {
         "long": "SD Lupin Sansei - Kinko Yaburi Daisakusen (Japan)",
-        "short": "SD Lupin Sansei - Kinko Yaburi Daisakusen"
+        "short": "SD Lupin Sansei - Kinko Yaburi Daisakusen",
+        "genre": "Puzzle"
     },
     "F0D76D49": {
         "long": "Sports Illustrated for Kids - The Ultimate Triple Dare! (USA)",
-        "short": "Sports Illustrated for Kids - The Ultimate Triple Dare!"
+        "short": "Sports Illustrated for Kids - The Ultimate Triple Dare!",
+        "genre": "Sports"
     },
     "F20078C2": {
         "long": "Super Hunchback (Japan)",
-        "short": "Super Hunchback"
+        "short": "Super Hunchback",
+        "genre": "Platform"
     },
     "F1071E08": {
         "long": "Takahashi Meijin no Bouken-jima II (Japan)",
-        "short": "Takahashi Meijin no Bouken-jima II"
+        "short": "Takahashi Meijin no Bouken-jima II",
+        "genre": "Platform"
     },
     "F2119A2D": {
         "long": "Totsugeki Valations (Japan)",
-        "short": "Totsugeki Valations"
+        "short": "Totsugeki Valations",
+        "genre": "Puzzle"
     },
     "F28E5AA1": {
         "long": "WWF Superstars (Japan)",
-        "short": "WWF Superstars"
+        "short": "WWF Superstars",
+        "genre": "Sports"
     },
     "F2F4BCCA": {
         "long": "Yoshi (USA)",
-        "short": "Yoshi"
+        "short": "Yoshi",
+        "genre": "Puzzle"
     },
     "F03FF3B1": {
         "long": "Little Sound Dj (v4.1.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

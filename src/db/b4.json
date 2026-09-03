@@ -1,206 +1,257 @@
 {
     "B4F293CC": {
         "long": "Animorphs (USA)",
-        "short": "Animorphs"
+        "short": "Animorphs",
+        "genre": "Role-playing (RPG)"
     },
     "B54D264A": {
         "long": "Anpfiff - Der RTL Fussball-Manager (Germany)",
-        "short": "Anpfiff - Der RTL Fussball-Manager"
+        "short": "Anpfiff - Der RTL Fussball-Manager",
+        "genre": "Simulation"
     },
     "B70028E4": {
         "long": "Bass Masters Classic (USA, Europe) (GB Compatible)",
-        "short": "Bass Masters Classic"
+        "short": "Bass Masters Classic",
+        "genre": "Hunting and Fishing"
     },
     "B447BC06": {
         "long": "Carmageddon - Carpocalypse Now (Germany)",
-        "short": "Carmageddon - Carpocalypse Now"
+        "short": "Carmageddon - Carpocalypse Now",
+        "genre": "Racing"
     },
     "B7B91FE9": {
         "long": "Cross Country Racing (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Cross Country Racing"
+        "short": "Cross Country Racing",
+        "genre": "Racing"
     },
     "B72603FC": {
         "long": "Densha de Go! 2 (Japan)",
-        "short": "Densha de Go! 2"
+        "short": "Densha de Go! 2",
+        "genre": "Simulation"
     },
     "B6FFBCCA": {
         "long": "Doug's Big Game (Europe)",
-        "short": "Doug's Big Game"
+        "short": "Doug's Big Game",
+        "genre": "Adventure"
     },
     "B70C4DDB": {
         "long": "Elevator Action EX (Japan)",
-        "short": "Elevator Action EX"
+        "short": "Elevator Action EX",
+        "genre": "Platform"
     },
     "B6BF0672": {
         "long": "Frogger (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Frogger"
+        "short": "Frogger",
+        "genre": "Action"
     },
     "B7D49490": {
         "long": "Gold and Glory - The Road to El Dorado (USA)",
-        "short": "Gold and Glory - The Road to El Dorado"
+        "short": "Gold and Glory - The Road to El Dorado",
+        "genre": "Platform"
     },
     "B609ECEA": {
         "long": "Jungle Book, The - Mowgli's Wild Adventure (Europe) (En,Fr,De,Es,It)",
-        "short": "Jungle Book, The - Mowgli's Wild Adventure"
+        "short": "Jungle Book, The - Mowgli's Wild Adventure",
+        "genre": "Racing"
     },
     "B6381744": {
         "long": "Konchuu Hakase 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Konchuu Hakase 2"
+        "short": "Konchuu Hakase 2",
+        "genre": "Role-playing (RPG)"
     },
     "B558C401": {
         "long": "Lucky Luke - Desperado Train (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "Lucky Luke - Desperado Train"
+        "short": "Lucky Luke - Desperado Train",
+        "genre": "Adventure"
     },
     "B57DABAE": {
         "long": "Millennium Winter Sports (USA)",
-        "short": "Millennium Winter Sports"
+        "short": "Millennium Winter Sports",
+        "genre": "Sports"
     },
     "B7C1025B": {
         "long": "Moorhuhn 3 - ...Es Gibt Huhn! (Europe) (En,Fr,De,Es,It)",
-        "short": "Moorhuhn 3 - ...Es Gibt Huhn!"
+        "short": "Moorhuhn 3 - ...Es Gibt Huhn!",
+        "genre": "Shooter"
     },
     "B7B2354B": {
         "long": "MTV Sports - Pure Ride (USA, Europe)",
-        "short": "MTV Sports - Pure Ride"
+        "short": "MTV Sports - Pure Ride",
+        "genre": "Racing"
     },
     "B65A9FB6": {
         "long": "Nakayoshi Cooking Series 5 - Cake o Tsukurou (Japan) (Beta 1)",
-        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou"
+        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou",
+        "genre": "Strategy"
     },
     "B4091600": {
         "long": "Rugrats Movie, The (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Rugrats Movie, The"
+        "short": "Rugrats Movie, The",
+        "genre": "Platform"
     },
     "B5412C6F": {
         "long": "Sakata Gorou Kudan no Renju Kyoushitsu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sakata Gorou Kudan no Renju Kyoushitsu"
+        "short": "Sakata Gorou Kudan no Renju Kyoushitsu",
+        "genre": "Board"
     },
     "B50CAFE4": {
         "long": "Smurfs Nightmare, The (USA)",
-        "short": "Smurfs Nightmare, The"
+        "short": "Smurfs Nightmare, The",
+        "genre": "Platform"
     },
     "B7F77B6A": {
         "long": "Super Black Bass - Real Fight (Japan) (Rumble Version)",
-        "short": "Super Black Bass - Real Fight"
+        "short": "Super Black Bass - Real Fight",
+        "genre": "Hunting and Fishing"
     },
     "B6A7F781": {
         "long": "Supershot Golf Robot (USA) (Proto)",
-        "short": "Supershot Golf Robot"
+        "short": "Supershot Golf Robot",
+        "genre": "Sports"
     },
     "B7C0831F": {
         "long": "Tetris Adventure - Susume Mickey to Nakama-tachi (Japan) (Rev 1)",
-        "short": "Tetris Adventure - Susume Mickey to Nakama-tachi"
+        "short": "Tetris Adventure - Susume Mickey to Nakama-tachi",
+        "genre": "Puzzle"
     },
     "B5BECECF": {
         "long": "Thunderbirds (Europe)",
-        "short": "Thunderbirds"
+        "short": "Thunderbirds",
+        "genre": "Racing"
     },
     "B509892B": {
         "long": "TOCA Touring Car Championship (USA, Europe)",
-        "short": "TOCA Touring Car Championship"
+        "short": "TOCA Touring Car Championship",
+        "genre": "Racing"
     },
     "B61CD120": {
         "long": "3 Choume no Tama - Tama and Friends - 3 Choume Obake Panic!! (Japan)",
-        "short": "3 Choume no Tama - Tama and Friends - 3 Choume Obake Panic!!"
+        "short": "3 Choume no Tama - Tama and Friends - 3 Choume Obake Panic!!",
+        "genre": "Adventure"
     },
     "B5B38860": {
         "long": "Attack of the Killer Tomatoes (USA, Europe)",
-        "short": "Attack of the Killer Tomatoes"
+        "short": "Attack of the Killer Tomatoes",
+        "genre": "Platform"
     },
     "B5B3F85B": {
         "long": "Boulder Dash (Japan)",
-        "short": "Boulder Dash"
+        "short": "Boulder Dash",
+        "genre": "Action"
     },
     "B651BF5D": {
         "long": "Brain Bender (Europe)",
-        "short": "Brain Bender"
+        "short": "Brain Bender",
+        "genre": "Puzzle"
     },
     "B4245CA3": {
         "long": "Buster Bros. (USA)",
-        "short": "Buster Bros."
+        "short": "Buster Bros.",
+        "genre": "Action"
     },
     "B4FA9CF2": {
         "long": "Chousoku Spinner (Japan) (SGB Enhanced)",
-        "short": "Chousoku Spinner"
+        "short": "Chousoku Spinner",
+        "genre": "Adventure"
     },
     "B6B51FCE": {
         "long": "Daedalian Opus (USA)",
-        "short": "Daedalian Opus"
+        "short": "Daedalian Opus",
+        "genre": "Puzzle"
     },
     "B700F7F7": {
         "long": "Desert Strike - Return to the Gulf (Europe) (SGB Enhanced)",
-        "short": "Desert Strike - Return to the Gulf"
+        "short": "Desert Strike - Return to the Gulf",
+        "genre": "Shooter"
     },
     "B40C159C": {
         "long": "Donkey Kong Land III (USA, Europe) (SGB Enhanced)",
-        "short": "Donkey Kong Land III"
+        "short": "Donkey Kong Land III",
+        "genre": "Platform"
     },
     "B749A927": {
         "long": "Elevator Action (USA, Europe)",
-        "short": "Elevator Action"
+        "short": "Elevator Action",
+        "genre": "Platform"
     },
     "B64D27EE": {
         "long": "Jungle Book, The (USA, Europe)",
-        "short": "Jungle Book, The"
+        "short": "Jungle Book, The",
+        "genre": "Platform"
     },
     "B7F48649": {
         "long": "Kinin Koumaroku Oni (Japan)",
-        "short": "Kinin Koumaroku Oni"
+        "short": "Kinin Koumaroku Oni",
+        "genre": "Role-playing (RPG)"
     },
     "B4955889": {
         "long": "Klax (Japan) (Hudson Soft)",
-        "short": "Klax"
+        "short": "Klax",
+        "genre": "Puzzle"
     },
     "B6E134AF": {
         "long": "Mystic Quest (France)",
-        "short": "Mystic Quest"
+        "short": "Mystic Quest",
+        "genre": "Role-playing (RPG)"
     },
     "B4DD8E6A": {
         "long": "Nada Asatarou no Powerful Mahjong - Tsugi no Itte 100 Dai (Japan)",
-        "short": "Nada Asatarou no Powerful Mahjong - Tsugi no Itte 100 Dai"
+        "short": "Nada Asatarou no Powerful Mahjong - Tsugi no Itte 100 Dai",
+        "genre": "Board"
     },
     "B6EF042E": {
         "long": "Nakajima Satoru Kanshuu - F-1 Hero GB '92 - The Graded Driver (Japan)",
-        "short": "Nakajima Satoru Kanshuu - F-1 Hero GB '92 - The Graded Driver"
+        "short": "Nakajima Satoru Kanshuu - F-1 Hero GB '92 - The Graded Driver",
+        "genre": "Racing"
     },
     "B681E243": {
         "long": "Pac-Man (USA)",
-        "short": "Pac-Man"
+        "short": "Pac-Man",
+        "genre": "Action"
     },
     "B6D9D6C4": {
         "long": "Pachinko Kaguya Hime (Japan)",
-        "short": "Pachinko Kaguya Hime"
+        "short": "Pachinko Kaguya Hime",
+        "genre": "Gambling"
     },
     "B77BE1E0": {
         "long": "Pocket Monsters - Aka (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Pocket Monsters - Aka"
+        "short": "Pocket Monsters - Aka",
+        "genre": "Role-playing (RPG)"
     },
     "B5090E43": {
         "long": "Probotector 2 (Europe) (SGB Enhanced)",
-        "short": "Probotector 2"
+        "short": "Probotector 2",
+        "genre": "Shooter"
     },
     "B503FFAD": {
         "long": "Super Bombliss (Japan) (SGB Enhanced)",
-        "short": "Super Bombliss"
+        "short": "Super Bombliss",
+        "genre": "Puzzle"
     },
     "B526A116": {
         "long": "Super Chinese Fighter GB (Japan) (SGB Enhanced)",
-        "short": "Super Chinese Fighter GB"
+        "short": "Super Chinese Fighter GB",
+        "genre": "Fighting"
     },
     "B71396A6": {
         "long": "Tenjin Kaisen (Japan)",
-        "short": "Tenjin Kaisen"
+        "short": "Tenjin Kaisen",
+        "genre": "Shoot'em Up"
     },
     "B76C769B": {
         "long": "Tetris Attack (USA, Europe) (SGB Enhanced)",
-        "short": "Tetris Attack"
+        "short": "Tetris Attack",
+        "genre": "Action"
     },
     "B7AF37F5": {
         "long": "Undercover Cops Gaiden - Hakaishin Garumaa (Japan)",
-        "short": "Undercover Cops Gaiden - Hakaishin Garumaa"
+        "short": "Undercover Cops Gaiden - Hakaishin Garumaa",
+        "genre": "Board"
     },
     "B55EB427": {
         "long": "Velious II - Fukushuu no Jashin (Japan)",
-        "short": "Velious II - Fukushuu no Jashin"
+        "short": "Velious II - Fukushuu no Jashin",
+        "genre": "Role-playing (RPG)"
     }
 }

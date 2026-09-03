@@ -1,178 +1,222 @@
 {
     "DEFF8DFB": {
         "long": "All Star Tennis 2000 (Europe) (AZTX) (Proto) (GB Compatible)",
-        "short": "All Star Tennis 2000"
+        "short": "All Star Tennis 2000",
+        "genre": "Sports"
     },
     "DC0BE439": {
         "long": "Antz (USA) (En,Fr,Es) (GB Compatible)",
-        "short": "Antz"
+        "short": "Antz",
+        "genre": "Platform"
     },
     "DFDF90C0": {
         "long": "Antz Racing (USA) (En,Fr,De,Es,It,Nl)",
-        "short": "Antz Racing"
+        "short": "Antz Racing",
+        "genre": "Racing"
     },
     "DDCE76D6": {
         "long": "B-Daman Bakugaiden - Victory e no Michi (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "B-Daman Bakugaiden - Victory e no Michi"
+        "short": "B-Daman Bakugaiden - Victory e no Michi",
+        "genre": "Role-playing (RPG)"
     },
     "DDFCF4B7": {
         "long": "Barcode Taisen Bardigun (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Barcode Taisen Bardigun"
+        "short": "Barcode Taisen Bardigun",
+        "genre": "Role-playing (RPG)"
     },
     "DE390609": {
         "long": "Dragon Tales - Dragon Adventures (USA)",
-        "short": "Dragon Tales - Dragon Adventures"
+        "short": "Dragon Tales - Dragon Adventures",
+        "genre": "Platform"
     },
     "DFD6A908": {
         "long": "Evel Knievel (Europe) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Evel Knievel"
+        "short": "Evel Knievel",
+        "genre": "Racing"
     },
     "DE7505C0": {
         "long": "Gem Gem Monster (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Gem Gem Monster"
+        "short": "Gem Gem Monster",
+        "genre": "Role-playing (RPG)"
     },
     "DCCC7514": {
         "long": "Gex - Enter the Gecko (USA, Europe) (GB Compatible)",
-        "short": "Gex - Enter the Gecko"
+        "short": "Gex - Enter the Gecko",
+        "genre": "Adventure"
     },
     "DD716EFE": {
         "long": "Godzilla - The Series (USA) (En,Fr,De) (GB Compatible)",
-        "short": "Godzilla - The Series"
+        "short": "Godzilla - The Series",
+        "genre": "Beat'em Up"
     },
     "DD5D3713": {
         "long": "Hoyle Card Games (USA)",
-        "short": "Hoyle Card Games"
+        "short": "Hoyle Card Games",
+        "genre": "Strategy"
     },
     "DE52FFDC": {
         "long": "Kindaichi Shounen no Jikenbo - 10 Nenme no Shoutaijou (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kindaichi Shounen no Jikenbo - 10 Nenme no Shoutaijou"
+        "short": "Kindaichi Shounen no Jikenbo - 10 Nenme no Shoutaijou",
+        "genre": "Adventure"
     },
     "DE1338D2": {
         "long": "Madden NFL 2002 (USA)",
-        "short": "Madden NFL 2002"
+        "short": "Madden NFL 2002",
+        "genre": "Sports"
     },
     "DE04772F": {
         "long": "Montezuma's Return! (USA) (En,Es) (GB Compatible)",
-        "short": "Montezuma's Return!"
+        "short": "Montezuma's Return!",
+        "genre": "Action"
     },
     "DCA4474E": {
         "long": "New Adventures of Mary-Kate & Ashley, The (USA, Europe) (GB Compatible)",
-        "short": "New Adventures of Mary-Kate & Ashley, The"
+        "short": "New Adventures of Mary-Kate & Ashley, The",
+        "genre": "Platform"
     },
     "DEE71D44": {
         "long": "Pocket King (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket King"
+        "short": "Pocket King",
+        "genre": "Strategy"
     },
     "DD8B189E": {
         "long": "Polaris SnoCross (USA) (Rumble Version)",
-        "short": "Polaris SnoCross"
+        "short": "Polaris SnoCross",
+        "genre": "Racing"
     },
     "DEC1260E": {
         "long": "Sonic Adventure 7 (Taiwan) (En) (Unl)",
-        "short": "Sonic Adventure 7"
+        "short": "Sonic Adventure 7",
+        "genre": "Platform"
     },
     "DCDAA333": {
         "long": "Super Chinese Fighter EX (Japan)",
-        "short": "Super Chinese Fighter EX"
+        "short": "Super Chinese Fighter EX",
+        "genre": "Fighting"
     },
     "DF7C18BC": {
         "long": "Wendy - Der Traum von Arizona (Germany)",
-        "short": "Wendy - Der Traum von Arizona"
+        "short": "Wendy - Der Traum von Arizona",
+        "genre": "Sports"
     },
     "DD727F1A": {
         "long": "Wizardry II - Llylgamyn no Isan (Japan)",
-        "short": "Wizardry II - Llylgamyn no Isan"
+        "short": "Wizardry II - Llylgamyn no Isan",
+        "genre": "Role-playing (RPG)"
     },
     "DD18DB5F": {
         "long": "World Soccer GB 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "World Soccer GB 2"
+        "short": "World Soccer GB 2",
+        "genre": "Sports"
     },
     "DC160F10": {
         "long": "Yu-Gi-Oh! - Duelo en las Tinieblas (Spain)",
-        "short": "Yu-Gi-Oh! - Duelo en las Tinieblas"
+        "short": "Yu-Gi-Oh! - Duelo en las Tinieblas",
+        "genre": "Card"
     },
     "DFA3B28A": {
         "long": "Aerostar (Japan)",
-        "short": "Aerostar"
+        "short": "Aerostar",
+        "genre": "Action"
     },
     "DE459A47": {
         "long": "Batman - Return of the Joker (Japan)",
-        "short": "Batman - Return of the Joker"
+        "short": "Batman - Return of the Joker",
+        "genre": "Platform"
     },
     "DC723A9E": {
         "long": "Crayon Shin-chan - Ora no Gokigen Collection (Japan) (SGB Enhanced)",
-        "short": "Crayon Shin-chan - Ora no Gokigen Collection"
+        "short": "Crayon Shin-chan - Ora no Gokigen Collection",
+        "genre": "Action"
     },
     "DF8B2B20": {
         "long": "Dai-2-ji Super Robot Taisen G (Japan) (SGB Enhanced)",
-        "short": "Dai-2-ji Super Robot Taisen G"
+        "short": "Dai-2-ji Super Robot Taisen G",
+        "genre": "Role-playing (RPG)"
     },
     "DD4E588F": {
         "long": "Doraemon Kart (Japan) (SGB Enhanced)",
-        "short": "Doraemon Kart"
+        "short": "Doraemon Kart",
+        "genre": "Racing"
     },
     "DCAB906C": {
         "long": "FIFA Soccer 97 (USA, Europe) (SGB Enhanced)",
-        "short": "FIFA Soccer 97"
+        "short": "FIFA Soccer 97",
+        "genre": "Sports"
     },
     "DF3BBCD7": {
         "long": "Kirby no Block Ball (Japan) (SGB Enhanced)",
-        "short": "Kirby no Block Ball"
+        "short": "Kirby no Block Ball",
+        "genre": "Action"
     },
     "DF50F477": {
         "long": "Knight Quest (USA)",
-        "short": "Knight Quest"
+        "short": "Knight Quest",
+        "genre": "Role-playing (RPG)"
     },
     "DFA5DA12": {
         "long": "Malibu Beach Volleyball (USA)",
-        "short": "Malibu Beach Volleyball"
+        "short": "Malibu Beach Volleyball",
+        "genre": "Sports"
     },
     "DEE05370": {
         "long": "Metroid II - Return of Samus (World)",
-        "short": "Metroid II - Return of Samus"
+        "short": "Metroid II - Return of Samus",
+        "genre": "Platform"
     },
     "DFEE8BCC": {
         "long": "Mickey Mouse II (Japan)",
-        "short": "Mickey Mouse II"
+        "short": "Mickey Mouse II",
+        "genre": "Platform"
     },
     "DF9DB013": {
         "long": "NBA All-Star Challenge 2 (Japan)",
-        "short": "NBA All-Star Challenge 2"
+        "short": "NBA All-Star Challenge 2",
+        "genre": "Sports"
     },
     "DDE161A5": {
         "long": "Nettou Toushinden (Japan) (SGB Enhanced)",
-        "short": "Nettou Toushinden"
+        "short": "Nettou Toushinden",
+        "genre": "Action"
     },
     "DEACE430": {
         "long": "Pachi-Slot Kids 2 (Japan)",
-        "short": "Pachi-Slot Kids 2"
+        "short": "Pachi-Slot Kids 2",
+        "genre": "Gambling"
     },
     "DC4F4E34": {
         "long": "Sa-Ga 3 - Jikuu no Hasha (World) (Ja) (Collection of SaGa)",
-        "short": "Sa-Ga 3 - Jikuu no Hasha (Collection of SaGa)"
+        "short": "Sa-Ga 3 - Jikuu no Hasha (Collection of SaGa)",
+        "genre": "Role-playing (RPG)"
     },
     "DDB147E5": {
         "long": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness (USA, Europe)",
-        "short": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness"
+        "short": "Simpsons, The - Itchy & Scratchy - Miniature Golf Madness",
+        "genre": "Sports"
     },
     "DDD8EAB3": {
         "long": "Spider-Man 3 - Invasion of the Spider-Slayers (USA, Europe) (Beta 1)",
-        "short": "Spider-Man 3 - Invasion of the Spider-Slayers"
+        "short": "Spider-Man 3 - Invasion of the Spider-Slayers",
+        "genre": "Platform"
     },
     "DE383E73": {
         "long": "TaleSpin (USA)",
-        "short": "TaleSpin"
+        "short": "TaleSpin",
+        "genre": "Shoot'em Up"
     },
     "DD19A9EC": {
         "long": "Tom to Jerry Part 2 (Japan)",
-        "short": "Tom to Jerry Part 2"
+        "short": "Tom to Jerry Part 2",
+        "genre": "Platform"
     },
     "DC324100": {
         "long": "Tsuri Sensei (Japan) (SGB Enhanced)",
-        "short": "Tsuri Sensei"
+        "short": "Tsuri Sensei",
+        "genre": "Hunting and Fishing"
     },
     "DE398678": {
         "long": "Xenon 2 (USA, Europe)",
-        "short": "Xenon 2"
+        "short": "Xenon 2",
+        "genre": "Shoot'em Up"
     }
 }

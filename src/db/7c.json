@@ -1,234 +1,292 @@
 {
     "7FF2042F": {
         "long": "Alone in the Dark - The New Nightmare (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Alone in the Dark - The New Nightmare"
+        "short": "Alone in the Dark - The New Nightmare",
+        "genre": "Action"
     },
     "7C101475": {
         "long": "Alone in the Dark - The New Nightmare (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "Alone in the Dark - The New Nightmare"
+        "short": "Alone in the Dark - The New Nightmare",
+        "genre": "Action"
     },
     "7FD46DA1": {
         "long": "Animorphs (Europe) (En,Fr,De,Es,It)",
-        "short": "Animorphs"
+        "short": "Animorphs",
+        "genre": "Role-playing (RPG)"
     },
     "7DED5C71": {
         "long": "Baby Felix - Halloween (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Baby Felix - Halloween"
+        "short": "Baby Felix - Halloween",
+        "genre": "Platform"
     },
     "7C7FDEFC": {
         "long": "Chase H.Q. - Secret Police (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Chase H.Q. - Secret Police"
+        "short": "Chase H.Q. - Secret Police",
+        "genre": "Racing"
     },
     "7D451688": {
         "long": "Daikatana (USA) (Proto 2)",
-        "short": "Daikatana"
+        "short": "Daikatana",
+        "genre": "Role-playing (RPG)"
     },
     "7E515A7E": {
         "long": "Dejiko no Mahjong Party (Japan) (Rev 1) (Proto)",
-        "short": "Dejiko no Mahjong Party"
+        "short": "Dejiko no Mahjong Party",
+        "genre": "Board"
     },
     "7D28689A": {
         "long": "Dragon Ball Z - Densetsu no Chou Senshi-tachi (Japan)",
-        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi"
+        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi",
+        "genre": "Role-playing (RPG)"
     },
     "7E15B3DD": {
         "long": "DX Jinsei Game (Japan)",
-        "short": "DX Jinsei Game"
+        "short": "DX Jinsei Game",
+        "genre": "Board"
     },
     "7EAEEEAC": {
         "long": "Guruguru Garakutas (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Guruguru Garakutas"
+        "short": "Guruguru Garakutas",
+        "genre": "Role-playing (RPG)"
     },
     "7FFF1142": {
         "long": "Indiana Jones and the Infernal Machine (USA, Europe) (En,Fr,De)",
-        "short": "Indiana Jones and the Infernal Machine"
+        "short": "Indiana Jones and the Infernal Machine",
+        "genre": "Action"
     },
     "7E821F47": {
         "long": "Legend of the River King GBC (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of the River King GBC"
+        "short": "Legend of the River King GBC",
+        "genre": "Hunting and Fishing"
     },
     "7EFDCA8A": {
         "long": "Looney Tunes Racing (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Looney Tunes Racing"
+        "short": "Looney Tunes Racing",
+        "genre": "Racing"
     },
     "7D83A5E8": {
         "long": "Mahjong Joou (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Mahjong Joou"
+        "short": "Mahjong Joou",
+        "genre": "Board"
     },
     "7E054A88": {
         "long": "Addams Family, The - Pugsley's Scavenger Hunt (USA, Europe)",
-        "short": "Addams Family, The - Pugsley's Scavenger Hunt"
+        "short": "Addams Family, The - Pugsley's Scavenger Hunt",
+        "genre": "Platform"
     },
     "7C787BC4": {
         "long": "Battle Pingpong (Japan)",
-        "short": "Battle Pingpong"
+        "short": "Battle Pingpong",
+        "genre": "Sports"
     },
     "7FFC34EA": {
         "long": "Battletoads in Ragnarok's World (Europe)",
-        "short": "Battletoads in Ragnarok's World"
+        "short": "Battletoads in Ragnarok's World",
+        "genre": "Beat'em Up"
     },
     "7EDB78AB": {
         "long": "Bo Jackson - Two Games in One (USA)",
-        "short": "Bo Jackson - Two Games in One"
+        "short": "Bo Jackson - Two Games in One",
+        "genre": "Sports"
     },
     "7CA8E543": {
         "long": "Bomb Jack (Europe) (Beta 2)",
-        "short": "Bomb Jack"
+        "short": "Bomb Jack",
+        "genre": "Platform"
     },
     "7E40044A": {
         "long": "Chiki Chiki Machine Mou Race (Japan)",
-        "short": "Chiki Chiki Machine Mou Race"
+        "short": "Chiki Chiki Machine Mou Race",
+        "genre": "Racing"
     },
     "7FC22DF5": {
         "long": "Contra Spirits (Japan) (SGB Enhanced)",
-        "short": "Contra Spirits"
+        "short": "Contra Spirits",
+        "genre": "Shooter"
     },
     "7DA95971": {
         "long": "Deadeus (World) (v1.3.8) (Aftermarket) (Unl)",
-        "short": "Deadeus"
+        "short": "Deadeus",
+        "genre": "Adventure"
     },
     "7EB0CD32": {
         "long": "Dennis the Menace (USA)",
-        "short": "Dennis the Menace"
+        "short": "Dennis the Menace",
+        "genre": "Platform"
     },
     "7E4FEBDF": {
         "long": "F-1 Race (World)",
-        "short": "F-1 Race"
+        "short": "F-1 Race",
+        "genre": "Racing"
     },
     "7D890CD0": {
         "long": "Faceball 2000 (USA)",
-        "short": "Faceball 2000"
+        "short": "Faceball 2000",
+        "genre": "Shooter"
     },
     "7E805AC6": {
         "long": "Gauntlet II (USA, Europe) (Beta)",
-        "short": "Gauntlet II"
+        "short": "Gauntlet II",
+        "genre": "Action"
     },
     "7F62456B": {
         "long": "George Foreman's KO Boxing (USA, Europe)",
-        "short": "George Foreman's KO Boxing"
+        "short": "George Foreman's KO Boxing",
+        "genre": "Sports"
     },
     "7C3F3107": {
         "long": "Home Alone (Japan)",
-        "short": "Home Alone"
+        "short": "Home Alone",
+        "genre": "Platform"
     },
     "7E6598BB": {
         "long": "Jelly Boy (Europe)",
-        "short": "Jelly Boy"
+        "short": "Jelly Boy",
+        "genre": "Action"
     },
     "7C94197C": {
         "long": "Kaseki Sousei Reborn (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Kaseki Sousei Reborn"
+        "short": "Kaseki Sousei Reborn",
+        "genre": "Role-playing (RPG)"
     },
     "7D1B6CD6": {
         "long": "Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 1)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "7D5CC03A": {
         "long": "Lemmings (Japan)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Strategy"
     },
     "7CB70D3D": {
         "long": "Masakari Densetsu - Kintarou Action Hen (Japan)",
-        "short": "Masakari Densetsu - Kintarou Action Hen"
+        "short": "Masakari Densetsu - Kintarou Action Hen",
+        "genre": "Action"
     },
     "7EAF671A": {
         "long": "Nekketsu Koukou Dodgeball-bu - Kyouteki! Dodge Soldier no Maki (Japan)",
-        "short": "Nekketsu Koukou Dodgeball-bu - Kyouteki! Dodge Soldier no Maki"
+        "short": "Nekketsu Koukou Dodgeball-bu - Kyouteki! Dodge Soldier no Maki",
+        "genre": "Sports"
     },
     "7D448FB5": {
         "long": "Nemesis (USA) (Rev 1) (Beta)",
-        "short": "Nemesis"
+        "short": "Nemesis",
+        "genre": "Shoot'em Up"
     },
     "7C5FFE52": {
         "long": "Nettou World Heroes 2 Jet (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Nettou World Heroes 2 Jet"
+        "short": "Nettou World Heroes 2 Jet",
+        "genre": "Fighting"
     },
     "7FF79DF9": {
         "long": "Pac-In-Time (Europe) (Rev 1) (SGB Enhanced)",
-        "short": "Pac-In-Time"
+        "short": "Pac-In-Time",
+        "genre": "Platform"
     },
     "7D7DEF64": {
         "long": "PGA European Tour (USA, Europe) (SGB Enhanced)",
-        "short": "PGA European Tour"
+        "short": "PGA European Tour",
+        "genre": "Simulation"
     },
     "7D527D62": {
         "long": "Pokémon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced)",
-        "short": "Pokémon - Yellow Version - Special Pikachu Edition"
+        "short": "Pokémon - Yellow Version - Special Pikachu Edition",
+        "genre": "Role-playing (RPG)"
     },
     "7F545B40": {
         "long": "Pop Up (Europe)",
-        "short": "Pop Up"
+        "short": "Pop Up",
+        "genre": "Action"
     },
     "7D60C005": {
         "long": "Probotector 2 (Europe) (Beta) (SGB Enhanced)",
-        "short": "Probotector 2"
+        "short": "Probotector 2",
+        "genre": "Shooter"
     },
     "7C61426C": {
         "long": "SD Sengokuden 3 - Chijou Saikyou Hen (Japan)",
-        "short": "SD Sengokuden 3 - Chijou Saikyou Hen"
+        "short": "SD Sengokuden 3 - Chijou Saikyou Hen",
+        "genre": "Strategy"
     },
     "7C29672B": {
         "long": "Shanghai (Japan) (HAL Laboratory)",
-        "short": "Shanghai"
+        "short": "Shanghai",
+        "genre": "Board"
     },
     "7ED43FE6": {
         "long": "Shaq Fu (USA) (SGB Enhanced)",
-        "short": "Shaq Fu"
+        "short": "Shaq Fu",
+        "genre": "Fighting"
     },
     "7C5AEC86": {
         "long": "Soldam (Japan)",
-        "short": "Soldam"
+        "short": "Soldam",
+        "genre": "Puzzle"
     },
     "7F0F5762": {
         "long": "Space Invaders (USA) (SGB Enhanced)",
-        "short": "Space Invaders"
+        "short": "Space Invaders",
+        "genre": "Shooter"
     },
     "7D259E57": {
         "long": "Star Trek - The Next Generation (USA, Europe) (Beta)",
-        "short": "Star Trek - The Next Generation"
+        "short": "Star Trek - The Next Generation",
+        "genre": "Simulation"
     },
     "7E3F6BBE": {
         "long": "Star Wars (Europe)",
-        "short": "Star Wars"
+        "short": "Star Wars",
+        "genre": "Platform"
     },
     "7D1D8FDC": {
         "long": "Super Chinese Land 1-2-3' (Japan) (SGB Enhanced)",
-        "short": "Super Chinese Land 1-2-3'"
+        "short": "Super Chinese Land 1-2-3'",
+        "genre": "Compilation"
     },
     "7DD9D7D6": {
         "long": "Super Robot Taisen (Japan)",
-        "short": "Super Robot Taisen"
+        "short": "Super Robot Taisen",
+        "genre": "Role-playing (RPG)"
     },
     "7FE42A7F": {
         "long": "Suzuki Aguri no F-1 Super Driving (Japan) (Beta)",
-        "short": "Suzuki Aguri no F-1 Super Driving"
+        "short": "Suzuki Aguri no F-1 Super Driving",
+        "genre": "Racing"
     },
     "7E923846": {
         "long": "Sword of Hope, The (USA)",
-        "short": "Sword of Hope, The"
+        "short": "Sword of Hope, The",
+        "genre": "Role-playing (RPG)"
     },
     "7EC795FA": {
         "long": "T2 - The Arcade Game (Japan)",
-        "short": "T2 - The Arcade Game"
+        "short": "T2 - The Arcade Game",
+        "genre": "Shooter"
     },
     "7FF546DF": {
         "long": "Takeda Nobuhiro no Ace Striker (Japan)",
-        "short": "Takeda Nobuhiro no Ace Striker"
+        "short": "Takeda Nobuhiro no Ace Striker",
+        "genre": "Sports"
     },
     "7D69F655": {
         "long": "Wordtris (Germany) (De) (Proto)",
-        "short": "Wordtris"
+        "short": "Wordtris",
+        "genre": "Puzzle"
     },
     "7F0CD87C": {
         "long": "WWF King of the Ring (USA, Europe)",
-        "short": "WWF King of the Ring"
+        "short": "WWF King of the Ring",
+        "genre": "Sports"
     },
     "7D03727D": {
         "long": "Zettai Muteki Raijin-Oh (Japan)",
-        "short": "Zettai Muteki Raijin-Oh"
+        "short": "Zettai Muteki Raijin-Oh",
+        "genre": "Fighting"
     },
     "7CEBA9A2": {
         "long": "Shin Pokémon Red (v1.24.6h3)",
-        "short": "Shin Pokémon Red"
+        "short": "Shin Pokémon Red",
+        "genre": "ROM Hack"
     }
 }

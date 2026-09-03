@@ -1,150 +1,187 @@
 {
     "0EB8DDFB": {
         "long": "31 in 1 (Taiwan) (31B-001, Sachen) (Unl)",
-        "short": "31 in 1"
+        "short": "31 in 1",
+        "genre": "Compilation"
     },
     "0CF2B7F2": {
         "long": "Barbie - Aventura Submarina (Spain) (GB Compatible)",
-        "short": "Barbie - Aventura Submarina"
+        "short": "Barbie - Aventura Submarina",
+        "genre": "Action"
     },
     "0D9CB195": {
         "long": "Beatmania GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Beatmania GB"
+        "short": "Beatmania GB",
+        "genre": "Music / Dancing"
     },
     "0FD34427": {
         "long": "Dear Daniel no Sweet Adventure - Kitty-chan o Sagashite (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dear Daniel no Sweet Adventure - Kitty-chan o Sagashite"
+        "short": "Dear Daniel no Sweet Adventure - Kitty-chan o Sagashite",
+        "genre": "Adventure"
     },
     "0FD9C59C": {
         "long": "Dragon Warrior III (USA)",
-        "short": "Dragon Warrior III"
+        "short": "Dragon Warrior III",
+        "genre": "Role-playing (RPG)"
     },
     "0FAFA3F2": {
         "long": "Jim Henson's Muppets (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Jim Henson's Muppets"
+        "short": "Jim Henson's Muppets",
+        "genre": "Platform"
     },
     "0D16A545": {
         "long": "Majokko Mari-chan no Kisekae Monogatari (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Majokko Mari-chan no Kisekae Monogatari"
+        "short": "Majokko Mari-chan no Kisekae Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "0F02D708": {
         "long": "Microsoft - The Best of Entertainment Pack (Europe)",
-        "short": "Microsoft - The Best of Entertainment Pack"
+        "short": "Microsoft - The Best of Entertainment Pack",
+        "genre": "Compilation"
     },
     "0F69F574": {
         "long": "No Fear - Downhill Mountain Biking (Europe)",
-        "short": "No Fear - Downhill Mountain Biking"
+        "short": "No Fear - Downhill Mountain Biking",
+        "genre": "Sports"
     },
     "0E783117": {
         "long": "Spy vs Spy (Japan)",
-        "short": "Spy vs Spy"
+        "short": "Spy vs Spy",
+        "genre": "Action"
     },
     "0E697582": {
         "long": "Star Wars Episode I - Obi-Wan's Adventures (USA)",
-        "short": "Star Wars Episode I - Obi-Wan's Adventures"
+        "short": "Star Wars Episode I - Obi-Wan's Adventures",
+        "genre": "Adventure"
     },
     "0EBC5758": {
         "long": "Star Wars Episode I - Racer (USA, Europe) (Rumble Version)",
-        "short": "Star Wars Episode I - Racer"
+        "short": "Star Wars Episode I - Racer",
+        "genre": "Racing"
     },
     "0F7264BA": {
         "long": "Suzuki Alstare Extreme Racing (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Suzuki Alstare Extreme Racing"
+        "short": "Suzuki Alstare Extreme Racing",
+        "genre": "Racing"
     },
     "0FD9FFF0": {
         "long": "Taxi 2 (France)",
-        "short": "Taxi 2"
+        "short": "Taxi 2",
+        "genre": "Racing"
     },
     "0FDD5B9E": {
         "long": "Test Drive Off-Road 3 (USA) (Rumble Version) (SGB Enhanced) (GB Compatible)",
-        "short": "Test Drive Off-Road 3"
+        "short": "Test Drive Off-Road 3",
+        "genre": "Racing"
     },
     "0E1465CB": {
         "long": "Wild Thornberrys, The - Rambler (USA)",
-        "short": "Wild Thornberrys, The - Rambler"
+        "short": "Wild Thornberrys, The - Rambler",
+        "genre": "Platform"
     },
     "0E0216E6": {
         "long": "4-in-1 Fun Pak (USA, Europe)",
-        "short": "4-in-1 Fun Pak"
+        "short": "4-in-1 Fun Pak",
+        "genre": "Board"
     },
     "0FD66B1A": {
         "long": "Bart no Survival Camp (Japan)",
-        "short": "Bart no Survival Camp"
+        "short": "Bart no Survival Camp",
+        "genre": "Platform"
     },
     "0C1D2B68": {
         "long": "Chessmaster, The (USA, Europe)",
-        "short": "Chessmaster, The"
+        "short": "Chessmaster, The",
+        "genre": "Board"
     },
     "0D430D1A": {
         "long": "Cool Hand (Europe)",
-        "short": "Cool Hand"
+        "short": "Cool Hand",
+        "genre": "Gambling"
     },
     "0D62473D": {
         "long": "Dr. Franken II (USA, Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Dr. Franken II"
+        "short": "Dr. Franken II",
+        "genre": "Platform"
     },
     "0C5171EF": {
         "long": "Final Fantasy Legend III (World) (Collection of SaGa)",
-        "short": "Final Fantasy Legend III (Collection of SaGa)"
+        "short": "Final Fantasy Legend III (Collection of SaGa)",
+        "genre": "Role-playing (RPG)"
     },
     "0D255D59": {
         "long": "Honmei Boy (Japan)",
-        "short": "Honmei Boy"
+        "short": "Honmei Boy",
+        "genre": "Sports with Animals"
     },
     "0C042862": {
         "long": "Kid Icarus - Of Myths and Monsters (USA, Europe)",
-        "short": "Kid Icarus - Of Myths and Monsters"
+        "short": "Kid Icarus - Of Myths and Monsters",
+        "genre": "Action"
     },
     "0FDC9FB1": {
         "long": "Konami Golf (Europe)",
-        "short": "Konami Golf"
+        "short": "Konami Golf",
+        "genre": "Sports"
     },
     "0EF4637D": {
         "long": "Lingo (Europe) (En,Fr,De,Nl)",
-        "short": "Lingo"
+        "short": "Lingo",
+        "genre": "Puzzle"
     },
     "0D30B3A1": {
         "long": "Mickey Mouse IV - Mahou no Labyrinth (Japan)",
-        "short": "Mickey Mouse IV - Mahou no Labyrinth"
+        "short": "Mickey Mouse IV - Mahou no Labyrinth",
+        "genre": "Platform"
     },
     "0E5BB1C4": {
         "long": "Ms. Pac-Man (USA)",
-        "short": "Ms. Pac-Man"
+        "short": "Ms. Pac-Man",
+        "genre": "Action"
     },
     "0CA07CDA": {
         "long": "NBA Jam (USA, Europe)",
-        "short": "NBA Jam"
+        "short": "NBA Jam",
+        "genre": "Action"
     },
     "0D0958A3": {
         "long": "Nigel Mansell's World Championship Racing (Europe)",
-        "short": "Nigel Mansell's World Championship Racing"
+        "short": "Nigel Mansell's World Championship Racing",
+        "genre": "Racing"
     },
     "0C228A78": {
         "long": "Otto's Ottifanten - Baby Bruno's Alptraum (Europe) (En,Fr,De,Es)",
-        "short": "Otto's Ottifanten - Baby Bruno's Alptraum"
+        "short": "Otto's Ottifanten - Baby Bruno's Alptraum",
+        "genre": "Platform"
     },
     "0FD1AE54": {
         "long": "Pocket Bomberman (Europe) (SGB Enhanced)",
-        "short": "Pocket Bomberman"
+        "short": "Pocket Bomberman",
+        "genre": "Platform"
     },
     "0E2A1414": {
         "long": "Power Mission (Japan)",
-        "short": "Power Mission"
+        "short": "Power Mission",
+        "genre": "Strategy"
     },
     "0CDD8B04": {
         "long": "Shisenshou - Match-Mania (Japan)",
-        "short": "Shisenshou - Match-Mania"
+        "short": "Shisenshou - Match-Mania",
+        "genre": "Puzzle"
     },
     "0C5B4014": {
         "long": "Super James Pond (USA) (Proto)",
-        "short": "Super James Pond"
+        "short": "Super James Pond",
+        "genre": "Platform"
     },
     "0FD47F8A": {
         "long": "Tiny Toon Adventures 2 - Buster Bunny no Kattobi Daibouken (Japan)",
-        "short": "Tiny Toon Adventures 2 - Buster Bunny no Kattobi Daibouken"
+        "short": "Tiny Toon Adventures 2 - Buster Bunny no Kattobi Daibouken",
+        "genre": "Platform"
     },
     "0D06EA32": {
         "long": "Volley Fire (Japan)",
-        "short": "Volley Fire"
+        "short": "Volley Fire",
+        "genre": "Shooter"
     }
 }

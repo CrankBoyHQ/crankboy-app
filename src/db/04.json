@@ -1,178 +1,222 @@
 {
     "04FE7790": {
         "long": "Cool Bricks (Europe) (En,Fr,De,Es,It)",
-        "short": "Cool Bricks"
+        "short": "Cool Bricks",
+        "genre": "Action"
     },
     "07A13B5B": {
         "long": "Donald Duck - Quack Attack (Europe) (En,Fr,De,Es,It)",
-        "short": "Donald Duck - Quack Attack"
+        "short": "Donald Duck - Quack Attack",
+        "genre": "Platform"
     },
     "0602DBE1": {
         "long": "Dragon Dance (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Dance"
+        "short": "Dragon Dance",
+        "genre": "Action"
     },
     "06C8E50A": {
         "long": "Fort Boyard (Europe) (En,Fr,De,Es,It,Nl,Pt)",
-        "short": "Fort Boyard"
+        "short": "Fort Boyard",
+        "genre": "Platform"
     },
     "0634C196": {
         "long": "Full Time Soccer & Hang Time Basketball (Europe) (Unl)",
-        "short": "Full Time Soccer & Hang Time Basketball"
+        "short": "Full Time Soccer & Hang Time Basketball",
+        "genre": "Compilation"
     },
     "06FCCEFC": {
         "long": "Gekisou Dangun Racer - Onsoku Buster Dangun Dan (Japan)",
-        "short": "Gekisou Dangun Racer - Onsoku Buster Dangun Dan"
+        "short": "Gekisou Dangun Racer - Onsoku Buster Dangun Dan",
+        "genre": "Simulation"
     },
     "053BC315": {
         "long": "Gremlins - Unleashed (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "Gremlins - Unleashed"
+        "short": "Gremlins - Unleashed",
+        "genre": "Platform"
     },
     "0753927E": {
         "long": "Heroes of Might and Magic (USA) (En,Fr,De) (Rev 1) (Proto)",
-        "short": "Heroes of Might and Magic"
+        "short": "Heroes of Might and Magic",
+        "genre": "Role-playing (RPG)"
     },
     "05DCBD55": {
         "long": "Honkaku Hanafuda GB (Japan)",
-        "short": "Honkaku Hanafuda GB"
+        "short": "Honkaku Hanafuda GB",
+        "genre": "Board"
     },
     "06887A34": {
         "long": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "05F23861": {
         "long": "Legend of Zelda, The - Link's Awakening DX (France) (Rev 1) (Beta) (1999-08-19) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "05CC01FB": {
         "long": "LEGO Stunt Rally (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da)",
-        "short": "LEGO Stunt Rally"
+        "short": "LEGO Stunt Rally",
+        "genre": "Racing"
     },
     "065A3BF5": {
         "long": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou (Japan) (Rev 1) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou"
+        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou",
+        "genre": "Puzzle"
     },
     "0510D601": {
         "long": "Mario Tennis (Europe)",
-        "short": "Mario Tennis"
+        "short": "Mario Tennis",
+        "genre": "Sports"
     },
     "04B0C5D6": {
         "long": "Metal Gear Solid (USA)",
-        "short": "Metal Gear Solid"
+        "short": "Metal Gear Solid",
+        "genre": "Action"
     },
     "0777B8D7": {
         "long": "Microsoft - The 6 in 1 Puzzle Collection Entertainment Pack (USA)",
-        "short": "Microsoft - The 6 in 1 Puzzle Collection Entertainment Pack"
+        "short": "Microsoft - The 6 in 1 Puzzle Collection Entertainment Pack",
+        "genre": "Puzzle"
     },
     "0503E567": {
         "long": "Monopoly (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Monopoly"
+        "short": "Monopoly",
+        "genre": "Board"
     },
     "0601BEF6": {
         "long": "Perfect Dark (USA, Europe) (En,Fr,De,Es,It) (Rumble Version)",
-        "short": "Perfect Dark"
+        "short": "Perfect Dark",
+        "genre": "Adventure"
     },
     "07E6CA95": {
         "long": "Pop'n Music GB (Japan)",
-        "short": "Pop'n Music GB"
+        "short": "Pop'n Music GB",
+        "genre": "Music / Dancing"
     },
     "04D3031A": {
         "long": "Pro Pool (USA) (En,Fr,De) (Beta)",
-        "short": "Pro Pool"
+        "short": "Pro Pool",
+        "genre": "Sports"
     },
     "06EB7A01": {
         "long": "Puzzle Master (USA) (GB Compatible)",
-        "short": "Puzzle Master"
+        "short": "Puzzle Master",
+        "genre": "Puzzle"
     },
     "047BDF80": {
         "long": "Wario Land II (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Wario Land II"
+        "short": "Wario Land II",
+        "genre": "Platform"
     },
     "04E04980": {
         "long": "Wing Warriors (USA) (En,Fr,Es) (Aftermarket) (Homebrew)",
-        "short": "Wing Warriors"
+        "short": "Wing Warriors",
+        "genre": "Shoot'em Up"
     },
     "066A2196": {
         "long": "Winnie the Pooh - Adventures in the 100 Acre Wood (USA)",
-        "short": "Winnie the Pooh - Adventures in the 100 Acre Wood"
+        "short": "Winnie the Pooh - Adventures in the 100 Acre Wood",
+        "genre": "Adventure"
     },
     "0424CF43": {
         "long": "Woody Woodpecker Racing (USA)",
-        "short": "Woody Woodpecker Racing"
+        "short": "Woody Woodpecker Racing",
+        "genre": "Racing"
     },
     "0424DF85": {
         "long": "Bokujou Monogatari GB (Japan) (SGB Enhanced) (NP)",
-        "short": "Bokujou Monogatari GB"
+        "short": "Bokujou Monogatari GB",
+        "genre": "Simulation"
     },
     "05A3AB7A": {
         "long": "Dino Breeder 2 (Japan) (SGB Enhanced)",
-        "short": "Dino Breeder 2"
+        "short": "Dino Breeder 2",
+        "genre": "Simulation"
     },
     "045DEE8C": {
         "long": "F-15 Strike Eagle (USA, Europe)",
-        "short": "F-15 Strike Eagle"
+        "short": "F-15 Strike Eagle",
+        "genre": "Simulation"
     },
     "06884616": {
         "long": "Garfield Labyrinth (Europe) (Beta)",
-        "short": "Garfield Labyrinth"
+        "short": "Garfield Labyrinth",
+        "genre": "Puzzle"
     },
     "04342C83": {
         "long": "Hoshi no Kirby (Japan) (Rev 1)",
-        "short": "Hoshi no Kirby"
+        "short": "Hoshi no Kirby",
+        "genre": "Platform"
     },
     "058EEEDB": {
         "long": "InfoGenius Productivity Pak - Berlitz Spanish Translator (USA, Europe)",
-        "short": "InfoGenius Productivity Pak - Berlitz Spanish Translator"
+        "short": "InfoGenius Productivity Pak - Berlitz Spanish Translator",
+        "genre": "Various"
     },
     "0530E1CC": {
         "long": "Janshirou (Japan)",
-        "short": "Janshirou"
+        "short": "Janshirou",
+        "genre": "Card"
     },
     "04DAA03B": {
         "long": "Jantaku Boy (Japan)",
-        "short": "Jantaku Boy"
+        "short": "Jantaku Boy",
+        "genre": "Card"
     },
     "060B89E6": {
         "long": "Mega Man IV (Europe)",
-        "short": "Mega Man IV"
+        "short": "Mega Man IV",
+        "genre": "Platform"
     },
     "06F04370": {
         "long": "NFL Quarterback Club II (USA, Europe)",
-        "short": "NFL Quarterback Club II"
+        "short": "NFL Quarterback Club II",
+        "genre": "Sports"
     },
     "0509069C": {
         "long": "Pac-Man (Europe)",
-        "short": "Pac-Man"
+        "short": "Pac-Man",
+        "genre": "Action"
     },
     "048D3AB0": {
         "long": "Pinball - Revenge of the 'Gator (USA, Europe) (Beta)",
-        "short": "Pinball - Revenge of the 'Gator"
+        "short": "Pinball - Revenge of the 'Gator",
+        "genre": "Pinball"
     },
     "0680BFC3": {
         "long": "Pit-Fighter (USA, Europe)",
-        "short": "Pit-Fighter"
+        "short": "Pit-Fighter",
+        "genre": "Fighting"
     },
     "04453E78": {
         "long": "Roadster (Japan)",
-        "short": "Roadster"
+        "short": "Roadster",
+        "genre": "Racing"
     },
     "06D6980B": {
         "long": "RoboCop (Japan)",
-        "short": "RoboCop"
+        "short": "RoboCop",
+        "genre": "Platform"
     },
     "04E241E4": {
         "long": "Spot - The Video Game (Europe)",
-        "short": "Spot - The Video Game"
+        "short": "Spot - The Video Game",
+        "genre": "Puzzle"
     },
     "0636D89E": {
         "long": "Tom & Jerry (USA, Europe)",
-        "short": "Tom & Jerry"
+        "short": "Tom & Jerry",
+        "genre": "Platform"
     },
     "0506C12B": {
         "long": "Top Gun - Guts & Glory (USA, Europe)",
-        "short": "Top Gun - Guts & Glory"
+        "short": "Top Gun - Guts & Glory",
+        "genre": "Simulation"
     },
     "075A8231": {
         "long": "Wordtris (USA)",
-        "short": "Wordtris"
+        "short": "Wordtris",
+        "genre": "Puzzle"
     }
 }

@@ -1,182 +1,227 @@
 {
     "AE839CAE": {
         "long": "Bugs Bunny - Crazy Castle 3 (Japan) (GB Compatible)",
-        "short": "Bugs Bunny - Crazy Castle 3"
+        "short": "Bugs Bunny - Crazy Castle 3",
+        "genre": "Strategy"
     },
     "AD0937F4": {
         "long": "Deja Vu I & II - The Casebooks of Ace Harding (USA)",
-        "short": "Deja Vu I & II - The Casebooks of Ace Harding"
+        "short": "Deja Vu I & II - The Casebooks of Ace Harding",
+        "genre": "Adventure"
     },
     "AF46EA77": {
         "long": "Frogger (USA) (GB Compatible)",
-        "short": "Frogger"
+        "short": "Frogger",
+        "genre": "Action"
     },
     "AE024C23": {
         "long": "Ghosts'n Goblins (USA, Europe) (GB Compatible)",
-        "short": "Ghosts'n Goblins"
+        "short": "Ghosts'n Goblins",
+        "genre": "Action"
     },
     "AD563BD9": {
         "long": "Grand Theft Auto 2 (Europe) (En,Fr,De,Es,It)",
-        "short": "Grand Theft Auto 2"
+        "short": "Grand Theft Auto 2",
+        "genre": "Racing"
     },
     "AEB634C5": {
         "long": "Jagainu-kun (Japan) (GB Compatible)",
-        "short": "Jagainu-kun"
+        "short": "Jagainu-kun",
+        "genre": "Action"
     },
     "AC5E477D": {
         "long": "Naminori Yarou! (Japan) (NP)",
-        "short": "Naminori Yarou!"
+        "short": "Naminori Yarou!",
+        "genre": "Sports"
     },
     "AC52F6EF": {
         "long": "Nushi Tsuri Adventure - Kite no Bouken (Japan) (Rumble Version)",
-        "short": "Nushi Tsuri Adventure - Kite no Bouken"
+        "short": "Nushi Tsuri Adventure - Kite no Bouken",
+        "genre": "Role-playing (RPG)"
     },
     "AFA1AAC3": {
         "long": "Perfect Choro Q (Japan)",
-        "short": "Perfect Choro Q"
+        "short": "Perfect Choro Q",
+        "genre": "Racing"
     },
     "AF0C51B8": {
         "long": "Pocket Hanafuda (Japan)",
-        "short": "Pocket Hanafuda"
+        "short": "Pocket Hanafuda",
+        "genre": "Board"
     },
     "AE57D1C3": {
         "long": "Power Spike - Pro Beach Volleyball (USA)",
-        "short": "Power Spike - Pro Beach Volleyball"
+        "short": "Power Spike - Pro Beach Volleyball",
+        "genre": "Sports"
     },
     "AF858234": {
         "long": "Puzz Loop (Japan) (GB Compatible)",
-        "short": "Puzz Loop"
+        "short": "Puzz Loop",
+        "genre": "Strategy"
     },
     "AFFF6BB9": {
         "long": "Real Pro Yakyuu! - Central League Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Real Pro Yakyuu! - Central League Hen"
+        "short": "Real Pro Yakyuu! - Central League Hen",
+        "genre": "Sports"
     },
     "AE82AFA4": {
         "long": "Speedy Gonzales - Aztec Adventure (USA, Europe) (GB Compatible)",
-        "short": "Speedy Gonzales - Aztec Adventure"
+        "short": "Speedy Gonzales - Aztec Adventure",
+        "genre": "Platform"
     },
     "ACB08666": {
         "long": "Stuart Little - The Journey Home (Europe) (Fr,De)",
-        "short": "Stuart Little - The Journey Home"
+        "short": "Stuart Little - The Journey Home",
+        "genre": "Platform"
     },
     "AE466545": {
         "long": "Super Black Bass Pocket 3 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Super Black Bass Pocket 3"
+        "short": "Super Black Bass Pocket 3",
+        "genre": "Hunting and Fishing"
     },
     "AD6F3BDF": {
         "long": "Sylvanian Families 2 - Irozuku Mori no Fantasy (Japan) (Rev 1) (NP)",
-        "short": "Sylvanian Families 2 - Irozuku Mori no Fantasy"
+        "short": "Sylvanian Families 2 - Irozuku Mori no Fantasy",
+        "genre": "Role-playing (RPG)"
     },
     "AF6BDC50": {
         "long": "Aladdin (USA) (SGB Enhanced)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "AF1AE123": {
         "long": "Beavis and Butt-Head (USA, Europe)",
-        "short": "Beavis and Butt-Head"
+        "short": "Beavis and Butt-Head",
+        "genre": "Adventure"
     },
     "ADB66EFF": {
         "long": "Blues Brothers, The (USA, Europe)",
-        "short": "Blues Brothers, The"
+        "short": "Blues Brothers, The",
+        "genre": "Platform"
     },
     "AFF0B159": {
         "long": "Brain Drain (USA) (SGB Enhanced)",
-        "short": "Brain Drain"
+        "short": "Brain Drain",
+        "genre": "Puzzle"
     },
     "AD9B300C": {
         "long": "Bubble Bobble (Japan)",
-        "short": "Bubble Bobble"
+        "short": "Bubble Bobble",
+        "genre": "Platform"
     },
     "AD9C17FB": {
         "long": "Castlevania Legends (USA, Europe) (SGB Enhanced)",
-        "short": "Castlevania Legends"
+        "short": "Castlevania Legends",
+        "genre": "Platform"
     },
     "ADB96150": {
         "long": "Catrap (USA)",
-        "short": "Catrap"
+        "short": "Catrap",
+        "genre": "Puzzle"
     },
     "AC6483DC": {
         "long": "DuckTales (Europe)",
-        "short": "DuckTales"
+        "short": "DuckTales",
+        "genre": "Action"
     },
     "AF4A5DE1": {
         "long": "FIFA Soccer 96 (USA, Europe) (En,Fr,De,Es) (SGB Enhanced)",
-        "short": "FIFA Soccer 96"
+        "short": "FIFA Soccer 96",
+        "genre": "Simulation"
     },
     "AC044E9A": {
         "long": "Heisei Tensai Bakabon (Japan)",
-        "short": "Heisei Tensai Bakabon"
+        "short": "Heisei Tensai Bakabon",
+        "genre": "Action"
     },
     "ADFF7BBD": {
         "long": "Hudson Hawk (USA)",
-        "short": "Hudson Hawk"
+        "short": "Hudson Hawk",
+        "genre": "Platform"
     },
     "ADB46F9C": {
         "long": "J.League Winning Goal (Japan)",
-        "short": "J.League Winning Goal"
+        "short": "J.League Winning Goal",
+        "genre": "Sports"
     },
     "AF3D2E95": {
         "long": "Jurassic Park Part 2 - The Chaos Continues (USA, Europe) (En,Fr,De,It)",
-        "short": "Jurassic Park Part 2 - The Chaos Continues"
+        "short": "Jurassic Park Part 2 - The Chaos Continues",
+        "genre": "Platform"
     },
     "AFD8C47C": {
         "long": "Kaisen Game - Navyblue (Japan)",
-        "short": "Kaisen Game - Navyblue"
+        "short": "Kaisen Game - Navyblue",
+        "genre": "Strategy"
     },
     "AC793B54": {
         "long": "Killer Instinct (USA, Europe) (SGB Enhanced)",
-        "short": "Killer Instinct"
+        "short": "Killer Instinct",
+        "genre": "Action"
     },
     "AD376905": {
         "long": "Momotarou Collection (Japan) (SGB Enhanced)",
-        "short": "Momotarou Collection"
+        "short": "Momotarou Collection",
+        "genre": "Compilation"
     },
     "AC5B062D": {
         "long": "Nemesis II (Japan)",
-        "short": "Nemesis II"
+        "short": "Nemesis II",
+        "genre": "Shoot'em Up"
     },
     "AF030940": {
         "long": "Oni V - Oni wo Tsugumono (Japan) (SGB Enhanced)",
-        "short": "Oni V - Oni wo Tsugumono"
+        "short": "Oni V - Oni wo Tsugumono",
+        "genre": "Role-playing (RPG)"
     },
     "AE97EC53": {
         "long": "Parasol Henbee (Japan)",
-        "short": "Parasol Henbee"
+        "short": "Parasol Henbee",
+        "genre": "Action"
     },
     "AFC6A949": {
         "long": "Power Racer (USA)",
-        "short": "Power Racer"
+        "short": "Power Racer",
+        "genre": "Racing"
     },
     "ACC589FC": {
         "long": "Purikura Pocket - Fukanzen Joshikousei Manual (Japan) (SGB Enhanced)",
-        "short": "Purikura Pocket - Fukanzen Joshikousei Manual"
+        "short": "Purikura Pocket - Fukanzen Joshikousei Manual",
+        "genre": "Adventure"
     },
     "AE0122AA": {
         "long": "Red Arremer - Makaimura Gaiden (Japan)",
-        "short": "Red Arremer - Makaimura Gaiden"
+        "short": "Red Arremer - Makaimura Gaiden",
+        "genre": "Platform"
     },
     "AC1FB27A": {
         "long": "Skate or Die - Bad 'N Rad (Europe)",
-        "short": "Skate or Die - Bad 'N Rad"
+        "short": "Skate or Die - Bad 'N Rad",
+        "genre": "Sports"
     },
     "AFEFD085": {
         "long": "Trappers Tengoku - Spy vs Spy (Japan)",
-        "short": "Trappers Tengoku - Spy vs Spy"
+        "short": "Trappers Tengoku - Spy vs Spy",
+        "genre": "Action"
     },
     "ADBC4E0A": {
         "long": "WWF Superstars (USA, Europe)",
-        "short": "WWF Superstars"
+        "short": "WWF Superstars",
+        "genre": "Sports"
     },
     "AE282077": {
         "long": "ZAS (Europe) (Proto)",
-        "short": "ZAS"
+        "short": "ZAS",
+        "genre": "Shoot'em Up"
     },
     "AE13E227": {
         "long": "Zool - Ninja of the 'Nth' Dimension (Europe)",
-        "short": "Zool - Ninja of the 'Nth' Dimension"
+        "short": "Zool - Ninja of the 'Nth' Dimension",
+        "genre": "Platform"
     },
     "AD5A3D6A": {
         "long": "Little Sound Dj (v6.0.1)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

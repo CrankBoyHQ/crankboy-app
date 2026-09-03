@@ -10,7 +10,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 MASK = 0xFC
 
-def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
+def integrate_json_file(all_games_dict, filename, script_dir, data_type_name, genre_label):
     """
     Looks for a local JSON file, parses it, and integrates its contents
     into the all_games_dict.
@@ -20,6 +20,7 @@ def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
         filename (str): The name of the JSON file to process.
         script_dir (str): The directory where the script is located.
         data_type_name (str): A descriptive name for the data being processed (e.g., "homebrew").
+        genre_label (str): Genre to assign to every entry from this file.
     """
     json_file_path = os.path.join(script_dir, filename)
     file_basename = os.path.basename(json_file_path)
@@ -34,6 +35,7 @@ def integrate_json_file(all_games_dict, filename, script_dir, data_type_name):
             added_count = 0
             for crc, data in data_to_integrate.items():
                 if crc.upper() != 'XXXXXXXX':
+                    data.setdefault("genre", genre_label)
                     all_games_dict[crc] = data
                     added_count += 1
                 else:
@@ -95,6 +97,7 @@ def create_split_game_json(mask):
             if entry.strip().startswith('game ('):
                 comment_match = re.search(r'comment\s+\"(.*?)\"', entry)
                 crc_match = re.search(r'crc\s+([A-F0-9]{8})', entry)
+                genre_match = re.search(r'genre\s+\"([^\"]*)\"', entry)
 
                 if comment_match and crc_match:
                     long_title = comment_match.group(1)
@@ -117,16 +120,17 @@ def create_split_game_json(mask):
 
                     all_games_dict[crc] = {
                         "long": long_title,
-                        "short": short_title
+                        "short": short_title,
+                        "genre": genre_match.group(1) if genre_match else ""
                     }
                     processed_count += 1
 
         print(f"  -> Found and processed {processed_count} games from this file.")
 
     # --- LOCAL JSON INTEGRATION ---
-    integrate_json_file(all_games_dict, "homebrew.json", SCRIPT_DIR, "homebrew games")
-    integrate_json_file(all_games_dict, "romhacks.json", SCRIPT_DIR, "romhacks")
-    integrate_json_file(all_games_dict, "lsdj.json", SCRIPT_DIR, "LSDj versions")
+    integrate_json_file(all_games_dict, "homebrew.json", SCRIPT_DIR, "homebrew games", "Homebrew")
+    integrate_json_file(all_games_dict, "romhacks.json", SCRIPT_DIR, "romhacks", "ROM Hack")
+    integrate_json_file(all_games_dict, "lsdj.json", SCRIPT_DIR, "LSDj versions", "Music / Dancing")
 
     # --- FILE SPLITTING AND OUTPUT (00-FF) ---
 

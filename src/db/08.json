@@ -1,174 +1,217 @@
 {
     "0A504426": {
         "long": "4 in 1 + 8 in 1 (World) (4B-007, 4B-008, 8B-004, Sachen) (Unl)",
-        "short": "4 in 1 + 8 in 1"
+        "short": "4 in 1 + 8 in 1",
+        "genre": "Compilation"
     },
     "09EE93A8": {
         "long": "Barbie - Fashion Pack Games (USA, Europe) (GB Compatible)",
-        "short": "Barbie - Fashion Pack Games"
+        "short": "Barbie - Fashion Pack Games",
+        "genre": "Casual Game"
     },
     "0BC7A3C6": {
         "long": "Beast Fighter (Taiwan) (En) (Sachen) (Unl)",
-        "short": "Beast Fighter"
+        "short": "Beast Fighter",
+        "genre": "Action"
     },
     "099D6555": {
         "long": "Catz (Europe)",
-        "short": "Catz"
+        "short": "Catz",
+        "genre": "Simulation"
     },
     "0AA8D0CC": {
         "long": "Dinosaur (Europe) (En,Fr,De,Es,It)",
-        "short": "Dinosaur"
+        "short": "Dinosaur",
+        "genre": "Adventure"
     },
     "0B087FE7": {
         "long": "Dinosaur (USA) (Beta)",
-        "short": "Dinosaur"
+        "short": "Dinosaur",
+        "genre": "Adventure"
     },
     "080605A3": {
         "long": "Donkey Kong Country (USA) (En,Fr,De,Es,It) (Demo) (Kiosk)",
-        "short": "Donkey Kong Country"
+        "short": "Donkey Kong Country",
+        "genre": "Platform"
     },
     "08E3D065": {
         "long": "Doug's Big Game (USA)",
-        "short": "Doug's Big Game"
+        "short": "Doug's Big Game",
+        "genre": "Adventure"
     },
     "086106DE": {
         "long": "E.T. - The Extra-Terrestrial - Escape from Planet Earth (USA)",
-        "short": "E.T. - The Extra-Terrestrial - Escape from Planet Earth"
+        "short": "E.T. - The Extra-Terrestrial - Escape from Planet Earth",
+        "genre": "Adventure"
     },
     "08B9E4AA": {
         "long": "Flipper & Lopaka (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da)",
-        "short": "Flipper & Lopaka"
+        "short": "Flipper & Lopaka",
+        "genre": "Platform"
     },
     "08906220": {
         "long": "Harvest Moon 2 GBC (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Harvest Moon 2 GBC"
+        "short": "Harvest Moon 2 GBC",
+        "genre": "Strategy"
     },
     "0A109F13": {
         "long": "LEGO Racers (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da)",
-        "short": "LEGO Racers"
+        "short": "LEGO Racers",
+        "genre": "Racing"
     },
     "094FFD1E": {
         "long": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou"
+        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou",
+        "genre": "Puzzle"
     },
     "0A421839": {
         "long": "Magical Tetris Challenge (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Magical Tetris Challenge"
+        "short": "Magical Tetris Challenge",
+        "genre": "Puzzle"
     },
     "0AF32BAA": {
         "long": "Mission - Impossible (Europe) (En,Fr,De,Es,It)",
-        "short": "Mission - Impossible"
+        "short": "Mission - Impossible",
+        "genre": "Platform"
     },
     "0BAB7A61": {
         "long": "Muteki Ou Tri-Zenon (Japan)",
-        "short": "Muteki Ou Tri-Zenon"
+        "short": "Muteki Ou Tri-Zenon",
+        "genre": "Adventure"
     },
     "090C7DAC": {
         "long": "NFL Blitz 2000 (USA)",
-        "short": "NFL Blitz 2000"
+        "short": "NFL Blitz 2000",
+        "genre": "Sports"
     },
     "08DC0AF4": {
         "long": "Pocket Color Mahjong (Japan) (GB Compatible)",
-        "short": "Pocket Color Mahjong"
+        "short": "Pocket Color Mahjong",
+        "genre": "Board"
     },
     "0AEA5383": {
         "long": "Pocket Monsters Gin (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket Monsters Gin"
+        "short": "Pocket Monsters Gin",
+        "genre": "Role-playing (RPG)"
     },
     "094494E9": {
         "long": "Razmoket a Paris, Les - Le Film (France)",
-        "short": "Razmoket a Paris, Les - Le Film"
+        "short": "Razmoket a Paris, Les - Le Film",
+        "genre": "Platform"
     },
     "0B6985E4": {
         "long": "Robopon - Sun Version (USA) (Beta) (SGB Enhanced) (GB Compatible)",
-        "short": "Robopon - Sun Version"
+        "short": "Robopon - Sun Version",
+        "genre": "Role-playing (RPG)"
     },
     "0B614307": {
         "long": "RPG Tsukuru GB (Japan)",
-        "short": "RPG Tsukuru GB"
+        "short": "RPG Tsukuru GB",
+        "genre": "Role-playing (RPG)"
     },
     "0B1B928C": {
         "long": "Seme COM Dungeon - Drururuaga (Japan) (GB Compatible)",
-        "short": "Seme COM Dungeon - Drururuaga"
+        "short": "Seme COM Dungeon - Drururuaga",
+        "genre": "Role-playing (RPG)"
     },
     "081D7FCB": {
         "long": "Soukoban Densetsu - Hikari to Yami no Kuni (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Soukoban Densetsu - Hikari to Yami no Kuni"
+        "short": "Soukoban Densetsu - Hikari to Yami no Kuni",
+        "genre": "Action"
     },
     "0A0F9289": {
         "long": "Toki Tori (USA, Europe) (En,Ja,Fr,De,Es)",
-        "short": "Toki Tori"
+        "short": "Toki Tori",
+        "genre": "Action"
     },
     "096D0C27": {
         "long": "Toonsylvania (USA)",
-        "short": "Toonsylvania"
+        "short": "Toonsylvania",
+        "genre": "Platform"
     },
     "0AEAE8FB": {
         "long": "Totsugeki! Papparatai (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Totsugeki! Papparatai"
+        "short": "Totsugeki! Papparatai",
+        "genre": "Strategy"
     },
     "0B9DE1DC": {
         "long": "Adventures of Pinocchio, The (Europe) (Proto)",
-        "short": "Adventures of Pinocchio, The"
+        "short": "Adventures of Pinocchio, The",
+        "genre": "Platform"
     },
     "08727760": {
         "long": "Aoki Densetsu Shoot! (Japan) (SGB Enhanced)",
-        "short": "Aoki Densetsu Shoot!"
+        "short": "Aoki Densetsu Shoot!",
+        "genre": "Sports"
     },
     "086E4FC5": {
         "long": "Aretha II (Japan)",
-        "short": "Aretha II"
+        "short": "Aretha II",
+        "genre": "Role-playing (RPG)"
     },
     "097FFE2C": {
         "long": "Asterix (Europe) (En,Fr,De,Es,It)",
-        "short": "Asterix"
+        "short": "Asterix",
+        "genre": "Platform"
     },
     "0AF905C0": {
         "long": "Dig Dug (Europe)",
-        "short": "Dig Dug"
+        "short": "Dig Dug",
+        "genre": "Action"
     },
     "0AE28712": {
         "long": "Dragonborne (World) (Aftermarket) (Unl)",
-        "short": "Dragonborne"
+        "short": "Dragonborne",
+        "genre": "Role-playing (RPG)"
     },
     "08BF29C9": {
         "long": "Heiankyou Alien (Japan)",
-        "short": "Heiankyou Alien"
+        "short": "Heiankyou Alien",
+        "genre": "Strategy"
     },
     "08725C79": {
         "long": "Jeopardy! (USA)",
-        "short": "Jeopardy!"
+        "short": "Jeopardy!",
+        "genre": "Quiz"
     },
     "0A9859C1": {
         "long": "Ken Griffey Jr. Presents Major League Baseball (USA, Europe) (SGB Enhanced)",
-        "short": "Ken Griffey Jr. Presents Major League Baseball"
+        "short": "Ken Griffey Jr. Presents Major League Baseball",
+        "genre": "Sports"
     },
     "0AB490C8": {
         "long": "Mickey's Chase (Japan)",
-        "short": "Mickey's Chase"
+        "short": "Mickey's Chase",
+        "genre": "Platform"
     },
     "085C4A02": {
         "long": "Pinocchio (Europe)",
-        "short": "Pinocchio"
+        "short": "Pinocchio",
+        "genre": "Platform"
     },
     "0B2071A3": {
         "long": "Robin Hood - Prince of Thieves (Germany)",
-        "short": "Robin Hood - Prince of Thieves"
+        "short": "Robin Hood - Prince of Thieves",
+        "genre": "Action"
     },
     "0B29830A": {
         "long": "Street Fighter II (USA, Europe) (SGB Enhanced)",
-        "short": "Street Fighter II"
+        "short": "Street Fighter II",
+        "genre": "Fighting"
     },
     "0860B667": {
         "long": "Taz-Mania (Europe)",
-        "short": "Taz-Mania"
+        "short": "Taz-Mania",
+        "genre": "Platform"
     },
     "0817AA32": {
         "long": "Velious - Roland no Majuu (Japan)",
-        "short": "Velious - Roland no Majuu"
+        "short": "Velious - Roland no Majuu",
+        "genre": "Action"
     },
     "08557EE2": {
         "long": "Pokémon Kanto Expansion Pak (Red Version) (v1.1)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     }
 }

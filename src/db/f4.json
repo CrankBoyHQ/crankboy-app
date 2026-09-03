@@ -1,230 +1,287 @@
 {
     "F62AD75E": {
         "long": "4x4 World Trophy (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "4x4 World Trophy"
+        "short": "4x4 World Trophy",
+        "genre": "Racing"
     },
     "F625A959": {
         "long": "Antz Racing (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Antz Racing"
+        "short": "Antz Racing",
+        "genre": "Racing"
     },
     "F6D291A9": {
         "long": "Barcode Taisen Bardigun (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Barcode Taisen Bardigun"
+        "short": "Barcode Taisen Bardigun",
+        "genre": "Role-playing (RPG)"
     },
     "F78F7998": {
         "long": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai (Japan)",
-        "short": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai"
+        "short": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai",
+        "genre": "Sports"
     },
     "F4609FE3": {
         "long": "Dinosaur'us (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Dinosaur'us"
+        "short": "Dinosaur'us",
+        "genre": "Platform"
     },
     "F646BD3B": {
         "long": "Dragon Ball Z - Legendaere Superkaempfer (Germany) (Beta 3) (All Unlocked)",
-        "short": "Dragon Ball Z - Legendaere Superkaempfer"
+        "short": "Dragon Ball Z - Legendaere Superkaempfer",
+        "genre": "Role-playing (RPG)"
     },
     "F4041D28": {
         "long": "Dragon Ball Z - Les Guerriers Legendaires (France) (Beta) (All Unlocked)",
-        "short": "Dragon Ball Z - Les Guerriers Legendaires"
+        "short": "Dragon Ball Z - Les Guerriers Legendaires",
+        "genre": "Role-playing (RPG)"
     },
     "F4F5ED18": {
         "long": "F1 Championship Season 2000 (Brazil) (En,Fr,De,Es,It)",
-        "short": "F1 Championship Season 2000"
+        "short": "F1 Championship Season 2000",
+        "genre": "Racing"
     },
     "F48E1643": {
         "long": "Front Line - The Next Mission (Japan)",
-        "short": "Front Line - The Next Mission"
+        "short": "Front Line - The Next Mission",
+        "genre": "Shooter"
     },
     "F520CB19": {
         "long": "Hamster Paradise (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hamster Paradise"
+        "short": "Hamster Paradise",
+        "genre": "Simulation"
     },
     "F519F4C3": {
         "long": "Hands of Time (USA, Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Hands of Time"
+        "short": "Hands of Time",
+        "genre": "Adventure"
     },
     "F6768930": {
         "long": "Hello Kitty no Magical Museum (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hello Kitty no Magical Museum"
+        "short": "Hello Kitty no Magical Museum",
+        "genre": "Puzzle"
     },
     "F7E83313": {
         "long": "John Romero's Daikatana (Europe) (Fr,De,Es)",
-        "short": "John Romero's Daikatana"
+        "short": "John Romero's Daikatana",
+        "genre": "Role-playing (RPG)"
     },
     "F48824FE": {
         "long": "Legend of Zelda, The - Link's Awakening DX (France) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "F6865B09": {
         "long": "LEGO Racers (USA) (En,Fr,Es)",
-        "short": "LEGO Racers"
+        "short": "LEGO Racers",
+        "genre": "Racing"
     },
     "F53CF66C": {
         "long": "Magical Tetris Challenge (USA)",
-        "short": "Magical Tetris Challenge"
+        "short": "Magical Tetris Challenge",
+        "genre": "Puzzle"
     },
     "F40199C9": {
         "long": "Midway Presents Arcade Hits - Moon Patrol & Spy Hunter (USA, Europe) (GB Compatible)",
-        "short": "Midway Presents Arcade Hits - Moon Patrol & Spy Hunter"
+        "short": "Midway Presents Arcade Hits - Moon Patrol & Spy Hunter",
+        "genre": "Compilation"
     },
     "F766015A": {
         "long": "Minna no Shougi - Shokyuu Hen (Japan) (Rev 1) (GB Compatible)",
-        "short": "Minna no Shougi - Shokyuu Hen"
+        "short": "Minna no Shougi - Shokyuu Hen",
+        "genre": "Board"
     },
     "F60A376E": {
         "long": "Monster Traveler (Japan) (Rev 1)",
-        "short": "Monster Traveler"
+        "short": "Monster Traveler",
+        "genre": "Strategy"
     },
     "F4E674BE": {
         "long": "Nakayoshi Cooking Series 5 - Cake o Tsukurou (Japan) (Beta 2)",
-        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou"
+        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou",
+        "genre": "Strategy"
     },
     "F6BAE9A0": {
         "long": "NBA in the Zone (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "NBA in the Zone"
+        "short": "NBA in the Zone",
+        "genre": "Sports"
     },
     "F770878B": {
         "long": "NSYNC - Get to the Show (USA)",
-        "short": "NSYNC - Get to the Show"
+        "short": "NSYNC - Get to the Show",
+        "genre": "Casual Game"
     },
     "F565647F": {
         "long": "Pac-Man - Special Colour Edition (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Pac-Man - Special Colour Edition"
+        "short": "Pac-Man - Special Colour Edition",
+        "genre": "Action"
     },
     "F75E269E": {
         "long": "Pachinko CR Mouretsu Genshijin T (Japan) (GB Compatible)",
-        "short": "Pachinko CR Mouretsu Genshijin T"
+        "short": "Pachinko CR Mouretsu Genshijin T",
+        "genre": "Gambling"
     },
     "F4801F21": {
         "long": "Painter (Europe) (Unl)",
-        "short": "Painter"
+        "short": "Painter",
+        "genre": "Puzzle"
     },
     "F5AB554D": {
         "long": "Pocket Cooking (Japan)",
-        "short": "Pocket Cooking"
+        "short": "Pocket Cooking",
+        "genre": "Strategy"
     },
     "F55CDB79": {
         "long": "Pumuckls Abenteuer bei den Piraten (Germany)",
-        "short": "Pumuckls Abenteuer bei den Piraten"
+        "short": "Pumuckls Abenteuer bei den Piraten",
+        "genre": "Adventure"
     },
     "F6A876A5": {
         "long": "Shadowgate Classic (USA, Europe) (En,Fr,De,Es,Sv) (GB Compatible)",
-        "short": "Shadowgate Classic"
+        "short": "Shadowgate Classic",
+        "genre": "Adventure"
     },
     "F606D369": {
         "long": "Space-Net - Cosmo Blue (Japan)",
-        "short": "Space-Net - Cosmo Blue"
+        "short": "Space-Net - Cosmo Blue",
+        "genre": "Role-playing (RPG)"
     },
     "F6334DC5": {
         "long": "Spider-Man (France)",
-        "short": "Spider-Man"
+        "short": "Spider-Man",
+        "genre": "Platform"
     },
     "F4E91F63": {
         "long": "Super Mario Bros. Deluxe (Japan) (En) (Rev 1) (NP)",
-        "short": "Super Mario Bros. Deluxe"
+        "short": "Super Mario Bros. Deluxe",
+        "genre": "Platform"
     },
     "F660ED94": {
         "long": "Toy Story Racer (Europe) (En,Fr,De)",
-        "short": "Toy Story Racer"
+        "short": "Toy Story Racer",
+        "genre": "Racing"
     },
     "F59DAA99": {
         "long": "Woody Woodpecker no Go! Go! Racing (Japan)",
-        "short": "Woody Woodpecker no Go! Go! Racing"
+        "short": "Woody Woodpecker no Go! Go! Racing",
+        "genre": "Racing"
     },
     "F46F0CED": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Beta) (1998-06-30) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "F4310EB3": {
         "long": "4 in 1 (Europe) (4B-005, Sachen-Commin) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "F6FD275E": {
         "long": "Aerostar (USA, Europe)",
-        "short": "Aerostar"
+        "short": "Aerostar",
+        "genre": "Action"
     },
     "F7BE0002": {
         "long": "Blades of Steel (Europe)",
-        "short": "Blades of Steel"
+        "short": "Blades of Steel",
+        "genre": "Sports"
     },
     "F658B7A7": {
         "long": "Bomberman GB 3 (Japan) (SGB Enhanced)",
-        "short": "Bomberman GB 3"
+        "short": "Bomberman GB 3",
+        "genre": "Action"
     },
     "F58DC358": {
         "long": "Dodge Boy (Japan)",
-        "short": "Dodge Boy"
+        "short": "Dodge Boy",
+        "genre": "Sports"
     },
     "F777A5D8": {
         "long": "Donkey Kong (World) (Rev 1) (SGB Enhanced)",
-        "short": "Donkey Kong"
+        "short": "Donkey Kong",
+        "genre": "Platform"
     },
     "F54158A6": {
         "long": "Elite Soccer (USA) (SGB Enhanced)",
-        "short": "Elite Soccer"
+        "short": "Elite Soccer",
+        "genre": "Sports"
     },
     "F53F7F00": {
         "long": "Felix the Cat (USA, Europe)",
-        "short": "Felix the Cat"
+        "short": "Felix the Cat",
+        "genre": "Platform"
     },
     "F5657FCE": {
         "long": "Game Boy Controller Kensa Cartridge (Japan)",
-        "short": "Game Boy Controller Kensa Cartridge"
+        "short": "Game Boy Controller Kensa Cartridge",
+        "genre": "Strategy"
     },
     "F5D364DB": {
         "long": "Game Boy Wars (Japan)",
-        "short": "Game Boy Wars"
+        "short": "Game Boy Wars",
+        "genre": "Strategy"
     },
     "F6B3E291": {
         "long": "Konchuu Hakase (Japan) (SGB Enhanced)",
-        "short": "Konchuu Hakase"
+        "short": "Konchuu Hakase",
+        "genre": "Strategy"
     },
     "F7C59F5C": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (Proto) (1998-11-16)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "F4CAB596": {
         "long": "Medarot - Parts Collection (Japan) (SGB Enhanced)",
-        "short": "Medarot - Parts Collection"
+        "short": "Medarot - Parts Collection",
+        "genre": "Role-playing (RPG)"
     },
     "F4031D4C": {
         "long": "Nettou Real Bout Garou Densetsu Special (Japan) (SGB Enhanced)",
-        "short": "Nettou Real Bout Garou Densetsu Special"
+        "short": "Nettou Real Bout Garou Densetsu Special",
+        "genre": "Fighting"
     },
     "F54EC8EB": {
         "long": "Onigashima Pachinkoten (Japan)",
-        "short": "Onigashima Pachinkoten"
+        "short": "Onigashima Pachinkoten",
+        "genre": "Gambling"
     },
     "F5AA5902": {
         "long": "Picross 2 (Japan) (SGB Enhanced)",
-        "short": "Picross 2"
+        "short": "Picross 2",
+        "genre": "Puzzle"
     },
     "F59CEDEA": {
         "long": "Pipe Dream (USA)",
-        "short": "Pipe Dream"
+        "short": "Pipe Dream",
+        "genre": "Puzzle"
     },
     "F738D4D1": {
         "long": "Primal Rage (USA, Europe) (Beta)",
-        "short": "Primal Rage"
+        "short": "Primal Rage",
+        "genre": "Action"
     },
     "F6CFCFB1": {
         "long": "Sa-Ga 2 - Hihou Densetsu (Japan) (Rev 1)",
-        "short": "Sa-Ga 2 - Hihou Densetsu"
+        "short": "Sa-Ga 2 - Hihou Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "F7A961BA": {
         "long": "Spiritual Warfare (USA) (Unl)",
-        "short": "Spiritual Warfare"
+        "short": "Spiritual Warfare",
+        "genre": "Adventure"
     },
     "F7E1C9C5": {
         "long": "Uoozu (Japan)",
-        "short": "Uoozu"
+        "short": "Uoozu",
+        "genre": "Action"
     },
     "F6826D12": {
         "long": "Wizardry Gaiden II - Kodai Koutei no Noroi (Japan)",
-        "short": "Wizardry Gaiden II - Kodai Koutei no Noroi"
+        "short": "Wizardry Gaiden II - Kodai Koutei no Noroi",
+        "genre": "Role-playing (RPG)"
     },
     "F5F41544": {
         "long": "Little Sound Dj (v4.5.4)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

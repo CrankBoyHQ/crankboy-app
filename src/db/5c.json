@@ -1,166 +1,207 @@
 {
     "5DFFF5E2": {
         "long": "AirForce Delta (Japan)",
-        "short": "AirForce Delta"
+        "short": "AirForce Delta",
+        "genre": "Simulation"
     },
     "5E46D64A": {
         "long": "Barbie - Meeres Abenteuer (Germany) (GB Compatible)",
-        "short": "Barbie - Meeres Abenteuer"
+        "short": "Barbie - Meeres Abenteuer",
+        "genre": "Action"
     },
     "5CCB66CF": {
         "long": "Bomberman Max - Blue Champion (USA)",
-        "short": "Bomberman Max - Blue Champion"
+        "short": "Bomberman Max - Blue Champion",
+        "genre": "Action"
     },
     "5FE759C7": {
         "long": "Bouken! Dondoko Shima (Japan)",
-        "short": "Bouken! Dondoko Shima"
+        "short": "Bouken! Dondoko Shima",
+        "genre": "Simulation"
     },
     "5D5D294A": {
         "long": "Brave Saga - Shinshou Astaria (Japan)",
-        "short": "Brave Saga - Shinshou Astaria"
+        "short": "Brave Saga - Shinshou Astaria",
+        "genre": "Role-playing (RPG)"
     },
     "5EDD88B5": {
         "long": "Casper (USA) (Rev 1) (Proto)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "5E312730": {
         "long": "Daikaijuu Monogatari - Poyon no Dungeon Room 2 (Japan)",
-        "short": "Daikaijuu Monogatari - Poyon no Dungeon Room 2"
+        "short": "Daikaijuu Monogatari - Poyon no Dungeon Room 2",
+        "genre": "Action"
     },
     "5DC254D1": {
         "long": "Doug's Big Game (Germany)",
-        "short": "Doug's Big Game"
+        "short": "Doug's Big Game",
+        "genre": "Adventure"
     },
     "5C0E7B44": {
         "long": "Extreme Sports with the Berenstain Bears (USA, Europe) (En,Fr,De,Es,It)",
-        "short": "Extreme Sports with the Berenstain Bears"
+        "short": "Extreme Sports with the Berenstain Bears",
+        "genre": "Sports"
     },
     "5E24811E": {
         "long": "F-1 World Grand Prix (Japan) (En) (Beta 2)",
-        "short": "F-1 World Grand Prix"
+        "short": "F-1 World Grand Prix",
+        "genre": "Racing"
     },
     "5E3844FB": {
         "long": "F.A. Premier League Stars 2001, The (Europe)",
-        "short": "F.A. Premier League Stars 2001, The"
+        "short": "F.A. Premier League Stars 2001, The",
+        "genre": "Sports"
     },
     "5C10315E": {
         "long": "F1 Championship Season 2000 (Europe) (En,Fr,De,Es,It)",
-        "short": "F1 Championship Season 2000"
+        "short": "F1 Championship Season 2000",
+        "genre": "Racing"
     },
     "5DFC61E8": {
         "long": "Fix & Foxi - Episode 1 - Lupo (Europe) (En,Fr,De)",
-        "short": "Fix & Foxi - Episode 1 - Lupo"
+        "short": "Fix & Foxi - Episode 1 - Lupo",
+        "genre": "Platform"
     },
     "5EA0796B": {
         "long": "Lemmings (Europe) (Proto)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Puzzle"
     },
     "5EEE76C4": {
         "long": "Logical (Europe)",
-        "short": "Logical"
+        "short": "Logical",
+        "genre": "Puzzle"
     },
     "5D85DFAD": {
         "long": "Looney Tunes Collector - Martian Alert! (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Looney Tunes Collector - Martian Alert!"
+        "short": "Looney Tunes Collector - Martian Alert!",
+        "genre": "Action"
     },
     "5DD337EB": {
         "long": "Micro Machines 1 and 2 - Twin Turbo (USA, Europe)",
-        "short": "Micro Machines 1 and 2 - Twin Turbo"
+        "short": "Micro Machines 1 and 2 - Twin Turbo",
+        "genre": "Racing"
     },
     "5CB4FC8A": {
         "long": "Minna no Shougi - Shokyuu Hen (Japan) (GB Compatible)",
-        "short": "Minna no Shougi - Shokyuu Hen"
+        "short": "Minna no Shougi - Shokyuu Hen",
+        "genre": "Board"
     },
     "5D596CF6": {
         "long": "Monster Traveler (Japan)",
-        "short": "Monster Traveler"
+        "short": "Monster Traveler",
+        "genre": "Strategy"
     },
     "5C260D5A": {
         "long": "Oddworld Adventures 2 (USA) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Oddworld Adventures 2"
+        "short": "Oddworld Adventures 2",
+        "genre": "Platform"
     },
     "5C201286": {
         "long": "Razor Freestyle Scooter (USA)",
-        "short": "Razor Freestyle Scooter"
+        "short": "Razor Freestyle Scooter",
+        "genre": "Sports"
     },
     "5D39A9B0": {
         "long": "Sabrina - The Animated Series - Zapped! (USA, Europe)",
-        "short": "Sabrina - The Animated Series - Zapped!"
+        "short": "Sabrina - The Animated Series - Zapped!",
+        "genre": "Platform"
     },
     "5E4266A7": {
         "long": "Super Mario Special 3 (Taiwan) (En) (Unl)",
-        "short": "Super Mario Special 3"
+        "short": "Super Mario Special 3",
+        "genre": "Platform"
     },
     "5CE00547": {
         "long": "Test Drive 6 (USA) (GB Compatible)",
-        "short": "Test Drive 6"
+        "short": "Test Drive 6",
+        "genre": "Racing"
     },
     "5FC6BEC0": {
         "long": "Tom and Jerry - Mouse Hunt (USA) (En,Fr,Es)",
-        "short": "Tom and Jerry - Mouse Hunt"
+        "short": "Tom and Jerry - Mouse Hunt",
+        "genre": "Action"
     },
     "5FF6B852": {
         "long": "Watashi no Restaurant (Japan) (Beta 1)",
-        "short": "Watashi no Restaurant"
+        "short": "Watashi no Restaurant",
+        "genre": "Strategy"
     },
     "5E438DB8": {
         "long": "4 in 1 (Europe) (4B-002, Sachen) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "5D461374": {
         "long": "Adventures of Star Saver, The (USA, Europe)",
-        "short": "Adventures of Star Saver, The"
+        "short": "Adventures of Star Saver, The",
+        "genre": "Platform"
     },
     "5CC01586": {
         "long": "Alleyway (World)",
-        "short": "Alleyway"
+        "short": "Alleyway",
+        "genre": "Action"
     },
     "5C69E449": {
         "long": "Battle Bull (Japan)",
-        "short": "Battle Bull"
+        "short": "Battle Bull",
+        "genre": "Action"
     },
     "5E8F656A": {
         "long": "Bill & Ted's Excellent Game Boy Adventure - A Bogus Journey! (USA, Europe)",
-        "short": "Bill & Ted's Excellent Game Boy Adventure - A Bogus Journey!"
+        "short": "Bill & Ted's Excellent Game Boy Adventure - A Bogus Journey!",
+        "genre": "Adventure"
     },
     "5E2E4E19": {
         "long": "Choplifter II - Rescue & Survive (Europe)",
-        "short": "Choplifter II - Rescue & Survive"
+        "short": "Choplifter II - Rescue & Survive",
+        "genre": "Shooter"
     },
     "5E4A61D3": {
         "long": "HAL Wrestling (USA)",
-        "short": "HAL Wrestling"
+        "short": "HAL Wrestling",
+        "genre": "Sports"
     },
     "5DA86ED4": {
         "long": "Joe & Mac (USA)",
-        "short": "Joe & Mac"
+        "short": "Joe & Mac",
+        "genre": "Platform"
     },
     "5E77E82E": {
         "long": "Medarot - Kuwagata Version (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Medarot - Kuwagata Version"
+        "short": "Medarot - Kuwagata Version",
+        "genre": "Role-playing (RPG)"
     },
     "5E90CB48": {
         "long": "Mega Man II (Europe)",
-        "short": "Mega Man II"
+        "short": "Mega Man II",
+        "genre": "Platform"
     },
     "5E1C3E8D": {
         "long": "New Chessmaster, The (Japan) (En,Ja)",
-        "short": "New Chessmaster, The"
+        "short": "New Chessmaster, The",
+        "genre": "Board"
     },
     "5E8F955E": {
         "long": "Splitz (Europe) (Beta)",
-        "short": "Splitz"
+        "short": "Splitz",
+        "genre": "Puzzle"
     },
     "5D8DEB5B": {
         "long": "Star Wars (USA, Europe) (Rev 1)",
-        "short": "Star Wars"
+        "short": "Star Wars",
+        "genre": "Platform"
     },
     "5EE45A4D": {
         "long": "Tetris Attack (USA, Europe) (Rev 1) (SGB Enhanced)",
-        "short": "Tetris Attack"
+        "short": "Tetris Attack",
+        "genre": "Action"
     },
     "5D2BD778": {
         "long": "Tintin in Tibet (Europe) (En,Fr,De,Nl) (SGB Enhanced)",
-        "short": "Tintin in Tibet"
+        "short": "Tintin in Tibet",
+        "genre": "Platform"
     }
 }

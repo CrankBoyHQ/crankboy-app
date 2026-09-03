@@ -1,202 +1,252 @@
 {
     "D0D3DFED": {
         "long": "Adventures of the Smurfs, The (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Adventures of the Smurfs, The"
+        "short": "Adventures of the Smurfs, The",
+        "genre": "Adventure"
     },
     "D33D6F7B": {
         "long": "Backgammon (Europe) (En,Fr,De,Es) (GB Compatible)",
-        "short": "Backgammon"
+        "short": "Backgammon",
+        "genre": "Board"
     },
     "D2AF64CE": {
         "long": "Balloon Fight GB (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Balloon Fight GB"
+        "short": "Balloon Fight GB",
+        "genre": "Platform"
     },
     "D2CC40C2": {
         "long": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai (Japan) (Rev 1) (Proto)",
-        "short": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai"
+        "short": "Cardcaptor Sakura - Tomoeda Shougakkou Daiundoukai",
+        "genre": "Sports"
     },
     "D20DC670": {
         "long": "Caterpillar Construction Zone (USA, Europe) (GB Compatible)",
-        "short": "Caterpillar Construction Zone"
+        "short": "Caterpillar Construction Zone",
+        "genre": "Simulation"
     },
     "D10B5645": {
         "long": "Command Master (Japan)",
-        "short": "Command Master"
+        "short": "Command Master",
+        "genre": "Role-playing (RPG)"
     },
     "D24D6601": {
         "long": "Dexter's Laboratory - Robot Rampage (USA, Europe)",
-        "short": "Dexter's Laboratory - Robot Rampage"
+        "short": "Dexter's Laboratory - Robot Rampage",
+        "genre": "Platform"
     },
     "D187CEC4": {
         "long": "Doraemon Memories - Nobita no Omoide Daibouken (Japan) (GB Compatible)",
-        "short": "Doraemon Memories - Nobita no Omoide Daibouken"
+        "short": "Doraemon Memories - Nobita no Omoide Daibouken",
+        "genre": "Platform"
     },
     "D263D88D": {
         "long": "Dragon Quest Monsters - Terry no Wonderland (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters - Terry no Wonderland"
+        "short": "Dragon Quest Monsters - Terry no Wonderland",
+        "genre": "Role-playing (RPG)"
     },
     "D3896652": {
         "long": "Harvest Moon GB (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Harvest Moon GB"
+        "short": "Harvest Moon GB",
+        "genre": "Simulation"
     },
     "D23C6A75": {
         "long": "Hunter x Hunter - Kindan no Hihou (Japan)",
-        "short": "Hunter x Hunter - Kindan no Hihou"
+        "short": "Hunter x Hunter - Kindan no Hihou",
+        "genre": "Action"
     },
     "D390430E": {
         "long": "Konchuu Hakase 2 (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Konchuu Hakase 2"
+        "short": "Konchuu Hakase 2",
+        "genre": "Role-playing (RPG)"
     },
     "D2D88CFA": {
         "long": "Microsoft - The Best of Entertainment Pack (USA)",
-        "short": "Microsoft - The Best of Entertainment Pack"
+        "short": "Microsoft - The Best of Entertainment Pack",
+        "genre": "Compilation"
     },
     "D06BBA96": {
         "long": "Pokémon Puzzle Challenge (USA, Australia)",
-        "short": "Pokémon Puzzle Challenge"
+        "short": "Pokémon Puzzle Challenge",
+        "genre": "Puzzle"
     },
     "D1A65D74": {
         "long": "Revelations - The Demon Slayer (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Revelations - The Demon Slayer"
+        "short": "Revelations - The Demon Slayer",
+        "genre": "Role-playing (RPG)"
     },
     "D0204F10": {
         "long": "Ronaldo V-Soccer (USA) (En,Fr,Es,Pt) (GB Compatible)",
-        "short": "Ronaldo V-Soccer"
+        "short": "Ronaldo V-Soccer",
+        "genre": "Sports"
     },
     "D337F450": {
         "long": "Shadowgate Classic (Europe) (En,Fr,De,Es,Sv) (Rev 1) (GB Compatible)",
-        "short": "Shadowgate Classic"
+        "short": "Shadowgate Classic",
+        "genre": "Adventure"
     },
     "D088EEFD": {
         "long": "Snoopy Tennis (Japan)",
-        "short": "Snoopy Tennis"
+        "short": "Snoopy Tennis",
+        "genre": "Sports"
     },
     "D24E592D": {
         "long": "Super Robot Taisen - Link Battler (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Super Robot Taisen - Link Battler"
+        "short": "Super Robot Taisen - Link Battler",
+        "genre": "Strategy"
     },
     "D1A188DC": {
         "long": "Vigilante 8 (USA) (Rumble Version)",
-        "short": "Vigilante 8"
+        "short": "Vigilante 8",
+        "genre": "Racing"
     },
     "D229AC62": {
         "long": "A-mazing Tater (USA)",
-        "short": "A-mazing Tater"
+        "short": "A-mazing Tater",
+        "genre": "Strategy"
     },
     "D06B3F8A": {
         "long": "Arcade Classic No. 3 - Galaga & Galaxian (Europe) (SGB Enhanced)",
-        "short": "Arcade Classic No. 3 - Galaga & Galaxian"
+        "short": "Arcade Classic No. 3 - Galaga & Galaxian",
+        "genre": "Compilation"
     },
     "D1C3F371": {
         "long": "Bakenou TV '94 (Japan) (SGB Enhanced)",
-        "short": "Bakenou TV '94"
+        "short": "Bakenou TV '94",
+        "genre": "Sports with Animals"
     },
     "D37A2FDF": {
         "long": "Bases Loaded (USA)",
-        "short": "Bases Loaded"
+        "short": "Bases Loaded",
+        "genre": "Sports"
     },
     "D3E2FD02": {
         "long": "Bokujou Monogatari GB (Japan) (SGB Enhanced)",
-        "short": "Bokujou Monogatari GB"
+        "short": "Bokujou Monogatari GB",
+        "genre": "Simulation"
     },
     "D2DBEA8F": {
         "long": "Bugs Bunny Collection (Japan) (SGB Enhanced)",
-        "short": "Bugs Bunny Collection"
+        "short": "Bugs Bunny Collection",
+        "genre": "Action"
     },
     "D05F4C90": {
         "long": "Card Game (Japan)",
-        "short": "Card Game"
+        "short": "Card Game",
+        "genre": "Card"
     },
     "D3168ECA": {
         "long": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700 (Japan) (Imagineer)",
-        "short": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700"
+        "short": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700",
+        "genre": "Educational"
     },
     "D016D141": {
         "long": "Jetsons, The - Robot Panic (Japan) (Proto)",
-        "short": "Jetsons, The - Robot Panic"
+        "short": "Jetsons, The - Robot Panic",
+        "genre": "Platform"
     },
     "D2D648C4": {
         "long": "King of the Zoo (Europe)",
-        "short": "King of the Zoo"
+        "short": "King of the Zoo",
+        "genre": "Sports"
     },
     "D14DEE07": {
         "long": "Konamic Ice Hockey (Japan)",
-        "short": "Konamic Ice Hockey"
+        "short": "Konamic Ice Hockey",
+        "genre": "Sports"
     },
     "D19CF413": {
         "long": "Little Mermaid, The (Spain) (Proto)",
-        "short": "Little Mermaid, The"
+        "short": "Little Mermaid, The",
+        "genre": "Platform"
     },
     "D2585BBB": {
         "long": "Madden 95 (USA, Europe) (SGB Enhanced)",
-        "short": "Madden 95"
+        "short": "Madden 95",
+        "genre": "Sports"
     },
     "D12AC4FE": {
         "long": "Mega Man V (Europe) (SGB Enhanced)",
-        "short": "Mega Man V"
+        "short": "Mega Man V",
+        "genre": "Platform"
     },
     "D03E59AA": {
         "long": "Mr. Chin's Gourmet Paradise (USA)",
-        "short": "Mr. Chin's Gourmet Paradise"
+        "short": "Mr. Chin's Gourmet Paradise",
+        "genre": "Platform"
     },
     "D2BE3397": {
         "long": "Ninja Ryuuken Den - Matenrou Kessen (Japan)",
-        "short": "Ninja Ryuuken Den - Matenrou Kessen"
+        "short": "Ninja Ryuuken Den - Matenrou Kessen",
+        "genre": "Platform"
     },
     "D3741A3A": {
         "long": "Ninja Gaiden Shadow (USA)",
-        "short": "Ninja Gaiden Shadow"
+        "short": "Ninja Gaiden Shadow",
+        "genre": "Platform"
     },
     "D000A116": {
         "long": "Panel Action Bingo (USA)",
-        "short": "Panel Action Bingo"
+        "short": "Panel Action Bingo",
+        "genre": "Card"
     },
     "D0040F49": {
         "long": "Peetan (Japan)",
-        "short": "Peetan"
+        "short": "Peetan",
+        "genre": "Puzzle"
     },
     "D03426E9": {
         "long": "Pokémon - Version Jaune - Edition Speciale Pikachu (France) (CGB+SGB Enhanced)",
-        "short": "Pokémon - Version Jaune - Edition Speciale Pikachu"
+        "short": "Pokémon - Version Jaune - Edition Speciale Pikachu",
+        "genre": "Role-playing (RPG)"
     },
     "D07DB274": {
         "long": "Pop'n TwinBee (Europe)",
-        "short": "Pop'n TwinBee"
+        "short": "Pop'n TwinBee",
+        "genre": "Action"
     },
     "D145EA23": {
         "long": "Purikura Pocket 2 - Kareshi Kaizou Daisakusen (Japan) (SGB Enhanced)",
-        "short": "Purikura Pocket 2 - Kareshi Kaizou Daisakusen"
+        "short": "Purikura Pocket 2 - Kareshi Kaizou Daisakusen",
+        "genre": "Adventure"
     },
     "D09073F6": {
         "long": "Selection II - Ankoku no Fuuin (Japan)",
-        "short": "Selection II - Ankoku no Fuuin"
+        "short": "Selection II - Ankoku no Fuuin",
+        "genre": "Role-playing (RPG)"
     },
     "D0E0116F": {
         "long": "Speedball 2 - Brutal Deluxe (Japan) (En)",
-        "short": "Speedball 2 - Brutal Deluxe"
+        "short": "Speedball 2 - Brutal Deluxe",
+        "genre": "Sports"
     },
     "D29DDC91": {
         "long": "TaleSpin (Europe)",
-        "short": "TaleSpin"
+        "short": "TaleSpin",
+        "genre": "Shoot'em Up"
     },
     "D3904BE9": {
         "long": "Tiny Toon Adventures - Wacky Sports (USA)",
-        "short": "Tiny Toon Adventures - Wacky Sports"
+        "short": "Tiny Toon Adventures - Wacky Sports",
+        "genre": "Sports"
     },
     "D34287CC": {
         "long": "Toy Story (USA) (SGB Enhanced)",
-        "short": "Toy Story"
+        "short": "Toy Story",
+        "genre": "Platform"
     },
     "D2F94181": {
         "long": "Ultima - Ushinawareta Runes (Japan)",
-        "short": "Ultima - Ushinawareta Runes"
+        "short": "Ultima - Ushinawareta Runes",
+        "genre": "Role-playing (RPG)"
     },
     "D149652B": {
         "long": "V-Rally - Championship Edition (Europe) (En,Fr,De)",
-        "short": "V-Rally - Championship Edition"
+        "short": "V-Rally - Championship Edition",
+        "genre": "Racing"
     },
     "D04EE61D": {
         "long": "Little Sound Dj (v5.0.3)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

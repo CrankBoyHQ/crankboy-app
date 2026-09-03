@@ -1,186 +1,232 @@
 {
     "67C7F85C": {
         "long": "Antz World Sportz (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Antz World Sportz"
+        "short": "Antz World Sportz",
+        "genre": "Sports"
     },
     "6628CDEE": {
         "long": "Asterix & Obelix (Europe) (En,Fr,De,Es)",
-        "short": "Asterix & Obelix"
+        "short": "Asterix & Obelix",
+        "genre": "Platform"
     },
     "65610CA4": {
         "long": "Choro Q - Hyper Customable GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Choro Q - Hyper Customable GB"
+        "short": "Choro Q - Hyper Customable GB",
+        "genre": "Role-playing (RPG)"
     },
     "66B83E3A": {
         "long": "Dragon Quest Monsters - Terry no Wonderland (Japan) (Rev 1) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Dragon Quest Monsters - Terry no Wonderland"
+        "short": "Dragon Quest Monsters - Terry no Wonderland",
+        "genre": "Role-playing (RPG)"
     },
     "649E8D97": {
         "long": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi"
+        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Ruka no Tabidachi",
+        "genre": "Role-playing (RPG)"
     },
     "644BAC84": {
         "long": "Harley-Davidson Motor Cycles - Race Across America (USA)",
-        "short": "Harley-Davidson Motor Cycles - Race Across America"
+        "short": "Harley-Davidson Motor Cycles - Race Across America",
+        "genre": "Racing"
     },
     "666D2A75": {
         "long": "Jeremy McGrath Supercross 2000 (Japan) (En) (NP)",
-        "short": "Jeremy McGrath Supercross 2000"
+        "short": "Jeremy McGrath Supercross 2000",
+        "genre": "Racing"
     },
     "6427CD7A": {
         "long": "Kidou Senkan Nadesico - Ruri Ruri Mahjong (Japan)",
-        "short": "Kidou Senkan Nadesico - Ruri Ruri Mahjong"
+        "short": "Kidou Senkan Nadesico - Ruri Ruri Mahjong",
+        "genre": "Board"
     },
     "65DA9075": {
         "long": "Klustar (Japan) (Proto 2) (1999-09-28) (GB Compatible)",
-        "short": "Klustar"
+        "short": "Klustar",
+        "genre": "Puzzle"
     },
     "66792CDE": {
         "long": "Looney Tunes Racing (USA) (En,Fr,De,Es,It,Nl)",
-        "short": "Looney Tunes Racing"
+        "short": "Looney Tunes Racing",
+        "genre": "Racing"
     },
     "66328695": {
         "long": "McDonald's Monogatari - Honobono Tenchou Ikusei Game (Japan)",
-        "short": "McDonald's Monogatari - Honobono Tenchou Ikusei Game"
+        "short": "McDonald's Monogatari - Honobono Tenchou Ikusei Game",
+        "genre": "Adventure"
     },
     "65B8B343": {
         "long": "Men in Black - The Series (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Men in Black - The Series"
+        "short": "Men in Black - The Series",
+        "genre": "Platform"
     },
     "659693DE": {
         "long": "Montezuma's Return! (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Montezuma's Return!"
+        "short": "Montezuma's Return!",
+        "genre": "Action"
     },
     "64052B9B": {
         "long": "Mummy Returns, The (Europe) (En,Fr,De,Es,It)",
-        "short": "Mummy Returns, The"
+        "short": "Mummy Returns, The",
+        "genre": "Platform"
     },
     "67350BC9": {
         "long": "Puyo Puyo Gaiden - Puyo Wars (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Puyo Puyo Gaiden - Puyo Wars"
+        "short": "Puyo Puyo Gaiden - Puyo Wars",
+        "genre": "Strategy"
     },
     "6467FBA0": {
         "long": "Roi Lion, Le - La Formidable Aventure de Simba (France)",
-        "short": "Roi Lion, Le - La Formidable Aventure de Simba"
+        "short": "Roi Lion, Le - La Formidable Aventure de Simba",
+        "genre": "Platform"
     },
     "6555B740": {
         "long": "Sanrio Timenet - Kako Hen (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Sanrio Timenet - Kako Hen"
+        "short": "Sanrio Timenet - Kako Hen",
+        "genre": "Role-playing (RPG)"
     },
     "64B479FA": {
         "long": "Shougi 3 (Japan) (GB Compatible)",
-        "short": "Shougi 3"
+        "short": "Shougi 3",
+        "genre": "Board"
     },
     "6606382C": {
         "long": "Superman - Battle for Metropolis (Europe) (Proto) (2001-01-12) (GB Compatible)",
-        "short": "Superman - Battle for Metropolis"
+        "short": "Superman - Battle for Metropolis",
+        "genre": "Demo"
     },
     "6573B88F": {
         "long": "Toonsylvania (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Toonsylvania"
+        "short": "Toonsylvania",
+        "genre": "Platform"
     },
     "6775B29E": {
         "long": "World Soccer GB 2000 (Japan)",
-        "short": "World Soccer GB 2000"
+        "short": "World Soccer GB 2000",
+        "genre": "Sports"
     },
     "66FDA365": {
         "long": "Worms Armageddon (Europe) (Beta)",
-        "short": "Worms Armageddon"
+        "short": "Worms Armageddon",
+        "genre": "Strategy"
     },
     "64F4FA44": {
         "long": "Adventure Island (USA, Europe)",
-        "short": "Adventure Island"
+        "short": "Adventure Island",
+        "genre": "Platform"
     },
     "673C815D": {
         "long": "Animaniacs (USA) (SGB Enhanced)",
-        "short": "Animaniacs"
+        "short": "Animaniacs",
+        "genre": "Platform"
     },
     "644AEC3E": {
         "long": "Boulder Dash (Europe)",
-        "short": "Boulder Dash"
+        "short": "Boulder Dash",
+        "genre": "Action"
     },
     "67A45D19": {
         "long": "Chase H.Q. (USA, Europe)",
-        "short": "Chase H.Q."
+        "short": "Chase H.Q.",
+        "genre": "Racing"
     },
     "659E2283": {
         "long": "Dexterity (USA, Europe)",
-        "short": "Dexterity"
+        "short": "Dexterity",
+        "genre": "Puzzle"
     },
     "652B3CA4": {
         "long": "Doraemon no Study Boy 1 - Shou 1 Kokugo Kanji (Japan)",
-        "short": "Doraemon no Study Boy 1 - Shou 1 Kokugo Kanji"
+        "short": "Doraemon no Study Boy 1 - Shou 1 Kokugo Kanji",
+        "genre": "Educational"
     },
     "65DFABCB": {
         "long": "Go! Go! Tank (USA)",
-        "short": "Go! Go! Tank"
+        "short": "Go! Go! Tank",
+        "genre": "Strategy"
     },
     "6765B61B": {
         "long": "Hook (USA)",
-        "short": "Hook"
+        "short": "Hook",
+        "genre": "Platform"
     },
     "67998FA4": {
         "long": "Hugo 2 (Germany)",
-        "short": "Hugo 2"
+        "short": "Hugo 2",
+        "genre": "Platform"
     },
     "654988B2": {
         "long": "Jack Nicklaus Golf (USA, Europe)",
-        "short": "Jack Nicklaus Golf"
+        "short": "Jack Nicklaus Golf",
+        "genre": "Sports"
     },
     "675E1309": {
         "long": "Lamborghini American Challenge (USA, Europe)",
-        "short": "Lamborghini American Challenge"
+        "short": "Lamborghini American Challenge",
+        "genre": "Racing"
     },
     "67044675": {
         "long": "Lunar Chase (USA) (Proto 2)",
-        "short": "Lunar Chase"
+        "short": "Lunar Chase",
+        "genre": "Action"
     },
     "66E708FC": {
         "long": "Monster Maker 2 - Uru no Hiken (Japan)",
-        "short": "Monster Maker 2 - Uru no Hiken"
+        "short": "Monster Maker 2 - Uru no Hiken",
+        "genre": "Role-playing (RPG)"
     },
     "64C06D94": {
         "long": "Ninja Boy 2 (USA, Europe)",
-        "short": "Ninja Boy 2"
+        "short": "Ninja Boy 2",
+        "genre": "Adventure"
     },
     "6510C0E2": {
         "long": "Oddworld Adventures (USA, Europe)",
-        "short": "Oddworld Adventures"
+        "short": "Oddworld Adventures",
+        "genre": "Platform"
     },
     "64D13A6D": {
         "long": "Othello World (Japan) (SGB Enhanced)",
-        "short": "Othello World"
+        "short": "Othello World",
+        "genre": "Board"
     },
     "65998F48": {
         "long": "Pac-Man (Japan)",
-        "short": "Pac-Man"
+        "short": "Pac-Man",
+        "genre": "Action"
     },
     "6775CCD6": {
         "long": "Race Drivin' (USA, Europe)",
-        "short": "Race Drivin'"
+        "short": "Race Drivin'",
+        "genre": "Racing"
     },
     "64A667A3": {
         "long": "Teenage Mutant Ninja Turtles 2 (Japan) (En) (Beta) (1991-05-20)",
-        "short": "Teenage Mutant Ninja Turtles 2"
+        "short": "Teenage Mutant Ninja Turtles 2",
+        "genre": "Platform"
     },
     "679B6530": {
         "long": "Tesserae (Europe) (En,Fr,De,Es,It)",
-        "short": "Tesserae"
+        "short": "Tesserae",
+        "genre": "Puzzle"
     },
     "6403AF06": {
         "long": "Tsumeshougi - Mondai Teikyou Shougi Sekai (Japan)",
-        "short": "Tsumeshougi - Mondai Teikyou Shougi Sekai"
+        "short": "Tsumeshougi - Mondai Teikyou Shougi Sekai",
+        "genre": "Board"
     },
     "67303954": {
         "long": "World Heroes 2 Jet (USA, Europe) (SGB Enhanced)",
-        "short": "World Heroes 2 Jet"
+        "short": "World Heroes 2 Jet",
+        "genre": "Fighting"
     },
     "642C7EBE": {
         "long": "Zen - Intergalactic Ninja (Europe)",
-        "short": "Zen - Intergalactic Ninja"
+        "short": "Zen - Intergalactic Ninja",
+        "genre": "Platform"
     },
     "64AEFBA3": {
         "long": "Pokémon Kanto Expansion Pak (Blue Version) (v1.2)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     }
 }

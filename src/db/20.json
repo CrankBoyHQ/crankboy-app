@@ -1,218 +1,272 @@
 {
     "21524051": {
         "long": "31-in-1 Mighty Mix (Australia) (31B-001, Sachen) (Unl)",
-        "short": "31-in-1 Mighty Mix"
+        "short": "31-in-1 Mighty Mix",
+        "genre": "Compilation"
     },
     "2272BACA": {
         "long": "Army Men 2 (USA, Europe) (En,Fr,De)",
-        "short": "Army Men 2"
+        "short": "Army Men 2",
+        "genre": "Strategy"
     },
     "222C9DC6": {
         "long": "Cannon Fodder (Europe) (En,Fr,De,Es,It) (Beta)",
-        "short": "Cannon Fodder"
+        "short": "Cannon Fodder",
+        "genre": "Strategy"
     },
     "2353BBE4": {
         "long": "Dragon Ball Z - Legendaere Superkaempfer (Germany) (Beta 2)",
-        "short": "Dragon Ball Z - Legendaere Superkaempfer"
+        "short": "Dragon Ball Z - Legendaere Superkaempfer",
+        "genre": "Role-playing (RPG)"
     },
     "21078C16": {
         "long": "Dragon Quest III - Soshite Densetsu e... (Japan)",
-        "short": "Dragon Quest III - Soshite Densetsu e..."
+        "short": "Dragon Quest III - Soshite Densetsu e...",
+        "genre": "Role-playing (RPG)"
     },
     "21826ADC": {
         "long": "Dukes of Hazzard, The - Racing for Home (Europe) (En,Fr,De)",
-        "short": "Dukes of Hazzard, The - Racing for Home"
+        "short": "Dukes of Hazzard, The - Racing for Home",
+        "genre": "Racing"
     },
     "2154763C": {
         "long": "Elevator Action EX (Europe) (En,Fr,De,Es,It)",
-        "short": "Elevator Action EX"
+        "short": "Elevator Action EX",
+        "genre": "Platform"
     },
     "23223670": {
         "long": "Grandia - Parallel Trippers (Japan)",
-        "short": "Grandia - Parallel Trippers"
+        "short": "Grandia - Parallel Trippers",
+        "genre": "Role-playing (RPG)"
     },
     "20C4CCF6": {
         "long": "Jet de Go! - Let's Go by Airliner (Japan)",
-        "short": "Jet de Go! - Let's Go by Airliner"
+        "short": "Jet de Go! - Let's Go by Airliner",
+        "genre": "Simulation"
     },
     "203F8727": {
         "long": "Konami GB Collection Vol.1 (Europe) (GB Compatible)",
-        "short": "Konami GB Collection Vol.1"
+        "short": "Konami GB Collection Vol.1",
+        "genre": "Compilation"
     },
     "22952662": {
         "long": "Looney Tunes Collector - Martian Revenge! (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Looney Tunes Collector - Martian Revenge!"
+        "short": "Looney Tunes Collector - Martian Revenge!",
+        "genre": "Action"
     },
     "233862D0": {
         "long": "Nobunaga no Yabou - Game Boy Ban 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Nobunaga no Yabou - Game Boy Ban 2"
+        "short": "Nobunaga no Yabou - Game Boy Ban 2",
+        "genre": "Strategy"
     },
     "2267360B": {
         "long": "Pia Carrot e Youkoso!! 2.2 (Japan)",
-        "short": "Pia Carrot e Youkoso!! 2.2"
+        "short": "Pia Carrot e Youkoso!! 2.2",
+        "genre": "Adventure"
     },
     "21A4DA64": {
         "long": "Pro Pool (Europe) (En,Fr,De)",
-        "short": "Pro Pool"
+        "short": "Pro Pool",
+        "genre": "Sports"
     },
     "20CEE2E8": {
         "long": "Project S-11 (USA)",
-        "short": "Project S-11"
+        "short": "Project S-11",
+        "genre": "Shoot'em Up"
     },
     "20B86F1E": {
         "long": "Rampage 2 - Universal Tour (USA, Europe)",
-        "short": "Rampage 2 - Universal Tour"
+        "short": "Rampage 2 - Universal Tour",
+        "genre": "Action"
     },
     "22621803": {
         "long": "Reservoir Rat (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Reservoir Rat"
+        "short": "Reservoir Rat",
+        "genre": "Platform"
     },
     "23FA5F53": {
         "long": "Senkai Ibunroku Juntei Taisen - TV Animation Senkaiden Houshin Engi Yori (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Senkai Ibunroku Juntei Taisen - TV Animation Senkaiden Houshin Engi Yori"
+        "short": "Senkai Ibunroku Juntei Taisen - TV Animation Senkaiden Houshin Engi Yori",
+        "genre": "Role-playing (RPG)"
     },
     "20158FBC": {
         "long": "Sesame Street - Elmo's ABCs (Europe) (GB Compatible)",
-        "short": "Sesame Street - Elmo's ABCs"
+        "short": "Sesame Street - Elmo's ABCs",
+        "genre": "Educational"
     },
     "237ECEF9": {
         "long": "Soccer Manager (Europe) (En,Fr,De,Es)",
-        "short": "Soccer Manager"
+        "short": "Soccer Manager",
+        "genre": "Sports"
     },
     "23BB87A5": {
         "long": "Tiny Toon Adventures - Dizzy's Candy Quest (USA) (Proto)",
-        "short": "Tiny Toon Adventures - Dizzy's Candy Quest"
+        "short": "Tiny Toon Adventures - Dizzy's Candy Quest",
+        "genre": "Adventure"
     },
     "219E42E3": {
         "long": "Uchuujin Tanaka Tarou de - RPG Tsukuru GB 2 (Japan)",
-        "short": "Uchuujin Tanaka Tarou de - RPG Tsukuru GB 2"
+        "short": "Uchuujin Tanaka Tarou de - RPG Tsukuru GB 2",
+        "genre": "Role-playing (RPG)"
     },
     "20BDCA55": {
         "long": "Wendy - Der Traum von Arizona (Germany) (Beta)",
-        "short": "Wendy - Der Traum von Arizona"
+        "short": "Wendy - Der Traum von Arizona",
+        "genre": "Sports"
     },
     "234E1E9C": {
         "long": "X-Men - Mutant Academy (USA, Europe) (Rev 1)",
-        "short": "X-Men - Mutant Academy"
+        "short": "X-Men - Mutant Academy",
+        "genre": "Fighting"
     },
     "23068679": {
         "long": "Attack of the Killer Tomatoes (Japan)",
-        "short": "Attack of the Killer Tomatoes"
+        "short": "Attack of the Killer Tomatoes",
+        "genre": "Platform"
     },
     "216E6AA1": {
         "long": "Castlevania - The Adventure (USA)",
-        "short": "Castlevania - The Adventure"
+        "short": "Castlevania - The Adventure",
+        "genre": "Action"
     },
     "2022BBB9": {
         "long": "Cosmo Tank (Japan) (Beta)",
-        "short": "Cosmo Tank"
+        "short": "Cosmo Tank",
+        "genre": "Action"
     },
     "238B9646": {
         "long": "Darkwing Duck (USA)",
-        "short": "Darkwing Duck"
+        "short": "Darkwing Duck",
+        "genre": "Platform"
     },
     "21035F95": {
         "long": "Hoshi no Kirby (Japan)",
-        "short": "Hoshi no Kirby"
+        "short": "Hoshi no Kirby",
+        "genre": "Platform"
     },
     "23679231": {
         "long": "King James Bible (USA) (Unl)",
-        "short": "King James Bible"
+        "short": "King James Bible",
+        "genre": "Various"
     },
     "21C98AF2": {
         "long": "Kwirk - He's A-maze-ing! (USA, Europe)",
-        "short": "Kwirk - He's A-maze-ing!"
+        "short": "Kwirk - He's A-maze-ing!",
+        "genre": "Puzzle"
     },
     "23467A35": {
         "long": "Lemmings (Europe)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Strategy"
     },
     "22D07CF6": {
         "long": "Looney Tunes 2 - Tasmanian Devil in Island Chase (USA, Europe)",
-        "short": "Looney Tunes 2 - Tasmanian Devil in Island Chase"
+        "short": "Looney Tunes 2 - Tasmanian Devil in Island Chase",
+        "genre": "Platform"
     },
     "23E9D625": {
         "long": "Mickey's Ultimate Challenge (USA, Europe)",
-        "short": "Mickey's Ultimate Challenge"
+        "short": "Mickey's Ultimate Challenge",
+        "genre": "Puzzle"
     },
     "2088F85F": {
         "long": "Micro Machines (USA, Europe)",
-        "short": "Micro Machines"
+        "short": "Micro Machines",
+        "genre": "Racing"
     },
     "218265B3": {
         "long": "Momotarou Dentetsu jr. - Zenkoku Ramen Meguri no Maki (Japan) (SGB Enhanced)",
-        "short": "Momotarou Dentetsu jr. - Zenkoku Ramen Meguri no Maki"
+        "short": "Momotarou Dentetsu jr. - Zenkoku Ramen Meguri no Maki",
+        "genre": "Card"
     },
     "20BFD7EF": {
         "long": "Nectaris GB (Japan) (SGB Enhanced)",
-        "short": "Nectaris GB"
+        "short": "Nectaris GB",
+        "genre": "Strategy"
     },
     "212B47A5": {
         "long": "Pocket Bomberman (Japan) (SGB Enhanced)",
-        "short": "Pocket Bomberman"
+        "short": "Pocket Bomberman",
+        "genre": "Action"
     },
     "20E48285": {
         "long": "Puyo Puyo (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Puyo Puyo"
+        "short": "Puyo Puyo",
+        "genre": "Puzzle"
     },
     "2085AAD9": {
         "long": "Ren & Stimpy Show, The - Space Cadet Adventures (USA)",
-        "short": "Ren & Stimpy Show, The - Space Cadet Adventures"
+        "short": "Ren & Stimpy Show, The - Space Cadet Adventures",
+        "genre": "Platform"
     },
     "2350922B": {
         "long": "Rentaiou (Japan)",
-        "short": "Rentaiou"
+        "short": "Rentaiou",
+        "genre": "Sports with Animals"
     },
     "229AEE8E": {
         "long": "seaQuest DSV (USA, Europe) (Beta)",
-        "short": "seaQuest DSV"
+        "short": "seaQuest DSV",
+        "genre": "Shooter"
     },
     "23F64E82": {
         "long": "Soccer Boy (Japan)",
-        "short": "Soccer Boy"
+        "short": "Soccer Boy",
+        "genre": "Sports"
     },
     "235171C4": {
         "long": "Sports Illustrated - Championship Football & Baseball (USA)",
-        "short": "Sports Illustrated - Championship Football & Baseball"
+        "short": "Sports Illustrated - Championship Football & Baseball",
+        "genre": "Sports"
     },
     "239711EC": {
         "long": "Super B-Daman - Fighting Phoenix (Japan) (SGB Enhanced)",
-        "short": "Super B-Daman - Fighting Phoenix"
+        "short": "Super B-Daman - Fighting Phoenix",
+        "genre": "Action"
     },
     "2359D61E": {
         "long": "Super Hunchback (Europe)",
-        "short": "Super Hunchback"
+        "short": "Super Hunchback",
+        "genre": "Platform"
     },
     "21848101": {
         "long": "Terminator 2 - Judgment Day (USA, Europe)",
-        "short": "Terminator 2 - Judgment Day"
+        "short": "Terminator 2 - Judgment Day",
+        "genre": "Platform"
     },
     "2359BF0C": {
         "long": "Turrican (USA, Europe)",
-        "short": "Turrican"
+        "short": "Turrican",
+        "genre": "Platform"
     },
     "22D8889E": {
         "long": "Uchuu no Kishi Tekkaman Blade (Japan)",
-        "short": "Uchuu no Kishi Tekkaman Blade"
+        "short": "Uchuu no Kishi Tekkaman Blade",
+        "genre": "Platform"
     },
     "220BBCB6": {
         "long": "Virtual Wars (Japan)",
-        "short": "Virtual Wars"
+        "short": "Virtual Wars",
+        "genre": "Platform"
     },
     "20AE389A": {
         "long": "VS Battler (Japan)",
-        "short": "VS Battler"
+        "short": "VS Battler",
+        "genre": "Action"
     },
     "22039DAA": {
         "long": "WordZap (USA) (Beta)",
-        "short": "WordZap"
+        "short": "WordZap",
+        "genre": "Puzzle"
     },
     "211C4611": {
         "long": "Yomihon Yumegoyomi - Tenjin Kaisen 2 (Japan)",
-        "short": "Yomihon Yumegoyomi - Tenjin Kaisen 2"
+        "short": "Yomihon Yumegoyomi - Tenjin Kaisen 2",
+        "genre": "Adventure"
     },
     "2355BE94": {
         "long": "Yousei Monogatari - Rod Land (Japan)",
-        "short": "Yousei Monogatari - Rod Land"
+        "short": "Yousei Monogatari - Rod Land",
+        "genre": "Platform"
     }
 }

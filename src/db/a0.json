@@ -1,226 +1,282 @@
 {
     "A07B6E79": {
         "long": "ATV Racing & Karate Joe (Europe) (Unl)",
-        "short": "ATV Racing & Karate Joe"
+        "short": "ATV Racing & Karate Joe",
+        "genre": "Compilation"
     },
     "A089C656": {
         "long": "Bomberman Quest (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Bomberman Quest"
+        "short": "Bomberman Quest",
+        "genre": "Role-playing (RPG)"
     },
     "A0F66D87": {
         "long": "Classic Bubble Bobble (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Classic Bubble Bobble"
+        "short": "Classic Bubble Bobble",
+        "genre": "Platform"
     },
     "A0CD0ED7": {
         "long": "Dragon Dance (USA) (Beta 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Dance"
+        "short": "Dragon Dance",
+        "genre": "Action"
     },
     "A053B42E": {
         "long": "Dragon Quest I & II (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest I & II"
+        "short": "Dragon Quest I & II",
+        "genre": "Role-playing (RPG)"
     },
     "A0D67417": {
         "long": "Harvest Moon 3 GBC (USA)",
-        "short": "Harvest Moon 3 GBC"
+        "short": "Harvest Moon 3 GBC",
+        "genre": "Simulation"
     },
     "A1361642": {
         "long": "Hunter x Hunter - Hunter no Keifu (Japan)",
-        "short": "Hunter x Hunter - Hunter no Keifu"
+        "short": "Hunter x Hunter - Hunter no Keifu",
+        "genre": "Strategy"
     },
     "A3BA0DB4": {
         "long": "Jurassic Boy 2 (Taiwan) (En) (Rev 1) (Sachen) (Unl)",
-        "short": "Jurassic Boy 2"
+        "short": "Jurassic Boy 2",
+        "genre": "Platform"
     },
     "A262269F": {
         "long": "Katou Hifumi Kudan - Shougi Kyoushitsu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Katou Hifumi Kudan - Shougi Kyoushitsu"
+        "short": "Katou Hifumi Kudan - Shougi Kyoushitsu",
+        "genre": "Board"
     },
     "A29D862F": {
         "long": "Kisekae Series 3 - Kisekae Hamster (Japan)",
-        "short": "Kisekae Series 3 - Kisekae Hamster"
+        "short": "Kisekae Series 3 - Kisekae Hamster",
+        "genre": "Adventure"
     },
     "A0D64934": {
         "long": "Knockout Kings (USA, Europe)",
-        "short": "Knockout Kings"
+        "short": "Knockout Kings",
+        "genre": "Sports"
     },
     "A132417D": {
         "long": "Mario Golf (Europe)",
-        "short": "Mario Golf"
+        "short": "Mario Golf",
+        "genre": "Sports"
     },
     "A3F23D7E": {
         "long": "Matchbox Emergency Patrol (USA, Europe)",
-        "short": "Matchbox Emergency Patrol"
+        "short": "Matchbox Emergency Patrol",
+        "genre": "Racing"
     },
     "A3C1756E": {
         "long": "Medarot 5 - Susutake Mura no Tenkousei - Kabuto (Japan)",
-        "short": "Medarot 5 - Susutake Mura no Tenkousei - Kabuto"
+        "short": "Medarot 5 - Susutake Mura no Tenkousei - Kabuto",
+        "genre": "Role-playing (RPG)"
     },
     "A3735F81": {
         "long": "Medarot Cardrobottle - Kuwagata Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Medarot Cardrobottle - Kuwagata Version"
+        "short": "Medarot Cardrobottle - Kuwagata Version",
+        "genre": "Strategy"
     },
     "A3F079D4": {
         "long": "Nicktoons Racing (USA)",
-        "short": "Nicktoons Racing"
+        "short": "Nicktoons Racing",
+        "genre": "Racing"
     },
     "A111704F": {
         "long": "Powerpuff Girls, The - Bad Mojo Jojo (USA) (Rev 2)",
-        "short": "Powerpuff Girls, The - Bad Mojo Jojo"
+        "short": "Powerpuff Girls, The - Bad Mojo Jojo",
+        "genre": "Platform"
     },
     "A07DA702": {
         "long": "Return of the Ninja (USA)",
-        "short": "Return of the Ninja"
+        "short": "Return of the Ninja",
+        "genre": "Action"
     },
     "A13CF42E": {
         "long": "Suzuki Alstare Extreme Racing (USA) (Proto)",
-        "short": "Suzuki Alstare Extreme Racing"
+        "short": "Suzuki Alstare Extreme Racing",
+        "genre": "Racing"
     },
     "A0ED2859": {
         "long": "Watashi no Restaurant (Japan) (Beta 3)",
-        "short": "Watashi no Restaurant"
+        "short": "Watashi no Restaurant",
+        "genre": "Strategy"
     },
     "A1A1FE77": {
         "long": "Battle Unit Zeoth (Japan)",
-        "short": "Battle Unit Zeoth"
+        "short": "Battle Unit Zeoth",
+        "genre": "Action"
     },
     "A37A814A": {
         "long": "BattleCity (Japan)",
-        "short": "BattleCity"
+        "short": "BattleCity",
+        "genre": "Action"
     },
     "A1E55DC2": {
         "long": "Bionic Battler (USA)",
-        "short": "Bionic Battler"
+        "short": "Bionic Battler",
+        "genre": "Action"
     },
     "A3164516": {
         "long": "Bubsy II (Europe)",
-        "short": "Bubsy II"
+        "short": "Bubsy II",
+        "genre": "Platform"
     },
     "A08CB239": {
         "long": "Castelian (USA) (Beta)",
-        "short": "Castelian"
+        "short": "Castelian",
+        "genre": "Platform"
     },
     "A2F01695": {
         "long": "Cool Hand (Europe) (Fr,De)",
-        "short": "Cool Hand"
+        "short": "Cool Hand",
+        "genre": "Gambling"
     },
     "A193C0D0": {
         "long": "Cool World (USA, Europe)",
-        "short": "Cool World"
+        "short": "Cool World",
+        "genre": "Platform"
     },
     "A1D4C544": {
         "long": "Darkwing Duck (Spain)",
-        "short": "Darkwing Duck"
+        "short": "Darkwing Duck",
+        "genre": "Platform"
     },
     "A308B86B": {
         "long": "Dick Tracy (USA)",
-        "short": "Dick Tracy"
+        "short": "Dick Tracy",
+        "genre": "Platform"
     },
     "A19ACDB6": {
         "long": "Donkey Kong Land III (USA, Europe) (Rev 1) (SGB Enhanced)",
-        "short": "Donkey Kong Land III"
+        "short": "Donkey Kong Land III",
+        "genre": "Platform"
     },
     "A0645E8A": {
         "long": "Double Dragon (Japan)",
-        "short": "Double Dragon"
+        "short": "Double Dragon",
+        "genre": "Beat'em Up"
     },
     "A3D77A55": {
         "long": "Double Yakuman II (Japan)",
-        "short": "Double Yakuman II"
+        "short": "Double Yakuman II",
+        "genre": "Board"
     },
     "A35B9EF5": {
         "long": "Dracula Densetsu (Japan)",
-        "short": "Dracula Densetsu"
+        "short": "Dracula Densetsu",
+        "genre": "Action"
     },
     "A2F30B4B": {
         "long": "Flipull (USA)",
-        "short": "Flipull"
+        "short": "Flipull",
+        "genre": "Puzzle"
     },
     "A1A3F786": {
         "long": "Game Boy Camera Gold (USA) (SGB Enhanced)",
-        "short": "Game Boy Camera Gold"
+        "short": "Game Boy Camera Gold",
+        "genre": "Action"
     },
     "A2E210E9": {
         "long": "GB Pachi-Slot Hisshouhou! Jr. (Japan)",
-        "short": "GB Pachi-Slot Hisshouhou! Jr."
+        "short": "GB Pachi-Slot Hisshouhou! Jr.",
+        "genre": "Gambling"
     },
     "A1B29AB8": {
         "long": "God Medicine - Fantasy Sekai no Tanjou (Japan)",
-        "short": "God Medicine - Fantasy Sekai no Tanjou"
+        "short": "God Medicine - Fantasy Sekai no Tanjou",
+        "genre": "Role-playing (RPG)"
     },
     "A1E76A33": {
         "long": "Jeep Jamboree - Off-Road Adventure (USA)",
-        "short": "Jeep Jamboree - Off-Road Adventure"
+        "short": "Jeep Jamboree - Off-Road Adventure",
+        "genre": "Racing"
     },
     "A3E9B148": {
         "long": "King of Fighters '95, The (Europe) (SGB Enhanced)",
-        "short": "King of Fighters '95, The"
+        "short": "King of Fighters '95, The",
+        "genre": "Action"
     },
     "A2234EB1": {
         "long": "Lucky Monkey (Japan)",
-        "short": "Lucky Monkey"
+        "short": "Lucky Monkey",
+        "genre": "Platform"
     },
     "A3D5C8D7": {
         "long": "Lucle (Japan, Europe) (En)",
-        "short": "Lucle"
+        "short": "Lucle",
+        "genre": "Puzzle"
     },
     "A1122FC0": {
         "long": "Mr. Do! (USA)",
-        "short": "Mr. Do!"
+        "short": "Mr. Do!",
+        "genre": "Puzzle"
     },
     "A1813CD5": {
         "long": "Mystical Ninja Starring Goemon (Europe) (SGB Enhanced)",
-        "short": "Mystical Ninja Starring Goemon"
+        "short": "Mystical Ninja Starring Goemon",
+        "genre": "Role-playing (RPG)"
     },
     "A0B68136": {
         "long": "Pitman (Japan)",
-        "short": "Pitman"
+        "short": "Pitman",
+        "genre": "Puzzle"
     },
     "A2545D33": {
         "long": "Pocket Monsters - Pikachu (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Pocket Monsters - Pikachu"
+        "short": "Pocket Monsters - Pikachu",
+        "genre": "Role-playing (RPG)"
     },
     "A00A9468": {
         "long": "Ray-Thunder (Japan)",
-        "short": "Ray-Thunder"
+        "short": "Ray-Thunder",
+        "genre": "Shooter"
     },
     "A074BF7E": {
         "long": "Shougi Saikyou (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Shougi Saikyou"
+        "short": "Shougi Saikyou",
+        "genre": "Board"
     },
     "A0FFF8E7": {
         "long": "Star Wars - The Empire Strikes Back (USA)",
-        "short": "Star Wars - The Empire Strikes Back"
+        "short": "Star Wars - The Empire Strikes Back",
+        "genre": "Platform"
     },
     "A269559F": {
         "long": "Super Street Basketball (Japan)",
-        "short": "Super Street Basketball"
+        "short": "Super Street Basketball",
+        "genre": "Sports"
     },
     "A33C4FFF": {
         "long": "Tasmania Story (USA)",
-        "short": "Tasmania Story"
+        "short": "Tasmania Story",
+        "genre": "Platform"
     },
     "A37C022D": {
         "long": "Uno - Small World (Japan)",
-        "short": "Uno - Small World"
+        "short": "Uno - Small World",
+        "genre": "Card"
     },
     "A2894581": {
         "long": "World Beach Volley - 1991 GB Cup (Japan)",
-        "short": "World Beach Volley - 1991 GB Cup"
+        "short": "World Beach Volley - 1991 GB Cup",
+        "genre": "Sports"
     },
     "A37255FE": {
         "long": "Yoshi no Cookie (Japan)",
-        "short": "Yoshi no Cookie"
+        "short": "Yoshi no Cookie",
+        "genre": "Puzzle"
     },
     "A197BDB7": {
         "long": "Zerd no Densetsu 2 - Xerd!! Gishin no Ryouiki (Japan)",
-        "short": "Zerd no Densetsu 2 - Xerd!! Gishin no Ryouiki"
+        "short": "Zerd no Densetsu 2 - Xerd!! Gishin no Ryouiki",
+        "genre": "Role-playing (RPG)"
     },
     "A010BFE7": {
         "long": "Little Sound Dj - Classic (v4.7.3)",
-        "short": "LSDj - Classic"
+        "short": "LSDj - Classic",
+        "genre": "Music / Dancing"
     },
     "A164AA5F": {
         "long": "Little Sound Dj (v3.4.4)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

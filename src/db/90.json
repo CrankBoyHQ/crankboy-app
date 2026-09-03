@@ -1,218 +1,272 @@
 {
     "92C8B9B5": {
         "long": "Bakusou Dekotora Densetsu GB Special - Otoko Dokyou no Tenka Touitsu (Japan)",
-        "short": "Bakusou Dekotora Densetsu GB Special - Otoko Dokyou no Tenka Touitsu"
+        "short": "Bakusou Dekotora Densetsu GB Special - Otoko Dokyou no Tenka Touitsu",
+        "genre": "Racing"
     },
     "93FA37BD": {
         "long": "Bob the Builder - Fix it Fun! (USA)",
-        "short": "Bob the Builder - Fix it Fun!"
+        "short": "Bob the Builder - Fix it Fun!",
+        "genre": "Educational"
     },
     "9092B0EB": {
         "long": "Burger Paradise International (Japan)",
-        "short": "Burger Paradise International"
+        "short": "Burger Paradise International",
+        "genre": "Simulation"
     },
     "909BB02D": {
         "long": "Crystalis (USA)",
-        "short": "Crystalis"
+        "short": "Crystalis",
+        "genre": "Role-playing (RPG)"
     },
     "93A9789F": {
         "long": "F1 Racing Championship (Europe) (En,Fr,De,Es,It)",
-        "short": "F1 Racing Championship"
+        "short": "F1 Racing Championship",
+        "genre": "Racing"
     },
     "91739DEF": {
         "long": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen (Japan) (Rev 1)",
-        "short": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen"
+        "short": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen",
+        "genre": "Puzzle"
     },
     "918A40E7": {
         "long": "Gensou Maden Saiyuuki - Sabaku no Shijin (Japan)",
-        "short": "Gensou Maden Saiyuuki - Sabaku no Shijin"
+        "short": "Gensou Maden Saiyuuki - Sabaku no Shijin",
+        "genre": "Role-playing (RPG)"
     },
     "924DE366": {
         "long": "Grand Theft Auto (USA) (GB Compatible)",
-        "short": "Grand Theft Auto"
+        "short": "Grand Theft Auto",
+        "genre": "Racing"
     },
     "937729F6": {
         "long": "Hello Kitty's Cube Frenzy (USA) (GB Compatible)",
-        "short": "Hello Kitty's Cube Frenzy"
+        "short": "Hello Kitty's Cube Frenzy",
+        "genre": "Puzzle"
     },
     "921ABB21": {
         "long": "LEGO Island 2 - The Brickster's Revenge (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da)",
-        "short": "LEGO Island 2 - The Brickster's Revenge"
+        "short": "LEGO Island 2 - The Brickster's Revenge",
+        "genre": "Adventure"
     },
     "9058EAE3": {
         "long": "Looney Tunes Collector - Martian Alert! (Europe) (En,Fr,De,Es,It,Nl) (Beta 2)",
-        "short": "Looney Tunes Collector - Martian Alert!"
+        "short": "Looney Tunes Collector - Martian Alert!",
+        "genre": "Action"
     },
     "934F4B0A": {
         "long": "Majokko Mari-chan no Kisekae Monogatari (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Majokko Mari-chan no Kisekae Monogatari"
+        "short": "Majokko Mari-chan no Kisekae Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "905AD0CB": {
         "long": "Mario Golf (USA)",
-        "short": "Mario Golf"
+        "short": "Mario Golf",
+        "genre": "Sports"
     },
     "909C870F": {
         "long": "Mask of Zorro, The (Europe)",
-        "short": "Mask of Zorro, The"
+        "short": "Mask of Zorro, The",
+        "genre": "Platform"
     },
     "904663AF": {
         "long": "MTV Sports - T.J. Lavin's Ultimate BMX (USA, Europe)",
-        "short": "MTV Sports - T.J. Lavin's Ultimate BMX"
+        "short": "MTV Sports - T.J. Lavin's Ultimate BMX",
+        "genre": "Sports"
     },
     "910DF34B": {
         "long": "New Addams Family Series, The (Europe) (En,Fr,De,Es,It,Pt) (Rev 1) (Proto)",
-        "short": "New Addams Family Series, The"
+        "short": "New Addams Family Series, The",
+        "genre": "Adventure"
     },
     "91D7CCCA": {
         "long": "Planet of the Apes (USA) (En,Fr,De,Es,It,Nl)",
-        "short": "Planet of the Apes"
+        "short": "Planet of the Apes",
+        "genre": "Adventure"
     },
     "911007E1": {
         "long": "Pocket Color Billiards (Japan)",
-        "short": "Pocket Color Billiards"
+        "short": "Pocket Color Billiards",
+        "genre": "Sports"
     },
     "913AC306": {
         "long": "Portal Runner (USA)",
-        "short": "Portal Runner"
+        "short": "Portal Runner",
+        "genre": "Adventure"
     },
     "91DEF753": {
         "long": "Prince Naseem Boxing (Europe) (En,Fr,De)",
-        "short": "Prince Naseem Boxing"
+        "short": "Prince Naseem Boxing",
+        "genre": "Sports"
     },
     "90F46D7E": {
         "long": "Q-bert (USA)",
-        "short": "Q-bert"
+        "short": "Q-bert",
+        "genre": "Platform"
     },
     "919077AB": {
         "long": "Rockman X - Cyber Mission (Japan) (GB Compatible)",
-        "short": "Rockman X - Cyber Mission"
+        "short": "Rockman X - Cyber Mission",
+        "genre": "Platform"
     },
     "90379C16": {
         "long": "Super Gals! Kotobuki Ran (Japan)",
-        "short": "Super Gals! Kotobuki Ran"
+        "short": "Super Gals! Kotobuki Ran",
+        "genre": "Adventure"
     },
     "90AB047B": {
         "long": "Super Mario Bros. Deluxe (USA, Europe) (Rev 1)",
-        "short": "Super Mario Bros. Deluxe"
+        "short": "Super Mario Bros. Deluxe",
+        "genre": "Platform"
     },
     "9139E307": {
         "long": "Tokoro-san no Setagaya C.C. (Japan) (GB Compatible)",
-        "short": "Tokoro-san no Setagaya C.C."
+        "short": "Tokoro-san no Setagaya C.C.",
+        "genre": "Sports"
     },
     "901FAA34": {
         "long": "Tonka Construction Site (USA) (Beta)",
-        "short": "Tonka Construction Site"
+        "short": "Tonka Construction Site",
+        "genre": "Strategy"
     },
     "909143C0": {
         "long": "Towers II - Plight of the Stargazer (USA) (Proto 3) (2001-12-09)",
-        "short": "Towers II - Plight of the Stargazer"
+        "short": "Towers II - Plight of the Stargazer",
+        "genre": "Demo"
     },
     "9306EDD0": {
         "long": "Tweenies - Doodles' Bones (Europe) (En,De,Es,It)",
-        "short": "Tweenies - Doodles' Bones"
+        "short": "Tweenies - Doodles' Bones",
+        "genre": "Platform"
     },
     "92A5A1AD": {
         "long": "Ultimate Fighting Championship (Europe)",
-        "short": "Ultimate Fighting Championship"
+        "short": "Ultimate Fighting Championship",
+        "genre": "Fighting"
     },
     "921999E2": {
         "long": "X-Men - Mutant Wars (USA, Europe)",
-        "short": "X-Men - Mutant Wars"
+        "short": "X-Men - Mutant Wars",
+        "genre": "Action"
     },
     "9359A183": {
         "long": "Game Boy Gallery 2 (Japan) (SGB Enhanced)",
-        "short": "Game Boy Gallery 2"
+        "short": "Game Boy Gallery 2",
+        "genre": "Compilation"
     },
     "910AFE24": {
         "long": "Ganbare Goemon - Kurofunetou no Nazo (Japan) (SGB Enhanced)",
-        "short": "Ganbare Goemon - Kurofunetou no Nazo"
+        "short": "Ganbare Goemon - Kurofunetou no Nazo",
+        "genre": "Role-playing (RPG)"
     },
     "90F87D57": {
         "long": "Gradius - The Interstellar Assault (USA)",
-        "short": "Gradius - The Interstellar Assault"
+        "short": "Gradius - The Interstellar Assault",
+        "genre": "Shoot'em Up"
     },
     "9234EEAB": {
         "long": "Hiden Inyou Kikouhou - Ca Da (Japan)",
-        "short": "Hiden Inyou Kikouhou - Ca Da"
+        "short": "Hiden Inyou Kikouhou - Ca Da",
+        "genre": "Puzzle"
     },
     "9189921A": {
         "long": "Indiana Jones and the Last Crusade (USA, Europe)",
-        "short": "Indiana Jones and the Last Crusade"
+        "short": "Indiana Jones and the Last Crusade",
+        "genre": "Platform"
     },
     "920202DC": {
         "long": "Kingdom Crusade (USA)",
-        "short": "Kingdom Crusade"
+        "short": "Kingdom Crusade",
+        "genre": "Strategy"
     },
     "91300898": {
         "long": "Kirby's Star Stacker (USA, Europe) (SGB Enhanced)",
-        "short": "Kirby's Star Stacker"
+        "short": "Kirby's Star Stacker",
+        "genre": "Puzzle"
     },
     "909937CB": {
         "long": "Kitchen Panic (Japan)",
-        "short": "Kitchen Panic"
+        "short": "Kitchen Panic",
+        "genre": "Action"
     },
     "90EB0929": {
         "long": "Mortal Kombat (USA, Europe)",
-        "short": "Mortal Kombat"
+        "short": "Mortal Kombat",
+        "genre": "Action"
     },
     "91E6BF74": {
         "long": "Nihon Daihyou Team France de Ganbare! - J.League Supporter Soccer (Japan) (SGB Enhanced)",
-        "short": "Nihon Daihyou Team France de Ganbare! - J.League Supporter Soccer"
+        "short": "Nihon Daihyou Team France de Ganbare! - J.League Supporter Soccer",
+        "genre": "Sports"
     },
     "92C9141F": {
         "long": "Pachi-Slot World Cup '94 (Japan)",
-        "short": "Pachi-Slot World Cup '94"
+        "short": "Pachi-Slot World Cup '94",
+        "genre": "Gambling"
     },
     "90F026D4": {
         "long": "Pocket Mahjong (Japan)",
-        "short": "Pocket Mahjong"
+        "short": "Pocket Mahjong",
+        "genre": "Board"
     },
     "916E638D": {
         "long": "Puzznic (Japan)",
-        "short": "Puzznic"
+        "short": "Puzznic",
+        "genre": "Strategy"
     },
     "9185E89E": {
         "long": "QIX (World)",
-        "short": "QIX"
+        "short": "QIX",
+        "genre": "Action"
     },
     "92C95F2D": {
         "long": "Rubble Saver II (Japan)",
-        "short": "Rubble Saver II"
+        "short": "Rubble Saver II",
+        "genre": "Platform"
     },
     "90D51289": {
         "long": "Samurai Shodown (USA, Europe) (Beta) (SGB Enhanced)",
-        "short": "Samurai Shodown"
+        "short": "Samurai Shodown",
+        "genre": "Fighting"
     },
     "9014B3D8": {
         "long": "Snow Brothers (Europe)",
-        "short": "Snow Brothers"
+        "short": "Snow Brothers",
+        "genre": "Action"
     },
     "901BFF2E": {
         "long": "Solomon's Club (Japan)",
-        "short": "Solomon's Club"
+        "short": "Solomon's Club",
+        "genre": "Action"
     },
     "90776841": {
         "long": "Super Mario Land (World)",
-        "short": "Super Mario Land"
+        "short": "Super Mario Land",
+        "genre": "Platform"
     },
     "91394BD8": {
         "long": "Turn and Burn - The F-14 Dogfight Simulator (USA)",
-        "short": "Turn and Burn - The F-14 Dogfight Simulator"
+        "short": "Turn and Burn - The F-14 Dogfight Simulator",
+        "genre": "Simulation"
     },
     "91EDA860": {
         "long": "Ultraman Club - Tekikaijuu o Hakken seyo! (Japan)",
-        "short": "Ultraman Club - Tekikaijuu o Hakken seyo!"
+        "short": "Ultraman Club - Tekikaijuu o Hakken seyo!",
+        "genre": "Strategy"
     },
     "927B57A1": {
         "long": "Wario Blast Featuring Bomberman! (USA, Europe) (SGB Enhanced)",
-        "short": "Wario Blast Featuring Bomberman!"
+        "short": "Wario Blast Featuring Bomberman!",
+        "genre": "Action"
     },
     "90CB60C1": {
         "long": "Yakuman (Japan) (Rev 1)",
-        "short": "Yakuman"
+        "short": "Yakuman",
+        "genre": "Board"
     },
     "91CC7412": {
         "long": "Karpe Diem (birdup) (v1.0)",
-        "short": "Karpe Diem"
+        "short": "Karpe Diem",
+        "genre": "Homebrew"
     }
 }

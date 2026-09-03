@@ -1,198 +1,247 @@
 {
     "4839E0C1": {
         "long": "Antz (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Antz"
+        "short": "Antz",
+        "genre": "Platform"
     },
     "48E638CE": {
         "long": "Barbie - Pet Rescue (Europe) (En,Fr,De,Es,It)",
-        "short": "Barbie - Pet Rescue"
+        "short": "Barbie - Pet Rescue",
+        "genre": "Various"
     },
     "4853F586": {
         "long": "Bomberman Max - Red Challenger (USA)",
-        "short": "Bomberman Max - Red Challenger"
+        "short": "Bomberman Max - Red Challenger",
+        "genre": "Action"
     },
     "48B60E8E": {
         "long": "Bomberman Max - Yami no Senshi (Japan)",
-        "short": "Bomberman Max - Yami no Senshi"
+        "short": "Bomberman Max - Yami no Senshi",
+        "genre": "Action"
     },
     "4AF4CC9C": {
         "long": "Commander Keen (USA, Europe)",
-        "short": "Commander Keen"
+        "short": "Commander Keen",
+        "genre": "Adventure"
     },
     "48E1BA7D": {
         "long": "Cross Hunter - Monster Hunter Version (Japan)",
-        "short": "Cross Hunter - Monster Hunter Version"
+        "short": "Cross Hunter - Monster Hunter Version",
+        "genre": "Role-playing (RPG)"
     },
     "484EBA10": {
         "long": "ECW Hardcore Revolution (USA, Europe)",
-        "short": "ECW Hardcore Revolution"
+        "short": "ECW Hardcore Revolution",
+        "genre": "Sports"
     },
     "482E10C5": {
         "long": "F1 World Grand Prix II for Game Boy Color (USA) (En,Fr,De,Es)",
-        "short": "F1 World Grand Prix II for Game Boy Color"
+        "short": "F1 World Grand Prix II for Game Boy Color",
+        "genre": "Racing"
     },
     "48C99939": {
         "long": "Jim Henson's Bear in the Big Blue House (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Jim Henson's Bear in the Big Blue House"
+        "short": "Jim Henson's Bear in the Big Blue House",
+        "genre": "Educational"
     },
     "482944AA": {
         "long": "Madden NFL 2000 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Madden NFL 2000"
+        "short": "Madden NFL 2000",
+        "genre": "Sports"
     },
     "492C0EBF": {
         "long": "Mr. Driller (USA)",
-        "short": "Mr. Driller"
+        "short": "Mr. Driller",
+        "genre": "Strategy"
     },
     "4B83B14F": {
         "long": "Oddworld Adventures 2 (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Oddworld Adventures 2"
+        "short": "Oddworld Adventures 2",
+        "genre": "Platform"
     },
     "4B2B8B57": {
         "long": "Pocket Monsters - Crystal Version (Taiwan) (Unl)",
-        "short": "Pocket Monsters - Crystal Version"
+        "short": "Pocket Monsters - Crystal Version",
+        "genre": "Role-playing (RPG)"
     },
     "4889DFAA": {
         "long": "Pokémon - Goldene Edition (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Goldene Edition"
+        "short": "Pokémon - Goldene Edition",
+        "genre": "Role-playing (RPG)"
     },
     "48C3C6EF": {
         "long": "Pop'n Music GB - Disney Tunes (Japan)",
-        "short": "Pop'n Music GB - Disney Tunes"
+        "short": "Pop'n Music GB - Disney Tunes",
+        "genre": "Music / Dancing"
     },
     "4AA209CD": {
         "long": "Robot Poncots - Comic Bom Bom Special Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Robot Poncots - Comic Bom Bom Special Version"
+        "short": "Robot Poncots - Comic Bom Bom Special Version",
+        "genre": "Role-playing (RPG)"
     },
     "49101556": {
         "long": "Roswell Conspiracies - Aliens, Myths & Legends (Europe) (En,Fr,De)",
-        "short": "Roswell Conspiracies - Aliens, Myths & Legends"
+        "short": "Roswell Conspiracies - Aliens, Myths & Legends",
+        "genre": "Adventure"
     },
     "4BD73D99": {
         "long": "Rox (Japan) (En) (GB Compatible)",
-        "short": "Rox"
+        "short": "Rox",
+        "genre": "Puzzle"
     },
     "49DB04A6": {
         "long": "Snoopy Tennis (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "Snoopy Tennis"
+        "short": "Snoopy Tennis",
+        "genre": "Sports"
     },
     "4BA47DBC": {
         "long": "SnowCross (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "SnowCross"
+        "short": "SnowCross",
+        "genre": "Racing"
     },
     "4BE9B159": {
         "long": "Sweet Ange (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sweet Ange"
+        "short": "Sweet Ange",
+        "genre": "Strategy"
     },
     "4BE4A8ED": {
         "long": "Tokimeki Memorial Pocket - Culture Hen - Komorebi no Melody (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Tokimeki Memorial Pocket - Culture Hen - Komorebi no Melody"
+        "short": "Tokimeki Memorial Pocket - Culture Hen - Komorebi no Melody",
+        "genre": "Simulation"
     },
     "4B4553E0": {
         "long": "Tom and Jerry - Mousehunt (Europe) (En,Fr,De,Es,It) (Rev 1)",
-        "short": "Tom and Jerry - Mousehunt"
+        "short": "Tom and Jerry - Mousehunt",
+        "genre": "Action"
     },
     "48F17F97": {
         "long": "Tony Hawk's Pro Skater (Japan) (Proto)",
-        "short": "Tony Hawk's Pro Skater"
+        "short": "Tony Hawk's Pro Skater",
+        "genre": "Sports"
     },
     "4B314D4B": {
         "long": "UEFA 2000 (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "UEFA 2000"
+        "short": "UEFA 2000",
+        "genre": "Sports"
     },
     "480D0259": {
         "long": "Wario Land 3 (World) (En,Ja)",
-        "short": "Wario Land 3"
+        "short": "Wario Land 3",
+        "genre": "Platform"
     },
     "4AC6907B": {
         "long": "Wendy - Every Witch Way (USA, Europe)",
-        "short": "Wendy - Every Witch Way"
+        "short": "Wendy - Every Witch Way",
+        "genre": "Strategy"
     },
     "4825B25F": {
         "long": "Akumajou Dracula - Shikkoku Taru Zensoukyoku - Dark Night Prelude (Japan) (SGB Enhanced)",
-        "short": "Akumajou Dracula - Shikkoku Taru Zensoukyoku - Dark Night Prelude"
+        "short": "Akumajou Dracula - Shikkoku Taru Zensoukyoku - Dark Night Prelude",
+        "genre": "Platform"
     },
     "4BBCF652": {
         "long": "Alien vs Predator - The Last of His Clan (USA)",
-        "short": "Alien vs Predator - The Last of His Clan"
+        "short": "Alien vs Predator - The Last of His Clan",
+        "genre": "Platform"
     },
     "4A486435": {
         "long": "Another Bible (Japan) (SGB Enhanced)",
-        "short": "Another Bible"
+        "short": "Another Bible",
+        "genre": "Role-playing (RPG)"
     },
     "4A083F6F": {
         "long": "Bubble Ghost (USA, Europe) (Beta)",
-        "short": "Bubble Ghost"
+        "short": "Bubble Ghost",
+        "genre": "Action"
     },
     "49DC0D37": {
         "long": "Donkey Kong Land (USA, Europe) (SGB Enhanced)",
-        "short": "Donkey Kong Land"
+        "short": "Donkey Kong Land",
+        "genre": "Platform"
     },
     "4B929719": {
         "long": "Fish Dude (USA)",
-        "short": "Fish Dude"
+        "short": "Fish Dude",
+        "genre": "Action"
     },
     "48C1EE22": {
         "long": "Gekitou Power Modeller (Japan) (SGB Enhanced)",
-        "short": "Gekitou Power Modeller"
+        "short": "Gekitou Power Modeller",
+        "genre": "Fighting"
     },
     "4BEDF22C": {
         "long": "Hoshi no Kirby 2 (Japan) (SGB Enhanced)",
-        "short": "Hoshi no Kirby 2"
+        "short": "Hoshi no Kirby 2",
+        "genre": "Platform"
     },
     "4A2C16FF": {
         "long": "Jungle Book, The (World) (Disney Classic Games)",
-        "short": "Jungle Book, The"
+        "short": "Jungle Book, The",
+        "genre": "Platform"
     },
     "48C2CD38": {
         "long": "Kinnikuman - The Dream Match (Japan)",
-        "short": "Kinnikuman - The Dream Match"
+        "short": "Kinnikuman - The Dream Match",
+        "genre": "Sports"
     },
     "4A306276": {
         "long": "Nettou Samurai Spirits (Japan) (SGB Enhanced)",
-        "short": "Nettou Samurai Spirits"
+        "short": "Nettou Samurai Spirits",
+        "genre": "Fighting"
     },
     "4B993D0D": {
         "long": "Palamedes (Japan)",
-        "short": "Palamedes"
+        "short": "Palamedes",
+        "genre": "Puzzle"
     },
     "48993D4F": {
         "long": "Pocket Family GB (Japan) (SGB Enhanced)",
-        "short": "Pocket Family GB"
+        "short": "Pocket Family GB",
+        "genre": "Strategy"
     },
     "48D8AB7A": {
         "long": "Sanrio Carnival (Japan)",
-        "short": "Sanrio Carnival"
+        "short": "Sanrio Carnival",
+        "genre": "Puzzle"
     },
     "490F8C46": {
         "long": "Shin Keiba Kizoku Pocket Jockey (Japan) (SGB Enhanced)",
-        "short": "Shin Keiba Kizoku Pocket Jockey"
+        "short": "Shin Keiba Kizoku Pocket Jockey",
+        "genre": "Sports with Animals"
     },
     "4892984D": {
         "long": "Snoopy - Magic Show (Japan)",
-        "short": "Snoopy - Magic Show"
+        "short": "Snoopy - Magic Show",
+        "genre": "Puzzle"
     },
     "4B1DFE3D": {
         "long": "Super Kick Off (Europe) (En,Fr,De,It,Nl)",
-        "short": "Super Kick Off"
+        "short": "Super Kick Off",
+        "genre": "Sports"
     },
     "498E0E9F": {
         "long": "Sword of Hope, The (Germany)",
-        "short": "Sword of Hope, The"
+        "short": "Sword of Hope, The",
+        "genre": "Role-playing (RPG)"
     },
     "48D37CD2": {
         "long": "Track Meet - Mezase! Barcelona (Japan)",
-        "short": "Track Meet - Mezase! Barcelona"
+        "short": "Track Meet - Mezase! Barcelona",
+        "genre": "Sports"
     },
     "4A38BE7D": {
         "long": "Trax (USA, Europe)",
-        "short": "Trax"
+        "short": "Trax",
+        "genre": "Action"
     },
     "4AB14495": {
         "long": "Wordtris (France) (Fr) (Proto)",
-        "short": "Wordtris"
+        "short": "Wordtris",
+        "genre": "Puzzle"
     },
     "492EDB36": {
         "long": "Zerd no Densetsu (Japan)",
-        "short": "Zerd no Densetsu"
+        "short": "Zerd no Densetsu",
+        "genre": "Role-playing (RPG)"
     }
 }

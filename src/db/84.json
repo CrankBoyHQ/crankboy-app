@@ -1,238 +1,297 @@
 {
     "87431672": {
         "long": "1942 (USA, Europe)",
-        "short": "1942"
+        "short": "1942",
+        "genre": "Action"
     },
     "85545D81": {
         "long": "Alice in Wonderland (Europe) (En,Fr,De,Es)",
-        "short": "Alice in Wonderland"
+        "short": "Alice in Wonderland",
+        "genre": "Platform"
     },
     "841674B0": {
         "long": "Aventures de Buzz l'Eclair, Les (France)",
-        "short": "Aventures de Buzz l'Eclair, Les"
+        "short": "Aventures de Buzz l'Eclair, Les",
+        "genre": "Platform"
     },
     "84E29B87": {
         "long": "Buzz Lightyear of Star Command (USA, Europe)",
-        "short": "Buzz Lightyear of Star Command"
+        "short": "Buzz Lightyear of Star Command",
+        "genre": "Platform"
     },
     "858010E0": {
         "long": "Cross Hunter - X Hunter Version (Japan)",
-        "short": "Cross Hunter - X Hunter Version"
+        "short": "Cross Hunter - X Hunter Version",
+        "genre": "Role-playing (RPG)"
     },
     "846FC830": {
         "long": "Duke Nukem (USA) (En,Fr,De,Es,It)",
-        "short": "Duke Nukem"
+        "short": "Duke Nukem",
+        "genre": "Platform"
     },
     "84872999": {
         "long": "E.T. - The Extra-Terrestrial - Digital Companion (USA)",
-        "short": "E.T. - The Extra-Terrestrial - Digital Companion"
+        "short": "E.T. - The Extra-Terrestrial - Digital Companion",
+        "genre": "Various"
     },
     "85A98C7D": {
         "long": "Gex 3 - Deep Pocket Gecko (USA)",
-        "short": "Gex 3 - Deep Pocket Gecko"
+        "short": "Gex 3 - Deep Pocket Gecko",
+        "genre": "Platform"
     },
     "84084E5F": {
         "long": "Hexcite - The Shapes of Victory (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Hexcite - The Shapes of Victory"
+        "short": "Hexcite - The Shapes of Victory",
+        "genre": "Puzzle"
     },
     "851C8710": {
         "long": "Jim Henson's Bear in the Big Blue House (USA) (En,Fr,De,Es,It,Nl)",
-        "short": "Jim Henson's Bear in the Big Blue House"
+        "short": "Jim Henson's Bear in the Big Blue House",
+        "genre": "Educational"
     },
     "840FD525": {
         "long": "Legend of the River King 2 (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of the River King 2"
+        "short": "Legend of the River King 2",
+        "genre": "Hunting and Fishing"
     },
     "87EF9530": {
         "long": "Legend of the River King GB (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of the River King GB"
+        "short": "Legend of the River King GB",
+        "genre": "Hunting and Fishing"
     },
     "84415B28": {
         "long": "Legend of Zelda, The - Link's Awakening DX (USA, Europe) (Rev 2) (Beta) (1999-09-04) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "865CC1ED": {
         "long": "Legend of Zelda, The - Link's Awakening DX (France) (Rev 1) (Beta) (1999-09-04) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "8649D7A0": {
         "long": "M&M's Minis Madness (USA)",
-        "short": "M&M's Minis Madness"
+        "short": "M&M's Minis Madness",
+        "genre": "Platform"
     },
     "84A880B9": {
         "long": "Mary-Kate and Ashley - Pocket Planner (USA, Europe) (GB Compatible)",
-        "short": "Mary-Kate and Ashley - Pocket Planner"
+        "short": "Mary-Kate and Ashley - Pocket Planner",
+        "genre": "Various"
     },
     "87588725": {
         "long": "Mortal Kombat 4 (Germany) (En) (SGB Enhanced) (GB Compatible)",
-        "short": "Mortal Kombat 4"
+        "short": "Mortal Kombat 4",
+        "genre": "Action"
     },
     "84FC838A": {
         "long": "Mummy, The (Europe) (En,Fr,De)",
-        "short": "Mummy, The"
+        "short": "Mummy, The",
+        "genre": "Platform"
     },
     "84BE0EED": {
         "long": "NBA Jam 99 (USA, Europe) (GB Compatible)",
-        "short": "NBA Jam 99"
+        "short": "NBA Jam 99",
+        "genre": "Sports"
     },
     "845B4E44": {
         "long": "Noddy and the Birthday Party (Europe) (En,Fr,De,Es)",
-        "short": "Noddy and the Birthday Party"
+        "short": "Noddy and the Birthday Party",
+        "genre": "Platform"
     },
     "840EF32F": {
         "long": "Ohasuta Yama-chan & Raymond (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Ohasuta Yama-chan & Raymond"
+        "short": "Ohasuta Yama-chan & Raymond",
+        "genre": "Puzzle"
     },
     "870DB337": {
         "long": "Pocket Puyo Puyo-n (Japan)",
-        "short": "Pocket Puyo Puyo-n"
+        "short": "Pocket Puyo Puyo-n",
+        "genre": "Puzzle"
     },
     "878B2AA7": {
         "long": "Pokémon - Version Cristal (France)",
-        "short": "Pokémon - Version Cristal"
+        "short": "Pokémon - Version Cristal",
+        "genre": "Role-playing (RPG)"
     },
     "8505D139": {
         "long": "Pooh and Tigger's Hunny Safari (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Pooh and Tigger's Hunny Safari"
+        "short": "Pooh and Tigger's Hunny Safari",
+        "genre": "Platform"
     },
     "87FCEC24": {
         "long": "Pumuckls Abenteuer im Geisterschloss (Germany)",
-        "short": "Pumuckls Abenteuer im Geisterschloss"
+        "short": "Pumuckls Abenteuer im Geisterschloss",
+        "genre": "Puzzle"
     },
     "87A29030": {
         "long": "Robot Poncots - Moon Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Robot Poncots - Moon Version"
+        "short": "Robot Poncots - Moon Version",
+        "genre": "Role-playing (RPG)"
     },
     "85264877": {
         "long": "Shin Megami Tensei Trading Card - Card Summoner (Japan)",
-        "short": "Shin Megami Tensei Trading Card - Card Summoner"
+        "short": "Shin Megami Tensei Trading Card - Card Summoner",
+        "genre": "Role-playing (RPG)"
     },
     "846FEA2B": {
         "long": "Snobow Champion (Japan)",
-        "short": "Snobow Champion"
+        "short": "Snobow Champion",
+        "genre": "Sports"
     },
     "866B1212": {
         "long": "Super Mario Bros. Deluxe (Japan) (NP)",
-        "short": "Super Mario Bros. Deluxe"
+        "short": "Super Mario Bros. Deluxe",
+        "genre": "Platform"
     },
     "84499FC1": {
         "long": "Top Gear Pocket (USA) (Rumble Version)",
-        "short": "Top Gear Pocket"
+        "short": "Top Gear Pocket",
+        "genre": "Racing"
     },
     "8571099F": {
         "long": "Watashi no Restaurant (Japan) (Beta 2)",
-        "short": "Watashi no Restaurant"
+        "short": "Watashi no Restaurant",
+        "genre": "Strategy"
     },
     "879CDF7D": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Beta) (1998-07-07) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "86F45343": {
         "long": "4-in-1 Fun Pak (Japan)",
-        "short": "4-in-1 Fun Pak"
+        "short": "4-in-1 Fun Pak",
+        "genre": "Board"
     },
     "86D11D10": {
         "long": "Bikkuri Nekketsu Shin Kiroku! - Dokodemo Kin Medal (Japan)",
-        "short": "Bikkuri Nekketsu Shin Kiroku! - Dokodemo Kin Medal"
+        "short": "Bikkuri Nekketsu Shin Kiroku! - Dokodemo Kin Medal",
+        "genre": "Sports"
     },
     "874D0D6F": {
         "long": "Bubble Ghost (Japan)",
-        "short": "Bubble Ghost"
+        "short": "Bubble Ghost",
+        "genre": "Action"
     },
     "843068FD": {
         "long": "Bubble Ghost (USA, Europe)",
-        "short": "Bubble Ghost"
+        "short": "Bubble Ghost",
+        "genre": "Action"
     },
     "87A9D605": {
         "long": "Caesars Palace (USA) (Rev 1)",
-        "short": "Caesars Palace"
+        "short": "Caesars Palace",
+        "genre": "Gambling"
     },
     "8641BA55": {
         "long": "Casino FunPak (USA, Europe)",
-        "short": "Casino FunPak"
+        "short": "Casino FunPak",
+        "genre": "Gambling"
     },
     "872BBD5E": {
         "long": "Donkey Kong Land III (USA, Europe) (Beta) (SGB Enhanced)",
-        "short": "Donkey Kong Land III"
+        "short": "Donkey Kong Land III",
+        "genre": "Platform"
     },
     "843BD5BC": {
         "long": "Doraemon 2 - Animal Planet Densetsu (Japan)",
-        "short": "Doraemon 2 - Animal Planet Densetsu"
+        "short": "Doraemon 2 - Animal Planet Densetsu",
+        "genre": "Action"
     },
     "8709434B": {
         "long": "Dracula Densetsu II (Japan) (Castlevania Anniversary Collection)",
-        "short": "Dracula Densetsu II (Castlevania Anniversary Collection)"
+        "short": "Dracula Densetsu II (Castlevania Anniversary Collection)",
+        "genre": "Platform"
     },
     "860EA816": {
         "long": "Foreman for Real (Japan)",
-        "short": "Foreman for Real"
+        "short": "Foreman for Real",
+        "genre": "Sports"
     },
     "86D04BFB": {
         "long": "Game Boy Wars Turbo - Famitsu Version (Japan) (SGB Enhanced)",
-        "short": "Game Boy Wars Turbo - Famitsu Version"
+        "short": "Game Boy Wars Turbo - Famitsu Version",
+        "genre": "Strategy"
     },
     "87D0637B": {
         "long": "Ginga - Card & Puzzle Collection (Japan) (En,Ja)",
-        "short": "Ginga - Card & Puzzle Collection"
+        "short": "Ginga - Card & Puzzle Collection",
+        "genre": "Puzzle"
     },
     "845735DE": {
         "long": "Go! Go! Hitchhike (Japan) (SGB Enhanced)",
-        "short": "Go! Go! Hitchhike"
+        "short": "Go! Go! Hitchhike",
+        "genre": "Board"
     },
     "847E0772": {
         "long": "God Medicine - Fukkokuban (Japan) (SGB Enhanced)",
-        "short": "God Medicine - Fukkokuban"
+        "short": "God Medicine - Fukkokuban",
+        "genre": "Role-playing (RPG)"
     },
     "85B98A77": {
         "long": "Ishido - The Way of Stones (USA)",
-        "short": "Ishido - The Way of Stones"
+        "short": "Ishido - The Way of Stones",
+        "genre": "Puzzle"
     },
     "86A1C549": {
         "long": "Mighty Morphin Power Rangers - The Movie (USA, Europe) (SGB Enhanced)",
-        "short": "Mighty Morphin Power Rangers - The Movie"
+        "short": "Mighty Morphin Power Rangers - The Movie",
+        "genre": "Beat'em Up"
     },
     "85C984F2": {
         "long": "Mogu Mogu Gombo - Harukanaru Chou Ryouri Densetsu (Japan) (SGB Enhanced)",
-        "short": "Mogu Mogu Gombo - Harukanaru Chou Ryouri Densetsu"
+        "short": "Mogu Mogu Gombo - Harukanaru Chou Ryouri Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "8712F17B": {
         "long": "Nettou The King of Fighters '95 (Japan) (SGB Enhanced)",
-        "short": "Nettou The King of Fighters '95"
+        "short": "Nettou The King of Fighters '95",
+        "genre": "Action"
     },
     "8690B691": {
         "long": "Pac-In-Time (Europe) (SGB Enhanced)",
-        "short": "Pac-In-Time"
+        "short": "Pac-In-Time",
+        "genre": "Platform"
     },
     "85748525": {
         "long": "Parodius (Europe)",
-        "short": "Parodius"
+        "short": "Parodius",
+        "genre": "Action"
     },
     "845BB677": {
         "long": "Pocket Densha (Japan) (SGB Enhanced)",
-        "short": "Pocket Densha"
+        "short": "Pocket Densha",
+        "genre": "Simulation"
     },
     "868B57B2": {
         "long": "Space Invaders (Japan)",
-        "short": "Space Invaders"
+        "short": "Space Invaders",
+        "genre": "Shooter"
     },
     "87B306B4": {
         "long": "Sports Illustrated - Golf Classic (USA) (SGB Enhanced)",
-        "short": "Sports Illustrated - Golf Classic"
+        "short": "Sports Illustrated - Golf Classic",
+        "genre": "Sports"
     },
     "86107477": {
         "long": "Stop That Roach! (USA)",
-        "short": "Stop That Roach!"
+        "short": "Stop That Roach!",
+        "genre": "Strategy"
     },
     "84E6FB25": {
         "long": "Teenage Mutant Ninja Turtles 2 (Japan)",
-        "short": "Teenage Mutant Ninja Turtles 2"
+        "short": "Teenage Mutant Ninja Turtles 2",
+        "genre": "Platform"
     },
     "85D910B9": {
         "long": "Trip World (Europe)",
-        "short": "Trip World"
+        "short": "Trip World",
+        "genre": "Platform"
     },
     "8408FE48": {
         "long": "Wheel of Fortune (USA)",
-        "short": "Wheel of Fortune"
+        "short": "Wheel of Fortune",
+        "genre": "Quiz"
     }
 }

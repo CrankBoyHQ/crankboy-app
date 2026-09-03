@@ -1,214 +1,267 @@
 {
     "693F50DA": {
         "long": "Austin Powers - Welcome to My Underground Lair! (Europe) (En,Fr,De,Es,It)",
-        "short": "Austin Powers - Welcome to My Underground Lair!"
+        "short": "Austin Powers - Welcome to My Underground Lair!",
+        "genre": "Platform"
     },
     "6908F4AF": {
         "long": "ATV Racing & Karate Joe (Europe) (Unl) (Alt)",
-        "short": "ATV Racing & Karate Joe"
+        "short": "ATV Racing & Karate Joe",
+        "genre": "Compilation"
     },
     "68BA18D7": {
         "long": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Iru no Bouken (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Iru no Bouken"
+        "short": "Dragon Quest Monsters 2 - Maruta no Fushigi na Kagi - Iru no Bouken",
+        "genre": "Role-playing (RPG)"
     },
     "6A2666AA": {
         "long": "Frogger 2 (USA)",
-        "short": "Frogger 2"
+        "short": "Frogger 2",
+        "genre": "Action"
     },
     "6935FEA1": {
         "long": "Game Boy Gallery 3 (Australia) (SGB Enhanced) (GB Compatible)",
-        "short": "Game Boy Gallery 3"
+        "short": "Game Boy Gallery 3",
+        "genre": "Compilation"
     },
     "68610203": {
         "long": "Grand Theft Auto 2 (USA)",
-        "short": "Grand Theft Auto 2"
+        "short": "Grand Theft Auto 2",
+        "genre": "Racing"
     },
     "685CAFCC": {
         "long": "Hugo - Black Diamond Fever (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da,Fi)",
-        "short": "Hugo - Black Diamond Fever"
+        "short": "Hugo - Black Diamond Fever",
+        "genre": "Platform"
     },
     "69C6DBEF": {
         "long": "Jissen ni Yakudatsu Tsumego (Japan)",
-        "short": "Jissen ni Yakudatsu Tsumego"
+        "short": "Jissen ni Yakudatsu Tsumego",
+        "genre": "Board"
     },
     "69F08C89": {
         "long": "K.O. - The Pro Boxing (Japan)",
-        "short": "K.O. - The Pro Boxing"
+        "short": "K.O. - The Pro Boxing",
+        "genre": "Sports"
     },
     "6910FF3A": {
         "long": "Koushien Pocket (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Koushien Pocket"
+        "short": "Koushien Pocket",
+        "genre": "Simulation"
     },
     "690C0373": {
         "long": "LEGO Alpha Team (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,No,Da)",
-        "short": "LEGO Alpha Team"
+        "short": "LEGO Alpha Team",
+        "genre": "Action"
     },
     "6B974B2D": {
         "long": "Little Mermaid II, The - Pinball Frenzy (Japan) (Proto)",
-        "short": "Little Mermaid II, The - Pinball Frenzy"
+        "short": "Little Mermaid II, The - Pinball Frenzy",
+        "genre": "Pinball"
     },
     "698D7BE4": {
         "long": "Looney Tunes - Twouble! (USA) (En,Fr,Es) (GB Compatible)",
-        "short": "Looney Tunes - Twouble!"
+        "short": "Looney Tunes - Twouble!",
+        "genre": "Platform"
     },
     "69DB3CD8": {
         "long": "Mary-Kate and Ashley - Crush Course (USA, Europe)",
-        "short": "Mary-Kate and Ashley - Crush Course"
+        "short": "Mary-Kate and Ashley - Crush Course",
+        "genre": "Platform"
     },
     "6A29B9D8": {
         "long": "Medarot 4 - Kuwagata Version (Japan)",
-        "short": "Medarot 4 - Kuwagata Version"
+        "short": "Medarot 4 - Kuwagata Version",
+        "genre": "Role-playing (RPG)"
     },
     "69B88F1E": {
         "long": "Monster Farm Battle Card GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Monster Farm Battle Card GB"
+        "short": "Monster Farm Battle Card GB",
+        "genre": "Role-playing (RPG)"
     },
     "6BDE3C3E": {
         "long": "Pokémon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Gold Version"
+        "short": "Pokémon - Gold Version",
+        "genre": "Role-playing (RPG)"
     },
     "6BF7E4A6": {
         "long": "Pokémon de Panepon (Japan)",
-        "short": "Pokémon de Panepon"
+        "short": "Pokémon de Panepon",
+        "genre": "Puzzle"
     },
     "6AEE0958": {
         "long": "Solomon (Japan)",
-        "short": "Solomon"
+        "short": "Solomon",
+        "genre": "Puzzle"
     },
     "6A184C55": {
         "long": "Space Invasion & Karate Joe (Europe) (Unl)",
-        "short": "Space Invasion & Karate Joe"
+        "short": "Space Invasion & Karate Joe",
+        "genre": "Compilation"
     },
     "6833923D": {
         "long": "Super Breakout! (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Super Breakout!"
+        "short": "Super Breakout!",
+        "genre": "Action"
     },
     "6BFCFD87": {
         "long": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps (Europe) (Fr,Nl) (Beta 2)",
-        "short": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps"
+        "short": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps",
+        "genre": "Action"
     },
     "6BB3B0DC": {
         "long": "Sylvester & Tweety - Breakfast on the Run (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Sylvester & Tweety - Breakfast on the Run"
+        "short": "Sylvester & Tweety - Breakfast on the Run",
+        "genre": "Platform"
     },
     "6A0C272D": {
         "long": "Taito Memorial - Chase H.Q. - Secret Police (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Taito Memorial - Chase H.Q. - Secret Police"
+        "short": "Taito Memorial - Chase H.Q. - Secret Police",
+        "genre": "Racing"
     },
     "683752A0": {
         "long": "Tasmanian Devil - Munching Madness (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Tasmanian Devil - Munching Madness"
+        "short": "Tasmanian Devil - Munching Madness",
+        "genre": "Platform"
     },
     "69989152": {
         "long": "Tetris DX (World) (SGB Enhanced) (GB Compatible)",
-        "short": "Tetris DX"
+        "short": "Tetris DX",
+        "genre": "Puzzle"
     },
     "6832F38A": {
         "long": "Tintin au Tibet (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Tintin au Tibet"
+        "short": "Tintin au Tibet",
+        "genre": "Platform"
     },
     "6830B7AF": {
         "long": "Who Wants to Be a Millionaire - 2nd Edition (USA)",
-        "short": "Who Wants to Be a Millionaire - 2nd Edition"
+        "short": "Who Wants to Be a Millionaire - 2nd Edition",
+        "genre": "Quiz"
     },
     "6A6ECFEC": {
         "long": "Arcade Classic No. 3 - Galaga & Galaxian (USA) (SGB Enhanced)",
-        "short": "Arcade Classic No. 3 - Galaga & Galaxian"
+        "short": "Arcade Classic No. 3 - Galaga & Galaxian",
+        "genre": "Compilation"
     },
     "6977C265": {
         "long": "Castlevania - The Adventure (Europe)",
-        "short": "Castlevania - The Adventure"
+        "short": "Castlevania - The Adventure",
+        "genre": "Action"
     },
     "6A5F5A0D": {
         "long": "CutThroat Island (Japan) (En) (Proto)",
-        "short": "CutThroat Island"
+        "short": "CutThroat Island",
+        "genre": "Platform"
     },
     "6A702C32": {
         "long": "Desert Strike - Return to the Gulf (USA) (SGB Enhanced)",
-        "short": "Desert Strike - Return to the Gulf"
+        "short": "Desert Strike - Return to the Gulf",
+        "genre": "Shooter"
     },
     "68E5FC2A": {
         "long": "Donkey Kong Land 2 (Japan) (Proto) (SGB Enhanced)",
-        "short": "Donkey Kong Land 2"
+        "short": "Donkey Kong Land 2",
+        "genre": "Platform"
     },
     "6B39F607": {
         "long": "Doraemon no Study Boy 5 - Shou 2 Sansuu Keisan (Japan)",
-        "short": "Doraemon no Study Boy 5 - Shou 2 Sansuu Keisan"
+        "short": "Doraemon no Study Boy 5 - Shou 2 Sansuu Keisan",
+        "genre": "Educational"
     },
     "6B09508F": {
         "long": "Game Boy Gallery 2 (Australia) (SGB Enhanced)",
-        "short": "Game Boy Gallery 2"
+        "short": "Game Boy Gallery 2",
+        "genre": "Compilation"
     },
     "690227F6": {
         "long": "GB Genjin (Japan)",
-        "short": "GB Genjin"
+        "short": "GB Genjin",
+        "genre": "Platform"
     },
     "69B161BC": {
         "long": "Ghostbusters II (Japan)",
-        "short": "Ghostbusters II"
+        "short": "Ghostbusters II",
+        "genre": "Shooter"
     },
     "6B17ABE5": {
         "long": "High Stakes Gambling (USA)",
-        "short": "High Stakes Gambling"
+        "short": "High Stakes Gambling",
+        "genre": "Gambling"
     },
     "69A5E681": {
         "long": "Pachinko CR Daiku no Gen-san GB (Japan) (SGB Enhanced)",
-        "short": "Pachinko CR Daiku no Gen-san GB"
+        "short": "Pachinko CR Daiku no Gen-san GB",
+        "genre": "Gambling"
     },
     "69292EE6": {
         "long": "Samurai Shodown (USA, Europe) (SGB Enhanced)",
-        "short": "Samurai Shodown"
+        "short": "Samurai Shodown",
+        "genre": "Fighting"
     },
     "68985353": {
         "long": "Seiken Densetsu - Final Fantasy Gaiden (Japan) (Seiken Densetsu Collection)",
-        "short": "Seiken Densetsu - Final Fantasy Gaiden (Seiken Densetsu Collection)"
+        "short": "Seiken Densetsu - Final Fantasy Gaiden (Seiken Densetsu Collection)",
+        "genre": "Role-playing (RPG)"
     },
     "6BAE3A41": {
         "long": "Sengoku Ninja-kun (Japan)",
-        "short": "Sengoku Ninja-kun"
+        "short": "Sengoku Ninja-kun",
+        "genre": "Role-playing (RPG)"
     },
     "6AA684EB": {
         "long": "Shanghai (Japan) (Activision)",
-        "short": "Shanghai"
+        "short": "Shanghai",
+        "genre": "Board"
     },
     "6B8EFF2C": {
         "long": "Shanghai Pocket (Japan) (SGB Enhanced)",
-        "short": "Shanghai Pocket"
+        "short": "Shanghai Pocket",
+        "genre": "Board"
     },
     "6819CF0D": {
         "long": "Simpsons, The - Bart vs. the Juggernauts (USA, Europe)",
-        "short": "Simpsons, The - Bart vs. the Juggernauts"
+        "short": "Simpsons, The - Bart vs. the Juggernauts",
+        "genre": "Casual Game"
     },
     "6B497842": {
         "long": "Super Black Bass (USA)",
-        "short": "Super Black Bass"
+        "short": "Super Black Bass",
+        "genre": "Hunting and Fishing"
     },
     "68A553B6": {
         "long": "Super Black Bass Pocket 2 (Japan) (SGB Enhanced)",
-        "short": "Super Black Bass Pocket 2"
+        "short": "Super Black Bass Pocket 2",
+        "genre": "Hunting and Fishing"
     },
     "695F4600": {
         "long": "Super Donkey Kong GB (Japan) (SGB Enhanced)",
-        "short": "Super Donkey Kong GB"
+        "short": "Super Donkey Kong GB",
+        "genre": "Platform"
     },
     "68B7FCF2": {
         "long": "Tintin in Tibet (Europe) (En,Es,It,Sv) (Beta) (SGB Enhanced)",
-        "short": "Tintin in Tibet"
+        "short": "Tintin in Tibet",
+        "genre": "Platform"
     },
     "6A3272B1": {
         "long": "World Cup 98 (USA, Europe) (SGB Enhanced)",
-        "short": "World Cup 98"
+        "short": "World Cup 98",
+        "genre": "Sports"
     },
     "6A6D7350": {
         "long": "Yu Yu Hakusho Dai-2-dan - Ankoku Bujutsukai Hen (Japan)",
-        "short": "Yu Yu Hakusho Dai-2-dan - Ankoku Bujutsukai Hen"
+        "short": "Yu Yu Hakusho Dai-2-dan - Ankoku Bujutsukai Hen",
+        "genre": "Action"
     },
     "6A170336": {
         "long": "Little Sound Dj (v6.8.2)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     },
     "69A0B09A": {
         "long": "Little Sound Dj (v3.7.5)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

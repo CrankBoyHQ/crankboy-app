@@ -1,182 +1,227 @@
 {
     "1766E558": {
         "long": "3-D Ultra Pinball - Thrillride (USA) (Rumble Version)",
-        "short": "3-D Ultra Pinball - Thrillride"
+        "short": "3-D Ultra Pinball - Thrillride",
+        "genre": "Pinball"
     },
     "15430979": {
         "long": "Carl Lewis Athletics 2000 (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Carl Lewis Athletics 2000"
+        "short": "Carl Lewis Athletics 2000",
+        "genre": "Sports"
     },
     "14375072": {
         "long": "Densha de Go! (Japan)",
-        "short": "Densha de Go!"
+        "short": "Densha de Go!",
+        "genre": "Simulation"
     },
     "14D8CC5D": {
         "long": "Flintstones, The - Burgertime in Bedrock (USA)",
-        "short": "Flintstones, The - Burgertime in Bedrock"
+        "short": "Flintstones, The - Burgertime in Bedrock",
+        "genre": "Platform"
     },
     "149F807E": {
         "long": "Game Boy Gallery 3 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Game Boy Gallery 3"
+        "short": "Game Boy Gallery 3",
+        "genre": "Compilation"
     },
     "14D1ADBE": {
         "long": "Golden Goal (Germany) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Golden Goal"
+        "short": "Golden Goal",
+        "genre": "Sports"
     },
     "14CAC67C": {
         "long": "Hamster Paradise 3 (Japan)",
-        "short": "Hamster Paradise 3"
+        "short": "Hamster Paradise 3",
+        "genre": "Simulation"
     },
     "160CA990": {
         "long": "Harvest Moon 2 GBC (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Harvest Moon 2 GBC"
+        "short": "Harvest Moon 2 GBC",
+        "genre": "Strategy"
     },
     "159FE5E7": {
         "long": "Hello Kitty no Happy House (Japan)",
-        "short": "Hello Kitty no Happy House"
+        "short": "Hello Kitty no Happy House",
+        "genre": "Various"
     },
     "160E9E3C": {
         "long": "Madden NFL 2001 (USA)",
-        "short": "Madden NFL 2001"
+        "short": "Madden NFL 2001",
+        "genre": "Sports"
     },
     "15E5D499": {
         "long": "Magical Chase GB - Minarai Mahoutsukai Kenja no Tani e (Japan)",
-        "short": "Magical Chase GB - Minarai Mahoutsukai Kenja no Tani e"
+        "short": "Magical Chase GB - Minarai Mahoutsukai Kenja no Tani e",
+        "genre": "Shoot'em Up"
     },
     "142B6EFB": {
         "long": "Maya the Bee - Garden Adventures (Europe) (En,Fr,De,Es)",
-        "short": "Maya the Bee - Garden Adventures"
+        "short": "Maya the Bee - Garden Adventures",
+        "genre": "Puzzle"
     },
     "159673DB": {
         "long": "Medarot 2 - Parts Collection (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Medarot 2 - Parts Collection"
+        "short": "Medarot 2 - Parts Collection",
+        "genre": "Role-playing (RPG)"
     },
     "16796957": {
         "long": "Metal Gear Solid (Europe) (En,Fr,De,Es,It)",
-        "short": "Metal Gear Solid"
+        "short": "Metal Gear Solid",
+        "genre": "Action"
     },
     "17D27FA9": {
         "long": "Motocross Maniacs 2 (USA)",
-        "short": "Motocross Maniacs 2"
+        "short": "Motocross Maniacs 2",
+        "genre": "Racing"
     },
     "145540D8": {
         "long": "Power Pro Kun Pocket (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Power Pro Kun Pocket"
+        "short": "Power Pro Kun Pocket",
+        "genre": "Sports"
     },
     "14F91F86": {
         "long": "Pro Mahjong Kiwame II GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pro Mahjong Kiwame II GB"
+        "short": "Pro Mahjong Kiwame II GB",
+        "genre": "Board"
     },
     "15B44D68": {
         "long": "Puzzled (Europe) (En,Fr,De)",
-        "short": "Puzzled"
+        "short": "Puzzled",
+        "genre": "Strategy"
     },
     "17635AD1": {
         "long": "Rats! (USA) (En,Es) (GB Compatible)",
-        "short": "Rats!"
+        "short": "Rats!",
+        "genre": "Platform"
     },
     "16B81C36": {
         "long": "Real Pro Yakyuu! - Pacific League Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Real Pro Yakyuu! - Pacific League Hen"
+        "short": "Real Pro Yakyuu! - Pacific League Hen",
+        "genre": "Sports"
     },
     "17913DD0": {
         "long": "Rockman X2 - Soul Eraser (Japan)",
-        "short": "Rockman X2 - Soul Eraser"
+        "short": "Rockman X2 - Soul Eraser",
+        "genre": "Platform"
     },
     "17E51443": {
         "long": "Saban's Power Rangers - Time Force (USA, Europe)",
-        "short": "Saban's Power Rangers - Time Force"
+        "short": "Saban's Power Rangers - Time Force",
+        "genre": "Platform"
     },
     "179DA7F3": {
         "long": "Sanrio Timenet - Mirai Hen (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Sanrio Timenet - Mirai Hen"
+        "short": "Sanrio Timenet - Mirai Hen",
+        "genre": "Role-playing (RPG)"
     },
     "147F427A": {
         "long": "Tweety Sekaiisshuu - 80 Hiki no Neko o Sagase! (Japan)",
-        "short": "Tweety Sekaiisshuu - 80 Hiki no Neko o Sagase!"
+        "short": "Tweety Sekaiisshuu - 80 Hiki no Neko o Sagase!",
+        "genre": "Platform"
     },
     "176D2EEB": {
         "long": "Adventures of Lolo (Europe) (SGB Enhanced)",
-        "short": "Adventures of Lolo"
+        "short": "Adventures of Lolo",
+        "genre": "Action"
     },
     "141675D3": {
         "long": "Altered Space - A 3-D Alien Adventure (USA)",
-        "short": "Altered Space - A 3-D Alien Adventure"
+        "short": "Altered Space - A 3-D Alien Adventure",
+        "genre": "Puzzle"
     },
     "14C66168": {
         "long": "Casper (USA) (Beta)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "176C1FA2": {
         "long": "Darkwing Duck (Germany)",
-        "short": "Darkwing Duck"
+        "short": "Darkwing Duck",
+        "genre": "Platform"
     },
     "169B00C1": {
         "long": "DuckTales 2 (Europe)",
-        "short": "DuckTales 2"
+        "short": "DuckTales 2",
+        "genre": "Action"
     },
     "149E9393": {
         "long": "Gerry Anderson's Thunderbirds (Japan)",
-        "short": "Gerry Anderson's Thunderbirds"
+        "short": "Gerry Anderson's Thunderbirds",
+        "genre": "Action"
     },
     "150BC291": {
         "long": "GI King! - Sanbiki no Yosouya (Japan)",
-        "short": "GI King! - Sanbiki no Yosouya"
+        "short": "GI King! - Sanbiki no Yosouya",
+        "genre": "Sports"
     },
     "1526A96B": {
         "long": "Heavyweight Championship Boxing (USA)",
-        "short": "Heavyweight Championship Boxing"
+        "short": "Heavyweight Championship Boxing",
+        "genre": "Sports"
     },
     "1495BBE5": {
         "long": "Heiankyo Alien (USA)",
-        "short": "Heiankyo Alien"
+        "short": "Heiankyo Alien",
+        "genre": "Strategy"
     },
     "17608642": {
         "long": "J.League Fighting Soccer - The King of Ace Strikers (Japan)",
-        "short": "J.League Fighting Soccer - The King of Ace Strikers"
+        "short": "J.League Fighting Soccer - The King of Ace Strikers",
+        "genre": "Sports"
     },
     "179C494E": {
         "long": "Legend of Prince Valiant, The (Europe) (En,Fr,De)",
-        "short": "Legend of Prince Valiant, The"
+        "short": "Legend of Prince Valiant, The",
+        "genre": "Strategy"
     },
     "15E28642": {
         "long": "Loopz (World) (Beta)",
-        "short": "Loopz"
+        "short": "Loopz",
+        "genre": "Puzzle"
     },
     "160FA9EF": {
         "long": "Mortal Kombat - Shinken Kourin Densetsu (Japan)",
-        "short": "Mortal Kombat - Shinken Kourin Densetsu"
+        "short": "Mortal Kombat - Shinken Kourin Densetsu",
+        "genre": "Action"
     },
     "1791E952": {
         "long": "Parodius Da! (Japan)",
-        "short": "Parodius Da!"
+        "short": "Parodius Da!",
+        "genre": "Action"
     },
     "17114316": {
         "long": "Pocket Battle (Japan)",
-        "short": "Pocket Battle"
+        "short": "Pocket Battle",
+        "genre": "Strategy"
     },
     "157CE6E5": {
         "long": "RoboCop 2 (Japan)",
-        "short": "RoboCop 2"
+        "short": "RoboCop 2",
+        "genre": "Platform"
     },
     "16AEC559": {
         "long": "Rockman World 4 (Japan)",
-        "short": "Rockman World 4"
+        "short": "Rockman World 4",
+        "genre": "Platform"
     },
     "14E91757": {
         "long": "Winner's Horse (Japan)",
-        "short": "Winner's Horse"
+        "short": "Winner's Horse",
+        "genre": "Sports with Animals"
     },
     "1510305E": {
         "long": "Winter Olympic Games (USA) (Rev 1) (Beta)",
-        "short": "Winter Olympic Games"
+        "short": "Winter Olympic Games",
+        "genre": "Sports"
     },
     "14F8B6BB": {
         "long": "Zoop (USA, Europe)",
-        "short": "Zoop"
+        "short": "Zoop",
+        "genre": "Action"
     },
     "16650A8B": {
         "long": "Tobu Tobu Girl DX (Tangram Games)",
-        "short": "Tobu Tobu Girl DX"
+        "short": "Tobu Tobu Girl DX",
+        "genre": "Homebrew"
     }
 }

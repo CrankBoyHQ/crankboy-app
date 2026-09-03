@@ -1,198 +1,247 @@
 {
     "7987D5CD": {
         "long": "ATV Racing (Europe) (Unl)",
-        "short": "ATV Racing"
+        "short": "ATV Racing",
+        "genre": "Racing"
     },
     "7A44CE88": {
         "long": "Bomberman Max - Hikari no Yuusha (Japan)",
-        "short": "Bomberman Max - Hikari no Yuusha"
+        "short": "Bomberman Max - Hikari no Yuusha",
+        "genre": "Action"
     },
     "7A2801FB": {
         "long": "Bugs Bunny - Crazy Castle 3 (USA, Europe) (GB Compatible)",
-        "short": "Bugs Bunny - Crazy Castle 3"
+        "short": "Bugs Bunny - Crazy Castle 3",
+        "genre": "Strategy"
     },
     "7BF836DB": {
         "long": "Dragon Ball Z - Legendary Super Warriors (Europe)",
-        "short": "Dragon Ball Z - Legendary Super Warriors"
+        "short": "Dragon Ball Z - Legendary Super Warriors",
+        "genre": "Role-playing (RPG)"
     },
     "7967320E": {
         "long": "Elie no Atelier GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Elie no Atelier GB"
+        "short": "Elie no Atelier GB",
+        "genre": "Role-playing (RPG)"
     },
     "783BC02D": {
         "long": "Kirikou (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "Kirikou"
+        "short": "Kirikou",
+        "genre": "Platform"
     },
     "7831F84D": {
         "long": "Metal Gear - Ghost Babel (Japan)",
-        "short": "Metal Gear - Ghost Babel"
+        "short": "Metal Gear - Ghost Babel",
+        "genre": "Action"
     },
     "7AE23888": {
         "long": "NBA Show Time - NBA on NBC (USA)",
-        "short": "NBA Show Time - NBA on NBC"
+        "short": "NBA Show Time - NBA on NBC",
+        "genre": "Sports"
     },
     "788859AE": {
         "long": "Powerpuff Girls, The - Battle Him (Europe)",
-        "short": "Powerpuff Girls, The - Battle Him"
+        "short": "Powerpuff Girls, The - Battle Him",
+        "genre": "Platform"
     },
     "79A417DB": {
         "long": "Powerpuff Girls, The - Panique a Townsville (France)",
-        "short": "Powerpuff Girls, The - Panique a Townsville"
+        "short": "Powerpuff Girls, The - Panique a Townsville",
+        "genre": "Beat'em Up"
     },
     "79A35284": {
         "long": "Puzzle Bobble 4 (Japan) (GB Compatible)",
-        "short": "Puzzle Bobble 4"
+        "short": "Puzzle Bobble 4",
+        "genre": "Puzzle"
     },
     "79EA53F4": {
         "long": "Shin Megami Tensei Devil Children - Shiro no Sho (Japan) (Rev 1) (Proto)",
-        "short": "Shin Megami Tensei Devil Children - Shiro no Sho"
+        "short": "Shin Megami Tensei Devil Children - Shiro no Sho",
+        "genre": "Role-playing (RPG)"
     },
     "7BA87C11": {
         "long": "Super Nenas, Las - Lucha Con Ese (Spain)",
-        "short": "Super Nenas, Las - Lucha Con Ese"
+        "short": "Super Nenas, Las - Lucha Con Ese",
+        "genre": "Platform"
     },
     "795A9992": {
         "long": "TG Rally 2 (United Kingdom)",
-        "short": "TG Rally 2"
+        "short": "TG Rally 2",
+        "genre": "Racing"
     },
     "7AA371ED": {
         "long": "Tiny Toon Adventures - Buster Saves the Day (Europe) (En,Fr,De,Es,It)",
-        "short": "Tiny Toon Adventures - Buster Saves the Day"
+        "short": "Tiny Toon Adventures - Buster Saves the Day",
+        "genre": "Platform"
     },
     "78E14FA9": {
         "long": "Tokimeki Memorial Pocket - Sport Hen - Koutei no Photograph (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Tokimeki Memorial Pocket - Sport Hen - Koutei no Photograph"
+        "short": "Tokimeki Memorial Pocket - Sport Hen - Koutei no Photograph",
+        "genre": "Simulation"
     },
     "7B9B2468": {
         "long": "Towers - Lord Baniff's Deceit (USA, Europe)",
-        "short": "Towers - Lord Baniff's Deceit"
+        "short": "Towers - Lord Baniff's Deceit",
+        "genre": "Role-playing (RPG)"
     },
     "786B5AB4": {
         "long": "Turok - Rage Wars (USA, Europe) (En,Fr,De,Es)",
-        "short": "Turok - Rage Wars"
+        "short": "Turok - Rage Wars",
+        "genre": "Shooter"
     },
     "7ADC90E1": {
         "long": "Wizardry Empire (Japan)",
-        "short": "Wizardry Empire"
+        "short": "Wizardry Empire",
+        "genre": "Role-playing (RPG)"
     },
     "783066CF": {
         "long": "Adventure Island II - Aliens in Paradise (USA, Europe)",
-        "short": "Adventure Island II - Aliens in Paradise"
+        "short": "Adventure Island II - Aliens in Paradise",
+        "genre": "Platform"
     },
     "7B23E05C": {
         "long": "Animaniacs (Europe) (SGB Enhanced)",
-        "short": "Animaniacs"
+        "short": "Animaniacs",
+        "genre": "Platform"
     },
     "7B217082": {
         "long": "Battletoads-Double Dragon (Europe)",
-        "short": "Battletoads-Double Dragon"
+        "short": "Battletoads-Double Dragon",
+        "genre": "Beat'em Up"
     },
     "78BF3633": {
         "long": "Caesars Palace (Europe) (En,Fr,De,Es,It)",
-        "short": "Caesars Palace"
+        "short": "Caesars Palace",
+        "genre": "Gambling"
     },
     "7BFD1CFF": {
         "long": "Chikyuu Kaihou Gun ZAS (Japan) (En)",
-        "short": "Chikyuu Kaihou Gun ZAS"
+        "short": "Chikyuu Kaihou Gun ZAS",
+        "genre": "Shoot'em Up"
     },
     "7A38B5C3": {
         "long": "Dragon's Lair - The Legend (USA)",
-        "short": "Dragon's Lair - The Legend"
+        "short": "Dragon's Lair - The Legend",
+        "genre": "Adventure"
     },
     "78830DAF": {
         "long": "Head On (Japan)",
-        "short": "Head On"
+        "short": "Head On",
+        "genre": "Racing"
     },
     "7A8CDBE8": {
         "long": "Jungle Strike (USA)",
-        "short": "Jungle Strike"
+        "short": "Jungle Strike",
+        "genre": "Shooter"
     },
     "7AD90B4B": {
         "long": "Kirby's Block Ball (USA, Europe) (SGB Enhanced)",
-        "short": "Kirby's Block Ball"
+        "short": "Kirby's Block Ball",
+        "genre": "Action"
     },
     "798D9489": {
         "long": "Looney Tunes Series - Daffy Duck (Japan) (SGB Enhanced)",
-        "short": "Looney Tunes Series - Daffy Duck"
+        "short": "Looney Tunes Series - Daffy Duck",
+        "genre": "Action"
     },
     "7B822D8F": {
         "long": "Mickey's Dangerous Chase (USA)",
-        "short": "Mickey's Dangerous Chase"
+        "short": "Mickey's Dangerous Chase",
+        "genre": "Platform"
     },
     "78F5BB56": {
         "long": "Mysterium (USA) (Beta)",
-        "short": "Mysterium"
+        "short": "Mysterium",
+        "genre": "Action"
     },
     "798F324A": {
         "long": "Nangoku Shounen Papuwa-kun - Ganmadan no Yabou (Japan)",
-        "short": "Nangoku Shounen Papuwa-kun - Ganmadan no Yabou"
+        "short": "Nangoku Shounen Papuwa-kun - Ganmadan no Yabou",
+        "genre": "Puzzle"
     },
     "79E05789": {
         "long": "Oyatsu Quiz Mogu Mogu Q (Japan) (SGB Enhanced)",
-        "short": "Oyatsu Quiz Mogu Mogu Q"
+        "short": "Oyatsu Quiz Mogu Mogu Q",
+        "genre": "Quiz"
     },
     "79804305": {
         "long": "Pinball - Revenge of the 'Gator (USA, Europe)",
-        "short": "Pinball - Revenge of the 'Gator"
+        "short": "Pinball - Revenge of the 'Gator",
+        "genre": "Pinball"
     },
     "7A01E45A": {
         "long": "Pokémon - Gelbe Edition - Special Pikachu Edition (Germany) (CGB+SGB Enhanced)",
-        "short": "Pokémon - Gelbe Edition - Special Pikachu Edition"
+        "short": "Pokémon - Gelbe Edition - Special Pikachu Edition",
+        "genre": "Role-playing (RPG)"
     },
     "796FBB66": {
         "long": "Racing Damashii (Japan)",
-        "short": "Racing Damashii"
+        "short": "Racing Damashii",
+        "genre": "Racing"
     },
     "7846DF7D": {
         "long": "Robin Hood - Prince of Thieves (Spain)",
-        "short": "Robin Hood - Prince of Thieves"
+        "short": "Robin Hood - Prince of Thieves",
+        "genre": "Action"
     },
     "79AFE59E": {
         "long": "Seaside Volley (Japan)",
-        "short": "Seaside Volley"
+        "short": "Seaside Volley",
+        "genre": "Sports"
     },
     "7AA4E0BB": {
         "long": "Simpsons, The - Bart no Jack to Mame no Ki (Japan)",
-        "short": "Simpsons, The - Bart no Jack to Mame no Ki"
+        "short": "Simpsons, The - Bart no Jack to Mame no Ki",
+        "genre": "Platform"
     },
     "7BF40D7D": {
         "long": "Sneaky Snakes (USA, Europe)",
-        "short": "Sneaky Snakes"
+        "short": "Sneaky Snakes",
+        "genre": "Platform"
     },
     "7960F33F": {
         "long": "Super R.C. Pro-Am (USA, Europe)",
-        "short": "Super R.C. Pro-Am"
+        "short": "Super R.C. Pro-Am",
+        "genre": "Racing"
     },
     "7B903A6F": {
         "long": "Tekichuu Rush (Japan)",
-        "short": "Tekichuu Rush"
+        "short": "Tekichuu Rush",
+        "genre": "Sports with Animals"
     },
     "7BE5A73F": {
         "long": "Tetris Blast (USA, Europe) (SGB Enhanced)",
-        "short": "Tetris Blast"
+        "short": "Tetris Blast",
+        "genre": "Puzzle"
     },
     "7A7D820F": {
         "long": "Tintin in Tibet (Europe) (En,Es,It,Sv) (SGB Enhanced)",
-        "short": "Tintin in Tibet"
+        "short": "Tintin in Tibet",
+        "genre": "Action"
     },
     "7BF96CA9": {
         "long": "Tiny Toon Adventures - Babs' Big Break (USA, Europe) (Beta) (1991-09-06)",
-        "short": "Tiny Toon Adventures - Babs' Big Break"
+        "short": "Tiny Toon Adventures - Babs' Big Break",
+        "genre": "Platform"
     },
     "7B5DC3E4": {
         "long": "Track Meet (USA, Europe)",
-        "short": "Track Meet"
+        "short": "Track Meet",
+        "genre": "Sports"
     },
     "796FD6A5": {
         "long": "Ultima - Ushinawareta Runes 2 (Japan)",
-        "short": "Ultima - Ushinawareta Runes 2"
+        "short": "Ultima - Ushinawareta Runes 2",
+        "genre": "Role-playing (RPG)"
     },
     "7B440074": {
         "long": "Zoop (USA, Europe) (Beta)",
-        "short": "Zoop"
+        "short": "Zoop",
+        "genre": "Action"
     },
     "7B557616": {
         "long": "Lo-Fi GB (beatscribe)",
-        "short": "Lo-Fi GB"
+        "short": "Lo-Fi GB",
+        "genre": "Music / Dancing"
     }
 }

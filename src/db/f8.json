@@ -1,206 +1,257 @@
 {
     "F9CCAB09": {
         "long": "Azure Dreams (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Azure Dreams"
+        "short": "Azure Dreams",
+        "genre": "Role-playing (RPG)"
     },
     "F9D5B399": {
         "long": "Batman of the Future - Return of the Joker (Europe) (En,Fr,De)",
-        "short": "Batman of the Future - Return of the Joker"
+        "short": "Batman of the Future - Return of the Joker",
+        "genre": "Action"
     },
     "FA1E6853": {
         "long": "Billy Bob's Huntin' 'n' Fishin' (USA, Europe)",
-        "short": "Billy Bob's Huntin' 'n' Fishin'"
+        "short": "Billy Bob's Huntin' 'n' Fishin'",
+        "genre": "Hunting and Fishing"
     },
     "F89F58B7": {
         "long": "Blue's Clues - Blue's Alphabet Book (USA) (Rev 1) (Proto)",
-        "short": "Blue's Clues - Blue's Alphabet Book"
+        "short": "Blue's Clues - Blue's Alphabet Book",
+        "genre": "Educational"
     },
     "F8DA0C4A": {
         "long": "Bust-A-Move Millennium (USA, Europe)",
-        "short": "Bust-A-Move Millennium"
+        "short": "Bust-A-Move Millennium",
+        "genre": "Puzzle"
     },
     "F8BD2A01": {
         "long": "Chicken Run (USA, Europe) (En,Fr,De,Es,It)",
-        "short": "Chicken Run"
+        "short": "Chicken Run",
+        "genre": "Strategy"
     },
     "FBE5DE37": {
         "long": "Columns GB - Tezuka Osamu Characters (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Columns GB - Tezuka Osamu Characters"
+        "short": "Columns GB - Tezuka Osamu Characters",
+        "genre": "Strategy"
     },
     "FB942E08": {
         "long": "Dragon Ball Z - Densetsu no Chou Senshi-tachi (Japan) (Beta) (All Unlocked)",
-        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi"
+        "short": "Dragon Ball Z - Densetsu no Chou Senshi-tachi",
+        "genre": "Role-playing (RPG)"
     },
     "FB08DCEB": {
         "long": "Dukes of Hazzard, The - Racing for Home (USA)",
-        "short": "Dukes of Hazzard, The - Racing for Home"
+        "short": "Dukes of Hazzard, The - Racing for Home",
+        "genre": "Racing"
     },
     "FAB64B18": {
         "long": "Hugo 2 1-2 (Germany) (GB Compatible)",
-        "short": "Hugo 2 1-2"
+        "short": "Hugo 2 1-2",
+        "genre": "Platform"
     },
     "FB528F66": {
         "long": "Keitai Denjuu Telefang - Speed Version (Japan) (GB Compatible)",
-        "short": "Keitai Denjuu Telefang - Speed Version"
+        "short": "Keitai Denjuu Telefang - Speed Version",
+        "genre": "Role-playing (RPG)"
     },
     "F9C6E0A5": {
         "long": "Klustar (Japan) (Proto 1) (1998-10-01) (GB Compatible)",
-        "short": "Klustar"
+        "short": "Klustar",
+        "genre": "Puzzle"
     },
     "F90A3DAE": {
         "long": "Laura (Europe) (En,Fr,De,Es,It,Nl,Sv,Da) (Beta)",
-        "short": "Laura"
+        "short": "Laura",
+        "genre": "Casual Game"
     },
     "F9A66CDA": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Europe) (Rev 2) (Beta) (1999-09-19) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "F8BF3EE7": {
         "long": "LNF Stars 2001 (France)",
-        "short": "LNF Stars 2001"
+        "short": "LNF Stars 2001",
+        "genre": "Sports"
     },
     "FA4E9896": {
         "long": "Nakayoshi Pet Series 3 - Kawaii Koinu (Japan)",
-        "short": "Nakayoshi Pet Series 3 - Kawaii Koinu"
+        "short": "Nakayoshi Pet Series 3 - Kawaii Koinu",
+        "genre": "Strategy"
     },
     "FA83B37C": {
         "long": "NASCAR Heat (USA)",
-        "short": "NASCAR Heat"
+        "short": "NASCAR Heat",
+        "genre": "Racing"
     },
     "FBB97680": {
         "long": "New Addams Family Series, The (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "New Addams Family Series, The"
+        "short": "New Addams Family Series, The",
+        "genre": "Adventure"
     },
     "F911BB5D": {
         "long": "Pitfall - Beyond the Jungle (USA, Europe) (GB Compatible)",
-        "short": "Pitfall - Beyond the Jungle"
+        "short": "Pitfall - Beyond the Jungle",
+        "genre": "Platform"
     },
     "FA09CEBE": {
         "long": "Pitfall GB (Japan) (GB Compatible)",
-        "short": "Pitfall GB"
+        "short": "Pitfall GB",
+        "genre": "Platform"
     },
     "FA2A66E9": {
         "long": "Pocket Bomberman (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket Bomberman"
+        "short": "Pocket Bomberman",
+        "genre": "Action"
     },
     "FBF97372": {
         "long": "Pocket Racing (Europe)",
-        "short": "Pocket Racing"
+        "short": "Pocket Racing",
+        "genre": "Racing"
     },
     "F8C5021B": {
         "long": "Resident Evil Gaiden (USA)",
-        "short": "Resident Evil Gaiden"
+        "short": "Resident Evil Gaiden",
+        "genre": "Action"
     },
     "F85C3F2C": {
         "long": "Resident Evil Gaiden (Europe) (En,Fr,De,Es,It)",
-        "short": "Resident Evil Gaiden"
+        "short": "Resident Evil Gaiden",
+        "genre": "Action"
     },
     "F90C4977": {
         "long": "Shin Megami Tensei Devil Children - Aka no Sho (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Shin Megami Tensei Devil Children - Aka no Sho"
+        "short": "Shin Megami Tensei Devil Children - Aka no Sho",
+        "genre": "Role-playing (RPG)"
     },
     "F82D391F": {
         "long": "Sylvanian Families 2 - Irozuku Mori no Fantasy (Japan)",
-        "short": "Sylvanian Families 2 - Irozuku Mori no Fantasy"
+        "short": "Sylvanian Families 2 - Irozuku Mori no Fantasy",
+        "genre": "Role-playing (RPG)"
     },
     "FAB9D941": {
         "long": "V-Rally - Championship Edition (Japan)",
-        "short": "V-Rally - Championship Edition"
+        "short": "V-Rally - Championship Edition",
+        "genre": "Racing"
     },
     "FA82620F": {
         "long": "Wizardry Empire (Japan) (Rev 1)",
-        "short": "Wizardry Empire"
+        "short": "Wizardry Empire",
+        "genre": "Role-playing (RPG)"
     },
     "F817E978": {
         "long": "Yogi Bear - Great Balloon Blast (USA)",
-        "short": "Yogi Bear - Great Balloon Blast"
+        "short": "Yogi Bear - Great Balloon Blast",
+        "genre": "Puzzle"
     },
     "FBB1F2A1": {
         "long": "Brain Bender (USA)",
-        "short": "Brain Bender"
+        "short": "Brain Bender",
+        "genre": "Puzzle"
     },
     "F924BDB1": {
         "long": "Druaga no Tou (Japan)",
-        "short": "Druaga no Tou"
+        "short": "Druaga no Tou",
+        "genre": "Role-playing (RPG)"
     },
     "FADFD0F6": {
         "long": "DX Bakenou Z (Japan) (Rev 1)",
-        "short": "DX Bakenou Z"
+        "short": "DX Bakenou Z",
+        "genre": "Sports with Animals"
     },
     "F9E08783": {
         "long": "F-1 Spirit (Japan)",
-        "short": "F-1 Spirit"
+        "short": "F-1 Spirit",
+        "genre": "Racing"
     },
     "FAC1F53B": {
         "long": "F1 Boy (Japan)",
-        "short": "F1 Boy"
+        "short": "F1 Boy",
+        "genre": "Racing"
     },
     "F8406560": {
         "long": "Goukaku Boy Series - Eitango Target 1900 (Japan)",
-        "short": "Goukaku Boy Series - Eitango Target 1900"
+        "short": "Goukaku Boy Series - Eitango Target 1900",
+        "genre": "Educational"
     },
     "FA7EA8A0": {
         "long": "Karamuchou no Daijiken (Japan) (SGB Enhanced)",
-        "short": "Karamuchou no Daijiken"
+        "short": "Karamuchou no Daijiken",
+        "genre": "Action"
     },
     "FB291E78": {
         "long": "Kuusou Kagaku Sekai Gulliver Boy - Kuusou Kagaku Puzzle Purittopon!! (Japan) (SGB Enhanced)",
-        "short": "Kuusou Kagaku Sekai Gulliver Boy - Kuusou Kagaku Puzzle Purittopon!!"
+        "short": "Kuusou Kagaku Sekai Gulliver Boy - Kuusou Kagaku Puzzle Purittopon!!",
+        "genre": "Puzzle"
     },
     "F8E519D9": {
         "long": "Megami Tensei Gaiden - Last Bible II (Japan)",
-        "short": "Megami Tensei Gaiden - Last Bible II"
+        "short": "Megami Tensei Gaiden - Last Bible II",
+        "genre": "Shooter"
     },
     "FB22D72E": {
         "long": "Monde Perdu, Le - Jurassic Park (France) (En) (SGB Enhanced)",
-        "short": "Monde Perdu, Le - Jurassic Park"
+        "short": "Monde Perdu, Le - Jurassic Park",
+        "genre": "Platform"
     },
     "F867EE3B": {
         "long": "Motocross Maniacs (Europe) (Rev 1)",
-        "short": "Motocross Maniacs"
+        "short": "Motocross Maniacs",
+        "genre": "Racing"
     },
     "FAFB343C": {
         "long": "Mystical Ninja Starring Goemon (USA) (SGB Enhanced)",
-        "short": "Mystical Ninja Starring Goemon"
+        "short": "Mystical Ninja Starring Goemon",
+        "genre": "Role-playing (RPG)"
     },
     "FB79EF58": {
         "long": "Painter Momopie (Japan)",
-        "short": "Painter Momopie"
+        "short": "Painter Momopie",
+        "genre": "Action"
     },
     "FB5D24E0": {
         "long": "Riddick Bowe Boxing (USA)",
-        "short": "Riddick Bowe Boxing"
+        "short": "Riddick Bowe Boxing",
+        "genre": "Sports"
     },
     "F82D7223": {
         "long": "RoboCop versus The Terminator (USA)",
-        "short": "RoboCop versus The Terminator"
+        "short": "RoboCop versus The Terminator",
+        "genre": "Platform"
     },
     "FA955B39": {
         "long": "Roger Clemens' MVP Baseball (USA) (Rev 1)",
-        "short": "Roger Clemens' MVP Baseball"
+        "short": "Roger Clemens' MVP Baseball",
+        "genre": "Sports"
     },
     "F8EC3A41": {
         "long": "Shikinjou (Japan)",
-        "short": "Shikinjou"
+        "short": "Shikinjou",
+        "genre": "Board"
     },
     "FB2FE362": {
         "long": "Shinri Game, The (Japan)",
-        "short": "Shinri Game, The"
+        "short": "Shinri Game, The",
+        "genre": "Adventure"
     },
     "F8FC0B41": {
         "long": "Takahashi Meijin no Bouken-jima III (Japan)",
-        "short": "Takahashi Meijin no Bouken-jima III"
+        "short": "Takahashi Meijin no Bouken-jima III",
+        "genre": "Platform"
     },
     "FB13462B": {
         "long": "Tiny Toon Adventures (Japan)",
-        "short": "Tiny Toon Adventures"
+        "short": "Tiny Toon Adventures",
+        "genre": "Platform"
     },
     "FAB0B86E": {
         "long": "Squid Game: Game Boy Demake (64 Bits Animation)",
-        "short": "Squid Game"
+        "short": "Squid Game",
+        "genre": "Homebrew"
     },
     "F8996CC3": {
         "long": "Little Sound Dj (v5.7.8)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

@@ -1,174 +1,217 @@
 {
     "28F7D5E3": {
         "long": "Atlantis - The Lost Empire (Europe) (En,Es,It)",
-        "short": "Atlantis - The Lost Empire"
+        "short": "Atlantis - The Lost Empire",
+        "genre": "Platform"
     },
     "2BB01AAD": {
         "long": "Daikatana GB (Japan) (NP)",
-        "short": "Daikatana GB"
+        "short": "Daikatana GB",
+        "genre": "Role-playing (RPG)"
     },
     "28D7E8D3": {
         "long": "Donkey Kong GB - Dinky Kong & Dixie Kong (Japan)",
-        "short": "Donkey Kong GB - Dinky Kong & Dixie Kong"
+        "short": "Donkey Kong GB - Dinky Kong & Dixie Kong",
+        "genre": "Platform"
     },
     "283742E4": {
         "long": "Dracula - Crazy Vampire (USA)",
-        "short": "Dracula - Crazy Vampire"
+        "short": "Dracula - Crazy Vampire",
+        "genre": "Adventure"
     },
     "2A82B63B": {
         "long": "Dragon Quest Monsters (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Quest Monsters"
+        "short": "Dragon Quest Monsters",
+        "genre": "Role-playing (RPG)"
     },
     "2BCB5F78": {
         "long": "Dungeon Savior (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dungeon Savior"
+        "short": "Dungeon Savior",
+        "genre": "Role-playing (RPG)"
     },
     "28453467": {
         "long": "F1 World Grand Prix II for Game Boy Color (Japan) (En,Ja)",
-        "short": "F1 World Grand Prix II for Game Boy Color"
+        "short": "F1 World Grand Prix II for Game Boy Color",
+        "genre": "Racing"
     },
     "28356950": {
         "long": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen (Japan)",
-        "short": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen"
+        "short": "Gambler Densetsu Tetsuya - Shinjuku Tenun Hen",
+        "genre": "Puzzle"
     },
     "2A073369": {
         "long": "Godzilla - The Series (Europe) (En,Fr,De) (GB Compatible)",
-        "short": "Godzilla - The Series"
+        "short": "Godzilla - The Series",
+        "genre": "Beat'em Up"
     },
     "29E193C5": {
         "long": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-2-gou (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-2-gou"
+        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-2-gou",
+        "genre": "Puzzle"
     },
     "2B7ABBA4": {
         "long": "Macross 7 - Ginga no Heart o Furuwasero!! (Japan)",
-        "short": "Macross 7 - Ginga no Heart o Furuwasero!!"
+        "short": "Macross 7 - Ginga no Heart o Furuwasero!!",
+        "genre": "Shoot'em Up"
     },
     "2A39A874": {
         "long": "Ou Dorobou Jing - Devil Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Ou Dorobou Jing - Devil Version"
+        "short": "Ou Dorobou Jing - Devil Version",
+        "genre": "Role-playing (RPG)"
     },
     "2A273244": {
         "long": "Pocket Family GB 2 (Japan)",
-        "short": "Pocket Family GB 2"
+        "short": "Pocket Family GB 2",
+        "genre": "Strategy"
     },
     "2AC77C5A": {
         "long": "Pocket GT (Japan)",
-        "short": "Pocket GT"
+        "short": "Pocket GT",
+        "genre": "Racing"
     },
     "2A6EF6A8": {
         "long": "Pocket Pro Yakyuu (Japan)",
-        "short": "Pocket Pro Yakyuu"
+        "short": "Pocket Pro Yakyuu",
+        "genre": "Sports"
     },
     "295B3646": {
         "long": "Powerpuff Girls, The - Paint the Townsville Green (USA) (Rev 1)",
-        "short": "Powerpuff Girls, The - Paint the Townsville Green"
+        "short": "Powerpuff Girls, The - Paint the Townsville Green",
+        "genre": "Beat'em Up"
     },
     "2B2D9868": {
         "long": "Space Invasion (Europe) (Unl)",
-        "short": "Space Invasion"
+        "short": "Space Invasion",
+        "genre": "Shoot'em Up"
     },
     "28A3AB3A": {
         "long": "Street Fighter Alpha - Warriors' Dreams (Europe)",
-        "short": "Street Fighter Alpha - Warriors' Dreams"
+        "short": "Street Fighter Alpha - Warriors' Dreams",
+        "genre": "Action"
     },
     "288BEF6E": {
         "long": "Taxi 2 (Europe) (En,Fr,De,Es,It,Nl) (Proto)",
-        "short": "Taxi 2"
+        "short": "Taxi 2",
+        "genre": "Racing"
     },
     "2838996F": {
         "long": "Taxi 3 (France)",
-        "short": "Taxi 3"
+        "short": "Taxi 3",
+        "genre": "Racing"
     },
     "2988FC78": {
         "long": "Tomb Raider (USA, Europe) (En,Fr,De,Es,It)",
-        "short": "Tomb Raider"
+        "short": "Tomb Raider",
+        "genre": "Action"
     },
     "298BD054": {
         "long": "Yu-Gi-Oh! Duel Monsters 4 - Battle of Great Duelist - Jounouchi Deck (Japan)",
-        "short": "Yu-Gi-Oh! Duel Monsters 4 - Battle of Great Duelist - Jounouchi Deck"
+        "short": "Yu-Gi-Oh! Duel Monsters 4 - Battle of Great Duelist - Jounouchi Deck",
+        "genre": "Card"
     },
     "28FA451E": {
         "long": "Addams Family, The (Europe) (En,Fr,De)",
-        "short": "Addams Family, The"
+        "short": "Addams Family, The",
+        "genre": "Platform"
     },
     "283C58B7": {
         "long": "Aladdin (Europe) (SGB Enhanced)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "28827EA5": {
         "long": "Aladdin (Europe) (Sample) (SGB Enhanced)",
-        "short": "Aladdin"
+        "short": "Aladdin",
+        "genre": "Platform"
     },
     "2A4EAFE4": {
         "long": "Amazing Spider-Man, The (USA, Europe)",
-        "short": "Amazing Spider-Man, The"
+        "short": "Amazing Spider-Man, The",
+        "genre": "Platform"
     },
     "2827E5D4": {
         "long": "Donkey Kong Land 2 (USA, Europe) (SGB Enhanced)",
-        "short": "Donkey Kong Land 2"
+        "short": "Donkey Kong Land 2",
+        "genre": "Platform"
     },
     "2B2F4F8F": {
         "long": "Dr. Mario (World) (Beta)",
-        "short": "Dr. Mario"
+        "short": "Dr. Mario",
+        "genre": "Puzzle"
     },
     "2BBBB54D": {
         "long": "DuckTales (USA)",
-        "short": "DuckTales"
+        "short": "DuckTales",
+        "genre": "Action"
     },
     "2B693CDE": {
         "long": "DuckTales 2 (Japan)",
-        "short": "DuckTales 2"
+        "short": "DuckTales 2",
+        "genre": "Action"
     },
     "2962AFB4": {
         "long": "Fushigi no Dungeon - Fuurai no Shiren GB - Tsukikage Mura no Kaibutsu (Japan) (SGB Enhanced)",
-        "short": "Fushigi no Dungeon - Fuurai no Shiren GB - Tsukikage Mura no Kaibutsu"
+        "short": "Fushigi no Dungeon - Fuurai no Shiren GB - Tsukikage Mura no Kaibutsu",
+        "genre": "Role-playing (RPG)"
     },
     "28E507B0": {
         "long": "Gegege no Kitarou - Youkai Souzoushu Arawaru! (Japan) (SGB Enhanced)",
-        "short": "Gegege no Kitarou - Youkai Souzoushu Arawaru!"
+        "short": "Gegege no Kitarou - Youkai Souzoushu Arawaru!",
+        "genre": "Role-playing (RPG)"
     },
     "2812036B": {
         "long": "Janshirou II - Sekai Saikyou no Janshi (Japan)",
-        "short": "Janshirou II - Sekai Saikyou no Janshi"
+        "short": "Janshirou II - Sekai Saikyou no Janshi",
+        "genre": "Card"
     },
     "2AD46AC7": {
         "long": "Jungle Wars (Japan)",
-        "short": "Jungle Wars"
+        "short": "Jungle Wars",
+        "genre": "Role-playing (RPG)"
     },
     "296CEACB": {
         "long": "Navy SEALs (USA, Europe)",
-        "short": "Navy SEALs"
+        "short": "Navy SEALs",
+        "genre": "Platform"
     },
     "2945ACEB": {
         "long": "Pokémon - Versione Rossa (Italy) (SGB Enhanced)",
-        "short": "Pokémon - Versione Rossa"
+        "short": "Pokémon - Versione Rossa",
+        "genre": "Role-playing (RPG)"
     },
     "2BD995F1": {
         "long": "Prince of Persia (USA)",
-        "short": "Prince of Persia"
+        "short": "Prince of Persia",
+        "genre": "Platform"
     },
     "2AE2D71C": {
         "long": "Puzzle Boy (Japan)",
-        "short": "Puzzle Boy"
+        "short": "Puzzle Boy",
+        "genre": "Puzzle"
     },
     "2B7A5034": {
         "long": "Snoopy's Magic Show (USA, Europe)",
-        "short": "Snoopy's Magic Show"
+        "short": "Snoopy's Magic Show",
+        "genre": "Puzzle"
     },
     "2A4A2D2B": {
         "long": "Soreyuke!! Kid (Japan)",
-        "short": "Soreyuke!! Kid"
+        "short": "Soreyuke!! Kid",
+        "genre": "Puzzle"
     },
     "2B795480": {
         "long": "Spirit of F-1, The (Europe)",
-        "short": "Spirit of F-1, The"
+        "short": "Spirit of F-1, The",
+        "genre": "Racing"
     },
     "29E0911A": {
         "long": "Super Mario Land 2 - 6-tsu no Kinka (Japan) (Rev 2)",
-        "short": "Super Mario Land 2 - 6-tsu no Kinka"
+        "short": "Super Mario Land 2 - 6-tsu no Kinka",
+        "genre": "Platform"
     },
     "28C311D7": {
         "long": "Sword of Hope, The (Spain)",
-        "short": "Sword of Hope, The"
+        "short": "Sword of Hope, The",
+        "genre": "Role-playing (RPG)"
     }
 }

@@ -1,230 +1,287 @@
 {
     "BEC3C24B": {
         "long": "Aliens - Thanatos Encounter (USA, Europe)",
-        "short": "Aliens - Thanatos Encounter"
+        "short": "Aliens - Thanatos Encounter",
+        "genre": "Shooter"
     },
     "BC562466": {
         "long": "All-Star Baseball 2001 (USA)",
-        "short": "All-Star Baseball 2001"
+        "short": "All-Star Baseball 2001",
+        "genre": "Sports"
     },
     "BF99F8CB": {
         "long": "Austin Powers - Oh, Behave! (Europe) (En,Fr,De,Es,It)",
-        "short": "Austin Powers - Oh, Behave!"
+        "short": "Austin Powers - Oh, Behave!",
+        "genre": "Platform"
     },
     "BF076CA5": {
         "long": "Dragon's Lair (USA, Europe) (En,Ja,Fr,De,Es,Zh)",
-        "short": "Dragon's Lair"
+        "short": "Dragon's Lair",
+        "genre": "Adventure"
     },
     "BDAE91E8": {
         "long": "Hiryuu no Ken - Retsuden GB (Japan)",
-        "short": "Hiryuu no Ken - Retsuden GB"
+        "short": "Hiryuu no Ken - Retsuden GB",
+        "genre": "Action"
     },
     "BF80C897": {
         "long": "Kaseki Sousei Reborn II - Monster Digger (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kaseki Sousei Reborn II - Monster Digger"
+        "short": "Kaseki Sousei Reborn II - Monster Digger",
+        "genre": "Role-playing (RPG)"
     },
     "BCE9CB16": {
         "long": "Land Before Time, The (USA)",
-        "short": "Land Before Time, The"
+        "short": "Land Before Time, The",
+        "genre": "Platform"
     },
     "BEF1CDE4": {
         "long": "Las Vegas Cool Hand (USA) (GB Compatible)",
-        "short": "Las Vegas Cool Hand"
+        "short": "Las Vegas Cool Hand",
+        "genre": "Gambling"
     },
     "BE5E366E": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (Beta) (1998-12-11) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "BC46A2D2": {
         "long": "Looney Tunes Collector - Martian Quest! (Japan)",
-        "short": "Looney Tunes Collector - Martian Quest!"
+        "short": "Looney Tunes Collector - Martian Quest!",
+        "genre": "Action"
     },
     "BF6BD446": {
         "long": "Medarot 2 - Kabuto Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Medarot 2 - Kabuto Version"
+        "short": "Medarot 2 - Kabuto Version",
+        "genre": "Role-playing (RPG)"
     },
     "BC617834": {
         "long": "Medarot 3 - Kuwagata Version (Japan)",
-        "short": "Medarot 3 - Kuwagata Version"
+        "short": "Medarot 3 - Kuwagata Version",
+        "genre": "Role-playing (RPG)"
     },
     "BD9BA639": {
         "long": "Megami Tensei Gaiden - Last Bible (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Megami Tensei Gaiden - Last Bible"
+        "short": "Megami Tensei Gaiden - Last Bible",
+        "genre": "Role-playing (RPG)"
     },
     "BC1809CE": {
         "long": "Monkey Puncher (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Monkey Puncher"
+        "short": "Monkey Puncher",
+        "genre": "Strategy"
     },
     "BD29EE6F": {
         "long": "Moomin no Daibouken (Japan)",
-        "short": "Moomin no Daibouken"
+        "short": "Moomin no Daibouken",
+        "genre": "Platform"
     },
     "BDF9B05C": {
         "long": "Mr. Driller (Europe)",
-        "short": "Mr. Driller"
+        "short": "Mr. Driller",
+        "genre": "Strategy"
     },
     "BE949F74": {
         "long": "NBA in the Zone (USA) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "NBA in the Zone"
+        "short": "NBA in the Zone",
+        "genre": "Sports"
     },
     "BE1B928A": {
         "long": "Pocket Monsters Gin (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pocket Monsters Gin"
+        "short": "Pocket Monsters Gin",
+        "genre": "Role-playing (RPG)"
     },
     "BEA36BF9": {
         "long": "Ready 2 Rumble Boxing (Europe)",
-        "short": "Ready 2 Rumble Boxing"
+        "short": "Ready 2 Rumble Boxing",
+        "genre": "Sports"
     },
     "BD4C1065": {
         "long": "Space Invasion & Painter (Europe) (Unl)",
-        "short": "Space Invasion & Painter"
+        "short": "Space Invasion & Painter",
+        "genre": "Compilation"
     },
     "BD366D22": {
         "long": "Survival Kids 2 - Dasshutsu!! Futago-Jima! (Japan) (Rev 1) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Survival Kids 2 - Dasshutsu!! Futago-Jima!"
+        "short": "Survival Kids 2 - Dasshutsu!! Futago-Jima!",
+        "genre": "Role-playing (RPG)"
     },
     "BF0028D9": {
         "long": "Tezhong Budui (Taiwan) (Unl) (Alt)",
-        "short": "Tezhong Budui"
+        "short": "Tezhong Budui",
+        "genre": "Platform"
     },
     "BC07F4FB": {
         "long": "Tonka Raceway (USA)",
-        "short": "Tonka Raceway"
+        "short": "Tonka Raceway",
+        "genre": "Racing"
     },
     "BC767B25": {
         "long": "Watashi no Kitchen (Japan)",
-        "short": "Watashi no Kitchen"
+        "short": "Watashi no Kitchen",
+        "genre": "Strategy"
     },
     "BD2D1F8B": {
         "long": "Woody Woodpecker (USA)",
-        "short": "Woody Woodpecker"
+        "short": "Woody Woodpecker",
+        "genre": "Platform"
     },
     "BD8A1041": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "BFA1D7BE": {
         "long": "Asterix & Obelix (Europe) (Fr,De) (Beta) (SGB Enhanced)",
-        "short": "Asterix & Obelix"
+        "short": "Asterix & Obelix",
+        "genre": "Platform"
     },
     "BD28BA07": {
         "long": "Castlevania II - Belmont's Revenge (USA, Europe) (Castlevania Anniversary Collection)",
-        "short": "Castlevania II - Belmont's Revenge (Castlevania Anniversary Collection)"
+        "short": "Castlevania II - Belmont's Revenge (Castlevania Anniversary Collection)",
+        "genre": "Platform"
     },
     "BE975B4F": {
         "long": "Darkwing Duck (Europe)",
-        "short": "Darkwing Duck"
+        "short": "Darkwing Duck",
+        "genre": "Platform"
     },
     "BEAD8AE4": {
         "long": "Elevator Action (Japan)",
-        "short": "Elevator Action"
+        "short": "Elevator Action",
+        "genre": "Platform"
     },
     "BC505A3B": {
         "long": "F1 Challenge (Europe) (Beta)",
-        "short": "F1 Challenge"
+        "short": "F1 Challenge",
+        "genre": "Racing"
     },
     "BDC4CCC3": {
         "long": "Famista 3 (Japan)",
-        "short": "Famista 3"
+        "short": "Famista 3",
+        "genre": "Sports"
     },
     "BFD87AA4": {
         "long": "Funny Field (Japan)",
-        "short": "Funny Field"
+        "short": "Funny Field",
+        "genre": "Puzzle"
     },
     "BC14FCE6": {
         "long": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700 (Japan) (IE Institute)",
-        "short": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700"
+        "short": "Goukaku Boy Series - Koukou Nyuushi Derujun - Chuugaku Eitango 1700",
+        "genre": "Educational"
     },
     "BFD65534": {
         "long": "InfoGenius Systems - Personal Organizer with Phone Book (Europe)",
-        "short": "InfoGenius Systems - Personal Organizer with Phone Book"
+        "short": "InfoGenius Systems - Personal Organizer with Phone Book",
+        "genre": "Various"
     },
     "BEF1FE2B": {
         "long": "Kakomunja (Japan)",
-        "short": "Kakomunja"
+        "short": "Kakomunja",
+        "genre": "Action"
     },
     "BF2AB18B": {
         "long": "Legend of Zelda, The - Link's Awakening (France)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "BC0588C4": {
         "long": "Medarot - Kuwagata Version (Japan) (SGB Enhanced)",
-        "short": "Medarot - Kuwagata Version"
+        "short": "Medarot - Kuwagata Version",
+        "genre": "Role-playing (RPG)"
     },
     "BF6866DC": {
         "long": "Metal Masters (USA)",
-        "short": "Metal Masters"
+        "short": "Metal Masters",
+        "genre": "Fighting"
     },
     "BD3039E5": {
         "long": "Monster Race Okawari (Japan) (SGB Enhanced)",
-        "short": "Monster Race Okawari"
+        "short": "Monster Race Okawari",
+        "genre": "Role-playing (RPG)"
     },
     "BF9C65FB": {
         "long": "Mortal Kombat 3 (USA, Europe)",
-        "short": "Mortal Kombat 3"
+        "short": "Mortal Kombat 3",
+        "genre": "Action"
     },
     "BFAEADD0": {
         "long": "Mortal Kombat II (USA, Europe)",
-        "short": "Mortal Kombat II"
+        "short": "Mortal Kombat II",
+        "genre": "Fighting"
     },
     "BFCF71A1": {
         "long": "Mulan (USA) (SGB Enhanced)",
-        "short": "Mulan"
+        "short": "Mulan",
+        "genre": "Action"
     },
     "BCABD2D2": {
         "long": "NHL Hockey 95 (USA, Europe) (SGB Enhanced)",
-        "short": "NHL Hockey 95"
+        "short": "NHL Hockey 95",
+        "genre": "Sports"
     },
     "BD223184": {
         "long": "Nintama Rantarou GB (Japan) (SGB Enhanced)",
-        "short": "Nintama Rantarou GB"
+        "short": "Nintama Rantarou GB",
+        "genre": "Puzzle"
     },
     "BE81BD61": {
         "long": "Olympic Summer Games (USA, Europe) (SGB Enhanced)",
-        "short": "Olympic Summer Games"
+        "short": "Olympic Summer Games",
+        "genre": "Sports"
     },
     "BEFF4F57": {
         "long": "Oni IV - Kijin no Ketsuzoku (Japan)",
-        "short": "Oni IV - Kijin no Ketsuzoku"
+        "short": "Oni IV - Kijin no Ketsuzoku",
+        "genre": "Role-playing (RPG)"
     },
     "BE4718E8": {
         "long": "Pachio-kun Game Gallery (Japan)",
-        "short": "Pachio-kun Game Gallery"
+        "short": "Pachio-kun Game Gallery",
+        "genre": "Gambling"
     },
     "BFB112AD": {
         "long": "Quarth (USA, Europe)",
-        "short": "Quarth"
+        "short": "Quarth",
+        "genre": "Puzzle"
     },
     "BCE5DFB7": {
         "long": "Ring Rage (USA)",
-        "short": "Ring Rage"
+        "short": "Ring Rage",
+        "genre": "Sports"
     },
     "BD022658": {
         "long": "Sensible Soccer - European Champions (Europe)",
-        "short": "Sensible Soccer - European Champions"
+        "short": "Sensible Soccer - European Champions",
+        "genre": "Sports"
     },
     "BCC18E24": {
         "long": "Shadow Warriors (Europe)",
-        "short": "Shadow Warriors"
+        "short": "Shadow Warriors",
+        "genre": "Platform"
     },
     "BE51A876": {
         "long": "Soccer (Japan)",
-        "short": "Soccer"
+        "short": "Soccer",
+        "genre": "Sports"
     },
     "BF2D1F10": {
         "long": "Spider-Man 3 - Invasion of the Spider-Slayers (USA, Europe) (Beta 2) (1993-04-11)",
-        "short": "Spider-Man 3 - Invasion of the Spider-Slayers"
+        "short": "Spider-Man 3 - Invasion of the Spider-Slayers",
+        "genre": "Platform"
     },
     "BF733E10": {
         "long": "Super Mario Land 2 - 6-tsu no Kinka (Japan) (Rev 1)",
-        "short": "Super Mario Land 2 - 6-tsu no Kinka"
+        "short": "Super Mario Land 2 - 6-tsu no Kinka",
+        "genre": "Platform"
     },
     "BCA2B25A": {
         "long": "Pokémon Kanto Expansion Pak (Red Version) (v1.3)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     },
     "BD5382B4": {
         "long": "Little Sound Dj (v6.9.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

@@ -1,166 +1,207 @@
 {
     "8CDAB77F": {
         "long": "3D Pocket Pool (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "3D Pocket Pool"
+        "short": "3D Pocket Pool",
+        "genre": "Sports"
     },
     "8EE043EA": {
         "long": "Arle no Bouken - Mahou no Jewel (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Arle no Bouken - Mahou no Jewel"
+        "short": "Arle no Bouken - Mahou no Jewel",
+        "genre": "Role-playing (RPG)"
     },
     "8E6F8037": {
         "long": "Battleship (USA, Europe) (GB Compatible)",
-        "short": "Battleship"
+        "short": "Battleship",
+        "genre": "Strategy"
     },
     "8E818E6F": {
         "long": "Bust-A-Move 4 (USA, Europe) (GB Compatible)",
-        "short": "Bust-A-Move 4"
+        "short": "Bust-A-Move 4",
+        "genre": "Puzzle"
     },
     "8D9A9182": {
         "long": "F-1 World Grand Prix (Europe) (En,Fr,De,Es)",
-        "short": "F-1 World Grand Prix"
+        "short": "F-1 World Grand Prix",
+        "genre": "Racing"
     },
     "8CABDCA4": {
         "long": "Hero Hero-kun (Japan)",
-        "short": "Hero Hero-kun"
+        "short": "Hero Hero-kun",
+        "genre": "Action"
     },
     "8ED4BBBA": {
         "long": "Honkaku Yonin Uchi Mahjong - Mahjong Ou (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Honkaku Yonin Uchi Mahjong - Mahjong Ou"
+        "short": "Honkaku Yonin Uchi Mahjong - Mahjong Ou",
+        "genre": "Board"
     },
     "8FEDB6D8": {
         "long": "Mega Man Xtreme 2 (USA, Europe)",
-        "short": "Mega Man Xtreme 2"
+        "short": "Mega Man Xtreme 2",
+        "genre": "Platform"
     },
     "8C195F49": {
         "long": "Nations, The - Land of Legends (Europe) (En,De)",
-        "short": "Nations, The - Land of Legends"
+        "short": "Nations, The - Land of Legends",
+        "genre": "Adventure"
     },
     "8E04849A": {
         "long": "Return of the Ninja (Europe)",
-        "short": "Return of the Ninja"
+        "short": "Return of the Ninja",
+        "genre": "Action"
     },
     "8C2D9B43": {
         "long": "Snoopy Tennis (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Snoopy Tennis"
+        "short": "Snoopy Tennis",
+        "genre": "Sports"
     },
     "8DD38534": {
         "long": "Snow White and the Seven Dwarfs (USA)",
-        "short": "Snow White and the Seven Dwarfs"
+        "short": "Snow White and the Seven Dwarfs",
+        "genre": "Platform"
     },
     "8C7DDBDA": {
         "long": "Star Ocean - Blue Sphere (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Star Ocean - Blue Sphere"
+        "short": "Star Ocean - Blue Sphere",
+        "genre": "Role-playing (RPG)"
     },
     "8D8BB5C4": {
         "long": "Tony Hawk's Pro Skater (USA, Europe)",
-        "short": "Tony Hawk's Pro Skater"
+        "short": "Tony Hawk's Pro Skater",
+        "genre": "Sports"
     },
     "8D573F37": {
         "long": "Animal Breeder 2 (Japan) (SGB Enhanced)",
-        "short": "Animal Breeder 2"
+        "short": "Animal Breeder 2",
+        "genre": "Strategy"
     },
     "8D706DBC": {
         "long": "Bonk's Adventure (USA) (Beta)",
-        "short": "Bonk's Adventure"
+        "short": "Bonk's Adventure",
+        "genre": "Platform"
     },
     "8D089356": {
         "long": "DragonHeart (France)",
-        "short": "DragonHeart"
+        "short": "DragonHeart",
+        "genre": "Adventure"
     },
     "8DC0D46C": {
         "long": "FIFA - Road to World Cup 98 (Europe) (Rev 1) (SGB Enhanced)",
-        "short": "FIFA - Road to World Cup 98"
+        "short": "FIFA - Road to World Cup 98",
+        "genre": "Sports"
     },
     "8E5E5097": {
         "long": "Final Fantasy Adventure (World) (Collection of Mana)",
-        "short": "Final Fantasy Adventure (Collection of Mana)"
+        "short": "Final Fantasy Adventure (Collection of Mana)",
+        "genre": "Role-playing (RPG)"
     },
     "8F2BF517": {
         "long": "Getaway, The - High Speed II (USA)",
-        "short": "Getaway, The - High Speed II"
+        "short": "Getaway, The - High Speed II",
+        "genre": "Pinball"
     },
     "8EE95E0B": {
         "long": "Hiryuu no Ken Gaiden (Japan)",
-        "short": "Hiryuu no Ken Gaiden"
+        "short": "Hiryuu no Ken Gaiden",
+        "genre": "Platform"
     },
     "8EFC8434": {
         "long": "Home Alone (USA, Europe)",
-        "short": "Home Alone"
+        "short": "Home Alone",
+        "genre": "Platform"
     },
     "8F234F49": {
         "long": "Indiana Jones - Saigo no Seisen (Japan)",
-        "short": "Indiana Jones - Saigo no Seisen"
+        "short": "Indiana Jones - Saigo no Seisen",
+        "genre": "Platform"
     },
     "8F3E7F95": {
         "long": "Ippatsu Gyakuten! DX Bakenou (Japan)",
-        "short": "Ippatsu Gyakuten! DX Bakenou"
+        "short": "Ippatsu Gyakuten! DX Bakenou",
+        "genre": "Sports with Animals"
     },
     "8CFEB2E2": {
         "long": "Kaisen Game - Navyblue 90 (Japan)",
-        "short": "Kaisen Game - Navyblue 90"
+        "short": "Kaisen Game - Navyblue 90",
+        "genre": "Strategy"
     },
     "8DC07C35": {
         "long": "Kirby's Dream Land 2 (USA, Europe) (SGB Enhanced)",
-        "short": "Kirby's Dream Land 2"
+        "short": "Kirby's Dream Land 2",
+        "genre": "Platform"
     },
     "8E367457": {
         "long": "Konamic Basket (Japan)",
-        "short": "Konamic Basket"
+        "short": "Konamic Basket",
+        "genre": "Sports"
     },
     "8CF27C90": {
         "long": "Legend of Zelda, The - Link's Awakening (USA, Europe)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "8FC3CA73": {
         "long": "Lion King, The (Europe)",
-        "short": "Lion King, The"
+        "short": "Lion King, The",
+        "genre": "Platform"
     },
     "8C21A77D": {
         "long": "Pachi-Slot Kids (Japan)",
-        "short": "Pachi-Slot Kids"
+        "short": "Pachi-Slot Kids",
+        "genre": "Gambling"
     },
     "8F931831": {
         "long": "Pachinko Saiyuuki (Japan)",
-        "short": "Pachinko Saiyuuki"
+        "short": "Pachinko Saiyuuki",
+        "genre": "Gambling"
     },
     "8EE404CA": {
         "long": "Paperboy 2 (USA, Europe)",
-        "short": "Paperboy 2"
+        "short": "Paperboy 2",
+        "genre": "Sports"
     },
     "8C17AAE6": {
         "long": "Pocket Monsters Yellow (Hong Kong) (SGB Enhanced) (Pirate)",
-        "short": "Pocket Monsters Yellow"
+        "short": "Pocket Monsters Yellow",
+        "genre": "Role-playing (RPG)"
     },
     "8CD93719": {
         "long": "Popeye 2 (Japan) (Rev 1)",
-        "short": "Popeye 2"
+        "short": "Popeye 2",
+        "genre": "Platform"
     },
     "8C217639": {
         "long": "Race Drivin' (USA, Europe) (Beta)",
-        "short": "Race Drivin'"
+        "short": "Race Drivin'",
+        "genre": "Racing"
     },
     "8DE1AE9C": {
         "long": "Riddick Bowe Boxing (Europe)",
-        "short": "Riddick Bowe Boxing"
+        "short": "Riddick Bowe Boxing",
+        "genre": "Sports"
     },
     "8E3C7E15": {
         "long": "Shippuu! Iron Leaguer (Japan)",
-        "short": "Shippuu! Iron Leaguer"
+        "short": "Shippuu! Iron Leaguer",
+        "genre": "Platform"
     },
     "8EF938C4": {
         "long": "Smurfs Nightmare, The (Europe) (En,Fr,De,Es)",
-        "short": "Smurfs Nightmare, The"
+        "short": "Smurfs Nightmare, The",
+        "genre": "Platform"
     },
     "8C5DEE4D": {
         "long": "Sunsoft Grand Prix (Europe)",
-        "short": "Sunsoft Grand Prix"
+        "short": "Sunsoft Grand Prix",
+        "genre": "Racing"
     },
     "8F9E28AD": {
         "long": "Tottemo! Lucky Man - Lucky Cookie Minna Daisuki!! (Japan) (SGB Enhanced)",
-        "short": "Tottemo! Lucky Man - Lucky Cookie Minna Daisuki!!"
+        "short": "Tottemo! Lucky Man - Lucky Cookie Minna Daisuki!!",
+        "genre": "Board"
     },
     "8ECE1C04": {
         "long": "WWF Superstars 2 (USA, Europe)",
-        "short": "WWF Superstars 2"
+        "short": "WWF Superstars 2",
+        "genre": "Sports"
     }
 }

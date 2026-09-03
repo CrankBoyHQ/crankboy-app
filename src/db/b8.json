@@ -1,178 +1,222 @@
 {
     "BB89190E": {
         "long": "Austin Powers - Oh, Behave! (USA)",
-        "short": "Austin Powers - Oh, Behave!"
+        "short": "Austin Powers - Oh, Behave!",
+        "genre": "Platform"
     },
     "B8B1F8F8": {
         "long": "Batman Beyond - Return of the Joker (Japan) (NP)",
-        "short": "Batman Beyond - Return of the Joker"
+        "short": "Batman Beyond - Return of the Joker",
+        "genre": "Action"
     },
     "B92A6D16": {
         "long": "Beatmania GB - Gotcha Mix 2 (Japan)",
-        "short": "Beatmania GB - Gotcha Mix 2"
+        "short": "Beatmania GB - Gotcha Mix 2",
+        "genre": "Music / Dancing"
     },
     "BB482ED7": {
         "long": "Carmageddon - Carpocalypse Now (USA, Europe) (En,Fr,Es,It)",
-        "short": "Carmageddon - Carpocalypse Now"
+        "short": "Carmageddon - Carpocalypse Now",
+        "genre": "Racing"
     },
     "BAF2CC96": {
         "long": "Deja Vu I & II (Japan)",
-        "short": "Deja Vu I & II"
+        "short": "Deja Vu I & II",
+        "genre": "Adventure"
     },
     "BA907064": {
         "long": "Frogger (USA) (Rev 1) (GB Compatible)",
-        "short": "Frogger"
+        "short": "Frogger",
+        "genre": "Action"
     },
     "B99BEDA2": {
         "long": "Full Time Soccer (Europe) (Unl)",
-        "short": "Full Time Soccer"
+        "short": "Full Time Soccer",
+        "genre": "Sports"
     },
     "B8147B5C": {
         "long": "Gakkyuu Ou Yamazaki (Japan) (GB Compatible)",
-        "short": "Gakkyuu Ou Yamazaki"
+        "short": "Gakkyuu Ou Yamazaki",
+        "genre": "Role-playing (RPG)"
     },
     "BB9B597D": {
         "long": "Golden Goal (Europe) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Golden Goal"
+        "short": "Golden Goal",
+        "genre": "Sports"
     },
     "B9E1F3B0": {
         "long": "Hamster Paradise 2 (Japan) (Rev 1)",
-        "short": "Hamster Paradise 2"
+        "short": "Hamster Paradise 2",
+        "genre": "Simulation"
     },
     "BB0672A6": {
         "long": "Heroes of Might and Magic (USA) (En,Fr,De)",
-        "short": "Heroes of Might and Magic"
+        "short": "Heroes of Might and Magic",
+        "genre": "Role-playing (RPG)"
     },
     "B85FD752": {
         "long": "International Rally (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "International Rally"
+        "short": "International Rally",
+        "genre": "Racing"
     },
     "B8A54E29": {
         "long": "Karate Joe (Europe) (Unl)",
-        "short": "Karate Joe"
+        "short": "Karate Joe",
+        "genre": "Beat'em Up"
     },
     "B868E846": {
         "long": "Keep the Balance (Europe) (En,Fr,De,Es,It)",
-        "short": "Keep the Balance"
+        "short": "Keep the Balance",
+        "genre": "Puzzle"
     },
     "B8064453": {
         "long": "Micro Machines V3 (USA, Europe)",
-        "short": "Micro Machines V3"
+        "short": "Micro Machines V3",
+        "genre": "Racing"
     },
     "B985F0D8": {
         "long": "Monster Race 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Monster Race 2"
+        "short": "Monster Race 2",
+        "genre": "Role-playing (RPG)"
     },
     "B9FA3CE4": {
         "long": "Nakayoshi Cooking Series 2 - Oishii Panya-san (Japan)",
-        "short": "Nakayoshi Cooking Series 2 - Oishii Panya-san"
+        "short": "Nakayoshi Cooking Series 2 - Oishii Panya-san",
+        "genre": "Strategy"
     },
     "BB625129": {
         "long": "NHL 2000 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "NHL 2000"
+        "short": "NHL 2000",
+        "genre": "Sports"
     },
     "BB6DD80C": {
         "long": "Pokémon - Crystal Version (Australia)",
-        "short": "Pokémon - Crystal Version"
+        "short": "Pokémon - Crystal Version",
+        "genre": "Role-playing (RPG)"
     },
     "BB3744A9": {
         "long": "Qix Adventure (USA) (Proto)",
-        "short": "Qix Adventure"
+        "short": "Qix Adventure",
+        "genre": "Puzzle"
     },
     "BB894EC7": {
         "long": "Test Drive 2001 (USA)",
-        "short": "Test Drive 2001"
+        "short": "Test Drive 2001",
+        "genre": "Racing"
     },
     "BA70D28F": {
         "long": "Titus the Fox (USA) (GB Compatible)",
-        "short": "Titus the Fox"
+        "short": "Titus the Fox",
+        "genre": "Platform"
     },
     "B97C0BD9": {
         "long": "Tom and Jerry (USA, Europe)",
-        "short": "Tom and Jerry"
+        "short": "Tom and Jerry",
+        "genre": "Platform"
     },
     "BA7182C3": {
         "long": "Yu-Gi-Oh! Duel Monsters II - Dark Duel Stories (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Yu-Gi-Oh! Duel Monsters II - Dark Duel Stories"
+        "short": "Yu-Gi-Oh! Duel Monsters II - Dark Duel Stories",
+        "genre": "Card"
     },
     "BAB8B727": {
         "long": "Bataille Navale (France) (En,Fr,De,Es)",
-        "short": "Bataille Navale"
+        "short": "Bataille Navale",
+        "genre": "Strategy"
     },
     "B8FE9077": {
         "long": "Bomber King - Scenario 2 (Japan)",
-        "short": "Bomber King - Scenario 2"
+        "short": "Bomber King - Scenario 2",
+        "genre": "Action"
     },
     "B94724E6": {
         "long": "Bust-A-Move 2 - Arcade Edition (USA, Europe)",
-        "short": "Bust-A-Move 2 - Arcade Edition"
+        "short": "Bust-A-Move 2 - Arcade Edition",
+        "genre": "Puzzle"
     },
     "B86EF7A5": {
         "long": "Gargoyle's Quest (Europe) (Rev 1)",
-        "short": "Gargoyle's Quest"
+        "short": "Gargoyle's Quest",
+        "genre": "Platform"
     },
     "BA595897": {
         "long": "Honoo no Toukyuuji - Dodge Danpei (Japan)",
-        "short": "Honoo no Toukyuuji - Dodge Danpei"
+        "short": "Honoo no Toukyuuji - Dodge Danpei",
+        "genre": "Sports"
     },
     "B9D11656": {
         "long": "Judge Dredd (USA, Europe)",
-        "short": "Judge Dredd"
+        "short": "Judge Dredd",
+        "genre": "Platform"
     },
     "B9725E66": {
         "long": "Marble Madness (USA, Europe)",
-        "short": "Marble Madness"
+        "short": "Marble Madness",
+        "genre": "Action"
     },
     "BA5611EF": {
         "long": "Momotarou Densetsu Gaiden (Japan)",
-        "short": "Momotarou Densetsu Gaiden"
+        "short": "Momotarou Densetsu Gaiden",
+        "genre": "Role-playing (RPG)"
     },
     "BAEACD2B": {
         "long": "Pocket Monsters - Midori (Japan) (SGB Enhanced)",
-        "short": "Pocket Monsters - Midori"
+        "short": "Pocket Monsters - Midori",
+        "genre": "Role-playing (RPG)"
     },
     "B9AB5319": {
         "long": "Race Days (Europe)",
-        "short": "Race Days"
+        "short": "Race Days",
+        "genre": "Racing"
     },
     "BA091B91": {
         "long": "Sea Battle (Europe) (En,Fr,De,Es)",
-        "short": "Sea Battle"
+        "short": "Sea Battle",
+        "genre": "Strategy"
     },
     "BADC7CEE": {
         "long": "Sumo Fighter (USA)",
-        "short": "Sumo Fighter"
+        "short": "Sumo Fighter",
+        "genre": "Platform"
     },
     "B8DA8EB5": {
         "long": "Tekkyu Fight! - The Great Battle Gaiden (Japan)",
-        "short": "Tekkyu Fight! - The Great Battle Gaiden"
+        "short": "Tekkyu Fight! - The Great Battle Gaiden",
+        "genre": "Action"
     },
     "B904230D": {
         "long": "Ultraman Chou Toushi Gekiden (Japan) (SGB Enhanced)",
-        "short": "Ultraman Chou Toushi Gekiden"
+        "short": "Ultraman Chou Toushi Gekiden",
+        "genre": "Action"
     },
     "B93138FA": {
         "long": "Who Framed Roger Rabbit (USA)",
-        "short": "Who Framed Roger Rabbit"
+        "short": "Who Framed Roger Rabbit",
+        "genre": "Adventure"
     },
     "BA65812A": {
         "long": "Cherry Rescue! (GrafxKid)",
-        "short": "Cherry Rescue!"
+        "short": "Cherry Rescue!",
+        "genre": "Homebrew"
     },
     "B85051E7": {
         "long": "Shin Pokémon Blue (v1.24.6h3)",
-        "short": "Shin Pokémon Blue"
+        "short": "Shin Pokémon Blue",
+        "genre": "ROM Hack"
     },
     "B94EC374": {
         "long": "Shin Pokémon Red-JP (LITE) (v1.24.6h3)",
-        "short": "Shin Pokémon Red-JP"
+        "short": "Shin Pokémon Red-JP",
+        "genre": "ROM Hack"
     },
     "BAA84C13": {
         "long": "Little Sound Dj (v4.6.9)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     },
     "BAD2B2B8": {
         "long": "Little Sound Dj (v3.1.9)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

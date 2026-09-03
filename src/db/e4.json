@@ -1,262 +1,327 @@
 {
     "E7224F14": {
         "long": "4 in 1 + 8 in 1 (World) (4B-002, 4B-004, 8B-002, Sachen) (Unl)",
-        "short": "4 in 1 + 8 in 1"
+        "short": "4 in 1 + 8 in 1",
+        "genre": "Compilation"
     },
     "E633841F": {
         "long": "720 Degrees (USA, Europe) (GB Compatible)",
-        "short": "720 Degrees"
+        "short": "720 Degrees",
+        "genre": "Sports"
     },
     "E4C410F0": {
         "long": "Beauty and the Beast - A Board Game Adventure (Europe) (En,Fr,De,Es,It) (SGB Enhanced) (GB Compatible)",
-        "short": "Beauty and the Beast - A Board Game Adventure"
+        "short": "Beauty and the Beast - A Board Game Adventure",
+        "genre": "Board"
     },
     "E44977DC": {
         "long": "Black Bass - Lure Fishing (USA, Europe) (GB Compatible)",
-        "short": "Black Bass - Lure Fishing"
+        "short": "Black Bass - Lure Fishing",
+        "genre": "Hunting and Fishing"
     },
     "E52FBD12": {
         "long": "Burai Senshi Color (Japan)",
-        "short": "Burai Senshi Color"
+        "short": "Burai Senshi Color",
+        "genre": "Action"
     },
     "E6B9F155": {
         "long": "Casper (Europe) (En,Fr,De)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "E6C91FB8": {
         "long": "Cool Hand (Europe) (En,Fr,De) (GB Compatible)",
-        "short": "Cool Hand"
+        "short": "Cool Hand",
+        "genre": "Gambling"
     },
     "E470CAFA": {
         "long": "CyberTiger (USA, Europe)",
-        "short": "CyberTiger"
+        "short": "CyberTiger",
+        "genre": "Sports"
     },
     "E56C35B1": {
         "long": "Dragon Warrior Monsters (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Warrior Monsters"
+        "short": "Dragon Warrior Monsters",
+        "genre": "Role-playing (RPG)"
     },
     "E6BC2E8C": {
         "long": "FIFA 2000 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "FIFA 2000"
+        "short": "FIFA 2000",
+        "genre": "Sports"
     },
     "E689BF16": {
         "long": "Formula One 2000 (Europe) (En,Fr,De,Es,It) (Proto)",
-        "short": "Formula One 2000"
+        "short": "Formula One 2000",
+        "genre": "Racing"
     },
     "E7EBB394": {
         "long": "Godzilla - The Series - Monster Wars (USA) (En,Fr,De)",
-        "short": "Godzilla - The Series - Monster Wars"
+        "short": "Godzilla - The Series - Monster Wars",
+        "genre": "Beat'em Up"
     },
     "E45E99D2": {
         "long": "Gonta no Okiraku Daibouken (Japan)",
-        "short": "Gonta no Okiraku Daibouken"
+        "short": "Gonta no Okiraku Daibouken",
+        "genre": "Adventure"
     },
     "E541ACF1": {
         "long": "Kirby - Tilt 'n' Tumble (USA)",
-        "short": "Kirby - Tilt 'n' Tumble"
+        "short": "Kirby - Tilt 'n' Tumble",
+        "genre": "Action"
     },
     "E4188A79": {
         "long": "Magical Drop (USA)",
-        "short": "Magical Drop"
+        "short": "Magical Drop",
+        "genre": "Puzzle"
     },
     "E7BD4A49": {
         "long": "Maus, Die (Europe) (En,Fr,De,Es)",
-        "short": "Maus, Die"
+        "short": "Maus, Die",
+        "genre": "Puzzle"
     },
     "E655632C": {
         "long": "Medarot 3 - Kabuto Version (Japan)",
-        "short": "Medarot 3 - Kabuto Version"
+        "short": "Medarot 3 - Kabuto Version",
+        "genre": "Role-playing (RPG)"
     },
     "E620FAE2": {
         "long": "Meitantei Conan - Kigantou Hihou Densetsu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Meitantei Conan - Kigantou Hihou Densetsu"
+        "short": "Meitantei Conan - Kigantou Hihou Densetsu",
+        "genre": "Adventure"
     },
     "E66E093B": {
         "long": "Micro Maniacs (Europe)",
-        "short": "Micro Maniacs"
+        "short": "Micro Maniacs",
+        "genre": "Racing"
     },
     "E559A717": {
         "long": "Monopoly (USA) (GB Compatible)",
-        "short": "Monopoly"
+        "short": "Monopoly",
+        "genre": "Board"
     },
     "E5EC7BE5": {
         "long": "Nakayoshi Pet Series 5 - Kawaii Hamster 2 (Japan)",
-        "short": "Nakayoshi Pet Series 5 - Kawaii Hamster 2"
+        "short": "Nakayoshi Pet Series 5 - Kawaii Hamster 2",
+        "genre": "Strategy"
     },
     "E6AF6D07": {
         "long": "NBA in the Zone 2000 (Europe)",
-        "short": "NBA in the Zone 2000"
+        "short": "NBA in the Zone 2000",
+        "genre": "Sports"
     },
     "E6BEC6D1": {
         "long": "Prince of Persia (USA, Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Prince of Persia"
+        "short": "Prince of Persia",
+        "genre": "Platform"
     },
     "E6E722C8": {
         "long": "Resident Evil (World) (Proto 1)",
-        "short": "Resident Evil"
+        "short": "Resident Evil",
+        "genre": "Adventure"
     },
     "E48ADF8D": {
         "long": "Rokumon Tengai Mon-Colle-Knight GB (Japan)",
-        "short": "Rokumon Tengai Mon-Colle-Knight GB"
+        "short": "Rokumon Tengai Mon-Colle-Knight GB",
+        "genre": "Role-playing (RPG)"
     },
     "E787B44C": {
         "long": "Sangokushi - Game Boy Ban 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sangokushi - Game Boy Ban 2"
+        "short": "Sangokushi - Game Boy Ban 2",
+        "genre": "Strategy"
     },
     "E79D411A": {
         "long": "South Park (USA) (Proto)",
-        "short": "South Park"
+        "short": "South Park",
+        "genre": "Platform"
     },
     "E584DFC2": {
         "long": "Star Wars Episode I - Obi-Wan's Adventures (Europe) (En,Fr,De,Es,It)",
-        "short": "Star Wars Episode I - Obi-Wan's Adventures"
+        "short": "Star Wars Episode I - Obi-Wan's Adventures",
+        "genre": "Adventure"
     },
     "E77FA0F2": {
         "long": "Super Gals! Kotobuki Ran 2 - Miracle Getting (Japan)",
-        "short": "Super Gals! Kotobuki Ran 2 - Miracle Getting"
+        "short": "Super Gals! Kotobuki Ran 2 - Miracle Getting",
+        "genre": "Puzzle"
     },
     "E6D6AC8F": {
         "long": "Test Drive Le Mans (USA) (En,Fr,Es)",
-        "short": "Test Drive Le Mans"
+        "short": "Test Drive Le Mans",
+        "genre": "Racing"
     },
     "E72F2683": {
         "long": "Tom Clancy's Rainbow Six (USA, Europe) (En,Fr,De)",
-        "short": "Tom Clancy's Rainbow Six"
+        "short": "Tom Clancy's Rainbow Six",
+        "genre": "Simulation"
     },
     "E54B22B9": {
         "long": "Walt Disney World Quest - Magical Racing Tour (Europe) (Fr,De,Es)",
-        "short": "Walt Disney World Quest - Magical Racing Tour"
+        "short": "Walt Disney World Quest - Magical Racing Tour",
+        "genre": "Racing"
     },
     "E42538F0": {
         "long": "Zelda no Densetsu - Fushigi no Kinomi - Daichi no Shou (Japan)",
-        "short": "Zelda no Densetsu - Fushigi no Kinomi - Daichi no Shou"
+        "short": "Zelda no Densetsu - Fushigi no Kinomi - Daichi no Shou",
+        "genre": "Role-playing (RPG)"
     },
     "E59049B2": {
         "long": "Alien 3 (Japan)",
-        "short": "Alien 3"
+        "short": "Alien 3",
+        "genre": "Shooter"
     },
     "E67A92B3": {
         "long": "Battle Unit Zeoth (USA, Europe)",
-        "short": "Battle Unit Zeoth"
+        "short": "Battle Unit Zeoth",
+        "genre": "Action"
     },
     "E558AACD": {
         "long": "Brain Drain (Japan) (SGB Enhanced)",
-        "short": "Brain Drain"
+        "short": "Brain Drain",
+        "genre": "Puzzle"
     },
     "E555C612": {
         "long": "Bust-A-Move 3 DX (Europe)",
-        "short": "Bust-A-Move 3 DX"
+        "short": "Bust-A-Move 3 DX",
+        "genre": "Puzzle"
     },
     "E4B30634": {
         "long": "Casper (Europe)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "E67A10E1": {
         "long": "Casper (USA)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "E55138BE": {
         "long": "Chibi Maruko-chan 4 - Kore ga Nihon Da yo! Ouji-sama (Japan)",
-        "short": "Chibi Maruko-chan 4 - Kore ga Nihon Da yo! Ouji-sama"
+        "short": "Chibi Maruko-chan 4 - Kore ga Nihon Da yo! Ouji-sama",
+        "genre": "Board"
     },
     "E6C3A473": {
         "long": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster (Japan) (Beta) (SGB Enhanced)",
-        "short": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster"
+        "short": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster",
+        "genre": "Role-playing (RPG)"
     },
     "E5520693": {
         "long": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster 2 (Japan) (SGB Enhanced)",
-        "short": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster 2"
+        "short": "Chou Mashin Eiyuu Den Wataru - Mazekko Monster 2",
+        "genre": "Role-playing (RPG)"
     },
     "E5989908": {
         "long": "FIFA International Soccer (USA, Europe) (En,Fr,De,Es) (SGB Enhanced)",
-        "short": "FIFA International Soccer"
+        "short": "FIFA International Soccer",
+        "genre": "Sports"
     },
     "E4B4FEBC": {
         "long": "Hokuto no Ken - Seizetsu Juuban Shoubu (Japan)",
-        "short": "Hokuto no Ken - Seizetsu Juuban Shoubu"
+        "short": "Hokuto no Ken - Seizetsu Juuban Shoubu",
+        "genre": "Action"
     },
     "E69A6F0A": {
         "long": "Kingyo Chuuihou! - Wapiko no Wakuwaku Stamp Rally! (Japan)",
-        "short": "Kingyo Chuuihou! - Wapiko no Wakuwaku Stamp Rally!"
+        "short": "Kingyo Chuuihou! - Wapiko no Wakuwaku Stamp Rally!",
+        "genre": "Racing"
     },
     "E681395B": {
         "long": "Litti's Summer Sports (Germany)",
-        "short": "Litti's Summer Sports"
+        "short": "Litti's Summer Sports",
+        "genre": "Sports"
     },
     "E435ED72": {
         "long": "Lion King, The (World) (Disney Classic Games)",
-        "short": "Lion King, The"
+        "short": "Lion King, The",
+        "genre": "Platform"
     },
     "E496F686": {
         "long": "Mega Man II (USA)",
-        "short": "Mega Man II"
+        "short": "Mega Man II",
+        "genre": "Platform"
     },
     "E72DB762": {
         "long": "Mickey's Dangerous Chase (Europe)",
-        "short": "Mickey's Dangerous Chase"
+        "short": "Mickey's Dangerous Chase",
+        "genre": "Platform"
     },
     "E7723A39": {
         "long": "Monster Max (Europe) (En,Fr,De,Es,It,Nl) (Beta) (1993-04-01)",
-        "short": "Monster Max"
+        "short": "Monster Max",
+        "genre": "Action"
     },
     "E7AC155B": {
         "long": "Montezuma's Return! (Europe) (En,Fr,De,Es,It)",
-        "short": "Montezuma's Return!"
+        "short": "Montezuma's Return!",
+        "genre": "Platform"
     },
     "E497842E": {
         "long": "Nihon Daihyou Team - Eikou no Eleven (Japan) (SGB Enhanced)",
-        "short": "Nihon Daihyou Team - Eikou no Eleven"
+        "short": "Nihon Daihyou Team - Eikou no Eleven",
+        "genre": "Sports"
     },
     "E7A26B31": {
         "long": "NIV Bible & the 20 Lost Levels of Joshua (USA) (Unl)",
-        "short": "NIV Bible & the 20 Lost Levels of Joshua"
+        "short": "NIV Bible & the 20 Lost Levels of Joshua",
+        "genre": "Various"
     },
     "E6607E29": {
         "long": "Othello (Europe)",
-        "short": "Othello"
+        "short": "Othello",
+        "genre": "Board"
     },
     "E4AF8F75": {
         "long": "Pac-Panic (Europe) (SGB Enhanced)",
-        "short": "Pac-Panic"
+        "short": "Pac-Panic",
+        "genre": "Puzzle"
     },
     "E742561E": {
         "long": "Phantasm (Japan)",
-        "short": "Phantasm"
+        "short": "Phantasm",
+        "genre": "Platform"
     },
     "E4468D14": {
         "long": "Pocket Monsters - Ao (Japan) (SGB Enhanced)",
-        "short": "Pocket Monsters - Ao"
+        "short": "Pocket Monsters - Ao",
+        "genre": "Role-playing (RPG)"
     },
     "E5463A1D": {
         "long": "Puzzle Boy II (Japan)",
-        "short": "Puzzle Boy II"
+        "short": "Puzzle Boy II",
+        "genre": "Strategy"
     },
     "E4988910": {
         "long": "R-Type (Japan)",
-        "short": "R-Type"
+        "short": "R-Type",
+        "genre": "Action"
     },
     "E5C8C2B1": {
         "long": "Robin Hood - Prince of Thieves (USA)",
-        "short": "Robin Hood - Prince of Thieves"
+        "short": "Robin Hood - Prince of Thieves",
+        "genre": "Action"
     },
     "E43DA090": {
         "long": "Sagaia (Japan)",
-        "short": "Sagaia"
+        "short": "Sagaia",
+        "genre": "Shoot'em Up"
     },
     "E5A78B9B": {
         "long": "Shin SD Gundam Gaiden - Knight Gundam Monogatari (Japan) (SGB Enhanced)",
-        "short": "Shin SD Gundam Gaiden - Knight Gundam Monogatari"
+        "short": "Shin SD Gundam Gaiden - Knight Gundam Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "E5A22F5A": {
         "long": "Snow Bros. Jr. (Japan)",
-        "short": "Snow Bros. Jr."
+        "short": "Snow Bros. Jr.",
+        "genre": "Action"
     },
     "E6F886E5": {
         "long": "Super Mario Land 2 - 6 Golden Coins (USA, Europe) (Rev 1)",
-        "short": "Super Mario Land 2 - 6 Golden Coins"
+        "short": "Super Mario Land 2 - 6 Golden Coins",
+        "genre": "Platform"
     },
     "E4F29760": {
         "long": "Tecmo Bowl (USA)",
-        "short": "Tecmo Bowl"
+        "short": "Tecmo Bowl",
+        "genre": "Action"
     }
 }

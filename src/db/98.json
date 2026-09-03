@@ -1,174 +1,217 @@
 {
     "9890BCB4": {
         "long": "All Star Tennis 2000 (USA) (Proto) (GB Compatible)",
-        "short": "All Star Tennis 2000"
+        "short": "All Star Tennis 2000",
+        "genre": "Sports"
     },
     "98F63BD4": {
         "long": "Azarashi Sentai Inazuma - Dokidoki Daisakusen! (Japan)",
-        "short": "Azarashi Sentai Inazuma - Dokidoki Daisakusen!"
+        "short": "Azarashi Sentai Inazuma - Dokidoki Daisakusen!",
+        "genre": "Action"
     },
     "98DBFFE0": {
         "long": "Bugs Bunny in - Crazy Castle 4 (USA)",
-        "short": "Bugs Bunny in - Crazy Castle 4"
+        "short": "Bugs Bunny in - Crazy Castle 4",
+        "genre": "Strategy"
     },
     "9A90ADBE": {
         "long": "Dragon Dance (USA) (Beta 2) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Dance"
+        "short": "Dragon Dance",
+        "genre": "Action"
     },
     "994314B3": {
         "long": "Game Conveni 21 (Japan) (GB Compatible)",
-        "short": "Game Conveni 21"
+        "short": "Game Conveni 21",
+        "genre": "Strategy"
     },
     "9B6B755F": {
         "long": "Jungle Book, The - Mowgli's Wild Adventure (USA) (En,Fr,De,Es,It)",
-        "short": "Jungle Book, The - Mowgli's Wild Adventure"
+        "short": "Jungle Book, The - Mowgli's Wild Adventure",
+        "genre": "Racing"
     },
     "983B1D26": {
         "long": "Maya the Bee & Her Friends (Europe) (En,Fr,De) (GB Compatible)",
-        "short": "Maya the Bee & Her Friends"
+        "short": "Maya the Bee & Her Friends",
+        "genre": "Strategy"
     },
     "9B2429A7": {
         "long": "Pop'n Music GB - Animation Melody (Japan)",
-        "short": "Pop'n Music GB - Animation Melody"
+        "short": "Pop'n Music GB - Animation Melody",
+        "genre": "Music / Dancing"
     },
     "98E4B0C4": {
         "long": "Powerpuff Girls, The - Paint the Townsville Green (Europe) (BPTP)",
-        "short": "Powerpuff Girls, The - Paint the Townsville Green"
+        "short": "Powerpuff Girls, The - Paint the Townsville Green",
+        "genre": "Beat'em Up"
     },
     "9AC27645": {
         "long": "Quest - Brian's Journey (USA) (GB Compatible)",
-        "short": "Quest - Brian's Journey"
+        "short": "Quest - Brian's Journey",
+        "genre": "Role-playing (RPG)"
     },
     "98285775": {
         "long": "Quest - Fantasy Challenge (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Quest - Fantasy Challenge"
+        "short": "Quest - Fantasy Challenge",
+        "genre": "Action"
     },
     "98C59706": {
         "long": "Road Champs - BXS Stunt Biking (USA, Europe)",
-        "short": "Road Champs - BXS Stunt Biking"
+        "short": "Road Champs - BXS Stunt Biking",
+        "genre": "Sports"
     },
     "9AA5B021": {
         "long": "Rocky Mountain - Trophy Hunter (USA)",
-        "short": "Rocky Mountain - Trophy Hunter"
+        "short": "Rocky Mountain - Trophy Hunter",
+        "genre": "Hunting and Fishing"
     },
     "99869172": {
         "long": "Saban's Power Rangers - Lightspeed Rescue (USA, Europe)",
-        "short": "Saban's Power Rangers - Lightspeed Rescue"
+        "short": "Saban's Power Rangers - Lightspeed Rescue",
+        "genre": "Platform"
     },
     "998657B7": {
         "long": "Scrabble (Europe)",
-        "short": "Scrabble"
+        "short": "Scrabble",
+        "genre": "Thinking"
     },
     "9A024415": {
         "long": "10-Pin Bowling (USA)",
-        "short": "10-Pin Bowling"
+        "short": "10-Pin Bowling",
+        "genre": "Sports"
     },
     "9B7945EA": {
         "long": "Agro Soar (Australia)",
-        "short": "Agro Soar"
+        "short": "Agro Soar",
+        "genre": "Platform"
     },
     "9BD8815E": {
         "long": "Bomb Jack (Europe)",
-        "short": "Bomb Jack"
+        "short": "Bomb Jack",
+        "genre": "Platform"
     },
     "9AECA05C": {
         "long": "Donkey Kong Land (Japan) (SGB Enhanced)",
-        "short": "Donkey Kong Land"
+        "short": "Donkey Kong Land",
+        "genre": "Platform"
     },
     "9A84B6CF": {
         "long": "Fist of the North Star (USA)",
-        "short": "Fist of the North Star"
+        "short": "Fist of the North Star",
+        "genre": "Action"
     },
     "9A494AE6": {
         "long": "Frank Thomas Big Hurt Baseball (USA, Europe)",
-        "short": "Frank Thomas Big Hurt Baseball"
+        "short": "Frank Thomas Big Hurt Baseball",
+        "genre": "Simulation"
     },
     "99B2FE79": {
         "long": "Game & Watch Gallery (USA) (SGB Enhanced)",
-        "short": "Game & Watch Gallery"
+        "short": "Game & Watch Gallery",
+        "genre": "Compilation"
     },
     "999C67D6": {
         "long": "Humans, The (Europe) (En,Fr,De,Es,It)",
-        "short": "Humans, The"
+        "short": "Humans, The",
+        "genre": "Strategy"
     },
     "98259257": {
         "long": "Jaleco J.Cup Soccer (Japan)",
-        "short": "Jaleco J.Cup Soccer"
+        "short": "Jaleco J.Cup Soccer",
+        "genre": "Sports"
     },
     "9B7EBF91": {
         "long": "Jimmy Connors Tennis (USA, Europe)",
-        "short": "Jimmy Connors Tennis"
+        "short": "Jimmy Connors Tennis",
+        "genre": "Sports"
     },
     "9BD7F196": {
         "long": "Joe & Mac - Caveman Ninja (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Joe & Mac - Caveman Ninja"
+        "short": "Joe & Mac - Caveman Ninja",
+        "genre": "Platform"
     },
     "992CD78F": {
         "long": "Konami GB Collection Vol.1 (Japan) (SGB Enhanced)",
-        "short": "Konami GB Collection Vol.1"
+        "short": "Konami GB Collection Vol.1",
+        "genre": "Compilation"
     },
     "9800BD49": {
         "long": "Lemmings 2 - The Tribes (Europe)",
-        "short": "Lemmings 2 - The Tribes"
+        "short": "Lemmings 2 - The Tribes",
+        "genre": "Puzzle"
     },
     "9BB5BA03": {
         "long": "Mercenary Force (USA, Europe)",
-        "short": "Mercenary Force"
+        "short": "Mercenary Force",
+        "genre": "Shoot'em Up"
     },
     "987B621E": {
         "long": "Monopoly (Europe) (En,Fr,De)",
-        "short": "Monopoly"
+        "short": "Monopoly",
+        "genre": "Board"
     },
     "995D0838": {
         "long": "Nettou Samurai Spirits - Zankurou Musouken (Japan) (SGB Enhanced)",
-        "short": "Nettou Samurai Spirits - Zankurou Musouken"
+        "short": "Nettou Samurai Spirits - Zankurou Musouken",
+        "genre": "Fighting"
     },
     "98500521": {
         "long": "Otogibanashi Taisen (Japan) (SGB Enhanced)",
-        "short": "Otogibanashi Taisen"
+        "short": "Otogibanashi Taisen",
+        "genre": "Role-playing (RPG)"
     },
     "9A3E2DC2": {
         "long": "Pachio-kun (Japan)",
-        "short": "Pachio-kun"
+        "short": "Pachio-kun",
+        "genre": "Gambling"
     },
     "983CAF46": {
         "long": "Play Action Football (USA)",
-        "short": "Play Action Football"
+        "short": "Play Action Football",
+        "genre": "Sports"
     },
     "9A1E30B4": {
         "long": "Side Pocket (World)",
-        "short": "Side Pocket"
+        "short": "Side Pocket",
+        "genre": "Simulation"
     },
     "984D0F7F": {
         "long": "Super Snakey (Japan) (SGB Enhanced)",
-        "short": "Super Snakey"
+        "short": "Super Snakey",
+        "genre": "Puzzle"
     },
     "9B5E6219": {
         "long": "Tiny Toon Adventures - Babs' Big Break (USA, Europe)",
-        "short": "Tiny Toon Adventures - Babs' Big Break"
+        "short": "Tiny Toon Adventures - Babs' Big Break",
+        "genre": "Platform"
     },
     "9B5B7BFF": {
         "long": "Totsugeki! Ponkotsu Tank (Japan)",
-        "short": "Totsugeki! Ponkotsu Tank"
+        "short": "Totsugeki! Ponkotsu Tank",
+        "genre": "Action"
     },
     "9995EE1A": {
         "long": "Tsumeshougi - Kanki Godan (Japan) (Beta) (SGB Enhanced)",
-        "short": "Tsumeshougi - Kanki Godan"
+        "short": "Tsumeshougi - Kanki Godan",
+        "genre": "Board"
     },
     "99AE9D06": {
         "long": "Universal Soldier (USA, Europe)",
-        "short": "Universal Soldier"
+        "short": "Universal Soldier",
+        "genre": "Platform"
     },
     "9812A6C6": {
         "long": "Wedding Peach - Jamapii Panic (Japan) (SGB Enhanced)",
-        "short": "Wedding Peach - Jamapii Panic"
+        "short": "Wedding Peach - Jamapii Panic",
+        "genre": "Puzzle"
     },
     "9B6FCC76": {
         "long": "Yoshi no Tamago (Japan)",
-        "short": "Yoshi no Tamago"
+        "short": "Yoshi no Tamago",
+        "genre": "Puzzle"
     },
     "994EE7BB": {
         "long": "Shin Pokémon Blue-JP (v1.24.6h3)",
-        "short": "Shin Pokémon Blue-JP"
+        "short": "Shin Pokémon Blue-JP",
+        "genre": "ROM Hack"
     }
 }

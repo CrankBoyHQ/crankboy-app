@@ -1,186 +1,232 @@
 {
     "CD15ED36": {
         "long": "Barca Total 2000 (Europe) (En,Fr,De,Es,It,Nl,Ca)",
-        "short": "Barca Total 2000"
+        "short": "Barca Total 2000",
+        "genre": "Sports"
     },
     "CFDF816B": {
         "long": "Chase H.Q. - Secret Police (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Chase H.Q. - Secret Police"
+        "short": "Chase H.Q. - Secret Police",
+        "genre": "Racing"
     },
     "CE8DD179": {
         "long": "Dogz (Europe)",
-        "short": "Dogz"
+        "short": "Dogz",
+        "genre": "Simulation"
     },
     "CF1A2038": {
         "long": "Doraemon Kart 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Doraemon Kart 2"
+        "short": "Doraemon Kart 2",
+        "genre": "Racing"
     },
     "CC777B98": {
         "long": "Extreme Ghostbusters (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "Extreme Ghostbusters"
+        "short": "Extreme Ghostbusters",
+        "genre": "Platform"
     },
     "CFF5325A": {
         "long": "Jack no Daibouken - Daimaou no Gyakushuu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Jack no Daibouken - Daimaou no Gyakushuu"
+        "short": "Jack no Daibouken - Daimaou no Gyakushuu",
+        "genre": "Role-playing (RPG)"
     },
     "CF8E2371": {
         "long": "Laura (Europe) (En,Fr,De,Es,It,Nl,Sv,Da) (Rev 1) (Proto)",
-        "short": "Laura"
+        "short": "Laura",
+        "genre": "Casual Game"
     },
     "CE7F108A": {
         "long": "Lucky Luke - Desperado Train (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Lucky Luke - Desperado Train"
+        "short": "Lucky Luke - Desperado Train",
+        "genre": "Adventure"
     },
     "CE55A4DE": {
         "long": "Quest for Camelot (Europe) (En,Fr,De,Es,It,Nl) (SGB Enhanced) (GB Compatible)",
-        "short": "Quest for Camelot"
+        "short": "Quest for Camelot",
+        "genre": "Adventure"
     },
     "CC1FB2A9": {
         "long": "Sesame Street - Elmo's ABCs (USA) (GB Compatible)",
-        "short": "Sesame Street - Elmo's ABCs"
+        "short": "Sesame Street - Elmo's ABCs",
+        "genre": "Educational"
     },
     "CDF56F1A": {
         "long": "Street Fighter Alpha - Warriors' Dreams (Europe) (Rev 1) (Proto)",
-        "short": "Street Fighter Alpha - Warriors' Dreams"
+        "short": "Street Fighter Alpha - Warriors' Dreams",
+        "genre": "Action"
     },
     "CE8AE58C": {
         "long": "Tanimura Hitoshi Ryuu Pachinko Kouryaku Daisakusen - Don Quijote ga Iku (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Tanimura Hitoshi Ryuu Pachinko Kouryaku Daisakusen - Don Quijote ga Iku"
+        "short": "Tanimura Hitoshi Ryuu Pachinko Kouryaku Daisakusen - Don Quijote ga Iku",
+        "genre": "Gambling"
     },
     "CE55ED18": {
         "long": "Titi - Le Tour du Monde en 80 Chats (France)",
-        "short": "Titi - Le Tour du Monde en 80 Chats"
+        "short": "Titi - Le Tour du Monde en 80 Chats",
+        "genre": "Platform"
     },
     "CE4CA7B1": {
         "long": "Tom and Jerry in - Mouse Attacks! (USA) (Rev 1)",
-        "short": "Tom and Jerry in - Mouse Attacks!"
+        "short": "Tom and Jerry in - Mouse Attacks!",
+        "genre": "Platform"
     },
     "CFA0DF0F": {
         "long": "Warlocked (USA)",
-        "short": "Warlocked"
+        "short": "Warlocked",
+        "genre": "Strategy"
     },
     "CE36E36E": {
         "long": "Altered Space - A 3-D Alien Adventure (Japan)",
-        "short": "Altered Space - A 3-D Alien Adventure"
+        "short": "Altered Space - A 3-D Alien Adventure",
+        "genre": "Puzzle"
     },
     "CF2BA5F7": {
         "long": "Avenging Spirit (USA, Europe)",
-        "short": "Avenging Spirit"
+        "short": "Avenging Spirit",
+        "genre": "Platform"
     },
     "CE34CCA4": {
         "long": "Battle Arena Toshinden (Europe) (SGB Enhanced)",
-        "short": "Battle Arena Toshinden"
+        "short": "Battle Arena Toshinden",
+        "genre": "Action"
     },
     "CE316C68": {
         "long": "Battletoads in Ragnarok's World (USA)",
-        "short": "Battletoads in Ragnarok's World"
+        "short": "Battletoads in Ragnarok's World",
+        "genre": "Beat'em Up"
     },
     "CC67A046": {
         "long": "Contra (World) (Contra Anniversary Collection)",
-        "short": "Contra (Contra Anniversary Collection)"
+        "short": "Contra (Contra Anniversary Collection)",
+        "genre": "Shooter"
     },
     "CDE6DE15": {
         "long": "Contra (Japan) (En)",
-        "short": "Contra"
+        "short": "Contra",
+        "genre": "Shooter"
     },
     "CDF6A5AC": {
         "long": "FIFA - Road to World Cup 98 (Europe) (SGB Enhanced)",
-        "short": "FIFA - Road to World Cup 98"
+        "short": "FIFA - Road to World Cup 98",
+        "genre": "Sports"
     },
     "CDD02F22": {
         "long": "J.League Big Wave Soccer (Japan) (SGB Enhanced)",
-        "short": "J.League Big Wave Soccer"
+        "short": "J.League Big Wave Soccer",
+        "genre": "Sports"
     },
     "CD3DF0C1": {
         "long": "Jeopardy! - Teen Tournament (USA) (SGB Enhanced)",
-        "short": "Jeopardy! - Teen Tournament"
+        "short": "Jeopardy! - Teen Tournament",
+        "genre": "Quiz"
     },
     "CC38CF0D": {
         "long": "Jetsons, The - Robot Panic (USA) (Rev 1) (Possible Proto)",
-        "short": "Jetsons, The - Robot Panic"
+        "short": "Jetsons, The - Robot Panic",
+        "genre": "Platform"
     },
     "CC19768E": {
         "long": "Kenyuu Densetsu Yaiba (Japan)",
-        "short": "Kenyuu Densetsu Yaiba"
+        "short": "Kenyuu Densetsu Yaiba",
+        "genre": "Role-playing (RPG)"
     },
     "CD555712": {
         "long": "Lunar Chase (USA) (Proto 1)",
-        "short": "Lunar Chase"
+        "short": "Lunar Chase",
+        "genre": "Action"
     },
     "CDFD660A": {
         "long": "Maerchen Club (Japan)",
-        "short": "Maerchen Club"
+        "short": "Maerchen Club",
+        "genre": "Strategy"
     },
     "CFA358DE": {
         "long": "Makaimura Gaiden - The Demon Darkness (Japan)",
-        "short": "Makaimura Gaiden - The Demon Darkness"
+        "short": "Makaimura Gaiden - The Demon Darkness",
+        "genre": "Platform"
     },
     "CED936F8": {
         "long": "Migrain (Japan)",
-        "short": "Migrain"
+        "short": "Migrain",
+        "genre": "Puzzle"
     },
     "CF84AC77": {
         "long": "Mr. Do! (Europe)",
-        "short": "Mr. Do!"
+        "short": "Mr. Do!",
+        "genre": "Puzzle"
     },
     "CDFA71E5": {
         "long": "Pagemaster, The (USA) (SGB Enhanced)",
-        "short": "Pagemaster, The"
+        "short": "Pagemaster, The",
+        "genre": "Platform"
     },
     "CE58C63D": {
         "long": "Pocahontas (USA, Europe) (SGB Enhanced)",
-        "short": "Pocahontas"
+        "short": "Pocahontas",
+        "genre": "Platform"
     },
     "CEE9C818": {
         "long": "Pokémon - Red Version (Hong Kong) (SGB Enhanced) (Pirate)",
-        "short": "Pokémon - Red Version"
+        "short": "Pokémon - Red Version",
+        "genre": "Role-playing (RPG)"
     },
     "CF8AEEE8": {
         "long": "Power Racer (Europe)",
-        "short": "Power Racer"
+        "short": "Power Racer",
+        "genre": "Racing"
     },
     "CEB62411": {
         "long": "Purikura Pocket 3 - Talent Debut Daisakusen (Japan) (SGB Enhanced)",
-        "short": "Purikura Pocket 3 - Talent Debut Daisakusen"
+        "short": "Purikura Pocket 3 - Talent Debut Daisakusen",
+        "genre": "Adventure"
     },
     "CDFF161F": {
         "long": "Smurfs, The (Europe) (En,Fr,De,Es)",
-        "short": "Smurfs, The"
+        "short": "Smurfs, The",
+        "genre": "Platform"
     },
     "CEA9622A": {
         "long": "Solomon's Club (USA)",
-        "short": "Solomon's Club"
+        "short": "Solomon's Club",
+        "genre": "Action"
     },
     "CDE0FF00": {
         "long": "Super Pachinko Taisen (Japan) (SGB Enhanced)",
-        "short": "Super Pachinko Taisen"
+        "short": "Super Pachinko Taisen",
+        "genre": "Gambling"
     },
     "CFD74E34": {
         "long": "Tecmo Bowl GB (Japan)",
-        "short": "Tecmo Bowl GB"
+        "short": "Tecmo Bowl GB",
+        "genre": "Action"
     },
     "CF24506C": {
         "long": "Teenage Mutant Hero Turtles II - Back from the Sewers (Europe)",
-        "short": "Teenage Mutant Hero Turtles II - Back from the Sewers"
+        "short": "Teenage Mutant Hero Turtles II - Back from the Sewers",
+        "genre": "Platform"
     },
     "CC465DA9": {
         "long": "Teenage Mutant Ninja Turtles III - Radical Rescue (USA) (Rev 1) (Beta)",
-        "short": "Teenage Mutant Ninja Turtles III - Radical Rescue"
+        "short": "Teenage Mutant Ninja Turtles III - Radical Rescue",
+        "genre": "Platform"
     },
     "CEEE6A61": {
         "long": "Tsumego Series 1 - Fujisawa Hideyuki Meiyo Kisei (Japan) (SGB Enhanced)",
-        "short": "Tsumego Series 1 - Fujisawa Hideyuki Meiyo Kisei"
+        "short": "Tsumego Series 1 - Fujisawa Hideyuki Meiyo Kisei",
+        "genre": "Board"
     },
     "CD11C917": {
         "long": "Who Framed Roger Rabbit (Spain)",
-        "short": "Who Framed Roger Rabbit"
+        "short": "Who Framed Roger Rabbit",
+        "genre": "Adventure"
     },
     "CE0E2930": {
         "long": "Shin Pokémon Red-JP (v1.24.6h3)",
-        "short": "Shin Pokémon Red-JP"
+        "short": "Shin Pokémon Red-JP",
+        "genre": "ROM Hack"
     },
     "CC338B99": {
         "long": "Little Sound Dj (v6.4.5)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

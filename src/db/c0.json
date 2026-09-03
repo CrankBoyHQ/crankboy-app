@@ -1,230 +1,287 @@
 {
     "C145C036": {
         "long": "Alone in the Dark - The New Nightmare (USA) (En,Fr,Es)",
-        "short": "Alone in the Dark - The New Nightmare"
+        "short": "Alone in the Dark - The New Nightmare",
+        "genre": "Action"
     },
     "C2531D36": {
         "long": "Biohazard Gaiden (Japan)",
-        "short": "Biohazard Gaiden"
+        "short": "Biohazard Gaiden",
+        "genre": "Action"
     },
     "C1B22246": {
         "long": "Classic Bubble Bobble (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Classic Bubble Bobble"
+        "short": "Classic Bubble Bobble",
+        "genre": "Platform"
     },
     "C1D60129": {
         "long": "Croc 2 (USA, Europe)",
-        "short": "Croc 2"
+        "short": "Croc 2",
+        "genre": "Platform"
     },
     "C08F3254": {
         "long": "David Beckham Soccer (USA) (En,Es) (Proto)",
-        "short": "David Beckham Soccer"
+        "short": "David Beckham Soccer",
+        "genre": "Sports"
     },
     "C25EE35A": {
         "long": "David O'Leary's Total Soccer 2000 (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "David O'Leary's Total Soccer 2000"
+        "short": "David O'Leary's Total Soccer 2000",
+        "genre": "Sports"
     },
     "C07E9438": {
         "long": "Dragon Ball Z - Les Guerriers Legendaires (France)",
-        "short": "Dragon Ball Z - Les Guerriers Legendaires"
+        "short": "Dragon Ball Z - Les Guerriers Legendaires",
+        "genre": "Role-playing (RPG)"
     },
     "C38D52E7": {
         "long": "Gremlins - Unleashed (Europe) (En,Fr,De,Es,It,Pt) (Beta)",
-        "short": "Gremlins - Unleashed"
+        "short": "Gremlins - Unleashed",
+        "genre": "Platform"
     },
     "C0EDE71F": {
         "long": "Hercules - The Legendary Journeys (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Hercules - The Legendary Journeys"
+        "short": "Hercules - The Legendary Journeys",
+        "genre": "Adventure"
     },
     "C0FACE3D": {
         "long": "Korokoro Kirby (Japan)",
-        "short": "Korokoro Kirby"
+        "short": "Korokoro Kirby",
+        "genre": "Action"
     },
     "C0287CF2": {
         "long": "Loppi Puzzle Magazine - Hirameku Puzzle Soukangou (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Soukangou"
+        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Soukangou",
+        "genre": "Puzzle"
     },
     "C192A368": {
         "long": "Medarot 4 - Kabuto Version (Japan)",
-        "short": "Medarot 4 - Kabuto Version"
+        "short": "Medarot 4 - Kabuto Version",
+        "genre": "Role-playing (RPG)"
     },
     "C04539F8": {
         "long": "Nakayoshi Cooking Series 5 - Cake o Tsukurou (Japan)",
-        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou"
+        "short": "Nakayoshi Cooking Series 5 - Cake o Tsukurou",
+        "genre": "Strategy"
     },
     "C0A98305": {
         "long": "Paperboy (USA, Europe)",
-        "short": "Paperboy"
+        "short": "Paperboy",
+        "genre": "Action"
     },
     "C2A4A3EB": {
         "long": "Power Pro Kun Pocket 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Power Pro Kun Pocket 2"
+        "short": "Power Pro Kun Pocket 2",
+        "genre": "Sports"
     },
     "C1E27556": {
         "long": "Shin Megami Tensei Devil Children - Aka no Sho (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Shin Megami Tensei Devil Children - Aka no Sho"
+        "short": "Shin Megami Tensei Devil Children - Aka no Sho",
+        "genre": "Role-playing (RPG)"
     },
     "C016BC79": {
         "long": "Space Invaders X (Japan) (En) (GB Compatible)",
-        "short": "Space Invaders X"
+        "short": "Space Invaders X",
+        "genre": "Shooter"
     },
     "C07EBE70": {
         "long": "Tech Deck Skateboarding (USA, Europe)",
-        "short": "Tech Deck Skateboarding"
+        "short": "Tech Deck Skateboarding",
+        "genre": "Sports"
     },
     "C0DD1B26": {
         "long": "Yu-Gi-Oh! - Duel des Tenebres (France) (Beta)",
-        "short": "Yu-Gi-Oh! - Duel des Tenebres"
+        "short": "Yu-Gi-Oh! - Duel des Tenebres",
+        "genre": "Card"
     },
     "C09F9E1B": {
         "long": "Zok Zok Heroes (Japan)",
-        "short": "Zok Zok Heroes"
+        "short": "Zok Zok Heroes",
+        "genre": "Role-playing (RPG)"
     },
     "C294AA21": {
         "long": "4 in 1 (Taiwan) (En,Zh) (4B-003, Sachen-Commin) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "C170A732": {
         "long": "Addams Family, The (USA)",
-        "short": "Addams Family, The"
+        "short": "Addams Family, The",
+        "genre": "Platform"
     },
     "C0049D77": {
         "long": "After Burst (Japan)",
-        "short": "After Burst"
+        "short": "After Burst",
+        "genre": "Action"
     },
     "C2EEC22F": {
         "long": "Animal Breeder (Japan) (SGB Enhanced)",
-        "short": "Animal Breeder"
+        "short": "Animal Breeder",
+        "genre": "Strategy"
     },
     "C1F88833": {
         "long": "Asteroids (USA, Europe)",
-        "short": "Asteroids"
+        "short": "Asteroids",
+        "genre": "Action"
     },
     "C28EF062": {
         "long": "B.C. Kid 2 (Europe) (SGB Enhanced)",
-        "short": "B.C. Kid 2"
+        "short": "B.C. Kid 2",
+        "genre": "Platform"
     },
     "C2FD6244": {
         "long": "Batman Forever (Japan)",
-        "short": "Batman Forever"
+        "short": "Batman Forever",
+        "genre": "Beat'em Up"
     },
     "C2763E73": {
         "long": "Bishoujo Senshi Sailor Moon (Japan)",
-        "short": "Bishoujo Senshi Sailor Moon"
+        "short": "Bishoujo Senshi Sailor Moon",
+        "genre": "Beat'em Up"
     },
     "C09CEE99": {
         "long": "Boxxle (USA, Europe) (Rev 1)",
-        "short": "Boxxle"
+        "short": "Boxxle",
+        "genre": "Strategy"
     },
     "C08E9756": {
         "long": "Boxxle II (USA, Europe)",
-        "short": "Boxxle II"
+        "short": "Boxxle II",
+        "genre": "Puzzle"
     },
     "C3EB82EF": {
         "long": "Cult Master - Ultraman ni Miserarete (Japan)",
-        "short": "Cult Master - Ultraman ni Miserarete"
+        "short": "Cult Master - Ultraman ni Miserarete",
+        "genre": "Quiz"
     },
     "C2C2AD19": {
         "long": "Hoi Hoi - Game Boy Ban (Japan)",
-        "short": "Hoi Hoi - Game Boy Ban"
+        "short": "Hoi Hoi - Game Boy Ban",
+        "genre": "Strategy"
     },
     "C364D55F": {
         "long": "Hyper Black Bass (Japan) (En,Ja)",
-        "short": "Hyper Black Bass"
+        "short": "Hyper Black Bass",
+        "genre": "Hunting and Fishing"
     },
     "C18CD57A": {
         "long": "Kaeru no Tame ni Kane wa Naru (Japan)",
-        "short": "Kaeru no Tame ni Kane wa Naru"
+        "short": "Kaeru no Tame ni Kane wa Naru",
+        "genre": "Action"
     },
     "C3B318CD": {
         "long": "Konami GB Collection Vol.2 (Japan) (SGB Enhanced)",
-        "short": "Konami GB Collection Vol.2"
+        "short": "Konami GB Collection Vol.2",
+        "genre": "Compilation"
     },
     "C16D4DB2": {
         "long": "Konamic Golf (Japan)",
-        "short": "Konamic Golf"
+        "short": "Konamic Golf",
+        "genre": "Sports"
     },
     "C191BD66": {
         "long": "Monster Race (Japan) (SGB Enhanced)",
-        "short": "Monster Race"
+        "short": "Monster Race",
+        "genre": "Role-playing (RPG)"
     },
     "C3373A18": {
         "long": "Mystic Quest (World) (Fr) (Collection of Mana)",
-        "short": "Mystic Quest (Collection of Mana)"
+        "short": "Mystic Quest (Collection of Mana)",
+        "genre": "Role-playing (RPG)"
     },
     "C27C0289": {
         "long": "NBA All-Star Challenge 2 (USA, Europe)",
-        "short": "NBA All-Star Challenge 2"
+        "short": "NBA All-Star Challenge 2",
+        "genre": "Sports"
     },
     "C3E62A35": {
         "long": "Nemesis II - The Return of the Hero (Europe)",
-        "short": "Nemesis II - The Return of the Hero"
+        "short": "Nemesis II - The Return of the Hero",
+        "genre": "Shoot'em Up"
     },
     "C17A002E": {
         "long": "Othello (Japan)",
-        "short": "Othello"
+        "short": "Othello",
+        "genre": "Board"
     },
     "C3E365B4": {
         "long": "Out of Gas (USA) (Beta)",
-        "short": "Out of Gas"
+        "short": "Out of Gas",
+        "genre": "Action"
     },
     "C35AD128": {
         "long": "Parasol Stars - Rainbow Islands II (Europe)",
-        "short": "Parasol Stars - Rainbow Islands II"
+        "short": "Parasol Stars - Rainbow Islands II",
+        "genre": "Platform"
     },
     "C169606D": {
         "long": "Penguin-kun Wars VS. (Japan)",
-        "short": "Penguin-kun Wars VS."
+        "short": "Penguin-kun Wars VS.",
+        "genre": "Sports"
     },
     "C07ED722": {
         "long": "Popeye 2 (Europe)",
-        "short": "Popeye 2"
+        "short": "Popeye 2",
+        "genre": "Platform"
     },
     "C2E7BE35": {
         "long": "Red October o Oe! (Japan)",
-        "short": "Red October o Oe!"
+        "short": "Red October o Oe!",
+        "genre": "Action"
     },
     "C34D265E": {
         "long": "Rockman World 2 (Japan)",
-        "short": "Rockman World 2"
+        "short": "Rockman World 2",
+        "genre": "Platform"
     },
     "C36B199B": {
         "long": "Soccer (Europe, Australia) (En,Fr,De) (SGB Enhanced)",
-        "short": "Soccer"
+        "short": "Soccer",
+        "genre": "Sports"
     },
     "C1E1A041": {
         "long": "Super Bikkuriman - Densetsu no Sekiban (Japan)",
-        "short": "Super Bikkuriman - Densetsu no Sekiban"
+        "short": "Super Bikkuriman - Densetsu no Sekiban",
+        "genre": "Platform"
     },
     "C360F279": {
         "long": "Sword of Hope, The (Europe) (Proto)",
-        "short": "Sword of Hope, The"
+        "short": "Sword of Hope, The",
+        "genre": "Role-playing (RPG)"
     },
     "C2F50FB3": {
         "long": "Tarzan - Lord of the Jungle (USA, Europe)",
-        "short": "Tarzan - Lord of the Jungle"
+        "short": "Tarzan - Lord of the Jungle",
+        "genre": "Platform"
     },
     "C3D85EF6": {
         "long": "Taz-Mania (Europe) (Beta)",
-        "short": "Taz-Mania"
+        "short": "Taz-Mania",
+        "genre": "Platform"
     },
     "C2DBD1AA": {
         "long": "Tom and Jerry - Frantic Antics! (USA, Europe)",
-        "short": "Tom and Jerry - Frantic Antics!"
+        "short": "Tom and Jerry - Frantic Antics!",
+        "genre": "Platform"
     },
     "C0EF39F0": {
         "long": "Track & Field (USA, Europe)",
-        "short": "Track & Field"
+        "short": "Track & Field",
+        "genre": "Sports"
     },
     "C2D7D11B": {
         "long": "Wordtris (USA) (Beta)",
-        "short": "Wordtris"
+        "short": "Wordtris",
+        "genre": "Puzzle"
     },
     "C32DCA06": {
         "long": "Zoids Densetsu (Japan)",
-        "short": "Zoids Densetsu"
+        "short": "Zoids Densetsu",
+        "genre": "Shoot'em Up"
     },
     "C32FBC01": {
         "long": "Shin Pokémon Blue (LITE) (v1.24.6h3)",
-        "short": "Shin Pokémon Blue"
+        "short": "Shin Pokémon Blue",
+        "genre": "ROM Hack"
     }
 }

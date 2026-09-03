@@ -1,166 +1,207 @@
 {
     "1FC972CC": {
         "long": "Barbie - Pet Rescue (USA)",
-        "short": "Barbie - Pet Rescue"
+        "short": "Barbie - Pet Rescue",
+        "genre": "Various"
     },
     "1C13DBB0": {
         "long": "Chessmaster (USA, Europe) (GB Compatible)",
-        "short": "Chessmaster"
+        "short": "Chessmaster",
+        "genre": "Strategy"
     },
     "1E71B67E": {
         "long": "Dropzone (Europe) (GB Compatible)",
-        "short": "Dropzone"
+        "short": "Dropzone",
+        "genre": "Shoot'em Up"
     },
     "1C0368FA": {
         "long": "GB Harobots (Japan)",
-        "short": "GB Harobots"
+        "short": "GB Harobots",
+        "genre": "Role-playing (RPG)"
     },
     "1E64D19C": {
         "long": "Ken Griffey Jr.'s Slugfest (USA)",
-        "short": "Ken Griffey Jr.'s Slugfest"
+        "short": "Ken Griffey Jr.'s Slugfest",
+        "genre": "Sports"
     },
     "1C644040": {
         "long": "Konami Winter Games (Europe)",
-        "short": "Konami Winter Games"
+        "short": "Konami Winter Games",
+        "genre": "Sports"
     },
     "1C877ABD": {
         "long": "Love Hina Pocket (Japan)",
-        "short": "Love Hina Pocket"
+        "short": "Love Hina Pocket",
+        "genre": "Adventure"
     },
     "1E443D1B": {
         "long": "Pachipachi Pachisurou - New Pulsar Hen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pachipachi Pachisurou - New Pulsar Hen"
+        "short": "Pachipachi Pachisurou - New Pulsar Hen",
+        "genre": "Gambling"
     },
     "1EED33C6": {
         "long": "Pocket no Naka no Oukoku (Japan) (Proto)",
-        "short": "Pocket no Naka no Oukoku"
+        "short": "Pocket no Naka no Oukoku",
+        "genre": "Adventure"
     },
     "1D9FAAC5": {
         "long": "Pokémon - Edicion Plata (Spain) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Edicion Plata"
+        "short": "Pokémon - Edicion Plata",
+        "genre": "Role-playing (RPG)"
     },
     "1CFFB764": {
         "long": "Pop'n Pop (Japan)",
-        "short": "Pop'n Pop"
+        "short": "Pop'n Pop",
+        "genre": "Puzzle"
     },
     "1D66CB29": {
         "long": "Razmoket, Les - 100% Angelica (France)",
-        "short": "Razmoket, Les - 100% Angelica"
+        "short": "Razmoket, Les - 100% Angelica",
+        "genre": "Puzzle"
     },
     "1F5EC131": {
         "long": "Roswell Conspiracies - Aliens, Myths & Legends (USA) (En,Fr,De)",
-        "short": "Roswell Conspiracies - Aliens, Myths & Legends"
+        "short": "Roswell Conspiracies - Aliens, Myths & Legends",
+        "genre": "Adventure"
     },
     "1CBEA1AA": {
         "long": "Three Lions (United Kingdom) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Three Lions"
+        "short": "Three Lions",
+        "genre": "Sports"
     },
     "1FB6B290": {
         "long": "Tyrian 2000 (USA) (Proto) (GB Compatible)",
-        "short": "Tyrian 2000"
+        "short": "Tyrian 2000",
+        "genre": "Shoot'em Up"
     },
     "1DB0840C": {
         "long": "Winnie the Pooh - Adventures in the 100 Acre Wood (Europe) (En,Fr,De,Es,It,Nl,Da)",
-        "short": "Winnie the Pooh - Adventures in the 100 Acre Wood"
+        "short": "Winnie the Pooh - Adventures in the 100 Acre Wood",
+        "genre": "Adventure"
     },
     "1C829CE3": {
         "long": "Arcade Classic No. 4 - Defender & Joust (USA, Europe) (SGB Enhanced)",
-        "short": "Arcade Classic No. 4 - Defender & Joust"
+        "short": "Arcade Classic No. 4 - Defender & Joust",
+        "genre": "Action"
     },
     "1DB65649": {
         "long": "Aretha (Japan)",
-        "short": "Aretha"
+        "short": "Aretha",
+        "genre": "Role-playing (RPG)"
     },
     "1C6770F0": {
         "long": "Cosmo Tank (USA) (Beta)",
-        "short": "Cosmo Tank"
+        "short": "Cosmo Tank",
+        "genre": "Action"
     },
     "1D1155AF": {
         "long": "Dragon Tail (Japan)",
-        "short": "Dragon Tail"
+        "short": "Dragon Tail",
+        "genre": "Action"
     },
     "1EAE0E10": {
         "long": "Harvest Moon GB (USA) (SGB Enhanced)",
-        "short": "Harvest Moon GB"
+        "short": "Harvest Moon GB",
+        "genre": "Simulation"
     },
     "1CB6158C": {
         "long": "Hudson Hawk (Japan)",
-        "short": "Hudson Hawk"
+        "short": "Hudson Hawk",
+        "genre": "Platform"
     },
     "1DF2E81D": {
         "long": "Humans, The (USA)",
-        "short": "Humans, The"
+        "short": "Humans, The",
+        "genre": "Strategy"
     },
     "1C2BA2A1": {
         "long": "Ikari no Yousai (Japan)",
-        "short": "Ikari no Yousai"
+        "short": "Ikari no Yousai",
+        "genre": "Shooter"
     },
     "1C4D3665": {
         "long": "Itsudemo! Nyan to Wonderful (Japan) (SGB Enhanced)",
-        "short": "Itsudemo! Nyan to Wonderful"
+        "short": "Itsudemo! Nyan to Wonderful",
+        "genre": "Strategy"
     },
     "1C223204": {
         "long": "Jet Pack (USA, Europe) (Beta)",
-        "short": "Jet Pack"
+        "short": "Jet Pack",
+        "genre": "Compilation"
     },
     "1FF84E8C": {
         "long": "King of Fighters '95, The (USA) (SGB Enhanced)",
-        "short": "King of Fighters '95, The"
+        "short": "King of Fighters '95, The",
+        "genre": "Action"
     },
     "1DE9CAF9": {
         "long": "Konami GB Collection Vol.3 (Japan) (SGB Enhanced)",
-        "short": "Konami GB Collection Vol.3"
+        "short": "Konami GB Collection Vol.3",
+        "genre": "Compilation"
     },
     "1CEDB141": {
         "long": "Krusty's Fun House (USA, Europe)",
-        "short": "Krusty's Fun House"
+        "short": "Krusty's Fun House",
+        "genre": "Puzzle"
     },
     "1CAC0775": {
         "long": "Lawnmower Man, The (USA) (Proto 1) (1993-10-11) (Not For Resale)",
-        "short": "Lawnmower Man, The"
+        "short": "Lawnmower Man, The",
+        "genre": "Platform"
     },
     "1F8D207C": {
         "long": "Lethal Weapon (USA, Europe)",
-        "short": "Lethal Weapon"
+        "short": "Lethal Weapon",
+        "genre": "Beat'em Up"
     },
     "1DC5C31A": {
         "long": "Meitantei Conan - Giwaku no Gouka Ressha (Japan) (SGB Enhanced)",
-        "short": "Meitantei Conan - Giwaku no Gouka Ressha"
+        "short": "Meitantei Conan - Giwaku no Gouka Ressha",
+        "genre": "Adventure"
     },
     "1DD93D95": {
         "long": "Midori no Makibaou (Japan) (SGB Enhanced)",
-        "short": "Midori no Makibaou"
+        "short": "Midori no Makibaou",
+        "genre": "Racing"
     },
     "1E2EFAEE": {
         "long": "Penta Dragon (Japan)",
-        "short": "Penta Dragon"
+        "short": "Penta Dragon",
+        "genre": "Shoot'em Up"
     },
     "1D16D689": {
         "long": "Prince of Persia (Japan)",
-        "short": "Prince of Persia"
+        "short": "Prince of Persia",
+        "genre": "Platform"
     },
     "1C03C0EE": {
         "long": "Probotector (World) (Contra Anniversary Collection)",
-        "short": "Probotector (Contra Anniversary Collection)"
+        "short": "Probotector (Contra Anniversary Collection)",
+        "genre": "Shooter"
     },
     "1EF3BEDB": {
         "long": "Raging Fighter (USA, Europe)",
-        "short": "Raging Fighter"
+        "short": "Raging Fighter",
+        "genre": "Action"
     },
     "1CB8BFC2": {
         "long": "Schiffe Versenken (Germany) (En,Fr,De,Es)",
-        "short": "Schiffe Versenken"
+        "short": "Schiffe Versenken",
+        "genre": "Strategy"
     },
     "1DC0F813": {
         "long": "Super Breakout (USA)",
-        "short": "Super Breakout"
+        "short": "Super Breakout",
+        "genre": "Puzzle"
     },
     "1FB35885": {
         "long": "Torpedo Range (Japan)",
-        "short": "Torpedo Range"
+        "short": "Torpedo Range",
+        "genre": "Shooter"
     },
     "1FDF91B1": {
         "long": "Little Sound Dj (v9.3.9)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

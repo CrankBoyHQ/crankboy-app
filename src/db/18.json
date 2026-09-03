@@ -1,226 +1,282 @@
 {
     "1ABCEDBE": {
         "long": "Burger Burger Pocket - Hamburger Simulation (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Burger Burger Pocket - Hamburger Simulation"
+        "short": "Burger Burger Pocket - Hamburger Simulation",
+        "genre": "Simulation"
     },
     "1AAB415D": {
         "long": "Checkmate (Japan) (En,Ja) (GB Compatible)",
-        "short": "Checkmate"
+        "short": "Checkmate",
+        "genre": "Board"
     },
     "19A73F60": {
         "long": "Doki x Doki Sasete!! (Japan)",
-        "short": "Doki x Doki Sasete!!"
+        "short": "Doki x Doki Sasete!!",
+        "genre": "Adventure"
     },
     "191D31EC": {
         "long": "Dragon Tales - Dragon Wings (USA)",
-        "short": "Dragon Tales - Dragon Wings"
+        "short": "Dragon Tales - Dragon Wings",
+        "genre": "Puzzle"
     },
     "1AC625DA": {
         "long": "Game & Watch Gallery 3 (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Game & Watch Gallery 3"
+        "short": "Game & Watch Gallery 3",
+        "genre": "Compilation"
     },
     "1B0034E8": {
         "long": "Gift (Europe)",
-        "short": "Gift"
+        "short": "Gift",
+        "genre": "Action"
     },
     "19681AC2": {
         "long": "Gift (Europe) (Rev 1) (Proto)",
-        "short": "Gift"
+        "short": "Gift",
+        "genre": "Action"
     },
     "1AF0B489": {
         "long": "Inspector Gadget - Operation Madkactus (USA)",
-        "short": "Inspector Gadget - Operation Madkactus"
+        "short": "Inspector Gadget - Operation Madkactus",
+        "genre": "Strategy"
     },
     "1B76D115": {
         "long": "International Superstar Soccer 99 (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "International Superstar Soccer 99"
+        "short": "International Superstar Soccer 99",
+        "genre": "Sports"
     },
     "1B49D07D": {
         "long": "Le Mans 24 Hours (Europe) (En,Fr,De,Es,It)",
-        "short": "Le Mans 24 Hours"
+        "short": "Le Mans 24 Hours",
+        "genre": "Racing"
     },
     "19070962": {
         "long": "Mario Tennis GB (Japan)",
-        "short": "Mario Tennis GB"
+        "short": "Mario Tennis GB",
+        "genre": "Sports"
     },
     "18216E26": {
         "long": "Missile Command (Europe)",
-        "short": "Missile Command"
+        "short": "Missile Command",
+        "genre": "Shoot'em Up"
     },
     "183DBB31": {
         "long": "Monsters, Inc. (USA, Europe)",
-        "short": "Monsters, Inc."
+        "short": "Monsters, Inc.",
+        "genre": "Platform"
     },
     "1A382367": {
         "long": "Nakayoshi Pet Series 4 - Kawaii Koneko (Japan)",
-        "short": "Nakayoshi Pet Series 4 - Kawaii Koneko"
+        "short": "Nakayoshi Pet Series 4 - Kawaii Koneko",
+        "genre": "Strategy"
     },
     "1A631BAB": {
         "long": "Pachinko Hisshou Guide - Data no Ousama (Japan) (GB Compatible)",
-        "short": "Pachinko Hisshou Guide - Data no Ousama"
+        "short": "Pachinko Hisshou Guide - Data no Ousama",
+        "genre": "Gambling"
     },
     "1BFB531E": {
         "long": "Pocket Music (Europe) (En,Fr,De,Es,It)",
-        "short": "Pocket Music"
+        "short": "Pocket Music",
+        "genre": "Music / Dancing"
     },
     "1926F570": {
         "long": "Pokémon Card GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Card GB"
+        "short": "Pokémon Card GB",
+        "genre": "Card"
     },
     "1B5BEF4B": {
         "long": "Pokémon Diamond (Taiwan) (En) (Unl)",
-        "short": "Pokémon Diamond"
+        "short": "Pokémon Diamond",
+        "genre": "Role-playing (RPG)"
     },
     "1A921065": {
         "long": "Resident Evil (Unknown) (Demo) (Climax Entertainment)",
-        "short": "Resident Evil"
+        "short": "Resident Evil",
+        "genre": "Adventure"
     },
     "1833FB38": {
         "long": "Sesame Street - Elmo's 123s (USA) (GB Compatible)",
-        "short": "Sesame Street - Elmo's 123s"
+        "short": "Sesame Street - Elmo's 123s",
+        "genre": "Educational"
     },
     "1BCD7D70": {
         "long": "Shadowgate Return (Japan) (GB Compatible)",
-        "short": "Shadowgate Return"
+        "short": "Shadowgate Return",
+        "genre": "Adventure"
     },
     "1A719EAD": {
         "long": "Thunder Blast Man (Europe) (Sachen) (Unl)",
-        "short": "Thunder Blast Man"
+        "short": "Thunder Blast Man",
+        "genre": "Platform"
     },
     "1972CBF7": {
         "long": "Tootuff (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Tootuff"
+        "short": "Tootuff",
+        "genre": "Casual Game"
     },
     "1845F25A": {
         "long": "Top Gear Pocket 2 (Japan) (Rumble Version)",
-        "short": "Top Gear Pocket 2"
+        "short": "Top Gear Pocket 2",
+        "genre": "Racing"
     },
     "19EB4516": {
         "long": "Tottoko Hamutarou - Tomodachi Daisakusen Dechu (Japan)",
-        "short": "Tottoko Hamutarou - Tomodachi Daisakusen Dechu"
+        "short": "Tottoko Hamutarou - Tomodachi Daisakusen Dechu",
+        "genre": "Action"
     },
     "1BE00A6E": {
         "long": "Tsuri Sensei 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Tsuri Sensei 2"
+        "short": "Tsuri Sensei 2",
+        "genre": "Hunting and Fishing"
     },
     "1BD4E588": {
         "long": "Tyrannosaurus Tex (USA) (Proto)",
-        "short": "Tyrannosaurus Tex"
+        "short": "Tyrannosaurus Tex",
+        "genre": "Shooter"
     },
     "1A0BF4D7": {
         "long": "WDL - World Destruction League - Thunder Tanks (USA) (En,Fr,De)",
-        "short": "WDL - World Destruction League - Thunder Tanks"
+        "short": "WDL - World Destruction League - Thunder Tanks",
+        "genre": "Strategy"
     },
     "1A10552B": {
         "long": "Wizardry Empire - Fukkatsu no Tsue (Japan)",
-        "short": "Wizardry Empire - Fukkatsu no Tsue"
+        "short": "Wizardry Empire - Fukkatsu no Tsue",
+        "genre": "Role-playing (RPG)"
     },
     "19828751": {
         "long": "Xtreme Sports (USA)",
-        "short": "Xtreme Sports"
+        "short": "Xtreme Sports",
+        "genre": "Sports"
     },
     "1A60F198": {
         "long": "Yu-Gi-Oh! - Dark Duel Stories (Europe) (Beta)",
-        "short": "Yu-Gi-Oh! - Dark Duel Stories"
+        "short": "Yu-Gi-Oh! - Dark Duel Stories",
+        "genre": "Card"
     },
     "1B3231C8": {
         "long": "America Oudan Ultra Quiz Part 2 (Japan)",
-        "short": "America Oudan Ultra Quiz Part 2"
+        "short": "America Oudan Ultra Quiz Part 2",
+        "genre": "Quiz"
     },
     "1B713DE0": {
         "long": "Bamse (Sweden)",
-        "short": "Bamse"
+        "short": "Bamse",
+        "genre": "Platform"
     },
     "1B3B46EF": {
         "long": "Choplifter III (Europe)",
-        "short": "Choplifter III"
+        "short": "Choplifter III",
+        "genre": "Shooter"
     },
     "1987EACC": {
         "long": "Cool Spot (Europe)",
-        "short": "Cool Spot"
+        "short": "Cool Spot",
+        "genre": "Platform"
     },
     "19608641": {
         "long": "Extra Bases (USA)",
-        "short": "Extra Bases"
+        "short": "Extra Bases",
+        "genre": "Sports"
     },
     "18C78B3A": {
         "long": "Final Fantasy Adventure (USA)",
-        "short": "Final Fantasy Adventure"
+        "short": "Final Fantasy Adventure",
+        "genre": "Role-playing (RPG)"
     },
     "198F147D": {
         "long": "Flipull - An Exciting Cube Game (Japan)",
-        "short": "Flipull - An Exciting Cube Game"
+        "short": "Flipull - An Exciting Cube Game",
+        "genre": "Puzzle"
     },
     "1907DAC5": {
         "long": "Gauntlet II (USA, Europe)",
-        "short": "Gauntlet II"
+        "short": "Gauntlet II",
+        "genre": "Action"
     },
     "18671602": {
         "long": "Jimmy Connors no Pro Tennis Tour (Japan)",
-        "short": "Jimmy Connors no Pro Tennis Tour"
+        "short": "Jimmy Connors no Pro Tennis Tour",
+        "genre": "Sports"
     },
     "187DE7F8": {
         "long": "Little Master 2 - Raikou no Kishi (Japan)",
-        "short": "Little Master 2 - Raikou no Kishi"
+        "short": "Little Master 2 - Raikou no Kishi",
+        "genre": "Strategy"
     },
     "1953820F": {
         "long": "Makai Toushi Sa-Ga (Japan) (Rev 1)",
-        "short": "Makai Toushi Sa-Ga"
+        "short": "Makai Toushi Sa-Ga",
+        "genre": "Role-playing (RPG)"
     },
     "1BAB9900": {
         "long": "Medarot - Kabuto Version (Japan) (SGB Enhanced)",
-        "short": "Medarot - Kabuto Version"
+        "short": "Medarot - Kabuto Version",
+        "genre": "Role-playing (RPG)"
     },
     "1B167F00": {
         "long": "Max (Europe)",
-        "short": "Max"
+        "short": "Max",
+        "genre": "Platform"
     },
     "1A6BD577": {
         "long": "Miner 2049er Starring Bounty Bob (USA)",
-        "short": "Miner 2049er Starring Bounty Bob"
+        "short": "Miner 2049er Starring Bounty Bob",
+        "genre": "Platform"
     },
     "186C109B": {
         "long": "Monster Truck Wars (USA, Europe)",
-        "short": "Monster Truck Wars"
+        "short": "Monster Truck Wars",
+        "genre": "Action"
     },
     "1902C6BD": {
         "long": "Namco Gallery Vol.1 (Japan) (SGB Enhanced)",
-        "short": "Namco Gallery Vol.1"
+        "short": "Namco Gallery Vol.1",
+        "genre": "Compilation"
     },
     "19930EA5": {
         "long": "Nemesis (Europe)",
-        "short": "Nemesis"
+        "short": "Nemesis",
+        "genre": "Shoot'em Up"
     },
     "19EBA26F": {
         "long": "Oni IV - Kijin no Ketsuzoku (Japan) (Rev 1) (Beta)",
-        "short": "Oni IV - Kijin no Ketsuzoku"
+        "short": "Oni IV - Kijin no Ketsuzoku",
+        "genre": "Role-playing (RPG)"
     },
     "1B67E8B1": {
         "long": "Out of Gas (USA)",
-        "short": "Out of Gas"
+        "short": "Out of Gas",
+        "genre": "Action"
     },
     "1B3A89C6": {
         "long": "Pinball - 66hiki no Wani Daikoushin! (Japan)",
-        "short": "Pinball - 66hiki no Wani Daikoushin!"
+        "short": "Pinball - 66hiki no Wani Daikoushin!",
+        "genre": "Pinball"
     },
     "1A602590": {
         "long": "Rolan's Curse (USA)",
-        "short": "Rolan's Curse"
+        "short": "Rolan's Curse",
+        "genre": "Action"
     },
     "18055BB9": {
         "long": "Sa-Ga 2 - Hihou Densetsu (Japan)",
-        "short": "Sa-Ga 2 - Hihou Densetsu"
+        "short": "Sa-Ga 2 - Hihou Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "1A45706E": {
         "long": "Super Hunchback (USA)",
-        "short": "Super Hunchback"
+        "short": "Super Hunchback",
+        "genre": "Platform"
     },
     "1A98F0A4": {
         "long": "Winter Olympic Games (USA)",
-        "short": "Winter Olympic Games"
+        "short": "Winter Olympic Games",
+        "genre": "Sports"
     },
     "1889552F": {
         "long": "WWF Raw (USA, Europe)",
-        "short": "WWF Raw"
+        "short": "WWF Raw",
+        "genre": "Sports"
     }
 }

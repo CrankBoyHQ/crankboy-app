@@ -1,202 +1,252 @@
 {
     "9F883B0F": {
         "long": "Cubix - Robots for Everyone - Race 'n Robots (USA) (En,Fr,De,Es,It)",
-        "short": "Cubix - Robots for Everyone - Race 'n Robots"
+        "short": "Cubix - Robots for Everyone - Race 'n Robots",
+        "genre": "Racing"
     },
     "9DAD6E23": {
         "long": "Dragon Ball Z - Guerreros de Leyenda (Spain)",
-        "short": "Dragon Ball Z - Guerreros de Leyenda"
+        "short": "Dragon Ball Z - Guerreros de Leyenda",
+        "genre": "Role-playing (RPG)"
     },
     "9E253E73": {
         "long": "F-18 Thunder Strike (USA, Europe) (Beta) (Rumble Version)",
-        "short": "F-18 Thunder Strike"
+        "short": "F-18 Thunder Strike",
+        "genre": "Simulation"
     },
     "9EC98CAB": {
         "long": "F1 Racing Championship (USA) (En,Fr,De,Es,It) (Proto)",
-        "short": "F1 Racing Championship"
+        "short": "F1 Racing Championship",
+        "genre": "Racing"
     },
     "9EBDB6C6": {
         "long": "Get Chuu Club - Minna no Konchuu Daizukan (Japan) (Rumble Version) (SGB Enhanced) (GB Compatible)",
-        "short": "Get Chuu Club - Minna no Konchuu Daizukan"
+        "short": "Get Chuu Club - Minna no Konchuu Daizukan",
+        "genre": "Adventure"
     },
     "9ED6059A": {
         "long": "Grinch, The (Europe) (En,Fr,De)",
-        "short": "Grinch, The"
+        "short": "Grinch, The",
+        "genre": "Puzzle"
     },
     "9D0290A7": {
         "long": "International Superstar Soccer 99 (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "International Superstar Soccer 99"
+        "short": "International Superstar Soccer 99",
+        "genre": "Sports"
     },
     "9FA5CDB5": {
         "long": "Joryuu Janshi ni Chousen GB - Watashi-tachi ni Chousen Shitene! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Joryuu Janshi ni Chousen GB - Watashi-tachi ni Chousen Shitene!"
+        "short": "Joryuu Janshi ni Chousen GB - Watashi-tachi ni Chousen Shitene!",
+        "genre": "Board"
     },
     "9CFA76C3": {
         "long": "Kakurenbo Battle - Monster Tactics (Japan)",
-        "short": "Kakurenbo Battle - Monster Tactics"
+        "short": "Kakurenbo Battle - Monster Tactics",
+        "genre": "Role-playing (RPG)"
     },
     "9FEC297E": {
         "long": "Little Mermaid II, The - Pinball Frenzy (Europe) (En,Fr,De,Es,It)",
-        "short": "Little Mermaid II, The - Pinball Frenzy"
+        "short": "Little Mermaid II, The - Pinball Frenzy",
+        "genre": "Pinball"
     },
     "9CAA00B5": {
         "long": "Megami Tensei Gaiden - Last Bible II (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Megami Tensei Gaiden - Last Bible II"
+        "short": "Megami Tensei Gaiden - Last Bible II",
+        "genre": "Role-playing (RPG)"
     },
     "9C51F4C7": {
         "long": "Mission - Impossible (Europe) (En,Fr,De,Es,It) (Rev 1)",
-        "short": "Mission - Impossible"
+        "short": "Mission - Impossible",
+        "genre": "Platform"
     },
     "9E0799F4": {
         "long": "Oide Rascal (Japan)",
-        "short": "Oide Rascal"
+        "short": "Oide Rascal",
+        "genre": "Simulation"
     },
     "9E120D94": {
         "long": "Pocket GT (USA) (Proto)",
-        "short": "Pocket GT"
+        "short": "Pocket GT",
+        "genre": "Racing"
     },
     "9CC1F90F": {
         "long": "Pocket Monsters Eun (Korea)",
-        "short": "Pocket Monsters Eun"
+        "short": "Pocket Monsters Eun",
+        "genre": "Role-playing (RPG)"
     },
     "9D47261A": {
         "long": "Powerpuff Girls, The - Paint the Townsville Green (USA)",
-        "short": "Powerpuff Girls, The - Paint the Townsville Green"
+        "short": "Powerpuff Girls, The - Paint the Townsville Green",
+        "genre": "Beat'em Up"
     },
     "9C743F03": {
         "long": "Rugrats - Time Travelers (USA, Europe) (GB Compatible)",
-        "short": "Rugrats - Time Travelers"
+        "short": "Rugrats - Time Travelers",
+        "genre": "Action"
     },
     "9D9C84F4": {
         "long": "Tom and Jerry in - Mouse Attacks! (Europe) (En,Fr,De,Es,It,Nl,Da)",
-        "short": "Tom and Jerry in - Mouse Attacks!"
+        "short": "Tom and Jerry in - Mouse Attacks!",
+        "genre": "Platform"
     },
     "9F8620D1": {
         "long": "WCW Mayhem (USA, Europe)",
-        "short": "WCW Mayhem"
+        "short": "WCW Mayhem",
+        "genre": "Sports"
     },
     "9CBFAA3D": {
         "long": "Wetrix (Europe) (En,Fr,De)",
-        "short": "Wetrix"
+        "short": "Wetrix",
+        "genre": "Puzzle"
     },
     "9F9DBAB4": {
         "long": "Yu-Gi-Oh! Duel Monsters III - Tri Holy God Advant (Japan)",
-        "short": "Yu-Gi-Oh! Duel Monsters III - Tri Holy God Advant"
+        "short": "Yu-Gi-Oh! Duel Monsters III - Tri Holy God Advant",
+        "genre": "Card"
     },
     "9F0F3606": {
         "long": "Bouken! Puzzle Road (Japan)",
-        "short": "Bouken! Puzzle Road"
+        "short": "Bouken! Puzzle Road",
+        "genre": "Puzzle"
     },
     "9DFD4BC0": {
         "long": "Chachamaru Boukenki 3 - Abyss no Tou (Japan)",
-        "short": "Chachamaru Boukenki 3 - Abyss no Tou"
+        "short": "Chachamaru Boukenki 3 - Abyss no Tou",
+        "genre": "Role-playing (RPG)"
     },
     "9C7D5E79": {
         "long": "Choplifter II - Rescue & Survive (USA)",
-        "short": "Choplifter II - Rescue & Survive"
+        "short": "Choplifter II - Rescue & Survive",
+        "genre": "Shooter"
     },
     "9D00DA55": {
         "long": "Cyraid (USA)",
-        "short": "Cyraid"
+        "short": "Cyraid",
+        "genre": "Puzzle"
     },
     "9E0D2B45": {
         "long": "Daiku no Gen-san - Ghost Building Company (Japan)",
-        "short": "Daiku no Gen-san - Ghost Building Company"
+        "short": "Daiku no Gen-san - Ghost Building Company",
+        "genre": "Platform"
     },
     "9E3E3656": {
         "long": "Dead Heat Scramble (USA)",
-        "short": "Dead Heat Scramble"
+        "short": "Dead Heat Scramble",
+        "genre": "Racing"
     },
     "9E2BF649": {
         "long": "Deadeus (World) (v1.2.5) (Aftermarket) (Unl)",
-        "short": "Deadeus"
+        "short": "Deadeus",
+        "genre": "Adventure"
     },
     "9E6CDC96": {
         "long": "Game & Watch Gallery (USA) (Rev 1) (SGB Enhanced)",
-        "short": "Game & Watch Gallery"
+        "short": "Game & Watch Gallery",
+        "genre": "Compilation"
     },
     "9F09AFE8": {
         "long": "Hammerin' Harry (Europe)",
-        "short": "Hammerin' Harry"
+        "short": "Hammerin' Harry",
+        "genre": "Platform"
     },
     "9C6A4918": {
         "long": "Kachiuma Yosou Keiba Kizoku EX '95 (Japan)",
-        "short": "Kachiuma Yosou Keiba Kizoku EX '95"
+        "short": "Kachiuma Yosou Keiba Kizoku EX '95",
+        "genre": "Sports with Animals"
     },
     "9C318C64": {
         "long": "Magnetic Soccer (Europe)",
-        "short": "Magnetic Soccer"
+        "short": "Magnetic Soccer",
+        "genre": "Sports"
     },
     "9D335162": {
         "long": "Nada Asatarou & Kojima Takeo no Jissen Mahjong Kyoushitsu (Japan) (SGB Enhanced)",
-        "short": "Nada Asatarou & Kojima Takeo no Jissen Mahjong Kyoushitsu"
+        "short": "Nada Asatarou & Kojima Takeo no Jissen Mahjong Kyoushitsu",
+        "genre": "Board"
     },
     "9F8440B5": {
         "long": "Pocket Love 2 (Japan) (SGB Enhanced)",
-        "short": "Pocket Love 2"
+        "short": "Pocket Love 2",
+        "genre": "Simulation"
     },
     "9C336307": {
         "long": "Pokémon - Blaue Edition (Germany) (SGB Enhanced)",
-        "short": "Pokémon - Blaue Edition"
+        "short": "Pokémon - Blaue Edition",
+        "genre": "Role-playing (RPG)"
     },
     "9F7FDD53": {
         "long": "Pokémon - Red Version (USA, Europe) (SGB Enhanced)",
-        "short": "Pokémon - Red Version"
+        "short": "Pokémon - Red Version",
+        "genre": "Role-playing (RPG)"
     },
     "9E372D13": {
         "long": "Puyo Puyo (Japan) (SGB Enhanced)",
-        "short": "Puyo Puyo"
+        "short": "Puyo Puyo",
+        "genre": "Puzzle"
     },
     "9E3B05C4": {
         "long": "RoboCop versus The Terminator (Europe)",
-        "short": "RoboCop versus The Terminator"
+        "short": "RoboCop versus The Terminator",
+        "genre": "Platform"
     },
     "9DA8595B": {
         "long": "Roger Clemens' MVP Baseball (USA)",
-        "short": "Roger Clemens' MVP Baseball"
+        "short": "Roger Clemens' MVP Baseball",
+        "genre": "Sports"
     },
     "9F2D11C6": {
         "long": "Star Trek Generations - Beyond the Nexus (USA) (SGB Enhanced)",
-        "short": "Star Trek Generations - Beyond the Nexus"
+        "short": "Star Trek Generations - Beyond the Nexus",
+        "genre": "Simulation"
     },
     "9E0667B9": {
         "long": "Stargate (Japan) (En) (Possible Proto)",
-        "short": "Stargate"
+        "short": "Stargate",
+        "genre": "Puzzle"
     },
     "9EA867A7": {
         "long": "Tasmania Monogatari (Japan)",
-        "short": "Tasmania Monogatari"
+        "short": "Tasmania Monogatari",
+        "genre": "Platform"
     },
     "9F3245F3": {
         "long": "Teenage Mutant Hero Turtles III - Radical Rescue (Europe)",
-        "short": "Teenage Mutant Hero Turtles III - Radical Rescue"
+        "short": "Teenage Mutant Hero Turtles III - Radical Rescue",
+        "genre": "Platform"
     },
     "9DFCB385": {
         "long": "Tetris Flash (Japan) (SGB Enhanced)",
-        "short": "Tetris Flash"
+        "short": "Tetris Flash",
+        "genre": "Action"
     },
     "9DB7DCC3": {
         "long": "Tokio Senki - Eiyuu Retsuden (Japan)",
-        "short": "Tokio Senki - Eiyuu Retsuden"
+        "short": "Tokio Senki - Eiyuu Retsuden",
+        "genre": "Strategy"
     },
     "9C54358D": {
         "long": "Wario Land II (USA, Europe) (SGB Enhanced)",
-        "short": "Wario Land II"
+        "short": "Wario Land II",
+        "genre": "Platform"
     },
     "9D27F9DE": {
         "long": "World Cup USA 94 (Japan) (En,Fr,De,Es,It,Nl,Pt,Sv)",
-        "short": "World Cup USA 94"
+        "short": "World Cup USA 94",
+        "genre": "Sports"
     },
     "9E52460E": {
         "long": "Synthwave World (beatscribe)",
-        "short": "Synthwave World"
+        "short": "Synthwave World",
+        "genre": "Music / Dancing"
     },
     "9CCFEC03": {
         "long": "Little Sound Dj (v4.9.4)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     },
     "9F0A3775": {
         "long": "Little Sound Dj (v3.8.9)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

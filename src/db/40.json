@@ -1,214 +1,267 @@
 {
     "42A2FDF8": {
         "long": "4 in 1 + 8 in 1 (World) (4B-001, 4B-009, 8B-001, Sachen) (Unl)",
-        "short": "4 in 1 + 8 in 1"
+        "short": "4 in 1 + 8 in 1",
+        "genre": "Compilation"
     },
     "408DC5C6": {
         "long": "Asterix - Sur la Trace D'Idefix (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Asterix - Sur la Trace D'Idefix"
+        "short": "Asterix - Sur la Trace D'Idefix",
+        "genre": "Platform"
     },
     "4068E981": {
         "long": "Barbie - Chasse au Tresor Sous-Marine (France) (GB Compatible)",
-        "short": "Barbie - Chasse au Tresor Sous-Marine"
+        "short": "Barbie - Chasse au Tresor Sous-Marine",
+        "genre": "Action"
     },
     "43F28E22": {
         "long": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho (Japan) (Rev 1) (GB Compatible)",
-        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho"
+        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho",
+        "genre": "Adventure"
     },
     "41E78645": {
         "long": "Catwoman (Europe)",
-        "short": "Catwoman"
+        "short": "Catwoman",
+        "genre": "Action"
     },
     "402DE378": {
         "long": "Deadly Skies (Europe) (En,Fr,De)",
-        "short": "Deadly Skies"
+        "short": "Deadly Skies",
+        "genre": "Simulation"
     },
     "40A715FB": {
         "long": "Deer Hunter (USA)",
-        "short": "Deer Hunter"
+        "short": "Deer Hunter",
+        "genre": "Hunting and Fishing"
     },
     "42CEB854": {
         "long": "DT - Lords of Genomes (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "DT - Lords of Genomes"
+        "short": "DT - Lords of Genomes",
+        "genre": "Adventure"
     },
     "4005D541": {
         "long": "ESPN International Track & Field (USA)",
-        "short": "ESPN International Track & Field"
+        "short": "ESPN International Track & Field",
+        "genre": "Sports"
     },
     "410FA858": {
         "long": "F-18 Thunder Strike (USA, Europe)",
-        "short": "F-18 Thunder Strike"
+        "short": "F-18 Thunder Strike",
+        "genre": "Simulation"
     },
     "419BEFCC": {
         "long": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki! (Japan) (Beta 2) (SGB Enhanced) (GB Compatible)",
-        "short": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki!"
+        "short": "From TV Animation One Piece - Maboroshi no Grand Line Boukenki!",
+        "genre": "Role-playing (RPG)"
     },
     "432DC371": {
         "long": "Grinch (Japan)",
-        "short": "Grinch"
+        "short": "Grinch",
+        "genre": "Puzzle"
     },
     "413473B0": {
         "long": "Hoyle Casino (USA)",
-        "short": "Hoyle Casino"
+        "short": "Hoyle Casino",
+        "genre": "Simulation"
     },
     "4039C187": {
         "long": "Juukou Senki Bullet Battlers (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Juukou Senki Bullet Battlers"
+        "short": "Juukou Senki Bullet Battlers",
+        "genre": "Role-playing (RPG)"
     },
     "42DE9092": {
         "long": "Kinniku Banzuke GB 2 - Mezase! Muscle Champion (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kinniku Banzuke GB 2 - Mezase! Muscle Champion"
+        "short": "Kinniku Banzuke GB 2 - Mezase! Muscle Champion",
+        "genre": "Sports"
     },
     "430EB1E1": {
         "long": "Koto Battle - Tengai no Moribito (Japan)",
-        "short": "Koto Battle - Tengai no Moribito"
+        "short": "Koto Battle - Tengai no Moribito",
+        "genre": "Role-playing (RPG)"
     },
     "412FB57C": {
         "long": "Lucky Luke (Europe) (En,Fr,De,Es)",
-        "short": "Lucky Luke"
+        "short": "Lucky Luke",
+        "genre": "Platform"
     },
     "41230D11": {
         "long": "Mission - Impossible (USA) (En,Fr,Es)",
-        "short": "Mission - Impossible"
+        "short": "Mission - Impossible",
+        "genre": "Platform"
     },
     "41E3723C": {
         "long": "Pocket Monsters Diamond (Taiwan) (En) (Unl)",
-        "short": "Pocket Monsters Diamond"
+        "short": "Pocket Monsters Diamond",
+        "genre": "Role-playing (RPG)"
     },
     "41228EE7": {
         "long": "Sesame Street - The Adventures of Elmo in Grouchland (Europe) (GB Compatible)",
-        "short": "Sesame Street - The Adventures of Elmo in Grouchland"
+        "short": "Sesame Street - The Adventures of Elmo in Grouchland",
+        "genre": "Platform"
     },
     "4224F930": {
         "long": "Tarzan (USA, Europe)",
-        "short": "Tarzan"
+        "short": "Tarzan",
+        "genre": "Platform"
     },
     "40B5EA96": {
         "long": "Vegas Games (USA)",
-        "short": "Vegas Games"
+        "short": "Vegas Games",
+        "genre": "Gambling"
     },
     "4167CF29": {
         "long": "Vegas Games (USA) (En,Fr,De) (Rev 1) (Proto)",
-        "short": "Vegas Games"
+        "short": "Vegas Games",
+        "genre": "Gambling"
     },
     "436C87D4": {
         "long": "VIP (USA) (En,Fr,Es)",
-        "short": "VIP"
+        "short": "VIP",
+        "genre": "Racing"
     },
     "430D3D6B": {
         "long": "Aretha III (Japan)",
-        "short": "Aretha III"
+        "short": "Aretha III",
+        "genre": "Role-playing (RPG)"
     },
     "41DBB5FB": {
         "long": "Bionic Commando (USA)",
-        "short": "Bionic Commando"
+        "short": "Bionic Commando",
+        "genre": "Platform"
     },
     "4106D781": {
         "long": "Bubble Bobble Part 2 (USA, Europe)",
-        "short": "Bubble Bobble Part 2"
+        "short": "Bubble Bobble Part 2",
+        "genre": "Platform"
     },
     "403E1B7E": {
         "long": "Bugs Bunny Crazy Castle, The (USA, Europe)",
-        "short": "Bugs Bunny Crazy Castle, The"
+        "short": "Bugs Bunny Crazy Castle, The",
+        "genre": "Strategy"
     },
     "43AF45B1": {
         "long": "Dirty Racing (Japan)",
-        "short": "Dirty Racing"
+        "short": "Dirty Racing",
+        "genre": "Racing"
     },
     "40A8BF12": {
         "long": "Double Dragon (USA, Europe)",
-        "short": "Double Dragon"
+        "short": "Double Dragon",
+        "genre": "Beat'em Up"
     },
     "437600BB": {
         "long": "Flintstones, The - King Rock Treasure Island (Japan) (Proto)",
-        "short": "Flintstones, The - King Rock Treasure Island"
+        "short": "Flintstones, The - King Rock Treasure Island",
+        "genre": "Platform"
     },
     "41423376": {
         "long": "Ghostbusters II (USA, Europe) (Beta)",
-        "short": "Ghostbusters II"
+        "short": "Ghostbusters II",
+        "genre": "Shooter"
     },
     "420881AE": {
         "long": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '91 (Japan)",
-        "short": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '91"
+        "short": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '91",
+        "genre": "Sports"
     },
     "40242E35": {
         "long": "InfoGenius Productivity Pak - Frommer's Travel Guide (USA)",
-        "short": "InfoGenius Productivity Pak - Frommer's Travel Guide"
+        "short": "InfoGenius Productivity Pak - Frommer's Travel Guide",
+        "genre": "Various"
     },
     "435C4697": {
         "long": "Jikuu Senki Mu (Japan)",
-        "short": "Jikuu Senki Mu"
+        "short": "Jikuu Senki Mu",
+        "genre": "Role-playing (RPG)"
     },
     "42E8BA89": {
         "long": "Kaseki Sousei Reborn (Japan) (SGB Enhanced)",
-        "short": "Kaseki Sousei Reborn"
+        "short": "Kaseki Sousei Reborn",
+        "genre": "Role-playing (RPG)"
     },
     "40F25740": {
         "long": "Kirby's Dream Land (USA, Europe)",
-        "short": "Kirby's Dream Land"
+        "short": "Kirby's Dream Land",
+        "genre": "Platform"
     },
     "40E47DA3": {
         "long": "Looney Tunes - Bugs Bunny to Yukai na Nakama-tachi (Japan)",
-        "short": "Looney Tunes - Bugs Bunny to Yukai na Nakama-tachi"
+        "short": "Looney Tunes - Bugs Bunny to Yukai na Nakama-tachi",
+        "genre": "Platform"
     },
     "40C9D0F2": {
         "long": "Mortal Kombat 3 (Europe)",
-        "short": "Mortal Kombat 3"
+        "short": "Mortal Kombat 3",
+        "genre": "Action"
     },
     "40FC1186": {
         "long": "Pachi-Slot Kids 3 (Japan)",
-        "short": "Pachi-Slot Kids 3"
+        "short": "Pachi-Slot Kids 3",
+        "genre": "Gambling"
     },
     "43E47A81": {
         "long": "Pocket Puyo Puyo Tsuu (Japan) (SGB Enhanced)",
-        "short": "Pocket Puyo Puyo Tsuu"
+        "short": "Pocket Puyo Puyo Tsuu",
+        "genre": "Puzzle"
     },
     "4372ED68": {
         "long": "Popeye 2 (Japan)",
-        "short": "Popeye 2"
+        "short": "Popeye 2",
+        "genre": "Platform"
     },
     "40E5ADC9": {
         "long": "Quarth (Japan)",
-        "short": "Quarth"
+        "short": "Quarth",
+        "genre": "Puzzle"
     },
     "4365A789": {
         "long": "RoboCop 2 (USA, Europe)",
-        "short": "RoboCop 2"
+        "short": "RoboCop 2",
+        "genre": "Platform"
     },
     "419A2AE3": {
         "long": "Super Off Road (USA, Europe) (Beta)",
-        "short": "Super Off Road"
+        "short": "Super Off Road",
+        "genre": "Racing"
     },
     "4276978C": {
         "long": "Track Meet (USA, Europe) (Beta)",
-        "short": "Track Meet"
+        "short": "Track Meet",
+        "genre": "Sports"
     },
     "43E2A5C0": {
         "long": "Tsumeshougi - Hyakuban Shoubu (Japan)",
-        "short": "Tsumeshougi - Hyakuban Shoubu"
+        "short": "Tsumeshougi - Hyakuban Shoubu",
+        "genre": "Board"
     },
     "40BE3889": {
         "long": "Wario Land - Super Mario Land 3 (World)",
-        "short": "Wario Land - Super Mario Land 3"
+        "short": "Wario Land - Super Mario Land 3",
+        "genre": "Platform"
     },
     "4023E085": {
         "long": "World Beach Volley - 1992 GB Cup (Europe)",
-        "short": "World Beach Volley - 1992 GB Cup"
+        "short": "World Beach Volley - 1992 GB Cup",
+        "genre": "Sports"
     },
     "40418964": {
         "long": "World Cup Striker (Europe) (En,Fr,De) (Possible Proto)",
-        "short": "World Cup Striker"
+        "short": "World Cup Striker",
+        "genre": "Sports"
     },
     "402D4D47": {
         "long": "Yannick Noah Tennis (France) (En)",
-        "short": "Yannick Noah Tennis"
+        "short": "Yannick Noah Tennis",
+        "genre": "Sports"
     },
     "43630FD7": {
         "long": "Little Sound Dj (v9.4.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     },
     "40738E92": {
         "long": "Little Sound Dj (v5.9.9)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

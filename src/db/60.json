@@ -1,214 +1,267 @@
 {
     "623C1516": {
         "long": "Cross Hunter - Treasure Hunter Version (Japan)",
-        "short": "Cross Hunter - Treasure Hunter Version"
+        "short": "Cross Hunter - Treasure Hunter Version",
+        "genre": "Role-playing (RPG)"
     },
     "600F61F9": {
         "long": "ESPN National Hockey Night (USA)",
-        "short": "ESPN National Hockey Night"
+        "short": "ESPN National Hockey Night",
+        "genre": "Sports"
     },
     "634B2D43": {
         "long": "Golf Ou - The King of Golf (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Golf Ou - The King of Golf"
+        "short": "Golf Ou - The King of Golf",
+        "genre": "Sports"
     },
     "61DF88CA": {
         "long": "Ide Yousuke no Mahjong Kyoushitsu GB (Japan)",
-        "short": "Ide Yousuke no Mahjong Kyoushitsu GB"
+        "short": "Ide Yousuke no Mahjong Kyoushitsu GB",
+        "genre": "Board"
     },
     "62C49DA9": {
         "long": "Jimmy White's Cueball (USA) (Proto)",
-        "short": "Jimmy White's Cueball"
+        "short": "Jimmy White's Cueball",
+        "genre": "Sports"
     },
     "62D3F1E5": {
         "long": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou (Japan) (Rev 1) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou"
+        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Dai-3-gou",
+        "genre": "Puzzle"
     },
     "60683BC4": {
         "long": "M&M's Minis Madness (Europe)",
-        "short": "M&M's Minis Madness"
+        "short": "M&M's Minis Madness",
+        "genre": "Platform"
     },
     "6144FC66": {
         "long": "Marie no Atelier GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Marie no Atelier GB"
+        "short": "Marie no Atelier GB",
+        "genre": "Role-playing (RPG)"
     },
     "63E3BBB4": {
         "long": "Monsters, Inc. (Europe) (En,Es,Nl)",
-        "short": "Monsters, Inc."
+        "short": "Monsters, Inc.",
+        "genre": "Platform"
     },
     "61C653AE": {
         "long": "NFL Blitz 2001 (USA)",
-        "short": "NFL Blitz 2001"
+        "short": "NFL Blitz 2001",
+        "genre": "Sports"
     },
     "62F560D8": {
         "long": "NYR - New York Race (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "NYR - New York Race"
+        "short": "NYR - New York Race",
+        "genre": "Racing"
     },
     "616D85DE": {
         "long": "Pokémon - Kristall-Edition (Germany)",
-        "short": "Pokémon - Kristall-Edition"
+        "short": "Pokémon - Kristall-Edition",
+        "genre": "Role-playing (RPG)"
     },
     "622690DA": {
         "long": "Pooh and Tigger's Hunny Safari (USA)",
-        "short": "Pooh and Tigger's Hunny Safari"
+        "short": "Pooh and Tigger's Hunny Safari",
+        "genre": "Platform"
     },
     "63353C0F": {
         "long": "Spacestation Silicon Valley (Europe) (En,Fr,De,Es,It,Nl,Sv) (GB Compatible)",
-        "short": "Spacestation Silicon Valley"
+        "short": "Spacestation Silicon Valley",
+        "genre": "Platform"
     },
     "6314DA32": {
         "long": "Star Wars - Yoda Stories (USA, Europe) (GB Compatible)",
-        "short": "Star Wars - Yoda Stories"
+        "short": "Star Wars - Yoda Stories",
+        "genre": "Adventure"
     },
     "62BBAE83": {
         "long": "Super Mario Bros. Deluxe (Europe) (Rev 2)",
-        "short": "Super Mario Bros. Deluxe"
+        "short": "Super Mario Bros. Deluxe",
+        "genre": "Platform"
     },
     "61FA675C": {
         "long": "Survival Kids - Kotou no Boukensha (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Survival Kids - Kotou no Boukensha"
+        "short": "Survival Kids - Kotou no Boukensha",
+        "genre": "Role-playing (RPG)"
     },
     "617D7667": {
         "long": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps (Europe) (Fr,Nl) (Beta 1)",
-        "short": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps"
+        "short": "Suske en Wiske - De Tijdtemmers ~ Bob et Bobette - Les Dompteurs du Temps",
+        "genre": "Action"
     },
     "60D06DF9": {
         "long": "Swing (Europe) (En,Fr,De,Es,It) (Proto)",
-        "short": "Swing"
+        "short": "Swing",
+        "genre": "Puzzle"
     },
     "6215C5B3": {
         "long": "Wetrix GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Wetrix GB"
+        "short": "Wetrix GB",
+        "genre": "Puzzle"
     },
     "62D9350E": {
         "long": "4 in 1 (Europe) (4B-007, Sachen) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "60128AA8": {
         "long": "Amida (Japan)",
-        "short": "Amida"
+        "short": "Amida",
+        "genre": "Action"
     },
     "61E48EEF": {
         "long": "Astro Rabby (Japan)",
-        "short": "Astro Rabby"
+        "short": "Astro Rabby",
+        "genre": "Platform"
     },
     "637E54E3": {
         "long": "Beethoven (Europe) (SGB Enhanced)",
-        "short": "Beethoven"
+        "short": "Beethoven",
+        "genre": "Platform"
     },
     "6157443B": {
         "long": "Bomberman GB 2 (Japan) (SGB Enhanced)",
-        "short": "Bomberman GB 2"
+        "short": "Bomberman GB 2",
+        "genre": "Action"
     },
     "600A6AD5": {
         "long": "Bubsy II (USA)",
-        "short": "Bubsy II"
+        "short": "Bubsy II",
+        "genre": "Platform"
     },
     "617D0D9F": {
         "long": "Flappy Special (USA) (Proto)",
-        "short": "Flappy Special"
+        "short": "Flappy Special",
+        "genre": "Puzzle"
     },
     "62769EC1": {
         "long": "Gamera - Daikaijuu Kuuchuu Kessen (Japan) (SGB Enhanced)",
-        "short": "Gamera - Daikaijuu Kuuchuu Kessen"
+        "short": "Gamera - Daikaijuu Kuuchuu Kessen",
+        "genre": "Strategy"
     },
     "6226D280": {
         "long": "Genki Bakuhatsu Gambaruger (Japan)",
-        "short": "Genki Bakuhatsu Gambaruger"
+        "short": "Genki Bakuhatsu Gambaruger",
+        "genre": "Fighting"
     },
     "61D80946": {
         "long": "Go Go Ackman (Japan) (SGB Enhanced)",
-        "short": "Go Go Ackman"
+        "short": "Go Go Ackman",
+        "genre": "Action"
     },
     "60727BF9": {
         "long": "Hayaoshi Quiz - Ouza Ketteisen (Japan) (SGB Enhanced)",
-        "short": "Hayaoshi Quiz - Ouza Ketteisen"
+        "short": "Hayaoshi Quiz - Ouza Ketteisen",
+        "genre": "Quiz"
     },
     "62D8173C": {
         "long": "Hook (Japan)",
-        "short": "Hook"
+        "short": "Hook",
+        "genre": "Platform"
     },
     "6386C870": {
         "long": "Jetsons, The - Robot Panic (USA, Europe)",
-        "short": "Jetsons, The - Robot Panic"
+        "short": "Jetsons, The - Robot Panic",
+        "genre": "Platform"
     },
     "631E656F": {
         "long": "Matthias Sammer Soccer (Germany) (SGB Enhanced)",
-        "short": "Matthias Sammer Soccer"
+        "short": "Matthias Sammer Soccer",
+        "genre": "Sports"
     },
     "62B4CC8C": {
         "long": "Milon's Secret Castle (USA, Europe)",
-        "short": "Milon's Secret Castle"
+        "short": "Milon's Secret Castle",
+        "genre": "Platform"
     },
     "61598B3D": {
         "long": "Ninja Taro (USA) (Beta 1)",
-        "short": "Ninja Taro"
+        "short": "Ninja Taro",
+        "genre": "Role-playing (RPG)"
     },
     "6002E291": {
         "long": "R-Type II (Japan)",
-        "short": "R-Type II"
+        "short": "R-Type II",
+        "genre": "Action"
     },
     "613E657A": {
         "long": "Ranma 1-2 - Kakugeki Mondou!! (Japan)",
-        "short": "Ranma 1-2 - Kakugeki Mondou!!"
+        "short": "Ranma 1-2 - Kakugeki Mondou!!",
+        "genre": "Role-playing (RPG)"
     },
     "6088B426": {
         "long": "RoboCop (USA)",
-        "short": "RoboCop"
+        "short": "RoboCop",
+        "genre": "Platform"
     },
     "62D56C31": {
         "long": "RoboCop (USA, Europe) (Rev 1)",
-        "short": "RoboCop"
+        "short": "RoboCop",
+        "genre": "Platform"
     },
     "630299C1": {
         "long": "Rock'n! Monster!! (Japan) (SGB Enhanced)",
-        "short": "Rock'n! Monster!!"
+        "short": "Rock'n! Monster!!",
+        "genre": "Puzzle"
     },
     "6093F4EC": {
         "long": "Rodland (Europe)",
-        "short": "Rodland"
+        "short": "Rodland",
+        "genre": "Platform"
     },
     "605DE43A": {
         "long": "Star Trek - 25th Anniversary (USA, Europe)",
-        "short": "Star Trek - 25th Anniversary"
+        "short": "Star Trek - 25th Anniversary",
+        "genre": "Adventure"
     },
     "630E0E00": {
         "long": "Super Chase H.Q. (USA, Europe)",
-        "short": "Super Chase H.Q."
+        "short": "Super Chase H.Q.",
+        "genre": "Racing"
     },
     "635A9112": {
         "long": "Super Mario Land 2 - 6 Golden Coins (USA, Europe) (Rev 2)",
-        "short": "Super Mario Land 2 - 6 Golden Coins"
+        "short": "Super Mario Land 2 - 6 Golden Coins",
+        "genre": "Platform"
     },
     "62A31DE6": {
         "long": "Taikyoku Renju (Japan) (En,Ja)",
-        "short": "Taikyoku Renju"
+        "short": "Taikyoku Renju",
+        "genre": "Board"
     },
     "63F9407D": {
         "long": "Tetris (Japan) (En)",
-        "short": "Tetris"
+        "short": "Tetris",
+        "genre": "Puzzle"
     },
     "60065DC3": {
         "long": "TwinBee da!! (Japan) (Beta)",
-        "short": "TwinBee da!!"
+        "short": "TwinBee da!!",
+        "genre": "Action"
     },
     "60231F83": {
         "long": "World Cup USA 94 (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv)",
-        "short": "World Cup USA 94"
+        "short": "World Cup USA 94",
+        "genre": "Sports"
     },
     "6015B7E1": {
         "long": "WWF War Zone (USA, Europe)",
-        "short": "WWF War Zone"
+        "short": "WWF War Zone",
+        "genre": "Sports"
     },
     "6151DD96": {
         "long": "Shin Pokémon Green (v1.24.6h3)",
-        "short": "Shin Pokémon Green"
+        "short": "Shin Pokémon Green",
+        "genre": "ROM Hack"
     },
     "635E367A": {
         "long": "Shin Pokémon Blue-JP (origback) (v1.24.6h3)",
-        "short": "Shin Pokémon Blue-JP"
+        "short": "Shin Pokémon Blue-JP",
+        "genre": "ROM Hack"
     },
     "6003B946": {
         "long": "Little Sound Dj (v4.3.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

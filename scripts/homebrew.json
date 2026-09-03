@@ -65,11 +65,13 @@
     },
     "7B557616": {
         "long": "Lo-Fi GB (beatscribe)",
-        "short": "Lo-Fi GB"
+        "short": "Lo-Fi GB",
+        "genre": "Music / Dancing"
     },
     "EC67F1E6": {
         "long": "Trip World (World) (Limited Run Games)",
-        "short": "Trip World"
+        "short": "Trip World",
+        "genre": "Platform"
     },
     "2D12223C": {
         "long": "Taiyaki Fabulous Museum of Fish (objetdiscret)",
@@ -77,6 +79,7 @@
     },
     "9E52460E": {
         "long": "Synthwave World (beatscribe)",
-        "short": "Synthwave World"
+        "short": "Synthwave World",
+        "genre": "Music / Dancing"
     }
 }

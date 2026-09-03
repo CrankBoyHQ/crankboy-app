@@ -1,182 +1,227 @@
 {
     "E038E666": {
         "long": "007 - The World Is Not Enough (USA, Europe)",
-        "short": "007 - The World Is Not Enough"
+        "short": "007 - The World Is Not Enough",
+        "genre": "Shooter"
     },
     "E17F59A5": {
         "long": "All-Star Baseball 2000 (USA, Europe)",
-        "short": "All-Star Baseball 2000"
+        "short": "All-Star Baseball 2000",
+        "genre": "Sports"
     },
     "E243FEB4": {
         "long": "Aqualife (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Aqualife"
+        "short": "Aqualife",
+        "genre": "Strategy"
     },
     "E25407F1": {
         "long": "Babe and Friends (USA) (GB Compatible)",
-        "short": "Babe and Friends"
+        "short": "Babe and Friends",
+        "genre": "Strategy"
     },
     "E025067B": {
         "long": "Batman - Chaos in Gotham (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Batman - Chaos in Gotham"
+        "short": "Batman - Chaos in Gotham",
+        "genre": "Platform"
     },
     "E2B2DCFE": {
         "long": "Card Sharks (USA) (Proto)",
-        "short": "Card Sharks"
+        "short": "Card Sharks",
+        "genre": "Card"
     },
     "E2071293": {
         "long": "Daiku no Gen-san - Kachikachi no Tonkachi ga Kachi (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Daiku no Gen-san - Kachikachi no Tonkachi ga Kachi"
+        "short": "Daiku no Gen-san - Kachikachi no Tonkachi ga Kachi",
+        "genre": "Platform"
     },
     "E115DDB1": {
         "long": "F1 Racing Championship (Europe) (En,Fr,De,Es,It) (Beta)",
-        "short": "F1 Racing Championship"
+        "short": "F1 Racing Championship",
+        "genre": "Racing"
     },
     "E3227B7D": {
         "long": "Frogger 2 (USA) (Rev 1)",
-        "short": "Frogger 2"
+        "short": "Frogger 2",
+        "genre": "Action"
     },
     "E3C4ABC6": {
         "long": "Galaga - Destination Earth (USA)",
-        "short": "Galaga - Destination Earth"
+        "short": "Galaga - Destination Earth",
+        "genre": "Shoot'em Up"
     },
     "E0B9FD3B": {
         "long": "Heroes of Might and Magic (Europe) (En,Fr,De)",
-        "short": "Heroes of Might and Magic"
+        "short": "Heroes of Might and Magic",
+        "genre": "Role-playing (RPG)"
     },
     "E2F6253E": {
         "long": "Kinniku Banzuke GB 3 - Shinseiki Survival Retsuden! (Japan)",
-        "short": "Kinniku Banzuke GB 3 - Shinseiki Survival Retsuden!"
+        "short": "Kinniku Banzuke GB 3 - Shinseiki Survival Retsuden!",
+        "genre": "Sports"
     },
     "E2E4328B": {
         "long": "Kinniku Banzuke GB - Chousensha wa Kimida! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kinniku Banzuke GB - Chousensha wa Kimida!"
+        "short": "Kinniku Banzuke GB - Chousensha wa Kimida!",
+        "genre": "Sports"
     },
     "E2BFF286": {
         "long": "Laura (USA)",
-        "short": "Laura"
+        "short": "Laura",
+        "genre": "Casual Game"
     },
     "E078D9F8": {
         "long": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou"
+        "short": "Loppi Puzzle Magazine - Hirameku Puzzle Dai-3-gou",
+        "genre": "Puzzle"
     },
     "E338C118": {
         "long": "Ohasuta Dance Dance Revolution GB (Japan)",
-        "short": "Ohasuta Dance Dance Revolution GB"
+        "short": "Ohasuta Dance Dance Revolution GB",
+        "genre": "Music / Dancing"
     },
     "E0C216EA": {
         "long": "Pokémon - Version Argent (France) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Version Argent"
+        "short": "Pokémon - Version Argent",
+        "genre": "Role-playing (RPG)"
     },
     "E3D6964C": {
         "long": "Powerpuff Girls, The - Battle Him (USA) (Rev 1)",
-        "short": "Powerpuff Girls, The - Battle Him"
+        "short": "Powerpuff Girls, The - Battle Him",
+        "genre": "Platform"
     },
     "E3704755": {
         "long": "Scooby-Doo! - Classic Creep Capers (USA, Europe)",
-        "short": "Scooby-Doo! - Classic Creep Capers"
+        "short": "Scooby-Doo! - Classic Creep Capers",
+        "genre": "Adventure"
     },
     "E32BB06F": {
         "long": "Test Drive Cycles (USA)",
-        "short": "Test Drive Cycles"
+        "short": "Test Drive Cycles",
+        "genre": "Racing"
     },
     "E108B2C2": {
         "long": "Tonka Raceway (Europe)",
-        "short": "Tonka Raceway"
+        "short": "Tonka Raceway",
+        "genre": "Racing"
     },
     "E2AD5A0F": {
         "long": "Top Gun - Fire Storm (USA, Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Top Gun - Fire Storm"
+        "short": "Top Gun - Fire Storm",
+        "genre": "Action"
     },
     "E241EDDE": {
         "long": "Worms Armageddon (USA) (En,Fr,Es)",
-        "short": "Worms Armageddon"
+        "short": "Worms Armageddon",
+        "genre": "Strategy"
     },
     "E101246F": {
         "long": "Xtreme Wheels (Europe)",
-        "short": "Xtreme Wheels"
+        "short": "Xtreme Wheels",
+        "genre": "Racing"
     },
     "E0A06018": {
         "long": "Yakouchuu GB (Japan)",
-        "short": "Yakouchuu GB"
+        "short": "Yakouchuu GB",
+        "genre": "Adventure"
     },
     "E045B886": {
         "long": "Cool Ball (USA)",
-        "short": "Cool Ball"
+        "short": "Cool Ball",
+        "genre": "Platform"
     },
     "E3B59B7E": {
         "long": "Fortified Zone (USA, Europe)",
-        "short": "Fortified Zone"
+        "short": "Fortified Zone",
+        "genre": "Shooter"
     },
     "E37E1832": {
         "long": "Indien dans la Ville, Un (Europe) (SGB Enhanced)",
-        "short": "Indien dans la Ville, Un"
+        "short": "Indien dans la Ville, Un",
+        "genre": "Platform"
     },
     "E0CF879B": {
         "long": "Joshua & the Battle of Jericho (USA) (Unl)",
-        "short": "Joshua & the Battle of Jericho"
+        "short": "Joshua & the Battle of Jericho",
+        "genre": "Puzzle"
     },
     "E158D4DB": {
         "long": "Kyoro-chan Land (Japan)",
-        "short": "Kyoro-chan Land"
+        "short": "Kyoro-chan Land",
+        "genre": "Platform"
     },
     "E2A65174": {
         "long": "Lemmings (Europe) (Beta) (1993-05-19)",
-        "short": "Lemmings"
+        "short": "Lemmings",
+        "genre": "Strategy"
     },
     "E1E3629F": {
         "long": "Mogura de Pon! (Japan)",
-        "short": "Mogura de Pon!"
+        "short": "Mogura de Pon!",
+        "genre": "Action"
     },
     "E2697678": {
         "long": "Motocross Maniacs (Europe)",
-        "short": "Motocross Maniacs"
+        "short": "Motocross Maniacs",
+        "genre": "Racing"
     },
     "E19F67D7": {
         "long": "Ms. Pac-Man (Europe)",
-        "short": "Ms. Pac-Man"
+        "short": "Ms. Pac-Man",
+        "genre": "Action"
     },
     "E285CF30": {
         "long": "Mulan (Europe) (SGB Enhanced)",
-        "short": "Mulan"
+        "short": "Mulan",
+        "genre": "Action"
     },
     "E00EBC44": {
         "long": "Nakajima Satoru - F-1 Hero GB - World Championship '91 (Japan)",
-        "short": "Nakajima Satoru - F-1 Hero GB - World Championship '91"
+        "short": "Nakajima Satoru - F-1 Hero GB - World Championship '91",
+        "genre": "Racing"
     },
     "E1B202DB": {
         "long": "Nigel Mansell's World Championship (Europe)",
-        "short": "Nigel Mansell's World Championship"
+        "short": "Nigel Mansell's World Championship",
+        "genre": "Racing"
     },
     "E30EF8AB": {
         "long": "Power Mission (Japan) (Rev 1)",
-        "short": "Power Mission"
+        "short": "Power Mission",
+        "genre": "Strategy"
     },
     "E0AAAD99": {
         "long": "Prince of Persia (Europe) (En,Fr,De,Es,It) (Beta)",
-        "short": "Prince of Persia"
+        "short": "Prince of Persia",
+        "genre": "Platform"
     },
     "E0F23FC0": {
         "long": "R-Type (USA, Europe)",
-        "short": "R-Type"
+        "short": "R-Type",
+        "genre": "Action"
     },
     "E1592B83": {
         "long": "Real Ghostbusters, The (USA)",
-        "short": "Real Ghostbusters, The"
+        "short": "Real Ghostbusters, The",
+        "genre": "Platform"
     },
     "E032E502": {
         "long": "StarHawk (Europe)",
-        "short": "StarHawk"
+        "short": "StarHawk",
+        "genre": "Shoot'em Up"
     },
     "E01CAF0B": {
         "long": "Super Chinese Land 3 (Japan) (SGB Enhanced)",
-        "short": "Super Chinese Land 3"
+        "short": "Super Chinese Land 3",
+        "genre": "Role-playing (RPG)"
     },
     "E10D758B": {
         "long": "Shin Pokémon Blue (origback) (v1.24.6h3)",
-        "short": "Shin Pokémon Blue"
+        "short": "Shin Pokémon Blue",
+        "genre": "ROM Hack"
     },
     "E11C862C": {
         "long": "Little Sound Dj (v9.4.2)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

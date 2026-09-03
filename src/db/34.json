@@ -1,218 +1,272 @@
 {
     "34411753": {
         "long": "Army Men (USA, Europe) (En,Fr,De)",
-        "short": "Army Men"
+        "short": "Army Men",
+        "genre": "Strategy"
     },
     "351BA5EA": {
         "long": "Caesars Palace II (USA, Europe)",
-        "short": "Caesars Palace II"
+        "short": "Caesars Palace II",
+        "genre": "Gambling"
     },
     "36C04BE0": {
         "long": "Chiki Chiki Machine Mou Race (Japan)",
-        "short": "Chiki Chiki Machine Mou Race"
+        "short": "Chiki Chiki Machine Mou Race",
+        "genre": "Racing"
     },
     "351862BB": {
         "long": "Daikatana (USA) (Proto 1) (2000-04-19)",
-        "short": "Daikatana"
+        "short": "Daikatana",
+        "genre": "Role-playing (RPG)"
     },
     "35790637": {
         "long": "Dragon Ball Z - I Leggendari Super Guerrieri (Italy) (Beta) (All Unlocked)",
-        "short": "Dragon Ball Z - I Leggendari Super Guerrieri"
+        "short": "Dragon Ball Z - I Leggendari Super Guerrieri",
+        "genre": "Role-playing (RPG)"
     },
     "35EC5FB2": {
         "long": "Dragon Warrior Monsters 2 - Tara's Adventure (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Warrior Monsters 2 - Tara's Adventure"
+        "short": "Dragon Warrior Monsters 2 - Tara's Adventure",
+        "genre": "Role-playing (RPG)"
     },
     "3791DCA1": {
         "long": "Kawaii Pet Shop Monogatari 2 (Japan) (GB Compatible)",
-        "short": "Kawaii Pet Shop Monogatari 2"
+        "short": "Kawaii Pet Shop Monogatari 2",
+        "genre": "Role-playing (RPG)"
     },
     "364F9CCD": {
         "long": "Little Mermaid II, The - Pinball Frenzy (USA) (En,Fr,De,Es,It) (Rumble Version)",
-        "short": "Little Mermaid II, The - Pinball Frenzy"
+        "short": "Little Mermaid II, The - Pinball Frenzy",
+        "genre": "Pinball"
     },
     "35D6DDCC": {
         "long": "Mary-Kate and Ashley - Winners Circle (USA, Europe)",
-        "short": "Mary-Kate and Ashley - Winners Circle"
+        "short": "Mary-Kate and Ashley - Winners Circle",
+        "genre": "Racing"
     },
     "35FC5B32": {
         "long": "Mobile Golf (Japan)",
-        "short": "Mobile Golf"
+        "short": "Mobile Golf",
+        "genre": "Sports"
     },
     "3726858A": {
         "long": "Monsters, Inc. (Europe) (Rev 1)",
-        "short": "Monsters, Inc."
+        "short": "Monsters, Inc.",
+        "genre": "Platform"
     },
     "35FD440D": {
         "long": "Mr. Driller (Japan) (NP)",
-        "short": "Mr. Driller"
+        "short": "Mr. Driller",
+        "genre": "Strategy"
     },
     "3485761A": {
         "long": "O'Leary Manager 2000 (Europe) (En,Fr,De,Es,It,Nl,Ca)",
-        "short": "O'Leary Manager 2000"
+        "short": "O'Leary Manager 2000",
+        "genre": "Sports"
     },
     "3485EF86": {
         "long": "Pac-Man - Special Color Edition (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Pac-Man - Special Color Edition"
+        "short": "Pac-Man - Special Color Edition",
+        "genre": "Action"
     },
     "375C35E0": {
         "long": "Player Manager 2001 (Europe) (En,Fr)",
-        "short": "Player Manager 2001"
+        "short": "Player Manager 2001",
+        "genre": "Simulation"
     },
     "35A29628": {
         "long": "Pocket Lure Boy (Japan)",
-        "short": "Pocket Lure Boy"
+        "short": "Pocket Lure Boy",
+        "genre": "Role-playing (RPG)"
     },
     "3434A92B": {
         "long": "Pokémon - Edicion Oro (Spain) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Edicion Oro"
+        "short": "Pokémon - Edicion Oro",
+        "genre": "Role-playing (RPG)"
     },
     "37A70702": {
         "long": "Pokémon - Version Or (France) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Version Or"
+        "short": "Pokémon - Version Or",
+        "genre": "Role-playing (RPG)"
     },
     "3623EBB6": {
         "long": "R-Type DX (Japan) (En) (GB Compatible)",
-        "short": "R-Type DX"
+        "short": "R-Type DX",
+        "genre": "Shoot'em Up"
     },
     "345E20A4": {
         "long": "Ready 2 Rumble Boxing (USA) (Rumble Version)",
-        "short": "Ready 2 Rumble Boxing"
+        "short": "Ready 2 Rumble Boxing",
+        "genre": "Sports"
     },
     "35323432": {
         "long": "Rugrats en Paris - La pelicula (Spain) (En,Es)",
-        "short": "Rugrats en Paris - La pelicula"
+        "short": "Rugrats en Paris - La pelicula",
+        "genre": "Platform"
     },
     "36E781CD": {
         "long": "Shutokou Racing, The (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Shutokou Racing, The"
+        "short": "Shutokou Racing, The",
+        "genre": "Racing"
     },
     "34E2B3BA": {
         "long": "Spider-Man (USA, Europe)",
-        "short": "Spider-Man"
+        "short": "Spider-Man",
+        "genre": "Platform"
     },
     "34C8A4A5": {
         "long": "Super Bombliss DX (Japan) (En) (SGB Enhanced) (GB Compatible)",
-        "short": "Super Bombliss DX"
+        "short": "Super Bombliss DX",
+        "genre": "Puzzle"
     },
     "3611D0D8": {
         "long": "Tasmanian Devil - Munching Madness (USA) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Tasmanian Devil - Munching Madness"
+        "short": "Tasmanian Devil - Munching Madness",
+        "genre": "Platform"
     },
     "36536324": {
         "long": "Thunderbirds (Europe) (En,Fr,De,Es,It)",
-        "short": "Thunderbirds"
+        "short": "Thunderbirds",
+        "genre": "Racing"
     },
     "37EA6093": {
         "long": "Wacky Races (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Wacky Races"
+        "short": "Wacky Races",
+        "genre": "Racing"
     },
     "362C841C": {
         "long": "Adventures of Rocky and Bullwinkle and Friends, The (USA)",
-        "short": "Adventures of Rocky and Bullwinkle and Friends, The"
+        "short": "Adventures of Rocky and Bullwinkle and Friends, The",
+        "genre": "Platform"
     },
     "373343E6": {
         "long": "B.C. Kid (Europe)",
-        "short": "B.C. Kid"
+        "short": "B.C. Kid",
+        "genre": "Platform"
     },
     "35914DEB": {
         "long": "Battle of Kingdom (Japan)",
-        "short": "Battle of Kingdom"
+        "short": "Battle of Kingdom",
+        "genre": "Card"
     },
     "34E62C8B": {
         "long": "Collection Pocket (Japan) (SGB Enhanced)",
-        "short": "Collection Pocket"
+        "short": "Collection Pocket",
+        "genre": "Compilation"
     },
     "37D4AA8C": {
         "long": "Crayon Shin-chan 4 - Ora no Itazura Daihenshin (Japan) (SGB Enhanced)",
-        "short": "Crayon Shin-chan 4 - Ora no Itazura Daihenshin"
+        "short": "Crayon Shin-chan 4 - Ora no Itazura Daihenshin",
+        "genre": "Platform"
     },
     "35D9BE0E": {
         "long": "Days of Thunder (USA, Europe)",
-        "short": "Days of Thunder"
+        "short": "Days of Thunder",
+        "genre": "Racing"
     },
     "34AC7268": {
         "long": "Double Yakuman Jr. (Japan)",
-        "short": "Double Yakuman Jr."
+        "short": "Double Yakuman Jr.",
+        "genre": "Board"
     },
     "351A7277": {
         "long": "Dropzone (Europe)",
-        "short": "Dropzone"
+        "short": "Dropzone",
+        "genre": "Shoot'em Up"
     },
     "374F80B0": {
         "long": "Dropzone (Europe) (Beta)",
-        "short": "Dropzone"
+        "short": "Dropzone",
+        "genre": "Shoot'em Up"
     },
     "3579E297": {
         "long": "Gremlins 2 - The New Batch (World)",
-        "short": "Gremlins 2 - The New Batch"
+        "short": "Gremlins 2 - The New Batch",
+        "genre": "Platform"
     },
     "370A2C2F": {
         "long": "Hook (Europe)",
-        "short": "Hook"
+        "short": "Hook",
+        "genre": "Platform"
     },
     "374893D7": {
         "long": "Jack Nicklaus Golf (France)",
-        "short": "Jack Nicklaus Golf"
+        "short": "Jack Nicklaus Golf",
+        "genre": "Sports"
     },
     "37B3D081": {
         "long": "Jankenman (Japan)",
-        "short": "Jankenman"
+        "short": "Jankenman",
+        "genre": "Action"
     },
     "34D08E7B": {
         "long": "Legend of Zelda, The - Link's Awakening (USA, Europe) (Rev 2)",
-        "short": "Legend of Zelda, The - Link's Awakening"
+        "short": "Legend of Zelda, The - Link's Awakening",
+        "genre": "Role-playing (RPG)"
     },
     "3430D261": {
         "long": "Lion King, The (USA)",
-        "short": "Lion King, The"
+        "short": "Lion King, The",
+        "genre": "Platform"
     },
     "3420EDEA": {
         "long": "Mysterium (Japan)",
-        "short": "Mysterium"
+        "short": "Mysterium",
+        "genre": "Action"
     },
     "3690C99C": {
         "long": "Pachio-kun - Puzzle Castle (Japan)",
-        "short": "Pachio-kun - Puzzle Castle"
+        "short": "Pachio-kun - Puzzle Castle",
+        "genre": "Puzzle"
     },
     "37AE8DC4": {
         "long": "Pocket Monsters - Midori (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Pocket Monsters - Midori"
+        "short": "Pocket Monsters - Midori",
+        "genre": "Role-playing (RPG)"
     },
     "35A5234A": {
         "long": "Solitaire FunPak (USA, Europe)",
-        "short": "Solitaire FunPak"
+        "short": "Solitaire FunPak",
+        "genre": "Puzzle"
     },
     "35415A00": {
         "long": "Spirou (Europe) (En,Fr,De,Es) (Beta) (SGB Enhanced)",
-        "short": "Spirou"
+        "short": "Spirou",
+        "genre": "Platform"
     },
     "36645203": {
         "long": "Spy vs Spy - Operation Boobytrap (Europe)",
-        "short": "Spy vs Spy - Operation Boobytrap"
+        "short": "Spy vs Spy - Operation Boobytrap",
+        "genre": "Action"
     },
     "358E0091": {
         "long": "Superman (USA, Europe) (SGB Enhanced)",
-        "short": "Superman"
+        "short": "Superman",
+        "genre": "Platform"
     },
     "3700927F": {
         "long": "Total Carnage (USA, Europe)",
-        "short": "Total Carnage"
+        "short": "Total Carnage",
+        "genre": "Shooter"
     },
     "37A9D9D5": {
         "long": "Wrecking Balloon (Neighto)",
-        "short": "Wrecking Balloon"
+        "short": "Wrecking Balloon",
+        "genre": "Homebrew"
     },
     "350B9EEA": {
         "long": "Pokémon Brown: 20th Anniversary Edition (6.1.2)",
-        "short": "Pokémon Brown: 20th Anniversary Edition"
+        "short": "Pokémon Brown: 20th Anniversary Edition",
+        "genre": "ROM Hack"
     },
     "367DD9DE": {
         "long": "Little Sound Dj (v9.2.L)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     },
     "3515B95B": {
         "long": "Little Sound Dj (v4.4.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

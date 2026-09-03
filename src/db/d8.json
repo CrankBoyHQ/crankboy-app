@@ -1,222 +1,277 @@
 {
     "D952CBAB": {
         "long": "Armada - FX Racers (USA)",
-        "short": "Armada - FX Racers"
+        "short": "Armada - FX Racers",
+        "genre": "Racing"
     },
     "DB93E0F6": {
         "long": "Bug's Life, A (Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Bug's Life, A"
+        "short": "Bug's Life, A",
+        "genre": "Platform"
     },
     "DA8D6283": {
         "long": "Carl Lewis Athletics 2000 (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "Carl Lewis Athletics 2000"
+        "short": "Carl Lewis Athletics 2000",
+        "genre": "Sports"
     },
     "DAEFE53C": {
         "long": "Casper (Europe) (En,Es,It)",
-        "short": "Casper"
+        "short": "Casper",
+        "genre": "Adventure"
     },
     "D9F071BB": {
         "long": "Dino Breeder 3 - Gaia Fukkatsu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Dino Breeder 3 - Gaia Fukkatsu"
+        "short": "Dino Breeder 3 - Gaia Fukkatsu",
+        "genre": "Simulation"
     },
     "D9A22E5D": {
         "long": "Frogger (USA) (Rev 2) (GB Compatible)",
-        "short": "Frogger"
+        "short": "Frogger",
+        "genre": "Action"
     },
     "D829EB2F": {
         "long": "Ganbare Goemon - Tengutou no Gyakushuu (Japan) (GB Compatible)",
-        "short": "Ganbare Goemon - Tengutou no Gyakushuu"
+        "short": "Ganbare Goemon - Tengutou no Gyakushuu",
+        "genre": "Role-playing (RPG)"
     },
     "D8E357BA": {
         "long": "Gift (Europe) (Sample)",
-        "short": "Gift"
+        "short": "Gift",
+        "genre": "Action"
     },
     "D826C75F": {
         "long": "International Track & Field - Summer Games (Europe)",
-        "short": "International Track & Field - Summer Games"
+        "short": "International Track & Field - Summer Games",
+        "genre": "Sports"
     },
     "D9062E49": {
         "long": "John Romero's Daikatana (Europe) (En,Fr,It)",
-        "short": "John Romero's Daikatana"
+        "short": "John Romero's Daikatana",
+        "genre": "Role-playing (RPG)"
     },
     "DBAC1357": {
         "long": "Legend of Zelda, The - Oracle of Seasons (Europe) (En,Fr,De,Es,It)",
-        "short": "Legend of Zelda, The - Oracle of Seasons"
+        "short": "Legend of Zelda, The - Oracle of Seasons",
+        "genre": "Role-playing (RPG)"
     },
     "DA084760": {
         "long": "LEGO Stunt Rally (USA)",
-        "short": "LEGO Stunt Rally"
+        "short": "LEGO Stunt Rally",
+        "genre": "Racing"
     },
     "DA7FB08F": {
         "long": "Momotarou Densetsu 1-2 (Japan)",
-        "short": "Momotarou Densetsu 1-2"
+        "short": "Momotarou Densetsu 1-2",
+        "genre": "Role-playing (RPG)"
     },
     "DA3A3278": {
         "long": "Papyrus (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Papyrus"
+        "short": "Papyrus",
+        "genre": "Platform"
     },
     "DAD6F6B4": {
         "long": "Power Quest (USA) (En-US,En-GB,Fr,De,Es,It) (SGB Enhanced) (GB Compatible)",
-        "short": "Power Quest"
+        "short": "Power Quest",
+        "genre": "Role-playing (RPG)"
     },
     "D8455984": {
         "long": "Powerpuff Girls, The - Battle Him (USA)",
-        "short": "Powerpuff Girls, The - Battle Him"
+        "short": "Powerpuff Girls, The - Battle Him",
+        "genre": "Platform"
     },
     "D903DB7D": {
         "long": "Quest for Camelot (USA, Australia) (En,Fr,Es) (SGB Enhanced) (GB Compatible)",
-        "short": "Quest for Camelot"
+        "short": "Quest for Camelot",
+        "genre": "Adventure"
     },
     "D8FAC36C": {
         "long": "Shanghai Pocket (Europe) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Shanghai Pocket"
+        "short": "Shanghai Pocket",
+        "genre": "Board"
     },
     "D882ECCC": {
         "long": "Snoopy Tennis (USA) (En,Fr,Es)",
-        "short": "Snoopy Tennis"
+        "short": "Snoopy Tennis",
+        "genre": "Sports"
     },
     "DAB7460C": {
         "long": "Space Invaders (USA, Europe) (GB Compatible)",
-        "short": "Space Invaders"
+        "short": "Space Invaders",
+        "genre": "Shooter"
     },
     "D911DD97": {
         "long": "Toy Story Racer (USA, Europe)",
-        "short": "Toy Story Racer"
+        "short": "Toy Story Racer",
+        "genre": "Racing"
     },
     "D98A877D": {
         "long": "Trade & Battle Card Hero (Japan) (Rev 1) (3DS Virtual Console) (SGB Enhanced) (GB Compatible)",
-        "short": "Trade & Battle Card Hero"
+        "short": "Trade & Battle Card Hero",
+        "genre": "Strategy"
     },
     "DAE30864": {
         "long": "Turok 2 - Seeds of Evil (USA, Europe) (En,Fr,De,Es) (Beta) (GB Compatible)",
-        "short": "Turok 2 - Seeds of Evil"
+        "short": "Turok 2 - Seeds of Evil",
+        "genre": "Action"
     },
     "DA300C6C": {
         "long": "V-Rally - Edition 99 (USA) (En,Fr,Es)",
-        "short": "V-Rally - Edition 99"
+        "short": "V-Rally - Edition 99",
+        "genre": "Racing"
     },
     "DBDD6D85": {
         "long": "VIP (Europe) (En,Fr,De,Es,It)",
-        "short": "VIP"
+        "short": "VIP",
+        "genre": "Racing"
     },
     "D843F898": {
         "long": "Visiteurs, Les (France) (GB Compatible)",
-        "short": "Visiteurs, Les"
+        "short": "Visiteurs, Les",
+        "genre": "Platform"
     },
     "D974ABEA": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "DA90F5FC": {
         "long": "Ayakashi no Shiro (Japan)",
-        "short": "Ayakashi no Shiro"
+        "short": "Ayakashi no Shiro",
+        "genre": "Role-playing (RPG)"
     },
     "DA218E44": {
         "long": "Bokujou Monogatari GB (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Bokujou Monogatari GB"
+        "short": "Bokujou Monogatari GB",
+        "genre": "Simulation"
     },
     "D9F901A9": {
         "long": "Caesars Palace (USA)",
-        "short": "Caesars Palace"
+        "short": "Caesars Palace",
+        "genre": "Gambling"
     },
     "D80BDBBA": {
         "long": "F-15 Strike Eagle II (USA, Europe) (Beta) (July, 1992)",
-        "short": "F-15 Strike Eagle II"
+        "short": "F-15 Strike Eagle II",
+        "genre": "Simulation"
     },
     "D9B24D21": {
         "long": "GB Basketball (Japan)",
-        "short": "GB Basketball"
+        "short": "GB Basketball",
+        "genre": "Sports"
     },
     "D81C08FA": {
         "long": "Incredible Crash Dummies, The (USA, Europe)",
-        "short": "Incredible Crash Dummies, The"
+        "short": "Incredible Crash Dummies, The",
+        "genre": "Action"
     },
     "DAB91C7A": {
         "long": "Lock n' Chase ~ Lock 'n' Chase (World)",
-        "short": "Lock n' Chase ~ Lock 'n' Chase"
+        "short": "Lock n' Chase ~ Lock 'n' Chase",
+        "genre": "Action"
     },
     "D8BAB8E0": {
         "long": "Masakari Densetsu - Kintarou RPG Hen (Japan) (SGB Enhanced)",
-        "short": "Masakari Densetsu - Kintarou RPG Hen"
+        "short": "Masakari Densetsu - Kintarou RPG Hen",
+        "genre": "Role-playing (RPG)"
     },
     "D8AC08B5": {
         "long": "Monopoly (Japan)",
-        "short": "Monopoly"
+        "short": "Monopoly",
+        "genre": "Board"
     },
     "DA6053C3": {
         "long": "Motocross Maniacs (Japan)",
-        "short": "Motocross Maniacs"
+        "short": "Motocross Maniacs",
+        "genre": "Racing"
     },
     "D983FF48": {
         "long": "Nichibutsu Mahjong - Yoshimoto Gekijou (Japan)",
-        "short": "Nichibutsu Mahjong - Yoshimoto Gekijou"
+        "short": "Nichibutsu Mahjong - Yoshimoto Gekijou",
+        "genre": "Board"
     },
     "D8B4AEA4": {
         "long": "Pipe Dream (Japan)",
-        "short": "Pipe Dream"
+        "short": "Pipe Dream",
+        "genre": "Puzzle"
     },
     "D95416F9": {
         "long": "Pokémon - Edicion Azul (Spain) (SGB Enhanced)",
-        "short": "Pokémon - Edicion Azul"
+        "short": "Pokémon - Edicion Azul",
+        "genre": "Role-playing (RPG)"
     },
     "D8507D8A": {
         "long": "Pokémon - Edicion Roja (Spain) (SGB Enhanced)",
-        "short": "Pokémon - Edicion Roja"
+        "short": "Pokémon - Edicion Roja",
+        "genre": "Role-playing (RPG)"
     },
     "DACE3E4A": {
         "long": "Puzznic (USA) (Proto)",
-        "short": "Puzznic"
+        "short": "Puzznic",
+        "genre": "Strategy"
     },
     "D8C33DCD": {
         "long": "Quiz Sekai wa Show by Shoubai!! (Japan)",
-        "short": "Quiz Sekai wa Show by Shoubai!!"
+        "short": "Quiz Sekai wa Show by Shoubai!!",
+        "genre": "Quiz"
     },
     "D9D57151": {
         "long": "Ranma 1-2 - Netsuretsu Kakutou Hen (Japan)",
-        "short": "Ranma 1-2 - Netsuretsu Kakutou Hen"
+        "short": "Ranma 1-2 - Netsuretsu Kakutou Hen",
+        "genre": "Adventure"
     },
     "DBF106D1": {
         "long": "Small Soldiers (USA, Europe) (SGB Enhanced)",
-        "short": "Small Soldiers"
+        "short": "Small Soldiers",
+        "genre": "Platform"
     },
     "D9DA6741": {
         "long": "Soukoban 2 (Japan)",
-        "short": "Soukoban 2"
+        "short": "Soukoban 2",
+        "genre": "Puzzle"
     },
     "D925D15D": {
         "long": "Star Trek Generations - Beyond the Nexus (Europe) (SGB Enhanced)",
-        "short": "Star Trek Generations - Beyond the Nexus"
+        "short": "Star Trek Generations - Beyond the Nexus",
+        "genre": "Simulation"
     },
     "DA27E798": {
         "long": "Super Battletank (USA)",
-        "short": "Super Battletank"
+        "short": "Super Battletank",
+        "genre": "Simulation"
     },
     "D9F3EB9F": {
         "long": "Super Mario 4 (Unknown) (Ja) (Pirate)",
-        "short": "Super Mario 4"
+        "short": "Super Mario 4",
+        "genre": "Platform"
     },
     "DBF1BD20": {
         "long": "Tamagotchi (USA, Europe) (SGB Enhanced)",
-        "short": "Tamagotchi"
+        "short": "Tamagotchi",
+        "genre": "Simulation"
     },
     "DAFC3BFF": {
         "long": "Tetris Plus (USA, Europe) (SGB Enhanced)",
-        "short": "Tetris Plus"
+        "short": "Tetris Plus",
+        "genre": "Action"
     },
     "D8E5060F": {
         "long": "Toy Story (Europe) (SGB Enhanced)",
-        "short": "Toy Story"
+        "short": "Toy Story",
+        "genre": "Platform"
     },
     "D9DDB091": {
         "long": "Ultra Golf (USA) (Beta) (1991-11-20)",
-        "short": "Ultra Golf"
+        "short": "Ultra Golf",
+        "genre": "Sports"
     },
     "DBEED84E": {
         "long": "Who Framed Roger Rabbit (Europe)",
-        "short": "Who Framed Roger Rabbit"
+        "short": "Who Framed Roger Rabbit",
+        "genre": "Adventure"
     },
     "D8C14471": {
         "long": "Little Sound Dj (v4.8.0)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

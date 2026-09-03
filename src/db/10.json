@@ -1,214 +1,267 @@
 {
     "1226499E": {
         "long": "Action Man - Search for Base X (USA, Europe)",
-        "short": "Action Man - Search for Base X"
+        "short": "Action Man - Search for Base X",
+        "genre": "Platform"
     },
     "12F0C196": {
         "long": "Catwoman (USA)",
-        "short": "Catwoman"
+        "short": "Catwoman",
+        "genre": "Action"
     },
     "13AD07B1": {
         "long": "Centipede (USA) (GB Compatible)",
-        "short": "Centipede"
+        "short": "Centipede",
+        "genre": "Shooter"
     },
     "137D7B45": {
         "long": "Dragon Tales - Dragon Wings (Europe)",
-        "short": "Dragon Tales - Dragon Wings"
+        "short": "Dragon Tales - Dragon Wings",
+        "genre": "Puzzle"
     },
     "1271117F": {
         "long": "Hamtaro - Ham-Hams Unite! (USA)",
-        "short": "Hamtaro - Ham-Hams Unite!"
+        "short": "Hamtaro - Ham-Hams Unite!",
+        "genre": "Role-playing (RPG)"
     },
     "136E9D0C": {
         "long": "Harry Potter and the Chamber of Secrets (USA, Europe) (En,Fr,De,Es,It,Nl,Pt,Sv,Da)",
-        "short": "Harry Potter and the Chamber of Secrets"
+        "short": "Harry Potter and the Chamber of Secrets",
+        "genre": "Role-playing (RPG)"
     },
     "12F74CD4": {
         "long": "Hello Kitty no Beads Factory (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hello Kitty no Beads Factory"
+        "short": "Hello Kitty no Beads Factory",
+        "genre": "Puzzle"
     },
     "12E00808": {
         "long": "International Karate 2000 (Europe)",
-        "short": "International Karate 2000"
+        "short": "International Karate 2000",
+        "genre": "Action"
     },
     "1241F3F5": {
         "long": "Legend of the River King GB (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of the River King GB"
+        "short": "Legend of the River King GB",
+        "genre": "Hunting and Fishing"
     },
     "11FB5617": {
         "long": "Looney Tunes - Carrot Crazy (USA) (En,Fr,Es) (GB Compatible)",
-        "short": "Looney Tunes - Carrot Crazy"
+        "short": "Looney Tunes - Carrot Crazy",
+        "genre": "Platform"
     },
     "11B4788C": {
         "long": "Marvin Strikes Back! (USA) (En,Fr,Es)",
-        "short": "Marvin Strikes Back!"
+        "short": "Marvin Strikes Back!",
+        "genre": "Action"
     },
     "11763934": {
         "long": "Mickey's Speedway USA (USA, Europe) (En,Fr,De,Es)",
-        "short": "Mickey's Speedway USA"
+        "short": "Mickey's Speedway USA",
+        "genre": "Racing"
     },
     "103E212D": {
         "long": "Ms. Pac-Man - Special Color Edition (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Ms. Pac-Man - Special Color Edition"
+        "short": "Ms. Pac-Man - Special Color Edition",
+        "genre": "Action"
     },
     "107D734B": {
         "long": "NFL Blitz (USA, Europe) (Rev 1) (GB Compatible)",
-        "short": "NFL Blitz"
+        "short": "NFL Blitz",
+        "genre": "Sports"
     },
     "13C70DE9": {
         "long": "Pokémon Pinball (Japan) (Rumble Version) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Pinball"
+        "short": "Pokémon Pinball",
+        "genre": "Pinball"
     },
     "11025EEB": {
         "long": "Road Rash (USA, Europe)",
-        "short": "Road Rash"
+        "short": "Road Rash",
+        "genre": "Racing"
     },
     "10DBDE7C": {
         "long": "Roland Garros French Open (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Roland Garros French Open"
+        "short": "Roland Garros French Open",
+        "genre": "Sports"
     },
     "13691CEB": {
         "long": "Test Drive 6 (Europe) (En,Fr,De,Es,It) (GB Compatible)",
-        "short": "Test Drive 6"
+        "short": "Test Drive 6",
+        "genre": "Racing"
     },
     "1312B3F7": {
         "long": "V-Rally - Championship Edition (Europe) (En,Fr,De,Es)",
-        "short": "V-Rally - Championship Edition"
+        "short": "V-Rally - Championship Edition",
+        "genre": "Racing"
     },
     "12FC1A6E": {
         "long": "X-Men - Wolverine's Rage (USA)",
-        "short": "X-Men - Wolverine's Rage"
+        "short": "X-Men - Wolverine's Rage",
+        "genre": "Action"
     },
     "104968E7": {
         "long": "Xin Tiao Hui Yi (Taiwan) (Unl)",
-        "short": "Xin Tiao Hui Yi"
+        "short": "Xin Tiao Hui Yi",
+        "genre": "Simulation"
     },
     "129465DB": {
         "long": "Xtreme Wheels (USA)",
-        "short": "Xtreme Wheels"
+        "short": "Xtreme Wheels",
+        "genre": "Racing"
     },
     "1371E872": {
         "long": "Yu-Gi-Oh! - Monster Capsule GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Yu-Gi-Oh! - Monster Capsule GB"
+        "short": "Yu-Gi-Oh! - Monster Capsule GB",
+        "genre": "Role-playing (RPG)"
     },
     "11290C31": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Beta) (1998-07-05 18.00.56) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "13C76902": {
         "long": "Zelda no Densetsu - Yume o Miru Shima DX (Japan) (Beta) (1998-07-14) (GB Compatible)",
-        "short": "Zelda no Densetsu - Yume o Miru Shima DX"
+        "short": "Zelda no Densetsu - Yume o Miru Shima DX",
+        "genre": "Role-playing (RPG)"
     },
     "114E1F1E": {
         "long": "4 in 1 (Europe) (4B-009, Sachen) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "1089098F": {
         "long": "Alfred Chicken (Japan) (SGB Enhanced)",
-        "short": "Alfred Chicken"
+        "short": "Alfred Chicken",
+        "genre": "Platform"
     },
     "11FFC359": {
         "long": "B.C. Kid 2 (Europe) (Beta) (SGB Enhanced)",
-        "short": "B.C. Kid 2"
+        "short": "B.C. Kid 2",
+        "genre": "Platform"
     },
     "105BC1C0": {
         "long": "Boomer's Adventure in ASMIK World (USA)",
-        "short": "Boomer's Adventure in ASMIK World"
+        "short": "Boomer's Adventure in ASMIK World",
+        "genre": "Action"
     },
     "13DD647D": {
         "long": "Daffy Duck (Europe)",
-        "short": "Daffy Duck"
+        "short": "Daffy Duck",
+        "genre": "Action"
     },
     "10C98DD1": {
         "long": "Dr. Mario (World)",
-        "short": "Dr. Mario"
+        "short": "Dr. Mario",
+        "genre": "Puzzle"
     },
     "10DCBDC3": {
         "long": "Dragon Slayer Gaiden - Nemuri no Oukan (Japan)",
-        "short": "Dragon Slayer Gaiden - Nemuri no Oukan"
+        "short": "Dragon Slayer Gaiden - Nemuri no Oukan",
+        "genre": "Role-playing (RPG)"
     },
     "11BE4B45": {
         "long": "Dungeon Land (Japan)",
-        "short": "Dungeon Land"
+        "short": "Dungeon Land",
+        "genre": "Card"
     },
     "10499AF6": {
         "long": "Last Action Hero (USA, Europe)",
-        "short": "Last Action Hero"
+        "short": "Last Action Hero",
+        "genre": "Beat'em Up"
     },
     "134F91D7": {
         "long": "Lawnmower Man, The (Europe)",
-        "short": "Lawnmower Man, The"
+        "short": "Lawnmower Man, The",
+        "genre": "Platform"
     },
     "131B09F2": {
         "long": "Makai Toushi Sa-Ga (Japan)",
-        "short": "Makai Toushi Sa-Ga"
+        "short": "Makai Toushi Sa-Ga",
+        "genre": "Role-playing (RPG)"
     },
     "12A3982D": {
         "long": "Medarot - Kabuto Version (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Medarot - Kabuto Version"
+        "short": "Medarot - Kabuto Version",
+        "genre": "Role-playing (RPG)"
     },
     "12CAA1CA": {
         "long": "Panel no Ninja Kesamaru (Japan)",
-        "short": "Panel no Ninja Kesamaru"
+        "short": "Panel no Ninja Kesamaru",
+        "genre": "Puzzle"
     },
     "13652705": {
         "long": "Pocket Monsters - Aka (Japan) (SGB Enhanced)",
-        "short": "Pocket Monsters - Aka"
+        "short": "Pocket Monsters - Aka",
+        "genre": "Role-playing (RPG)"
     },
     "10235E38": {
         "long": "Puzzle Bobble GB (Japan)",
-        "short": "Puzzle Bobble GB"
+        "short": "Puzzle Bobble GB",
+        "genre": "Puzzle"
     },
     "10034D19": {
         "long": "SD Hiryuu no Ken Gaiden 2 (Japan) (SGB Enhanced)",
-        "short": "SD Hiryuu no Ken Gaiden 2"
+        "short": "SD Hiryuu no Ken Gaiden 2",
+        "genre": "Fighting"
     },
     "12D978BF": {
         "long": "Shin Nihon Pro Wrestling - Toukon Sanjuushi (Japan) (Sample)",
-        "short": "Shin Nihon Pro Wrestling - Toukon Sanjuushi"
+        "short": "Shin Nihon Pro Wrestling - Toukon Sanjuushi",
+        "genre": "Sports"
     },
     "11817103": {
         "long": "SolarStriker (World)",
-        "short": "SolarStriker"
+        "short": "SolarStriker",
+        "genre": "Action"
     },
     "1119484A": {
         "long": "Solitaire (Japan)",
-        "short": "Solitaire"
+        "short": "Solitaire",
+        "genre": "Puzzle"
     },
     "1009C6C0": {
         "long": "Spider-Man - X-Men - Arcade's Revenge (USA, Europe)",
-        "short": "Spider-Man - X-Men - Arcade's Revenge"
+        "short": "Spider-Man - X-Men - Arcade's Revenge",
+        "genre": "Platform"
     },
     "13DD233F": {
         "long": "Spider-Man 2 (USA, Europe)",
-        "short": "Spider-Man 2"
+        "short": "Spider-Man 2",
+        "genre": "Platform"
     },
     "112487C9": {
         "long": "Splitz (Europe)",
-        "short": "Splitz"
+        "short": "Splitz",
+        "genre": "Puzzle"
     },
     "129616B3": {
         "long": "Star Trek - The Next Generation (Germany)",
-        "short": "Star Trek - The Next Generation"
+        "short": "Star Trek - The Next Generation",
+        "genre": "Simulation"
     },
     "1132C6BB": {
         "long": "Taiyou no Tenshi Marlowe - Ohanabatake wa Dai-panic (Japan)",
-        "short": "Taiyou no Tenshi Marlowe - Ohanabatake wa Dai-panic"
+        "short": "Taiyou no Tenshi Marlowe - Ohanabatake wa Dai-panic",
+        "genre": "Puzzle"
     },
     "11568E64": {
         "long": "Trip World (Japan)",
-        "short": "Trip World"
+        "short": "Trip World",
+        "genre": "Platform"
     },
     "12DE9BAC": {
         "long": "Ultra Golf (USA)",
-        "short": "Ultra Golf"
+        "short": "Ultra Golf",
+        "genre": "Sports"
     },
     "104EB503": {
         "long": "Wizards & Warriors X - The Fortress of Fear (USA, Europe)",
-        "short": "Wizards & Warriors X - The Fortress of Fear"
+        "short": "Wizards & Warriors X - The Fortress of Fear",
+        "genre": "Platform"
     },
     "10E1A10C": {
         "long": "Zoop (Japan)",
-        "short": "Zoop"
+        "short": "Zoop",
+        "genre": "Action"
     }
 }

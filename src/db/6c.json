@@ -1,246 +1,307 @@
 {
     "6F9EF15E": {
         "long": "Alfred's Adventure (Europe) (En,Fr,De,Es,It)",
-        "short": "Alfred's Adventure"
+        "short": "Alfred's Adventure",
+        "genre": "Adventure"
     },
     "6DE1D581": {
         "long": "Beauty and the Beast - A Board Game Adventure (USA, Australia) (SGB Enhanced) (GB Compatible)",
-        "short": "Beauty and the Beast - A Board Game Adventure"
+        "short": "Beauty and the Beast - A Board Game Adventure",
+        "genre": "Board"
     },
     "6DA8E6EB": {
         "long": "Bugs Bunny et le Chateau des Catastrophes (France) (En)",
-        "short": "Bugs Bunny et le Chateau des Catastrophes"
+        "short": "Bugs Bunny et le Chateau des Catastrophes",
+        "genre": "Strategy"
     },
     "6EBAD539": {
         "long": "Emperor's New Groove, The (USA)",
-        "short": "Emperor's New Groove, The"
+        "short": "Emperor's New Groove, The",
+        "genre": "Platform"
     },
     "6EEA9243": {
         "long": "Front Row (Japan)",
-        "short": "Front Row"
+        "short": "Front Row",
+        "genre": "Racing"
     },
     "6E988C07": {
         "long": "Hanasaka Tenshi Tenten-kun no Beat Breaker (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Hanasaka Tenshi Tenten-kun no Beat Breaker"
+        "short": "Hanasaka Tenshi Tenten-kun no Beat Breaker",
+        "genre": "Strategy"
     },
     "6D50772D": {
         "long": "JumpStart Dino Adventure - Field Trip (USA)",
-        "short": "JumpStart Dino Adventure - Field Trip"
+        "short": "JumpStart Dino Adventure - Field Trip",
+        "genre": "Educational"
     },
     "6D5B59C0": {
         "long": "Kanzume Monsters Parfait (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kanzume Monsters Parfait"
+        "short": "Kanzume Monsters Parfait",
+        "genre": "Strategy"
     },
     "6C568E06": {
         "long": "Karamuchou wa Oosawagi! - Okawari! (Japan) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Karamuchou wa Oosawagi! - Okawari!"
+        "short": "Karamuchou wa Oosawagi! - Okawari!",
+        "genre": "Puzzle"
     },
     "6FCE1AD0": {
         "long": "Kawaii Pet Shop Monogatari 2 (Japan) (Rev 1) (GB Compatible)",
-        "short": "Kawaii Pet Shop Monogatari 2"
+        "short": "Kawaii Pet Shop Monogatari 2",
+        "genre": "Role-playing (RPG)"
     },
     "6E39EBC4": {
         "long": "Kelly Club (USA)",
-        "short": "Kelly Club"
+        "short": "Kelly Club",
+        "genre": "Adventure"
     },
     "6D7EC41B": {
         "long": "LEGO Alpha Team (USA)",
-        "short": "LEGO Alpha Team"
+        "short": "LEGO Alpha Team",
+        "genre": "Action"
     },
     "6C35E8F0": {
         "long": "Monster Rancher Explorer (USA)",
-        "short": "Monster Rancher Explorer"
+        "short": "Monster Rancher Explorer",
+        "genre": "Puzzle"
     },
     "6C933A14": {
         "long": "Pokémon Card GB 2 - GR Dan Sanjou! (Japan)",
-        "short": "Pokémon Card GB 2 - GR Dan Sanjou!"
+        "short": "Pokémon Card GB 2 - GR Dan Sanjou!",
+        "genre": "Card"
     },
     "6DECC6B3": {
         "long": "Rainbow Islands (Europe) (En,Fr,De,Es,It)",
-        "short": "Rainbow Islands"
+        "short": "Rainbow Islands",
+        "genre": "Platform"
     },
     "6F5C315D": {
         "long": "Rayman 2 (USA) (En,Fr,De,Es,It)",
-        "short": "Rayman 2"
+        "short": "Rayman 2",
+        "genre": "Platform"
     },
     "6C6423E2": {
         "long": "RoboCop (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "RoboCop"
+        "short": "RoboCop",
+        "genre": "Action"
     },
     "6F97B043": {
         "long": "Smurfs Nightmare, The (Europe) (En,Fr,De,Es)",
-        "short": "Smurfs Nightmare, The"
+        "short": "Smurfs Nightmare, The",
+        "genre": "Platform"
     },
     "6CA71209": {
         "long": "Spy vs Spy (Europe) (En,Fr,De,Es,It,Nl,Sv) (Rev 1) (Proto)",
-        "short": "Spy vs Spy"
+        "short": "Spy vs Spy",
+        "genre": "Action"
     },
     "6E330FCD": {
         "long": "Super Robot Pinball (Japan)",
-        "short": "Super Robot Pinball"
+        "short": "Super Robot Pinball",
+        "genre": "Pinball"
     },
     "6DD8AC91": {
         "long": "Sylvanian Melodies - Mori no Nakama to Odori Masho! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sylvanian Melodies - Mori no Nakama to Odori Masho!"
+        "short": "Sylvanian Melodies - Mori no Nakama to Odori Masho!",
+        "genre": "Music / Dancing"
     },
     "6F2CBD1D": {
         "long": "Tsuriiko!! (Japan)",
-        "short": "Tsuriiko!!"
+        "short": "Tsuriiko!!",
+        "genre": "Hunting and Fishing"
     },
     "6EDA6A3A": {
         "long": "Turok 2 - Seeds of Evil (USA, Europe) (En,Fr,De,Es) (GB Compatible)",
-        "short": "Turok 2 - Seeds of Evil"
+        "short": "Turok 2 - Seeds of Evil",
+        "genre": "Action"
     },
     "6D48765E": {
         "long": "Turok 3 - Shadow of Oblivion (USA, Europe) (En,Fr,De,Es)",
-        "short": "Turok 3 - Shadow of Oblivion"
+        "short": "Turok 3 - Shadow of Oblivion",
+        "genre": "Action"
     },
     "6DCFDFE2": {
         "long": "Ultimate Paintball (USA, Europe)",
-        "short": "Ultimate Paintball"
+        "short": "Ultimate Paintball",
+        "genre": "Shooter"
     },
     "6D59104F": {
         "long": "Wings of Fury (Europe) (En,Fr,De) (GB Compatible)",
-        "short": "Wings of Fury"
+        "short": "Wings of Fury",
+        "genre": "Action"
     },
     "6C28BCB5": {
         "long": "WWF Betrayal (USA, Europe)",
-        "short": "WWF Betrayal"
+        "short": "WWF Betrayal",
+        "genre": "Beat'em Up"
     },
     "6CA75BA0": {
         "long": "Yu-Gi-Oh! - Das Dunkle Duell (Germany)",
-        "short": "Yu-Gi-Oh! - Das Dunkle Duell"
+        "short": "Yu-Gi-Oh! - Das Dunkle Duell",
+        "genre": "Card"
     },
     "6C292739": {
         "long": "Arcade Classics - Super Breakout & Battlezone (USA, Europe) (SGB Enhanced)",
-        "short": "Arcade Classics - Super Breakout & Battlezone"
+        "short": "Arcade Classics - Super Breakout & Battlezone",
+        "genre": "Action"
     },
     "6CCFEE1F": {
         "long": "Asterix (USA) (Proto 1)",
-        "short": "Asterix"
+        "short": "Asterix",
+        "genre": "Platform"
     },
     "6EEA2526": {
         "long": "Baseball (World)",
-        "short": "Baseball"
+        "short": "Baseball",
+        "genre": "Sports"
     },
     "6C41D3CD": {
         "long": "Batman - The Video Game (World)",
-        "short": "Batman - The Video Game"
+        "short": "Batman - The Video Game",
+        "genre": "Platform"
     },
     "6C742478": {
         "long": "Dig Dug (USA)",
-        "short": "Dig Dug"
+        "short": "Dig Dug",
+        "genre": "Action"
     },
     "6DEB1F06": {
         "long": "Flash, The (USA, Europe)",
-        "short": "Flash, The"
+        "short": "Flash, The",
+        "genre": "Platform"
     },
     "6E659690": {
         "long": "Football International (Europe)",
-        "short": "Football International"
+        "short": "Football International",
+        "genre": "Sports"
     },
     "6F7AD5D9": {
         "long": "GB Genjin 2 (Japan) (SGB Enhanced)",
-        "short": "GB Genjin 2"
+        "short": "GB Genjin 2",
+        "genre": "Platform"
     },
     "6DCF5E7F": {
         "long": "Go! Go! Tank (Japan) (Beta)",
-        "short": "Go! Go! Tank"
+        "short": "Go! Go! Tank",
+        "genre": "Strategy"
     },
     "6ED10383": {
         "long": "Golf (World)",
-        "short": "Golf"
+        "short": "Golf",
+        "genre": "Sports"
     },
     "6C4D0377": {
         "long": "Hammerin' Harry - Ghost Building Company (USA) (Proto)",
-        "short": "Hammerin' Harry - Ghost Building Company"
+        "short": "Hammerin' Harry - Ghost Building Company",
+        "genre": "Platform"
     },
     "6C407EED": {
         "long": "Hon Shougi (Japan) (SGB Enhanced)",
-        "short": "Hon Shougi"
+        "short": "Hon Shougi",
+        "genre": "Board"
     },
     "6D4FD9AA": {
         "long": "Ikari no Yousai 2 (Japan)",
-        "short": "Ikari no Yousai 2"
+        "short": "Ikari no Yousai 2",
+        "genre": "Shooter"
     },
     "6CC56612": {
         "long": "Initial D Gaiden (Japan) (SGB Enhanced)",
-        "short": "Initial D Gaiden"
+        "short": "Initial D Gaiden",
+        "genre": "Racing"
     },
     "6E4F1EB3": {
         "long": "Maru's Mission (USA)",
-        "short": "Maru's Mission"
+        "short": "Maru's Mission",
+        "genre": "Platform"
     },
     "6F30A43A": {
         "long": "Maui Mallard in Cold Shadow (USA)",
-        "short": "Maui Mallard in Cold Shadow"
+        "short": "Maui Mallard in Cold Shadow",
+        "genre": "Platform"
     },
     "6EDF07E5": {
         "long": "Mouse Trap Hotel (USA)",
-        "short": "Mouse Trap Hotel"
+        "short": "Mouse Trap Hotel",
+        "genre": "Platform"
     },
     "6CD63B0B": {
         "long": "Nontan to Issho - Kurukuru Puzzle (Japan)",
-        "short": "Nontan to Issho - Kurukuru Puzzle"
+        "short": "Nontan to Issho - Kurukuru Puzzle",
+        "genre": "Puzzle"
     },
     "6CD62FDB": {
         "long": "Oni III - Kuro no Hakaishin (Japan)",
-        "short": "Oni III - Kuro no Hakaishin"
+        "short": "Oni III - Kuro no Hakaishin",
+        "genre": "Role-playing (RPG)"
     },
     "6EE0F7B9": {
         "long": "Pachi-Slot Hisshou Guide GB (Japan) (SGB Enhanced)",
-        "short": "Pachi-Slot Hisshou Guide GB"
+        "short": "Pachi-Slot Hisshou Guide GB",
+        "genre": "Gambling"
     },
     "6FF72043": {
         "long": "PGA Tour 96 (USA, Europe) (SGB Enhanced)",
-        "short": "PGA Tour 96"
+        "short": "PGA Tour 96",
+        "genre": "Sports"
     },
     "6DA713E3": {
         "long": "Pinball Dreams (USA, Europe)",
-        "short": "Pinball Dreams"
+        "short": "Pinball Dreams",
+        "genre": "Pinball"
     },
     "6F5B6748": {
         "long": "Pro Mahjong Kiwame GB (Japan) (SGB Enhanced)",
-        "short": "Pro Mahjong Kiwame GB"
+        "short": "Pro Mahjong Kiwame GB",
+        "genre": "Board"
     },
     "6D347812": {
         "long": "Rampart (USA, Europe)",
-        "short": "Rampart"
+        "short": "Rampart",
+        "genre": "Action"
     },
     "6F87B543": {
         "long": "Soccer Mania (USA)",
-        "short": "Soccer Mania"
+        "short": "Soccer Mania",
+        "genre": "Sports"
     },
     "6EE7CA79": {
         "long": "Spanky's Quest (USA)",
-        "short": "Spanky's Quest"
+        "short": "Spanky's Quest",
+        "genre": "Platform"
     },
     "6D40E5A2": {
         "long": "Spy vs Spy - Operation Boobytrap (USA)",
-        "short": "Spy vs Spy - Operation Boobytrap"
+        "short": "Spy vs Spy - Operation Boobytrap",
+        "genre": "Action"
     },
     "6DC1BB2C": {
         "long": "Super James Pond (Europe)",
-        "short": "Super James Pond"
+        "short": "Super James Pond",
+        "genre": "Platform"
     },
     "6CB73DC7": {
         "long": "Super Star Wars - Return of the Jedi (USA, Europe) (SGB Enhanced)",
-        "short": "Super Star Wars - Return of the Jedi"
+        "short": "Super Star Wars - Return of the Jedi",
+        "genre": "Platform"
     },
     "6DBAA5E8": {
         "long": "Taito Variety Pack (Japan)",
-        "short": "Taito Variety Pack"
+        "short": "Taito Variety Pack",
+        "genre": "Compilation"
     },
     "6F36B6ED": {
         "long": "Toy Story (USA) (Rev 1) (SGB Enhanced)",
-        "short": "Toy Story"
+        "short": "Toy Story",
+        "genre": "Platform"
     },
     "6E7BB436": {
         "long": "Yogi Bear's Gold Rush (Europe)",
-        "short": "Yogi Bear's Gold Rush"
+        "short": "Yogi Bear's Gold Rush",
+        "genre": "Platform"
     },
     "6E39193C": {
         "long": "Pokémon Kanto Expansion Pak (Red Version) (v1.2)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     }
 }

@@ -1,166 +1,207 @@
 {
     "FF31CC92": {
         "long": "AirForce Delta (USA)",
-        "short": "AirForce Delta"
+        "short": "AirForce Delta",
+        "genre": "Simulation"
     },
     "FDC8E7F1": {
         "long": "Barbie - Ocean Discovery (United Kingdom) (GB Compatible)",
-        "short": "Barbie - Ocean Discovery"
+        "short": "Barbie - Ocean Discovery",
+        "genre": "Action"
     },
     "FC1B36D1": {
         "long": "Diva Starz (France)",
-        "short": "Diva Starz"
+        "short": "Diva Starz",
+        "genre": "Educational"
     },
     "FC3D1BB7": {
         "long": "Duke Nukem (Europe) (En,Fr,De,Es,It)",
-        "short": "Duke Nukem"
+        "short": "Duke Nukem",
+        "genre": "Platform"
     },
     "FFD919A7": {
         "long": "Ganbare! Nippon! Olympic 2000 (Japan)",
-        "short": "Ganbare! Nippon! Olympic 2000"
+        "short": "Ganbare! Nippon! Olympic 2000",
+        "genre": "Sports"
     },
     "FF454711": {
         "long": "Hamunaptra - Ushinawareta Sabaku no Miyako (Japan)",
-        "short": "Hamunaptra - Ushinawareta Sabaku no Miyako"
+        "short": "Hamunaptra - Ushinawareta Sabaku no Miyako",
+        "genre": "Platform"
     },
     "FC56BB35": {
         "long": "Klustar (Europe) (En,Fr,De,Es,It) (Beta) (1998-10-01) (GB Compatible)",
-        "short": "Klustar"
+        "short": "Klustar",
+        "genre": "Puzzle"
     },
     "FED5959B": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "FDCCC2BD": {
         "long": "Legend of Zelda, The - Link's Awakening DX (Germany) (Rev 1) (Beta) (1999-08-19) (SGB Enhanced) (GB Compatible)",
-        "short": "Legend of Zelda, The - Link's Awakening DX"
+        "short": "Legend of Zelda, The - Link's Awakening DX",
+        "genre": "Role-playing (RPG)"
     },
     "FC1F100F": {
         "long": "Mizuki Shigeru no Shin Youkaiden (Japan)",
-        "short": "Mizuki Shigeru no Shin Youkaiden"
+        "short": "Mizuki Shigeru no Shin Youkaiden",
+        "genre": "Strategy"
     },
     "FDB38C49": {
         "long": "NBA in the Zone 2000 (USA)",
-        "short": "NBA in the Zone 2000"
+        "short": "NBA in the Zone 2000",
+        "genre": "Sports"
     },
     "FF0A6F8A": {
         "long": "Pokémon - Edicion Cristal (Spain)",
-        "short": "Pokémon - Edicion Cristal"
+        "short": "Pokémon - Edicion Cristal",
+        "genre": "Role-playing (RPG)"
     },
     "FC67F7E4": {
         "long": "Pop'n Pop (Europe)",
-        "short": "Pop'n Pop"
+        "short": "Pop'n Pop",
+        "genre": "Puzzle"
     },
     "FC1D4089": {
         "long": "R-Type DX (USA, Europe) (GB Compatible)",
-        "short": "R-Type DX"
+        "short": "R-Type DX",
+        "genre": "Shoot'em Up"
     },
     "FE2995A1": {
         "long": "Roadsters '98 (USA) (Proto) (SGB Enhanced) (GB Compatible)",
-        "short": "Roadsters '98"
+        "short": "Roadsters '98",
+        "genre": "Racing"
     },
     "FC6195EF": {
         "long": "Rugrats - Totally Angelica (USA, Europe)",
-        "short": "Rugrats - Totally Angelica"
+        "short": "Rugrats - Totally Angelica",
+        "genre": "Puzzle"
     },
     "FEBE2606": {
         "long": "Rugrats Movie, The (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Rugrats Movie, The"
+        "short": "Rugrats Movie, The",
+        "genre": "Platform"
     },
     "FD5290A1": {
         "long": "Tony Hawk's Pro Skater 3 (USA, Europe)",
-        "short": "Tony Hawk's Pro Skater 3"
+        "short": "Tony Hawk's Pro Skater 3",
+        "genre": "Sports"
     },
     "FC680273": {
         "long": "Top Gear Pocket 2 (Japan) (Rev 1) (Proto) (Rumble Version)",
-        "short": "Top Gear Pocket 2"
+        "short": "Top Gear Pocket 2",
+        "genre": "Racing"
     },
     "FCBA12AE": {
         "long": "WWF WrestleMania 2000 (USA, Europe) (GB Compatible)",
-        "short": "WWF WrestleMania 2000"
+        "short": "WWF WrestleMania 2000",
+        "genre": "Sports"
     },
     "FEF62DA5": {
         "long": "Battleship (USA, Europe)",
-        "short": "Battleship"
+        "short": "Battleship",
+        "genre": "Strategy"
     },
     "FFA0E67A": {
         "long": "Bomb Jack (Europe) (Beta 1)",
-        "short": "Bomb Jack"
+        "short": "Bomb Jack",
+        "genre": "Platform"
     },
     "FF858DA9": {
         "long": "Darkman (USA, Europe)",
-        "short": "Darkman"
+        "short": "Darkman",
+        "genre": "Beat'em Up"
     },
     "FC970AEF": {
         "long": "Double Dragon 3 - The Arcade Game (USA, Europe)",
-        "short": "Double Dragon 3 - The Arcade Game"
+        "short": "Double Dragon 3 - The Arcade Game",
+        "genre": "Beat'em Up"
     },
     "FF3C027D": {
         "long": "Dragon Ball Z - Gokuu Gekitouden (Japan) (SGB Enhanced)",
-        "short": "Dragon Ball Z - Gokuu Gekitouden"
+        "short": "Dragon Ball Z - Gokuu Gekitouden",
+        "genre": "Role-playing (RPG)"
     },
     "FFD4A9E3": {
         "long": "Fidgetts, The (Japan)",
-        "short": "Fidgetts, The"
+        "short": "Fidgetts, The",
+        "genre": "Platform"
     },
     "FE4F80B7": {
         "long": "Godzilla (USA, Europe)",
-        "short": "Godzilla"
+        "short": "Godzilla",
+        "genre": "Action"
     },
     "FC20EBF0": {
         "long": "Legend - Ashita e no Tsubasa (Japan)",
-        "short": "Legend - Ashita e no Tsubasa"
+        "short": "Legend - Ashita e no Tsubasa",
+        "genre": "Action"
     },
     "FD9DC1AD": {
         "long": "Madden 96 (USA, Europe) (SGB Enhanced)",
-        "short": "Madden 96"
+        "short": "Madden 96",
+        "genre": "Sports"
     },
     "FE9DD4C0": {
         "long": "Megami Tensei Gaiden - Last Bible (Japan)",
-        "short": "Megami Tensei Gaiden - Last Bible"
+        "short": "Megami Tensei Gaiden - Last Bible",
+        "genre": "Role-playing (RPG)"
     },
     "FC50DEE7": {
         "long": "Mickey Mouse (Europe)",
-        "short": "Mickey Mouse"
+        "short": "Mickey Mouse",
+        "genre": "Platform"
     },
     "FC0C180B": {
         "long": "Mini Yonku GB Let's & Go!! (Japan) (SGB Enhanced)",
-        "short": "Mini Yonku GB Let's & Go!!"
+        "short": "Mini Yonku GB Let's & Go!!",
+        "genre": "Strategy"
     },
     "FD90F0D6": {
         "long": "Monopoly (USA)",
-        "short": "Monopoly"
+        "short": "Monopoly",
+        "genre": "Board"
     },
     "FECDAE42": {
         "long": "Nettou The King of Fighters '96 (Japan) (SGB Enhanced)",
-        "short": "Nettou The King of Fighters '96"
+        "short": "Nettou The King of Fighters '96",
+        "genre": "Fighting"
     },
     "FD3DA7FF": {
         "long": "Pocket Monsters - Pikachu (Japan) (Rev 2) (SGB Enhanced)",
-        "short": "Pocket Monsters - Pikachu"
+        "short": "Pocket Monsters - Pikachu",
+        "genre": "Role-playing (RPG)"
     },
     "FD3D5BA7": {
         "long": "Ring Rage (Japan)",
-        "short": "Ring Rage"
+        "short": "Ring Rage",
+        "genre": "Sports"
     },
     "FD06E22D": {
         "long": "Speedball 2 - Brutal Deluxe (USA, Europe)",
-        "short": "Speedball 2 - Brutal Deluxe"
+        "short": "Speedball 2 - Brutal Deluxe",
+        "genre": "Sports"
     },
     "FCD61B98": {
         "long": "Spot - The Video Game (USA)",
-        "short": "Spot - The Video Game"
+        "short": "Spot - The Video Game",
+        "genre": "Puzzle"
     },
     "FCFB4CE4": {
         "long": "Street Racer (USA, Europe)",
-        "short": "Street Racer"
+        "short": "Street Racer",
+        "genre": "Racing"
     },
     "FDEFA88D": {
         "long": "World Cup Striker (Japan)",
-        "short": "World Cup Striker"
+        "short": "World Cup Striker",
+        "genre": "Sports"
     },
     "FDC5D1A6": {
         "long": "Pokémon Kanto Expansion Pak (Blue Version) (v1.3)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     }
 }

@@ -1,218 +1,272 @@
 {
     "89D5D936": {
         "long": "Asteroids (USA, Europe) (GB Compatible)",
-        "short": "Asteroids"
+        "short": "Asteroids",
+        "genre": "Action"
     },
     "89BA58ED": {
         "long": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho (Japan) (GB Compatible)",
-        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho"
+        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho",
+        "genre": "Adventure"
     },
     "8B0DD3B2": {
         "long": "Dragon Dance (Europe) (Proto) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Dance"
+        "short": "Dragon Dance",
+        "genre": "Action"
     },
     "8B742FB5": {
         "long": "Ferret Monogatari (Japan)",
-        "short": "Ferret Monogatari"
+        "short": "Ferret Monogatari",
+        "genre": "Simulation"
     },
     "8A4D86A0": {
         "long": "Hamster Club (Japan) (GB Compatible)",
-        "short": "Hamster Club"
+        "short": "Hamster Club",
+        "genre": "Strategy"
     },
     "8BD1F635": {
         "long": "Hollywood Pinball (Europe) (En,Fr,De,It) (GB Compatible)",
-        "short": "Hollywood Pinball"
+        "short": "Hollywood Pinball",
+        "genre": "Pinball"
     },
     "89140949": {
         "long": "Honkaku Taisen Shougi Ayumu (Japan) (GB Compatible)",
-        "short": "Honkaku Taisen Shougi Ayumu"
+        "short": "Honkaku Taisen Shougi Ayumu",
+        "genre": "Board"
     },
     "8B61CFCC": {
         "long": "Keitai Denjuu Telefang - Power Version (Japan) (GB Compatible)",
-        "short": "Keitai Denjuu Telefang - Power Version"
+        "short": "Keitai Denjuu Telefang - Power Version",
+        "genre": "Role-playing (RPG)"
     },
     "8800F1C9": {
         "long": "Konami GB Collection Vol.4 (Europe) (GB Compatible)",
-        "short": "Konami GB Collection Vol.4"
+        "short": "Konami GB Collection Vol.4",
+        "genre": "Compilation"
     },
     "88CE5C13": {
         "long": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou (Japan) (Rev 1) (SGB Enhanced, GB Compatible) (NP)",
-        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou"
+        "short": "Loppi Puzzle Magazine - Kangaeru Puzzle Soukangou",
+        "genre": "Puzzle"
     },
     "8B63F36F": {
         "long": "Men in Black 2 - The Series (USA) (En,Fr,De)",
-        "short": "Men in Black 2 - The Series"
+        "short": "Men in Black 2 - The Series",
+        "genre": "Platform"
     },
     "8BC9BE45": {
         "long": "NBA Show Time - NBA on NBC (USA) (Rev 1) (Proto)",
-        "short": "NBA Show Time - NBA on NBC"
+        "short": "NBA Show Time - NBA on NBC",
+        "genre": "Sports"
     },
     "8BC5B62A": {
         "long": "NHL Blades of Steel 2000 (USA)",
-        "short": "NHL Blades of Steel 2000"
+        "short": "NHL Blades of Steel 2000",
+        "genre": "Sports"
     },
     "8AD48636": {
         "long": "Pokémon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon - Silver Version"
+        "short": "Pokémon - Silver Version",
+        "genre": "Role-playing (RPG)"
     },
     "894D88F2": {
         "long": "Power Pro Kun Pocket (Japan) (Rev 1) (SGB Enhanced) (GB Compatible)",
-        "short": "Power Pro Kun Pocket"
+        "short": "Power Pro Kun Pocket",
+        "genre": "Sports"
     },
     "8B195237": {
         "long": "Rugrats in Paris - The Movie (USA, Europe)",
-        "short": "Rugrats in Paris - The Movie"
+        "short": "Rugrats in Paris - The Movie",
+        "genre": "Platform"
     },
     "8804F856": {
         "long": "Sei Hai Densetsu (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Sei Hai Densetsu"
+        "short": "Sei Hai Densetsu",
+        "genre": "Board"
     },
     "8A6B0948": {
         "long": "Yu-Gi-Oh! - Racconti Oscuri (Italy)",
-        "short": "Yu-Gi-Oh! - Racconti Oscuri"
+        "short": "Yu-Gi-Oh! - Racconti Oscuri",
+        "genre": "Card"
     },
     "898609B4": {
         "long": "Akazukin Chacha (Japan) (SGB Enhanced)",
-        "short": "Akazukin Chacha"
+        "short": "Akazukin Chacha",
+        "genre": "Role-playing (RPG)"
     },
     "8A546DEC": {
         "long": "Bakuchou Retrieve Master (Japan) (SGB Enhanced)",
-        "short": "Bakuchou Retrieve Master"
+        "short": "Bakuchou Retrieve Master",
+        "genre": "Role-playing (RPG)"
     },
     "8A7FB0E6": {
         "long": "Brain Drain (Europe) (SGB Enhanced)",
-        "short": "Brain Drain"
+        "short": "Brain Drain",
+        "genre": "Puzzle"
     },
     "88219A49": {
         "long": "BurgerTime Deluxe (World)",
-        "short": "BurgerTime Deluxe"
+        "short": "BurgerTime Deluxe",
+        "genre": "Platform"
     },
     "88F8C991": {
         "long": "Burning Paper (Japan)",
-        "short": "Burning Paper"
+        "short": "Burning Paper",
+        "genre": "Puzzle"
     },
     "8A5636EA": {
         "long": "Castle Quest (Europe) (Beta)",
-        "short": "Castle Quest"
+        "short": "Castle Quest",
+        "genre": "Role-playing (RPG)"
     },
     "8875C8FE": {
         "long": "Castlevania II - Belmont's Revenge (USA, Europe)",
-        "short": "Castlevania II - Belmont's Revenge"
+        "short": "Castlevania II - Belmont's Revenge",
+        "genre": "Platform"
     },
     "886049F9": {
         "long": "Chibi Maruko-chan - Maruko Deluxe Theater (Japan) (SGB Enhanced)",
-        "short": "Chibi Maruko-chan - Maruko Deluxe Theater"
+        "short": "Chibi Maruko-chan - Maruko Deluxe Theater",
+        "genre": "Adventure"
     },
     "896A30A8": {
         "long": "Dennis (Europe)",
-        "short": "Dennis"
+        "short": "Dennis",
+        "genre": "Platform"
     },
     "892FC0AF": {
         "long": "Kaisen Game - Radarmission (Japan)",
-        "short": "Kaisen Game - Radarmission"
+        "short": "Kaisen Game - Radarmission",
+        "genre": "Strategy"
     },
     "8B44FB7D": {
         "long": "Kirby no Pinball (Japan)",
-        "short": "Kirby no Pinball"
+        "short": "Kirby no Pinball",
+        "genre": "Pinball"
     },
     "88A837A2": {
         "long": "Madden 97 (USA) (SGB Enhanced)",
-        "short": "Madden 97"
+        "short": "Madden 97",
+        "genre": "Sports"
     },
     "89F94482": {
         "long": "Medarot - Parts Collection 2 (Japan) (SGB Enhanced)",
-        "short": "Medarot - Parts Collection 2"
+        "short": "Medarot - Parts Collection 2",
+        "genre": "Role-playing (RPG)"
     },
     "8885C7CD": {
         "long": "NBA Live 96 (USA, Europe) (SGB Enhanced)",
-        "short": "NBA Live 96"
+        "short": "NBA Live 96",
+        "genre": "Simulation"
     },
     "8803186A": {
         "long": "Nobunaga no Yabou - Game Boy Ban (Japan)",
-        "short": "Nobunaga no Yabou - Game Boy Ban"
+        "short": "Nobunaga no Yabou - Game Boy Ban",
+        "genre": "Strategy"
     },
     "8BBCC8BB": {
         "long": "Noobow (Japan)",
-        "short": "Noobow"
+        "short": "Noobow",
+        "genre": "Platform"
     },
     "8AFCC4B0": {
         "long": "Outburst (Japan)",
-        "short": "Outburst"
+        "short": "Outburst",
+        "genre": "Action"
     },
     "8ACED4A6": {
         "long": "Phantom Air Mission (Europe)",
-        "short": "Phantom Air Mission"
+        "short": "Phantom Air Mission",
+        "genre": "Simulation"
     },
     "89197825": {
         "long": "Pokémon - Rote Edition (Germany) (SGB Enhanced)",
-        "short": "Pokémon - Rote Edition"
+        "short": "Pokémon - Rote Edition",
+        "genre": "Role-playing (RPG)"
     },
     "8B56FE33": {
         "long": "Pokémon - Versione Gialla - Speciale Edizione Pikachu (Italy) (CGB+SGB Enhanced)",
-        "short": "Pokémon - Versione Gialla - Speciale Edizione Pikachu"
+        "short": "Pokémon - Versione Gialla - Speciale Edizione Pikachu",
+        "genre": "Role-playing (RPG)"
     },
     "882D01E6": {
         "long": "Riddick Bowe Boxing (USA) (Beta)",
-        "short": "Riddick Bowe Boxing"
+        "short": "Riddick Bowe Boxing",
+        "genre": "Sports"
     },
     "88EDC83D": {
         "long": "Road Rash (USA, Europe)",
-        "short": "Road Rash"
+        "short": "Road Rash",
+        "genre": "Action"
     },
     "8B5BCDE7": {
         "long": "Smurfs, The (USA, Europe) (En,Fr,De) (Rev 1) (SGB Enhanced)",
-        "short": "Smurfs, The"
+        "short": "Smurfs, The",
+        "genre": "Platform"
     },
     "8900A7C0": {
         "long": "Snoopy no Hajimete no Otsukai (Japan) (SGB Enhanced)",
-        "short": "Snoopy no Hajimete no Otsukai"
+        "short": "Snoopy no Hajimete no Otsukai",
+        "genre": "Puzzle"
     },
     "891B8F04": {
         "long": "Space Invaders (Europe) (SGB Enhanced)",
-        "short": "Space Invaders"
+        "short": "Space Invaders",
+        "genre": "Shooter"
     },
     "8B882745": {
         "long": "Square Deal - The Game of Two-Dimensional Poker (USA)",
-        "short": "Square Deal - The Game of Two-Dimensional Poker"
+        "short": "Square Deal - The Game of Two-Dimensional Poker",
+        "genre": "Gambling"
     },
     "8A7C1678": {
         "long": "Super Black Bass Pocket (Japan) (SGB Enhanced)",
-        "short": "Super Black Bass Pocket"
+        "short": "Super Black Bass Pocket",
+        "genre": "Hunting and Fishing"
     },
     "88508483": {
         "long": "Super Chinese Land 2 (Japan)",
-        "short": "Super Chinese Land 2"
+        "short": "Super Chinese Land 2",
+        "genre": "Adventure"
     },
     "881AFD62": {
         "long": "Tumble Pop (Japan)",
-        "short": "Tumble Pop"
+        "short": "Tumble Pop",
+        "genre": "Platform"
     },
     "8A3AAB31": {
         "long": "Tumble Pop (USA, Europe)",
-        "short": "Tumble Pop"
+        "short": "Tumble Pop",
+        "genre": "Platform"
     },
     "89625945": {
         "long": "Urban Strike (USA, Europe) (SGB Enhanced)",
-        "short": "Urban Strike"
+        "short": "Urban Strike",
+        "genre": "Shooter"
     },
     "89A7AECA": {
         "long": "Vitamina Oukoku Monogatari (Japan)",
-        "short": "Vitamina Oukoku Monogatari"
+        "short": "Vitamina Oukoku Monogatari",
+        "genre": "Role-playing (RPG)"
     },
     "896E76A2": {
         "long": "World Bowling (USA)",
-        "short": "World Bowling"
+        "short": "World Bowling",
+        "genre": "Sports"
     },
     "8875EC54": {
         "long": "Yu-Gi-Oh! Duel Monsters (Japan) (SGB Enhanced)",
-        "short": "Yu-Gi-Oh! Duel Monsters"
+        "short": "Yu-Gi-Oh! Duel Monsters",
+        "genre": "Role-playing (RPG)"
     },
     "88190730": {
         "long": "Zen - Intergalactic Ninja (USA)",
-        "short": "Zen - Intergalactic Ninja"
+        "short": "Zen - Intergalactic Ninja",
+        "genre": "Platform"
     },
     "884D6BF6": {
         "long": "Little Sound Dj (v5.8.8)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

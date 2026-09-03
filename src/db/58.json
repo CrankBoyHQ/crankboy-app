@@ -1,218 +1,272 @@
 {
     "59645A18": {
         "long": "Barbie - Avventure nell'Oceano (Italy) (GB Compatible)",
-        "short": "Barbie - Avventure nell'Oceano"
+        "short": "Barbie - Avventure nell'Oceano",
+        "genre": "Action"
     },
     "59BEB372": {
         "long": "Beatmania GB 2 - Gotcha Mix (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Beatmania GB 2 - Gotcha Mix"
+        "short": "Beatmania GB 2 - Gotcha Mix",
+        "genre": "Music / Dancing"
     },
     "5BE2517C": {
         "long": "Bikkuriman 2000 - Charging Card GB (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Bikkuriman 2000 - Charging Card GB"
+        "short": "Bikkuriman 2000 - Charging Card GB",
+        "genre": "Role-playing (RPG)"
     },
     "582FE338": {
         "long": "Black Onyx, The (Japan)",
-        "short": "Black Onyx, The"
+        "short": "Black Onyx, The",
+        "genre": "Role-playing (RPG)"
     },
     "5A9B9AE6": {
         "long": "Bomberman Quest (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Bomberman Quest"
+        "short": "Bomberman Quest",
+        "genre": "Role-playing (RPG)"
     },
     "5B4507D9": {
         "long": "Daffy Duck - Subette Koron de Oogane Mochi (Japan) (GB Compatible)",
-        "short": "Daffy Duck - Subette Koron de Oogane Mochi"
+        "short": "Daffy Duck - Subette Koron de Oogane Mochi",
+        "genre": "Platform"
     },
     "58F26F36": {
         "long": "Dance Dance Revolution GB 3 (Japan)",
-        "short": "Dance Dance Revolution GB 3"
+        "short": "Dance Dance Revolution GB 3",
+        "genre": "Music / Dancing"
     },
     "5A0B7C72": {
         "long": "European Super League (Europe) (En,Fr,De,Es,It)",
-        "short": "European Super League"
+        "short": "European Super League",
+        "genre": "Sports"
     },
     "5BEBE333": {
         "long": "Harry Potter (Taiwan) (Unl)",
-        "short": "Harry Potter"
+        "short": "Harry Potter",
+        "genre": "Role-playing (RPG)"
     },
     "5933E3FA": {
         "long": "Legend of Zelda, The - Oracle of Ages (Europe) (En,Fr,De,Es,It)",
-        "short": "Legend of Zelda, The - Oracle of Ages"
+        "short": "Legend of Zelda, The - Oracle of Ages",
+        "genre": "Role-playing (RPG)"
     },
     "5BAE3C04": {
         "long": "Lufia - The Legend Returns (USA)",
-        "short": "Lufia - The Legend Returns"
+        "short": "Lufia - The Legend Returns",
+        "genre": "Role-playing (RPG)"
     },
     "5B8FFD37": {
         "long": "Medarot 2 - Kuwagata Version (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Medarot 2 - Kuwagata Version"
+        "short": "Medarot 2 - Kuwagata Version",
+        "genre": "Role-playing (RPG)"
     },
     "59F67529": {
         "long": "Mr. Nutz (USA) (En,Fr,Es)",
-        "short": "Mr. Nutz"
+        "short": "Mr. Nutz",
+        "genre": "Platform"
     },
     "5ACEA4A9": {
         "long": "Qix Adventure (Japan)",
-        "short": "Qix Adventure"
+        "short": "Qix Adventure",
+        "genre": "Puzzle"
     },
     "599C867D": {
         "long": "Race Time (Europe) (Unl)",
-        "short": "Race Time"
+        "short": "Race Time",
+        "genre": "Racing"
     },
     "5A83DFC4": {
         "long": "Spider-Man (Japan)",
-        "short": "Spider-Man"
+        "short": "Spider-Man",
+        "genre": "Platform"
     },
     "5A0D41AA": {
         "long": "Tiny Toon Adventures - Dizzy's Candy Quest (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "Tiny Toon Adventures - Dizzy's Candy Quest"
+        "short": "Tiny Toon Adventures - Dizzy's Candy Quest",
+        "genre": "Adventure"
     },
     "58590868": {
         "long": "Tomb Raider (USA, Europe) (En,Fr,De,Es,It) (Beta)",
-        "short": "Tomb Raider"
+        "short": "Tomb Raider",
+        "genre": "Action"
     },
     "584669E4": {
         "long": "Watashi no Kitchen (Japan) (Rev 1)",
-        "short": "Watashi no Kitchen"
+        "short": "Watashi no Kitchen",
+        "genre": "Strategy"
     },
     "5B72BAB5": {
         "long": "Yu-Gi-Oh! - Duel des Tenebres (France)",
-        "short": "Yu-Gi-Oh! - Duel des Tenebres"
+        "short": "Yu-Gi-Oh! - Duel des Tenebres",
+        "genre": "Card"
     },
     "5BFFCC28": {
         "long": "Aa Harimanada (Japan)",
-        "short": "Aa Harimanada"
+        "short": "Aa Harimanada",
+        "genre": "Action"
     },
     "583C0E4E": {
         "long": "Alien Olympics (Europe)",
-        "short": "Alien Olympics"
+        "short": "Alien Olympics",
+        "genre": "Sports"
     },
     "5B8F0DF2": {
         "long": "BreakThru! (USA)",
-        "short": "BreakThru!"
+        "short": "BreakThru!",
+        "genre": "Puzzle"
     },
     "5A1A20F3": {
         "long": "Burai Senshi Deluxe (Japan)",
-        "short": "Burai Senshi Deluxe"
+        "short": "Burai Senshi Deluxe",
+        "genre": "Shoot'em Up"
     },
     "59ED370C": {
         "long": "Chessmaster, The (USA) (Rev 1)",
-        "short": "Chessmaster, The"
+        "short": "Chessmaster, The",
+        "genre": "Board"
     },
     "5B289AB4": {
         "long": "Dino Breeder (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Dino Breeder"
+        "short": "Dino Breeder",
+        "genre": "Simulation"
     },
     "5A16C88D": {
         "long": "Doraemon no Study Boy 6 - Gakushuu Kanji Master 1006 (Japan)",
-        "short": "Doraemon no Study Boy 6 - Gakushuu Kanji Master 1006"
+        "short": "Doraemon no Study Boy 6 - Gakushuu Kanji Master 1006",
+        "genre": "Educational"
     },
     "5B96E474": {
         "long": "Double Dragon II (USA, Europe)",
-        "short": "Double Dragon II"
+        "short": "Double Dragon II",
+        "genre": "Beat'em Up"
     },
     "5B5410F5": {
         "long": "DuckTales (Japan)",
-        "short": "DuckTales"
+        "short": "DuckTales",
+        "genre": "Action"
     },
     "59285F0A": {
         "long": "Fastest Lap (Japan) (En)",
-        "short": "Fastest Lap"
+        "short": "Fastest Lap",
+        "genre": "Racing"
     },
     "58314182": {
         "long": "Final Fantasy Legend II (USA)",
-        "short": "Final Fantasy Legend II"
+        "short": "Final Fantasy Legend II",
+        "genre": "Role-playing (RPG)"
     },
     "5821ECD4": {
         "long": "Ghostbusters II (USA, Europe)",
-        "short": "Ghostbusters II"
+        "short": "Ghostbusters II",
+        "genre": "Shooter"
     },
     "59DB5E75": {
         "long": "Hitori de Dekirumon! - Cooking Densetsu (Japan)",
-        "short": "Hitori de Dekirumon! - Cooking Densetsu"
+        "short": "Hitori de Dekirumon! - Cooking Densetsu",
+        "genre": "Role-playing (RPG)"
     },
     "5AD83D68": {
         "long": "Hong Kong (Japan)",
-        "short": "Hong Kong"
+        "short": "Hong Kong",
+        "genre": "Board"
     },
     "5A61EE00": {
         "long": "Hunt for Red October, The (USA, Europe)",
-        "short": "Hunt for Red October, The"
+        "short": "Hunt for Red October, The",
+        "genre": "Action"
     },
     "590F4AFC": {
         "long": "Jinsei Game Densetsu (Japan)",
-        "short": "Jinsei Game Densetsu"
+        "short": "Jinsei Game Densetsu",
+        "genre": "Board"
     },
     "59D3E2AD": {
         "long": "Ninja Boy (USA, Europe)",
-        "short": "Ninja Boy"
+        "short": "Ninja Boy",
+        "genre": "Adventure"
     },
     "5A843008": {
         "long": "Nobunaga's Ambition (USA)",
-        "short": "Nobunaga's Ambition"
+        "short": "Nobunaga's Ambition",
+        "genre": "Strategy"
     },
     "58176694": {
         "long": "Palamedes (USA) (Proto)",
-        "short": "Palamedes"
+        "short": "Palamedes",
+        "genre": "Puzzle"
     },
     "590F5FB1": {
         "long": "Prophecy - The Viking Child (Europe) (En,Fr,De,Es,It)",
-        "short": "Prophecy - The Viking Child"
+        "short": "Prophecy - The Viking Child",
+        "genre": "Platform"
     },
     "5916713E": {
         "long": "Punisher, The - The Ultimate Payback (USA)",
-        "short": "Punisher, The - The Ultimate Payback"
+        "short": "Punisher, The - The Ultimate Payback",
+        "genre": "Shooter"
     },
     "581DA9C9": {
         "long": "Radar Mission (USA, Europe)",
-        "short": "Radar Mission"
+        "short": "Radar Mission",
+        "genre": "Strategy"
     },
     "5B7C6FAA": {
         "long": "SD Sengokuden 2 - Tenka Touitsu Hen (Japan)",
-        "short": "SD Sengokuden 2 - Tenka Touitsu Hen"
+        "short": "SD Sengokuden 2 - Tenka Touitsu Hen",
+        "genre": "Strategy"
     },
     "580FCB18": {
         "long": "Shanghai (USA)",
-        "short": "Shanghai"
+        "short": "Shanghai",
+        "genre": "Board"
     },
     "5BBACAA8": {
         "long": "Street Racer (Japan)",
-        "short": "Street Racer"
+        "short": "Street Racer",
+        "genre": "Racing"
     },
     "5B7FF38C": {
         "long": "Sword of Hope II, The (USA)",
-        "short": "Sword of Hope II, The"
+        "short": "Sword of Hope II, The",
+        "genre": "Role-playing (RPG)"
     },
     "5B7C9A54": {
         "long": "Teenage Mutant Hero Turtles III - Radical Rescue (Europe) (Rev 1)",
-        "short": "Teenage Mutant Hero Turtles III - Radical Rescue"
+        "short": "Teenage Mutant Hero Turtles III - Radical Rescue",
+        "genre": "Platform"
     },
     "5A6984C3": {
         "long": "Teenage Mutant Ninja Turtles - Fall of the Foot Clan (USA)",
-        "short": "Teenage Mutant Ninja Turtles - Fall of the Foot Clan"
+        "short": "Teenage Mutant Ninja Turtles - Fall of the Foot Clan",
+        "genre": "Platform"
     },
     "58832BBC": {
         "long": "Teenage Mutant Ninja Turtles III - Radical Rescue (USA)",
-        "short": "Teenage Mutant Ninja Turtles III - Radical Rescue"
+        "short": "Teenage Mutant Ninja Turtles III - Radical Rescue",
+        "genre": "Platform"
     },
     "5BF747F8": {
         "long": "Uchuu Senkan Yamato (Japan)",
-        "short": "Uchuu Senkan Yamato"
+        "short": "Uchuu Senkan Yamato",
+        "genre": "Strategy"
     },
     "5944C3ED": {
         "long": "Ultraman (Japan)",
-        "short": "Ultraman"
+        "short": "Ultraman",
+        "genre": "Fighting"
     },
     "58D9D919": {
         "long": "Pokémon Kanto Expansion Pak (Red Version) (v1.3.1)",
-        "short": "Pokémon Kanto Expansion Pak"
+        "short": "Pokémon Kanto Expansion Pak",
+        "genre": "ROM Hack"
     },
     "5B64DCA9": {
         "long": "Shin Pokémon Blue-JP (LITE) (v1.24.6h3)",
-        "short": "Shin Pokémon Blue-JP"
+        "short": "Shin Pokémon Blue-JP",
+        "genre": "ROM Hack"
     },
     "5A9ECF8C": {
         "long": "Little Sound Dj (v3.5.1)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

@@ -1,210 +1,262 @@
 {
     "83D838C3": {
         "long": "Animal Breeder 4 (Japan)",
-        "short": "Animal Breeder 4"
+        "short": "Animal Breeder 4",
+        "genre": "Role-playing (RPG)"
     },
     "82D1A721": {
         "long": "Beach'n Ball (Europe) (En,Fr,De,Es,It)",
-        "short": "Beach'n Ball"
+        "short": "Beach'n Ball",
+        "genre": "Sports"
     },
     "8360047A": {
         "long": "Bug's Life, A (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Bug's Life, A"
+        "short": "Bug's Life, A",
+        "genre": "Platform"
     },
     "824C3BF3": {
         "long": "Cannon Fodder (Europe) (En,Fr,De,Es,It)",
-        "short": "Cannon Fodder"
+        "short": "Cannon Fodder",
+        "genre": "Strategy"
     },
     "83E47A1A": {
         "long": "Dokidoki Densetsu - Mahoujin Guruguru (Japan)",
-        "short": "Dokidoki Densetsu - Mahoujin Guruguru"
+        "short": "Dokidoki Densetsu - Mahoujin Guruguru",
+        "genre": "Role-playing (RPG)"
     },
     "8321A1B9": {
         "long": "E.T. - The Extra-Terrestrial and the Cosmic Garden (Europe) (En,Fr,De,Es,It,Nl)",
-        "short": "E.T. - The Extra-Terrestrial and the Cosmic Garden"
+        "short": "E.T. - The Extra-Terrestrial and the Cosmic Garden",
+        "genre": "Strategy"
     },
     "80444A86": {
         "long": "Golf Daisuki! (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Golf Daisuki!"
+        "short": "Golf Daisuki!",
+        "genre": "Sports"
     },
     "81FB43E1": {
         "long": "Goraku Ou Tango! (Japan) (GB Compatible)",
-        "short": "Goraku Ou Tango!"
+        "short": "Goraku Ou Tango!",
+        "genre": "Puzzle"
     },
     "803D5D57": {
         "long": "International Track & Field (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "International Track & Field"
+        "short": "International Track & Field",
+        "genre": "Sports"
     },
     "834091BA": {
         "long": "Itsudemo Pachinko GB - CR Monster House (Japan)",
-        "short": "Itsudemo Pachinko GB - CR Monster House"
+        "short": "Itsudemo Pachinko GB - CR Monster House",
+        "genre": "Gambling"
     },
     "81FD8918": {
         "long": "Kanji Boy 2 (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kanji Boy 2"
+        "short": "Kanji Boy 2",
+        "genre": "Puzzle"
     },
     "83293B1B": {
         "long": "M&M's Minis Madness (USA) (Sample)",
-        "short": "M&M's Minis Madness"
+        "short": "M&M's Minis Madness",
+        "genre": "Platform"
     },
     "8206B1CE": {
         "long": "Pokémon Puzzle Challenge (Europe) (En,Fr,De,Es,It)",
-        "short": "Pokémon Puzzle Challenge"
+        "short": "Pokémon Puzzle Challenge",
+        "genre": "Puzzle"
     },
     "81069D53": {
         "long": "Pokémon Trading Card Game (USA, Australia) (SGB Enhanced) (GB Compatible)",
-        "short": "Pokémon Trading Card Game"
+        "short": "Pokémon Trading Card Game",
+        "genre": "Card"
     },
     "834CAF7A": {
         "long": "Powerpuff Girls, The - Bad Mojo Jojo (USA)",
-        "short": "Powerpuff Girls, The - Bad Mojo Jojo"
+        "short": "Powerpuff Girls, The - Bad Mojo Jojo",
+        "genre": "Platform"
     },
     "834A72C0": {
         "long": "Pro Darts (USA)",
-        "short": "Pro Darts"
+        "short": "Pro Darts",
+        "genre": "Sports"
     },
     "81E25D37": {
         "long": "Radikal Bikers (Europe) (En,Fr,De,Es) (Proto)",
-        "short": "Radikal Bikers"
+        "short": "Radikal Bikers",
+        "genre": "Racing"
     },
     "818F3AF6": {
         "long": "Sabrina - The Animated Series - Zapped! (Europe) (En,Fr,De)",
-        "short": "Sabrina - The Animated Series - Zapped!"
+        "short": "Sabrina - The Animated Series - Zapped!",
+        "genre": "Platform"
     },
     "81230564": {
         "long": "SpongeBob SquarePants - Legend of the Lost Spatula (USA, Europe)",
-        "short": "SpongeBob SquarePants - Legend of the Lost Spatula"
+        "short": "SpongeBob SquarePants - Legend of the Lost Spatula",
+        "genre": "Adventure"
     },
     "816A4D94": {
         "long": "Stranded Kids (Europe) (En,Fr,De) (SGB Enhanced) (GB Compatible)",
-        "short": "Stranded Kids"
+        "short": "Stranded Kids",
+        "genre": "Role-playing (RPG)"
     },
     "800EFB3D": {
         "long": "Tiny Toon Adventures - Buster Saves the Day (USA)",
-        "short": "Tiny Toon Adventures - Buster Saves the Day"
+        "short": "Tiny Toon Adventures - Buster Saves the Day",
+        "genre": "Platform"
     },
     "8142A3E8": {
         "long": "Tonka Construction Site (USA)",
-        "short": "Tonka Construction Site"
+        "short": "Tonka Construction Site",
+        "genre": "Strategy"
     },
     "81B2BB8D": {
         "long": "Vegas Games (Europe) (En,Fr,De)",
-        "short": "Vegas Games"
+        "short": "Vegas Games",
+        "genre": "Gambling"
     },
     "8162ADC1": {
         "long": "X-Men - Mutant Academy (Japan)",
-        "short": "X-Men - Mutant Academy"
+        "short": "X-Men - Mutant Academy",
+        "genre": "Fighting"
     },
     "83AD5B99": {
         "long": "X-Men - Wolverine's Rage (Europe)",
-        "short": "X-Men - Wolverine's Rage"
+        "short": "X-Men - Wolverine's Rage",
+        "genre": "Action"
     },
     "803A56AE": {
         "long": "Yu-Gi-Oh! - Dark Duel Stories (USA)",
-        "short": "Yu-Gi-Oh! - Dark Duel Stories"
+        "short": "Yu-Gi-Oh! - Dark Duel Stories",
+        "genre": "Card"
     },
     "82F06E93": {
         "long": "4 in 1 (Europe) (4B-001, Sachen-Commin) (Unl)",
-        "short": "4 in 1"
+        "short": "4 in 1",
+        "genre": "Board"
     },
     "80CAC37C": {
         "long": "America Oudan Ultra Quiz Part 3 - Champion Taikai (Japan)",
-        "short": "America Oudan Ultra Quiz Part 3 - Champion Taikai"
+        "short": "America Oudan Ultra Quiz Part 3 - Champion Taikai",
+        "genre": "Quiz"
     },
     "8259AC54": {
         "long": "Arcade Classic No. 1 - Asteroids & Missile Command (USA, Europe) (SGB Enhanced)",
-        "short": "Arcade Classic No. 1 - Asteroids & Missile Command"
+        "short": "Arcade Classic No. 1 - Asteroids & Missile Command",
+        "genre": "Shoot'em Up"
     },
     "8244220B": {
         "long": "Bugs Bunny Collection (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Bugs Bunny Collection"
+        "short": "Bugs Bunny Collection",
+        "genre": "Action"
     },
     "8042AFC5": {
         "long": "Capcom Quiz - Hatena no Daibouken (Japan)",
-        "short": "Capcom Quiz - Hatena no Daibouken"
+        "short": "Capcom Quiz - Hatena no Daibouken",
+        "genre": "Quiz"
     },
     "82150E4A": {
         "long": "Chessmaster, The (Japan)",
-        "short": "Chessmaster, The"
+        "short": "Chessmaster, The",
+        "genre": "Board"
     },
     "80B21DF1": {
         "long": "Cosmo Tank (Japan)",
-        "short": "Cosmo Tank"
+        "short": "Cosmo Tank",
+        "genre": "Action"
     },
     "8210A03F": {
         "long": "David Crane's The Rescue of Princess Blobette (USA)",
-        "short": "David Crane's The Rescue of Princess Blobette"
+        "short": "David Crane's The Rescue of Princess Blobette",
+        "genre": "Platform"
     },
     "807D34A4": {
         "long": "Dennis (Europe) (Beta) (1993-09-13)",
-        "short": "Dennis"
+        "short": "Dennis",
+        "genre": "Platform"
     },
     "82511A8F": {
         "long": "Downtown - Nekketsu Koushinkyoku - Dokodemo Daiundoukai (Japan)",
-        "short": "Downtown - Nekketsu Koushinkyoku - Dokodemo Daiundoukai"
+        "short": "Downtown - Nekketsu Koushinkyoku - Dokodemo Daiundoukai",
+        "genre": "Action"
     },
     "8046148F": {
         "long": "Final Fantasy Legend, The (USA)",
-        "short": "Final Fantasy Legend, The"
+        "short": "Final Fantasy Legend, The",
+        "genre": "Role-playing (RPG)"
     },
     "80AC487E": {
         "long": "In Your Face (USA)",
-        "short": "In Your Face"
+        "short": "In Your Face",
+        "genre": "Sports"
     },
     "82E03E10": {
         "long": "Kandume Monsters (Japan) (SGB Enhanced)",
-        "short": "Kandume Monsters"
+        "short": "Kandume Monsters",
+        "genre": "Simulation"
     },
     "8056344C": {
         "long": "Kick Boxing, The (Japan)",
-        "short": "Kick Boxing, The"
+        "short": "Kick Boxing, The",
+        "genre": "Sports"
     },
     "81DE6C13": {
         "long": "McDonaldland (Europe)",
-        "short": "McDonaldland"
+        "short": "McDonaldland",
+        "genre": "Platform"
     },
     "82F4C095": {
         "long": "Mega Man III (USA) (Sample)",
-        "short": "Mega Man III"
+        "short": "Mega Man III",
+        "genre": "Platform"
     },
     "80DCA360": {
         "long": "Mini Putt (Europe) (Proto)",
-        "short": "Mini Putt"
+        "short": "Mini Putt",
+        "genre": "Sports"
     },
     "82FCA204": {
         "long": "Moguranya (Japan) (SGB Enhanced)",
-        "short": "Moguranya"
+        "short": "Moguranya",
+        "genre": "Action"
     },
     "800226A9": {
         "long": "Money Idol Exchanger (Japan) (SGB Enhanced)",
-        "short": "Money Idol Exchanger"
+        "short": "Money Idol Exchanger",
+        "genre": "Puzzle"
     },
     "80F62F9A": {
         "long": "Prophecy - The Viking Child (USA)",
-        "short": "Prophecy - The Viking Child"
+        "short": "Prophecy - The Viking Child",
+        "genre": "Platform"
     },
     "83706E92": {
         "long": "Sangokushi - Game Boy Ban (Japan)",
-        "short": "Sangokushi - Game Boy Ban"
+        "short": "Sangokushi - Game Boy Ban",
+        "genre": "Strategy"
     },
     "8090C9CC": {
         "long": "Super Street Basketball 2 (Japan) (SGB Enhanced)",
-        "short": "Super Street Basketball 2"
+        "short": "Super Street Basketball 2",
+        "genre": "Sports"
     },
     "814FA146": {
         "long": "Titus the Fox (USA, Europe)",
-        "short": "Titus the Fox"
+        "short": "Titus the Fox",
+        "genre": "Platform"
     },
     "8059BC15": {
         "long": "Uchiiwai - Kyoudaijingi no Puzzle Game (Japan)",
-        "short": "Uchiiwai - Kyoudaijingi no Puzzle Game"
+        "short": "Uchiiwai - Kyoudaijingi no Puzzle Game",
+        "genre": "Puzzle"
     },
     "829EA425": {
         "long": "Wayne's World (USA)",
-        "short": "Wayne's World"
+        "short": "Wayne's World",
+        "genre": "Platform"
     },
     "83B8F13C": {
         "long": "Little Sound Dj (v3.9.2)",
-        "short": "LSDj"
+        "short": "LSDj",
+        "genre": "Music / Dancing"
     }
 }

@@ -1,254 +1,317 @@
 {
     "725A3483": {
         "long": "102 Dalmatiner (Germany)",
-        "short": "102 Dalmatiner"
+        "short": "102 Dalmatiner",
+        "genre": "Platform"
     },
     "720C7023": {
         "long": "10-Pin Bowling (USA) (Rumble Version)",
-        "short": "10-Pin Bowling"
+        "short": "10-Pin Bowling",
+        "genre": "Sports"
     },
     "71B857EA": {
         "long": "Army Men - Sarge's Heroes 2 (USA, Europe) (En,Fr,De)",
-        "short": "Army Men - Sarge's Heroes 2"
+        "short": "Army Men - Sarge's Heroes 2",
+        "genre": "Action"
     },
     "71043D76": {
         "long": "Asterix & Obelix Contre Cesar (Europe) (En,Fr,De,Es,Nl) (GB Compatible)",
-        "short": "Asterix & Obelix Contre Cesar"
+        "short": "Asterix & Obelix Contre Cesar",
+        "genre": "Adventure"
     },
     "71D52876": {
         "long": "Azure Dreams (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Azure Dreams"
+        "short": "Azure Dreams",
+        "genre": "Role-playing (RPG)"
     },
     "712A49B3": {
         "long": "Backgammon (Japan) (GB Compatible)",
-        "short": "Backgammon"
+        "short": "Backgammon",
+        "genre": "Board"
     },
     "7243E258": {
         "long": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho (Japan) (Rev 2) (GB Compatible)",
-        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho"
+        "short": "Cardcaptor Sakura - Itsumo Sakura-chan to Issho",
+        "genre": "Adventure"
     },
     "71F798B5": {
         "long": "Deja Vu I & II - The Casebooks of Ace Harding (Europe) (En,Fr)",
-        "short": "Deja Vu I & II - The Casebooks of Ace Harding"
+        "short": "Deja Vu I & II - The Casebooks of Ace Harding",
+        "genre": "Adventure"
     },
     "72ACBCB4": {
         "long": "Dragon Ball Z - Legendaere Superkaempfer (Germany) (Beta 3)",
-        "short": "Dragon Ball Z - Legendaere Superkaempfer"
+        "short": "Dragon Ball Z - Legendaere Superkaempfer",
+        "genre": "Role-playing (RPG)"
     },
     "71D693DA": {
         "long": "Dragon Warrior I & II (USA) (SGB Enhanced) (GB Compatible)",
-        "short": "Dragon Warrior I & II"
+        "short": "Dragon Warrior I & II",
+        "genre": "Role-playing (RPG)"
     },
     "703C057F": {
         "long": "Formula One 2000 (USA)",
-        "short": "Formula One 2000"
+        "short": "Formula One 2000",
+        "genre": "Racing"
     },
     "7122136D": {
         "long": "Granduel - Shinki Dungeon no Hihou (Japan) (Sample)",
-        "short": "Granduel - Shinki Dungeon no Hihou"
+        "short": "Granduel - Shinki Dungeon no Hihou",
+        "genre": "Puzzle"
     },
     "70F3B431": {
         "long": "Halloween Racer (Europe) (En,Fr,De,Es,It,Pt)",
-        "short": "Halloween Racer"
+        "short": "Halloween Racer",
+        "genre": "Racing"
     },
     "70F10315": {
         "long": "Hissatsu Pachinko Boy - CR Monster House (Japan)",
-        "short": "Hissatsu Pachinko Boy - CR Monster House"
+        "short": "Hissatsu Pachinko Boy - CR Monster House",
+        "genre": "Gambling"
     },
     "72A5E820": {
         "long": "Hot Wheels - Stunt Track Driver (USA, Europe) (SGB Enhanced) (GB Compatible)",
-        "short": "Hot Wheels - Stunt Track Driver"
+        "short": "Hot Wheels - Stunt Track Driver",
+        "genre": "Racing"
     },
     "73F4F6DA": {
         "long": "Jay und die Spielzeugdiebe (Germany)",
-        "short": "Jay und die Spielzeugdiebe"
+        "short": "Jay und die Spielzeugdiebe",
+        "genre": "Platform"
     },
     "710286EA": {
         "long": "Keibajou e Ikou! Wide (Japan) (GB Compatible)",
-        "short": "Keibajou e Ikou! Wide"
+        "short": "Keibajou e Ikou! Wide",
+        "genre": "Sports with Animals"
     },
     "72895639": {
         "long": "Kettou Transformers Beast Wars - Beast Senshi Saikyou Ketteisen (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Kettou Transformers Beast Wars - Beast Senshi Saikyou Ketteisen"
+        "short": "Kettou Transformers Beast Wars - Beast Senshi Saikyou Ketteisen",
+        "genre": "Fighting"
     },
     "7181CBD0": {
         "long": "Klax (USA, Europe)",
-        "short": "Klax"
+        "short": "Klax",
+        "genre": "Strategy"
     },
     "712D40A5": {
         "long": "Monsters, Inc. (Europe) (En,Fr,It)",
-        "short": "Monsters, Inc."
+        "short": "Monsters, Inc.",
+        "genre": "Platform"
     },
     "714EC204": {
         "long": "Original Moorhuhn Jagd, Die (Germany)",
-        "short": "Original Moorhuhn Jagd, Die"
+        "short": "Original Moorhuhn Jagd, Die",
+        "genre": "Shooter"
     },
     "7085270C": {
         "long": "Powerpuff Girls, The - Bulle Contre Lui (France)",
-        "short": "Powerpuff Girls, The - Bulle Contre Lui"
+        "short": "Powerpuff Girls, The - Bulle Contre Lui",
+        "genre": "Platform"
     },
     "73ED3042": {
         "long": "Puzzle de Shoubuyo! - Wootama-chan (Japan) (GB Compatible)",
-        "short": "Puzzle de Shoubuyo! - Wootama-chan"
+        "short": "Puzzle de Shoubuyo! - Wootama-chan",
+        "genre": "Puzzle"
     },
     "73160E05": {
         "long": "Rhino Rumble (USA, Europe)",
-        "short": "Rhino Rumble"
+        "short": "Rhino Rumble",
+        "genre": "Adventure"
     },
     "717B3525": {
         "long": "Roadsters (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Roadsters"
+        "short": "Roadsters",
+        "genre": "Racing"
     },
     "7025EB63": {
         "long": "Rocket Power - Gettin' Air (USA, Europe)",
-        "short": "Rocket Power - Gettin' Air"
+        "short": "Rocket Power - Gettin' Air",
+        "genre": "Sports"
     },
     "709CDA93": {
         "long": "Shaun Palmer's Pro Snowboarder (USA, Australia)",
-        "short": "Shaun Palmer's Pro Snowboarder"
+        "short": "Shaun Palmer's Pro Snowboarder",
+        "genre": "Sports"
     },
     "72FCB0AD": {
         "long": "Spawn (USA)",
-        "short": "Spawn"
+        "short": "Spawn",
+        "genre": "Platform"
     },
     "713C6C17": {
         "long": "Spy vs Spy (Europe) (En,Fr,De,Es,It,Nl,Sv)",
-        "short": "Spy vs Spy"
+        "short": "Spy vs Spy",
+        "genre": "Action"
     },
     "7041929D": {
         "long": "Swing (Germany)",
-        "short": "Swing"
+        "short": "Swing",
+        "genre": "Puzzle"
     },
     "725CF31C": {
         "long": "Tales of Phantasia - Narikiri Dungeon (Japan) (SGB Enhanced) (GB Compatible)",
-        "short": "Tales of Phantasia - Narikiri Dungeon"
+        "short": "Tales of Phantasia - Narikiri Dungeon",
+        "genre": "Role-playing (RPG)"
     },
     "717A5D19": {
         "long": "Tomb Raider 2 (Taiwan) (Unl)",
-        "short": "Tomb Raider 2"
+        "short": "Tomb Raider 2",
+        "genre": "Platform"
     },
     "709F4AD6": {
         "long": "Tootuff (Europe) (En,Fr,De,Es,It,Nl) (Beta)",
-        "short": "Tootuff"
+        "short": "Tootuff",
+        "genre": "Casual Game"
     },
     "7361D6BC": {
         "long": "Tweety's High-Flying Adventure (Europe) (En,Fr,De)",
-        "short": "Tweety's High-Flying Adventure"
+        "short": "Tweety's High-Flying Adventure",
+        "genre": "Platform"
     },
     "70760CCE": {
         "long": "Uno (Europe) (En,Fr,De,Es,It,Nl) (GB Compatible)",
-        "short": "Uno"
+        "short": "Uno",
+        "genre": "Card"
     },
     "739C26FC": {
         "long": "America Oudan Ultra Quiz Part 2 (Japan) (Rev 1)",
-        "short": "America Oudan Ultra Quiz Part 2"
+        "short": "America Oudan Ultra Quiz Part 2",
+        "genre": "Quiz"
     },
     "71CF43CE": {
         "long": "Bill Elliott's NASCAR Fast Tracks (USA)",
-        "short": "Bill Elliott's NASCAR Fast Tracks"
+        "short": "Bill Elliott's NASCAR Fast Tracks",
+        "genre": "Racing"
     },
     "70C8C799": {
         "long": "Boggle Plus (USA)",
-        "short": "Boggle Plus"
+        "short": "Boggle Plus",
+        "genre": "Board"
     },
     "70819E03": {
         "long": "Daiku no Gen-san - Robot Teikoku no Yabou (Japan)",
-        "short": "Daiku no Gen-san - Robot Teikoku no Yabou"
+        "short": "Daiku no Gen-san - Robot Teikoku no Yabou",
+        "genre": "Action"
     },
     "73C994A0": {
         "long": "Dragon's Lair (Japan)",
-        "short": "Dragon's Lair"
+        "short": "Dragon's Lair",
+        "genre": "Adventure"
     },
     "71BF3256": {
         "long": "Fleet Commander VS. (Japan)",
-        "short": "Fleet Commander VS."
+        "short": "Fleet Commander VS.",
+        "genre": "Strategy"
     },
     "71559BA0": {
         "long": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '92 (Japan)",
-        "short": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '92"
+        "short": "Higashio Osamu Kanshuu Pro Yakyuu Stadium '92",
+        "genre": "Sports"
     },
     "71C804B3": {
         "long": "Kamen Rider SD - Hashire! Mighty Riders (Japan)",
-        "short": "Kamen Rider SD - Hashire! Mighty Riders"
+        "short": "Kamen Rider SD - Hashire! Mighty Riders",
+        "genre": "Racing"
     },
     "72660774": {
         "long": "Klax (USA) (Mindscape)",
-        "short": "Klax"
+        "short": "Klax",
+        "genre": "Puzzle"
     },
     "72E6D21D": {
         "long": "Mega Man V (USA) (SGB Enhanced)",
-        "short": "Mega Man V"
+        "short": "Mega Man V",
+        "genre": "Platform"
     },
     "73B80B16": {
         "long": "Mikeneko Holmes no Kishidou (Japan)",
-        "short": "Mikeneko Holmes no Kishidou"
+        "short": "Mikeneko Holmes no Kishidou",
+        "genre": "Adventure"
     },
     "725EE86C": {
         "long": "Monster Maker (Japan)",
-        "short": "Monster Maker"
+        "short": "Monster Maker",
+        "genre": "Role-playing (RPG)"
     },
     "727D5509": {
         "long": "P-Man GB (Japan)",
-        "short": "P-Man GB"
+        "short": "P-Man GB",
+        "genre": "Platform"
     },
     "73E8EF96": {
         "long": "Pocket Camera (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Pocket Camera"
+        "short": "Pocket Camera",
+        "genre": "Action"
     },
     "729C2E40": {
         "long": "Popeye 2 (USA)",
-        "short": "Popeye 2"
+        "short": "Popeye 2",
+        "genre": "Platform"
     },
     "71BEA855": {
         "long": "Power Pro GB (Japan) (Rev 1) (SGB Enhanced)",
-        "short": "Power Pro GB"
+        "short": "Power Pro GB",
+        "genre": "Sports"
     },
     "7202E973": {
         "long": "Q Billion (USA)",
-        "short": "Q Billion"
+        "short": "Q Billion",
+        "genre": "Strategy"
     },
     "7254EA52": {
         "long": "R-Type II (USA) (Proto)",
-        "short": "R-Type II"
+        "short": "R-Type II",
+        "genre": "Action"
     },
     "70393C0F": {
         "long": "Same Game (Japan) (SGB Enhanced)",
-        "short": "Same Game"
+        "short": "Same Game",
+        "genre": "Puzzle"
     },
     "72B42EA7": {
         "long": "Shinseiki GPX - Cyber Formula (Japan)",
-        "short": "Shinseiki GPX - Cyber Formula"
+        "short": "Shinseiki GPX - Cyber Formula",
+        "genre": "Racing"
     },
     "701CCDB3": {
         "long": "Solomon's Club (Europe)",
-        "short": "Solomon's Club"
+        "short": "Solomon's Club",
+        "genre": "Action"
     },
     "735B29E2": {
         "long": "Spirou (Europe) (En,Fr,De,Es) (SGB Enhanced)",
-        "short": "Spirou"
+        "short": "Spirou",
+        "genre": "Platform"
     },
     "70E5ED99": {
         "long": "Spud's Adventure (USA)",
-        "short": "Spud's Adventure"
+        "short": "Spud's Adventure",
+        "genre": "Puzzle"
     },
     "723EB882": {
         "long": "Taiyou no Yuusha - Fighbird GB (Japan)",
-        "short": "Taiyou no Yuusha - Fighbird GB"
+        "short": "Taiyou no Yuusha - Fighbird GB",
+        "genre": "Shoot'em Up"
     },
     "72462125": {
         "long": "Wild Snake (USA) (SGB Enhanced)",
-        "short": "Wild Snake"
+        "short": "Wild Snake",
+        "genre": "Puzzle"
     },
     "7103B4AC": {
         "long": "Yu Yu Hakusho (Japan)",
-        "short": "Yu Yu Hakusho"
+        "short": "Yu Yu Hakusho",
+        "genre": "Fighting"
     },
     "7348BB32": {
         "long": "Opossum Country (Ben Jelter)",
-        "short": "Opossum Country"
+        "short": "Opossum Country",
+        "genre": "Homebrew"
     },
     "71EEF9B5": {
         "long": "GBBBS95 (beatscribe)",
-        "short": "GBBBS95"
+        "short": "GBBBS95",
+        "genre": "Homebrew"
     }
 }
