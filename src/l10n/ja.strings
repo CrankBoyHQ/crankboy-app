@@ -285,3 +285,4 @@
 "setdsc_settings_scope_game" = "設定を共通するか、一つのゲームに使うか決めます。\n\nグローバル：\n設定はすべてのゲームに適用されます。\n\nゲーム：\n設定はこのゲームのみに適用されます。";
 "setdsc_apply_recommended" = "設定メニューでおすすめの設定をいつでも適用できます。";
 "setdsc_apply_recommended_done" = "おすすめの設定はすでに適用されています。";
+"setdsc_apply_recommended_scope" = "おすすめの設定を適用するため、スコープを「ゲーム」に切り替えてください。";
