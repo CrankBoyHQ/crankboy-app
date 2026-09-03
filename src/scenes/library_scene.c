@@ -1970,6 +1970,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
     if (libraryScene->tab == CB_LibrarySceneTabList)
     {
         bool flowMode = (preferences_library_view_mode != 0) && libraryScene->coverFlow;
+        flowMode = false;  // Cover Flow disabled (WIP)
 
         if (flowMode != libraryScene->last_view_flow)
         {
