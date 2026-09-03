@@ -1473,14 +1473,14 @@ __section__(".text.main") void CB_update(float dt)
     {
         void* managedObject = CB_App->scene->managedObject;
         DTCM_VERIFY_DEBUG();
+        uint32_t udt = FLOAT_AS_UINT32(dt);
         if (CB_App->scene->use_user_stack)
         {
-            uint32_t udt = FLOAT_AS_UINT32(dt);
             call_with_user_stack_2(CB_App->scene->update, managedObject, udt);
         }
         else
         {
-            CB_App->scene->update(managedObject, dt);
+            CB_App->scene->update(managedObject, udt);
         }
         DTCM_VERIFY_DEBUG();
     }
