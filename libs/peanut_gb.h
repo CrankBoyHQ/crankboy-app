@@ -183,6 +183,8 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
  * STAT/LYC ISR latency and the STAT/LY peek window independently of total
  * batch length (VBlank LYC chains need cross + dispatch + ISR < 456). */
 #define BATCH_CROSS_MAX 64
+/* STAT mode-bit reads report the boundary this many CPU T late. */
+#define STAT_READ_LAG_T 14
 
 /* VRAM Locations */
 #define VRAM_TILES_1 (0x8000 - VRAM_ADDR)
@@ -1405,7 +1407,8 @@ __section__(".rare") void gb_recompute_cgb_gray_palettes(gb_s* gb)
     }
 }
 
-static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb);
+static inline __attribute__((always_inline)) uint16_t
+__gb_ppu_cycles_remaining(gb_s* gb, int32_t slack);
 static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb);
 static uint8_t __gb_ppu_mode_for_lock(gb_s* gb) __attribute__((always_inline));
 
@@ -2642,7 +2645,8 @@ static uint16_t pgb_write_cycle;
 /**
  * Cycles remaining until next PPU mode boundary.
  */
-static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(gb_s* gb)
+static inline __attribute__((always_inline)) uint16_t
+__gb_ppu_cycles_remaining(gb_s* gb, int32_t slack)
 {
     int32_t remaining;
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
@@ -2676,6 +2680,7 @@ static inline __attribute__((always_inline)) uint16_t __gb_ppu_cycles_remaining(
         lag >>= gb->overclock;
     lag >>= gb->cgb_fast_mode_active;
     remaining -= lag;
+    remaining += slack;
     return (remaining > 0) ? remaining : 0;
 }
 
@@ -2704,7 +2709,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb
  */
 __attribute__((always_inline)) static inline uint8_t __gb_ppu_mode_for_lock(gb_s* gb)
 {
-    uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+    uint16_t remaining = __gb_ppu_cycles_remaining(gb, 0);
     if (remaining == 0)
         return __gb_ppu_next_mode(gb);  // exact engage/release
     return gb->lcd_mode;
@@ -2720,7 +2725,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_stat_synced(gb_s*
     if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
         return gb->gb_reg.STAT | 0x80;
 
-    uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+    uint16_t remaining = __gb_ppu_cycles_remaining(gb, STAT_READ_LAG_T);
 
     if (remaining == 0)
     {
@@ -2741,7 +2746,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
     case LCD_HBLANK:
     {
         /* LY increments at end of HBlank */
-        uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+        uint16_t remaining = __gb_ppu_cycles_remaining(gb, 0);
         if (remaining == 0)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;
@@ -2760,7 +2765,7 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
             return 0;
 
         /* During VBlank, LY increments at 456-cycle boundaries */
-        uint16_t remaining = __gb_ppu_cycles_remaining(gb);
+        uint16_t remaining = __gb_ppu_cycles_remaining(gb, 0);
         if (remaining == 0)
         {
             uint8_t next_ly = gb->gb_reg.LY + 1;

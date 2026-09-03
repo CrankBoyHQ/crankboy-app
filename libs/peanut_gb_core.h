@@ -2125,7 +2125,7 @@ __core static uint16_t $(__gb_calc_halt_cycles)(gb_s* gb)
         src[1] = CORE_CALL_U32($(__gb_timer_distance), gb);
 
     // PPU event calculation
-    uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb);
+    uint16_t ppu_cycles_remaining = __gb_ppu_cycles_remaining(gb, 0);
 
     if ((int16_t)ppu_cycles_remaining <= 0)
     {
