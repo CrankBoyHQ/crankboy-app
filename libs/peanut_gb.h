@@ -176,14 +176,20 @@ static const uint8_t TIMER_INPUT_BITS[4] = {9, 3, 5, 7};
 #define PPU_MODE_2_OAM_CYCLES 80
 #define PPU_MODE_3_VRAM_MIN_CYCLES 172
 #define PPU_MODE_3_VRAM_MAX_CYCLES 289
+
 /* Batch loop can overshoot budget by one CALL (24 T): BATCH_OVERSHOOT is that
  * (CPU T). */
 #define BATCH_OVERSHOOT 23
+
 /* How far (PPU T) a batch may run past the first PPU mode boundary. Bounds
  * STAT/LYC ISR latency and the STAT/LY peek window independently of total
  * batch length (VBlank LYC chains need cross + dispatch + ISR < 456). */
 #define BATCH_CROSS_MAX 64
-/* STAT mode-bit reads report the boundary this many CPU T late. */
+
+/* STAT mode-bit reads report the boundary this many CPU T late, approximating
+ * one STAT poll-loop iteration (WH2Jet flicker). Scoped to STAT only - LY/lock
+ * reads stay exact (RoboCop 2 hangs on a late LY). Added to remaining, not
+ * folded into lag - folding flips late to early. */
 #define STAT_READ_LAG_T 14
 
 /* VRAM Locations */
