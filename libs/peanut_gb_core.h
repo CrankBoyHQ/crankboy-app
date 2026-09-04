@@ -1437,47 +1437,36 @@ __core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
  * mode-3 -> HBlank boundary, and never runs past a pending TIMA overflow. */
 __core static unsigned $(__gb_batch_budget)(gb_s* gb)
 {
-    unsigned budget_ppu;
-
-    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+    // PPU-domain distance to the *second* mode boundary.
+    unsigned d1, d2;
+    switch (gb->lcd_mode)
     {
-        /* LCD off: no PPU mode boundaries; bound to one line so the frame tick
-         * (lcd_off_count) and interrupts stay current. */
-        budget_ppu = LCD_LINE_CYCLES;
+    case LCD_SEARCH_OAM:  // mode 2 (80 T)
+        d1 = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+        d2 = PPU_MODE_3_VRAM_MIN_CYCLES;  // this line's mode 3 not computed yet
+        break;
+    case LCD_TRANSFER:  // mode 3 (172..289 T)
+        d1 = gb->display.current_mode3_cycles - gb->counter.lcd_count;
+        d2 = gb->display.current_mode0_cycles;
+        break;
+    case LCD_HBLANK:  // mode 0 (87..204 T)
+        d1 = gb->display.current_mode0_cycles - gb->counter.lcd_count;
+        d2 = PPU_MODE_2_OAM_CYCLES;
+        break;
+    case LCD_VBLANK:  // 456 T/line
+        d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
+        /* Last VBlank line: LY wraps 153->0 a few cycles in (short-line
+         * quirk), so test both. Second boundary is the line-0 mode3 latch. */
+        d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
+        break;
     }
-    else
-    {
-        // PPU-domain distance to the *second* mode boundary.
-        unsigned d1, d2;
-        switch (gb->lcd_mode)
-        {
-        case LCD_SEARCH_OAM:  // mode 2 (80 T)
-            d1 = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-            d2 = PPU_MODE_3_VRAM_MIN_CYCLES;  // this line's mode 3 not computed yet
-            break;
-        case LCD_TRANSFER:  // mode 3 (172..289 T)
-            d1 = gb->display.current_mode3_cycles - gb->counter.lcd_count;
-            d2 = gb->display.current_mode0_cycles;
-            break;
-        case LCD_HBLANK:  // mode 0 (87..204 T)
-            d1 = gb->display.current_mode0_cycles - gb->counter.lcd_count;
-            d2 = PPU_MODE_2_OAM_CYCLES;
-            break;
-        case LCD_VBLANK:  // 456 T/line
-            d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
-            /* Last VBlank line: LY wraps 153->0 a few cycles in (short-line
-             * quirk), so test both. Second boundary is the line-0 mode3 latch. */
-            d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES
-                                                              : LCD_LINE_CYCLES;
-            break;
-        }
-        /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
-         * the first one. Mode 3 is the exception: it must end exactly at the
-         * mode-3 -> HBlank boundary so __gb_draw_line runs before any HBlank
-         * VRAM/OAM writes (a cross would leak those writes into the live-vram
-         * draw and corrupt the line). */
-        budget_ppu = (gb->lcd_mode == LCD_TRANSFER) ? d1 : (d1 + MIN(d2, BATCH_CROSS_MAX));
-    }
+    /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
+     * the first one. Mode 3 is the exception: it must end exactly at the
+     * mode-3 -> HBlank boundary so __gb_draw_line runs before any HBlank
+     * VRAM/OAM writes (a cross would leak those writes into the live-vram
+     * draw and corrupt the line). LCD-off falls through here as LCD_HBLANK,
+     * where d1 underflows and BATCH_BUDGET_MAX bounds the batch. */
+    unsigned budget_ppu = (gb->lcd_mode == LCD_TRANSFER) ? d1 : (d1 + MIN(d2, BATCH_CROSS_MAX));
 
     /* Timer clamp only matters when the timer can raise an interrupt.
      * With TIMER_INTR disabled in IE, TIMA overflow processing happens at
@@ -1490,6 +1479,9 @@ __core static unsigned $(__gb_batch_budget)(gb_s* gb)
         if (timer < budget_ppu)
             budget_ppu = timer;
     }
+
+    if (budget_ppu > BATCH_BUDGET_MAX)
+        budget_ppu = BATCH_BUDGET_MAX;
 
     // CPU T-cycles: shift for CGB double-speed and overclocked VBlank
     // (inst_cycles is shifted down by the same factors in __gb_step_cpu),
