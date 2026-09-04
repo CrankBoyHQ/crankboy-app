@@ -824,6 +824,9 @@ __section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
          * detection, not one step later, so an IF write between the two
          * cannot drop the pending interrupt. */
         gb->gb_reg.IF |= TIMER_INTR;
+        /* Edge tick runs mid-batch (TAC/DIV write handlers): keep the micro's
+         * interrupt cache from under-reporting, same as shell IF/IE writes. */
+        gb->direct.intr_pending = 1;  // conservative: re-checked at batch start
     }
 }
 
