@@ -1437,36 +1437,50 @@ __core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
  * mode-3 -> HBlank boundary, and never runs past a pending TIMA overflow. */
 __core static unsigned $(__gb_batch_budget)(gb_s* gb)
 {
-    // PPU-domain distance to the *second* mode boundary.
-    unsigned d1, d2;
-    switch (gb->lcd_mode)
+    unsigned budget_ppu;
+
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
     {
-    case LCD_SEARCH_OAM:  // mode 2 (80 T)
-        d1 = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
-        d2 = PPU_MODE_3_VRAM_MIN_CYCLES;  // this line's mode 3 not computed yet
-        break;
-    case LCD_TRANSFER:  // mode 3 (172..289 T)
-        d1 = gb->display.current_mode3_cycles - gb->counter.lcd_count;
-        d2 = gb->display.current_mode0_cycles;
-        break;
-    case LCD_HBLANK:  // mode 0 (87..204 T)
-        d1 = gb->display.current_mode0_cycles - gb->counter.lcd_count;
-        d2 = PPU_MODE_2_OAM_CYCLES;
-        break;
-    case LCD_VBLANK:  // 456 T/line
-        d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
-        /* Last VBlank line: LY wraps 153->0 a few cycles in (short-line
-         * quirk), so test both. Second boundary is the line-0 mode3 latch. */
-        d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES : LCD_LINE_CYCLES;
-        break;
+        /* LCD off: no PPU mode boundaries (lcd_count free-runs), so bound
+         * explicitly to one line; the lcd_off_count frame tick and interrupt
+         * dispatch stay current. Do NOT route through the switch below: mode
+         * reads LCD_HBLANK and d1 underflows once lcd_count passes the stale
+         * mode-0 length. */
+        budget_ppu = LCD_LINE_CYCLES;
     }
-    /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
-     * the first one. Mode 3 is the exception: it must end exactly at the
-     * mode-3 -> HBlank boundary so __gb_draw_line runs before any HBlank
-     * VRAM/OAM writes (a cross would leak those writes into the live-vram
-     * draw and corrupt the line). LCD-off falls through here as LCD_HBLANK,
-     * where d1 underflows and BATCH_BUDGET_MAX bounds the batch. */
-    unsigned budget_ppu = (gb->lcd_mode == LCD_TRANSFER) ? d1 : (d1 + MIN(d2, BATCH_CROSS_MAX));
+    else
+    {
+        // PPU-domain distance to the *second* mode boundary.
+        unsigned d1, d2;
+        switch (gb->lcd_mode)
+        {
+        case LCD_SEARCH_OAM:  // mode 2 (80 T)
+            d1 = PPU_MODE_2_OAM_CYCLES - gb->counter.lcd_count;
+            d2 = PPU_MODE_3_VRAM_MIN_CYCLES;  // this line's mode 3 not computed yet
+            break;
+        case LCD_TRANSFER:  // mode 3 (172..289 T)
+            d1 = gb->display.current_mode3_cycles - gb->counter.lcd_count;
+            d2 = gb->display.current_mode0_cycles;
+            break;
+        case LCD_HBLANK:  // mode 0 (87..204 T)
+            d1 = gb->display.current_mode0_cycles - gb->counter.lcd_count;
+            d2 = PPU_MODE_2_OAM_CYCLES;
+            break;
+        case LCD_VBLANK:  // 456 T/line
+            d1 = LCD_LINE_CYCLES - gb->counter.lcd_count;
+            /* Last VBlank line: LY wraps 153->0 a few cycles in (short-line
+             * quirk), so test both. Second boundary is the line-0 mode3 latch. */
+            d2 = (gb->gb_reg.LY == 153 || gb->gb_reg.LY == 0) ? PPU_MODE_2_OAM_CYCLES
+                                                              : LCD_LINE_CYCLES;
+            break;
+        }
+        /* Distance to the second boundary, but run at most BATCH_CROSS_MAX past
+         * the first one. Mode 3 is the exception: it must end exactly at the
+         * mode-3 -> HBlank boundary so __gb_draw_line runs before any HBlank
+         * VRAM/OAM writes (a cross would leak those writes into the live-vram
+         * draw and corrupt the line). */
+        budget_ppu = (gb->lcd_mode == LCD_TRANSFER) ? d1 : (d1 + MIN(d2, BATCH_CROSS_MAX));
+    }
 
     /* Timer clamp only matters when the timer can raise an interrupt.
      * With TIMER_INTR disabled in IE, TIMA overflow processing happens at
@@ -2497,10 +2511,12 @@ done_instr_timing:
             }
         }
 
-        /* Handle delayed TIMA reload from the previous cycle. */
+        /* Handle delayed TIMA reload from the previous cycle. The IF bit was
+         * already set when the overflow was detected (same tail); only the
+         * read-side reload window (TIMA reads as TMA, TMA-write quirk) is
+         * tracked by this flag, so just clear it here. */
         if (gb->gb_reg.tima_overflow_delay)
         {
-            gb->gb_reg.IF |= TIMER_INTR;
             gb->gb_reg.tima_overflow_delay = 0;
         }
 
@@ -2521,6 +2537,16 @@ done_instr_timing:
                 {
                     gb->gb_reg.TIMA = gb->gb_reg.TMA;
                     gb->gb_reg.tima_overflow_delay = 1;
+                    /* Set IF.TIMER immediately (hardware latches it 4 T after
+                     * the overflow). Deferring to the next step's tail left
+                     * the pending bit outside the IF register for up to two
+                     * batch lengths, where a game's IF write (e.g. Yu-Gi-Oh!'s
+                     * far-call trampoline does res 2,(IF) around every banked
+                     * call) could eat it; the missed timer IRQ deadlocks the
+                     * fresh-boot init on a white screen. IF reads already
+                     * project this bit via __gb_timer_peek, so register state
+                     * now matches what reads reported. */
+                    gb->gb_reg.IF |= TIMER_INTR;
                 }
             }
         }

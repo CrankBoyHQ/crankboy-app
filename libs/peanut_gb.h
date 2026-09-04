@@ -820,6 +820,10 @@ __section__(".text.cb") static void __gb_timer_edge_tick(gb_s* gb)
     {
         gb->gb_reg.TIMA = gb->gb_reg.TMA;
         gb->gb_reg.tima_overflow_delay = 1;
+        /* See the count path in __gb_step_cpu: IF.TIMER is set at overflow
+         * detection, not one step later, so an IF write between the two
+         * cannot drop the pending interrupt. */
+        gb->gb_reg.IF |= TIMER_INTR;
     }
 }
 
@@ -2717,6 +2721,12 @@ static inline __attribute__((always_inline)) uint8_t __gb_ppu_next_mode(gb_s* gb
  */
 __attribute__((always_inline)) static inline uint8_t __gb_ppu_mode_for_lock(gb_s* gb)
 {
+    /* LCD off: PPU stopped, VRAM/OAM/palettes fully accessible. Return the
+     * parked mode (LCD_HBLANK = no lock); without this guard the projected
+     * frame tick (remaining == 0) reports SEARCH_OAM and spuriously blocks
+     * OAM for the tail of any batch that crosses lcd_off_count's wrap. */
+    if (!(gb->gb_reg.LCDC & LCDC_ENABLE))
+        return LCD_HBLANK;
     uint16_t remaining = __gb_ppu_cycles_remaining(gb, 0);
     if (remaining == 0)
         return __gb_ppu_next_mode(gb);  // exact engage/release
