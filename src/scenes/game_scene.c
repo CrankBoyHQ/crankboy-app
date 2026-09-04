@@ -750,8 +750,6 @@ static void CB_GameScene_stop_audio_source(void)
         CB_App->soundSource = NULL;
     }
 
-    /* Only one callback can still be mid-render now; it finishes in µs.
-     * Watchdog only — a hit here is a separate bug, not this race. */
     unsigned start_ms = playdate->system->getCurrentTimeMilliseconds();
     while (audio_inflight > 0)
     {
