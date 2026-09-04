@@ -1,4 +1,4 @@
-# v3.0.0 - (2026-09-02)
+# v3.0.0 - (2026-09-04)
 
 More performance and better Audio. Also: 日本語 is arriving.
 
@@ -23,7 +23,7 @@ More performance and better Audio. Also: 日本語 is arriving.
 ## Display
 
 - New framerate settings. Instead of "30 FPS Mode", we now have 30 / 50 / 60 Framerate mode. To be clear: none of these limit emulation speed; 30 and 50 just skip some frames to keep up the pace.
-- (50 is new, and it's our recommendation.)
+- 50 is new, and it's our recommendation.
 
 ## CGB
 
