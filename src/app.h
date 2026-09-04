@@ -9,7 +9,7 @@
 #ifndef app_h
 #define app_h
 
-#include "categories.h"
+#include "romcategory.h"
 #include "scene.h"
 #include "utility.h"
 
@@ -85,6 +85,9 @@ typedef struct CB_GameName
     uint32_t crc32;
 
     bool rom_has_battery;
+
+    // in pdx packed/ directory
+    bool packed;
 
     enum cgb_support_e rom_cgb_support;
 

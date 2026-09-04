@@ -133,6 +133,11 @@ static void cache_store(CB_GameScanningScene* scanScene, const char* key, const 
     scanScene->crc_cache_modified = true;
 }
 
+static bool games_dir_is_packed(const char* games_dir)
+{
+    return strcmp(games_dir, "packed") == 0;
+}
+
 static void fill_basic_names(CB_GameName* newName, const char* filename, const char* slug)
 {
     newName->filename = cb_strdup(filename);
@@ -147,6 +152,7 @@ static void process_one_game(
 {
     CB_GameName* newName = allocz(CB_GameName);
     fill_basic_names(newName, filename, GB_SYSTEM_SLUG);
+    newName->packed = games_dir_is_packed(games_dir);
 
     char* fullpath;
     playdate->system->formatString(&fullpath, "%s/%s", games_dir, filename);
@@ -282,6 +288,7 @@ static void process_one_emucore_game(
 
     CB_GameName* newName = allocz(CB_GameName);
     fill_basic_names(newName, filename, slug);
+    newName->packed = games_dir_is_packed(games_dir);
 
     newName->crc32 = entry.crc;
     newName->rom_cgb_support = NON_GB_SYSTEM;
@@ -452,7 +459,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
         {
             // .gb/.gbc/.gbz
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-            bool is_packed = (strcmp(src->games_dir, "packed") == 0);
+            bool is_packed = games_dir_is_packed(src->games_dir);
             playdate->file->listfiles(
                 src->games_dir,
                 is_packed ? collect_game_filenames_callback
@@ -545,7 +552,7 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
                     pct = 99;
                 snprintf(progress_message, sizeof(progress_message), "%d%%", pct);
 #ifdef CRANKBOY_OFFICIAL_CATALOG
-                const char* scan_label = (strcmp(src->games_dir, "packed") == 0)
+                const char* scan_label = games_dir_is_packed(src->games_dir)
                                              ? T(status_scanning_catalog)
                                              : T(status_scanning);
 #else
