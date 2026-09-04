@@ -172,7 +172,7 @@ __core_section("short") static uint8_t $(__gb_read)(gb_s* gb, const uint16_t add
         }
 #endif
         case 0x04:
-            return gb->gb_reg.DIV;
+            return __gb_div_peek(gb);
         case 0x05:
         {
             if (gb->gb_reg.tima_overflow_delay)

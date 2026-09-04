@@ -2845,6 +2845,23 @@ static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint
 }
 
 /**
+ * Project DIV (0xFF04) to the current batch position, mirroring
+ * __gb_timer_peek. Non-mutating; same-batch write-then-read (DIV reset)
+ * skews <1 tick.
+ */
+static inline __attribute__((always_inline)) uint8_t __gb_div_peek(gb_s* gb)
+{
+    uint16_t elapsed = pgb_batch_elapsed;
+    if (gb->lcd_mode == LCD_VBLANK)
+        elapsed >>= gb->overclock;
+    elapsed >>= gb->cgb_fast_mode_active;
+
+    uint32_t count = gb->counter.div_count + elapsed;
+    uint8_t ticks = (uint8_t)(count >> (8 - gb->cgb_fast_mode_active));
+    return gb->gb_reg.DIV + ticks;
+}
+
+/**
  * Internal function used to read bytes.
  */
 __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
@@ -3045,7 +3062,7 @@ __shell uint8_t __gb_read_full(gb_s* gb, const uint_fast16_t addr)
 
         /* Timer Registers */
         case 0x04:
-            return gb->gb_reg.DIV;
+            return __gb_div_peek(gb);
 
         case 0x05:
         {
