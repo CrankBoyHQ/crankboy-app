@@ -974,7 +974,7 @@ static uint8_t dmg_bg_lut[256];
 static uint8_t dmg_bg_lut_pal;
 static bool dmg_bg_lut_valid = false;
 
-static inline __attribute__((always_inline)) void __dmg_rebuild_bg_lut(uint8_t pal)
+static inline __attribute__((always_inline)) void __dmg_build_lut(uint8_t pal, uint8_t* out)
 {
     for (int idx = 0; idx < 256; idx++)
     {
@@ -984,8 +984,34 @@ static inline __attribute__((always_inline)) void __dmg_rebuild_bg_lut(uint8_t p
         uint8_t g1 = (pal >> (2 * (((lo >> 1) & 1) | (((hi >> 1) & 1) << 1)))) & 3;
         uint8_t g2 = (pal >> (2 * (((lo >> 2) & 1) | (((hi >> 2) & 1) << 1)))) & 3;
         uint8_t g3 = (pal >> (2 * (((lo >> 3) & 1) | (((hi >> 3) & 1) << 1)))) & 3;
-        dmg_bg_lut[idx] = (uint8_t)((g3 << 6) | (g2 << 4) | (g1 << 2) | g0);
+        out[idx] = (uint8_t)((g3 << 6) | (g2 << 4) | (g1 << 2) | g0);
     }
+}
+
+static inline __attribute__((always_inline)) void __dmg_rebuild_bg_lut(uint8_t pal)
+{
+    __dmg_build_lut(pal, dmg_bg_lut);
+}
+
+/* Per-segment LUT cache; the spam alternates few values (normal + black).
+ * __draw: called from the relocated draw cluster, must share its section. */
+#define BGP_SEG_LUTS 4
+static uint8_t bgp_seg_lut[BGP_SEG_LUTS][256];
+static uint8_t bgp_seg_tag[BGP_SEG_LUTS];
+static bool bgp_seg_ok[BGP_SEG_LUTS];
+static uint8_t bgp_seg_next;
+
+__draw static uint8_t* __dmg_seg_lut(uint8_t pal)
+{
+    for (int i = 0; i < BGP_SEG_LUTS; i++)
+        if (bgp_seg_ok[i] && bgp_seg_tag[i] == pal)
+            return bgp_seg_lut[i];
+    uint8_t slot = bgp_seg_next;
+    bgp_seg_next = (bgp_seg_next + 1) % BGP_SEG_LUTS;
+    __dmg_build_lut(pal, bgp_seg_lut[slot]);
+    bgp_seg_tag[slot] = pal;
+    bgp_seg_ok[slot] = true;
+    return bgp_seg_lut[slot];
 }
 #endif  // PGB_IS_DMG
 
@@ -1234,18 +1260,59 @@ __draw __attribute__((noinline)) void $(__gb_draw_line)(gb_s* restrict gb)
         dmg_bg_lut_valid = true;
     }
 
-    for (int i = 0; i < LCD_WIDTH / 16; ++i)
+    if likely (pgb_bgp_evt_count == 0)
     {
-        uint16_t* p = (uint16_t*)(void*)pixels + (2 * i);
-        uint16_t t0 = p[0];
-        uint16_t t1 = p[1];
+        for (int i = 0; i < LCD_WIDTH / 16; ++i)
+        {
+            uint16_t* p = (uint16_t*)(void*)pixels + (2 * i);
+            uint16_t t0 = p[0];
+            uint16_t t1 = p[1];
 
-        uint32_t rm = ((uint32_t)dmg_bg_lut[((t0 >> 12) & 0xF) | (((t1 >> 12) & 0xF) << 4)] << 24) |
-                      ((uint32_t)dmg_bg_lut[((t0 >> 8) & 0xF) | (((t1 >> 8) & 0xF) << 4)] << 16) |
-                      ((uint32_t)dmg_bg_lut[((t0 >> 4) & 0xF) | (((t1 >> 4) & 0xF) << 4)] << 8) |
-                      ((uint32_t)dmg_bg_lut[(t0 & 0xF) | ((t1 & 0xF) << 4)]);
-        *(uint32_t*)p = rm;
-        ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
+            uint32_t rm =
+                ((uint32_t)dmg_bg_lut[((t0 >> 12) & 0xF) | (((t1 >> 12) & 0xF) << 4)] << 24) |
+                ((uint32_t)dmg_bg_lut[((t0 >> 8) & 0xF) | (((t1 >> 8) & 0xF) << 4)] << 16) |
+                ((uint32_t)dmg_bg_lut[((t0 >> 4) & 0xF) | (((t1 >> 4) & 0xF) << 4)] << 8) |
+                ((uint32_t)dmg_bg_lut[(t0 & 0xF) | ((t1 & 0xF) << 4)]);
+            *(uint32_t*)p = rm;
+            ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
+        }
+    }
+    else
+    {
+        /* Mid-scanline BGP spam: remap per segment. 4px group g outputs at
+         * line-T = mode-2 end - 4 (pipeline fills in mode 2's tail;
+         * calibrated) + (SCX&7) + 4g. Sprites merge later, keep OBP. */
+        const int start_t = PPU_MODE_2_OAM_CYCLES - 4 + (gb->display.latched_scx & 7);
+        const uint8_t* grp_lut[LCD_WIDTH / 4];
+        uint8_t pal = pgb_bgp_line_init;
+        int e = 0;
+        for (int g = 0; g < LCD_WIDTH / 4; ++g)
+        {
+            const int pt = start_t + g * 4;
+            while (e < pgb_bgp_evt_count && (int)pgb_bgp_evt_t[e] <= pt)
+                pal = pgb_bgp_evt_v[e], e++;
+            grp_lut[g] = __dmg_seg_lut(pal);
+        }
+        /* Strip order per 16px word: <<24 -> group 4i+3, <<16 -> 4i+2,
+         * <<8 -> 4i+1, <<0 -> 4i+0 (nibble n -> group n; tile data is
+         * bit-reversed at VRAM write). */
+        for (int i = 0; i < LCD_WIDTH / 16; ++i)
+        {
+            uint16_t* p = (uint16_t*)(void*)pixels + (2 * i);
+            uint16_t t0 = p[0];
+            uint16_t t1 = p[1];
+            const uint8_t* l24 = grp_lut[4 * i + 3];
+            const uint8_t* l16 = grp_lut[4 * i + 2];
+            const uint8_t* l08 = grp_lut[4 * i + 1];
+            const uint8_t* l00 = grp_lut[4 * i + 0];
+
+            uint32_t rm = ((uint32_t)l24[((t0 >> 12) & 0xF) | (((t1 >> 12) & 0xF) << 4)] << 24) |
+                          ((uint32_t)l16[((t0 >> 8) & 0xF) | (((t1 >> 8) & 0xF) << 4)] << 16) |
+                          ((uint32_t)l08[((t0 >> 4) & 0xF) | (((t1 >> 4) & 0xF) << 4)] << 8) |
+                          ((uint32_t)l00[(t0 & 0xF) | ((t1 & 0xF) << 4)]);
+            *(uint32_t*)p = rm;
+            ((uint16_t*)line_priority)[i] = (t1 | t0) ^ 0xFFFF;
+        }
     }
 #endif
 
@@ -2317,7 +2384,14 @@ __core unsigned int $(__gb_step_cpu)(gb_s* gb)
         memcpy(&_gb[0], gb, sizeof(_gb));
 
         // reference first: replay the batch one instruction at a time
+        // (pgb_in_reference keeps render-only side effects out of the replay)
+#ifdef TARGET_SIMULATOR
+        pgb_in_reference = true;
+#endif
         unsigned inst_cycles_ref = $(__gb_run_instruction_reference_batch)(gb);
+#ifdef TARGET_SIMULATOR
+        pgb_in_reference = false;
+#endif
 
         gb->cpu_reg.f &= 0xF0;
 
@@ -2711,6 +2785,8 @@ done_instr_timing:
                         {
                             gb->lcd_mode = LCD_SEARCH_OAM;
                             gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+                            pgb_bgp_evt_count = 0;
+                            pgb_bgp_line_init = gb->gb_reg.BGP;
 
                             DRAW_CALL($(__gb_update_lyc_and_stat_irq), gb);
                         }
@@ -2735,6 +2811,8 @@ done_instr_timing:
                         {
                             gb->lcd_mode = LCD_SEARCH_OAM;
                             gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | LCD_SEARCH_OAM;
+                            pgb_bgp_evt_count = 0;
+                            pgb_bgp_line_init = gb->gb_reg.BGP;
 
                             // VBlank exit STAT glitch (Case 4): if Mode 1 and Mode 2
                             // interrupts are both enabled, Mode 1 drops (fast) before

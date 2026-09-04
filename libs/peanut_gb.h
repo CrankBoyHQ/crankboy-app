@@ -2657,6 +2657,17 @@ static uint16_t pgb_batch_elapsed;
  * pgb_batch_elapsed). Write handlers set it; APU write timestamps use it. */
 static uint16_t pgb_write_cycle;
 
+/* Mid-scanline BGP events (Prehistorik Man intro text): the PPU samples
+ * BGP per pixel; recorded during modes 2/3, applied in __gb_draw_line. */
+#define PGB_BGP_EVT_MAX 64
+static uint16_t pgb_bgp_evt_t[PGB_BGP_EVT_MAX]; /* T within the line */
+static uint8_t pgb_bgp_evt_v[PGB_BGP_EVT_MAX];
+static uint8_t pgb_bgp_evt_count;
+static uint8_t pgb_bgp_line_init; /* BGP at mode-2 entry */
+#if defined(TARGET_SIMULATOR)
+static bool pgb_in_reference; /* CPU_VALIDATE reference pass: suppress capture */
+#endif
+
 /**
  * Cycles remaining until next PPU mode boundary.
  */
@@ -3897,6 +3908,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                 gb->gb_reg.STAT = (gb->gb_reg.STAT & ~STAT_MODE) | gb->lcd_mode;
                 gb->direct.stat_line = 0;
                 gb->direct.first_scanline_besu_skip = 1;
+                pgb_bgp_evt_count = 0;
+                pgb_bgp_line_init = gb->gb_reg.BGP;
                 __gb_update_lyc_and_stat_irq__cgb(gb);
             }
             return;
@@ -3960,12 +3973,33 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
 
         /* DMG Palette Registers */
         case 0x47:
+        {
             gb->gb_reg.BGP = val;
             gb->display.bg_palette[0] = (gb->gb_reg.BGP & 0x03);
             gb->display.bg_palette[1] = (gb->gb_reg.BGP >> 2) & 0x03;
             gb->display.bg_palette[2] = (gb->gb_reg.BGP >> 4) & 0x03;
             gb->display.bg_palette[3] = (gb->gb_reg.BGP >> 6) & 0x03;
+
+            /* Record event; t = in-line T at the bus write (lcd_count is
+             * mode-relative, so mode 3 adds the mode-2 length). */
+            if (
+                gb->lcd_mode >= LCD_SEARCH_OAM && !gb->is_cgb_mode &&
+                pgb_bgp_evt_count < PGB_BGP_EVT_MAX
+#ifdef TARGET_SIMULATOR
+                && !pgb_in_reference
+#endif
+            )
+            {
+                uint16_t t = gb->counter.lcd_count + pgb_write_cycle;
+                t >>= gb->cgb_fast_mode_active;
+                if (gb->lcd_mode == LCD_TRANSFER)
+                    t += PPU_MODE_2_OAM_CYCLES;
+                pgb_bgp_evt_t[pgb_bgp_evt_count] = t;
+                pgb_bgp_evt_v[pgb_bgp_evt_count] = val;
+                pgb_bgp_evt_count++;
+            }
             return;
+        }
 
         case 0x48:
             gb->gb_reg.OBP0 = val;
