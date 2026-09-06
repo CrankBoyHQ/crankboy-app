@@ -43,9 +43,8 @@
 "label_understood" = "了解";
 "label_unknown" = "不明";
 "label_yes" = "はい";
-"lang_en"="英語";
-"lang_jp"="日本語"
-"lib_building_list" = "ゲームリストを構築中...";
+"lang_en" = "英語";
+"lang_jp" = "日本語\"\"lib_building_list\" = \"ゲームリストを構築中...";
 "lib_caching_covers" = "カバーアートをキャッシュ中...";
 "lib_cgb_prompt_cgb_compat" = "このROMはCGBに対応しています。\n\nDMGで起動（推奨）するか、CGBでの起動を試せます。CrankBoyのCGB（カラー）エミュレーションは実験的機能です。";
 "lib_cgb_prompt_cgb_only_one_time" = "このROMはCGB専用です。\n\nCGBモードで起動します。\n\n CrankBoyのCGB（カラー）エミュレーションは実験的機能です";
@@ -290,3 +289,9 @@
 "setdsc_apply_recommended" = "設定メニューでおすすめの設定をいつでも適用できます。";
 "setdsc_apply_recommended_done" = "おすすめの設定はすでに適用されています。";
 "setdsc_apply_recommended_scope" = "おすすめの設定を適用するため、スコープを「ゲーム」に切り替えてください。";
+"setdsc_apply_recommended_apply" = "ゲームのおすすめ設定を適用します。";
+"setdsc_save_snapshot_just_now" = "たった今\n作成したスナップショットを上書きします。";
+"setdsc_load_snapshot_just_now" = "たった今\n作成したスナップショットを復元します。";
+"setdsc_save_snapshot_ago" = "%s前に\n作成したスナップショットを上書きします。";
+"setdsc_load_snapshot_ago" = "%s前に\n作成したスナップショットを復元します。";
+"setdsc_disabled_by_script" = "ゲームスクリプトにより無効化。";
