@@ -580,7 +580,8 @@ static void on_draw(gb_s* gb, ScriptData* data)
 }
 
 static const struct ScriptRecommendedSetting recommended[] = {
-    {PREFBIT_framerate, 1},  // 50fps
+    {PREFBIT_framerate, 2},      // 60fps (DMG)
+    {PREFBIT_cgb_framerate, 2},  // 50fps (CGB)
 
     RECOMMENDED_SETTINGS_END,
 };
