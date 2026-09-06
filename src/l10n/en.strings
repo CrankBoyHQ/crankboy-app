@@ -93,6 +93,7 @@
 "setopt_b_plus_a" = "Ⓑ + Ⓐ";
 "setopt_menu_to_a" = "⧂ › Ⓐ";
 "setopt_menu_to_b" = "⧂ › Ⓑ";
+"setopt_swap_ab" = "Ⓐ ‹ › Ⓑ";
 "setopt_menu" = "⊙";
 "setopt_lock_override" = "Lock Override";
 "setopt_cpu_speed" = "CPU Speed";
@@ -157,8 +158,8 @@
 "setdsc_first_scaling_line" = "Due to the 3:5 ratio between the GB's and Playdate's vertical resolutions, 1 in every 3 scanlines must be vertically squished.\n\nThis means there are three choices for which lines are to be the ones to squish.If text is uneven, try adjusting this.";
 "setdsc_stabilization" = "Stabilizes scaling artifacts by making them scroll with the camera.\n\nThis prevents textures from shimmering, but may reduce performance slightly in scroll-heavy games.\n\nWorks best with Dither set to \"Staggered\".";
 "setdsc_crank" = "Start/Select mode.\n\nTurn the crank back to press Select.\n\nTurn forward to press Start.\n\nSee 'Down' for crank-down action.";
-"setdsc_crank_turbo_ab" = "Turbo A/B mode.\n\nCW = turbo-press A.\nCCW = turbo-press B.";
-"setdsc_crank_turbo_ba" = "Turbo B/A mode.\n\nCW = turbo-press B.\nCCW = turbo-press A.";
+"setdsc_crank_turbo_ab" = "Turbo Ⓐ/Ⓑ mode.\n\nCW = turbo-press Ⓐ.\nCCW = turbo-press Ⓑ.";
+"setdsc_crank_turbo_ba" = "Turbo Ⓑ/Ⓐ mode.\n\nCW = turbo-press Ⓑ.\nCCW = turbo-press Ⓐ.";
 "setdsc_crank_none" = "Assign a function to the crank.\n\nCurrently: no function.";
 "setdsc_crank_down" = "Only available when Crank mode is set to Start/Select.";
 "setdsc_crank_down_active" = "When the crank is pointed down (between Start and Select), choose whether to hold Start + Select or do nothing.";
@@ -168,8 +169,9 @@
 "setdsc_a_to_menu" = "Assign a replacement button input for holding Ⓐ and then pressing Ⓑ.\n\nThis replaces the normal button presses.";
 "setdsc_b_to_menu" = "Assign a replacement button input for holding Ⓑ and then pressing Ⓐ.\n\nThis replaces the normal button presses.";
 "setdsc_b_plus_a" = "Assign a replacement button input when simultaneously pressing both Ⓐ and Ⓑ.\n\nThis replaces the normal button presses.\n\nNote: both buttons must be pressed on exactly the same frame, which is quite precise!";
-"setdsc_menu_to_a" = "Assign a replacement button input for holding both Ⓐ and Ⓑ then releasing Ⓑ.\n\nIf A is omitted here, then the A input is suppressed until next released.\n\nDefault: maps to A normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)";
-"setdsc_menu_to_b" = "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both simultaneously).\n\nIf B is omitted here, then the B input is suppressed until next released.\n\nDefault: maps to B normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)";
+"setdsc_menu_to_a" = "Assign a replacement button input for holding both Ⓐ and Ⓑ then releasing Ⓑ.\n\nIf Ⓐ is omitted here, then the Ⓐ input is suppressed until next released.\n\nDefault: maps to Ⓐ normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)";
+"setdsc_menu_to_b" = "Assign a replacement button input for holding Ⓐ and Ⓑ then releasing Ⓐ (or both simultaneously).\n\nIf Ⓑ is omitted here, then the Ⓑ input is suppressed until next released.\n\nDefault: maps to Ⓑ normally, but to None if Ⓑ+Ⓐ triggered a combo input (see settings above)";
+"setdsc_swap_ab" = "Swap the Ⓐ and Ⓑ buttons: pressing Ⓐ sends Ⓑ and vice versa.\n\nOther button remappings are unaffected.";
 "setdsc_lock_override" = "Playdate's lock button can be used for start or select.\n\nRequires system access\n(i.e. launch CrankBoy via FunnyLoader)\n\nOnly applies input from the moment the lock button is pressed; holding the lock button has no effect.";
 "setdsc_cpu_speed" = "Normally, the CGB CPU can run twice as fast as the DMG (non-Color GB).\n\nSet to \"DMG\" to force it to run at DMG speed.\n\nCan greatly improve perf on titles which don't make efficient use of the CPU.\n\nThis is the opposite of overclocking.";
 "setdsc_hle_routines" = "Automatically identify certain common routines and replace them with high-level emulated versions.\n\nCan allow for large performance gains, but potentially inaccurate.";

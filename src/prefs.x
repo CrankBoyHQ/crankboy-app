@@ -48,6 +48,7 @@ PREF(ghosting, 0)
  * press_a_b:            same as above
  * menu_button:          0=Off, 1=Start, 2=Select, 3=Start+Select
  * lock_button:          0=None, 1=Start, 2=Select, 3=Start+Select, 4=A, 5=B
+ * swap_ab:              0=Off, 1=On
  */
 PREF(crank_mode, CRANK_MODE_START_SELECT)
 PREF(crank_down_action, 0)
@@ -60,6 +61,7 @@ PREF(hold_ab_release_a, PREF_BUTTON_ABR_DEFAULT)
 PREF(hold_ab_release_b, PREF_BUTTON_ABR_DEFAULT)
 PREF(lock_button, PREF_BUTTON_NONE)
 PREF(menu_button, 0)
+PREF(swap_ab, 0)
 
 /* --- cgb ---
  * cgb_speed:        0=Default, 1=Force slow mode

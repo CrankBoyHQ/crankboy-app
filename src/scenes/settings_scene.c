@@ -2433,6 +2433,16 @@ static OptionsMenuEntry* build_input(SectionDef* def, CB_SettingsScene* scene, i
         .on_press = NULL
     };
 
+    // swap A and B
+    section[++i] = (OptionsMenuEntry){
+        .name = T(setopt_swap_ab),
+        .values = off_on_labels,
+        .description = T(setdsc_swap_ab),
+        .pref_var = &preferences_swap_ab,
+        .max_value = 2,
+        .on_press = NULL
+    };
+
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_a_to_menu),
         .values = gb_button_labels_hp,

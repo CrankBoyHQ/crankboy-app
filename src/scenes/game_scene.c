@@ -2335,10 +2335,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             }
         }
 
+        PDButtons a_mask = preferences_swap_ab ? kButtonB : kButtonA;
+        PDButtons b_mask = preferences_swap_ab ? kButtonA : kButtonB;
         context->gb->direct.joypad_bits.a =
-            !((current_pd_buttons & kButtonA) || gameScene->crank_turbo_a_active);
+            !((current_pd_buttons & a_mask) || gameScene->crank_turbo_a_active);
         context->gb->direct.joypad_bits.b =
-            !((current_pd_buttons & kButtonB) || gameScene->crank_turbo_b_active);
+            !((current_pd_buttons & b_mask) || gameScene->crank_turbo_b_active);
         context->gb->direct.joypad_bits.left = !(current_pd_buttons & kButtonLeft);
         context->gb->direct.joypad_bits.up = !(current_pd_buttons & kButtonUp);
         context->gb->direct.joypad_bits.right = !(current_pd_buttons & kButtonRight);
