@@ -39,6 +39,7 @@ More performance and better Audio. Also: 日本語 is arriving.
 
 ## Performance (TCM)
 
+- TCM mode enabled by default on all Playdate revisions.
 - TCM mode changes apply live. No restart needed.
 - TCM relocation has been hardened. No crashes in CGB mode anymore!
 

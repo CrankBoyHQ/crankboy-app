@@ -1332,10 +1332,10 @@ void CB_GameScene_apply_settings(CB_GameScene* gameScene)
     if (gameScene->state == CB_GameSceneStateLoaded)
     {
         // TCM-off path wipes pockets: stop the source first, re-arm after.
-        if (preferences_itcm == 0)
+        if (preferences_tcm_mode == 0)
             CB_GameScene_stop_audio_source();
         tcm_apply(context->gb->is_cgb_mode);
-        if (preferences_itcm == 0)
+        if (preferences_tcm_mode == 0)
             reconfigure_audio_source(gameScene);
         CB_GameScene_apply_script_support(gameScene);
     }

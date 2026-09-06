@@ -2889,7 +2889,7 @@ static OptionsMenuEntry* build_misc(SectionDef* def, CB_SettingsScene* scene, in
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_tcm_mode),
         .values = off_on_labels,
-        .pref_var = &preferences_itcm,
+        .pref_var = &preferences_tcm_mode,
         .max_value = 2,
         .on_press = NULL
     };

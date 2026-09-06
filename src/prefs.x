@@ -104,14 +104,14 @@ PREF(library_launch_animation, 1)
 PREF(show_bundled_games, 1)
 
 /* --- misc ---
- * itcm:                           0=Off, 1=Both, 2=Core, 3=Draw
+ * tcm_mode:                       0=Off, 1=On
  * uncap_fps:                      0=Off, 1=On
  * display_fps:                    0=Off, 1=On, 2=Playdate
  * disable_autolock:               0=Off, 1=On
  * ui_sounds:                      0=Off, 1=On
  * boot_fade:                      0=Off, 1=Short, 2=Long, 3=Short (W), 4=Long (W)
  */
-PREF(itcm, (pd_rev == PD_REV_A))
+PREF(tcm_mode, 1)
 PREF(uncap_fps, 0)
 PREF(display_fps, 0)
 PREF(ui_sounds, 1)

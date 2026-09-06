@@ -172,7 +172,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
 
     // DTCM relocation controlled by the TCM Mode preference (default on).
     // Manual escape hatch if a device/rev misbehaves.
-    if (!dtcm_enabled() || preferences_itcm == 0)
+    if (!dtcm_enabled() || preferences_tcm_mode == 0)
     {
         // just use original non-relocated code
         core_itcm_reloc = itcm_start;
@@ -487,7 +487,7 @@ __section__(".rare") void tcm_relocate(bool cgb)
 // lock/unlock cycles don't leak the pool toward the stack canary.
 __section__(".rare") void tcm_clear(bool cgb, void* pool_keep_end)
 {
-    if (!dtcm_enabled() || preferences_itcm == 0)
+    if (!dtcm_enabled() || preferences_tcm_mode == 0)
         return;
 
     void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
@@ -522,7 +522,7 @@ __section__(".rare") void tcm_apply(bool cgb)
     if (!dtcm_enabled())
         return;
 
-    if (preferences_itcm == 0)
+    if (preferences_tcm_mode == 0)
     {
         void* itcm_start = cgb ? (void*)&__itcm_cgb_start : (void*)&__itcm_dmg_start;
         core_itcm_offset = 0;
