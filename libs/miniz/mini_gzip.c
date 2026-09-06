@@ -126,17 +126,22 @@ mini_gz_unpack(struct mini_gzip *gz_ptr, void *mem_out, size_t mem_out_len)
 		if (ret == MZ_DATA_ERROR) {
 			return (-2);
 		}
-		if (s.avail_out == 0) {
-			/* Output buffer full before stream end: genuinely too small.
-			 * Must be checked AFTER MZ_STREAM_END: an exactly-sized
-			 * buffer legitimately reaches avail_out == 0 on the final
-			 * chunk. */
-			return (-3);
-		}
 		if (s.avail_in == 0 && in_bytes_avail == 0) {
 			/* Input exhausted without stream end: truncated stream.
 			 * (Previously this spun forever feeding 0-byte chunks.) */
 			return (-5);
+		}
+		if (s.avail_out == 0) {
+			/* Output buffer full before stream end: genuinely too small.
+			 * Must be checked AFTER MZ_STREAM_END: an exactly-sized
+			 * buffer legitimately reaches avail_out == 0 on the final
+			 * chunk. With MZ_SYNC_FLUSH the stream-end marker may live in
+			 * a later chunk, so if this chunk was fully consumed and more
+			 * input remains, feed it before declaring the buffer too
+			 * small. */
+			if (s.avail_in == 0 && in_bytes_avail > 0)
+				continue;
+			return (-3);
 		}
 	}
 	ret = inflateEnd(&s);
