@@ -9,6 +9,7 @@
 #ifndef preferences_h
 #define preferences_h
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define CRANK_MODE_START_SELECT 0
@@ -98,6 +99,9 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
 
 // returns -1 on failure
 int prefvar_to_index(preference_t* pref);
+
+// effective display framerate (0=30, 1=50, 2=60), honoring the CGB override.
+int cb_effective_framerate(bool cgb_mode);
 
 // stores the given preferences on the heap. Must be free'd.
 void* preferences_store_subset(preferences_bitfield_t subset);

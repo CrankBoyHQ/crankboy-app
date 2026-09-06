@@ -169,6 +169,16 @@ int preferences_save_to_disk(const char* filename, preferences_bitfield_t leave_
     return (int)(intptr_t)call_with_main_stack_2(_preferences_save_to_disk, filename, &leave_as_is);
 }
 
+int cb_effective_framerate(bool cgb_mode)
+{
+    // Script-locked framerate wins over any CGB override.
+    if (prefs_locked_by_script & PREFBIT_framerate)
+        return preferences_framerate;
+    if (cgb_mode && preferences_cgb_framerate != 0)
+        return preferences_cgb_framerate - 1;
+    return preferences_framerate;
+}
+
 int prefvar_to_index(preference_t* pref)
 {
 #define PREF(a, b)                \

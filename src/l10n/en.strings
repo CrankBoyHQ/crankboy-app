@@ -148,6 +148,8 @@
 "setdsc_high_pass_filter" = "Emulates the hardware's capacitor coupling. Bass frequencies are weakend.\n\nOn:\nHardware-accurate sound. Costs a little performance.\n\nOff:\nFuller bass, but less faithful to the original hardware.";
 "setdsc_headphones" = "Select the audio output mode when an aux cable is connected.\n\nStereo:\nImmersive sound with spatial separation.\n\nMono:\n Combines channels, which improves performance.\n\nAlso used for Mirror.";
 "setdsc_framerate" = "Set the display framerate.\n\n30FPS: displays every second frame. Best performance.\n\n50FPS: displays 5 of every 6 frames. Fastest reliable full refresh.\n\n60FPS: displays every frame.";
+"setdsc_framerate_cgb_override" = "The framerate is set separately for Game Boy Color games.\n\nSee Game Boy Color - Framerate.";
+"setdsc_framerate_cgb_override_catalog" = "The framerate is set separately for CGB games.\n\nSee CGB - Framerate.";
 "setdsc_frame_blending" = "Blends two consecutive frames with dithering to reproduce the Game Boy's flicker-based transparency effects.";
 "setdsc_frame_blending_30fps_only" = "Blends two consecutive frames with dithering to reproduce the Game Boy's flicker-based transparency effects.\n\nOnly needed at 30FPS.";
 "setdsc_lcd_ghosting" = "Mimics the DMG LCD's slow pixel response, smearing motion over 100 ms.\n\nOnly available in DMG Mode.";
@@ -175,6 +177,8 @@
 "setdsc_grayscale_bias" = "Manually shift CGB grayscale conversion between 5 levels, from darker to brighter shades.\n\nOnly available in Manual mode.";
 "setdsc_grayscale_bias_manual" = "Manually shift CGB grayscale conversion between 5 levels, from darker to brighter shades.";
 "setdsc_cgb_gamma" = "Adjusts the perceptual gamma of the CGB grayscale conversion.\n\nHigher values brighten dark areas at the cost of highlights. Lower values darken the image.";
+"setdsc_cgb_framerate" = "Set the display framerate for Game Boy Color games.\n\nUse display: use the value from Display settings.";
+"setdsc_cgb_framerate_catalog" = "Set the display framerate for CGB games.\n\nUse display: use the value from Display settings.";
 "setdsc_rewind" = "Rewind up to 10 seconds of gameplay.\n\nHold Ⓑ or Up and undock the crank to enter rewind.\n\nHold Ⓑ or Up while cranking to scrub.\n\nRelease Ⓑ or Up then dock the crank to exit.\n\nDMG only.";
 "setdsc_overclock" = "Runs the emulated CPU faster between frames to reduce in-game lag.\n\nThe Playdate must work harder, so results vary and timing may be less accurate.\n\nOn Game Boy Color at double speed, x4 is limited to x2.";
 "setdsc_overclock_catalog" = "Runs the emulated CPU faster between frames to reduce in-game lag.\n\nThe Playdate must work harder, so results vary and timing may be less accurate.\n\nIn CGB double-speed mode, x4 is limited to x2.";
@@ -503,6 +507,7 @@
 "setval_low" = "Low";
 "setval_buffered" = "Buffered";
 "setval_playdate" = "Playdate";
+"setval_use_display" = "Use Display";
 "setval_30fps" = "30 FPS";
 "setval_50fps" = "50 FPS";
 "setval_60fps" = "60 FPS";

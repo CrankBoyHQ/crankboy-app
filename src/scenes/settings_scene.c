@@ -976,6 +976,7 @@ const char** crank_down_action_labels;
 const char** sample_rate_labels;
 const char** fps_labels;
 const char** framerate_labels;
+const char** cgb_framerate_labels;
 const char** slot_labels;
 const char** save_slot_labels;
 const char** dither_pattern_labels;
@@ -1149,6 +1150,13 @@ static void CB_init_settings_labels(void)
     framerate_labels[1] = T(setval_50fps);
     framerate_labels[2] = T(setval_60fps);
     framerate_labels[3] = NULL;
+
+    cgb_framerate_labels = cb_malloc(5 * sizeof(const char*));
+    cgb_framerate_labels[0] = T(setval_use_display);
+    cgb_framerate_labels[1] = T(setval_30fps);
+    cgb_framerate_labels[2] = T(setval_50fps);
+    cgb_framerate_labels[3] = T(setval_60fps);
+    cgb_framerate_labels[4] = NULL;
 
     slot_labels = cb_malloc(11 * sizeof(const char*));
     slot_labels[0] = T(setval_slot_0);
@@ -2244,6 +2252,10 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     memset(section, 0, sizeof(OptionsMenuEntry) * MAX_SECTION_ENTRIES);
     int i = -1;
 
+    bool cgb = scene_is_cgb_active(scene);
+    bool cgb_override_active = cgb && preferences_cgb_framerate != 0;
+    int eff_fr = cb_effective_framerate(cgb);
+
     section[++i] = (OptionsMenuEntry){
         .name = T(sethdr_display), .header = 1, .description = T(setdsc_display)
     };
@@ -2252,15 +2264,22 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_framerate),
         .values = framerate_labels,
-        .description = T(setdsc_framerate),
+        .description = cgb_override_active
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+                           ? T(setdsc_framerate_cgb_override_catalog)
+#else
+                           ? T(setdsc_framerate_cgb_override)
+#endif
+                           : T(setdsc_framerate),
         .pref_var = &preferences_framerate,
         .max_value = 3,
+        .locked = cgb_override_active,
         .rebuild_when_changed = 1,
         .on_press = NULL,
     };
 
     // frame blending (30FPS only: 30hz flicker is shown as-is at 50/60FPS)
-    if (preferences_framerate == 0)
+    if (eff_fr == 0)
     {
         section[++i] = (OptionsMenuEntry){
             .name = T(setopt_frame_blending),
@@ -2521,6 +2540,19 @@ static OptionsMenuEntry* build_cgb(SectionDef* def, CB_SettingsScene* scene, int
 #endif
         .header = 1,
         .description = T(setdsc_cgb)
+    };
+
+    section[++i] = (OptionsMenuEntry){
+        .name = T(setopt_framerate),
+        .values = cgb_framerate_labels,
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        .description = T(setdsc_cgb_framerate_catalog),
+#else
+        .description = T(setdsc_cgb_framerate),
+#endif
+        .pref_var = &preferences_cgb_framerate,
+        .max_value = 4,
+        .on_press = NULL,
     };
 
     section[++i] = (OptionsMenuEntry){

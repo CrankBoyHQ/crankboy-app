@@ -2104,6 +2104,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
     CB_GameScene* gameScene = object;
     CB_GameSceneContext* context = gameScene->context;
+    int eff_fr = cb_effective_framerate(context->cgb_mode);
 
     if (gameScene->cgb_needs_palette_recompute)
     {
@@ -2542,7 +2543,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             tick_audio_sync(gameScene);
             /* Keep the requested refresh rate consistent with the frame path
              * we skipped (30fps mode keys off next_frames_elapsed == 2). */
-            gameScene->next_frames_elapsed = (preferences_framerate == 0) ? 2 : 1;
+            gameScene->next_frames_elapsed = (eff_fr == 0) ? 2 : 1;
         }
 
         if (gameScene->rewind.active && !preferences_rewind_enabled)
@@ -2599,8 +2600,8 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 void (*run_frame_function_pointer)(gb_s*) = gb_run_frame_;
 #endif
 
-                pgb_dirty_skip = context->gb->is_cgb_mode ||
-                                 (preferences_blend_frames && preferences_framerate == 0);
+                pgb_dirty_skip =
+                    context->gb->is_cgb_mode || (preferences_blend_frames && eff_fr == 0);
 
                 if (context->gb->is_cgb_mode)
                 {
@@ -2681,7 +2682,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
 
                     uint8_t* original_lcd = context->gb->lcd;
 
-                    if (preferences_framerate == 0 && preferences_blend_frames)
+                    if (eff_fr == 0 && preferences_blend_frames)
                     {
                         // --- CGB 30fps Consecutive-Frame Blending (simple) ---
                         // Frame N (bright)
@@ -2811,12 +2812,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         tick_audio_sync(gameScene);
 
                         bool run_second_frame = false;
-                        if (preferences_framerate == 1)
+                        if (eff_fr == 1)
                         {
                             // 50fps: [2,1,1,1,1] GB frames per tick at 50Hz.
                             run_second_frame = (gameScene->fs50_phase == 0);
                         }
-                        else if (preferences_framerate == 0)
+                        else if (eff_fr == 0)
                         {
                             run_second_frame = true;
                         }
@@ -2838,7 +2839,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                         context->gb->lcd = original_lcd;
                     }
                 }
-                else if (preferences_framerate == 0 && preferences_blend_frames)
+                else if (eff_fr == 0 && preferences_blend_frames)
                 {
                     // --- 30fps Frame Blending with Double Buffering ---
                     // Two buffers to avoid memcpy - swap lcd pointer instead
@@ -2896,12 +2897,12 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     tick_audio_sync(gameScene);
 
                     bool run_second_frame = false;
-                    if (preferences_framerate == 1)
+                    if (eff_fr == 1)
                     {
                         // 50fps: [2,1,1,1,1] GB frames per tick at 50Hz.
                         run_second_frame = (gameScene->fs50_phase == 0);
                     }
-                    else if (preferences_framerate == 0)
+                    else if (eff_fr == 0)
                     {
                         run_second_frame = true;
                     }
@@ -2921,7 +2922,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                     }
                 }
 
-                if (preferences_framerate == 1)
+                if (eff_fr == 1)
                     gameScene->fs50_phase = (gameScene->fs50_phase + 1) % 5;
 
                 gameScene->playtime += gameScene->next_frames_elapsed;
@@ -3124,7 +3125,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
             // Always request the update loop to run at 30 FPS.
             // (60 game boy frames per second.)
             // This ensures gb_run_frame() is called at a consistent rate.
-            if (preferences_framerate == 1)
+            if (eff_fr == 1)
             {
                 // 50fps: constant 50Hz loop regardless of per-tick frame count.
                 gameScene->scene->preferredRefreshRate = 50;
@@ -3143,9 +3144,7 @@ __section__(".text.tick") __space static void CB_GameScene_update(void* object, 
                 // Check RTC once per second (60 ticks at 60fps, 50 at 50fps,
                 // 30 at 30fps)
                 static int rtc_frame_counter = 0;
-                int rtc_check_interval = (preferences_framerate == 0)   ? 30
-                                         : (preferences_framerate == 1) ? 50
-                                                                        : 60;
+                int rtc_check_interval = (eff_fr == 0) ? 30 : (eff_fr == 1) ? 50 : 60;
 
                 if (++rtc_frame_counter >= rtc_check_interval)
                 {

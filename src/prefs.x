@@ -62,17 +62,19 @@ PREF(lock_button, PREF_BUTTON_NONE)
 PREF(menu_button, 0)
 
 /* --- cgb ---
- * cgb_speed:       0=Default, 1=Force slow mode
- * hle:             0=Off, 1=On
- * cgb_blend_bias:  0=Darker, 1=Dark, 2=Neutral, 3=Bright, 4=Brighter
- * cgb_bias_auto:   0=Manual, 1=Auto, 2=Contrast (ignores cgb_blend_bias)
- * cgb_gamma:       0..12 -> gamma 0.6..2.6 (0.1 steps below 1.0, 0.2 above; default 4 = 1.0)
+ * cgb_speed:        0=Default, 1=Force slow mode
+ * hle:              0=Off, 1=On
+ * cgb_blend_bias:   0=Darker, 1=Dark, 2=Neutral, 3=Bright, 4=Brighter
+ * cgb_bias_auto:    0=Manual, 1=Auto, 2=Contrast (ignores cgb_blend_bias)
+ * cgb_gamma:        0..12 -> gamma 0.6..2.6 (0.1 steps below 1.0, 0.2 above; default 4 = 1.0)
+ * cgb_framerate:    0=Use display, 1=30FPS, 2=50FPS, 3=60FPS
  */
 PREF(cgb_speed, 0)
 PREF(hle, 1)
 PREF(cgb_blend_bias, 2)
 PREF(cgb_bias_auto, 1)
 PREF(cgb_gamma, 4)
+PREF(cgb_framerate, 1)
 
 /* --- behaviour ---
  * overclock:          0=Off, 1=x2, 2=x4
