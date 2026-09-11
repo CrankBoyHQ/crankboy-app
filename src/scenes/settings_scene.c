@@ -1383,8 +1383,7 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     {
         char* msg;
         playdate->system->formatString(&msg, T(modal_save_state_error), playdate->file->geterr());
-        const char* options[] = {T(label_ok), NULL};
-        CB_presentModal(CB_Modal_new(msg, options, NULL, NULL)->scene);
+        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
         cb_free(msg);
     }
     else

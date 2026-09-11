@@ -1197,10 +1197,8 @@ static void launch_game_recommended_cb(void* ud, int option)
         preferences_restore_subset(stored);
         cb_free(stored);
 
-        const char* info_options[] = {T(label_ok), NULL, NULL};
-        CB_Modal* info_modal = CB_Modal_new(
-            T(setdsc_apply_recommended), info_options, launch_game_after_later_info, game
-        );
+        CB_Modal* info_modal =
+            CB_Modal_new(T(setdsc_apply_recommended), NULL, launch_game_after_later_info, game);
         CB_presentModal(info_modal->scene);
     }
 }
