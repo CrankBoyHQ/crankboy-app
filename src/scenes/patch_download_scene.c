@@ -6,6 +6,7 @@
 #include "../userstack.h"
 #include "../utility.h"
 #include "info_scene.h"
+#include "manage_rom_scene.h"
 #include "modal.h"
 #include "parental_lock_scene.h"
 #include "patches_scene.h"
@@ -925,11 +926,10 @@ static void context_top_level_update(
         case 2:  // rom info
         {
             cb_play_ui_sound(CB_UISound_Confirm);
-            char* text = get_rom_info(pds);
-            CB_InfoScene* infoScene =
-                CB_InfoScene_new(pds->game->names->name_short_leading_article, text);
-            cb_free(text);
-            CB_presentModal(infoScene->scene);
+            CB_ManageRomScene* s =
+                CB_ManageRomScene_new_info_only(pds->game, pds->header_animation_p);
+            if (s)
+                CB_presentModal(s->scene);
         }
         break;
         case 3:  // parental lock

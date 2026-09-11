@@ -17,6 +17,7 @@ typedef struct CB_ManageRomScene
     int actionCount;
     int save_slot_at_open;
     bool dismiss;
+    bool info_only;
     float filename_scroll_time;
 
     uint8_t mapper_byte;
@@ -31,3 +32,4 @@ typedef struct CB_ManageRomScene
 } CB_ManageRomScene;
 
 CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p);
+CB_ManageRomScene* CB_ManageRomScene_new_info_only(CB_Game* game, float initial_header_p);

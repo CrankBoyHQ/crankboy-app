@@ -232,6 +232,8 @@ static bool game_is_packed(CB_Game* game)
 
 static bool action_is_disabled(CB_ManageRomScene* self, int idx)
 {
+    if (self->info_only)
+        return false;
     if (idx == 2 && !self->game->coverPath)
         return true;
 #ifdef CRANKBOY_OFFICIAL_CATALOG
@@ -416,6 +418,15 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     CB_ModalCallback cb = NULL;
     int filename_lines = 1;
 
+    if (self->info_only)
+    {
+        if (self->started_without_header)
+            self->is_dismissing = true;
+        else
+            self->dismiss = true;
+        return;
+    }
+
     if (idx == 0)
     {
 #ifdef CRANKBOY_OFFICIAL_CATALOG
@@ -576,7 +587,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
     if (self->cursorIndex >= 0)
     {
-        if (pushed & kButtonUp)
+        if (pushed & kButtonUp && !self->info_only)
         {
             int maxIndex = self->actionCount - 1;
             while (maxIndex >= 0 && action_is_disabled(self, maxIndex))
@@ -588,7 +599,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             clamp_cursor(self, -1);
             cb_play_ui_sound(CB_UISound_Navigate);
         }
-        if (pushed & kButtonDown)
+        if (pushed & kButtonDown && !self->info_only)
         {
             int maxIndex = self->actionCount - 1;
             while (maxIndex >= 0 && action_is_disabled(self, maxIndex))
@@ -791,16 +802,24 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // action rows
-    const char* action_labels[] = {
-        T(rom_action_delete_rom),
-        T(rom_action_clear_save),
-        T(rom_action_delete_cover),
-    };
-    for (int i = 0; i < self->actionCount; ++i)
+    if (self->info_only)
     {
-        int ay = ACTION_TOP_Y + header_y + i * (ACTION_ROW_H + 2);
-        bool disabled = action_is_disabled(self, i);
-        draw_action_row(ay, action_labels[i], i == self->cursorIndex, disabled);
+        int ay = LCD_ROWS - ACTION_ROW_H - 12;
+        draw_action_row(ay, T(pdmenu_back), self->cursorIndex == 0, false);
+    }
+    else
+    {
+        const char* action_labels[] = {
+            T(rom_action_delete_rom),
+            T(rom_action_clear_save),
+            T(rom_action_delete_cover),
+        };
+        for (int i = 0; i < self->actionCount; ++i)
+        {
+            int ay = ACTION_TOP_Y + header_y + i * (ACTION_ROW_H + 2);
+            bool disabled = action_is_disabled(self, i);
+            draw_action_row(ay, action_labels[i], i == self->cursorIndex, disabled);
+        }
     }
 
     if (header_y > 0)
@@ -846,6 +865,15 @@ static void CB_ManageRomScene_didSelectSettings(void* userdata)
         self->dismiss = true;
 }
 
+static void CB_ManageRomScene_didSelectBack(void* userdata)
+{
+    CB_ManageRomScene* self = userdata;
+    if (self->started_without_header)
+        self->is_dismissing = true;
+    else
+        self->dismiss = true;
+}
+
 static void CB_ManageRomScene_didSelectLibrary(void* userdata)
 {
     CB_ManageRomScene* self = userdata;
@@ -866,6 +894,11 @@ static void CB_ManageRomScene_menu(void* object)
 {
     CB_ManageRomScene* self = object;
     playdate->system->removeAllMenuItems();
+    if (self->info_only)
+    {
+        playdate->system->addMenuItem(T(pdmenu_back), CB_ManageRomScene_didSelectBack, self);
+        return;
+    }
     playdate->system->addMenuItem(T(pdmenu_library), CB_ManageRomScene_didSelectLibrary, self);
     playdate->system->addMenuItem(T(pdmenu_settings), CB_ManageRomScene_didSelectSettings, self);
 }
@@ -914,6 +947,25 @@ CB_ManageRomScene* CB_ManageRomScene_new(CB_Game* game, float initial_header_p)
     scene->free = CB_ManageRomScene_free;
     scene->menu = (void*)CB_ManageRomScene_menu;
     self->scene = scene;
+
+    return self;
+}
+
+CB_ManageRomScene* CB_ManageRomScene_new_info_only(CB_Game* game, float initial_header_p)
+{
+    CB_ManageRomScene* self = CB_ManageRomScene_new(game, initial_header_p);
+    if (!self)
+        return NULL;
+
+    self->info_only = true;
+    self->actionCount = 1;
+    self->cursorIndex = 0;
+
+    const char* name = (game->names && game->names->name_short_leading_article)
+                           ? game->names->name_short_leading_article
+                           : "";
+    strncpy(self->header_name, name, sizeof(self->header_name) - 1);
+    self->header_name[sizeof(self->header_name) - 1] = '\0';
 
     return self;
 }
