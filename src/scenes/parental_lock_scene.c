@@ -119,7 +119,7 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
             }
             else
             {
-                const char* options[] = {T(label_cancel), T(label_yes), NULL};
+                const char* options[] = {T(label_no), T(label_yes), NULL};
                 char* msg = aprintf(T(plock_really_set), PARENTAL_LOCK_FILE);
                 CB_Modal* modal =
                     CB_Modal_new(msg, options, (void*)parental_lock_engage, parentalLockScene);

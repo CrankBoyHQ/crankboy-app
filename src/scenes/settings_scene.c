@@ -1526,7 +1526,7 @@ static void settings_action_save_state(void* _settingsScene, int option)
         playdate->system->formatString(&msg, T(modal_overwrite_state), human_time);
         cb_free(human_time);
 
-        const char* options[] = {T(label_cancel), T(label_yes), NULL};
+        const char* options[] = {T(label_no), T(label_yes), NULL};
         CB_presentModal(
             CB_Modal_new(msg, options, (CB_ModalCallback)confirm_save_state, settingsScene)->scene
         );
