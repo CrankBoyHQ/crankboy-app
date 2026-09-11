@@ -1401,7 +1401,6 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
             CB_Modal_new(T(modal_state_saved), options, state_action_modal_callback, settingsScene);
         if (modal)
         {
-            modal->width = 324;
             CB_presentModal(modal->scene);
         }
 
@@ -1429,9 +1428,6 @@ static void settings_post_action_lock_button(
 
         CB_Modal* modal = CB_Modal_new(T(modal_lock_button_info), NULL, NULL, NULL);
 
-        modal->height = 202;
-        modal->width = 380;
-        modal->margin = 12;
         modal->warning = CB_MODAL_WARNING_TOP;
 
         CB_presentModal(modal->scene);
@@ -1501,9 +1497,6 @@ static void settings_post_action_script(
         if (info->experimental)
         {
             CB_Modal* modal = CB_Modal_new(T(modal_script_experimental), NULL, NULL, NULL);
-
-            modal->width = 300;
-            modal->height = 150;
 
             CB_presentModal(modal->scene);
         }
@@ -1599,9 +1592,6 @@ static void settings_action_save_state_possibly_warn(
         CB_Modal* modal = CB_Modal_new(
             T(modal_save_warn), options, (void*)settings_action_save_state, settingsScene
         );
-        modal->width = 390;
-        modal->height = 234;
-        modal->margin = 12;
         // modal->warning = CB_MODAL_WARNING_BOTTOM_LR; // perhaps a little overzealous.
         CB_presentModal(modal->scene);
     }
@@ -1626,8 +1616,6 @@ static void settings_action_load_state_possibly_warn(
         const char* options[] = {T(label_cancel), T(label_load), NULL};
         unsigned int now = playdate->system->getSecondsSinceEpoch(NULL);
 
-        int h = 234;
-
         char* text;
         if (timestamp == 0 || timestamp >= now)
         {
@@ -1644,16 +1632,12 @@ static void settings_action_load_state_possibly_warn(
             else
             {
                 text = aprintf(T(modal_load_warn_from_2), human_time);
-                h = 180;
             }
             cb_free(human_time);
         }
         CB_Modal* modal =
             CB_Modal_new(text, options, (void*)settings_action_load_state, settingsScene);
         cb_free(text);
-        modal->width = 390;
-        modal->height = h;
-        modal->margin = 12;
         modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
         CB_presentModal(modal->scene);
     }

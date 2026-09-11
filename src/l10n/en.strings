@@ -222,7 +222,7 @@
 "lib_update_modal" = "CrankBoy Update!\n\n%s -> %s\n\n%s";
 "lib_folder_moved" = "To improve compatability, your CrankBoy library has been moved to the shared folder:\n\n%s";
 "lib_crank_dock_warning" = "The crank's current position will cause an input in-game.\n \nPlease dock the crank now.";
-"lib_recommended_settings" = "%s has recommended settings from the CrankBoy community.\n\n";
+"lib_recommended_settings" = "%s has recommended settings from the CrankBoy community.";
 "lib_please_wait" = "Please wait...";
 "lib_press_download" = "Press Ⓑ to download.";
 "lib_no_core" = "No Core";
@@ -259,7 +259,7 @@
 "cover_copy_to" = "and copy cover to:";
 
 // Game Scene
-"game_quit_question" = "Quit game?";
+"game_quit_question" = "Do you want to leave the game?";
 "game_invalid_script_data" = "Invalid script custom data size in file";
 "game_failed_load_state" = "Failed to load state.";
 "game_script_info" = "Script information:\n\n%s";
@@ -444,8 +444,8 @@
 "modal_really_load" = "Really load state?";
 "modal_really_load_from" = "Really load state from %s ago?";
 "modal_save_warn" = "WARNING! This game has an internal save data system, a snapshot of which will be included in this save state.\n\nIf you later load this state, this game's internal save data will irreversibly revert to its current state.";
-"modal_load_warn" = "WARNING! This game has its own save data system, which will be PERMANENTLY reset to match that of this state.\n\nYou will not be able to undo this by resetting. If this game has multiple files, all will be affected. You have been warned.";
-"modal_load_warn_from" = "WARNING! This game has its own save data system, which will be PERMANENTLY reset back %s. You will not be able to recover it by resetting. If this game has multiple files, all files will be affected.\n\nPerhaps make a back-up before proceeding. You have been warned.";
+    "modal_load_warn" = "WARNING! This game has its own save data system, which will be reset to match that of this state.\n\nYou will not be able to undo this by resetting. If this game has multiple files, all will be affected. You have been warned.";
+"modal_load_warn_from" = "WARNING! This game has its own save data system, which will be reset back %s. You will not be able to recover it by resetting. If this game has multiple files, all files will be affected.\n\nPerhaps make a back-up before proceeding. You have been warned.";
 "modal_load_warn_from_2" = "WARNING! This game has its own save data system, which will be permanently reset back %s. You will not be able to undo this by resetting the game.";
 "modal_save_data_exists" = "Save data exists in %s.\n\n%s";
 "modal_save_data_empty" = "%s is empty.\n\n%s";

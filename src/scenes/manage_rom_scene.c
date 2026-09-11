@@ -499,23 +499,6 @@ static void invoke_action(CB_ManageRomScene* self, int idx)
     cb_free(msg);
     if (modal)
     {
-        if (idx == 0)
-        {
-            int line_height = playdate->graphics->getFontHeight(CB_App->bodyFont);
-            int text_height = (2 + filename_lines) * line_height;
-            modal->width = 320;
-            modal->height = 100 + text_height;
-        }
-        else if (idx == 2)
-        {
-            modal->width = 240;
-            modal->height = 120;
-        }
-        else
-        {
-            modal->width = 280;
-            modal->height = 140;
-        }
         CB_presentModal(modal->scene);
     }
 }

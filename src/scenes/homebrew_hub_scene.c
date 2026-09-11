@@ -145,9 +145,6 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         char* s = aprintf("%s%s", T(hhub_rom_downloaded), suffix);
 
         CB_Modal* modal = CB_Modal_new(s, options, user_quit, NULL);
-        modal->width = 330;
-        modal->height = did_doctor ? 205 : 120;
-        modal->height += 34;
         CB_presentModal(modal->scene);
 
         cb_free(s);
@@ -420,8 +417,6 @@ static void context_list_files_update(
                 const char* options[] = {T(label_cancel), T(label_overwrite), NULL};
                 CB_Modal* modal =
                     CB_Modal_new(T(hhub_overwrite_prompt), options, (void*)confirm_download, hbs);
-                modal->width = 350;
-                modal->height = 140;
                 CB_presentModal(modal->scene);
             }
             else

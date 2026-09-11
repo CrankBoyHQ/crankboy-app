@@ -877,8 +877,6 @@ static void launch_game_prompt_cgb(CB_Game* game, int launch)
         if (msg)
         {
             CB_Modal* modal = CB_Modal_new(msg, modal_options, modal_cb, game);
-            modal->width = 380;
-            modal->height = 220;
             CB_presentModal(modal->scene);
         }
         else if (launch_mode >= 0)
@@ -959,10 +957,7 @@ static void _launch_game_check_sram(CB_Game* game)
                         modal = CB_Modal_new(msg, options, (void*)launch_game_prompt_cgb, game);
                         cb_free(msg);
                     }
-                    modal->width = 390;
-                    modal->height = 210;
-                    modal->icon_flashing = true;
-                    modal->warning = CB_MODAL_WARNING_TOP;
+                    modal->warning = CB_MODAL_WARNING_BOTTOM_LR;
                     CB_presentModal(modal->scene);
                 }
                 // TODO: script enabled disparity
@@ -1141,9 +1136,6 @@ static void launch_game_script_prompt(CB_Game* game)
                 options[2] = NULL;
             CB_Modal* modal = CB_Modal_new(T(lib_playdate_support), options, launch_game, game);
 
-            modal->width = 290;
-            modal->height = 152;
-
             CB_presentModal(modal->scene);
             launch = false;
         }
@@ -1152,9 +1144,6 @@ static void launch_game_script_prompt(CB_Game* game)
             const char* options[] = {T(label_yes), T(label_no), NULL};
             CB_Modal* modal =
                 CB_Modal_new(T(lib_script_experimental), options, disable_script_and_launch, game);
-
-            modal->width = 310;
-            modal->height = 224;
 
             CB_presentModal(modal->scene);
             launch = false;
@@ -1212,8 +1201,6 @@ static void launch_game_recommended_cb(void* ud, int option)
         CB_Modal* info_modal = CB_Modal_new(
             T(setdsc_apply_recommended), info_options, launch_game_after_later_info, game
         );
-        info_modal->width = 320;
-        info_modal->height = 160;
         CB_presentModal(info_modal->scene);
     }
 }
@@ -1266,9 +1253,6 @@ static void launch_game_prompt_if_script(void* ud, int option)
                     msg = default_msg;
                 }
                 CB_Modal* modal = CB_Modal_new(msg, options, launch_game_recommended_cb, game);
-
-                modal->width = 350;
-                modal->height = 200;
 
                 CB_presentModal(modal->scene);
                 return;
@@ -1756,9 +1740,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
                 if (modal)
                 {
-                    modal->width = 300;
-                    modal->height = 180;
-
                     if (update_info->w > 0)
                     {
                         modal->width = update_info->w;
@@ -1773,6 +1754,9 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     {
                         modal->margin = update_info->margin;
                     }
+
+                    modal->width = CB_MIN(modal->width, MODAL_MAX_WIDTH);
+                    modal->height = CB_MIN(modal->height, MODAL_MAX_HEIGHT);
 
                     CB_presentModal(modal->scene);
                     return;
@@ -1801,8 +1785,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             if (modal)
             {
-                modal->width = 350;
-                modal->height = 180;
                 CB_presentModal(modal->scene);
                 return;
             }
@@ -1876,8 +1858,6 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     T(lib_crank_dock_warning), options, launch_game_prompt_if_script, game
                 );
 
-                modal->width = 290;
-                modal->height = 190;
                 modal->accept_on_dock = 1;
 
                 CB_presentModal(modal->scene);

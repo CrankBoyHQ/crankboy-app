@@ -8,6 +8,98 @@
 #define MODAL_DROP_TIME 12
 #define PULSE_PERIOD 30
 
+#define MODAL_WIDTH 360
+#define MODAL_MARGIN 20
+#define MODAL_MARGIN_MIN 12
+#define MODAL_MIN_HEIGHT 90
+#define TITLE_GAP 10
+#define PARAGRAPH_GAP 11
+#define TEXT_BUTTON_SPACING 20
+#define BUTTON_HEIGHT 40
+#define BUTTON_BOTTOM_GAP 10
+
+static int cb_modal_text_height(const char* text, int width)
+{
+    int total = 0;
+    int paragraphs = 0;
+    const char* p = text;
+    while (p && *p)
+    {
+        const char* end = strstr(p, "\n\n");
+        int len = end ? (int)(end - p) : (int)strlen(p);
+        if (len > 0)
+        {
+            total += playdate->graphics->getTextHeightForMaxWidth(
+                CB_App->bodyFont, p, len, width, kUTF8Encoding, kWrapWord, 0, 0
+            );
+            paragraphs++;
+        }
+        if (!end)
+            break;
+        p = end + 2;
+    }
+    return total + (paragraphs > 0 ? (paragraphs - 1) * PARAGRAPH_GAP : 0);
+}
+
+static void cb_modal_draw_text(const char* text, int x, int y, int width)
+{
+    const char* p = text;
+    while (p && *p)
+    {
+        const char* end = strstr(p, "\n\n");
+        int len = end ? (int)(end - p) : (int)strlen(p);
+        if (len > 0)
+        {
+            int ph = playdate->graphics->getTextHeightForMaxWidth(
+                CB_App->bodyFont, p, len, width, kUTF8Encoding, kWrapWord, 0, 0
+            );
+            playdate->graphics->drawTextInRect(
+                p, len, kUTF8Encoding, x, y, width, ph, kWrapWord, kAlignTextCenter
+            );
+            y += ph + PARAGRAPH_GAP;
+        }
+        if (!end)
+            break;
+        p = end + 2;
+    }
+}
+
+void CB_Modal_auto_size(CB_Modal* modal)
+{
+    int frame = 3;
+    int margin = MODAL_MARGIN;
+
+    for (int pass = 0; pass < 2; ++pass)
+    {
+        int title_h = modal->title ? playdate->graphics->getFontHeight(CB_App->subheadFont) : 0;
+        int title_gap = modal->title ? TITLE_GAP : 0;
+        int text_h = modal->text ? cb_modal_text_height(modal->text, MODAL_WIDTH - 2 * margin) : 0;
+        int content = title_h + title_gap + text_h;
+
+        int h = modal->options_count > 0 ? frame * 2 + margin + content + TEXT_BUTTON_SPACING +
+                                               BUTTON_HEIGHT + BUTTON_BOTTOM_GAP
+                                         : frame * 2 + margin * 2 + content;
+
+        if (h <= MODAL_MAX_HEIGHT || margin == MODAL_MARGIN_MIN)
+        {
+            modal->margin = margin;
+            modal->height = CB_MIN(CB_MAX(h, MODAL_MIN_HEIGHT), MODAL_MAX_HEIGHT);
+            modal->width = MODAL_WIDTH;
+            return;
+        }
+
+        margin = MODAL_MARGIN_MIN;
+    }
+}
+
+void CB_Modal_set_title(CB_Modal* modal, const char* title)
+{
+    if (modal->title)
+        cb_free(modal->title);
+    modal->title = title ? cb_strdup(title) : NULL;
+    CB_Modal_auto_size(modal);
+}
+
 void CB_Modal_update(CB_Modal* modal)
 {
     ++modal->master_timer;
@@ -112,31 +204,58 @@ void CB_Modal_update(CB_Modal* modal)
     );
 
     int m = modal->margin;
-    playdate->graphics->setFont(CB_App->bodyFont);
+
+    int title_h = modal->title ? playdate->graphics->getFontHeight(CB_App->subheadFont) : 0;
+    int title_gap = modal->title ? TITLE_GAP : 0;
+
+    int text_h = 0;
     if (modal->text)
     {
-        int text_x = x + m;
-        int text_w = w - 2 * m;
-        int avail_h = h - 2 * m;
+        playdate->graphics->setFont(CB_App->bodyFont);
+        text_h = cb_modal_text_height(modal->text, w - 2 * m);
+    }
 
-        int total_text_h = playdate->graphics->getTextHeightForMaxWidth(
-            CB_App->bodyFont, modal->text, strlen(modal->text), text_w, kUTF8Encoding, kWrapWord, 0,
-            0
-        );
-        int y_offset = (modal->options_count == 0 && total_text_h < avail_h)
-                           ? (avail_h - total_text_h) / 2
-                           : 0;
-        int text_y = y + m + y_offset;
+    int content_h = title_h + title_gap + text_h;
+    int avail_h = h - 2 * m;
+    int y_offset =
+        (modal->options_count == 0 && content_h < avail_h) ? (avail_h - content_h) / 2 : 0;
 
-        playdate->graphics->drawTextInRect(
-            modal->text, strlen(modal->text), kUTF8Encoding, text_x, text_y, text_w,
-            avail_h - y_offset, kWrapWord, kAlignTextCenter
+    int cursor_y = y + m + y_offset;
+
+    if (modal->title)
+    {
+        playdate->graphics->setFont(CB_App->subheadFont);
+        int title_width = playdate->graphics->getTextWidth(
+            CB_App->subheadFont, modal->title, strlen(modal->title), kUTF8Encoding, 0
         );
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        playdate->graphics->drawText(
+            modal->title, strlen(modal->title), kUTF8Encoding, x + (w - title_width) / 2, cursor_y
+        );
+        cursor_y += title_h + title_gap;
+    }
+
+    if (modal->text)
+    {
+        playdate->graphics->setFont(CB_App->bodyFont);
+        playdate->graphics->setDrawMode(kDrawModeFillBlack);
+        cb_modal_draw_text(modal->text, x + m, cursor_y, w - 2 * m);
     }
 
     int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
-    int button_h = 40;
+    int button_h = BUTTON_HEIGHT;
     int button_radius = 6;
+
+    int iw = 0;
+    int ih = 0;
+    if (modal->warning != CB_MODAL_WARNING_NONE)
+    {
+        if (!modal->icon)
+            modal->icon =
+                playdate->graphics->loadBitmap(CB_get_forwarded_path("images/warning"), NULL);
+        if (modal->icon)
+            playdate->graphics->getBitmapData(modal->icon, &iw, &ih, NULL, NULL, NULL);
+    }
 
     int spacing;
     int first_center_x;
@@ -162,7 +281,25 @@ void CB_Modal_update(CB_Modal* modal)
     {
         int ox = first_center_x + spacing * i;
         int bx = ox - button_w / 2;
-        int by = y + h - total_thickness - 10 - button_h;
+        int by = y + h - total_thickness - BUTTON_BOTTOM_GAP - button_h;
+
+        if (modal->options_count == 1)
+        {
+            bool left_warn =
+                (modal->warning == CB_MODAL_WARNING_BOTTOM_LEFT ||
+                 modal->warning == CB_MODAL_WARNING_BOTTOM_LR);
+            bool right_warn =
+                (modal->warning == CB_MODAL_WARNING_BOTTOM_RIGHT ||
+                 modal->warning == CB_MODAL_WARNING_BOTTOM_LR);
+            if (left_warn || right_warn)
+            {
+                int inset = iw + 4;
+                int left = x + m + (left_warn ? inset : 0);
+                int right = x + w - m - (right_warn ? inset : 0);
+                bx = left;
+                button_w = right - left;
+            }
+        }
 
         if (i == modal->option_selected)
         {
@@ -193,11 +330,6 @@ void CB_Modal_update(CB_Modal* modal)
 
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
-    if (modal->warning != CB_MODAL_WARNING_NONE && !modal->icon)
-    {
-        modal->icon = playdate->graphics->loadBitmap(CB_get_forwarded_path("images/warning"), NULL);
-    }
-
     if (modal->icon)
     {
         if (!modal->icon_flashing ||
@@ -218,20 +350,20 @@ void CB_Modal_update(CB_Modal* modal)
 
             case CB_MODAL_WARNING_BOTTOM_LEFT:
                 icon_x = x + m;
-                icon_y = y + h - m - ih;
+                icon_y = y + h - total_thickness - BUTTON_BOTTOM_GAP - (BUTTON_HEIGHT + ih) / 2;
                 playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
                 break;
 
             case CB_MODAL_WARNING_BOTTOM_RIGHT:
                 icon_x = x + w - m - iw;
-                icon_y = y + h - m - ih;
+                icon_y = y + h - total_thickness - BUTTON_BOTTOM_GAP - (BUTTON_HEIGHT + ih) / 2;
                 playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
                 break;
 
             case CB_MODAL_WARNING_BOTTOM_LR:
                 // Draw Left
                 icon_x = x + m;
-                icon_y = y + h - m - ih;
+                icon_y = y + h - total_thickness - BUTTON_BOTTOM_GAP - (BUTTON_HEIGHT + ih) / 2;
                 playdate->graphics->drawBitmap(modal->icon, icon_x, icon_y, kBitmapUnflipped);
 
                 // Draw Right
@@ -309,6 +441,8 @@ void CB_Modal_free(CB_Modal* modal)
     }
     if (modal->text)
         cb_free(modal->text);
+    if (modal->title)
+        cb_free(modal->title);
     CB_Scene_free(modal->scene);
     cb_free(modal);
 }
@@ -318,10 +452,6 @@ CB_Modal* CB_Modal_new(
 )
 {
     CB_Modal* modal = allocz(CB_Modal);
-
-    modal->width = 250;
-    modal->height = 120;
-    modal->margin = 24;
 
     modal->options_count = 0;
     if (options)
@@ -347,6 +477,8 @@ CB_Modal* CB_Modal_new(
     modal->setup = 0;
 
     modal->dissolveMask = playdate->graphics->newBitmap(LCD_COLUMNS, LCD_ROWS, kColorWhite);
+
+    CB_Modal_auto_size(modal);
 
     return modal;
 }

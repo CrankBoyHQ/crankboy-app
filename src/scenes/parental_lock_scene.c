@@ -104,7 +104,6 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
                     ) != 0)
                 {
                     CB_Modal* modal = CB_Modal_new(T(plock_incorrect_password), NULL, NULL, NULL);
-                    modal->height = 90;
                     CB_presentModal(modal->scene);
                 }
                 else
@@ -114,8 +113,6 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
                         T(plock_unlock_prompt), options, (void*)parental_lock_disengage,
                         parentalLockScene
                     );
-                    modal->width = 330;
-                    modal->height += 20;
                     modal->cannot_dismiss = true;
                     CB_presentModal(modal->scene);
                 }
@@ -127,8 +124,6 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
                 CB_Modal* modal =
                     CB_Modal_new(msg, options, (void*)parental_lock_engage, parentalLockScene);
                 cb_free(msg);
-                modal->width = 350;
-                modal->height = 200;
                 CB_presentModal(modal->scene);
             }
         }

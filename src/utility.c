@@ -2374,7 +2374,9 @@ char* cb_markdown_to_plaintext(const char* md)
 size_t len_nullterm(void const* const* a)
 {
     size_t i = 0;
-    if (!a) return 0;
-    for (void const* const* b = a; *b; ++b, ++i);
+    if (!a)
+        return 0;
+    for (void const* const* b = a; *b; ++b, ++i)
+        ;
     return i;
 }

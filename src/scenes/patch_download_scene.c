@@ -685,8 +685,6 @@ static void context_patch_choose_interaction_update(
                 if (!hash_match(pds->selected_hack, pds->game))
                 {
                     CB_Modal* modal = CB_Modal_new(T(patch_rom_not_listed), NULL, NULL, NULL);
-                    modal->width = 320;
-                    modal->height = 190;
                     CB_presentModal(modal->scene);
                 }
             }
@@ -1680,8 +1678,6 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
             const char* options[] = {T(label_yes), T(label_no), NULL};
             msg = cb_strdup(T(patch_downloaded));
             modal = CB_Modal_new(msg, options, on_enable_patch_modal_close, pds);
-            modal->width = 320;
-            modal->height = 140;
             break;
         }
         case PDC_DOWNLOAD_FAILED_NOT_FOUND:
@@ -1731,7 +1727,6 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
     if (!pds->header_name[0])
     {
         CB_Modal* modal = CB_Modal_new(T(patch_no_title), NULL, NULL, NULL);
-        modal->height = 200;
         CB_presentModal(modal->scene);
         return false;
     }

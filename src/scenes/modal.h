@@ -3,6 +3,8 @@
 #include "../scene.h"
 
 #define MODAL_MAX_OPTIONS 3
+#define MODAL_MAX_WIDTH 390
+#define MODAL_MAX_HEIGHT 234
 
 // pop-up boxes and such
 
@@ -30,6 +32,7 @@ typedef struct CB_Modal
     uint8_t lcd[LCD_ROWS * LCD_ROWSIZE];
 
     char* text;
+    char* title;
     int options_count;
     int option_selected;
     int width, height, margin;
@@ -54,3 +57,5 @@ typedef struct CB_Modal
 CB_Modal* CB_Modal_new(
     const char* text, char const* const* options, CB_ModalCallback callback, void* ud
 );
+
+void CB_Modal_set_title(CB_Modal* modal, const char* title);
