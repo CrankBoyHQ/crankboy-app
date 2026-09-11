@@ -6,6 +6,7 @@
 
 #define MODAL_ANIM_TIME 16
 #define MODAL_DROP_TIME 12
+#define PULSE_PERIOD 30
 
 void CB_Modal_update(CB_Modal* modal)
 {
@@ -133,26 +134,64 @@ void CB_Modal_update(CB_Modal* modal)
         );
     }
 
-    int spacing = w / (1 + modal->options_count);
+    int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
+    int button_h = 40;
+    int button_radius = 6;
+
+    int spacing;
+    int first_center_x;
+
+    if (modal->options_count == 3)
+    {
+        int button_margin = 20;
+        spacing = (w - 2 * button_margin) / 3;
+        first_center_x = x + button_margin + spacing / 2;
+    }
+    else
+    {
+        spacing = w / (1 + modal->options_count);
+        first_center_x = x + spacing;
+    }
+
+    int button_w = spacing - 8;
+
+    int pulse_t = modal->master_timer % PULSE_PERIOD;
+    bool pulse_on = pulse_t < PULSE_PERIOD / 2;
 
     for (int i = 0; i < modal->options_count; ++i)
     {
-        int ox = x + spacing * (i + 1);
-        int oy = y + h - m - 8;
-        int option_height = 20;
+        int ox = first_center_x + spacing * i;
+        int bx = ox - button_w / 2;
+        int by = y + h - total_thickness - 10 - button_h;
 
         if (i == modal->option_selected)
         {
-            playdate->graphics->drawLine(
-                ox - spacing / 3, oy + 4, ox + spacing / 3, oy + 4, 3, kColorBlack
-            );
+            cb_fillRoundRect(PDRectMake(bx, by, button_w, button_h), button_radius, kColorBlack);
+            playdate->graphics->setDrawMode(kDrawModeFillWhite);
+
+            if (pulse_on)
+            {
+                cb_drawRoundRect(
+                    PDRectMake(bx - 2, by - 2, button_w + 4, button_h + 4), button_radius + 2, 2,
+                    kColorBlack
+                );
+            }
+        }
+        else
+        {
+            cb_fillRoundRect(PDRectMake(bx, by, button_w, button_h), button_radius, kColorWhite);
+            cb_drawRoundRect(PDRectMake(bx, by, button_w, button_h), button_radius, 2, kColorBlack);
+            playdate->graphics->setDrawMode(kDrawModeFillBlack);
         }
 
+        int text_y = by + (button_h - fontHeight) / 2;
         playdate->graphics->drawTextInRect(
-            modal->options[i], strlen(modal->options[i]), kUTF8Encoding, ox - spacing / 2,
-            oy - option_height, spacing, option_height, kWrapClip, kAlignTextCenter
+            modal->options[i], strlen(modal->options[i]), kUTF8Encoding, bx, text_y, button_w,
+            button_h, kWrapClip, kAlignTextCenter
         );
     }
+
+    playdate->graphics->setDrawMode(kDrawModeCopy);
 
     if (modal->warning != CB_MODAL_WARNING_NONE && !modal->icon)
     {
