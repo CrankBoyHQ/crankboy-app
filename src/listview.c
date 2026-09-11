@@ -11,7 +11,6 @@
 #include "app.h"
 
 static CB_ListItem* CB_ListItem_new(void);
-static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bool animated);
 static void CB_ListItem_super_free(CB_ListItem* item);
 
 static int CB_ListView_rowHeight = 32;
@@ -24,6 +23,60 @@ static float CB_ListView_repeatInterval2 = 2.0f;
 
 static float CB_ListView_crankResetMinTime = 2.0f;
 static float CB_ListView_crankMinChange = 30.0f;
+
+#define CB_CHECKBOX_SIZE 25
+#define CB_CHECKBOX_LEFT_INSET 4
+#define CB_CHECKBOX_GAP 4
+
+static const int checkmark_poly[] = {
+    18, 4,  19, 4,  20, 5,  20, 6,  19, 7,  19, 8,  18, 9,  18, 10, 17, 11, 17, 12, 16, 13, 16, 14,
+    15, 15, 15, 16, 14, 17, 14, 18, 13, 19, 13, 20, 12, 21, 11, 21, 10, 20, 9,  19, 8,  18, 7,  17,
+    6,  16, 5,  15, 4,  14, 4,  13, 5,  12, 6,  12, 7,  13, 8,  14, 9,  15, 10, 16, 11, 17, 12, 16,
+    12, 15, 13, 14, 13, 13, 14, 12, 14, 11, 15, 10, 15, 9,  16, 8,  16, 7,  17, 6,  17, 5,
+};
+#define CHECKMARK_PTS (sizeof(checkmark_poly) / sizeof(int) / 2)
+
+static void cb_draw_checkbox(int bx, int by, bool checked, bool selected, bool dragging)
+{
+    LCDColor outline = selected ? kColorWhite : kColorBlack;
+    bool filled = checked && !dragging;
+    LCDColor fill =
+        filled ? (selected ? kColorWhite : kColorBlack) : (selected ? kColorBlack : kColorWhite);
+
+    playdate->graphics->fillRect(bx + 1, by, CB_CHECKBOX_SIZE - 2, 1, outline);
+    playdate->graphics->fillRect(bx, by + 1, CB_CHECKBOX_SIZE, 1, outline);
+    playdate->graphics->fillRect(bx, by + CB_CHECKBOX_SIZE - 2, CB_CHECKBOX_SIZE, 1, outline);
+    playdate->graphics->fillRect(
+        bx + 1, by + CB_CHECKBOX_SIZE - 1, CB_CHECKBOX_SIZE - 2, 1, outline
+    );
+    playdate->graphics->fillRect(bx, by + 1, 1, CB_CHECKBOX_SIZE - 2, outline);
+    playdate->graphics->fillRect(bx + 1, by, 1, CB_CHECKBOX_SIZE, outline);
+    playdate->graphics->fillRect(bx + CB_CHECKBOX_SIZE - 2, by, 1, CB_CHECKBOX_SIZE, outline);
+    playdate->graphics->fillRect(
+        bx + CB_CHECKBOX_SIZE - 1, by + 1, 1, CB_CHECKBOX_SIZE - 2, outline
+    );
+    playdate->graphics->fillRect(bx + 2, by + 2, CB_CHECKBOX_SIZE - 4, CB_CHECKBOX_SIZE - 4, fill);
+
+    if (dragging)
+    {
+        LCDColor tri = kColorWhite;
+        int up[6] = {bx + 12, by + 5, bx + 4, by + 11, bx + 20, by + 11};
+        int down[6] = {bx + 12, by + 21, bx + 3, by + 14, bx + 21, by + 14};
+        playdate->graphics->fillPolygon(3, up, tri, kPolygonFillNonZero);
+        playdate->graphics->fillPolygon(3, down, tri, kPolygonFillNonZero);
+    }
+    else if (checked)
+    {
+        LCDColor check = selected ? kColorBlack : kColorWhite;
+        int pts[CHECKMARK_PTS * 2];
+        for (int k = 0; k < CHECKMARK_PTS * 2; k += 2)
+        {
+            pts[k] = bx + checkmark_poly[k];
+            pts[k + 1] = by + checkmark_poly[k + 1];
+        }
+        playdate->graphics->fillPolygon(CHECKMARK_PTS, pts, check, kPolygonFillNonZero);
+    }
+}
 
 CB_ListView* CB_ListView_new(void)
 {
@@ -73,6 +126,8 @@ CB_ListView* CB_ListView_new(void)
     listView->textInset = 4;
 
     listView->hideScrollIndicator = false;
+    listView->ignoreButtons = false;
+    listView->checkboxDrag = false;
     listView->font = CB_App->subheadFont;
 
     listView->needsDisplay = true;
@@ -151,28 +206,31 @@ void CB_ListView_update(CB_ListView* listView)
     PDButtons pushed = CB_App->buttons_pressed;
     PDButtons pressed = CB_App->buttons_down;
 
-    if (pushed & kButtonDown)
+    if (!listView->ignoreButtons)
     {
-        if (listView->items->length > 0)
+        if (pushed & kButtonDown)
         {
-            int nextIndex = listView->selectedItem + 1;
-            if (nextIndex >= listView->items->length)
+            if (listView->items->length > 0)
             {
-                nextIndex = 0;
+                int nextIndex = listView->selectedItem + 1;
+                if (nextIndex >= listView->items->length)
+                {
+                    nextIndex = 0;
+                }
+                CB_ListView_selectItem(listView, nextIndex, true);
             }
-            CB_ListView_selectItem(listView, nextIndex, true);
         }
-    }
-    else if (pushed & kButtonUp)
-    {
-        if (listView->items->length > 0)
+        else if (pushed & kButtonUp)
         {
-            int prevIndex = listView->selectedItem - 1;
-            if (prevIndex < 0)
+            if (listView->items->length > 0)
             {
-                prevIndex = listView->items->length - 1;
+                int prevIndex = listView->selectedItem - 1;
+                if (prevIndex < 0)
+                {
+                    prevIndex = listView->items->length - 1;
+                }
+                CB_ListView_selectItem(listView, prevIndex, true);
             }
-            CB_ListView_selectItem(listView, prevIndex, true);
         }
     }
 
@@ -220,81 +278,85 @@ void CB_ListView_update(CB_ListView* listView)
         listView->crankChange = 0;
     }
 
-    CB_ListViewDirection old_direction = listView->direction;
-    listView->direction = CB_ListViewDirectionNone;
+    if (!listView->ignoreButtons)
+    {
+        CB_ListViewDirection old_direction = listView->direction;
+        listView->direction = CB_ListViewDirectionNone;
 
-    if (pressed & kButtonUp)
-    {
-        listView->direction = CB_ListViewDirectionUp;
-    }
-    else if (pressed & kButtonDown)
-    {
-        listView->direction = CB_ListViewDirectionDown;
-    }
-
-    if (listView->direction == CB_ListViewDirectionNone || listView->direction != old_direction)
-    {
-        listView->repeatIncrementTime = 0;
-        listView->repeatLevel = 0;
-        listView->repeatTime = 0;
-    }
-    else
-    {
-        listView->repeatIncrementTime += CB_App->dt;
-
-        float repeatInterval = CB_ListView_repeatInterval1;
-        if (listView->repeatLevel > 0)
+        if (pressed & kButtonUp)
         {
-            repeatInterval = CB_ListView_repeatInterval2;
+            listView->direction = CB_ListViewDirectionUp;
+        }
+        else if (pressed & kButtonDown)
+        {
+            listView->direction = CB_ListViewDirectionDown;
         }
 
-        if (listView->repeatIncrementTime >= repeatInterval)
+        if (listView->direction == CB_ListViewDirectionNone || listView->direction != old_direction)
         {
-            listView->repeatLevel = CB_MIN(3, listView->repeatLevel + 1);
-            listView->repeatIncrementTime = fmodf(listView->repeatIncrementTime, repeatInterval);
+            listView->repeatIncrementTime = 0;
+            listView->repeatLevel = 0;
+            listView->repeatTime = 0;
         }
-
-        if (listView->repeatLevel > 0)
+        else
         {
-            listView->repeatTime += CB_App->dt;
+            listView->repeatIncrementTime += CB_App->dt;
 
-            float repeatRate = 0.16f;
-
-            if (listView->repeatLevel == 2)
+            float repeatInterval = CB_ListView_repeatInterval1;
+            if (listView->repeatLevel > 0)
             {
-                repeatRate = 0.1f;
-            }
-            else if (listView->repeatLevel == 3)
-            {
-                repeatRate = 0.05f;
+                repeatInterval = CB_ListView_repeatInterval2;
             }
 
-            if (listView->repeatTime >= repeatRate)
+            if (listView->repeatIncrementTime >= repeatInterval)
             {
-                listView->repeatTime = fmodf(listView->repeatTime, repeatRate);
+                listView->repeatLevel = CB_MIN(3, listView->repeatLevel + 1);
+                listView->repeatIncrementTime =
+                    fmodf(listView->repeatIncrementTime, repeatInterval);
+            }
 
-                if (listView->direction == CB_ListViewDirectionUp)
+            if (listView->repeatLevel > 0)
+            {
+                listView->repeatTime += CB_App->dt;
+
+                float repeatRate = 0.16f;
+
+                if (listView->repeatLevel == 2)
                 {
-                    if (listView->items->length > 0)
-                    {
-                        int prevIndex = listView->selectedItem - 1;
-                        if (prevIndex < 0)
-                        {
-                            prevIndex = listView->items->length - 1;
-                        }
-                        CB_ListView_selectItem(listView, prevIndex, true);
-                    }
+                    repeatRate = 0.1f;
                 }
-                else if (listView->direction == CB_ListViewDirectionDown)
+                else if (listView->repeatLevel == 3)
                 {
-                    if (listView->items->length > 0)
+                    repeatRate = 0.05f;
+                }
+
+                if (listView->repeatTime >= repeatRate)
+                {
+                    listView->repeatTime = fmodf(listView->repeatTime, repeatRate);
+
+                    if (listView->direction == CB_ListViewDirectionUp)
                     {
-                        int nextIndex = listView->selectedItem + 1;
-                        if (nextIndex >= listView->items->length)
+                        if (listView->items->length > 0)
                         {
-                            nextIndex = 0;
+                            int prevIndex = listView->selectedItem - 1;
+                            if (prevIndex < 0)
+                            {
+                                prevIndex = listView->items->length - 1;
+                            }
+                            CB_ListView_selectItem(listView, prevIndex, true);
                         }
-                        CB_ListView_selectItem(listView, nextIndex, true);
+                    }
+                    else if (listView->direction == CB_ListViewDirectionDown)
+                    {
+                        if (listView->items->length > 0)
+                        {
+                            int nextIndex = listView->selectedItem + 1;
+                            if (nextIndex >= listView->items->length)
+                            {
+                                nextIndex = 0;
+                            }
+                            CB_ListView_selectItem(listView, nextIndex, true);
+                        }
                     }
                 }
             }
@@ -334,15 +396,19 @@ void CB_ListView_update(CB_ListView* listView)
     {
         CB_ListItemButton* button = listView->items->items[listView->selectedItem];
 
-        if (button->item.type == CB_ListViewItemTypeButton)
+        if (button->item.type == CB_ListViewItemTypeButton ||
+            button->item.type == CB_ListViewItemTypeCheckbox)
         {
             playdate->graphics->setFont(listView->font);
             int textWidth = playdate->graphics->getTextWidth(
                 listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
             );
+            int leftInset = (button->item.type == CB_ListViewItemTypeCheckbox)
+                                ? (CB_CHECKBOX_LEFT_INSET + CB_CHECKBOX_SIZE + CB_CHECKBOX_GAP)
+                                : listView->textInset;
             int availableWidth = listView->scroll.active
-                                     ? listView->frame.width - (listView->textInset * 2)
-                                     : listView->frame.width - listView->textInset -
+                                     ? listView->frame.width - (leftInset * 2)
+                                     : listView->frame.width - leftInset -
                                            (CB_ListView_scrollInset * 2) -
                                            (CB_ListView_scrollIndicatorWidth * 2);
 
@@ -511,7 +577,8 @@ void CB_ListView_draw(CB_ListView* listView)
                 );
             }
 
-            if (item->type == CB_ListViewItemTypeButton)
+            if (item->type == CB_ListViewItemTypeButton ||
+                item->type == CB_ListViewItemTypeCheckbox)
             {
                 if (selected)
                 {
@@ -524,7 +591,7 @@ void CB_ListView_draw(CB_ListView* listView)
 
                 playdate->graphics->setFont(listView->font);
 
-                if (button->is_header)
+                if (item->type == CB_ListViewItemTypeButton && button->is_header)
                 {
                     float nameWidth = playdate->graphics->getTextWidth(
                         listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
@@ -562,7 +629,26 @@ void CB_ListView_draw(CB_ListView* listView)
                 }
                 else
                 {
-                    int textX = listX + listView->textInset;
+                    int leftInset;
+
+                    if (item->type == CB_ListViewItemTypeCheckbox)
+                    {
+                        CB_ListItemCheckbox* checkbox = (CB_ListItemCheckbox*)item;
+                        int cbx = listX + CB_CHECKBOX_LEFT_INSET;
+                        int cby = rowY + (item->height - CB_CHECKBOX_SIZE) / 2;
+                        cb_draw_checkbox(
+                            cbx, cby, checkbox->checked, selected,
+                            selected && listView->checkboxDrag
+                        );
+                        leftInset = CB_CHECKBOX_LEFT_INSET + CB_CHECKBOX_SIZE + CB_CHECKBOX_GAP;
+                    }
+                    else
+                    {
+                        leftInset = listView->textInset;
+                    }
+
+                    int textX = listX + leftInset;
+
                     int textY = rowY + (float)(item->height -
                                                playdate->graphics->getFontHeight(listView->font)) /
                                            2;
@@ -583,8 +669,7 @@ void CB_ListView_draw(CB_ListView* listView)
                         rightSidePadding = 1;
                     }
 
-                    int maxTextWidth =
-                        listView->frame.width - listView->textInset - rightSidePadding;
+                    int maxTextWidth = listView->frame.width - leftInset - rightSidePadding;
 
                     if (maxTextWidth < 0)
                     {
@@ -638,7 +723,7 @@ void CB_ListView_draw(CB_ListView* listView)
     }
 }
 
-static void CB_ListView_selectItem(CB_ListView* listView, unsigned int index, bool animated)
+void CB_ListView_selectItem(CB_ListView* listView, int index, bool animated)
 {
 
     CB_ListItemButton* button = listView->items->items[index];
@@ -726,6 +811,22 @@ CB_ListItemButton* CB_ListItemButton_new(const char* title)
     button->needsTextScroll = false;
 
     return button;
+}
+
+CB_ListItemCheckbox* CB_ListItemCheckbox_new(const char* title)
+{
+    CB_ListItemCheckbox* checkbox = allocz(CB_ListItemCheckbox);
+
+    checkbox->item.type = CB_ListViewItemTypeCheckbox;
+    checkbox->item.height = CB_ListView_rowHeight;
+    checkbox->item.object = NULL;
+
+    checkbox->title = cb_strdup(title);
+    checkbox->textScrollOffset = 0.0f;
+    checkbox->needsTextScroll = false;
+    checkbox->checked = false;
+
+    return checkbox;
 }
 
 void CB_ListItemButton_free(CB_ListItemButton* itemButton)

@@ -38,6 +38,7 @@ typedef struct
 typedef enum
 {
     CB_ListViewItemTypeButton,
+    CB_ListViewItemTypeCheckbox,
     CB_ListViewItemTypeSwitch
 } CB_ListItemType;
 
@@ -72,6 +73,20 @@ typedef struct
 
 typedef struct
 {
+    CB_ListItem item;
+    char* title;
+    float textScrollOffset;
+    bool needsTextScroll;
+    bool checked;
+    union
+    {
+        void* ptr;
+        uintptr_t uint;
+    } ud;
+} CB_ListItemCheckbox;
+
+typedef struct
+{
     CB_Array* items;
     CB_ListViewModel model;
     int selectedItem;
@@ -97,6 +112,8 @@ typedef struct
     float textScrollPause;
 
     bool hideScrollIndicator;
+    bool ignoreButtons;
+    bool checkboxDrag;
     LCDFont* font;
 } CB_ListView;
 
@@ -109,11 +126,14 @@ void CB_ListView_invalidateLayout(CB_ListView* listView);
 
 void CB_ListView_reload(CB_ListView* listView);
 
+void CB_ListView_selectItem(CB_ListView* listView, int index, bool animated);
+
 void CB_ListView_free(CB_ListView* listView);
 
 void CB_ListView_clear(CB_ListView* listView);
 
 CB_ListItemButton* CB_ListItemButton_new(const char* title);
+CB_ListItemCheckbox* CB_ListItemCheckbox_new(const char* title);
 
 void CB_ListItem_free(CB_ListItem* item);
 void CB_ListItemButton_free(CB_ListItemButton* itemButton);

@@ -2,26 +2,15 @@
 
 #include "../userstack.h"
 
-#define MAX_DISP 5
-#define MARGIN 4
-#define BOX_SIZE 28
-#define ROW_HEIGHT 32
-#define BOX_SELECTED_PADDING 6
-#define ROW_HEIGHT_TEXT_OFFSET 6
-
 #define HEADER_HEIGHT 18
-
-#define INFO_Y (HEADER_HEIGHT + 2 * MARGIN + ROW_HEIGHT * MAX_DISP)
-
-extern const uint8_t lcdp_50[16];
+#define kDividerX 240
+#define kRightPanePadding 10
+#define DRAG_HOLD_TIME 0.25f
 
 static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 {
     CB_PatchesScene* patchesScene = object;
     float dt = UINT32_AS_FLOAT(u32enc_dt);
-    size_t len = 0;
-    for (SoftPatch* patch = patchesScene->patches; patch->fullpath; ++patch, ++len)
-        ;
 
     if (patchesScene->dismiss)
     {
@@ -50,112 +39,81 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
         playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
     }
 
+    CB_ListView* listView = patchesScene->listView;
     bool held = !!(CB_App->buttons_down & kButtonA);
+    bool releasedA = !!(CB_App->buttons_released & kButtonA);
 
-    // menu movement
+    if (held)
+        patchesScene->holdTime += dt;
+
+    bool dragging = held && patchesScene->holdTime >= DRAG_HOLD_TIME;
+    listView->ignoreButtons = dragging;
+    listView->checkboxDrag = dragging;
+
+    int sel = listView->selectedItem;
+    int len = listView->items->length;
+
     int ydir = !!(CB_App->buttons_pressed & kButtonDown) - !!(CB_App->buttons_pressed & kButtonUp);
-    if ((ydir < 0 && patchesScene->selected > 0) || (ydir > 0 && patchesScene->selected < len - 1))
-    {
-        if (held)
-        {
-            // reorder patches
-            memswap(
-                &patchesScene->patches[patchesScene->selected],
-                &patchesScene->patches[patchesScene->selected + ydir], sizeof(SoftPatch)
-            );
-            patchesScene->didDrag = true;
-        }
 
-        patchesScene->selected += ydir;
+    if (dragging && ydir != 0 && sel >= 0 && ((ydir < 0 && sel > 0) || (ydir > 0 && sel < len - 1)))
+    {
+        int other = sel + ydir;
+        memswap(&patchesScene->patches[sel], &patchesScene->patches[other], sizeof(SoftPatch));
+
+        CB_ListItemCheckbox* a = listView->items->items[sel];
+        CB_ListItemCheckbox* b = listView->items->items[other];
+        char* title = a->title;
+        a->title = b->title;
+        b->title = title;
+        bool checked = a->checked;
+        a->checked = b->checked;
+        b->checked = checked;
+
+        CB_ListView_selectItem(listView, other, true);
         cb_play_ui_sound(CB_UISound_Navigate);
     }
-
-    unsigned scroll = 0;
-    if (patchesScene->selected >= MAX_DISP / 2)
+    else if (releasedA)
     {
-        scroll = patchesScene->selected - MAX_DISP / 2;
-    }
-    if (scroll + MAX_DISP > len && len >= MAX_DISP)
-    {
-        scroll = len - MAX_DISP;
-    }
-
-    SoftPatch* selectedPatch = &patchesScene->patches[patchesScene->selected];
-
-    if (CB_App->buttons_released & kButtonA)
-    {
-        if (!patchesScene->didDrag)
+        if (patchesScene->holdTime < DRAG_HOLD_TIME && sel >= 0 && sel < len)
         {
-            if (selectedPatch->state == PATCH_ENABLED)
-            {
-                selectedPatch->state = PATCH_DISABLED;
-            }
-            else
-            {
-                selectedPatch->state = PATCH_ENABLED;
-            }
+            SoftPatch* patch = &patchesScene->patches[sel];
+            patch->state = (patch->state == PATCH_ENABLED) ? PATCH_DISABLED : PATCH_ENABLED;
+            CB_ListItemCheckbox* checkbox = listView->items->items[sel];
+            checkbox->checked = (patch->state == PATCH_ENABLED);
+            listView->needsDisplay = true;
             cb_play_ui_sound(CB_UISound_Confirm);
         }
-
-        patchesScene->didDrag = false;
     }
     else if (CB_App->buttons_pressed & kButtonB)
     {
         patchesScene->dismiss = true;
     }
 
-    // menu
-    LCDFont* font = CB_App->bodyFont;
-    playdate->graphics->setFont(font);
-    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    if (!held)
+        patchesScene->holdTime = 0;
 
-    for (size_t i = 0; scroll + i < len && i < MAX_DISP; ++i)
-    {
-        size_t index = scroll + i;
-        SoftPatch* patch = &patchesScene->patches[index];
+    CB_ListView_update(listView);
 
-        const bool thisHeld = patchesScene->selected == index && held;
+    listView->needsDisplay = true;
+    CB_ListView_draw(listView);
 
-        int y = MARGIN + ROW_HEIGHT * i + HEADER_HEIGHT;
-
-        playdate->graphics->drawRect(
-            MARGIN, y + ROW_HEIGHT / 2 - BOX_SIZE / 2, BOX_SIZE, BOX_SIZE, kColorBlack
-        );
-        playdate->graphics->drawRect(
-            MARGIN + 1, y + ROW_HEIGHT / 2 - BOX_SIZE / 2 + 1, BOX_SIZE - 2, BOX_SIZE - 2,
-            kColorBlack
-        );
-
-        if (patch->state == PATCH_ENABLED || thisHeld)
-        {
-            LCDColor col = thisHeld ? (uintptr_t)&lcdp_50 : kColorBlack;
-            playdate->graphics->fillRect(
-                MARGIN + BOX_SELECTED_PADDING,
-                y + ROW_HEIGHT / 2 - BOX_SIZE / 2 + BOX_SELECTED_PADDING,
-                BOX_SIZE - 2 * BOX_SELECTED_PADDING, BOX_SIZE - 2 * BOX_SELECTED_PADDING, col
-            );
-        }
-
-        // TODO: display "new" patches slightly differently
-
-        playdate->graphics->drawText(
-            patch->basename, strlen(patch->basename), kUTF8Encoding, MARGIN * 2 + BOX_SIZE,
-            y + ROW_HEIGHT_TEXT_OFFSET
-        );
-
-        if (index == patchesScene->selected)
-        {
-            playdate->graphics->fillRect(0, y, LCD_COLUMNS, ROW_HEIGHT, kColorXOR);
-        }
-    }
+    playdate->graphics->fillRect(
+        kDividerX, HEADER_HEIGHT, LCD_COLUMNS - kDividerX, LCD_ROWS - HEADER_HEIGHT, kColorWhite
+    );
 
     playdate->graphics->setFont(CB_App->labelFont);
+    playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
     const char* info = T(patches_help);
+    int rightPaneX = kDividerX + kRightPanePadding;
+    int rightPaneY = HEADER_HEIGHT + 20;
+    int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
     playdate->graphics->drawTextInRect(
-        info, strlen(info), kUTF8Encoding, MARGIN, INFO_Y, LCD_COLUMNS - 2 * MARGIN, 200, kWrapWord,
-        kAlignTextLeft
+        info, strlen(info), kUTF8Encoding, rightPaneX, rightPaneY, rightPaneWidth,
+        LCD_ROWS - rightPaneY, kWrapWord, kAlignTextLeft
     );
+
+    playdate->graphics->drawLine(kDividerX, HEADER_HEIGHT, kDividerX, LCD_ROWS, 1, kColorBlack);
 
     playdate->graphics->markUpdatedRows(0, LCD_ROWS - 1);
 }
@@ -175,6 +133,8 @@ static void CB_PatchesScene_free(void* object)
 
     // save patches
     call_with_main_stack_2(save_patches_state, patchesScene->game->fullpath, patchesScene->patches);
+
+    CB_ListView_free(patchesScene->listView);
 
     cb_free(patchesScene->patches_dir);
     free_patches(patchesScene->patches);
@@ -209,20 +169,35 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
     patchesScene->patches = patches;
     patchesScene->patches_dir = patches_dir_path;
 
-    scene->update = CB_PatchesScene_update;
-    scene->free = CB_PatchesScene_free;
-    scene->menu = CB_PatchesScene_menu;
+    CB_ListView* listView = CB_ListView_new();
+    listView->font = CB_App->bodyFont;
+    listView->frame = PDRectMake(0, HEADER_HEIGHT, kDividerX, LCD_ROWS - HEADER_HEIGHT);
+    listView->paddingTop = 4;
+    listView->paddingBottom = 4;
+    patchesScene->listView = listView;
 
-    // Set selected to first enabled patch, or default to the first item.
-    patchesScene->selected = 0;
+    for (int i = 0; patches[i].fullpath; ++i)
+    {
+        CB_ListItemCheckbox* item = CB_ListItemCheckbox_new(patches[i].basename);
+        item->checked = (patches[i].state == PATCH_ENABLED);
+        array_push(listView->items, item);
+    }
+
+    int selectedIndex = 0;
     for (int i = 0; patches[i].fullpath; ++i)
     {
         if (patches[i].state == PATCH_ENABLED)
         {
-            patchesScene->selected = i;
+            selectedIndex = i;
             break;
         }
     }
+    listView->selectedItem = selectedIndex;
+    CB_ListView_reload(listView);
+
+    scene->update = CB_PatchesScene_update;
+    scene->free = CB_PatchesScene_free;
+    scene->menu = CB_PatchesScene_menu;
 
     return patchesScene;
 }
