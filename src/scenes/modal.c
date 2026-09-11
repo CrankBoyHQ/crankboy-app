@@ -90,17 +90,24 @@ void CB_Modal_update(CB_Modal* modal)
     int white_border_thickness = 1;
     int black_border_thickness = 2;
     int total_thickness = white_border_thickness + black_border_thickness;
+    int radius = 8;
 
-    playdate->graphics->fillRect(x, y, w, h, kColorWhite);
+    cb_fillRoundRect(PDRectMake(x, y, w, h), radius, kColorWhite);
 
-    playdate->graphics->fillRect(
-        x + white_border_thickness, y + white_border_thickness, w - (white_border_thickness * 2),
-        h - (white_border_thickness * 2), kColorBlack
+    cb_fillRoundRect(
+        PDRectMake(
+            x + white_border_thickness, y + white_border_thickness,
+            w - (white_border_thickness * 2), h - (white_border_thickness * 2)
+        ),
+        radius - white_border_thickness, kColorBlack
     );
 
-    playdate->graphics->fillRect(
-        x + total_thickness, y + total_thickness, w - (total_thickness * 2),
-        h - (total_thickness * 2), kColorWhite
+    cb_fillRoundRect(
+        PDRectMake(
+            x + total_thickness, y + total_thickness, w - (total_thickness * 2),
+            h - (total_thickness * 2)
+        ),
+        radius - total_thickness, kColorWhite
     );
 
     int m = modal->margin;
