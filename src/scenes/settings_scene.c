@@ -31,7 +31,7 @@
 #include <sys/wait.h>
 #endif
 
-#define MAX_VISIBLE_ITEMS 6
+#define MAX_VISIBLE_ITEMS 7
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
 
 static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt);
@@ -3237,6 +3237,9 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     int header_y = settingsScene->header_animation_p * HEADER_HEIGHT + 0.5f;
 
+    float visible_items = (float)MAX_VISIBLE_ITEMS - settingsScene->header_animation_p;
+    int drawCount = (int)ceilf(visible_items);
+
     const int kScreenHeight = 240;
     const int kDividerX = 240;
     const int kLeftPanePadding = 20;
@@ -3397,11 +3400,10 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     {
         settingsScene->topVisibleIndex = MAX(0, settingsScene->cursorIndex - 1);
     }
-    else if (settingsScene->cursorIndex >= settingsScene->topVisibleIndex + MAX_VISIBLE_ITEMS - 1)
+    else if (settingsScene->cursorIndex >= settingsScene->topVisibleIndex + drawCount - 1)
     {
         settingsScene->topVisibleIndex =
-            MIN(settingsScene->cursorIndex - (MAX_VISIBLE_ITEMS - 2),
-                menuItemCount - MAX_VISIBLE_ITEMS);
+            MIN(settingsScene->cursorIndex - (drawCount - 2), menuItemCount - drawCount);
         settingsScene->topVisibleIndex = MAX(0, settingsScene->topVisibleIndex);
     }
 
@@ -3546,7 +3548,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);
     int rowSpacing = 10;
     int rowHeight = fontHeight + rowSpacing;
-    int totalMenuHeight = (MAX_VISIBLE_ITEMS * rowHeight) - rowSpacing;
+    int totalMenuHeight = (int)(visible_items * rowHeight) - rowSpacing;
     int initialY = (kScreenHeight - totalMenuHeight) / 2 + header_y / 2;
 
     const char* game_name_for_header = NULL;
@@ -3598,7 +3600,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     // --- Left Pane (Options - 60%) ---
 
-    for (int i = 0; i < MAX_VISIBLE_ITEMS; i++)
+    for (int i = 0; i < drawCount; i++)
     {
         int itemIndex = settingsScene->topVisibleIndex + i;
 
@@ -3640,6 +3642,18 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         }
 
         int y = initialY + i * rowHeight;
+
+        bool clipRow = false;
+        if (i == drawCount - 1)
+        {
+            int clipH = (int)((visible_items - i) * rowHeight);
+            if (clipH < rowHeight)
+            {
+                playdate->graphics->setClipRect(0, y, kDividerX, clipH);
+                clipRow = true;
+            }
+        }
+
         const char* name = current_entry->name;
         const char* stateText = "";
         if (current_entry->values)
@@ -3763,17 +3777,19 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 0, y - (rowSpacing / 2), kDividerX * p, rowHeight, kColorXOR
             );
         }
+
+        if (clipRow)
+            playdate->graphics->clearClipRect();
     }
 
     playdate->graphics->setDrawMode(kDrawModeFillBlack);
 
-    if (menuItemCount > MAX_VISIBLE_ITEMS)
+    if (menuItemCount > drawCount)
     {
         int scrollAreaY = initialY - (rowSpacing / 2);
         int scrollAreaHeight = totalMenuHeight + rowSpacing;
 
-        float calculatedHeight =
-            (float)scrollAreaHeight * ((float)MAX_VISIBLE_ITEMS / menuItemCount);
+        float calculatedHeight = (float)scrollAreaHeight * ((float)drawCount / menuItemCount);
 
         float handleHeight = CB_MAX(calculatedHeight, SCROLL_INDICATOR_MIN_HEIGHT);
 
