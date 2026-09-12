@@ -85,6 +85,13 @@ SRC += libs/pdll/uzlib/tinfzlib.c
 SRC += libs/pdll/uzlib/adler32.c
 SRC += libs/pdll/uzlib/crc32.c
 
+# optional keyboard library
+ifneq ("$(wildcard libs/pdkeyboard/pdkeyboard.c)","")
+SRC += libs/pdkeyboard/pdkeyboard.c
+UINCDIR += libs/pdkeyboard
+COMMON_FLAGS += -DCRANKBOY_PDKEYBOARD
+endif
+
 # Baked data files (generated from Source/*.json; see rules below)
 SRC += build/baked_version_json.c
 SRC += build/baked_credits_json.c
