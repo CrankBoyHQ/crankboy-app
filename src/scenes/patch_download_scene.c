@@ -716,9 +716,9 @@ static void context_patch_choose_interaction_update(
                 decode_numeric_escapes(rominfo);
 
             char* text = aprintf(
-                "Author: %s\nRelease Date: %s\n\n-- Description --\n\n%s\n\n-- ROM Info --\n\n%s",
-                author ? author : "(unknown)", reldate ? reldate : "(missing)",
-                description ? description : "", rominfo ? rominfo : ""
+                T(patch_info_fmt), author ? author : T(patch_unknown),
+                reldate ? reldate : T(patch_missing), description ? description : "",
+                rominfo ? rominfo : ""
             );
 
             CB_InfoScene* infoScene = CB_InfoScene_new(title, text);
@@ -1232,10 +1232,7 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     case 0:
         if (!pds->has_local_patches)
         {
-            return aprintf(
-                "No local patches found.\n \nHold Ⓐ to view instructions for adding patches "
-                "manually."
-            );
+            return aprintf(T(patch_no_local_patches));
         }
         else
         {
@@ -1266,9 +1263,7 @@ static char* context_top_level_hint(CB_PatchDownloadScene* pds, PatchDownloadCon
     case 2:
         return get_rom_info(pds);
     case 3:
-        return aprintf(
-            "This feature allows restricting homebrew ROM and ROM hack downloads behind a password."
-        );
+        return aprintf(T(patch_parental_lock_hint));
         break;
     default:
         return NULL;
@@ -1560,10 +1555,8 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         int rightPaneY = header_y + hint_padding_top;
 
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
-        int rightPaneHeight = LCD_ROWS - rightPaneY;
-        playdate->graphics->drawTextInRect(
-            pds->cached_hint, strlen(pds->cached_hint), kUTF8Encoding, rightPaneX, rightPaneY,
-            rightPaneWidth, rightPaneHeight, kWrapWord, kAlignTextLeft
+        cb_draw_text_paragraphs(
+            font, pds->cached_hint, rightPaneX, rightPaneY, rightPaneWidth, kAlignTextLeft
         );
     }
 

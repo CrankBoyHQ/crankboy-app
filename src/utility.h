@@ -317,6 +317,21 @@ void cb_play_ui_sound(CB_UISound sound);
 
 char* strltrim(const char* str);
 
+typedef struct
+{
+    const char* start;
+    int length;
+} cb_line_span;
+
+const cb_line_span* cb_wrap_text(LCDFont* font, const char* text, int max_width, int* out_n_lines);
+void cb_wrap_text_invalidate(void);
+int cb_strip_zwsp(char* dst, const char* src, int n);
+
+int cb_text_height_paragraphs(LCDFont* font, const char* text, int width);
+void cb_draw_text_paragraphs(
+    LCDFont* font, const char* text, int x, int y, int width, PDTextAlignment align
+);
+
 static inline float toward(float x, float dst, float step)
 {
     if (dst > x)

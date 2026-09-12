@@ -210,18 +210,18 @@
 
 // Library Scene
 "Library_GetRoms" = "Get ROMs...";
-"lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n \nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
-"lib_cgb_prompt_cgb_only" = "This ROM is marked CGB-only.\n \nYou can try launching as a standard DMG ROM, or in CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
+"lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n\nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
+"lib_cgb_prompt_cgb_only" = "This ROM is marked CGB-only.\n\nYou can try launching as a standard DMG ROM, or in CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only_one_time" = "This ROM is marked CGB-only.\n\nThe game will launch in CGB mode.\n\nCrankBoy only has experimental support for CGB (\"Color\") emulation."
-"lib_cgb_prompt_cgb_compat" = "This ROM supports CGB mode.\n \nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
+"lib_cgb_prompt_cgb_compat" = "This ROM supports CGB mode.\n\nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_save_slot_patch_warning" = "You have softpatches enabled, but this game's save data comes from an unpatched ROM. To keep the save data separate, you may wish to change the save slot in settings before launching.";
 "lib_save_slot_unpatched_warning" = "You have no softpatches on, but this game's save data comes from a patched ROM (code: %08X.) To keep the save data separate, you may wish to change the save slot in settings before launching.";
 "lib_save_slot_mismatch" = "This game's save data comes from a ROM with different softpatches applied (saved code: %08X; your patches: %08X) Consider changing the save slot in settings to keep your save data separate.";
 "lib_playdate_support" = "There is native Playdate support for this game.\nWould you like to enable it?";
-"lib_script_experimental" = "This game's script is marked as \"experimental\", so please expect glitches or even crashes.\n \nDisable script?";
+"lib_script_experimental" = "This game's script is marked as \"experimental\", so please expect glitches or even crashes.\n\nDisable script?";
 "lib_update_modal" = "CrankBoy Update!\n\n%s -> %s\n\n%s";
 "lib_folder_moved" = "To improve compatability, your CrankBoy library has been moved to the shared folder:\n\n%s";
-"lib_crank_dock_warning" = "The crank's current position will cause an input in-game.\n \nPlease dock the crank now.";
+"lib_crank_dock_warning" = "The crank's current position will cause an input in-game.\n\nPlease dock the crank now.";
 "lib_recommended_settings" = "%s has recommended settings from the CrankBoy community.";
 "lib_please_wait" = "Please wait...";
 "lib_press_download" = "Press Ⓑ to download.";
@@ -325,8 +325,13 @@
 "patch_manage" = "Manage patches\t›";
 "patch_download_patches" = "Download patches\t›";
 "patch_rom_info" = "ROM Info\t›";
-"patch_rom_info_fmt" = "ROM Header title: %s\n \nCRC32: %X\nInternal save: %s\n \nFilename: %s";
+"patch_rom_info_fmt" = "ROM Header title: %s\n\nCRC32: %X\nInternal save: %s\n\nFilename: %s";
 "patch_parental_lock" = "Parental Lock\t›";
+"patch_parental_lock_hint" = "This feature allows restricting homebrew ROM and ROM hack downloads behind a password.";
+"patch_no_local_patches" = "No local patches found.\n\nHold Ⓐ to view instructions for adding patches manually.";
+"patch_info_fmt" = "Author: %s\nRelease Date: %s\n\n-- Description --\n\n%s\n\n-- ROM Info --\n\n%s";
+"patch_unknown" = "(unknown)";
+"patch_missing" = "(missing)";
 "patch_downloaded" = "Patch downloaded successfully.\nWould you like to enable it now?";
 "patch_not_found" = "The requested file was not found on the server.";
 "patch_no_readme" = "No readme available for this hack.";
@@ -351,16 +356,16 @@
 "patch_unknown_size" = "Unknown file size.";
 "patch_engaged" = "Parental Lock engaged.";
 "patch_rhdb_missing" = "Unable to download patches:\nrhdb.json missing.";
-"patch_no_host" = "Failed to determine patch host.\n \n(Is rhdb.json present?)";
+"patch_no_host" = "Failed to determine patch host.\n\n(Is rhdb.json present?)";
 "patch_download_failed" = "Failed to download file. (Error: 0x%03x)";
 "patch_processing" = "Processing";
 "patch_please_wait" = "Please wait";
 "patch_setup_instructions" = "1. Place your Playdate in disk mode by holding LEFT+MENU+LOCK for ten seconds.\n2. Via USB connection, add patch files to: %s/%s/\n3. Finally, enable them from this screen (settings > Patches > Manage patches).\n\nYou may find patches on romhacking.net or romhack.ing";
-"patch_context_help" = "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n \nRequires internet.";
+"patch_context_help" = "Download ROM hacks, translations, etc. for \"%s.\"\n(Mirrored from romhacking.net)\n\nRequires internet.";
 "patch_author_info" = "Author: %s\n\nRelease Date: %s\n\nTitle: %s";
 "patch_manage_help" = "Toggle installed patches and and rearrange the order in which they are applied.";
-"patch_manage_help_code" = "Toggle installed patches and and rearrange the order in which they are applied.\n \nPatch code: %08X";
-"patch_manage_help_battery" = "Toggle installed patches and and rearrange the order in which they are applied.\n \nPatch code: %08X\n \nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust Save Slot in settings.";
+"patch_manage_help_code" = "Toggle installed patches and and rearrange the order in which they are applied.\n\nPatch code: %08X";
+"patch_manage_help_battery" = "Toggle installed patches and and rearrange the order in which they are applied.\n\nPatch code: %08X\n\nNote: because patches are in use, and this ROM has an internal save system, you may wish to use a separate save file. Before launching the game, please adjust Save Slot in settings.";
 "patch_downloading_patch" = "Downloading patch";
 "patch_downloading_readme" = "Downloading Readme";
 "patch_downloading_changelog" = "Downloading Changelog";
@@ -368,7 +373,7 @@
 "patch_readme_heading" = "Readme";
 
 // Patches Scene
-"patches_help" = "Press Ⓐ to toggle patches.\n \nHold Ⓐ to rearrange patches. Enabled patches will be applied in the order listed.";
+"patches_help" = "Press Ⓐ to toggle patches.\n\nHold Ⓐ to rearrange patches. Enabled patches will be applied in the order listed.";
 
 // Homebrew Hub
 "hhub_browse_gb" = "Browse GB games\t›";
@@ -387,7 +392,7 @@
 "hhub_failed_list" = "Failed to list files.";
 "hhub_invalid_json" = "Invalid JSON received";
 "hhub_browse_gb_desc" = "Browse GB homebrew from Homebrew Hub.";
-"hhub_browse_cgb_desc" = "Browse GB Color homebrew from Homebrew Hub.\n \nNote: CGB support in CrankBoy is still experimental.";
+"hhub_browse_cgb_desc" = "Browse GB Color homebrew from Homebrew Hub.\n\nNote: CGB support in CrankBoy is still experimental.";
 "hhub_parental_lock_desc" = "This feature allows restricting homebrew ROM and ROM hack downloads behind a password.";
 "hhub_engaged" = "Parental Lock engaged.";
 "hhub_downloading_rom" = "Downloading ROM";

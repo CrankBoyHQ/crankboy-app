@@ -13,56 +13,9 @@
 #define MODAL_MARGIN_MIN 12
 #define MODAL_MIN_HEIGHT 90
 #define TITLE_GAP 10
-#define PARAGRAPH_GAP 11
 #define TEXT_BUTTON_SPACING 20
 #define BUTTON_HEIGHT 40
 #define BUTTON_BOTTOM_GAP 10
-
-static int cb_modal_text_height(const char* text, int width)
-{
-    int total = 0;
-    int paragraphs = 0;
-    const char* p = text;
-    while (p && *p)
-    {
-        const char* end = strstr(p, "\n\n");
-        int len = end ? (int)(end - p) : (int)strlen(p);
-        if (len > 0)
-        {
-            total += playdate->graphics->getTextHeightForMaxWidth(
-                CB_App->bodyFont, p, len, width, kUTF8Encoding, kWrapWord, 0, 0
-            );
-            paragraphs++;
-        }
-        if (!end)
-            break;
-        p = end + 2;
-    }
-    return total + (paragraphs > 0 ? (paragraphs - 1) * PARAGRAPH_GAP : 0);
-}
-
-static void cb_modal_draw_text(const char* text, int x, int y, int width)
-{
-    const char* p = text;
-    while (p && *p)
-    {
-        const char* end = strstr(p, "\n\n");
-        int len = end ? (int)(end - p) : (int)strlen(p);
-        if (len > 0)
-        {
-            int ph = playdate->graphics->getTextHeightForMaxWidth(
-                CB_App->bodyFont, p, len, width, kUTF8Encoding, kWrapWord, 0, 0
-            );
-            playdate->graphics->drawTextInRect(
-                p, len, kUTF8Encoding, x, y, width, ph, kWrapWord, kAlignTextCenter
-            );
-            y += ph + PARAGRAPH_GAP;
-        }
-        if (!end)
-            break;
-        p = end + 2;
-    }
-}
 
 void CB_Modal_auto_size(CB_Modal* modal)
 {
@@ -73,7 +26,10 @@ void CB_Modal_auto_size(CB_Modal* modal)
     {
         int title_h = modal->title ? playdate->graphics->getFontHeight(CB_App->subheadFont) : 0;
         int title_gap = modal->title ? TITLE_GAP : 0;
-        int text_h = modal->text ? cb_modal_text_height(modal->text, MODAL_WIDTH - 2 * margin) : 0;
+        int text_h =
+            modal->text
+                ? cb_text_height_paragraphs(CB_App->bodyFont, modal->text, MODAL_WIDTH - 2 * margin)
+                : 0;
         int content = title_h + title_gap + text_h;
 
         int h = modal->options_count > 0 ? frame * 2 + margin + content + TEXT_BUTTON_SPACING +
@@ -212,7 +168,7 @@ void CB_Modal_update(CB_Modal* modal)
     if (modal->text)
     {
         playdate->graphics->setFont(CB_App->bodyFont);
-        text_h = cb_modal_text_height(modal->text, w - 2 * m);
+        text_h = cb_text_height_paragraphs(CB_App->bodyFont, modal->text, w - 2 * m);
     }
 
     int content_h = title_h + title_gap + text_h;
@@ -239,7 +195,9 @@ void CB_Modal_update(CB_Modal* modal)
     {
         playdate->graphics->setFont(CB_App->bodyFont);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
-        cb_modal_draw_text(modal->text, x + m, cursor_y, w - 2 * m);
+        cb_draw_text_paragraphs(
+            CB_App->bodyFont, modal->text, x + m, cursor_y, w - 2 * m, kAlignTextCenter
+        );
     }
 
     int fontHeight = playdate->graphics->getFontHeight(CB_App->bodyFont);

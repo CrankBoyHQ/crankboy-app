@@ -1684,6 +1684,210 @@ char* strltrim(const char* str)
     return (char*)str;
 }
 
+#define LINE_BUF_SIZE 2048
+
+static struct
+{
+    char* cached_text;
+    int key_width;
+    LCDFont* key_font;
+    cb_line_span* lines;
+    int n_lines;
+    int cap_lines;
+} s_wrap_cache;
+
+static bool cb_is_zwsp(const char* p, const char* end)
+{
+    return end - p >= 3 && (unsigned char)p[0] == 0xE2 && (unsigned char)p[1] == 0x80 &&
+           (unsigned char)p[2] == 0x8B;
+}
+
+int cb_strip_zwsp(char* dst, const char* src, int n)
+{
+    const char* end = src + n;
+    int out = 0;
+    while (src < end)
+    {
+        if (cb_is_zwsp(src, end))
+        {
+            src += 3;
+            continue;
+        }
+        dst[out++] = *src++;
+    }
+    return out;
+}
+
+static void cb_wrap_emit_line(const char* start, int length)
+{
+    if (s_wrap_cache.n_lines >= s_wrap_cache.cap_lines)
+    {
+        int newcap = s_wrap_cache.cap_lines ? s_wrap_cache.cap_lines * 2 : 16;
+        s_wrap_cache.lines = cb_realloc(s_wrap_cache.lines, newcap * sizeof(cb_line_span));
+        s_wrap_cache.cap_lines = newcap;
+    }
+    s_wrap_cache.lines[s_wrap_cache.n_lines].start = start;
+    s_wrap_cache.lines[s_wrap_cache.n_lines].length = length;
+    ++s_wrap_cache.n_lines;
+}
+
+static int cb_wrap_measure(LCDFont* font, const char* s, int n)
+{
+    if (n <= 0)
+        return 0;
+    static char buf[LINE_BUF_SIZE];
+    int safe_len = (n < (int)(sizeof(buf) - 1)) ? n : (int)(sizeof(buf) - 1);
+    safe_len = cb_strip_zwsp(buf, s, safe_len);
+    buf[safe_len] = '\0';
+    return playdate->graphics->getTextWidth(font, buf, safe_len, kUTF8Encoding, 0);
+}
+
+static void cb_wrap_paragraph(const char* p, int len, int max_width, LCDFont* font)
+{
+    if (len <= 0)
+    {
+        cb_wrap_emit_line(p, 0);
+        return;
+    }
+    const char* end = p + len;
+    const char* line_start = p;
+    const char* last_fit_end = p;
+    bool have_fit_word = false;
+
+    while (p < end)
+    {
+        if (*p == ' ')
+        {
+            ++p;
+            continue;
+        }
+        if (cb_is_zwsp(p, end))
+        {
+            p += 3;
+            continue;
+        }
+        const char* word_start = p;
+        while (p < end && *p != ' ' && !cb_is_zwsp(p, end))
+            ++p;
+        int trial = cb_wrap_measure(font, line_start, (int)(p - line_start));
+        if (trial <= max_width || !have_fit_word)
+        {
+            last_fit_end = p;
+            have_fit_word = true;
+        }
+        else
+        {
+            cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
+            line_start = word_start;
+            last_fit_end = p;
+            have_fit_word = true;
+        }
+    }
+    if (have_fit_word)
+        cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
+}
+
+static void cb_wrap_rebuild(const char* text, int max_width, LCDFont* font)
+{
+    s_wrap_cache.n_lines = 0;  // reuse capacity
+    s_wrap_cache.key_width = max_width;
+    s_wrap_cache.key_font = font;
+    cb_free(s_wrap_cache.cached_text);
+    s_wrap_cache.cached_text = text ? cb_strdup(text) : NULL;
+    if (!s_wrap_cache.cached_text)
+        return;
+    const char* p = s_wrap_cache.cached_text;
+    while (1)
+    {
+        const char* nl = strchr(p, '\n');
+        int len = nl ? (int)(nl - p) : (int)strlen(p);
+        cb_wrap_paragraph(p, len, max_width, font);
+        if (!nl)
+            break;
+        p = nl + 1;
+    }
+}
+
+const cb_line_span* cb_wrap_text(LCDFont* font, const char* text, int max_width, int* out_n_lines)
+{
+    bool changed;
+    if (!text)
+        changed = (s_wrap_cache.cached_text != NULL);
+    else
+        changed = (!s_wrap_cache.cached_text || strcmp(s_wrap_cache.cached_text, text) != 0);
+
+    if (max_width != s_wrap_cache.key_width || font != s_wrap_cache.key_font)
+        changed = true;
+
+    if (changed)
+        cb_wrap_rebuild(text, max_width, font);
+
+    if (out_n_lines)
+        *out_n_lines = s_wrap_cache.n_lines;
+    return s_wrap_cache.lines;
+}
+
+void cb_wrap_text_invalidate(void)
+{
+    cb_free(s_wrap_cache.cached_text);
+    s_wrap_cache.cached_text = NULL;
+    s_wrap_cache.key_width = 0;
+    s_wrap_cache.key_font = NULL;
+    s_wrap_cache.n_lines = 0;
+}
+
+int cb_text_height_paragraphs(LCDFont* font, const char* text, int width)
+{
+    if (!text || !*text)
+        return 0;
+    int line_height = playdate->graphics->getFontHeight(font);
+    int paragraph_gap = line_height / 2;
+    int n = 0;
+    const cb_line_span* lines = cb_wrap_text(font, text, width, &n);
+    int total = 0;
+    for (int i = 0; i < n; ++i)
+        total += (lines[i].length == 0) ? paragraph_gap : line_height;
+    return total;
+}
+
+void cb_draw_text_paragraphs(
+    LCDFont* font, const char* text, int x, int y, int width, PDTextAlignment align
+)
+{
+    if (!text)
+        return;
+    int line_height = playdate->graphics->getFontHeight(font);
+    int paragraph_gap = line_height / 2;
+    int n = 0;
+    const cb_line_span* lines = cb_wrap_text(font, text, width, &n);
+
+    static char line_buf[LINE_BUF_SIZE];
+    for (int i = 0; i < n; ++i)
+    {
+        if (lines[i].length == 0)
+        {
+            y += paragraph_gap;
+            continue;
+        }
+        int safe_len = (lines[i].length < (int)(sizeof(line_buf) - 1))
+                           ? lines[i].length
+                           : (int)(sizeof(line_buf) - 1);
+        safe_len = cb_strip_zwsp(line_buf, lines[i].start, safe_len);
+        line_buf[safe_len] = '\0';
+
+        int line_x = x;
+        if (align == kAlignTextCenter)
+        {
+            int line_w =
+                playdate->graphics->getTextWidth(font, line_buf, safe_len, kUTF8Encoding, 0);
+            line_x = x + (width - line_w) / 2;
+        }
+
+        playdate->graphics->drawText(line_buf, safe_len, kUTF8Encoding, line_x, y);
+        y += line_height;
+    }
+}
+
 char* cb_url_encode_for_github_raw(const char* str)
 {
     if (!str)

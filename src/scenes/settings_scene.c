@@ -33,6 +33,7 @@
 
 #define MAX_VISIBLE_ITEMS 7
 #define SCROLL_INDICATOR_MIN_HEIGHT 10
+#define LINE_BUF_SIZE 2048
 
 static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt);
 static void CB_SettingsScene_free(void* object);
@@ -48,8 +49,6 @@ extern const uint16_t CB_dither_lut_c0[];
 extern const uint16_t CB_dither_lut_c1[];
 
 static void update_thumbnail(CB_SettingsScene* settingsScene);
-
-static void cb_wrap_invalidate(void);
 
 static const char* get_settings_game_name(CB_SettingsScene* settingsScene);
 
@@ -1281,7 +1280,7 @@ static OptionsMenuEntry* find_load_state_entry(CB_SettingsScene* settingsScene)
 
 static void update_state_descriptions(CB_SettingsScene* settingsScene)
 {
-    cb_wrap_invalidate();
+    cb_wrap_text_invalidate();
     CB_GameScene* gameScene = settingsScene->gameScene;
     if (!gameScene)
         return;
@@ -1691,7 +1690,7 @@ static struct ScriptSettingsInfo script_settings_info[] = {
 
 static void clear_script_settings(void)
 {
-    cb_wrap_invalidate();  // wrap cache may point into the strings being freed
+    cb_wrap_text_invalidate();  // wrap cache may point into the strings being freed
     script_settings_info_count = 0;
     for (int i = 0; i < CB_ARRAY_SIZE(script_settings_info); ++i)
     {
@@ -2977,11 +2976,9 @@ static void switchToSection(CB_SettingsScene* s, int sectionIndex)
     update_state_descriptions(s);
 }
 
-static void cb_wrap_invalidate(void);
-
 static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
 {
-    cb_wrap_invalidate();
+    cb_wrap_text_invalidate();
     cb_free(settingsScene->save_state_desc);
     settingsScene->save_state_desc = NULL;
     cb_free(settingsScene->load_state_desc);
@@ -3017,159 +3014,6 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
     }
 
     update_state_descriptions(settingsScene);
-}
-
-// word-wrap cache
-typedef struct
-{
-    const char* start;
-    int length;
-} cb_line_span;
-
-#define LINE_BUF_SIZE 2048
-
-static struct
-{
-    const char* key_ptr;
-    int key_width;
-    LCDFont* key_font;
-    cb_line_span* lines;
-    int n_lines;
-    int cap_lines;
-} s_wrap_cache;
-
-static void cb_wrap_invalidate(void)
-{
-    s_wrap_cache.key_ptr = NULL;
-    s_wrap_cache.key_width = 0;
-    s_wrap_cache.key_font = NULL;
-    s_wrap_cache.n_lines = 0;
-}
-
-static void cb_wrap_emit_line(const char* start, int length)
-{
-    if (s_wrap_cache.n_lines >= s_wrap_cache.cap_lines)
-    {
-        int newcap = s_wrap_cache.cap_lines ? s_wrap_cache.cap_lines * 2 : 16;
-        s_wrap_cache.lines = cb_realloc(s_wrap_cache.lines, newcap * sizeof(cb_line_span));
-        s_wrap_cache.cap_lines = newcap;
-    }
-    s_wrap_cache.lines[s_wrap_cache.n_lines].start = start;
-    s_wrap_cache.lines[s_wrap_cache.n_lines].length = length;
-    ++s_wrap_cache.n_lines;
-}
-
-// U+200B zero-width space (for cjk rendering especially)
-static bool cb_is_zwsp(const char* p, const char* end)
-{
-    return end - p >= 3 && (unsigned char)p[0] == 0xE2 && (unsigned char)p[1] == 0x80 &&
-           (unsigned char)p[2] == 0x8B;
-}
-
-static int cb_strip_zwsp(char* dst, const char* src, int n)
-{
-    const char* end = src + n;
-    int out = 0;
-    while (src < end)
-    {
-        if (cb_is_zwsp(src, end))
-        {
-            src += 3;
-            continue;
-        }
-        dst[out++] = *src++;
-    }
-    return out;
-}
-
-static int cb_wrap_measure(LCDFont* font, const char* s, int n)
-{
-    if (n <= 0)
-        return 0;
-    static char buf[LINE_BUF_SIZE];
-    int safe_len = (n < (int)(sizeof(buf) - 1)) ? n : (int)(sizeof(buf) - 1);
-    safe_len = cb_strip_zwsp(buf, s, safe_len);
-    buf[safe_len] = '\0';
-    return playdate->graphics->getTextWidth(font, buf, safe_len, kUTF8Encoding, 0);
-}
-
-static void cb_wrap_paragraph(const char* p, int len, int max_width, LCDFont* font)
-{
-    if (len <= 0)
-    {
-        cb_wrap_emit_line(p, 0);
-        return;
-    }
-    const char* end = p + len;
-    const char* line_start = p;
-    const char* last_fit_end = p;
-    bool have_fit_word = false;
-
-    while (p < end)
-    {
-        if (*p == ' ')
-        {
-            ++p;
-            continue;
-        }
-        if (cb_is_zwsp(p, end))
-        {
-            p += 3;
-            continue;
-        }
-        const char* word_start = p;
-        while (p < end && *p != ' ' && !cb_is_zwsp(p, end))
-            ++p;
-        int trial = cb_wrap_measure(font, line_start, (int)(p - line_start));
-        if (trial <= max_width || !have_fit_word)
-        {
-            last_fit_end = p;
-            have_fit_word = true;
-        }
-        else
-        {
-            cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
-            line_start = word_start;
-            last_fit_end = p;
-            have_fit_word = true;
-        }
-    }
-    if (have_fit_word)
-        cb_wrap_emit_line(line_start, (int)(last_fit_end - line_start));
-}
-
-static void cb_wrap_rebuild(const char* desc, int max_width, LCDFont* font)
-{
-    s_wrap_cache.n_lines = 0;  // reuse capacity
-    s_wrap_cache.key_ptr = desc;
-    s_wrap_cache.key_width = max_width;
-    s_wrap_cache.key_font = font;
-    if (!desc)
-        return;
-    const char* p = desc;
-    while (1)
-    {
-        const char* nl = strchr(p, '\n');
-        int len = nl ? (int)(nl - p) : (int)strlen(p);
-        cb_wrap_paragraph(p, len, max_width, font);
-        if (!nl)
-            break;
-        p = nl + 1;
-    }
-}
-
-static const cb_line_span* cb_settings_wrap(
-    const char* desc, int max_width, LCDFont* font, int* out_n
-)
-{
-    if (desc != s_wrap_cache.key_ptr || max_width != s_wrap_cache.key_width ||
-        font != s_wrap_cache.key_font)
-    {
-        cb_wrap_rebuild(desc, max_width, font);
-    }
-    if (out_n)
-        *out_n = s_wrap_cache.n_lines;
-    return s_wrap_cache.lines;
 }
 
 static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
@@ -3806,7 +3650,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         const int wrap_width = LCD_COLUMNS - kDividerX - kRightPanePadding - 4;
         int n_lines = 0;
         const cb_line_span* lines =
-            cb_settings_wrap(description, wrap_width, CB_App->labelFont, &n_lines);
+            cb_wrap_text(CB_App->labelFont, description, wrap_width, &n_lines);
 
         int descY = initialY;
         int descLineHeight = playdate->graphics->getFontHeight(CB_App->labelFont) + 2;
@@ -3982,7 +3826,7 @@ static void CB_SettingsScene_free(void* object)
         settingsScene->selected_game_settings_path = NULL;
     }
 
-    cb_wrap_invalidate();
+    cb_wrap_text_invalidate();
 
     cb_free(settingsScene->save_state_desc);
     settingsScene->save_state_desc = NULL;

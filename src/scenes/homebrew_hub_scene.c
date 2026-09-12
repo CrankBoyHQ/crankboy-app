@@ -1147,10 +1147,8 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         int rightPaneY = header_y + hint_padding_top;
 
         int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
-        int rightPaneHeight = LCD_ROWS - rightPaneY;
-        playdate->graphics->drawTextInRect(
-            hbs->cached_hint, strlen(hbs->cached_hint), kUTF8Encoding, rightPaneX, rightPaneY,
-            rightPaneWidth, rightPaneHeight, kWrapWord, kAlignTextLeft
+        cb_draw_text_paragraphs(
+            font, hbs->cached_hint, rightPaneX, rightPaneY, rightPaneWidth, kAlignTextLeft
         );
     }
 

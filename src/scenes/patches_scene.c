@@ -108,9 +108,8 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
     int rightPaneX = kDividerX + kRightPanePadding;
     int rightPaneY = HEADER_HEIGHT + 20;
     int rightPaneWidth = LCD_COLUMNS - kDividerX - (kRightPanePadding * 2);
-    playdate->graphics->drawTextInRect(
-        info, strlen(info), kUTF8Encoding, rightPaneX, rightPaneY, rightPaneWidth,
-        LCD_ROWS - rightPaneY, kWrapWord, kAlignTextLeft
+    cb_draw_text_paragraphs(
+        CB_App->labelFont, info, rightPaneX, rightPaneY, rightPaneWidth, kAlignTextLeft
     );
 
     playdate->graphics->drawLine(kDividerX, HEADER_HEIGHT, kDividerX, LCD_ROWS, 1, kColorBlack);
