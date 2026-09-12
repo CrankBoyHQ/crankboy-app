@@ -3810,9 +3810,15 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
         int descY = initialY;
         int descLineHeight = playdate->graphics->getFontHeight(CB_App->labelFont) + 2;
+        int descParagraphGap = descLineHeight / 2;
         char line_buf[LINE_BUF_SIZE];
         for (int li = 0; li < n_lines; ++li)
         {
+            if (lines[li].length == 0)
+            {
+                descY += descParagraphGap;
+                continue;
+            }
             int safe_len = (lines[li].length < (int)(sizeof(line_buf) - 1))
                                ? lines[li].length
                                : (int)(sizeof(line_buf) - 1);
