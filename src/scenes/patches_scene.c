@@ -171,8 +171,8 @@ CB_PatchesScene* CB_PatchesScene_new(CB_Game* game)
     CB_ListView* listView = CB_ListView_new();
     listView->font = CB_App->bodyFont;
     listView->frame = PDRectMake(0, HEADER_HEIGHT, kDividerX, LCD_ROWS - HEADER_HEIGHT);
-    listView->paddingTop = 4;
-    listView->paddingBottom = 4;
+    listView->paddingTop = 15;
+    listView->paddingBottom = 15;
     patchesScene->listView = listView;
 
     for (int i = 0; patches[i].fullpath; ++i)

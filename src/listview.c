@@ -548,8 +548,7 @@ void CB_ListView_draw(CB_ListView* listView)
         );
 
         playdate->graphics->setClipRect(
-            listX, listY + listView->paddingTop, listView->frame.width,
-            listView->frame.height - listView->paddingTop - listView->paddingBottom
+            listX, listY, listView->frame.width, listView->frame.height
         );
 
         for (int i = 0; i < listView->items->length; i++)
@@ -676,7 +675,15 @@ void CB_ListView_draw(CB_ListView* listView)
                         maxTextWidth = 0;
                     }
 
-                    playdate->graphics->setClipRect(textX, rowY, maxTextWidth, item->height);
+                    int clipTop = rowY;
+                    int clipBottom = rowY + item->height;
+                    if (clipTop < listY)
+                        clipTop = listY;
+                    if (clipBottom > listY + listView->frame.height)
+                        clipBottom = listY + listView->frame.height;
+                    playdate->graphics->setClipRect(
+                        textX, clipTop, maxTextWidth, clipBottom - clipTop
+                    );
 
                     if (selected && button->needsTextScroll)
                     {
@@ -692,7 +699,9 @@ void CB_ListView_draw(CB_ListView* listView)
                         );
                     }
 
-                    playdate->graphics->clearClipRect();
+                    playdate->graphics->setClipRect(
+                        listX, listY, listView->frame.width, listView->frame.height
+                    );
                 }
 
                 playdate->graphics->setDrawMode(kDrawModeCopy);
