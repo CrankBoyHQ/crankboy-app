@@ -149,7 +149,7 @@ typedef struct CB_Application
     LCDBitmap* startSelectBitmap;
     SoundSource* soundSource;
     CB_GlobalCoverCache coverArtCache;
-    CB_Array* /*<CB_GameName>*/ gameNameCache; // note: immutable after first load. SOT.
+    CB_Array* /*<CB_GameName>*/ gameNameCache;  // note: immutable after first load. SOT.
     RomCategory** romcategories;
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
@@ -251,7 +251,9 @@ void CB_showHelp(bool first_time);
 
 #ifdef CRANKBOY_PDKEYBOARD
 #include "pdkeyboard.h"
-PDKeyboard* CB_init_keyboard(PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys);
+PDKeyboard* CB_init_keyboard(
+    PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys
+);
 #endif
 
 // Unload active core, then load the given core. (NULL: unload only.)
@@ -316,7 +318,6 @@ const char* CB_get_forwarded_path(const char* path);
 #define THUMBNAIL_WIDTH 240
 #define THUMBNAIL_HEIGHT 240
 
-
 // files that have been copied from PDX to data folder
 #define COPIED_FILES "manifest.json"
 #define PATCH_LIST_FILE "manifest.json"
@@ -338,8 +339,6 @@ const char* CB_get_forwarded_path(const char* path);
 #define SHARED_FORWARDER_ROOT "/Shared/.forwarder"
 
 #define FORWARDER_INDICATOR_FILE "fwdex"
-
-#define DISK_IMAGE "__homebrew_dl_img.pdi"
 
 // for files which should only appear in data unless we're in bundle mode
 #define kFileReadDataOrBundle (CB_App->bundled_rom ? (kFileRead | kFileReadData) : kFileReadData)

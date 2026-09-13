@@ -31,6 +31,7 @@ const char* CB_settingsPath = "settings";
 const char* CB_customSettingsPath = "settings/custom";
 const char* CB_globalPrefsPath = "preferences.json";
 const char* CB_patchesPath = "patches";
+const char* CB_hbCachePath = "hb_cache";
 
 // these must not be edited in place, so that it can be assumed a screen update
 // is not needed if the ptr doesn't change.

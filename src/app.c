@@ -690,6 +690,7 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_settingsPath));
     full_mkdir(cb_gb_directory_path(CB_customSettingsPath));
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
+    full_mkdir(cb_gb_directory_path(CB_hbCachePath));
 }
 
 static void get_homebrew_hub_api(void)
@@ -1170,14 +1171,16 @@ void CB_showHelp(bool first_time)
 
 #ifdef CRANKBOY_PDKEYBOARD
 static PDKeyboard* keyboard;
-PDKeyboard* CB_init_keyboard(PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys)
+PDKeyboard* CB_init_keyboard(
+    PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys
+)
 {
     if (keyboard)
     {
         pdkb_free(keyboard);
         keyboard = NULL;
     }
-    
+
     keyboard = pdkb_new(playdate, flags, leftkeys, rightkeys);
     return keyboard;
 }

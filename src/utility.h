@@ -72,6 +72,7 @@ extern const char* CB_settingsPath;
 extern const char* CB_customSettingsPath;
 extern const char* CB_globalPrefsPath;
 extern const char* CB_patchesPath;
+extern const char* CB_hbCachePath;
 
 typedef struct
 {

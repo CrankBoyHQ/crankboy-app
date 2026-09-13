@@ -115,22 +115,36 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     }
     else
     {
-        // try saving the cover art as well.
-        // NOTE: race condition -- if rom downloads first, cover art will not be saved.
-        if (hbs->target_cover_art_path && hbs->cover_art_data && hbs->cover_art_len)
+        // try saving the cover art from the slug-keyed disk cache.
+        if (hbs->target_cover_art_path && hbs->target_rom_slug)
         {
-            if (!cb_write_entire_file(
-                    hbs->target_cover_art_path, hbs->cover_art_data, hbs->cover_art_len
-                ))
+            char* cover_path = aprintf(
+                "%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath), hbs->target_rom_slug
+            );
+            size_t cover_len = 0;
+            char* cover = cb_read_entire_file(cover_path, &cover_len, kFileReadData | kFileRead);
+
+            if (cover && cover_len)
             {
-                playdate->system->logToConsole("Failed to save cover art.");
+                if (!cb_write_entire_file(hbs->target_cover_art_path, cover, cover_len))
+                {
+                    playdate->system->logToConsole("Failed to save cover art.");
+                }
+                else
+                {
+                    playdate->system->logToConsole(
+                        "Saved cover art to: %s", hbs->target_cover_art_path
+                    );
+                }
             }
             else
             {
-                playdate->system->logToConsole(
-                    "Saved cover art to: %s", hbs->target_cover_art_path
-                );
+                // ROM beat the screenshot download; save the cover once it lands.
+                hbs->pending_cover_save = true;
             }
+
+            cb_free(cover);
+            cb_free(cover_path);
         }
 
         // save as 'last selected' for library view
@@ -409,6 +423,10 @@ static void context_list_files_update(
             cb_free(cover_art_name);
             cb_free(name);
 
+            cb_free(hbs->target_rom_slug);
+            hbs->target_rom_slug = slug ? cb_strdup(slug) : NULL;
+            hbs->pending_cover_save = false;
+
             // we check kFileRead too because even if the rom is pdx only for some reason,
             // the user should probably still be informed.
             if (cb_file_exists(hbs->target_rom_path, kFileReadData | kFileRead))
@@ -499,9 +517,8 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
 
         size_t pdi_size = 0;
         void* pdi_data = NULL;
-        cb_free(hbs->cover_art_data);
-        hbs->cover_art_data = NULL;
-        hbs->cover_art_len = 0;
+        size_t cover_size = 0;
+        void* cover_data = NULL;
 
         if (img)
         {
@@ -509,30 +526,63 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
                 hbs->download_image_name, img, img_width, img_height, &pdi_size,
                 LCD_COLUMNS - kDividerX, 160
             );
-            hbs->cover_art_data = rgba_to_pdi(
-                hbs->download_image_name, img, img_width, img_height, &hbs->cover_art_len, 240, 240
+            cover_data = rgba_to_pdi(
+                hbs->download_image_name, img, img_width, img_height, &cover_size, 240, 240
             );
 
             cb_free_decoded_image(img);
         }
-        if (pdi_data && pdi_size)
+
+        if (hbs->download_image_slug)
         {
-            if (pdi_size < (1 << 16))
+            if (pdi_data && pdi_size)
             {
-                cb_write_entire_file(DISK_IMAGE, pdi_data, pdi_size);
-                playdate->system->logToConsole("successfully retrieved image");
-            }
-            else
-            {
-                playdate->system->logToConsole(
-                    "Not saving " DISK_IMAGE " because file size is too big (%u bytes)",
-                    (unsigned)pdi_size
+                char* cache_path = aprintf(
+                    "%s/%s_preview.pdi", cb_gb_directory_path(CB_hbCachePath),
+                    hbs->download_image_slug
                 );
+
+                if (pdi_size < (1 << 16))
+                {
+                    cb_write_entire_file(cache_path, pdi_data, pdi_size);
+                    playdate->system->logToConsole("successfully retrieved image");
+                }
+                else
+                {
+                    playdate->system->logToConsole(
+                        "Not saving cover art because file size is too big (%u bytes)",
+                        (unsigned)pdi_size
+                    );
+                }
+
+                cb_free(cache_path);
+            }
+
+            // Cache the 240x240 cover art keyed by slug; the ROM save path
+            // reads this from disk so the cover always matches the game.
+            if (cover_data && cover_size)
+            {
+                char* cover_path = aprintf(
+                    "%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath),
+                    hbs->download_image_slug
+                );
+                cb_write_entire_file(cover_path, cover_data, cover_size);
+                cb_free(cover_path);
+            }
+
+            // Race: ROM finished before this screenshot; save the cover now.
+            if (hbs->pending_cover_save && hbs->target_rom_slug && cover_data && cover_size &&
+                !strcmp(hbs->download_image_slug, hbs->target_rom_slug))
+            {
+                cb_write_entire_file(hbs->target_cover_art_path, cover_data, cover_size);
+                hbs->pending_cover_save = false;
             }
         }
 
         if (pdi_data)
             cb_free(pdi_data);
+        if (cover_data)
+            cb_free(cover_data);
 
         cb_free(data);
     }
@@ -589,56 +639,71 @@ static void context_list_search_update(
                 hbs->download_image = NULL;
             }
 
-            hbs->download_image =
-                call_with_main_stack_2(playdate->graphics->loadBitmap, DISK_IMAGE, NULL);
-            if (hbs->download_image)
+            json_value jentries = json_get_table_value(hbs->jsearch, "entries");
+            if (jentries.type == kJSONArray)
             {
-                playdate->file->unlink(DISK_IMAGE, false);
-            }
-            else
-            {
-                json_value jentries = json_get_table_value(hbs->jsearch, "entries");
-                if (jentries.type == kJSONArray)
+                JsonArray* array = jentries.data.arrayval;
+
+                if (selected < array->n)
                 {
-                    JsonArray* array = jentries.data.arrayval;
+                    json_value je = array->data[selected];
+                    const char* slug = json_as_string(json_get_table_value(je, "slug"));
 
-                    if (selected < array->n)
+                    if (slug)
                     {
-                        json_value je = array->data[selected];
-                        json_value jscreenshots = json_get_table_value(je, "screenshots");
-                        const char* slug = json_as_string(json_get_table_value(je, "slug"));
-                        const char* base = json_as_string(json_get_table_value(je, "basepath"));
-                        if (jscreenshots.type == kJSONArray && slug)
+                        char* preview_path = aprintf(
+                            "%s/%s_preview.pdi", cb_gb_directory_path(CB_hbCachePath), slug
+                        );
+                        char* cover_path =
+                            aprintf("%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath), slug);
+
+                        hbs->download_image = call_with_main_stack_2(
+                            playdate->graphics->loadBitmap, preview_path, NULL
+                        );
+
+                        // Preview + cover are written together; treat them as a
+                        // pair. If either file is missing, re-download so both
+                        // are regenerated (a lone preview would otherwise never
+                        // regain its cover).
+                        bool cover_exists = cb_file_exists(cover_path, kFileReadData | kFileRead);
+
+                        if (!hbs->download_image || !cover_exists)
                         {
-                            JsonArray* screenshots = jscreenshots.data.arrayval;
-                            const char* screenshot = get_best_screenshot(screenshots);
-                            if (screenshot)
+                            json_value jscreenshots = json_get_table_value(je, "screenshots");
+                            const char* base = json_as_string(json_get_table_value(je, "basepath"));
+
+                            if (jscreenshots.type == kJSONArray)
                             {
-                                char* urlpath = aprintf(
-                                    "%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug,
-                                    screenshot
-                                );
-                                // owned copy: `screenshot` borrows into the jsearch
-                                // tree, which clear_search() may free while this
-                                // cover-art request is still in flight.
-                                cb_free(hbs->download_image_name);
-                                hbs->download_image_name = cb_strdup(screenshot);
+                                JsonArray* screenshots = jscreenshots.data.arrayval;
+                                const char* screenshot = get_best_screenshot(screenshots);
+                                if (screenshot)
+                                {
+                                    char* urlpath = aprintf(
+                                        "%s/%s/entries/%s/%s", CB_App->hbStaticPath, base, slug,
+                                        screenshot
+                                    );
+                                    // owned copy: `screenshot` borrows into the jsearch
+                                    // tree, which clear_search() may free while this
+                                    // cover-art request is still in flight.
+                                    cb_free(hbs->download_image_name);
+                                    hbs->download_image_name = cb_strdup(screenshot);
+                                    cb_free(hbs->download_image_slug);
+                                    hbs->download_image_slug = cb_strdup(slug);
 
-                                // TODO: associate cover art with slug, to be extra sure it matches
-                                // when ROM download completes later.
-                                cb_free(hbs->cover_art_data);
-                                hbs->cover_art_data = NULL;
+                                    // get image
+                                    http_safe_replace_get(
+                                        hbs->active_http_connection_2, CB_App->hbApiDomain, urlpath,
+                                        T(net_cover_art_retrieve_reason), (void*)cover_art_cb,
+                                        12 * 1000, hbs
+                                    );
 
-                                // get image
-                                http_safe_replace_get(
-                                    hbs->active_http_connection_2, CB_App->hbApiDomain, urlpath,
-                                    T(net_cover_art_retrieve_reason), (void*)cover_art_cb,
-                                    12 * 1000, hbs
-                                );
-
-                                cb_free(urlpath);
+                                    cb_free(urlpath);
+                                }
                             }
                         }
+
+                        cb_free(preview_path);
+                        cb_free(cover_path);
                     }
                 }
             }
@@ -1241,17 +1306,18 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
     playdate->system->setAutoLockDisabled(false);
 
     CB_Scene_free(hbs->scene);
-    cb_free(hbs->cover_art_data);
     while (hbs->context_depth > 0)
     {
         pop_context(hbs);
     }
     cb_free(hbs->target_rom_path);
     cb_free(hbs->target_cover_art_path);
+    cb_free(hbs->target_rom_slug);
     cb_free(hbs->urlpath);
     if (hbs->download_image)
         playdate->graphics->freeBitmap(hbs->download_image);
     cb_free(hbs->download_image_name);
+    cb_free(hbs->download_image_slug);
     cb_free(hbs->cached_hint);
     free_json_data(hbs->jsearch);
     cb_free(hbs);

@@ -59,14 +59,14 @@ typedef struct CB_HomebrewHubScene
 
     char* target_rom_path;
     char* target_cover_art_path;
+    char* target_rom_slug;  // owned copy (cb_free); slug of the ROM being downloaded
+    bool pending_cover_save;
     char* urlpath;  // temporary; only for callbacks
-
-    void* cover_art_data;
-    size_t cover_art_len;
 
     LCDBitmap* download_image;
     int download_image_index;
     char* download_image_name;  // owned copy (cb_free); never borrows into jsearch
+    char* download_image_slug;  // owned copy (cb_free); cache key
 
     int context_depth;
     int target_context_depth;
