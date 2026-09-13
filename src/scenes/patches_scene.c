@@ -20,24 +20,7 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 
     playdate->graphics->clear(kColorWhite);
 
-    // header
-    {
-        const char* name = patchesScene->game->names->name_short_leading_article;
-        playdate->graphics->setFont(CB_App->labelFont);
-        int nameWidth = playdate->graphics->getTextWidth(
-            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((HEADER_HEIGHT - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, HEADER_HEIGHT, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
-    }
+    cb_draw_header(patchesScene->game->names->name_short_leading_article, CB_HEADER_HEIGHT);
 
     CB_ListView* listView = patchesScene->listView;
     bool held = !!(CB_App->buttons_down & kButtonA);

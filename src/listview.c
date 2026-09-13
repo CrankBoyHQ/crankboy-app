@@ -14,6 +14,12 @@ static CB_ListItem* CB_ListItem_new(void);
 static void CB_ListItem_super_free(CB_ListItem* item);
 
 static int CB_ListView_rowHeight = 32;
+
+static const uint8_t CB_ListView_ditherWhite[16] = {0,    0,    0,    0,    0,    0,    0,    0,
+                                                    0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
+static const uint8_t CB_ListView_ditherBlack[16] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                                                    0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55};
+
 static int CB_ListView_scrollInset = 2;
 static int CB_ListView_scrollIndicatorWidth = 2;
 static int CB_ListView_scrollIndicatorMinHeight = 40;
@@ -201,6 +207,27 @@ void CB_ListView_reload(CB_ListView* listView)
     listView->needsDisplay = true;
 }
 
+static int CB_ListView_nextSelectable(CB_ListView* listView, int index, int dir)
+{
+    int n = listView->items->length;
+    int orgIndex = index;
+
+    for (int i = 0; i < n; ++i)
+    {
+        index += dir;
+        if (index >= n)
+            index = 0;
+        else if (index < 0)
+            index = n - 1;
+
+        CB_ListItemButton* button = listView->items->items[index];
+        if (!button->unselectable)
+            return index;
+    }
+
+    return orgIndex;
+}
+
 void CB_ListView_update(CB_ListView* listView)
 {
     PDButtons pushed = CB_App->buttons_pressed;
@@ -212,24 +239,18 @@ void CB_ListView_update(CB_ListView* listView)
         {
             if (listView->items->length > 0)
             {
-                int nextIndex = listView->selectedItem + 1;
-                if (nextIndex >= listView->items->length)
-                {
-                    nextIndex = 0;
-                }
-                CB_ListView_selectItem(listView, nextIndex, true);
+                CB_ListView_selectItem(
+                    listView, CB_ListView_nextSelectable(listView, listView->selectedItem, 1), true
+                );
             }
         }
         else if (pushed & kButtonUp)
         {
             if (listView->items->length > 0)
             {
-                int prevIndex = listView->selectedItem - 1;
-                if (prevIndex < 0)
-                {
-                    prevIndex = listView->items->length - 1;
-                }
-                CB_ListView_selectItem(listView, prevIndex, true);
+                CB_ListView_selectItem(
+                    listView, CB_ListView_nextSelectable(listView, listView->selectedItem, -1), true
+                );
             }
         }
     }
@@ -249,12 +270,9 @@ void CB_ListView_update(CB_ListView* listView)
     {
         if (listView->items->length > 0)
         {
-            int nextIndex = listView->selectedItem + 1;
-            if (nextIndex >= listView->items->length)
-            {
-                nextIndex = 0;
-            }
-            CB_ListView_selectItem(listView, nextIndex, true);
+            CB_ListView_selectItem(
+                listView, CB_ListView_nextSelectable(listView, listView->selectedItem, 1), true
+            );
             listView->crankChange = 0;
         }
     }
@@ -262,12 +280,9 @@ void CB_ListView_update(CB_ListView* listView)
     {
         if (listView->items->length > 0)
         {
-            int prevIndex = listView->selectedItem - 1;
-            if (prevIndex < 0)
-            {
-                prevIndex = listView->items->length - 1;
-            }
-            CB_ListView_selectItem(listView, prevIndex, true);
+            CB_ListView_selectItem(
+                listView, CB_ListView_nextSelectable(listView, listView->selectedItem, -1), true
+            );
             listView->crankChange = 0;
         }
     }
@@ -603,14 +618,21 @@ void CB_ListView_draw(CB_ListView* listView)
                     int lineY = textY + (fontHeight / 2);
                     int padding = 5;
 
-                    int rightArrowWidth =
-                        playdate->graphics->getTextWidth(listView->font, "›", 1, kUTF8Encoding, 0);
+                    if (!button->unselectable)
+                    {
+                        // arrows hint that the header pages left/right
+                        int rightArrowWidth = playdate->graphics->getTextWidth(
+                            listView->font, "›", 1, kUTF8Encoding, 0
+                        );
 
-                    playdate->graphics->drawText("‹", 1, kUTF8Encoding, listX + 2, textY + 2);
-                    playdate->graphics->drawText(
-                        "›", 1, kUTF8Encoding, listX + listView->frame.width - rightArrowWidth - 6,
-                        textY + 2
-                    );
+                        playdate->graphics->drawText(
+                            "‹", 1, kUTF8Encoding, listX + 2, textY + 2
+                        );
+                        playdate->graphics->drawText(
+                            "›", 1, kUTF8Encoding,
+                            listX + listView->frame.width - rightArrowWidth - 6, textY + 2
+                        );
+                    }
 
                     playdate->graphics->drawText(
                         button->title, strlen(button->title), kUTF8Encoding, textX, textY
@@ -701,6 +723,15 @@ void CB_ListView_draw(CB_ListView* listView)
 
                     playdate->graphics->setClipRect(
                         listX, listY, listView->frame.width, listView->frame.height
+                    );
+                }
+
+                if (button->disabled)
+                {
+                    const uint8_t* dither =
+                        selected ? CB_ListView_ditherWhite : CB_ListView_ditherBlack;
+                    playdate->graphics->fillRect(
+                        listX, rowY, listView->frame.width, item->height, (LCDColor)dither
                     );
                 }
 

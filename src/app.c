@@ -1661,6 +1661,12 @@ void CB_quit(void)
         CB_App->gameNameCache = NULL;
     }
 
+    if (CB_App->romcategories)
+    {
+        romcategories_free_all(CB_App->romcategories);
+        CB_App->romcategories = NULL;
+    }
+
     if (CB_App->gameListCache)
     {
         for (int i = 0; i < CB_App->gameListCache->length; i++)

@@ -13,7 +13,6 @@
 #include "settings_scene.h"
 
 #define HEADER_ANIMATION_RATE 2.8f
-#define HEADER_HEIGHT 18
 #define SCROLL_RATE 2.3f
 #define kDividerX 240
 #define kRightPanePadding 10
@@ -180,7 +179,7 @@ static void draw_common(
     int left_margin = 0;
     int right_margin = 0;
 
-    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = pds->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
 
     PDRect frame = {
         x + left_margin, header_y, kDividerX - left_margin - right_margin, LCD_ROWS - header_y
@@ -944,7 +943,7 @@ static void context_top_level_draw(
     CB_PatchDownloadScene* pds, PatchDownloadContext* context, int x, bool active
 )
 {
-    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = pds->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
 
     if (pds->list_fetch_error_message && active)
     {
@@ -1460,7 +1459,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         }
     }
 
-    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = pds->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
     bool isAnimating = (pds->context_depth_p != pds->target_context_depth);
     playdate->graphics->clear(kColorWhite);
 
@@ -1564,19 +1563,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
 
     if (header_y > 0)
     {
-        const char* name = pds->game->names->name_short_leading_article;
-        playdate->graphics->setFont(CB_App->labelFont);
-        int nameWidth = playdate->graphics->getTextWidth(
-            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        cb_draw_header(pds->game->names->name_short_leading_article, header_y);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 

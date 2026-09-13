@@ -281,13 +281,16 @@ static void process_one_emucore_game(
     }
 
     cb_free(key);
-    cb_free(fullpath);
 
     if (!ok)  // unreadable, or a subdirectory
+    {
+        cb_free(fullpath);
         return;
+    }
 
     CB_GameName* newName = allocz(CB_GameName);
     fill_basic_names(newName, filename, slug);
+    newName->fullpath = fullpath;
     newName->packed = games_dir_is_packed(games_dir);
 
     newName->crc32 = entry.crc;

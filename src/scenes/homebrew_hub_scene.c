@@ -21,7 +21,6 @@
 #define HOLD_TIME 1.09f
 #define HOLD_FADE_RATE 2.9f
 #define HEADER_ANIMATION_RATE 2.8f
-#define HEADER_HEIGHT 18
 
 typedef struct
 {
@@ -230,7 +229,7 @@ static void draw_common(CB_HomebrewHubScene* pds, HomebrewHubContext* context, i
     int left_margin = 0;
     int right_margin = 0;
 
-    int header_y = pds->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = pds->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
 
     PDRect frame = {
         x + left_margin, header_y, kDividerX - left_margin - right_margin, LCD_ROWS - header_y
@@ -249,7 +248,7 @@ static void draw_top_level(
 {
     int left_margin = 20;
     int right_margin = 20;
-    int header_y = hbs->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = hbs->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
 
     int listX = x;
     int listY = header_y;
@@ -1050,7 +1049,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         }
     }
 
-    int header_y = hbs->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = hbs->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
     bool isAnimating = (hbs->context_depth_p != hbs->target_context_depth);
     playdate->graphics->clear(kColorWhite);
     int list_padding_top = 24 - (int)(9.0f * hbs->header_animation_p);
@@ -1178,19 +1177,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     // Draw header with game name if header is visible
     if (header_y > 0 && hbs->header_name[0])
     {
-        const char* name = hbs->header_name;
-        playdate->graphics->setFont(CB_App->labelFont);
-        int nameWidth = playdate->graphics->getTextWidth(
-            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        cb_draw_header(hbs->header_name, header_y);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 

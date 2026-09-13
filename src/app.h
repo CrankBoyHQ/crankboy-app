@@ -311,6 +311,7 @@ const char* CB_get_forwarded_path(const char* path);
 #define THUMBNAIL_WIDTH 240
 #define THUMBNAIL_HEIGHT 240
 
+
 // files that have been copied from PDX to data folder
 #define COPIED_FILES "manifest.json"
 #define PATCH_LIST_FILE "manifest.json"
@@ -321,7 +322,8 @@ const char* CB_get_forwarded_path(const char* path);
 #define LAST_SELECTED_FILE "library_last_selected.txt"
 #define HOMEBREW_HUB_API_FILE "hbapi.txt"
 #define PARENTAL_LOCK_FILE "parental_lock.bin"
-#define CATEGORY_PATH "/Shared/Emulation/misc/cbcats.json"
+#define MISC_PATH "/Shared/Emulation/misc"
+#define CATEGORY_PATH MISC_PATH "/cbcats.json"
 
 #define DEFAULT_SHARED_DIRECTORY "/Shared/Emulation/gb"
 #define DEFAULT_CORES_DIRECTORY "/Shared/Emulation/cores"

@@ -210,6 +210,19 @@
 
 // Library Scene
 "Library_GetRoms" = "Get ROMs...";
+"Library_Categories" = "Categories...";
+
+// Categories
+"cat_edit_header" = "Edit Category";
+"cat_new" = "New category...";
+"cat_default_name" = "New Category";
+"cat_icon" = "Icon";
+"cat_delete_confirm" = "Delete the category \"%s\"?";
+"cat_delete" = "Delete";
+"cat_header" = "Categories";
+"cat_all" = "All";
+"cat_roms" = "ROMs";
+"cat_packed" = "Included";
 "lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n\nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only" = "This ROM is marked CGB-only.\n\nYou can try launching as a standard DMG ROM, or in CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
 "lib_cgb_prompt_cgb_only_one_time" = "This ROM is marked CGB-only.\n\nThe game will launch in CGB mode.\n\nCrankBoy only has experimental support for CGB (\"Color\") emulation."

@@ -155,6 +155,10 @@ int cb_calculate_progress_max_width(LCDFont* font, CB_ProgressStyle style, size_
 void cb_sanitize_string_for_filename(char* str);
 void cb_sort_games_array(CB_Array* games_array);
 
+#define CB_HEADER_HEIGHT 18
+
+void cb_draw_header(const char* title, int height);
+
 void cb_draw_logo_screen_and_display(LCDFont* font, const char* message);
 void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message);
 void cb_draw_logo_screen_centered_split(

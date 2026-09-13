@@ -1085,12 +1085,24 @@ void cb_draw_logo_screen_to_buffer(LCDFont* font, const char* message)
     }
 }
 
-/**
- * @brief Draws the logo screen and forces an immediate display update.
- * Use for instant feedback outside the main game loop (e.g., during initialization or file loads).
- * @param font The font to use for the message text.
- * @param message The text to display below the logo.
- */
+void cb_draw_header(const char* title, int height)
+{
+    if (!title || !*title || height <= 0)
+        return;
+
+    LCDFont* font = CB_App->labelFont;
+    playdate->graphics->setFont(font);
+
+    int textWidth = playdate->graphics->getTextWidth(font, title, strlen(title), kUTF8Encoding, 0);
+    int fontHeight = playdate->graphics->getFontHeight(font);
+    int textX = LCD_COLUMNS / 2 - textWidth / 2;
+    int textY = ((height - fontHeight) / 2) + (string_has_descenders(title) ? 1 : 2);
+
+    playdate->graphics->fillRect(0, 0, LCD_COLUMNS, height, kColorBlack);
+    playdate->graphics->setDrawMode(kDrawModeFillWhite);
+    playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, textX, textY);
+}
+
 void cb_draw_logo_screen_and_display(LCDFont* font, const char* message)
 {
     playdate->graphics->setDrawMode(kDrawModeCopy);

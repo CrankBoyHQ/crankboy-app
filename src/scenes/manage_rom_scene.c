@@ -13,7 +13,6 @@
 #include <string.h>
 
 #define HEADER_ANIMATION_RATE 2.8f
-#define HEADER_HEIGHT 18
 #define INFO_LEFT_X 14
 #define INFO_VALUE_X 100
 #define INFO_TOP_Y 9
@@ -638,7 +637,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // ----- draw -----
-    int header_y = self->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = self->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
     playdate->graphics->clear(kColorWhite);
 
     // info rows
@@ -807,19 +806,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
 
     if (header_y > 0)
     {
-        LCDFont* font = CB_App->labelFont;
-        const char* name = self->header_name;
-        playdate->graphics->setFont(font);
-        int nameWidth =
-            playdate->graphics->getTextWidth(font, name, strlen(name), kUTF8Encoding, 0);
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(font);
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
+        cb_draw_header(self->header_name, header_y);
         playdate->graphics->setDrawMode(kDrawModeFillBlack);
     }
 }

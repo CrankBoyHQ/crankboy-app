@@ -22,7 +22,6 @@
 #define BULLET_POINT_SPACING 5
 
 // Height of the header bar
-#define HEADER_HEIGHT 18
 
 // Buffer for one line of text when calculating bullet points
 #define LINE_BUF_SIZE 2048
@@ -116,7 +115,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     int header_height = 0;
     if (infoScene->title && *infoScene->title)
     {
-        header_height = HEADER_HEIGHT;
+        header_height = CB_HEADER_HEIGHT;
     }
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
@@ -307,24 +306,7 @@ static void CB_InfoScene_update(void* object, uint32_t u32enc_dt)
     // --- Draw everything ---
     playdate->graphics->clear(kColorWhite);
 
-    // --- Draw Header (only if title exists) ---
-    if (header_height > 0)
-    {
-        const char* name = infoScene->title;
-        playdate->graphics->setFont(CB_App->labelFont);
-        int nameWidth = playdate->graphics->getTextWidth(
-            CB_App->labelFont, name, strlen(name), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-        int fontHeight = playdate->graphics->getFontHeight(CB_App->labelFont);
-
-        int vertical_offset = string_has_descenders(name) ? 1 : 2;
-        int textY = ((header_height - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_height, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-        playdate->graphics->drawText(name, strlen(name), kUTF8Encoding, textX, textY);
-    }
+    cb_draw_header(infoScene->title, header_height);
 
     if (header_height > 0)
     {

@@ -19,8 +19,8 @@ typedef struct CB_GameName CB_GameName;
 
 typedef struct RomCategory
 {
-    bool enabled;  // only intended for fixed categories
-    bool requires_catalog; // don't show if this is not a catalog build (wouldn't be useful anyway)
+    bool enabled : 1;           // only intended for fixed categories
+    bool requires_catalog : 1;  // don't show if this is not a catalog build (wouldn't be useful anyway)
     enum RomCategoryType type;
 
     char name[MAX_CATEGORY_NAME];
@@ -46,3 +46,7 @@ int romcategories_write_all(RomCategory**);
 
 void romcategory_free(RomCategory*);
 void romcategories_free_all(RomCategory**);
+
+RomCategory* romcategory_new(enum RomCategoryType type, const char* name);
+void romcategories_append(RomCategory*** pcats, RomCategory* cat);
+void romcategories_remove(RomCategory*** pcats, RomCategory* cat); // also frees

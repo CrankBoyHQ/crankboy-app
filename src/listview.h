@@ -62,8 +62,10 @@ typedef struct
     CB_ListItem item;
     char* title;
     float textScrollOffset;
-    bool needsTextScroll;
-    bool is_header;
+    bool needsTextScroll : 1;
+    bool is_header : 1;
+    bool unselectable : 1;
+    bool disabled : 1;
     union
     {
         void* ptr;

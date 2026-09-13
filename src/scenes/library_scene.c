@@ -20,6 +20,7 @@
 #include "../userstack.h"
 #include "../utility.h"
 #include "../version.h"
+#include "categories_scene.h"
 #include "credits_scene.h"
 #include "emucore_game_scene.h"
 #include "game_scene.h"
@@ -1304,11 +1305,29 @@ static bool homebrew_hub_available(void)
     return CB_App->hbApiDomain && CB_App->hbApiPath;
 }
 
-static void library_push_get_roms_item(CB_ListView* listView)
+static int library_get_roms_index(const CB_LibraryScene* libraryScene)
 {
-    if (!homebrew_hub_available())
-        return;
-    array_push(listView->items, CB_ListItemButton_new(T(Library_GetRoms)));
+    return homebrew_hub_available() ? libraryScene->games->length : -1;
+}
+
+// TODO: clean this up, so kludgy
+static int library_categories_index(const CB_LibraryScene* libraryScene)
+{
+    if (libraryScene->games->length == 0)
+        return -1;
+    return libraryScene->games->length + (homebrew_hub_available() ? 1 : 0);
+}
+
+static void library_push_extra_items(CB_LibraryScene* libraryScene)
+{
+    if (homebrew_hub_available())
+    {
+        array_push(libraryScene->listView->items, CB_ListItemButton_new(T(Library_GetRoms)));
+    }
+    if (libraryScene->games->length > 0)
+    {
+        array_push(libraryScene->listView->items, CB_ListItemButton_new(T(Library_Categories)));
+    }
 }
 
 CB_LibraryScene* CB_LibraryScene_new(void)
@@ -1452,7 +1471,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
         CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
         array_push(items, itemButton);
     }
-    library_push_get_roms_item(libraryScene->listView);
+    library_push_extra_items(libraryScene);
 
     CB_ListView_reload(libraryScene->listView);
 }
@@ -1680,7 +1699,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             }
             else
             {
-                library_push_get_roms_item(libraryScene->listView);
+                library_push_extra_items(libraryScene);
 
                 // full-screen instructions only when there is nothing to list at all
                 if (libraryScene->listView->items->length > 0)
@@ -1829,15 +1848,21 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (pressed & kButtonA)
     {
         int selectedItem = libraryScene->listView->selectedItem;
-        if (selectedItem == libraryScene->games->length)
+        if (selectedItem == library_get_roms_index(libraryScene))
         {
-            // no "Get ROMs..." row without the API
-            if (homebrew_hub_available())
+            cb_play_ui_sound(CB_UISound_Confirm);
+            last_selected_game_index = selectedItem;
+
+            CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(0.0f, NULL);
+            CB_presentModal(s->scene);
+        }
+        else if (selectedItem == library_categories_index(libraryScene))
+        {
+            CB_CategoriesScene* s = CB_CategoriesScene_new();
+            if (s)
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
                 last_selected_game_index = selectedItem;
-
-                CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(0.0f, NULL);
                 CB_presentModal(s->scene);
             }
         }
@@ -1960,7 +1985,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
         CB_CoverFlowContext flowCtx = {
             .games = libraryScene->games,
-            .itemCount = libraryScene->games->length + (homebrew_hub_available() ? 1 : 0),
+            .itemCount = libraryScene->listView->items->length,
             .selection = &libraryScene->listView->selectedItem,
             .forceRedraw = needsDisplay && !forAnimation,
             .statusText = NULL

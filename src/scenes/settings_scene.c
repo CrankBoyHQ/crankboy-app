@@ -67,7 +67,6 @@ static char* gs_desc_base_none = NULL;
 #define HOLD_TIME 1.09f
 #define HOLD_FADE_RATE 2.9f
 #define HEADER_ANIMATION_RATE 2.8f
-#define HEADER_HEIGHT 18
 
 struct OptionsMenuEntry;
 
@@ -3062,7 +3061,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     float header_target = CB_App->bundled_rom ? 0.0f : (float)preferences_per_game;
     TOWARD(settingsScene->header_animation_p, header_target, dt * HEADER_ANIMATION_RATE);
 
-    int header_y = settingsScene->header_animation_p * HEADER_HEIGHT + 0.5f;
+    int header_y = settingsScene->header_animation_p * CB_HEADER_HEIGHT + 0.5f;
 
     float visible_items = (float)MAX_VISIBLE_ITEMS - settingsScene->header_animation_p;
     int drawCount = (int)ceilf(visible_items);
@@ -3398,30 +3397,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
 
     // header y
-    if (header_y > 0 && game_name_for_header)
-    {
-        LCDFont* font = CB_App->labelFont;
-        playdate->graphics->setFont(font);
-        int nameWidth = playdate->graphics->getTextWidth(
-            font, game_name_for_header, strlen(game_name_for_header), kUTF8Encoding, 0
-        );
-        int textX = LCD_COLUMNS / 2 - nameWidth / 2;
-
-        // Dynamically adjust vertical offset based on text content
-        int fontHeight = playdate->graphics->getFontHeight(font);
-
-        // Check if the title has descenders and apply a different offset.
-        // This provides a better visual center for all titles.
-        int vertical_offset = string_has_descenders(game_name_for_header) ? 1 : 2;
-        int textY = ((header_y - fontHeight) / 2) + vertical_offset;
-
-        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, header_y, kColorBlack);
-        playdate->graphics->setDrawMode(kDrawModeFillWhite);
-
-        playdate->graphics->drawText(
-            game_name_for_header, strlen(game_name_for_header), kUTF8Encoding, textX, textY
-        );
-    }
+    cb_draw_header(game_name_for_header, header_y);
 
     playdate->graphics->setFont(CB_App->bodyFont);
 

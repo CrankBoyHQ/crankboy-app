@@ -5,13 +5,10 @@
 #include "jparse.h"
 #include "utility.h"
 
-static void romcategories_append(RomCategory***, RomCategory*);
 static bool romcategories_has_type(RomCategory* const*, enum RomCategoryType rt);
 
 // bytes needed for roms[]
 static size_t romcategory_bitc(void);
-
-static RomCategory* romcategory_new(enum RomCategoryType type, const char* name);
 
 static size_t romcategory_bitc(void)
 {
@@ -19,7 +16,7 @@ static size_t romcategory_bitc(void)
     return (n + 7) / 8;
 }
 
-static RomCategory* romcategory_new(enum RomCategoryType type, const char* name)
+RomCategory* romcategory_new(enum RomCategoryType type, const char* name)
 {
     RomCategory* cat = mallocz(sizeof(RomCategory) + romcategory_bitc());
     if (!cat)
@@ -98,15 +95,6 @@ static ssize_t get_rom_index_for_path(const char* path)
             return (ssize_t)i;
     }
 
-    const char* base = strrchr(path, '/');
-    base = base ? base + 1 : path;
-    for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
-    {
-        const CB_GameName* name = CB_App->gameNameCache->items[i];
-        if (name->filename && !strcmp(name->filename, base))
-            return (ssize_t)i;
-    }
-
     return -1;
 }
 
@@ -181,8 +169,8 @@ RomCategory** romcategories_load_all(size_t* o_count)
         }                                                                                   \
     }
 
-    ROMCAT_FIXED_DEFAULT(ROMCAT_PACKED, "packed", "Included", "cat-packed", true, true);
-    ROMCAT_FIXED_DEFAULT(ROMCAT_ALL, "all", "All", "cat-all", true, false);
+    ROMCAT_FIXED_DEFAULT(ROMCAT_PACKED, "packed", T(cat_packed), "cat-packed", true, true);
+    ROMCAT_FIXED_DEFAULT(ROMCAT_ALL, "all", T(cat_all), "cat-all", true, false);
 
 #undef ROMCAT_FIXED_DEFAULT
 
@@ -200,7 +188,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
     return cats;
 }
 
-static void romcategories_append(RomCategory*** cats, RomCategory* cat)
+void romcategories_append(RomCategory*** cats, RomCategory* cat)
 {
     size_t n = len_nullterm((void const* const*)*cats);
     RomCategory** grown = cb_realloc(*cats, sizeof(RomCategory*) * (n + 2));
@@ -213,6 +201,24 @@ static void romcategories_append(RomCategory*** cats, RomCategory* cat)
     grown[n] = cat;
     grown[n + 1] = NULL;
     *cats = grown;
+}
+
+void romcategories_remove(RomCategory*** cats, RomCategory* cat)
+{
+    RomCategory** list = *cats;
+    if (!list || !cat)
+        return;
+
+    size_t n = len_nullterm((void const* const*)list);
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (list[i] == cat)
+        {
+            memmove(&list[i], &list[i + 1], (n - i) * sizeof(RomCategory*));
+            romcategory_free(cat);
+            return;
+        }
+    }
 }
 
 static bool romcategories_has_type(RomCategory* const* cats, enum RomCategoryType rt)
@@ -235,7 +241,7 @@ static int rom_path_append(CB_GameName* name, void* ud)
 
     JsonArray* arr = *roms;
     size_t n = arr ? arr->n : 0;
-    arr = cb_realloc(arr, sizeof(JsonArray) + (n + 1) * sizeof(json_value));
+    arr = cb_realloc(arr, sizeof(JsonArray) + sizeof(json_value) * (n + 1));
     if (!arr)
         return -1;
 
@@ -325,6 +331,7 @@ int romcategories_write_all(RomCategory** cats)
     // built-in categories, flags
     json_set_table_value(&j, "misc", jfixed);
 
+    full_mkdir(MISC_PATH);
     int result = write_json_to_disk(CATEGORY_PATH, j);
 
     free_json_data(j);
