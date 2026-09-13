@@ -216,7 +216,7 @@
 "cat_edit_header" = "Edit Category";
 "cat_new" = "New category...";
 "cat_default_name" = "New Category";
-"cat_icon" = "Icon";
+"cat_icon" = "Icon (TBD)";
 "cat_delete_confirm" = "Delete the category \"%s\"?";
 "cat_delete" = "Delete";
 "cat_header" = "Categories";

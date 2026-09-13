@@ -2,6 +2,7 @@
 
 #include "../scene.h"
 #include "../listview.h"
+#include "../app.h"
 #include "../romcategory.h"
 
 typedef enum
@@ -18,6 +19,10 @@ typedef struct CB_CategoriesScene
     CB_CategoriesSceneState state;
 
     RomCategory* editing;
+
+#ifdef CRANKBOY_PDKEYBOARD
+    PDKeyboard* keyboard;
+#endif
 
     bool dirty : 1;
     bool needs_rebuild : 1;

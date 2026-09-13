@@ -249,6 +249,11 @@ void CB_dismiss(CB_Scene* scene);
 void CB_headphone_state_changed(int headphone, int mic);
 void CB_showHelp(bool first_time);
 
+#ifdef CRANKBOY_PDKEYBOARD
+#include "pdkeyboard.h"
+PDKeyboard* CB_init_keyboard(PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys);
+#endif
+
 // Unload active core, then load the given core. (NULL: unload only.)
 void CB_load_emucore(emucore_t* core);
 
