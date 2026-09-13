@@ -87,6 +87,7 @@
             "uzlib",
             "pdboot",
             "pdll",
+            "pdkeyboard",
             "nayuki/qrcodegen"
         ]
     },
@@ -99,6 +100,7 @@
             "MIT License",
             "",
             "Copyright © 2024-2026, CrankBoy contributors",
+            "Copyright © 2026, Sodium Hydroxide",
             "Copyright © 2025, Project Nayuki",
             "Copyright © 2023-2024, Risolvi Productions",
             "Copyright © 2023, Paul Sorensen",
