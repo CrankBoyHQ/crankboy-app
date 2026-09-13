@@ -292,7 +292,12 @@ typedef struct
 {
     CB_LibraryScene* libraryScene;
     CB_Game* game;
+    int retries;
 } CoverDownloadUserdata;
+
+#define COVER_DOWNLOAD_MAX_RETRIES 3
+
+static void cb_cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retries);
 
 static void save_last_selected_index(const char* rompath)
 {
@@ -452,6 +457,35 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     if (cb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
     {
+        // Validate the downloaded PDI before committing it.
+        const char* verify_error = NULL;
+        LCDBitmap* verify_bitmap =
+            playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_dest_path), &verify_error);
+
+        if (!verify_bitmap)
+        {
+            if (verify_error)
+            {
+                playdate->system->logToConsole(
+                    "Downloaded cover failed to load, unlinking %s: %s", cover_dest_path,
+                    verify_error
+                );
+            }
+
+            playdate->file->unlink(cover_dest_path, 0);
+
+            if (userdata->retries < COVER_DOWNLOAD_MAX_RETRIES && stillOnSameGame)
+            {
+                cb_cover_download_issue(libraryScene, game, userdata->retries + 1);
+            }
+            else if (stillOnSameGame)
+            {
+                set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_invalid_file));
+            }
+            goto cleanup;
+        }
+        playdate->graphics->freeBitmap(verify_bitmap);
+
         if (game->coverPath)
         {
             cb_free(game->coverPath);
@@ -509,16 +543,8 @@ cleanup:
     cb_free(userdata);
 }
 
-static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
+static void cb_cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retries)
 {
-    int selectedIndex = libraryScene->listView->selectedItem;
-    if (selectedIndex < 0 || selectedIndex >= libraryScene->games->length)
-    {
-        return;
-    }
-
-    CB_Game* game = libraryScene->games->items[selectedIndex];
-
     set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, T(cover_searching));
 
     if (game->names->name_database == NULL)
@@ -584,6 +610,7 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     CoverDownloadUserdata* userdata = cb_malloc(sizeof(CoverDownloadUserdata));
     userdata->libraryScene = libraryScene;
     userdata->game = game;
+    userdata->retries = retries;
 
     if (libraryScene->activeCoverDownloadConnection)
     {
@@ -601,6 +628,19 @@ static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
     );
 
     cb_free(url_path);
+}
+
+static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
+{
+    int selectedIndex = libraryScene->listView->selectedItem;
+    if (selectedIndex < 0 || selectedIndex >= libraryScene->games->length)
+    {
+        return;
+    }
+
+    CB_Game* game = libraryScene->games->items[selectedIndex];
+
+    cb_cover_download_issue(libraryScene, game, 0);
 }
 
 static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)

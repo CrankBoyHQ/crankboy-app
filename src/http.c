@@ -33,6 +33,8 @@ struct HTTPUD
     char* contentType;
     char* data;
     size_t data_len;
+    size_t content_length;
+    bool has_content_length;
     int timeout;
     unsigned flags;
     void* ud;
@@ -228,6 +230,11 @@ static void CB_Header(HTTPConnection* connection, const char* key, const char* v
     {
         httpud->location = cb_strdup(value);
     }
+    else if (strcasecmp(key, "Content-Length") == 0)
+    {
+        httpud->content_length = (size_t)strtoul(value, NULL, 10);
+        httpud->has_content_length = true;
+    }
 }
 
 static void CB_HeadersRead(HTTPConnection* connection)
@@ -300,11 +307,20 @@ static void readAllData(HTTPConnection* connection)
         {
             struct HttpHandleInfo* info = get_handle_info(httpud->handle);
 
-            char* new_data = cb_realloc(httpud->data, httpud->data_len + available + 1);
+            size_t want = available;
+            if (httpud->has_content_length)
+            {
+                if (httpud->data_len >= httpud->content_length)
+                    break;
+                size_t remaining = httpud->content_length - httpud->data_len;
+                if (want > remaining)
+                    want = remaining;
+            }
+
+            char* new_data = cb_realloc(httpud->data, httpud->data_len + want + 1);
             httpud->data = new_data;
-            int read = playdate->network->http->read(
-                connection, httpud->data + httpud->data_len, available
-            );
+            int read =
+                playdate->network->http->read(connection, httpud->data + httpud->data_len, want);
 
             if (read > 0)
             {
