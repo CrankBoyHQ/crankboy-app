@@ -40,6 +40,8 @@ static const char* hb_platforms[] = {
 
 static bool push_list_search(CB_HomebrewHubScene* hbs, const char* platform);
 static bool push_list_files(CB_HomebrewHubScene* hbs, const json_value* entry);
+static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context);
+static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* platform);
 
 static void user_quit(void* ud, int selected)
 {
@@ -176,7 +178,14 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
     switch (context->list->selectedItem)
     {
     case 0:
+    {
+        json_value jentries = json_get_table_value(hbs->jsearch, "entries");
+        JsonArray* array =
+            (jentries.type == kJSONArray) ? (JsonArray*)jentries.data.arrayval : NULL;
+        if (!array || array->n == 0)
+            return NULL;
         return aprintf(T(hhub_switch_page_hint));
+    }
     default:
     {
         int index = context->list->selectedItem - 1;
@@ -192,7 +201,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                 {
                     const char* title = json_as_string(json_get_table_value(je, "title"));
                     const char* developer = json_as_string(json_get_table_value(je, "developer"));
-                    const char* platform = json_as_string(json_get_table_value(je, "platform"));
+                    const char* typetag = json_as_string(json_get_table_value(je, "typetag"));
                     const char* date = json_as_string(json_get_table_value(je, "date"));
                     if (!date)
                         date = json_as_string(json_get_table_value(je, "firstadded_date"));
@@ -205,9 +214,18 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                             date_tchar[0] = 0;
                     }
 
+                    char typetag_buf[32];
+                    if (typetag && *typetag)
+                    {
+                        snprintf(typetag_buf, sizeof(typetag_buf), "%s", typetag);
+                        if (typetag_buf[0] >= 'a' && typetag_buf[0] <= 'z')
+                            typetag_buf[0] -= 32;
+                        typetag = typetag_buf;
+                    }
+
                     return aprintf(
-                        "Title: %s\nDev: %s\nPlatform: %s\nDate: %s", title ? title : "unknown",
-                        developer ? developer : "unknown", platform ? platform : "unknown",
+                        "Title: %s\nDev: %s\nType: %s\nDate: %s", title ? title : "unknown",
+                        developer ? developer : "unknown", typetag ? typetag : "unknown",
                         date ? date : "unknown"
                     );
                 }
@@ -220,7 +238,43 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
     }
 }
 
-static char* context_top_level_hint(CB_HomebrewHubScene* pds, HomebrewHubContext* context)
+// Returns a display-friendly copy of a comma-separated list, joining
+// tokens with ", " and capitalizing the first letter of each token
+// (e.g. "rpg,action" -> "Rpg, Action", "RPG,Action" -> "RPG, Action").
+static char* hb_pretty_csv(const char* csv)
+{
+    char* result = aprintf("");
+    const char* p = csv ? csv : "";
+    while (*p)
+    {
+        const char* comma = strchr(p, ',');
+        size_t len = comma ? (size_t)(comma - p) : strlen(p);
+        const char *s = p, *e = p + len;
+        while (s < e && (*s == ' ' || *s == '\t'))
+            s++;
+        while (e > s && (e[-1] == ' ' || e[-1] == '\t'))
+            e--;
+
+        char* next;
+        if (s < e)
+        {
+            char first = (*s >= 'a' && *s <= 'z') ? (char)(*s - 32) : *s;
+            next = aprintf("%s%c%.*s%s", result, first, (int)(e - s - 1), s + 1, comma ? ", " : "");
+        }
+        else
+        {
+            next = aprintf("%s%s", result, comma ? ", " : "");
+        }
+        cb_free(result);
+        result = next;
+        if (!comma)
+            break;
+        p = comma + 1;
+    }
+    return result;
+}
+
+static char* context_top_level_hint(CB_HomebrewHubScene* hbs, HomebrewHubContext* context)
 {
     switch (context->list->selectedItem)
     {
@@ -228,9 +282,24 @@ static char* context_top_level_hint(CB_HomebrewHubScene* pds, HomebrewHubContext
         return aprintf(T(hhub_browse_gb_desc));
         break;
     case 1:
+    case 3:
+    {
+        const char* desc =
+            (context->list->selectedItem == 1) ? T(hhub_search_gb_desc) : T(hhub_search_cgb_desc);
+        char* tags = hb_pretty_csv(CB_App->hbTagKeywords);
+        char* types = hb_pretty_csv(CB_App->hbTypetagKeywords);
+        char* hint = aprintf(
+            "%s\n\n%s: %s\n\n%s: %s", desc, T(hhub_search_tags_label), tags,
+            T(hhub_search_types_label), types
+        );
+        cb_free(tags);
+        cb_free(types);
+        return hint;
+    }
+    case 2:
         return aprintf(T(hhub_browse_cgb_desc));
         break;
-    case 2:
+    case 4:
         return aprintf(T(hhub_parental_lock_desc));
         break;
     default:
@@ -444,6 +513,113 @@ static void context_list_files_update(
     }
 }
 
+#ifdef CRANKBOY_PDKEYBOARD
+static void open_search_keyboard(
+    CB_HomebrewHubScene* hbs, const char* platform, const char* initial_text
+)
+{
+    PDKeyboard* kb = CB_init_keyboard(PDKBF_DEFAULT, NULL, NULL);
+    if (!kb)
+        return;
+
+    pdkb_set_max_bytes(kb, 64);
+    pdkb_set_content(kb, initial_text ? initial_text : "");
+    pdkb_open(kb);
+
+    hbs->keyboard = kb;
+    hbs->search_platform = platform;
+    hbs->search_result_handled = false;
+    cb_play_ui_sound(CB_UISound_Confirm);
+}
+
+static void draw_search_field(CB_HomebrewHubScene* hbs)
+{
+    const char* content = pdkb_get_content(hbs->keyboard);
+    bool empty = !content || !*content;
+    const char* display = empty ? T(hhub_search_placeholder) : content;
+
+    int kb_top = pdkb_get_visible_y(hbs->keyboard);
+    playdate->graphics->fillRect(0, 0, LCD_COLUMNS, kb_top, (LCDColor)&lcdp_t_50[0]);
+
+    LCDFont* font = CB_App->bodyFont;
+    playdate->graphics->setFont(font);
+
+    int box_x = 16;
+    int box_w = LCD_COLUMNS - 32;
+    int box_h = 36;
+
+    // slide down/up in sync with the keyboard's open/close animation
+    float open_p = pdkb_get_open_p(hbs->keyboard);
+    float eased = 1.0f - (1.0f - open_p) * (1.0f - open_p);
+    int box_y = (int)(-(float)box_h + ((16.0f + box_h) * eased));
+
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+    playdate->graphics->fillRect(box_x, box_y, box_w, box_h, kColorWhite);
+    playdate->graphics->drawRect(box_x, box_y, box_w, box_h, kColorBlack);
+
+    int text_x = box_x + 8;
+    int text_y = box_y + (box_h - playdate->graphics->getFontHeight(font)) / 2;
+    int text_w = playdate->graphics->getTextWidth(font, display, strlen(display), kUTF8Encoding, 0);
+
+    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->drawText(display, strlen(display), kUTF8Encoding, text_x, text_y);
+
+    unsigned now = playdate->system->getCurrentTimeMilliseconds();
+    if ((now / 500) % 2 == 0)
+    {
+        int cursor_x = empty ? text_x : text_x + text_w + 2;
+        playdate->graphics->fillRect(cursor_x, box_y + 6, 2, box_h - 12, kColorBlack);
+    }
+}
+
+static void update_search_keyboard(CB_HomebrewHubScene* hbs, float dt)
+{
+    PDKeyboard* kb = hbs->keyboard;
+    if (!kb)
+        return;
+
+    draw_search_field(hbs);
+
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+    pdkb_update(kb, dt);
+
+    if (!hbs->search_result_handled)
+    {
+        int result = pdkb_get_result(kb);
+        if (result != 0)
+        {
+            if (result > 0)
+            {
+                const char* content = pdkb_get_content(kb);
+
+                if (hbs->context_depth > 0 &&
+                    hbs->context[hbs->context_depth - 1].type == HBSCT_LIST_SEARCH)
+                {
+                    HomebrewHubContext* ctx = &hbs->context[hbs->context_depth - 1];
+                    cb_free(hbs->search_query);
+                    hbs->search_query = (content && *content) ? cb_strdup(content) : NULL;
+                    ctx->i = 1;
+                    clear_page(hbs, ctx);
+                    http_search(hbs, 1, ctx->str);
+                }
+                else if (content && *content)
+                {
+                    cb_free(hbs->search_query);
+                    hbs->search_query = cb_strdup(content);
+                    push_list_search(hbs, hbs->search_platform);
+                }
+            }
+
+            // cancel or main-view empty: leave search_query as-is
+            hbs->search_result_handled = true;
+        }
+    }
+
+    if (pdkb_get_state(kb) == PDKBS_CLOSED)
+        hbs->keyboard = NULL;
+}
+#endif
+
 static void context_top_level_update(
     CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt
 )
@@ -454,7 +630,9 @@ static void context_top_level_update(
 
     if (a_pressed)
     {
-        if (context->list->selectedItem == 2)
+        int sel = context->list->selectedItem;
+
+        if (sel == 4)
         {
             http_safe_cancel(hbs->active_http_connection);
             http_safe_cancel(hbs->active_http_connection_2);
@@ -462,16 +640,21 @@ static void context_top_level_update(
             CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
             CB_presentModal(plScene->scene);
         }
+        else if (CB_App->parentalLockEngaged)
+        {
+            CB_presentModal(CB_Modal_new(T(hhub_engaged), NULL, NULL, NULL)->scene);
+        }
+        else if (sel % 2 == 1)
+        {
+#ifdef CRANKBOY_PDKEYBOARD
+            open_search_keyboard(hbs, hb_platforms[sel / 2], NULL);
+#endif
+        }
         else
         {
-            if (CB_App->parentalLockEngaged)
-            {
-                CB_presentModal(CB_Modal_new(T(hhub_engaged), NULL, NULL, NULL)->scene);
-            }
-            else
-            {
-                push_list_search(hbs, hb_platforms[context->list->selectedItem]);
-            }
+            cb_free(hbs->search_query);
+            hbs->search_query = NULL;
+            push_list_search(hbs, hb_platforms[sel / 2]);
         }
     }
 }
@@ -587,9 +770,6 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
         cb_free(data);
     }
 }
-
-static void clear_page(CB_HomebrewHubScene* hbs, HomebrewHubContext* context);
-static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* platform);
 
 static void context_list_search_update(
     CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt
@@ -824,24 +1004,32 @@ static void populate_search_listing(CB_HomebrewHubScene* hbs, HomebrewHubContext
         context->i = jpage.data.intval;
     }
 
+    json_value jentries = json_get_table_value(hbs->jsearch, "entries");
+    JsonArray* array = (jentries.type == kJSONArray) ? (JsonArray*)jentries.data.arrayval : NULL;
+
+    if (!array || array->n == 0)
+    {
+        CB_ListView_clear(context->list);
+        CB_ListItemButton* nb = CB_ListItemButton_new(T(hhub_no_results));
+        nb->is_header = true;
+        array_push(context->list->items, nb);
+        CB_ListView_reload(context->list);
+        return;
+    }
+
     clear_page(hbs, context);
 
-    json_value jentries = json_get_table_value(hbs->jsearch, "entries");
-    if (jentries.type == kJSONArray)
+    for (int i = 0; i < array->n; ++i)
     {
-        JsonArray* array = jentries.data.arrayval;
-        for (int i = 0; i < array->n; ++i)
+        json_value je = array->data[i];
+        json_value jtitle = json_get_table_value(je, "title");
+        if (jtitle.type == kJSONString)
         {
-            json_value je = array->data[i];
-            json_value jtitle = json_get_table_value(je, "title");
-            if (jtitle.type == kJSONString)
-            {
-                array_push(context->list->items, CB_ListItemButton_new(jtitle.data.stringval));
-            }
-            else
-            {
-                array_push(context->list->items, CB_ListItemButton_new(T(status_error)));
-            }
+            array_push(context->list->items, CB_ListItemButton_new(jtitle.data.stringval));
+        }
+        else
+        {
+            array_push(context->list->items, CB_ListItemButton_new(T(status_error)));
         }
     }
     CB_ListView_reload(context->list);
@@ -907,16 +1095,271 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
     }
 }
 
+// Returns the caller-owned, comma-separated, URL-encoded tag list from the
+// configured extra flags (the Open Source filter).
+static char* hb_extra_tags(void)
+{
+    const char* flags = CB_App->hbSearchExtraFlags;
+    if (!flags || !*flags)
+        return aprintf("");
+
+    // The extra flags are a single "tags=<value>" parameter; the value may
+    // itself be comma-separated (e.g. "Open%20Source").
+    if (strncasecmp(flags, "tags=", 5) != 0)
+        return aprintf("");
+    return aprintf("%s", flags + 5);
+}
+
+#define HB_MAX_TAGS 64
+#define HB_MAX_WORDS 64
+
+// Splits `s` in-place on whitespace, filling `words` with pointers to each
+// null-terminated token. Returns the token count.
+static int hb_tokenize(char* s, char** words, int max_words)
+{
+    int n = 0;
+    char* p = s;
+    while (*p)
+    {
+        while (*p == ' ' || *p == '\t')
+            *p++ = 0;
+        if (!*p)
+            break;
+        if (n >= max_words)
+            break;
+        words[n++] = p;
+        while (*p && *p != ' ' && *p != '\t')
+            p++;
+    }
+    return n;
+}
+
+// Returns the number of query words matched (or 0) if the multi-word `tag`
+// matches the query words starting at index `i` (case-insensitive).
+static int hb_tag_matches_at(const char* tag, char** qwords, int qn, int i)
+{
+    const char* p = tag;
+    int k = 0;
+    while (*p)
+    {
+        while (*p == ' ' || *p == '\t')
+            p++;
+        if (!*p)
+            break;
+        const char* w = p;
+        while (*p && *p != ' ' && *p != '\t')
+            p++;
+        if (i + k >= qn)
+            return 0;
+        size_t wlen = (size_t)(p - w);
+        if (strlen(qwords[i + k]) != wlen)
+            return 0;
+        if (strncasecmp(qwords[i + k], w, wlen) != 0)
+            return 0;
+        k++;
+    }
+    return k;
+}
+
+// Splits `s` (mutable) on commas into trimmed, null-terminated tokens stored
+// in `out`. Returns the token count.
+static int hb_split_csv(char* s, const char** out, int max)
+{
+    int count = 0;
+    char* p = s;
+    while (*p && count < max)
+    {
+        while (*p == ' ' || *p == '\t')
+            p++;
+        if (!*p)
+            break;
+        char* tok = p;
+        char* comma = strchr(p, ',');
+        if (comma)
+            *comma = 0;
+        char* end = p + strlen(p);
+        while (end > p && (end[-1] == ' ' || end[-1] == '\t'))
+            *--end = 0;
+        if (*p)
+            out[count++] = p;
+        if (!comma)
+            break;
+        p = comma + 1;
+    }
+    return count;
+}
+
+// Splits the search query into detected tags, a typetag, and the remaining
+// text. On return: *tags_out is a caller-owned, comma-separated, URL-encoded
+// tag list (or ""); *typetag_out is caller-owned (or NULL); *q_out is
+// caller-owned remaining text (or NULL when empty).
+static void hb_build_search_fragments(
+    CB_HomebrewHubScene* hbs, char** tags_out, char** typetag_out, char** q_out
+)
+{
+    *tags_out = aprintf("");
+    *typetag_out = NULL;
+    *q_out = NULL;
+
+    const char* query = hbs->search_query;
+    if (!query || !*query)
+        return;
+
+    // Parse the comma-separated keyword lists.
+    char* taglist = CB_App->hbTagKeywords ? cb_strdup(CB_App->hbTagKeywords) : NULL;
+    char* typetaglist = CB_App->hbTypetagKeywords ? cb_strdup(CB_App->hbTypetagKeywords) : NULL;
+    const char* tags[HB_MAX_TAGS];
+    const char* typetags[HB_MAX_TAGS];
+    int tag_count = taglist ? hb_split_csv(taglist, tags, HB_MAX_TAGS) : 0;
+    int typetag_count = typetaglist ? hb_split_csv(typetaglist, typetags, HB_MAX_TAGS) : 0;
+
+    // Tokenize the query.
+    char* qcopy = cb_strdup(query);
+    char* qwords[HB_MAX_WORDS];
+    int qn = hb_tokenize(qcopy, qwords, HB_MAX_WORDS);
+
+    int matched[HB_MAX_TAGS];
+    int matched_count = 0;
+    char* remaining[HB_MAX_WORDS];
+    int remaining_count = 0;
+    const char* detected_typetag = NULL;
+
+    int i = 0;
+    while (i < qn)
+    {
+        // Check for a typetag keyword (single word). The first match wins;
+        // any further typetag words are ignored.
+        const char* tt = NULL;
+        for (int t = 0; t < typetag_count; ++t)
+        {
+            if (strcasecmp(qwords[i], typetags[t]) == 0)
+            {
+                tt = typetags[t];
+                break;
+            }
+        }
+        if (tt)
+        {
+            // "game boy" is the console name, not the "game" typetag.
+            if (strcasecmp(qwords[i], "game") == 0 && i + 1 < qn &&
+                strcasecmp(qwords[i + 1], "boy") == 0)
+            {
+                tt = NULL;
+            }
+        }
+        if (tt)
+        {
+            if (!detected_typetag)
+                detected_typetag = tt;
+            i++;
+            continue;
+        }
+
+        // Check genre tags (longest multi-word match wins).
+        int best = -1;
+        int best_words = 0;
+        for (int t = 0; t < tag_count; ++t)
+        {
+            int m = hb_tag_matches_at(tags[t], qwords, qn, i);
+            if (m > best_words)
+            {
+                best = t;
+                best_words = m;
+            }
+        }
+
+        if (best >= 0)
+        {
+            matched[matched_count++] = best;
+            i += best_words;
+        }
+        else
+        {
+            remaining[remaining_count++] = qwords[i];
+            i++;
+        }
+    }
+
+    // Build the comma-separated tags list.
+    char* tagsfrag = aprintf("");
+    for (int m = 0; m < matched_count; ++m)
+    {
+        char* enc = url_encode(tags[matched[m]]);
+        char* next = aprintf("%s%s%s", tagsfrag, m ? "," : "", enc);
+        cb_free(enc);
+        cb_free(tagsfrag);
+        tagsfrag = next;
+    }
+    *tags_out = tagsfrag;
+
+    *typetag_out = detected_typetag ? cb_strdup(detected_typetag) : NULL;
+
+    // Build the remaining query text.
+    if (remaining_count > 0)
+    {
+        char* q = aprintf("");
+        for (int r = 0; r < remaining_count; ++r)
+        {
+            char* next = aprintf("%s%s%s", q, r ? " " : "", remaining[r]);
+            cb_free(q);
+            q = next;
+        }
+        *q_out = q;
+    }
+
+    cb_free(qcopy);
+    cb_free(taglist);
+    cb_free(typetaglist);
+}
+
 static void http_search(CB_HomebrewHubScene* hbs, int page_index, const char* platform)
 {
-    /* Fetch Open Source games from Homebrew Hub */
-    char* extra_flags =
-        CB_App->hbSearchExtraFlags ? aprintf("&%s", CB_App->hbSearchExtraFlags) : aprintf("");
-    char* urlpath = aprintf(
-        "%s/search?&platform=%s&page=%d%s", CB_App->hbApiPath, platform, MAX(page_index, 1),
-        extra_flags
-    );
-    cb_free(extra_flags);
+    /* Fetch games from Homebrew Hub */
+    char* extra_tags = hb_extra_tags();
+    char* detected_tags = NULL;
+    char* detected_typetag = NULL;
+    char* q_text = NULL;
+    hb_build_search_fragments(hbs, &detected_tags, &detected_typetag, &q_text);
+
+    // Combine into a single comma-separated tags parameter (the API only
+    // honors one `tags` param; repeated `&tags=` silently drops all but the last).
+    char* all_tags;
+    if (extra_tags[0] && detected_tags[0])
+        all_tags = aprintf("%s,%s", extra_tags, detected_tags);
+    else if (extra_tags[0])
+        all_tags = aprintf("%s", extra_tags);
+    else
+        all_tags = aprintf("%s", detected_tags);
+
+    char* tags_param = all_tags[0] ? aprintf("&tags=%s", all_tags) : aprintf("");
+    char* typetag_param = detected_typetag ? aprintf("&typetag=%s", detected_typetag) : aprintf("");
+
+    char* q = q_text ? url_encode(q_text) : NULL;
+
+    char* urlpath;
+    if (q)
+    {
+        urlpath = aprintf(
+            "%s/search?&platform=%s&page=%d%s%s&q=%s", CB_App->hbApiPath, platform,
+            MAX(page_index, 1), tags_param, typetag_param, q
+        );
+    }
+    else
+    {
+        urlpath = aprintf(
+            "%s/search?&platform=%s&page=%d%s%s", CB_App->hbApiPath, platform, MAX(page_index, 1),
+            tags_param, typetag_param
+        );
+    }
+
+    cb_free(extra_tags);
+    cb_free(detected_tags);
+    cb_free(detected_typetag);
+    cb_free(all_tags);
+    cb_free(tags_param);
+    cb_free(typetag_param);
+    cb_free(q_text);
+    cb_free(q);
 
     if (hbs->download_image)
     {
@@ -1039,7 +1482,13 @@ static bool push_top_level(CB_HomebrewHubScene* hbs)
     itemButton = CB_ListItemButton_new(T(hhub_browse_gb));
     array_push(context->list->items, itemButton);
 
+    itemButton = CB_ListItemButton_new(T(hhub_search_gb));
+    array_push(context->list->items, itemButton);
+
     itemButton = CB_ListItemButton_new(T(hhub_browse_cgb));
+    array_push(context->list->items, itemButton);
+
+    itemButton = CB_ListItemButton_new(T(hhub_search_cgb));
     array_push(context->list->items, itemButton);
 
     itemButton = CB_ListItemButton_new(T(hhub_parental_lock));
@@ -1060,6 +1509,12 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
 
     // stops some bugs relating to downloading for some reason.
     playdate->system->setAutoLockDisabled(true);
+
+#ifdef CRANKBOY_PDKEYBOARD
+    bool kb_active = (hbs->keyboard != NULL);
+#else
+    bool kb_active = false;
+#endif
 
     if (hbs->is_dismissing)
     {
@@ -1090,7 +1545,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
                 pop_context(hbs);
             }
         }
-        else if (CB_App->buttons_pressed & kButtonB)
+        else if (!kb_active && (CB_App->buttons_pressed & kButtonB))
         {
             if (hbs->context_depth == 1)
             {
@@ -1148,7 +1603,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             }
 
             context_update_fn fn = context_update[context->type];
-            if (fn)
+            if (fn && !kb_active)
                 fn(hbs, context, dt);
 
             if (context->list && old_selection != -1 &&
@@ -1297,6 +1752,11 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         hbs->anim_t = 0;
         hbs->loading_anim_step = 0;
     }
+
+#ifdef CRANKBOY_PDKEYBOARD
+    if (kb_active)
+        update_search_keyboard(hbs, dt);
+#endif
 }
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
@@ -1318,6 +1778,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
         playdate->graphics->freeBitmap(hbs->download_image);
     cb_free(hbs->download_image_name);
     cb_free(hbs->download_image_slug);
+    cb_free(hbs->search_query);
     cb_free(hbs->cached_hint);
     free_json_data(hbs->jsearch);
     cb_free(hbs);
@@ -1339,11 +1800,31 @@ static void CB_HomebrewHubScene_didSelectSettings(void* userdata)
     }
 }
 
+static void CB_HomebrewHubScene_didSelectSearch(void* userdata)
+{
+    CB_HomebrewHubScene* hbs = userdata;
+#ifdef CRANKBOY_PDKEYBOARD
+    if (hbs->context_depth > 0)
+    {
+        HomebrewHubContext* ctx = &hbs->context[hbs->context_depth - 1];
+        if (ctx->type == HBSCT_LIST_SEARCH)
+            open_search_keyboard(hbs, ctx->str, hbs->search_query);
+    }
+#endif
+}
+
 static void CB_HomebrewHubScene_menu(void* object)
 {
     CB_HomebrewHubScene* hbs = object;
     playdate->system->removeAllMenuItems();
     playdate->system->addMenuItem(T(pdmenu_library), CB_HomebrewHubScene_didSelectSettings, hbs);
+
+#ifdef CRANKBOY_PDKEYBOARD
+    if (hbs->context_depth > 0 && hbs->context[hbs->context_depth - 1].type == HBSCT_LIST_SEARCH)
+    {
+        playdate->system->addMenuItem(T(pdmenu_search), CB_HomebrewHubScene_didSelectSearch, hbs);
+    }
+#endif
 }
 
 CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name)

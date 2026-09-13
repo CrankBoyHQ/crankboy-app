@@ -1,5 +1,6 @@
 // PD System Menu items
 "pdmenu_library" = "Library";
+"pdmenu_search" = "Search…";
 "pdmenu_settings" = "Settings";
 "pdmenu_back" = "Back";
 "pdmenu_resume" = "Resume";
@@ -389,8 +390,10 @@
 "patches_help" = "Press Ⓐ to toggle patches.\n\nHold Ⓐ to rearrange patches. Enabled patches will be applied in the order listed.";
 
 // Homebrew Hub
-"hhub_browse_gb" = "Browse GB games\t›";
-"hhub_browse_cgb" = "Browse CGB games\t›";
+"hhub_browse_gb" = "Browse GB titles\t›";
+"hhub_browse_cgb" = "Browse CGB titles\t›";
+"hhub_search_gb" = "Search GB titles…";
+"hhub_search_cgb" = "Search CGB titles…";
 "hhub_parental_lock" = "Parental Lock\t›";
 "hhub_page_of" = "Page %d of %d";
 "hhub_page" = "Page %d";
@@ -404,8 +407,14 @@
 "hhub_please_wait" = "Please wait for the current operation to finish.";
 "hhub_failed_list" = "Failed to list files.";
 "hhub_invalid_json" = "Invalid JSON received";
-"hhub_browse_gb_desc" = "Browse GB homebrew from Homebrew Hub.";
-"hhub_browse_cgb_desc" = "Browse GB Color homebrew from Homebrew Hub.\n\nNote: CGB support in CrankBoy is still experimental.";
+"hhub_browse_gb_desc" = "Browse GB titles from Homebrew Hub.";
+"hhub_browse_cgb_desc" = "Browse GB Color titles from Homebrew Hub.\n\nNote: CGB support in CrankBoy is still experimental.";
+"hhub_search_gb_desc" = "Search GB titles.";
+"hhub_search_cgb_desc" = "Search GB Color titles.";
+"hhub_search_tags_label" = "Tags";
+"hhub_search_types_label" = "Types";
+"hhub_search_placeholder" = "Search…";
+"hhub_no_results" = "No results found";
 "hhub_parental_lock_desc" = "This feature allows restricting homebrew ROM and ROM hack downloads behind a password.";
 "hhub_engaged" = "Parental Lock engaged.";
 "hhub_downloading_rom" = "Downloading ROM";

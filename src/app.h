@@ -194,6 +194,8 @@ typedef struct CB_Application
     char* hbApiDomain;
     char* hbApiPath;
     char* hbSearchExtraFlags;
+    char* hbTagKeywords;
+    char* hbTypetagKeywords;
     char* hbStaticPath;
     char* hbApiBuffer;
 

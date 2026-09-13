@@ -730,6 +730,8 @@ static void get_homebrew_hub_api(void)
     // check for another newline
     nl = spnl;
     CB_App->hbSearchExtraFlags = NULL;
+    CB_App->hbTagKeywords = NULL;
+    CB_App->hbTypetagKeywords = NULL;
     if (nl)
     {
         nl[0] = 0;
@@ -738,6 +740,20 @@ static void get_homebrew_hub_api(void)
         if (nl)
         {
             nl[0] = 0;
+            CB_App->hbTagKeywords = nl + 1;
+            char* tnl = strchr(CB_App->hbTagKeywords, '\n');
+            if (tnl)
+            {
+                tnl[0] = 0;
+                CB_App->hbTypetagKeywords = tnl + 1;
+                char* ynl = strchr(CB_App->hbTypetagKeywords, '\n');
+                if (ynl)
+                    ynl[0] = 0;
+                if (strlen(CB_App->hbTypetagKeywords) == 0)
+                    CB_App->hbTypetagKeywords = NULL;
+            }
+            if (strlen(CB_App->hbTagKeywords) == 0)
+                CB_App->hbTagKeywords = NULL;
         }
         if (strlen(CB_App->hbSearchExtraFlags) == 0)
         {

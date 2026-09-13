@@ -68,6 +68,14 @@ typedef struct CB_HomebrewHubScene
     char* download_image_name;  // owned copy (cb_free); never borrows into jsearch
     char* download_image_slug;  // owned copy (cb_free); cache key
 
+    char* search_query;           // owned copy (cb_free); NULL/empty = browse mode
+    const char* search_platform;  // points into static hb_platforms; pending search target
+    bool search_result_handled;
+
+#ifdef CRANKBOY_PDKEYBOARD
+    PDKeyboard* keyboard;
+#endif
+
     int context_depth;
     int target_context_depth;
     float context_depth_p;
