@@ -120,9 +120,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         // try saving the cover art from the slug-keyed disk cache.
         if (hbs->target_cover_art_path && hbs->target_rom_slug)
         {
-            char* cover_path = aprintf(
-                "%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath), hbs->target_rom_slug
-            );
+            char* cover_path = aprintf("%s/%s_cover.pdi", CB_hbCachePath, hbs->target_rom_slug);
             size_t cover_len = 0;
             char* cover = cb_read_entire_file(cover_path, &cover_len, kFileReadData | kFileRead);
 
@@ -720,10 +718,8 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
         {
             if (pdi_data && pdi_size)
             {
-                char* cache_path = aprintf(
-                    "%s/%s_preview.pdi", cb_gb_directory_path(CB_hbCachePath),
-                    hbs->download_image_slug
-                );
+                char* cache_path =
+                    aprintf("%s/%s_preview.pdi", CB_hbCachePath, hbs->download_image_slug);
 
                 if (pdi_size < (1 << 16))
                 {
@@ -745,10 +741,8 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
             // reads this from disk so the cover always matches the game.
             if (cover_data && cover_size)
             {
-                char* cover_path = aprintf(
-                    "%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath),
-                    hbs->download_image_slug
-                );
+                char* cover_path =
+                    aprintf("%s/%s_cover.pdi", CB_hbCachePath, hbs->download_image_slug);
                 cb_write_entire_file(cover_path, cover_data, cover_size);
                 cb_free(cover_path);
             }
@@ -831,11 +825,8 @@ static void context_list_search_update(
 
                     if (slug)
                     {
-                        char* preview_path = aprintf(
-                            "%s/%s_preview.pdi", cb_gb_directory_path(CB_hbCachePath), slug
-                        );
-                        char* cover_path =
-                            aprintf("%s/%s_cover.pdi", cb_gb_directory_path(CB_hbCachePath), slug);
+                        char* preview_path = aprintf("%s/%s_preview.pdi", CB_hbCachePath, slug);
+                        char* cover_path = aprintf("%s/%s_cover.pdi", CB_hbCachePath, slug);
 
                         hbs->download_image = call_with_main_stack_2(
                             playdate->graphics->loadBitmap, preview_path, NULL

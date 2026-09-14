@@ -690,7 +690,7 @@ static void initialize_directory(void)
     full_mkdir(cb_gb_directory_path(CB_settingsPath));
     full_mkdir(cb_gb_directory_path(CB_customSettingsPath));
     full_mkdir(cb_gb_directory_path(CB_patchesPath));
-    full_mkdir(cb_gb_directory_path(CB_hbCachePath));
+    full_mkdir(CB_hbCachePath);
 }
 
 static void get_homebrew_hub_api(void)
