@@ -281,7 +281,7 @@
 "status_updating_forwarders" = "フォワーダーを更新中...";
 "setdsc_general_game" = "スナップショットのセーブやロード、設定スコープの管理を行えます。\n\n他のセクションはすべて、現在のスコープ設定に従います。";
 "setdsc_general_noscope" = "設定スコープの管理";
-"setdsc_script" = "ゲーム特有の設定はカスタムスクリプトにより提供されています。";
+"setdsc_script" = "ゲーム特有の設定はカスタムスクリプトから提供されています。";
 "setdsc_ui_sounds" = "インターフェイスのサウンドのON/OFFを設定します。";
 "setopt_lock_override" = "ロックボタン変更";
 "setdsc_save_state" = "今後ロードできるスナップショットを作成します。";
@@ -303,3 +303,4 @@
 "setdsc_save_snapshot_ago" = "%s前に\n作成したスナップショットを上書きします。";
 "setdsc_load_snapshot_ago" = "%s前に\n作成したスナップショットを復元します。";
 "setdsc_disabled_by_script" = "ゲームスクリプトにより無効化。";
+"setdsc_sound_mode" = "高速度優先：\n高パフォーマンスと低遅延。サウンドタイミングの正確度は失われて、ボイスサンプルに対応していません。\n\n正確度優先：\nオーディオとボイスサンプルは正確に再現されます。バッファの使いにより遅延が発生します（詳細は遅延設定）。";
