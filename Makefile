@@ -139,8 +139,9 @@ override LDSCRIPT=./link_map.ld
 
 include $(SDK)/C_API/buildsupport/common.mk
 
-# Auto-detect Python: use project venv if present, otherwise system python3
-PYTHON := $(shell \
+# Auto-detect Python: use project venv if present, otherwise system python3.
+# Can be overridden on the command line (e.g. `make PYTHON=python3` for docker builds).
+PYTHON ?= $(shell \
     if [ -x .venv/bin/python3 ]; then \
         echo .venv/bin/python3; \
     else \

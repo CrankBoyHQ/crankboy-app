@@ -32,3 +32,10 @@ disasm*.txt
 .clangd
 .cache
 compile_commands.json
+
+# docker build cache
+.docker-cache/
+
+# compiler core dumps (docker build)
+core
+core.*

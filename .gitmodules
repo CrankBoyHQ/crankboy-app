@@ -10,3 +10,6 @@
 [submodule "libs/pdkeyboard"]
 	path = libs/pdkeyboard
 	url = https://github.com/CrankboyHQ/pdkeyboard.git
+[submodule "docker"]
+	path = docker
+	url = https://github.com/CrankBoyHQ/crankboy-docker.git
