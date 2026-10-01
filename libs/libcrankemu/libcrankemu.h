@@ -39,8 +39,13 @@ typedef struct ce_frontend
 
     // Allocate to dtcm area.
     // May be NULL, in which case dtcm allocation is not supported.
-    // Not freeable.
-    // alignment may be 0.
+    // Not freeable; released when the core is unloaded.
+    // alignment may be 0. It is the address modulo 32 (0: 32-byte aligned).
+    // Falls back to the heap when DTCM is off (settings: itcm_allowed) or
+    // full: check the address (0x20000000-0x2001ffff is DTCM).
+    // The system may write into DTCM while the game is paused or locked
+    // (kEventPause, kEventLock): keep only what can be checked and restored
+    // (or re-copied, for code) before running again.
     void* (*alloc_dtcm)(size_t size, size_t alignment);
 
     // inform frontend of non-fatal errors
