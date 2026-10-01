@@ -13,9 +13,60 @@
 
 // -- frontend callbacks (shared by every loaded core) --
 
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+static bool cb_emucore_dtcm_probed = false;
+#endif
+
+// Pockets only, not the main pool: a core runs on the main stack, which may
+// grow into it.
 static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
 {
-    return dtcm_alloc_aligned(size, alignment ? alignment : 1);
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    if (preferences_tcm_mode != 0)
+    {
+        if (!cb_emucore_dtcm_probed)
+        {
+            cb_emucore_dtcm_probed = true;
+            dtcm_probe_lower_bound();
+        }
+        int best = -1;
+        for (int i = 0; i < dtcm_num_pockets; ++i)
+        {
+            if (!dtcm_pocket_enabled(i))
+                continue;
+            size_t room = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
+            if (room >= size + 31 &&
+                (best < 0 || dtcm_pockets[i].start < dtcm_pockets[best].start))
+                best = i;
+        }
+        void* p = (best >= 0) ? dtcm_pocket_alloc_aligned(best, size, alignment) : NULL;
+        playdate->system->logToConsole(
+            "emucore: alloc_dtcm(%u) -> %p (pocket %d)", (unsigned)size, p, best
+        );
+        if (p)
+            return p;
+    }
+#endif
+    alignment %= 32;
+    uint8_t* raw = cb_malloc(size + 32);
+    if (!raw)
+        return NULL;
+    while ((uintptr_t)raw % 32 != alignment)
+        ++raw;
+    return raw;
+}
+
+// repaint, so the next probe finds the pockets clean
+static void cb_emucore_dtcm_release(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    if (cb_emucore_dtcm_probed)
+    {
+        dtcm_pocket_fill_and_reset();
+        dtcm_num_pockets = 0;
+        cb_emucore_dtcm_probed = false;
+    }
+#endif
 }
 
 __attribute__((format(printf, 1, 2))) static void ce_fe_set_error(const char* fmt, ...)
@@ -131,6 +182,7 @@ void CB_load_emucore(emucore_t* core)
             playdate->system->logToConsole("unload core: %s", cur->id);
             pdll_close(cur->pdll);
             cur->pdll = NULL;
+            cb_emucore_dtcm_release();
         }
         CB_App->active_emucore = -1;
     }
