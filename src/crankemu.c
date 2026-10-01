@@ -6,6 +6,7 @@
 #include "dtcm.h"
 #include "emucore_prefs.h"
 #include "preferences.h"
+#include "scenes/emucore_game_scene.h"
 #include "utility.h"
 
 #include <stdarg.h>
@@ -97,6 +98,15 @@ static void ce_fe_get_buttons(PDButtons* o_down, PDButtons* o_pressed, PDButtons
         *o_released = CB_App->buttons_released;
 }
 
+static bool ce_fe_return_to_library(void)
+{
+    if (CB_App->bundled_rom || !CB_App->scene || !CB_App->scene->id ||
+        strcmp(CB_App->scene->id, "emucore") != 0)
+        return false;
+    ((CB_EmucoreGameScene*)CB_App->scene->managedObject)->go_to_library = true;
+    return true;
+}
+
 static const ce_frontend_settings_t* ce_fe_settings(void)
 {
     static ce_frontend_settings_t settings;
@@ -106,13 +116,14 @@ static const ce_frontend_settings_t* ce_fe_settings(void)
 }
 
 static const ce_frontend_t cb_emucore_frontend = {
-    .version = CRANKEMU_VERSION,
+    .version = CRANKEMU_FRONTEND_VERSION,
     .alloc_dtcm = ce_fe_alloc_dtcm,
     .set_error = ce_fe_set_error,
     .get_buttons = ce_fe_get_buttons,
     .blockingModal = NULL,
     .get_hardware_revision = NULL,
     .settings = ce_fe_settings,
+    .return_to_library = ce_fe_return_to_library,
 };
 
 void cb_apply_persisted_emucore_prefs(emucore_t* core, const char* slug)
