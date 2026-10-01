@@ -141,7 +141,7 @@ static bool games_dir_is_packed(const char* games_dir)
 static void fill_basic_names(CB_GameName* newName, const char* filename, const char* slug)
 {
     newName->filename = cb_strdup(filename);
-    newName->name_filename = cb_basename(filename, true);
+    newName->name_filename = cb_rom_basename(filename);
     newName->name_filename_leading_article = common_article_form(newName->name_filename);
     newName->system_slug = cb_strdup(slug);
 }

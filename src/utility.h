@@ -119,6 +119,9 @@ char* cb_memdup(const char* buff, int len);
 size_t cb_nullterm_array_len(void* const* arr);
 
 char* cb_basename(const char* filename, bool stripExtension);
+// cb_basename without extension, and without the inner one of a cartridge
+// stored as an image ("celeste.p8.png" -> "celeste")
+char* cb_rom_basename(const char* filename);
 char* cb_save_filename(const char* filename, bool isRecovery);
 char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
