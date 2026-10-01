@@ -4,6 +4,9 @@
 // ABI-compatible crankemu version
 #define CRANKEMU_VERSION 1
 
+// ce_frontend_t.version; fields marked (since N) exist only if version >= N
+#define CRANKEMU_FRONTEND_VERSION 2
+
 #include <pd_api.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -35,7 +38,7 @@ typedef struct
 
 typedef struct ce_frontend
 {
-    uint32_t version; /* = CRANKEMU_VERSION */
+    uint32_t version; /* = CRANKEMU_FRONTEND_VERSION (1 in older frontends) */
 
     // Allocate to dtcm area.
     // May be NULL, in which case dtcm allocation is not supported.
@@ -69,6 +72,11 @@ typedef struct ce_frontend
     int (*get_hardware_revision)(void);
     
     const ce_frontend_settings_t* (*settings)(void);
+
+    // (since 2) leave the game for the library, e.g. when the game quits or
+    // hits a fatal error. Takes effect after ce_update returns. Returns false
+    // if there is no library to return to (single-game bundle).
+    bool (*return_to_library)(void);
 } ce_frontend_t;
 
 enum ce_preference_type
@@ -146,6 +154,7 @@ int ce_update(void); // returns number of frames advanced (at least 1).
 void ce_full_redraw(void);
 
 // -- save data (all optional) --
+size_t ce_get_save_size(void); // size of save data for the loaded rom, 0 if none
 bool ce_is_save_dirty(void); // return true if saving would be warranted
 void ce_save(uint8_t* buffer, size_t size);
 bool ce_load(const uint8_t* buffer, size_t size);  // return false on error
@@ -163,9 +172,13 @@ bool ce_state_load(const uint8_t* buffer, size_t size);  // return false on fail
 // core-owned.
 ce_preference_t** ce_get_preferences(void);
 
-// note: eventHandler will receive normal events.
+// note: eventHandler will receive normal events, except kEventInit and
+// kEventTerminate (sent by pdll_open/pdll_close).
 // however, eventHandler should NOT set the playdate update callback.
-// in kEventLock, emulator should only set up to 1 menu item, as the others
-// may be used by the frontend (e.g. settings, return to library)
+// kEventPause is sent each time the frontend rebuilds the system menu (when it
+// opens, and again when a frontend modal such as settings closes), after the
+// frontend's own items: add at most 1 menu item each time, as the others may
+// be used by the frontend (e.g. settings, return to library). A matching
+// kEventResume is not guaranteed.
 
 #endif /* LIBCRANKEMU_H_ */
