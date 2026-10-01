@@ -899,6 +899,15 @@ static void CB_load_core(const char* path)
         char** new_slugs = cb_realloc(core.system_slugs, (core.n_system_slugs + 1) * sizeof(char*));
         core.system_slugs = new_slugs;
         core.system_slugs[core.n_system_slugs++] = token;
+
+        // cb_write_entire_file fails if saves/ or states/ is missing
+        const char* subdirs[] = {CB_gamesPath, CB_coversPath, CB_savesPath, CB_statesPath};
+        for (size_t j = 0; j < sizeof(subdirs) / sizeof(subdirs[0]); ++j)
+        {
+            char* dir = cb_system_directory_path_for_slug(token, subdirs[j]);
+            full_mkdir(dir);
+            cb_free(dir);
+        }
     }
 
     emucore_t* new_cores = cb_realloc(CB_App->cores, (CB_App->cores_n + 1) * sizeof(emucore_t));
@@ -946,6 +955,17 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
     if (extlen == 0)
         return;
 
+    // pdll_open appends the extension: Core.bin/.pdll/.dll are one core
+    char* basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
+    for (size_t i = 0; i < scan->n; ++i)
+    {
+        if (strcmp(scan->items[i].basepath, basepath) == 0)
+        {
+            cb_free(basepath);
+            return;
+        }
+    }
+
     char* fullpath = aprintf("%s/%s", scan->dir, filename);
     FileStat st;
     unsigned long long mtime = 0;
@@ -964,7 +984,7 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
             cb_realloc(scan->items, scan->cap * sizeof(CB_core_candidate));
         scan->items = new_items;
     }
-    scan->items[scan->n].basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
+    scan->items[scan->n].basepath = basepath;
     scan->items[scan->n].mtime = mtime;
     scan->n++;
 }

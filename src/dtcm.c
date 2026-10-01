@@ -348,7 +348,7 @@ __attribute__((optimize("O0"), noinline))
 #endif
 void dtcm_probe_lower_bound(void)
 {
-    if (!is_dtcm_init || !dtcm_mempool_start)
+    if (!dtcm_mempool_start)
         return;
 
     playdate->system->logToConsole("DTCM probe: starting downward from %p", dtcm_mempool_start);
