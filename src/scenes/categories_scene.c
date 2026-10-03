@@ -15,6 +15,10 @@ enum
 
 #define CB_CATEGORIES_HEADER_GAP 4
 
+#ifdef CRANKBOY_PDKEYBOARD
+static void draw_name_cursor(CB_CategoriesScene* self);
+#endif
+
 static const char* category_display_name(const RomCategory* cat)
 {
     return cat->name[0] ? cat->name : T(cat_default_name);
@@ -121,6 +125,10 @@ static void draw(CB_CategoriesScene* self)
     self->listView->needsDisplay = true;
     CB_ListView_draw(self->listView);
 
+#ifdef CRANKBOY_PDKEYBOARD
+    draw_name_cursor(self);
+#endif
+
     playdate->graphics->fillRect(
         0, CB_HEADER_HEIGHT, LCD_COLUMNS, CB_CATEGORIES_HEADER_GAP, kColorWhite
     );
@@ -151,6 +159,33 @@ static void create_category(CB_CategoriesScene* self)
 }
 
 #ifdef CRANKBOY_PDKEYBOARD
+static void draw_name_cursor(CB_CategoriesScene* self)
+{
+    if (!self->keyboard || self->state != CATSCENE_EDIT)
+        return;
+
+    CB_ListView* listView = self->listView;
+    CB_ListItemButton* button = listView->items->items[EDIT_ROW_NAME];
+
+    int font_h = playdate->graphics->getFontHeight(listView->font);
+    int row_h = button->item.height;
+    int row_y = listView->frame.y + button->item.offsetY - listView->contentOffset;
+    int text_x = listView->frame.x + listView->textInset + button->textScrollOffset;
+    int text_w = playdate->graphics->getTextWidth(
+        listView->font, button->title, strlen(button->title), kUTF8Encoding, 0
+    );
+    int cursor_x = text_x + text_w + 2;
+
+    if (cursor_x + 2 > listView->frame.x + listView->frame.width - listView->textInset)
+        return;
+
+    if ((playdate->system->getCurrentTimeMilliseconds() / 500) % 2 == 0)
+        return;
+
+    playdate->graphics->fillRect(cursor_x, row_y + (row_h - font_h) / 2, 2, font_h, kColorWhite);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+}
+
 static void open_name_keyboard(CB_CategoriesScene* self)
 {
     PDKeyboard* kb = CB_init_keyboard(PDKBF_DEFAULT, NULL, NULL);
@@ -174,7 +209,7 @@ static void update_name_field(CB_CategoriesScene* self)
 
     CB_ListItemButton* button = self->listView->items->items[EDIT_ROW_NAME];
     const char* content = pdkb_get_content(self->keyboard);
-    const char* text = (content && *content) ? content : "";
+    const char* text = (content && *content) ? content : T(cat_default_name);
 
     if (strcmp(button->title, text) != 0)
     {
