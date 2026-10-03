@@ -167,6 +167,23 @@ static void open_name_keyboard(CB_CategoriesScene* self)
     cb_play_ui_sound(CB_UISound_Confirm);
 }
 
+static void update_name_field(CB_CategoriesScene* self)
+{
+    if (self->state != CATSCENE_EDIT || self->keyboard_result_handled)
+        return;
+
+    CB_ListItemButton* button = self->listView->items->items[EDIT_ROW_NAME];
+    const char* content = pdkb_get_content(self->keyboard);
+    const char* text = (content && *content) ? content : "";
+
+    if (strcmp(button->title, text) != 0)
+    {
+        cb_free(button->title);
+        button->title = cb_strdup(text);
+        self->listView->needsDisplay = true;
+    }
+}
+
 static bool update_keyboard(CB_CategoriesScene* self, float dt)
 {
     if (!self->keyboard)
@@ -187,9 +204,12 @@ static bool update_keyboard(CB_CategoriesScene* self, float dt)
                 name[0] = '\0';
 
             self->dirty = true;
-            self->needs_rebuild = true;
         }
+
+        self->needs_rebuild = true;
     }
+
+    update_name_field(self);
 
     pdkb_update(self->keyboard, dt);
 
