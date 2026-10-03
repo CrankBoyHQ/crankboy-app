@@ -17,11 +17,18 @@ enum
 
 #ifdef CRANKBOY_PDKEYBOARD
 static void draw_name_cursor(CB_CategoriesScene* self);
+static void open_name_keyboard(CB_CategoriesScene* self, bool play_sound);
+static void update_name_field(CB_CategoriesScene* self);
 #endif
 
 static const char* category_display_name(const RomCategory* cat)
 {
     return cat->name[0] ? cat->name : T(cat_default_name);
+}
+
+static const char* category_edit_title(const RomCategory* cat)
+{
+    return (cat->name[0] && strcmp(cat->name, T(cat_default_name)) != 0) ? cat->name : "";
 }
 
 static bool category_is_visible(const RomCategory* cat)
@@ -156,6 +163,11 @@ static void create_category(CB_CategoriesScene* self)
     romcategories_append(&CB_App->romcategories, cat);
     self->dirty = true;
     enter_edit(self, cat);
+
+#ifdef CRANKBOY_PDKEYBOARD
+    open_name_keyboard(self, false);
+    update_name_field(self);
+#endif
 }
 
 #ifdef CRANKBOY_PDKEYBOARD
@@ -186,20 +198,20 @@ static void draw_name_cursor(CB_CategoriesScene* self)
     playdate->graphics->setDrawMode(kDrawModeCopy);
 }
 
-static void open_name_keyboard(CB_CategoriesScene* self)
+static void open_name_keyboard(CB_CategoriesScene* self, bool play_sound)
 {
     PDKeyboard* kb = CB_init_keyboard(PDKBF_DEFAULT, NULL, NULL);
     if (!kb)
         return;
 
     pdkb_set_max_bytes(kb, MAX_CATEGORY_NAME - 1);
-    const char* name = self->editing->name;
-    pdkb_set_content(kb, strcmp(name, T(cat_default_name)) == 0 ? "" : name);
+    pdkb_set_content(kb, category_edit_title(self->editing));
     pdkb_open(kb);
 
     self->keyboard = kb;
     self->keyboard_result_handled = false;
-    cb_play_ui_sound(CB_UISound_Confirm);
+    if (play_sound)
+        cb_play_ui_sound(CB_UISound_Confirm);
 }
 
 static void update_name_field(CB_CategoriesScene* self)
@@ -209,7 +221,7 @@ static void update_name_field(CB_CategoriesScene* self)
 
     CB_ListItemButton* button = self->listView->items->items[EDIT_ROW_NAME];
     const char* content = pdkb_get_content(self->keyboard);
-    const char* text = (content && *content) ? content : T(cat_default_name);
+    const char* text = (content && *content) ? content : "";
 
     if (strcmp(button->title, text) != 0)
     {
@@ -314,7 +326,7 @@ static void toggle_selected(CB_CategoriesScene* self)
         if (sel == EDIT_ROW_NAME)
         {
 #ifdef CRANKBOY_PDKEYBOARD
-            open_name_keyboard(self);
+            open_name_keyboard(self, true);
 #endif
             return;
         }
