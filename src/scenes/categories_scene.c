@@ -329,6 +329,20 @@ static void toggle_selected(CB_CategoriesScene* self)
         return;
 
     CB_ListItemCheckbox* checkbox = (CB_ListItemCheckbox*)item;
+
+    if (self->state == CATSCENE_EDIT)
+    {
+        size_t index = (size_t)checkbox->ud.uint;
+        bool contains = romcategory_contains(self->editing, index);
+        romcategory_put(self->editing, index, !contains);
+        checkbox->checked = !contains;
+
+        self->dirty = true;
+        listView->needsDisplay = true;
+        cb_play_ui_sound(CB_UISound_Confirm);
+        return;
+    }
+
     RomCategory* cat = checkbox->ud.ptr;
     if (!cat)
         return;
