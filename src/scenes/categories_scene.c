@@ -126,10 +126,7 @@ static void draw(CB_CategoriesScene* self)
     );
 
     cb_draw_header(
-        self->state == CATSCENE_EDIT
-            ? T(cat_edit_header)
-            : T(cat_header),
-            CB_HEADER_HEIGHT
+        self->state == CATSCENE_EDIT ? T(cat_edit_header) : T(cat_header), CB_HEADER_HEIGHT
     );
     playdate->graphics->setDrawMode(kDrawModeCopy);
 }
@@ -166,6 +163,7 @@ static void open_name_keyboard(CB_CategoriesScene* self)
     pdkb_open(kb);
 
     self->keyboard = kb;
+    self->keyboard_result_handled = false;
     cb_play_ui_sound(CB_UISound_Confirm);
 }
 
@@ -174,26 +172,23 @@ static bool update_keyboard(CB_CategoriesScene* self, float dt)
     if (!self->keyboard)
         return false;
 
-    if (pdkb_get_state(self->keyboard) == PDKBS_OPEN)
+    if (!self->keyboard_result_handled && pdkb_get_result(self->keyboard) != 0)
     {
-        int result = pdkb_get_result(self->keyboard);
+        self->keyboard_result_handled = true;
 
-        if (result > 0)
+        if (pdkb_get_result(self->keyboard) > 0)
         {
             const char* content = pdkb_get_content(self->keyboard);
             char* name = self->editing->name;
 
             if (content && *content)
                 snprintf(name, MAX_CATEGORY_NAME, "%s", content);
-            else if (!name[0])
-                snprintf(name, MAX_CATEGORY_NAME, "%s", T(cat_default_name));
+            else
+                name[0] = '\0';
 
             self->dirty = true;
-            rebuild(self);
+            self->needs_rebuild = true;
         }
-
-        if (result != 0)
-            pdkb_close(self->keyboard);
     }
 
     pdkb_update(self->keyboard, dt);

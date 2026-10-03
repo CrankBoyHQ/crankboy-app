@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../scene.h"
-#include "../listview.h"
 #include "../app.h"
+#include "../listview.h"
 #include "../romcategory.h"
+#include "../scene.h"
 
 typedef enum
 {
@@ -22,6 +22,7 @@ typedef struct CB_CategoriesScene
 
 #ifdef CRANKBOY_PDKEYBOARD
     PDKeyboard* keyboard;
+    bool keyboard_result_handled : 1;
 #endif
 
     bool dirty : 1;
