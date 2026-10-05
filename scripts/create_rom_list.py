@@ -10,6 +10,10 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 MASK = 0xFC
 
+GENRE_REMAP = {
+    "Thinking": "Board"
+}
+
 def integrate_json_file(all_games_dict, filename, script_dir, data_type_name, genre_label):
     """
     Looks for a local JSON file, parses it, and integrates its contents
@@ -118,10 +122,11 @@ def create_split_game_json(mask):
                         long_title = long_title.replace("Pokemon", "Pokémon")
                         short_title = short_title.replace("Pokemon", "Pokémon")
 
+                    genre = genre_match.group(1) if genre_match else ""
                     all_games_dict[crc] = {
                         "long": long_title,
                         "short": short_title,
-                        "genre": genre_match.group(1) if genre_match else ""
+                        "genre": GENRE_REMAP.get(genre, genre)
                     }
                     processed_count += 1
 
