@@ -10,6 +10,7 @@
 /Source/scripts/
 /Source/fonts/*-table-*.png
 /Source/fonts/*.fnt
+.nova
 .vscode
 *.zip
 

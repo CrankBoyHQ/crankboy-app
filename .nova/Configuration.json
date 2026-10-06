@@ -1,9 +1,0 @@
-{
-  "editor.default_syntax" : "c",
-  "luals.workspace.config-file" : "$workspace.path\/.luarc.json",
-  "prettier.config.ignore" : false,
-  "workspace.art_style" : 1,
-  "workspace.color" : 2,
-  "workspace.name" : "CrankBoy",
-  "workspace.preview_root" : "doxygen\/html"
-}
