@@ -12,7 +12,7 @@ typedef struct CB_PatchesScene
     char* patches_dir;
     CB_ListView* listView;
     bool dismiss : 1;
-    float holdTime;
+    CB_ListViewDragState drag;
 } CB_PatchesScene;
 
 CB_PatchesScene* CB_PatchesScene_new(CB_Game* game);

@@ -2,6 +2,8 @@
 "pdmenu_library" = "Library";
 "pdmenu_search" = "Search…";
 "pdmenu_settings" = "Settings";
+"pdmenu_categories" = "Categories";
+"pdmenu_show_genres" = "Genres";
 "pdmenu_back" = "Back";
 "pdmenu_resume" = "Resume";
 "pdmenu_credits" = "Credits";
@@ -211,17 +213,19 @@
 
 // Library Scene
 "Library_GetRoms" = "Get ROMs...";
-"Library_Categories" = "Categories...";
 
 // Categories
 "cat_edit_header" = "Edit Category";
-"cat_new" = "New category...";
+"cat_new" = "Add category...";
+"cat_name_taken" = "A category with this name already exists.\nName changed to: %s";
 "cat_default_name" = "New Category";
-"cat_icon" = "Icon (TBD)";
+"cat_icon" = "Icon";
 "cat_delete_confirm" = "Delete the category \"%s\"?";
 "cat_delete" = "Delete";
 "cat_header" = "Categories";
+"cat_show_in_library" = "Enabled";
 "cat_all" = "All";
+"cat_uncategorized" = "Uncategorized";
 "cat_roms" = "ROMs";
 "cat_packed" = "Included";
 "lib_cgb_prompt_dmg" = "This ROM is marked as DMG.\n\nYou can launch in DMG mode (recommended), or try CGB mode. CrankBoy only has experimental support for CGB (\"Color\") emulation.";
@@ -606,3 +610,33 @@
 // Additional Strings not used currently
 "lang_en"="English";
 "lang_jp"="Japanse";
+
+// Genre categories (identity = DB genre string)
+"genre_platform" = "Platform";
+"genre_roleplaying_rpg" = "Role-playing (RPG)";
+"genre_action" = "Action";
+"genre_sports" = "Sports";
+"genre_puzzle" = "Puzzle";
+"genre_racing" = "Racing";
+"genre_strategy" = "Strategy";
+"genre_adventure" = "Adventure";
+"genre_board" = "Board";
+"genre_simulation" = "Simulation";
+"genre_shooter" = "Shooter";
+"genre_compilation" = "Compilation";
+"genre_music_dancing" = "Music / Dancing";
+"genre_shootem_up" = "Shoot'em Up";
+"genre_gambling" = "Gambling";
+"genre_beatem_up" = "Beat'em Up";
+"genre_fighting" = "Fighting";
+"genre_card" = "Card";
+"genre_hunting_and_fishing" = "Hunting and Fishing";
+"genre_educational" = "Educational";
+"genre_rom_hack" = "ROM Hack";
+"genre_pinball" = "Pinball";
+"genre_quiz" = "Quiz";
+"genre_sports_with_animals" = "Sports with Animals";
+"genre_homebrew" = "Homebrew";
+"genre_various" = "Various";
+"genre_casual_game" = "Casual Game";
+"genre_demo" = "Demo";

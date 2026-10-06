@@ -13,6 +13,7 @@
 #include "../coverflow.h"
 #include "../http_safe.h"
 #include "../listview.h"
+#include "../romcategory.h"
 #include "../scene.h"
 #include "game_scene.h"
 
@@ -24,6 +25,7 @@
 #define BG_FILL_BATCH_SIZE 2
 #define MAX_COVER_COUNT 200
 #define IDLE_THRESHOLD_MS 2000
+#define CB_LIBRARY_FILTER_BAR_H 20
 
 typedef enum
 {
@@ -79,6 +81,16 @@ typedef struct CB_LibraryScene
 {
     CB_Scene* scene;
     CB_Array* games;
+
+    // active category identity: kind + stable key (id for user categories,
+    // raw DB genre for genres); ROMCAT_ALL = the All view
+    enum RomCategoryType active_category_type;
+    char active_category_id[CATEGORY_ID_LEN];
+    char active_category_name[MAX_CATEGORY_NAME];
+
+    bool filter_options_cached;
+    bool categories_editor_open;
+
     CB_LibrarySceneModel model;
     CB_ListView* listView;
     CB_CoverFlow* coverFlow;

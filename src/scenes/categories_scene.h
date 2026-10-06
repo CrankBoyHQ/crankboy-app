@@ -20,6 +20,12 @@ typedef struct CB_CategoriesScene
 
     RomCategory* editing;
 
+    // category row to restore after the next rebuild
+    RomCategory* select_on_rebuild;
+
+    // adjusted name shown in a modal once the keyboard closes
+    char* pending_name_notice;
+
 #ifdef CRANKBOY_PDKEYBOARD
     PDKeyboard* keyboard;
     bool keyboard_result_handled : 1;
@@ -28,6 +34,10 @@ typedef struct CB_CategoriesScene
     bool dirty : 1;
     bool needs_rebuild : 1;
     bool dismiss : 1;
+    bool modal_input_guard : 1;
+
+    // hold-A drag reorder in list state
+    CB_ListViewDragState drag;
 } CB_CategoriesScene;
 
 CB_CategoriesScene* CB_CategoriesScene_new(void);

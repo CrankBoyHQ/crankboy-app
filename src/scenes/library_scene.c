@@ -21,7 +21,6 @@
 #include "../utility.h"
 #include "../version.h"
 #include "categories_scene.h"
-#include "credits_scene.h"
 #include "emucore_game_scene.h"
 #include "game_scene.h"
 #include "homebrew_hub_scene.h"
@@ -32,9 +31,11 @@
 
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt);
 static void CB_LibraryScene_free(void* object);
-static void CB_LibraryScene_reloadList(CB_LibraryScene* libraryScene);
 static void CB_LibraryScene_menu(void* object);
 static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimation);
+static bool library_category_is_visible(const RomCategory* cat);
+static void library_push_extra_items(CB_LibraryScene* libraryScene);
+static bool library_active_is_all(const CB_LibraryScene* libraryScene);
 
 static void collect_cover_filenames_callback(const char* filename, void* userdata)
 {
@@ -1345,28 +1346,433 @@ static bool homebrew_hub_available(void)
     return CB_App->hbApiDomain && CB_App->hbApiPath;
 }
 
-static int library_get_roms_index(const CB_LibraryScene* libraryScene)
+static bool library_get_roms_visible(const CB_LibraryScene* libraryScene)
 {
-    return homebrew_hub_available() ? libraryScene->games->length : -1;
+    return library_active_is_all(libraryScene) && homebrew_hub_available();
 }
 
-// TODO: clean this up, so kludgy
-static int library_categories_index(const CB_LibraryScene* libraryScene)
+static int library_get_roms_index(const CB_LibraryScene* libraryScene)
 {
-    if (libraryScene->games->length == 0)
-        return -1;
-    return libraryScene->games->length + (homebrew_hub_available() ? 1 : 0);
+    return library_get_roms_visible(libraryScene) ? libraryScene->games->length : -1;
+}
+
+static void library_ensure_categories_loaded(void)
+{
+    if (!CB_App->romcategories)
+    {
+        CB_App->romcategories = romcategories_load_all(NULL);
+    }
+}
+
+// resolves the scene's active identity to a live category; NULL = All.
+// Id-based so it survives renames and editor reloads.
+static RomCategory* library_active_category(const CB_LibraryScene* libraryScene)
+{
+    switch (libraryScene->active_category_type)
+    {
+    case ROMCAT_ALL:
+        return NULL;
+    case ROMCAT_UNCATEGORIZED:
+        return romcategories_find_type(CB_App->romcategories, ROMCAT_UNCATEGORIZED);
+    case ROMCAT_GENRE:
+        return romcategories_find_by_type_and_name(
+            CB_App->romcategories, ROMCAT_GENRE, libraryScene->active_category_name
+        );
+    default:
+        return romcategories_find_by_id(CB_App->romcategories, libraryScene->active_category_id);
+    }
+}
+
+static bool library_active_is_all(const CB_LibraryScene* libraryScene)
+{
+    return libraryScene->active_category_type == ROMCAT_ALL;
+}
+
+// adopts the category's stable identity; All resets the kind
+static void library_set_active_category(CB_LibraryScene* libraryScene, const RomCategory* cat)
+{
+    libraryScene->active_category_id[0] = '\0';
+    libraryScene->active_category_name[0] = '\0';
+    if (!cat || cat->type == ROMCAT_ALL)
+    {
+        libraryScene->active_category_type = ROMCAT_ALL;
+        return;
+    }
+
+    libraryScene->active_category_type = cat->type;
+    if (cat->type == ROMCAT_STANDARD)
+        snprintf(
+            libraryScene->active_category_id, sizeof(libraryScene->active_category_id), "%s",
+            cat->id
+        );
+    else
+        snprintf(
+            libraryScene->active_category_name, sizeof(libraryScene->active_category_name), "%s",
+            cat->name
+        );
+}
+
+static void library_save_active_category(const RomCategory* cat)
+{
+    if (!preferences_library_remember_selection)
+        return;
+
+    if (!cat || cat->type == ROMCAT_ALL)
+    {
+        // empty/missing file = All
+        cb_write_entire_file(LAST_CATEGORY_FILE, "", 0);
+    }
+    else if (cat->type == ROMCAT_UNCATEGORIZED)
+    {
+        // stable token; language-independent restore
+        cb_write_entire_file(
+            LAST_CATEGORY_FILE, CATEGORY_ORDER_UNCATEGORIZED_TOKEN,
+            strlen(CATEGORY_ORDER_UNCATEGORIZED_TOKEN)
+        );
+    }
+    else
+    {
+        const char* prefix =
+            cat->type == ROMCAT_GENRE ? CATEGORY_ORDER_GENRE_PREFIX : CATEGORY_ORDER_ID_PREFIX;
+        const char* key = cat->type == ROMCAT_GENRE ? cat->name : cat->id;
+        char* typed = aprintf("%s%s", prefix, key);
+        if (typed)
+            cb_write_entire_file(LAST_CATEGORY_FILE, typed, strlen(typed));
+        cb_free(typed);
+    }
+}
+
+// restores the persisted category identity; empty or missing file is the All
+// view, "i:"/"g:" prefixes and the "uncategorized" token select the kind
+static void library_load_active_category(CB_LibraryScene* libraryScene)
+{
+    libraryScene->active_category_type = ROMCAT_ALL;
+    libraryScene->active_category_id[0] = '\0';
+    libraryScene->active_category_name[0] = '\0';
+
+    if (!preferences_library_remember_selection)
+        return;
+
+    char* content = cb_read_entire_file(LAST_CATEGORY_FILE, NULL, kFileReadData);
+    if (!content || !*content)
+    {
+        cb_free(content);
+        return;
+    }
+
+    bool typed_id =
+        strncmp(content, CATEGORY_ORDER_ID_PREFIX, strlen(CATEGORY_ORDER_ID_PREFIX)) == 0;
+    bool typed_genre =
+        strncmp(content, CATEGORY_ORDER_GENRE_PREFIX, strlen(CATEGORY_ORDER_GENRE_PREFIX)) == 0;
+    bool token_uncategorized = strcmp(content, CATEGORY_ORDER_UNCATEGORIZED_TOKEN) == 0;
+
+    // typed entries carry the key after the prefix
+    const char* match_key = content;
+    if (typed_id)
+        match_key += strlen(CATEGORY_ORDER_ID_PREFIX);
+    else if (typed_genre)
+        match_key += strlen(CATEGORY_ORDER_GENRE_PREFIX);
+
+    RomCategory* found = NULL;
+    if (token_uncategorized)
+    {
+        found = romcategories_find_type(CB_App->romcategories, ROMCAT_UNCATEGORIZED);
+    }
+    else if (typed_id)
+    {
+        found = romcategories_find_by_id(CB_App->romcategories, match_key);
+    }
+    else if (typed_genre)
+    {
+        found = romcategories_find_by_type_and_name(CB_App->romcategories, ROMCAT_GENRE, match_key);
+    }
+
+    if (found)
+    {
+        if (found->type == ROMCAT_STANDARD)
+        {
+            snprintf(
+                libraryScene->active_category_id, sizeof(libraryScene->active_category_id), "%s",
+                found->id
+            );
+        }
+        else
+        {
+            snprintf(
+                libraryScene->active_category_name, sizeof(libraryScene->active_category_name),
+                "%s", match_key
+            );
+        }
+        libraryScene->active_category_type = found->type;
+    }
+
+    cb_free(content);
+}
+
+// first visible non-empty category besides "All", or NULL
+static RomCategory* library_first_filter_option(void)
+{
+    if (!CB_App->romcategories)
+        return NULL;
+
+    for (RomCategory** cat = CB_App->romcategories; *cat; ++cat)
+    {
+        if ((*cat)->type != ROMCAT_ALL && library_category_is_visible(*cat) &&
+            romcategory_count(*cat) > 0)
+        {
+            return *cat;
+        }
+    }
+    return NULL;
+}
+
+// rebuilds libraryScene->games from CB_App->gameListCache for the active category.
+static void library_apply_filter(CB_LibraryScene* libraryScene)
+{
+    CB_Array* base_list = CB_App->gameListCache;
+
+    if (libraryScene->games && libraryScene->games != base_list)
+        array_free(libraryScene->games);
+    libraryScene->games = base_list;
+
+    library_ensure_categories_loaded();
+
+    RomCategory* cat = library_active_category(libraryScene);
+
+    if (cat && (!library_category_is_visible(cat) || romcategory_count(cat) == 0))
+    {
+        // active category missing, hidden, or emptied -> reset to All
+        library_set_active_category(libraryScene, NULL);
+        cat = NULL;
+    }
+
+    if (!cat)
+    {
+        // All view; when All is hidden, fall back to the first visible
+        // non-empty category, else the bare base list
+        RomCategory* all = romcategories_find_type(CB_App->romcategories, ROMCAT_ALL);
+
+        if (all && library_category_is_visible(all))
+        {
+            library_set_active_category(libraryScene, NULL);
+            return;
+        }
+
+        cat = library_first_filter_option();
+        if (!cat)
+        {
+            library_set_active_category(libraryScene, NULL);
+            return;  // bare base list, bar stays hidden
+        }
+        library_set_active_category(libraryScene, cat);
+    }
+
+    RomCategoryNameIndex* name_index = romcategory_name_index_build();
+    if (!name_index)
+        return;
+
+    CB_Array* filtered = array_new();
+    if (!filtered)
+    {
+        romcategory_name_index_free(name_index);
+        return;
+    }
+    (void)array_reserve(filtered, base_list->length);
+
+    for (int i = 0; i < base_list->length; ++i)
+    {
+        CB_Game* game = base_list->items[i];
+        int name_idx = romcategory_name_index_lookup(name_index, game->names);
+        if (name_idx >= 0 && romcategory_contains(cat, name_idx))
+        {
+            array_push(filtered, game);
+        }
+    }
+
+    romcategory_name_index_free(name_index);
+
+    libraryScene->games = filtered;
+}
+
+static bool library_category_is_visible(const RomCategory* cat)
+{
+    return cat->enabled && romcategory_is_listed(cat);
+}
+
+// cached: any visible non-empty category besides "All"; recomputed at
+// mutation points, not per draw
+static bool library_has_filter_options(CB_LibraryScene* libraryScene)
+{
+    return libraryScene->filter_options_cached;
+}
+
+static void library_update_filter_options(CB_LibraryScene* libraryScene)
+{
+    libraryScene->filter_options_cached = false;
+
+    library_ensure_categories_loaded();
+
+    libraryScene->filter_options_cached = !!library_first_filter_option();
+}
+
+static void library_rebuild_list_items(CB_LibraryScene* libraryScene)
+{
+    CB_ListView_clear(libraryScene->listView);
+    CB_Array* items = libraryScene->listView->items;
+    (void)array_reserve(items, libraryScene->games->length);
+
+    for (int i = 0; i < libraryScene->games->length; i++)
+    {
+        CB_Game* game = libraryScene->games->items[i];
+        array_push(items, CB_ListItemButton_new(game->displayName));
+    }
+    library_push_extra_items(libraryScene);
+
+    CB_ListView_reload(libraryScene->listView);
+}
+
+static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
+{
+    if (libraryScene->state != kLibraryStateDone || libraryScene->tab != CB_LibrarySceneTabList)
+        return;
+
+    library_ensure_categories_loaded();
+
+    RomCategory** cats = CB_App->romcategories;
+    if (!cats)
+        return;
+
+    size_t n = len_nullterm((void const* const*)cats);
+    if (n == 0)
+        return;
+
+    RomCategory* cur = library_active_category(libraryScene);
+    int cur_idx = -1;
+    for (size_t i = 0; i < n; ++i)
+    {
+        if (cats[i] == cur)
+        {
+            cur_idx = (int)i;
+            break;
+        }
+    }
+    if (cur_idx < 0)
+    {
+        // anchor: the All entry; also covers stale ids
+        int all_idx = romcategories_index_of_type(cats, ROMCAT_ALL);
+        cur_idx = all_idx >= 0 ? all_idx : 0;
+    }
+
+    int idx = cur_idx;
+    for (int steps = 0; steps < (int)n; ++steps)
+    {
+        idx += dir;
+        if (idx < 0)
+            idx = (int)n - 1;
+        else if (idx >= (int)n)
+            idx = 0;
+        if (idx == cur_idx)
+            break;
+        if (!library_category_is_visible(cats[idx]))
+            continue;
+        if (romcategory_count(cats[idx]) == 0)
+            continue;
+        break;
+    }
+
+    if (idx == cur_idx)
+        return;
+
+    // remember selection across the filter switch
+    char* path = NULL;
+    int sel = libraryScene->listView->selectedItem;
+    if (sel >= 0 && sel < libraryScene->games->length)
+    {
+        CB_Game* game = libraryScene->games->items[sel];
+        if (game->fullpath)
+            path = cb_strdup(game->fullpath);
+    }
+
+    RomCategory* next = cats[idx];
+    library_set_active_category(libraryScene, next);
+    library_apply_filter(libraryScene);
+
+    int new_sel = 0;
+    if (path)
+    {
+        for (int i = 0; i < libraryScene->games->length; ++i)
+        {
+            CB_Game* game = libraryScene->games->items[i];
+            if (game->fullpath && strcmp(game->fullpath, path) == 0)
+            {
+                new_sel = i;
+                break;
+            }
+        }
+        cb_free(path);
+    }
+
+    libraryScene->listView->selectedItem = new_sel;
+    libraryScene->lastSelectedItem = -1;
+
+    // keep return-from-game position in sync with the current view
+    last_selected_game_index = new_sel;
+
+    library_save_active_category(next);
+
+    library_rebuild_list_items(libraryScene);
+    library_update_filter_options(libraryScene);
+    libraryScene->scene->forceFullRefresh = true;
+    cb_play_ui_sound(CB_UISound_Navigate);
+}
+
+static void library_draw_filter_bar(CB_LibraryScene* libraryScene, int bar_width)
+{
+    const RomCategory* cat = library_active_category(libraryScene);
+    const char* name = cat ? romcategory_display_name(cat) : T(cat_all);
+
+    char label[MAX_CATEGORY_NAME * 4 + 1];  // UTF-8: up to 4 bytes per character
+    snprintf(label, sizeof(label), "%s", name);
+
+    playdate->graphics->fillRect(0, 0, bar_width, CB_LIBRARY_FILTER_BAR_H, kColorWhite);
+
+    LCDFont* font = CB_App->labelFont ? CB_App->labelFont : CB_App->bodyFont;
+    playdate->graphics->setFont(font);
+    playdate->graphics->setDrawMode(kDrawModeCopy);
+
+    int font_h = playdate->graphics->getFontHeight(font);
+    int text_y = ((CB_LIBRARY_FILTER_BAR_H - font_h) / 2) + 2;
+    if (text_y < 0)
+        text_y = 0;
+
+    int text_w = playdate->graphics->getTextWidth(font, label, strlen(label), kUTF8Encoding, 0);
+    int text_x = (bar_width - text_w) / 2;
+    if (text_x < 10)
+        text_x = 10;
+
+    playdate->graphics->drawText(label, strlen(label), kUTF8Encoding, text_x, text_y);
+
+    int line_y = text_y + (font_h / 2);
+    int seg_start = 10;
+    int seg_end = bar_width - 10;
+    if (seg_start < text_x - 5)
+    {
+        playdate->graphics->drawLine(seg_start, line_y, text_x - 5, line_y, 1, kColorBlack);
+    }
+    if (text_x + text_w + 5 < seg_end)
+    {
+        playdate->graphics->drawLine(text_x + text_w + 5, line_y, seg_end, line_y, 1, kColorBlack);
+    }
 }
 
 static void library_push_extra_items(CB_LibraryScene* libraryScene)
 {
+    if (!library_active_is_all(libraryScene))
+        return;
+
     if (homebrew_hub_available())
     {
         array_push(libraryScene->listView->items, CB_ListItemButton_new(T(Library_GetRoms)));
-    }
-    if (libraryScene->games->length > 0)
-    {
-        array_push(libraryScene->listView->items, CB_ListItemButton_new(T(Library_Categories)));
     }
 }
 
@@ -1407,6 +1813,10 @@ CB_LibraryScene* CB_LibraryScene_new(void)
 
     libraryScene->games = CB_App->gameListCache;
     libraryScene->listView = CB_ListView_new();
+    library_ensure_categories_loaded();
+    library_load_active_category(libraryScene);
+    library_apply_filter(libraryScene);
+    library_update_filter_options(libraryScene);
     libraryScene->coverFlow = CB_CoverFlow_new();
     libraryScene->last_view_flow = false;
 
@@ -1470,14 +1880,18 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
         selectedFilename = cb_strdup(selectedGameBefore->names->filename);
     }
 
-    for (int i = 0; i < libraryScene->games->length; i++)
+    CB_Array* base_list = CB_App->gameListCache;
+    for (int i = 0; i < base_list->length; i++)
     {
-        CB_Game* game = libraryScene->games->items[i];
+        CB_Game* game = base_list->items[i];
         set_display_and_sort_name(game);
     }
 
-    cb_sort_games_array(libraryScene->games);
+    cb_sort_games_array(base_list);
     CB_App->gameListCacheIsSorted = true;
+
+    // re-derive the filtered view after the sort
+    library_apply_filter(libraryScene);
 
     int newSelectedIndex = 0;
     if (selectedFilename)
@@ -1496,24 +1910,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
 
     libraryScene->listView->selectedItem = newSelectedIndex;
 
-    CB_Array* items = libraryScene->listView->items;
-    for (int i = 0; i < items->length; i++)
-    {
-        CB_ListItemButton* button = items->items[i];
-        CB_ListItemButton_free(button);
-    }
-    array_clear(items);
-    (void)array_reserve(items, libraryScene->games->length);
-
-    for (int i = 0; i < libraryScene->games->length; i++)
-    {
-        CB_Game* game = libraryScene->games->items[i];
-        CB_ListItemButton* itemButton = CB_ListItemButton_new(game->displayName);
-        array_push(items, itemButton);
-    }
-    library_push_extra_items(libraryScene);
-
-    CB_ListView_reload(libraryScene->listView);
+    library_rebuild_list_items(libraryScene);
 }
 
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
@@ -1604,13 +2001,13 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 CB_App->gameListCacheIsSorted = true;
 
                 libraryScene->build_index = 0;
-                libraryScene->games = CB_App->gameListCache;
+                library_apply_filter(libraryScene);
 
                 // restore last-selected position now that the list is built
                 if (preferences_library_remember_selection)
                 {
                     last_selected_game_index = (int)(intptr_t)call_with_user_stack_1(
-                        load_last_selected_index, CB_App->gameListCache
+                        load_last_selected_index, libraryScene->games
                     );
                     int sel = last_selected_game_index;
                     if (sel < 0 || sel >= libraryScene->games->length)
@@ -1751,7 +2148,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     libraryScene->tab = CB_LibrarySceneTabEmpty;
                 }
 
-                libraryScene->listView->frame.height = playdate->display->getHeight();
+                libraryScene->listView->frame = PDRectMake(
+                    0, CB_LIBRARY_FILTER_BAR_H, playdate->display->getWidth(),
+                    playdate->display->getHeight() - CB_LIBRARY_FILTER_BAR_H
+                );
                 CB_ListView_reload(libraryScene->listView);
                 libraryScene->state = kLibraryStateDone;
                 libraryScene->last_user_input_time_ms =
@@ -1854,6 +2254,20 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         CB_LibraryScene_updateDisplayNames(libraryScene);
     }
 
+    // categories editor was open and is now closed: refresh filter + list
+    if (libraryScene->categories_editor_open && !CB_App->pendingScene &&
+        libraryScene->state == kLibraryStateDone)
+    {
+        libraryScene->categories_editor_open = false;
+        library_apply_filter(libraryScene);
+        library_update_filter_options(libraryScene);
+        library_rebuild_list_items(libraryScene);
+        int max_valid =
+            libraryScene->games->length + (library_get_roms_visible(libraryScene) ? 1 : 0) - 1;
+        if (libraryScene->listView->selectedItem > max_valid)
+            libraryScene->listView->selectedItem = 0;
+    }
+
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
     if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
@@ -1888,23 +2302,14 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     if (pressed & kButtonA)
     {
         int selectedItem = libraryScene->listView->selectedItem;
-        if (selectedItem == library_get_roms_index(libraryScene))
+        if (library_get_roms_visible(libraryScene) &&
+            selectedItem == library_get_roms_index(libraryScene))
         {
             cb_play_ui_sound(CB_UISound_Confirm);
             last_selected_game_index = selectedItem;
 
             CB_HomebrewHubScene* s = CB_HomebrewHubScene_new(0.0f, NULL);
             CB_presentModal(s->scene);
-        }
-        else if (selectedItem == library_categories_index(libraryScene))
-        {
-            CB_CategoriesScene* s = CB_CategoriesScene_new();
-            if (s)
-            {
-                cb_play_ui_sound(CB_UISound_Confirm);
-                last_selected_game_index = selectedItem;
-                CB_presentModal(s->scene);
-            }
         }
         else if (selectedItem >= 0 && selectedItem < libraryScene->games->length)
         {
@@ -1946,6 +2351,14 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                 CB_LibraryScene_startCoverDownload(libraryScene);
             }
         }
+    }
+    else if (pressed & kButtonLeft)
+    {
+        library_cycle_category(libraryScene, -1);
+    }
+    else if (pressed & kButtonRight)
+    {
+        library_cycle_category(libraryScene, 1);
     }
 
     if (CB_App->pendingScene)
@@ -2004,6 +2417,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
     libraryScene->model.empty = false;
     libraryScene->model.tab = libraryScene->tab;
+
+    int filter_bar_width = LCD_COLUMNS;
 
     if (needsDisplay && !forAnimation)
     {
@@ -2184,8 +2599,12 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
             libraryScene->listView->needsDisplay =
                 libraryScene->listView->needsDisplay || needsDisplay;
-            libraryScene->listView->frame = PDRectMake(-animL, 0, leftPanelWidth, screenHeight);
+            bool show_filter_bar = library_has_filter_options(libraryScene);
+            int bar_off = show_filter_bar ? CB_LIBRARY_FILTER_BAR_H : 0;
+            libraryScene->listView->frame =
+                PDRectMake(-animL, bar_off, leftPanelWidth, screenHeight - bar_off);
             last_panel_seam = leftPanelWidth;
+            filter_bar_width = show_filter_bar ? leftPanelWidth : 0;
 
 #ifdef TARGET_SIMULATOR
             while (page_advance > 0)
@@ -2655,6 +3074,14 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
         playdate->graphics->fillRect(0, 0, sideBar, LCD_ROWS, kColorBlack);
         playdate->graphics->fillRect(LCD_COLUMNS - sideBar, 0, sideBar, LCD_ROWS, kColorBlack);
     }
+
+    if (filter_bar_width > 0 && libraryScene->tab == CB_LibrarySceneTabList && !forAnimation &&
+        needsDisplay && libraryScene->state == kLibraryStateDone &&
+        libraryScene->launchAnimShiftLeft == 0 && libraryScene->launchAnimShiftRight == 0 &&
+        libraryScene->launchAnimSideBarWidth == 0)
+    {
+        library_draw_filter_bar(libraryScene, filter_bar_width);
+    }
 }
 
 static void CB_LibraryScene_showSettings(void* userdata)
@@ -2663,11 +3090,25 @@ static void CB_LibraryScene_showSettings(void* userdata)
     CB_presentModal(settingsScene->scene);
 }
 
+static void CB_LibraryScene_showCategories(void* userdata)
+{
+    CB_LibraryScene* libraryScene = userdata;
+
+    CB_CategoriesScene* s = CB_CategoriesScene_new();
+    if (s)
+    {
+        cb_play_ui_sound(CB_UISound_Confirm);
+        libraryScene->categories_editor_open = true;  // refresh on dismiss
+        CB_presentModal(s->scene);
+    }
+}
+
 static void CB_LibraryScene_menu(void* object)
 {
-    playdate->system->addMenuItem(T(pdmenu_credits), CB_showCredits, object);
     playdate->system->addMenuItem(T(pdmenu_help), (void*)CB_showHelp, 0);
+    playdate->system->addMenuItem(T(pdmenu_categories), CB_LibraryScene_showCategories, object);
     playdate->system->addMenuItem(T(pdmenu_settings), CB_LibraryScene_showSettings, object);
+    // playdate->system->addMenuItem(T(pdmenu_credits), CB_showCredits, object);
 }
 
 static void CB_LibraryScene_free(void* object)
@@ -2684,6 +3125,11 @@ static void CB_LibraryScene_free(void* object)
     CB_ListView_free(libraryScene->listView);
 
     CB_CoverFlow_free(libraryScene->coverFlow);
+
+    // games may alias gameListCache; only free the filtered view array itself
+    if (libraryScene->games && libraryScene->games != CB_App->gameListCache)
+        array_free(libraryScene->games);
+    libraryScene->games = NULL;
 
     if (libraryScene->coverDownloadMessage)
     {
@@ -2857,11 +3303,13 @@ bool CB_LibraryScene_removeGame(CB_Game* game)
     if (!libraryScene || !game)
         return false;
 
-    CB_Array* games = libraryScene->games;
+    CB_Array* base_list = CB_App->gameListCache;
+
+    // resolve in the base list: works for any active view
     int idx = -1;
-    for (int i = 0; i < games->length; i++)
+    for (int i = 0; i < base_list->length; i++)
     {
-        if (games->items[i] == game)
+        if (base_list->items[i] == game)
         {
             idx = i;
             break;
@@ -2870,33 +3318,42 @@ bool CB_LibraryScene_removeGame(CB_Game* game)
     if (idx < 0)
         return false;
 
-    // paranoia: if last game in list, restart
-    if (games->length <= 1)
-        return false;
+    array_remove_at(base_list, idx);
 
-    array_remove_at(games, idx);
-
-    CB_Array* items = libraryScene->listView->items;
-    if (idx < (int)items->length)
+    // purge the GameName from the app-lifetime name cache
+    int name_idx = -1;
+    for (int i = 0; i < CB_App->gameNameCache->length; ++i)
     {
-        CB_ListItemButton* button = items->items[idx];
-        array_remove_at(items, idx);
-        CB_ListItemButton_free(button);
+        if (CB_App->gameNameCache->items[i] == game->names)
+        {
+            name_idx = i;
+            break;
+        }
     }
 
-    int sel = libraryScene->listView->selectedItem;
-    if (sel > idx)
-        sel--;
-    if (sel >= games->length)
-        sel = games->length - 1;
-    if (sel < 0)
-        sel = 0;
-    libraryScene->listView->selectedItem = sel;
+    // removal shifts cache indices -> bitmaps invalid; reload re-resolves
+    // bits by fullpath and applies the persisted order
+    romcategories_free_all(CB_App->romcategories);
+    CB_App->romcategories = NULL;
 
-    if (libraryScene->lastSelectedItem > idx)
-        libraryScene->lastSelectedItem--;
-    else if (libraryScene->lastSelectedItem == idx)
-        libraryScene->lastSelectedItem = -1;
+    if (name_idx >= 0)
+    {
+        CB_GameName* name = CB_App->gameNameCache->items[name_idx];
+        array_remove_at(CB_App->gameNameCache, name_idx);
+        free_game_names(name);
+    }
+
+    // an emptied active category falls back; filter options refresh
+    int sel_idx = idx;
+    library_apply_filter(libraryScene);
+    library_update_filter_options(libraryScene);
+    library_rebuild_list_items(libraryScene);
+
+    int max_valid =
+        libraryScene->games->length + (library_get_roms_visible(libraryScene) ? 1 : 0) - 1;
+    libraryScene->listView->selectedItem =
+        sel_idx <= max_valid ? sel_idx : (max_valid >= 0 ? max_valid : 0);
+    libraryScene->lastSelectedItem = -1;
 
     CB_ListView_reload(libraryScene->listView);
     libraryScene->scene->forceFullRefresh = true;

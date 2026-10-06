@@ -94,6 +94,9 @@ typedef struct CB_GameName
     // common database name, for thumbnail matching etc.
     char* name_database;
 
+    // genre string from the database, or NULL
+    char* genre;
+
     // full path resolved during scanning, e.g. "packed/file.gb" or "<dir>/file.gb"
     char* fullpath;
 
@@ -328,6 +331,7 @@ const char* CB_get_forwarded_path(const char* path);
 #define DIRECTORY_POINTER "directory.txt"
 #define GLOBAL_FILE "global.json"
 #define LAST_SELECTED_FILE "library_last_selected.txt"
+#define LAST_CATEGORY_FILE "library_last_category.txt"
 #define HOMEBREW_HUB_API_FILE "hbapi.txt"
 #define PARENTAL_LOCK_FILE "parental_lock.bin"
 #define MISC_PATH "/Shared/Emulation/misc"

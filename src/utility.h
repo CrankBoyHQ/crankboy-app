@@ -78,6 +78,7 @@ typedef struct
 {
     char* short_name;
     char* detailed_name;
+    char* genre;
     uint32_t crc32;
     bool failedToOpenROM;
 } CB_FetchedNames;

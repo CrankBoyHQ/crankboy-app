@@ -119,6 +119,15 @@ typedef struct
     LCDFont* font;
 } CB_ListView;
 
+// hold-A drag reorder state (per scene instance)
+#define CB_ListView_DRAG_HOLD_TIME 0.25f
+
+typedef struct
+{
+    float hold_time;
+    bool dragging;
+} CB_ListViewDragState;
+
 CB_ListView* CB_ListView_new(void);
 
 void CB_ListView_update(CB_ListView* listView);
@@ -133,9 +142,17 @@ void CB_ListView_selectItem(CB_ListView* listView, int index, bool animated);
 void CB_ListView_free(CB_ListView* listView);
 
 void CB_ListView_clear(CB_ListView* listView);
+// shared hold-A reorder skeleton; sets ignoreButtons/checkboxDrag,
+// *ydir = -1/0/+1. Returns true on a short A tap (released early).
+bool CB_ListView_drag_update(
+    CB_ListView* listView, CB_ListViewDragState* state, float dt, uint32_t buttons_down,
+    uint32_t buttons_pressed, uint32_t buttons_released, int* ydir
+);
 
 CB_ListItemButton* CB_ListItemButton_new(const char* title);
 CB_ListItemCheckbox* CB_ListItemCheckbox_new(const char* title);
+
+void CB_ListItemCheckbox_swap(CB_ListItemCheckbox* a, CB_ListItemCheckbox* b);
 
 void CB_ListItem_free(CB_ListItem* item);
 void CB_ListItemButton_free(CB_ListItemButton* itemButton);

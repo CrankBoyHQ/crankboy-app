@@ -9,6 +9,7 @@
 #include "listview.h"
 
 #include "app.h"
+#include "utility.h"
 
 static CB_ListItem* CB_ListItem_new(void);
 static void CB_ListItem_super_free(CB_ListItem* item);
@@ -618,35 +619,46 @@ void CB_ListView_draw(CB_ListView* listView)
                     int lineY = textY + (fontHeight / 2);
                     int padding = 5;
 
-                    if (!button->unselectable)
+                    if (!button->title[0])
                     {
-                        // arrows hint that the header pages left/right
-                        int rightArrowWidth = playdate->graphics->getTextWidth(
-                            listView->font, "›", 1, kUTF8Encoding, 0
-                        );
-
-                        playdate->graphics->drawText(
-                            "‹", 1, kUTF8Encoding, listX + 2, textY + 2
-                        );
-                        playdate->graphics->drawText(
-                            "›", 1, kUTF8Encoding,
-                            listX + listView->frame.width - rightArrowWidth - 6, textY + 2
+                        // empty header = plain rule
+                        playdate->graphics->drawLine(
+                            listX + 16, lineY, listX + listView->frame.width - 20, lineY, 1,
+                            selected ? kColorWhite : kColorBlack
                         );
                     }
+                    else
+                    {
+                        if (!button->unselectable)
+                        {
+                            // arrows hint that the header pages left/right
+                            int rightArrowWidth = playdate->graphics->getTextWidth(
+                                listView->font, "›", 1, kUTF8Encoding, 0
+                            );
 
-                    playdate->graphics->drawText(
-                        button->title, strlen(button->title), kUTF8Encoding, textX, textY
-                    );
+                            playdate->graphics->drawText(
+                                "‹", 1, kUTF8Encoding, listX + 2, textY + 2
+                            );
+                            playdate->graphics->drawText(
+                                "›", 1, kUTF8Encoding,
+                                listX + listView->frame.width - rightArrowWidth - 6, textY + 2
+                            );
+                        }
 
-                    playdate->graphics->drawLine(
-                        listX + 16, lineY, textX - padding, lineY, 1,
-                        selected ? kColorWhite : kColorBlack
-                    );
+                        playdate->graphics->drawText(
+                            button->title, strlen(button->title), kUTF8Encoding, textX, textY
+                        );
 
-                    playdate->graphics->drawLine(
-                        textX + nameWidth + padding, lineY, listX + listView->frame.width - 20,
-                        lineY, 1, selected ? kColorWhite : kColorBlack
-                    );
+                        playdate->graphics->drawLine(
+                            listX + 16, lineY, textX - padding, lineY, 1,
+                            selected ? kColorWhite : kColorBlack
+                        );
+
+                        playdate->graphics->drawLine(
+                            textX + nameWidth + padding, lineY, listX + listView->frame.width - 20,
+                            lineY, 1, selected ? kColorWhite : kColorBlack
+                        );
+                    }
                 }
                 else
                 {
@@ -892,4 +904,43 @@ void CB_ListItem_free(CB_ListItem* item)
     {
         CB_ListItemButton_free((CB_ListItemButton*)item);
     }
+}
+
+bool CB_ListView_drag_update(
+    CB_ListView* listView, CB_ListViewDragState* state, float dt, uint32_t buttons_down,
+    uint32_t buttons_pressed, uint32_t buttons_released, int* ydir
+)
+{
+    if (!listView || !state)
+        return false;
+
+    bool held = !!(buttons_down & kButtonA);
+
+    if (held)
+        state->hold_time += dt;
+
+    state->dragging = held && state->hold_time >= CB_ListView_DRAG_HOLD_TIME;
+    listView->ignoreButtons = state->dragging;
+    listView->checkboxDrag = state->dragging;
+
+    if (ydir)
+        *ydir = !!(buttons_pressed & kButtonDown) - !!(buttons_pressed & kButtonUp);
+
+    bool short_tap =
+        !!(buttons_released & kButtonA) && state->hold_time < CB_ListView_DRAG_HOLD_TIME;
+
+    if (!held)
+        state->hold_time = 0;
+
+    return short_tap;
+}
+
+void CB_ListItemCheckbox_swap(CB_ListItemCheckbox* a, CB_ListItemCheckbox* b)
+{
+    if (!a || !b)
+        return;
+
+    memswap(&a->title, &b->title, sizeof(char*));
+    memswap(&a->checked, &b->checked, sizeof(bool));
+    memswap(&a->ud, &b->ud, sizeof(a->ud));
 }

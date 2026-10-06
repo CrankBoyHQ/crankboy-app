@@ -235,6 +235,7 @@ static void process_one_game(
                                                    : cb_strdup(newName->name_filename);
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
+    newName->genre = fetched.genre;
     if (fetched.short_name)
         cb_free(fetched.short_name);
     if (fetched.detailed_name)

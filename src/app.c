@@ -1625,6 +1625,7 @@ void free_game_names(const CB_GameName* gameName)
         cb_free(gameName->name_database);
     cb_free(gameName->name_short);
     cb_free(gameName->name_detailed);
+    cb_free(gameName->genre);
     cb_free(gameName->name_filename);
     cb_free(gameName->name_short_leading_article);
     cb_free(gameName->name_detailed_leading_article);

@@ -5,7 +5,6 @@
 #define HEADER_HEIGHT 18
 #define kDividerX 240
 #define kRightPanePadding 10
-#define DRAG_HOLD_TIME 0.25f
 
 static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
 {
@@ -23,41 +22,32 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
     cb_draw_header(patchesScene->game->names->name_short_leading_article, CB_HEADER_HEIGHT);
 
     CB_ListView* listView = patchesScene->listView;
-    bool held = !!(CB_App->buttons_down & kButtonA);
-    bool releasedA = !!(CB_App->buttons_released & kButtonA);
 
-    if (held)
-        patchesScene->holdTime += dt;
-
-    bool dragging = held && patchesScene->holdTime >= DRAG_HOLD_TIME;
-    listView->ignoreButtons = dragging;
-    listView->checkboxDrag = dragging;
+    int ydir = 0;
+    bool short_tap = CB_ListView_drag_update(
+        listView, &patchesScene->drag, dt, CB_App->buttons_down, CB_App->buttons_pressed,
+        CB_App->buttons_released, &ydir
+    );
 
     int sel = listView->selectedItem;
     int len = listView->items->length;
 
-    int ydir = !!(CB_App->buttons_pressed & kButtonDown) - !!(CB_App->buttons_pressed & kButtonUp);
-
-    if (dragging && ydir != 0 && sel >= 0 && ((ydir < 0 && sel > 0) || (ydir > 0 && sel < len - 1)))
+    if (patchesScene->drag.dragging && ydir != 0 && sel >= 0 &&
+        ((ydir < 0 && sel > 0) || (ydir > 0 && sel < len - 1)))
     {
         int other = sel + ydir;
         memswap(&patchesScene->patches[sel], &patchesScene->patches[other], sizeof(SoftPatch));
 
         CB_ListItemCheckbox* a = listView->items->items[sel];
         CB_ListItemCheckbox* b = listView->items->items[other];
-        char* title = a->title;
-        a->title = b->title;
-        b->title = title;
-        bool checked = a->checked;
-        a->checked = b->checked;
-        b->checked = checked;
+        CB_ListItemCheckbox_swap(a, b);
 
         CB_ListView_selectItem(listView, other, true);
         cb_play_ui_sound(CB_UISound_Navigate);
     }
-    else if (releasedA)
+    else if (short_tap)
     {
-        if (patchesScene->holdTime < DRAG_HOLD_TIME && sel >= 0 && sel < len)
+        if (sel >= 0 && sel < len)
         {
             SoftPatch* patch = &patchesScene->patches[sel];
             patch->state = (patch->state == PATCH_ENABLED) ? PATCH_DISABLED : PATCH_ENABLED;
@@ -71,9 +61,6 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
     {
         patchesScene->dismiss = true;
     }
-
-    if (!held)
-        patchesScene->holdTime = 0;
 
     CB_ListView_update(listView);
 

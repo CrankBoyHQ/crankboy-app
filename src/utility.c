@@ -1944,7 +1944,7 @@ static json_value db_shard_cache[DB_CRC_MASK + 1];  // 253 entries, zero-init = 
 
 CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
 {
-    CB_FetchedNames names = {NULL, NULL, 0, false};
+    CB_FetchedNames names = {NULL, NULL, NULL, 0, false};
 
     char crc_string_upper[9];
     snprintf(crc_string_upper, sizeof(crc_string_upper), "%08lX", (unsigned long)crc);
@@ -2002,6 +2002,12 @@ CB_FetchedNames cb_get_titles_from_db_by_crc(uint32_t crc)
         if (long_val.type == kJSONString && long_val.data.stringval)
         {
             names.detailed_name = cb_strdup(long_val.data.stringval);
+        }
+
+        json_value genre_val = json_get_table_value(game_entry, "genre");
+        if (genre_val.type == kJSONString && genre_val.data.stringval && *genre_val.data.stringval)
+        {
+            names.genre = cb_strdup(genre_val.data.stringval);
         }
     }
 
