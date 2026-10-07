@@ -37,7 +37,7 @@ static void category_generate_id(RomCategory* cat)
 {
     uint32_t value = (uint32_t)playdate->system->getCurrentTimeMilliseconds() ^
                      (s_cat_id_counter++ * 2654435761u);
-    snprintf(cat->id, sizeof(cat->id), "%08x", value);
+    snprintf(cat->id, sizeof(cat->id), "%08x", (unsigned int)value);
 }
 
 RomCategory* romcategory_new(enum RomCategoryType type, const char* name)
@@ -352,7 +352,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
                 size_t found = n_total;
                 for (size_t i = slot; i < n_total; ++i)
                 {
-                    bool match;
+                    bool match = false;
                     if (token_all)
                     {
                         match = cats[i]->type == ROMCAT_ALL;

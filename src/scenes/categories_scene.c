@@ -309,10 +309,9 @@ static bool category_name_make_unique(
     if (!category_name_is_taken(self, out))
         return false;
 
-    char base[MAX_CATEGORY_NAME];
+    // 16 chars + NUL: room for "_999" + NUL in the out buffer below
+    char base[MAX_CATEGORY_NAME - 4];
     snprintf(base, sizeof(base), "%s", content);
-    if (strlen(base) > MAX_CATEGORY_NAME - 5)  // room for "_999" + NUL
-        base[MAX_CATEGORY_NAME - 5] = '\0';
 
     for (int n = 1; n <= 999; ++n)
     {
