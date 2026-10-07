@@ -11,6 +11,7 @@
 // stable tokens for the persisted display order
 #define CATEGORY_ORDER_ALL_TOKEN "all"
 #define CATEGORY_ORDER_UNCATEGORIZED_TOKEN "uncategorized"
+#define CATEGORY_ORDER_PACKED_TOKEN "packed"
 
 // typed entry prefixes for the persisted display order
 #define CATEGORY_ORDER_ID_PREFIX "i:"

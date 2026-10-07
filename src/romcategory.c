@@ -334,6 +334,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
 
                 bool token_all = strcmp(name, CATEGORY_ORDER_ALL_TOKEN) == 0;
                 bool token_uncategorized = strcmp(name, CATEGORY_ORDER_UNCATEGORIZED_TOKEN) == 0;
+                bool token_packed = strcmp(name, CATEGORY_ORDER_PACKED_TOKEN) == 0;
                 bool typed_id =
                     strncmp(name, CATEGORY_ORDER_ID_PREFIX, strlen(CATEGORY_ORDER_ID_PREFIX)) == 0;
                 bool typed_genre =
@@ -359,6 +360,10 @@ RomCategory** romcategories_load_all(size_t* o_count)
                     else if (token_uncategorized)
                     {
                         match = cats[i]->type == ROMCAT_UNCATEGORIZED;
+                    }
+                    else if (token_packed)
+                    {
+                        match = cats[i]->type == ROMCAT_PACKED;
                     }
                     else if (typed_id)
                     {
@@ -776,7 +781,7 @@ int romcategories_write_all(RomCategory** cats)
         }
     }
 
-    // display order; packed excluded
+    // display order; fixed categories pinned by token
     JsonArray* order_arr = mallocz(sizeof(JsonArray) + n * sizeof(json_value));
     if (!order_arr)
     {
@@ -792,6 +797,10 @@ int romcategories_write_all(RomCategory** cats)
         if ((*cat)->type == ROMCAT_ALL)
         {
             order_arr->data[order_arr->n++] = json_new_string(CATEGORY_ORDER_ALL_TOKEN);
+        }
+        else if ((*cat)->type == ROMCAT_PACKED)
+        {
+            order_arr->data[order_arr->n++] = json_new_string(CATEGORY_ORDER_PACKED_TOKEN);
         }
         else if ((*cat)->type == ROMCAT_UNCATEGORIZED)
         {

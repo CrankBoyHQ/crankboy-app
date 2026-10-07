@@ -43,12 +43,13 @@ static void rebuild_list(CB_CategoriesScene* self)
     array_push(items, divider);
 
     // one reorderable block in array order (user categories and genres);
-    // hidden fixed categories are skipped
+    // hidden fixed categories are skipped; Packed only when it has games
     for (RomCategory** it = CB_App->romcategories; it && *it; ++it)
     {
         RomCategory* cat = *it;
 
-        if (cat->type == ROMCAT_PACKED || !romcategory_is_listed(cat))
+        if (!romcategory_is_listed(cat) ||
+            (cat->type == ROMCAT_PACKED && romcategory_count(cat) == 0))
             continue;
 
         size_t count = cat->type == ROMCAT_ALL ? (size_t)CB_App->gameListCache->length

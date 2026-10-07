@@ -1372,6 +1372,8 @@ static RomCategory* library_active_category(const CB_LibraryScene* libraryScene)
     {
     case ROMCAT_ALL:
         return NULL;
+    case ROMCAT_PACKED:
+        return romcategories_find_type(CB_App->romcategories, ROMCAT_PACKED);
     case ROMCAT_UNCATEGORIZED:
         return romcategories_find_type(CB_App->romcategories, ROMCAT_UNCATEGORIZED);
     case ROMCAT_GENRE:
@@ -1422,13 +1424,12 @@ static void library_save_active_category(const RomCategory* cat)
         // empty/missing file = All
         cb_write_entire_file(LAST_CATEGORY_FILE, "", 0);
     }
-    else if (cat->type == ROMCAT_UNCATEGORIZED)
+    else if (cat->type == ROMCAT_UNCATEGORIZED || cat->type == ROMCAT_PACKED)
     {
         // stable token; language-independent restore
-        cb_write_entire_file(
-            LAST_CATEGORY_FILE, CATEGORY_ORDER_UNCATEGORIZED_TOKEN,
-            strlen(CATEGORY_ORDER_UNCATEGORIZED_TOKEN)
-        );
+        const char* token = cat->type == ROMCAT_PACKED ? CATEGORY_ORDER_PACKED_TOKEN
+                                                       : CATEGORY_ORDER_UNCATEGORIZED_TOKEN;
+        cb_write_entire_file(LAST_CATEGORY_FILE, token, strlen(token));
     }
     else
     {
@@ -1465,6 +1466,7 @@ static void library_load_active_category(CB_LibraryScene* libraryScene)
     bool typed_genre =
         strncmp(content, CATEGORY_ORDER_GENRE_PREFIX, strlen(CATEGORY_ORDER_GENRE_PREFIX)) == 0;
     bool token_uncategorized = strcmp(content, CATEGORY_ORDER_UNCATEGORIZED_TOKEN) == 0;
+    bool token_packed = strcmp(content, CATEGORY_ORDER_PACKED_TOKEN) == 0;
 
     // typed entries carry the key after the prefix
     const char* match_key = content;
@@ -1477,6 +1479,10 @@ static void library_load_active_category(CB_LibraryScene* libraryScene)
     if (token_uncategorized)
     {
         found = romcategories_find_type(CB_App->romcategories, ROMCAT_UNCATEGORIZED);
+    }
+    else if (token_packed)
+    {
+        found = romcategories_find_type(CB_App->romcategories, ROMCAT_PACKED);
     }
     else if (typed_id)
     {
