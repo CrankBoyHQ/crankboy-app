@@ -33,7 +33,8 @@ typedef struct CB_GameName CB_GameName;
 
 typedef struct RomCategory
 {
-    bool enabled : 1;  // only intended for fixed categories
+    bool enabled : 1;  // library visibility toggle (all kinds)
+    bool edited : 1;   // genres: user touched membership -> no auto re-seed
     bool requires_catalog : 1;
     enum RomCategoryType type;
 
@@ -52,6 +53,10 @@ void for_rom_in_category(const RomCategory*, int (*cb)(CB_GameName*, void* ud), 
 
 bool romcategory_contains(const RomCategory* cat, size_t index);
 void romcategory_put(RomCategory* cat, size_t index, bool contains);
+
+// GENRE: rebuild membership from the current ROM db genre metadata
+// (clears stored bits first). Editor "Reset" + load-time seeding.
+void romcategory_seed_from_db(RomCategory* cat);
 
 // returns null-terminated list of categories.
 RomCategory** romcategories_load_all(size_t* o_count);
@@ -83,9 +88,10 @@ bool romcategory_requires_catalog(const RomCategory* cat);
 // localized display; identity stays the raw DB genre
 const char* romcategory_display_name(const RomCategory* cat);
 
-// "Show Genres": hides genre categories when false; All/Uncategorized unaffected
-bool romcategories_genres_visible(void);
-void romcategories_set_genres_visible(bool visible);  // persists immediately
+// "Show All Genres" (categories screen menu): when false, the editor skips
+// genres without games; the library ignores this flag
+bool romcategories_show_empty_genres(void);
+void romcategories_set_show_empty_genres(bool visible);  // persists immediately
 
 // true when the category may be listed by editors/library
 bool romcategory_is_listed(const RomCategory* cat);

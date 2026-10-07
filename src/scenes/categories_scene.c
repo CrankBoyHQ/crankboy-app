@@ -43,13 +43,17 @@ static void rebuild_list(CB_CategoriesScene* self)
     array_push(items, divider);
 
     // one reorderable block in array order (user categories and genres);
-    // hidden fixed categories are skipped; Packed only when it has games
+    // hidden fixed categories are skipped; Packed/Uncategorized only when
+    // they have games
     for (RomCategory** it = CB_App->romcategories; it && *it; ++it)
     {
         RomCategory* cat = *it;
 
         if (!romcategory_is_listed(cat) ||
-            (cat->type == ROMCAT_PACKED && romcategory_count(cat) == 0))
+            (cat->type == ROMCAT_PACKED && romcategory_count(cat) == 0) ||
+            (cat->type == ROMCAT_GENRE && !romcategories_show_empty_genres() &&
+             romcategory_count(cat) == 0) ||
+            (cat->type == ROMCAT_UNCATEGORIZED && romcategory_count(cat) == 0))
             continue;
 
         size_t count = cat->type == ROMCAT_ALL ? (size_t)CB_App->gameListCache->length
@@ -68,14 +72,22 @@ static void rebuild_edit(CB_CategoriesScene* self)
 {
     CB_Array* items = self->listView->items;
 
-    array_push(items, CB_ListItemButton_new(romcategory_display_name(self->editing)));
+    CB_ListItemButton* name_button = CB_ListItemButton_new(romcategory_display_name(self->editing));
+    if (self->editing->type == ROMCAT_GENRE)
+    {
+        // genre names are db identities; renaming would break auto-seeding
+        name_button->unselectable = true;
+    }
+    array_push(items, name_button);
 
     CB_ListItemCheckbox* enabled_cb = CB_ListItemCheckbox_new(T(cat_show_in_library));
     enabled_cb->checked = self->editing->enabled;
     array_push(items, enabled_cb);
 
-    // array_push(items, CB_ListItemButton_new(T(cat_icon)));  // icon system TBD
-    array_push(items, CB_ListItemButton_new(T(cat_delete)));
+    if (self->editing->type == ROMCAT_GENRE)
+        array_push(items, CB_ListItemButton_new(T(cat_reset_roms)));
+    else
+        array_push(items, CB_ListItemButton_new(T(cat_delete)));
 
     CB_ListItemButton* separator = CB_ListItemButton_new(T(cat_roms));
     separator->is_header = true;
@@ -109,7 +121,8 @@ static void rebuild(CB_CategoriesScene* self)
     if (self->state == CATSCENE_EDIT)
     {
         rebuild_edit(self);
-        selected = EDIT_ROW_NAME;
+        // genre name row is unselectable: start on the enabled checkbox
+        selected = self->editing->type == ROMCAT_GENRE ? EDIT_ROW_ENABLED : EDIT_ROW_NAME;
     }
     else
     {
@@ -158,7 +171,7 @@ static void draw(CB_CategoriesScene* self)
 
             CB_ListItemCheckbox* checkbox = (CB_ListItemCheckbox*)item;
             RomCategory* cat = checkbox->ud.ptr;
-            if (!cat || cat->type != ROMCAT_STANDARD)
+            if (!cat || (cat->type != ROMCAT_STANDARD && cat->type != ROMCAT_GENRE))
                 continue;
 
             int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
@@ -284,7 +297,8 @@ static void update_name_field(CB_CategoriesScene* self)
     }
 }
 
-// only duplicate user-category names are blocked
+// any name collision (user, genre, or built-in) is blocked, including
+// localized genre display names
 static bool category_name_is_taken(const CB_CategoriesScene* self, const char* name)
 {
     if (!name || !*name)
@@ -294,7 +308,13 @@ static bool category_name_is_taken(const CB_CategoriesScene* self, const char* n
     {
         if (*it == self->editing)  // own current name is fine
             continue;
-        if ((*it)->type == ROMCAT_STANDARD && strcmp((*it)->name, name) == 0)
+
+        if (strcmp((*it)->name, name) == 0)
+            return true;
+
+        // genres display localized: block the visible name too
+        const char* display = romcategory_display_name(*it);
+        if (display && strncmp(display, name, MAX_CATEGORY_NAME - 1) == 0)
             return true;
     }
     return false;
@@ -403,6 +423,42 @@ static void confirm_delete(CB_CategoriesScene* self)
     }
 }
 
+// genres: back to the db default membership; re-enables auto-seeding
+static void reset_confirmed(void* ud, int option)
+{
+    CB_CategoriesScene* self = ud;
+
+    if (option != 1 || !self->editing)
+        return;
+
+    romcategory_seed_from_db(self->editing);
+    self->editing->edited = false;
+    self->dirty = true;
+    self->needs_rebuild = true;
+}
+
+static void confirm_reset(CB_CategoriesScene* self)
+{
+    const char* yes_no_options[3];
+    yes_no_options[0] = T(label_no);
+    yes_no_options[1] = T(label_yes);
+    yes_no_options[2] = NULL;
+
+    char* msg = aprintf(T(cat_reset_confirm), romcategory_display_name(self->editing));
+    if (!msg)
+        return;
+
+    CB_Modal* modal = CB_Modal_new(msg, yes_no_options, reset_confirmed, self);
+    cb_free(msg);
+
+    if (modal)
+    {
+        cb_play_ui_sound(CB_UISound_Confirm);
+        CB_presentModal(modal->scene);
+        self->modal_input_guard = true;
+    }
+}
+
 static int category_index(const RomCategory* cat)
 {
     if (!CB_App->romcategories)
@@ -471,7 +527,7 @@ static void toggle_selected(CB_CategoriesScene* self)
 
     if (item->type == CB_ListViewItemTypeButton && self->state == CATSCENE_EDIT)
     {
-        if (sel == EDIT_ROW_NAME)
+        if (sel == EDIT_ROW_NAME && self->editing->type == ROMCAT_STANDARD)
         {
 #ifdef CRANKBOY_PDKEYBOARD
             open_name_keyboard(self, true);
@@ -480,7 +536,10 @@ static void toggle_selected(CB_CategoriesScene* self)
         }
         if (sel == EDIT_ROW_DELETE)
         {
-            confirm_delete(self);
+            if (self->editing->type == ROMCAT_GENRE)
+                confirm_reset(self);
+            else
+                confirm_delete(self);
             return;
         }
     }
@@ -507,6 +566,10 @@ static void toggle_selected(CB_CategoriesScene* self)
         romcategory_put(self->editing, index, !contains);
         checkbox->checked = !contains;
 
+        // genres: real edits freeze db auto-seeding until reset
+        if (self->editing->type == ROMCAT_GENRE)
+            self->editing->edited = true;
+
         self->dirty = true;
         listView->needsDisplay = true;
         cb_play_ui_sound(CB_UISound_Confirm);
@@ -517,14 +580,14 @@ static void toggle_selected(CB_CategoriesScene* self)
     if (!cat)
         return;
 
-    if (cat->type == ROMCAT_STANDARD)
+    if (cat->type == ROMCAT_STANDARD || cat->type == ROMCAT_GENRE)
     {
         // the list checkbox is a status indicator; A opens the edit view
         enter_edit(self, cat);
         return;
     }
 
-    // All + genre rows: checkbox toggles visibility in the library cycle
+    // All + Uncategorized rows: checkbox toggles visibility in the library cycle
     cat->enabled = !cat->enabled;
     checkbox->checked = cat->enabled;
     self->dirty = true;
@@ -652,7 +715,7 @@ static void categories_show_genres_changed(void* userdata)
 {
     CB_CategoriesScene* self = userdata;
 
-    romcategories_set_genres_visible(!romcategories_genres_visible());
+    romcategories_set_show_empty_genres(!romcategories_show_empty_genres());
     self->needs_rebuild = true;  // editor list updates live
 }
 
@@ -660,7 +723,7 @@ static void CB_CategoriesScene_menu(void* object)
 {
     playdate->system->addMenuItem(T(pdmenu_library), CB_CategoriesScene_menuLibrary, object);
     playdate->system->addCheckmarkMenuItem(
-        T(pdmenu_show_genres), romcategories_genres_visible() ? 1 : 0,
+        T(pdmenu_show_empty_genres), romcategories_show_empty_genres() ? 1 : 0,
         categories_show_genres_changed, object
     );
 }

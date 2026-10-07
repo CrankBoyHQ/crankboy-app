@@ -36,7 +36,7 @@
 "genre_hunting_and_fishing" = "ハンティング・フィッシング";
 "genre_music_dancing" = "音楽・ダンス";
 "genre_pinball" = "ピンボール";
-"pdmenu_show_genres" = "ジャンル";
+"pdmenu_show_empty_genres" = "空きを表示";
 "genre_platform" = "プラットフォーム";
 "genre_puzzle" = "パズル";
 "genre_quiz" = "クイズ";

@@ -3,7 +3,7 @@
 "pdmenu_search" = "Search…";
 "pdmenu_settings" = "Settings";
 "pdmenu_categories" = "Categories";
-"pdmenu_show_genres" = "Genres";
+"pdmenu_show_empty_genres" = "Show all";
 "pdmenu_back" = "Back";
 "pdmenu_resume" = "Resume";
 "pdmenu_credits" = "Credits";
@@ -222,6 +222,8 @@
 "cat_icon" = "Icon";
 "cat_delete_confirm" = "Delete the category \"%s\"?";
 "cat_delete" = "Delete";
+"cat_reset_roms" = "Reset ROMs";
+"cat_reset_confirm" = "Reset the ROM list of \"%s\" to the default from the ROM database?";
 "cat_header" = "Categories";
 "cat_show_in_library" = "Enabled";
 "cat_all" = "All";

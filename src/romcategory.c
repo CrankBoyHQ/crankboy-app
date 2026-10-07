@@ -1,7 +1,6 @@
 #include "romcategory.h"
 
 #include "app.h"
-#include "global.h"
 #include "jparse.h"
 #include "utility.h"
 
@@ -70,21 +69,17 @@ bool romcategory_contains(const RomCategory* cat, size_t index)
         return ((const CB_GameName*)CB_App->gameNameCache->items[index])->packed;
     case ROMCAT_GENRE:
     {
-        const CB_GameName* name = (const CB_GameName*)CB_App->gameNameCache->items[index];
-        // prefix-compare: genres longer than the name cap still match
-        return name->genre && strncmp(name->genre, cat->name, MAX_CATEGORY_NAME - 1) == 0;
+        // seeded from the db genre (see seed_from_db)
+        return !!(cat->roms[index / 8] & (1 << (index % 8)));
     }
     case ROMCAT_UNCATEGORIZED:
     {
-        // no DB genre and no membership in any enabled user category
-        const CB_GameName* name = (const CB_GameName*)CB_App->gameNameCache->items[index];
-        if (name->genre && *name->genre)
-            return false;
-
+        // not a member of any enabled user/genre category
         for (RomCategory** user_cat = CB_App->romcategories; user_cat && *user_cat; ++user_cat)
         {
-            if ((*user_cat)->type == ROMCAT_STANDARD && (*user_cat)->enabled &&
-                romcategory_contains(*user_cat, index))
+            RomCategory* c = *user_cat;
+            if ((c->type == ROMCAT_STANDARD || c->type == ROMCAT_GENRE) && c->enabled &&
+                romcategory_contains(c, index))
             {
                 return false;
             }
@@ -99,7 +94,7 @@ bool romcategory_contains(const RomCategory* cat, size_t index)
 
 void romcategory_put(RomCategory* cat, size_t index, bool contains)
 {
-    if (!cat || cat->type != ROMCAT_STANDARD)
+    if (!cat || (cat->type != ROMCAT_STANDARD && cat->type != ROMCAT_GENRE))
         return;
     if (index >= (size_t)CB_App->gameNameCache->length)
         return;
@@ -107,6 +102,21 @@ void romcategory_put(RomCategory* cat, size_t index, bool contains)
         cat->roms[index / 8] |= (1 << (index % 8));
     else
         cat->roms[index / 8] &= ~(1 << (index % 8));
+}
+
+void romcategory_seed_from_db(RomCategory* cat)
+{
+    if (!cat || cat->type != ROMCAT_GENRE)
+        return;
+
+    memset(cat->roms, 0, romcategory_bitc());
+    for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
+    {
+        const CB_GameName* name = CB_App->gameNameCache->items[i];
+        // capped compare: genres longer than the name cap still match
+        if (name->genre && strncmp(name->genre, cat->name, MAX_CATEGORY_NAME - 1) == 0)
+            romcategory_put(cat, i, true);
+    }
 }
 
 static int romcategory_count_helper(CB_GameName* name, void* n)
@@ -198,6 +208,74 @@ static RomCategory* romcat_from_json(json_value j)
     return cat;
 }
 
+typedef struct
+{
+    const char* genre;
+    const char* key;
+} CB_GenreL10nEntry;
+
+static const CB_GenreL10nEntry GENRE_L10N[] = {
+    {"Platform", "genre_platform"},
+    {"Role-playing (RPG)", "genre_roleplaying_rpg"},
+    {"Action", "genre_action"},
+    {"Sports", "genre_sports"},
+    {"Puzzle", "genre_puzzle"},
+    {"Racing", "genre_racing"},
+    {"Strategy", "genre_strategy"},
+    {"Adventure", "genre_adventure"},
+    {"Board", "genre_board"},
+    {"Simulation", "genre_simulation"},
+    {"Shooter", "genre_shooter"},
+    {"Compilation", "genre_compilation"},
+    {"Music / Dancing", "genre_music_dancing"},
+    {"Shoot'em Up", "genre_shootem_up"},
+    {"Gambling", "genre_gambling"},
+    {"Beat'em Up", "genre_beatem_up"},
+    {"Fighting", "genre_fighting"},
+    {"Card", "genre_card"},
+    {"Hunting and Fishing", "genre_hunting_and_fishing"},
+    {"Educational", "genre_educational"},
+    {"ROM Hack", "genre_rom_hack"},
+    {"Pinball", "genre_pinball"},
+    {"Quiz", "genre_quiz"},
+    {"Sports with Animals", "genre_sports_with_animals"},
+    {"Homebrew", "genre_homebrew"},
+    {"Various", "genre_various"},
+    {"Casual Game", "genre_casual_game"},
+    {"Demo", "genre_demo"},
+};
+
+// persisted names may be truncated: capped compare
+static RomCategory* find_genre_cat_capped(RomCategory** cats, const char* genre)
+{
+    if (!genre)
+        return NULL;
+    for (RomCategory** cat = cats; cat && *cat; ++cat)
+    {
+        if ((*cat)->type == ROMCAT_GENRE &&
+            strncmp((*cat)->name, genre, MAX_CATEGORY_NAME - 1) == 0)
+        {
+            return *cat;
+        }
+    }
+    return NULL;
+}
+
+// creates + seeds a genre cat unless one exists; false on OOM
+static bool ensure_genre_cat(RomCategory*** pcats, const char* name)
+{
+    if (find_genre_cat_capped(*pcats, name))
+        return true;
+
+    RomCategory* cat = romcategory_new(ROMCAT_GENRE, name);
+    if (!cat)
+        return false;
+
+    cat->enabled = true;
+    romcategory_seed_from_db(cat);
+    return romcategories_append(pcats, cat);
+}
+
 RomCategory** romcategories_load_all(size_t* o_count)
 {
     json_value j;
@@ -208,7 +286,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
 
     json_value jmisc = json_get_table_value(j, "misc");
 
-// fixed categories first: positions arbitrary — lookups are by type/name;
+// fixed categories first: positions arbitrary - lookups are by type/name;
 // persistence uses tokens
 // TODO: set icon on the fixed categories
 #define ROMCAT_FIXED_DEFAULT(E, key, NAME, icon, default, CATALOG) \
@@ -241,63 +319,99 @@ RomCategory** romcategories_load_all(size_t* o_count)
         }
     }
 
-    // auto-generated read-only genre categories, alphabetical
-    {
-        size_t n_genres = 0;
-        for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
-        {
-            const CB_GameName* name = CB_App->gameNameCache->items[i];
-            if (name->genre)
-                ++n_genres;
-        }
-
-        const CB_GameName** genre_names = mallocz(sizeof(CB_GameName*) * (n_genres ? n_genres : 1));
-        if (genre_names)
-        {
-            size_t n = 0;
-            for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
-            {
-                const CB_GameName* name = CB_App->gameNameCache->items[i];
-                if (name->genre)
-                    genre_names[n++] = name;
-            }
-
-            qsort(genre_names, n, sizeof(CB_GameName*), genre_sort_cb);
-
-            for (size_t i = 0; i < n; ++i)
-            {
-                if (i > 0 &&
-                    strncmp(
-                        genre_names[i]->genre, genre_names[i - 1]->genre, MAX_CATEGORY_NAME - 1
-                    ) == 0)
-                    continue;
-
-                RomCategory* cat = romcategory_new(ROMCAT_GENRE, genre_names[i]->genre);
-                if (cat)
-                {
-                    cat->enabled = true;
-                    romcategories_append(&cats, cat);
-                }
-            }
-
-            cb_free(genre_names);
-        }
-    }
-
-    s_show_genres = json_flag(jmisc, "show-genres", true);
-
+    // genres: membership stored like user categories, seeded from the db
+    // genre. Edited genres keep stored bits; unedited re-seed from the cache;
+    // new db genres merged in.
     {
         json_value jgenres = json_get_table_value(jmisc, "genres");
         if (jgenres.type == kJSONTable)
         {
-            for (RomCategory** cat = cats; cat && *cat; ++cat)
+            JsonObject* obj = jgenres.data.tableval;
+            for (size_t gi = 0; obj && gi < obj->n; ++gi)
             {
-                if ((*cat)->type != ROMCAT_GENRE)
+                const char* gname = obj->data[gi].key;
+                json_value jg = obj->data[gi].value;
+                if (!gname || !*gname)
                     continue;
-                (*cat)->enabled = json_flag(jgenres, (*cat)->name, true);
+
+                RomCategory* cat = romcategory_new(ROMCAT_GENRE, gname);
+                if (!cat)
+                    continue;
+
+                cat->enabled = json_flag(jg, "enabled", true);
+
+                cat->edited = json_flag(jg, "edited", false);
+                if (cat->edited)
+                {
+                    json_value jroms = json_get_table_value(jg, "roms");
+                    if (jroms.type == kJSONArray)
+                    {
+                        JsonArray* roms = jroms.data.arrayval;
+                        for (size_t ri = 0; roms && ri < roms->n; ++ri)
+                        {
+                            int index = get_rom_index_for_path(json_as_string(roms->data[ri]));
+                            if (index >= 0)
+                                romcategory_put(cat, (size_t)index, true);
+                        }
+                    }
+                }
+                else
+                {
+                    // unedited: current cache may be newer than the file
+                    romcategory_seed_from_db(cat);
+                }
+                romcategories_append(&cats, cat);
             }
         }
     }
+
+    // merge in genres from the cache that have no persisted category
+    size_t n_genres = 0;
+    for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
+    {
+        const CB_GameName* name = CB_App->gameNameCache->items[i];
+        if (name->genre)
+            ++n_genres;
+    }
+
+    const CB_GameName** genre_names = mallocz(sizeof(CB_GameName*) * (n_genres ? n_genres : 1));
+    if (genre_names)
+    {
+        size_t n = 0;
+        for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
+        {
+            const CB_GameName* name = CB_App->gameNameCache->items[i];
+            if (name->genre)
+                genre_names[n++] = name;
+        }
+
+        qsort(genre_names, n, sizeof(CB_GameName*), genre_sort_cb);
+
+        for (size_t i = 0; i < n; ++i)
+        {
+            ensure_genre_cat(&cats, genre_names[i]->genre);
+        }
+
+        cb_free(genre_names);
+    }
+
+    // ensure the full known genre vocabulary exists, so games can be
+    // assigned to a genre even when no current game uses it yet
+    {
+        const char* vocab[sizeof(GENRE_L10N) / sizeof(GENRE_L10N[0])];
+        size_t nvocab = 0;
+        for (size_t i = 0; i < sizeof(GENRE_L10N) / sizeof(GENRE_L10N[0]); ++i)
+            vocab[nvocab++] = GENRE_L10N[i].genre;
+
+        qsort(vocab, nvocab, sizeof(char*), cb_compare_strings);
+
+        for (size_t i = 0; i < nvocab; ++i)
+        {
+            ensure_genre_cat(&cats, vocab[i]);
+        }
+    }
+
+    s_show_genres = json_flag(jmisc, "show-genres", true);
 
     // fixed category for games with no genre and no enabled category membership
     if (!romcategories_has_type(cats, ROMCAT_UNCATEGORIZED))
@@ -493,43 +607,6 @@ bool romcategory_requires_catalog(const RomCategory* cat)
 }
 
 // genre -> l10n key; identity stays the raw DB genre
-typedef struct
-{
-    const char* genre;
-    const char* key;
-} CB_GenreL10nEntry;
-
-static const CB_GenreL10nEntry GENRE_L10N[] = {
-    {"Platform", "genre_platform"},
-    {"Role-playing (RPG)", "genre_roleplaying_rpg"},
-    {"Action", "genre_action"},
-    {"Sports", "genre_sports"},
-    {"Puzzle", "genre_puzzle"},
-    {"Racing", "genre_racing"},
-    {"Strategy", "genre_strategy"},
-    {"Adventure", "genre_adventure"},
-    {"Board", "genre_board"},
-    {"Simulation", "genre_simulation"},
-    {"Shooter", "genre_shooter"},
-    {"Compilation", "genre_compilation"},
-    {"Music / Dancing", "genre_music_dancing"},
-    {"Shoot'em Up", "genre_shootem_up"},
-    {"Gambling", "genre_gambling"},
-    {"Beat'em Up", "genre_beatem_up"},
-    {"Fighting", "genre_fighting"},
-    {"Card", "genre_card"},
-    {"Hunting and Fishing", "genre_hunting_and_fishing"},
-    {"Educational", "genre_educational"},
-    {"ROM Hack", "genre_rom_hack"},
-    {"Pinball", "genre_pinball"},
-    {"Quiz", "genre_quiz"},
-    {"Sports with Animals", "genre_sports_with_animals"},
-    {"Homebrew", "genre_homebrew"},
-    {"Various", "genre_various"},
-    {"Casual Game", "genre_casual_game"},
-    {"Demo", "genre_demo"},
-};
-
 static const char* genre_l10n_key(const char* genre)
 {
     if (!genre)
@@ -554,12 +631,12 @@ const char* romcategory_display_name(const RomCategory* cat)
     return cat->name[0] ? cat->name : T(cat_default_name);
 }
 
-bool romcategories_genres_visible(void)
+bool romcategories_show_empty_genres(void)
 {
     return s_show_genres;
 }
 
-void romcategories_set_genres_visible(bool visible)
+void romcategories_set_show_empty_genres(bool visible)
 {
     if (s_show_genres == visible)
         return;
@@ -572,8 +649,20 @@ bool romcategory_is_listed(const RomCategory* cat)
 {
     if (romcategory_requires_catalog(cat))
         return false;
-    if (cat->type == ROMCAT_GENRE && !s_show_genres)
+    if (cat->type == ROMCAT_UNCATEGORIZED)
+    {
+        // hidden when it duplicates a visible catch-all: no enabled non-empty
+        // splitter besides All/Packed
+        for (RomCategory** other = CB_App->romcategories; other && *other; ++other)
+        {
+            const RomCategory* o = *other;
+            if (o == cat || o->type == ROMCAT_ALL || o->type == ROMCAT_PACKED)
+                continue;
+            if (o->enabled && romcategory_is_listed(o) && romcategory_count(o) > 0)
+                return true;
+        }
         return false;
+    }
     return true;
 }
 
@@ -689,6 +778,17 @@ static int rom_path_append(CB_GameName* name, void* ud)
     return 0;
 }
 
+// writes the member ROM paths of a category
+static void romcat_write_roms(RomCategory* cat, json_value* j)
+{
+    JsonArray* roms = NULL;
+    for_rom_in_category(cat, rom_path_append, &roms);
+
+    json_value jroms = {.type = kJSONArray};
+    jroms.data.arrayval = roms ? roms : mallocz(sizeof(JsonArray));
+    json_set_table_value(j, "roms", jroms);
+}
+
 static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jfixed, json_value* jgenres)
 {
     switch (cat->type)
@@ -708,12 +808,7 @@ static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jfixed, 
         else if (cat->icon_path)
             json_set_table_value(j, "icon-path", json_new_string(cat->icon_path));
 
-        JsonArray* roms = NULL;
-        for_rom_in_category(cat, rom_path_append, &roms);
-
-        json_value jroms = {.type = kJSONArray};
-        jroms.data.arrayval = roms ? roms : mallocz(sizeof(JsonArray));
-        json_set_table_value(j, "roms", jroms);
+        romcat_write_roms(cat, j);
     }
     break;
 
@@ -724,8 +819,16 @@ static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jfixed, 
         json_set_table_value(jfixed, "packed", json_new_bool(cat->enabled));
         return false;
     case ROMCAT_GENRE:
-        json_set_table_value(jgenres, cat->name, json_new_bool(cat->enabled));
+    {
+        *j = json_new_table();
+        if (j->type != kJSONTable)
+            return false;
+        json_set_table_value(j, "enabled", json_new_bool(cat->enabled));
+        json_set_table_value(j, "edited", json_new_bool(cat->edited));
+        romcat_write_roms(cat, j);
+        json_set_table_value(jgenres, cat->name, *j);
         return false;
+    }
     case ROMCAT_UNCATEGORIZED:
         json_set_table_value(jfixed, "uncategorized", json_new_bool(cat->enabled));
         return false;
