@@ -90,7 +90,8 @@ SRC += libs/pdll/uzlib/crc32.c
 ifneq ("$(wildcard libs/pdkeyboard/pdkeyboard.c)","")
 SRC += libs/pdkeyboard/pdkeyboard.c
 UINCDIR += libs/pdkeyboard
-COMMON_FLAGS += -DCRANKBOY_PDKEYBOARD
+# override: command-line COMMON_FLAGS (catalog build) would otherwise drop it
+override COMMON_FLAGS += -DCRANKBOY_PDKEYBOARD
 endif
 
 # Baked data files (generated from Source/*.json; see rules below)
