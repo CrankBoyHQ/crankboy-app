@@ -20,6 +20,7 @@
 #include <stdio.h>
 
 #define BUILD_BATCH_SIZE 10
+#define BUNDLED_REFRESH_BATCH_SIZE 2
 #define PRELOAD_HALF 15
 #define PRELOAD_BATCH_SIZE 5
 #define BG_FILL_BATCH_SIZE 2
@@ -58,6 +59,14 @@ typedef enum
     kLibraryStateDone
 } CB_LibraryState;
 
+// live update after the bundled-games setting changed (catalog builds)
+typedef enum
+{
+    CB_BundledRefreshNone,
+    CB_BundledRefreshHide,
+    CB_BundledRefreshShowBuild
+} CB_BundledRefreshState;
+
 typedef struct CB_Game
 {
     char* fullpath;
@@ -90,6 +99,13 @@ typedef struct CB_LibraryScene
 
     bool filter_options_cached;
     bool categories_editor_open;
+
+    CB_BundledRefreshState bundled_refresh_state;
+    int bundled_refresh_index;
+    char* bundled_refresh_selection;  // fullpath of the selection to restore
+    json_value bundled_refresh_crc_cache;
+    bool bundled_refresh_crc_cache_valid;
+    bool bundled_games_baseline;
 
     CB_LibrarySceneModel model;
     CB_ListView* listView;

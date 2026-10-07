@@ -7,6 +7,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+typedef struct CB_GameName CB_GameName;
+
 // States for the scanning process
 typedef enum
 {
@@ -44,3 +46,8 @@ typedef struct CB_GameScanningScene
 } CB_GameScanningScene;
 
 CB_GameScanningScene* CB_GameScanningScene_new(void);
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+CB_GameName* cb_build_packed_game_name(const char* filename, const json_value* crc_cache);
+void cb_rescan_packed_filenames(void);
+#endif

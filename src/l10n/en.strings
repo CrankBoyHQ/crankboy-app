@@ -200,7 +200,7 @@
 "setdsc_remember_last" = "When opening the library, initial selection will be the last game played.";
 "setdsc_launch_animation" = "Animation when launching a ROM from the library.";
 "setdsc_cgb_prompt" = "When launching a ROM, show a prompt to choose:\n\n1. DMG (original) emulation\n2. CGB (\"Color\") emulation\n\nNo: never prompt\nYes: CGB-compatible ROMs\nAlways: CGB and DMG ROMs\n\nCGB-only ROMs always show a one-time notice.";
-"setdsc_bundled_games" = "Show or hide games that are bundled with CrankBoy in the library.\n\nRequires restart to apply.";
+"setdsc_bundled_games" = "Show or hide games that are bundled with CrankBoy in the library.";
 "setdsc_show_fps" = "Displays the current frames-per-second on screen.\n\nChoice of displaying Playdate screen refreshes or emulated frames. (These can differ if 30 FPS mode is enabled.)\n\nIdeal performance is just under 60 emulated frames per second.";
 "setdsc_turbo_speed" = "Removes the FPS limit.\n\nThis is intended just for benchmarking performance, not for casual play.";
 "setdsc_disable_auto_lock" = "Prevents the device from auto-locking after 3 minutes of inactivity.\n\nNote: This only applies while a game is running.";

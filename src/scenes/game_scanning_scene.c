@@ -74,14 +74,14 @@ static bool stat_rom(const char* fullpath, FileStat* o_stat, uint32_t* o_mtime, 
 }
 
 static bool cache_lookup(
-    CB_GameScanningScene* scanScene, const char* key, uint32_t size, uint32_t m_time,
+    const json_value* crc_cache, const char* key, uint32_t size, uint32_t m_time,
     CB_RomCacheEntry* out
 )
 {
-    if (scanScene->crc_cache.type != kJSONTable)
+    if (crc_cache->type != kJSONTable)
         return false;
 
-    JsonObject* obj = scanScene->crc_cache.data.tableval;
+    JsonObject* obj = crc_cache->data.tableval;
     TableKeyPair key_to_find = {.key = (char*)key};
     TableKeyPair* found = (TableKeyPair*)bsearch(
         &key_to_find, obj->data, obj->n, sizeof(TableKeyPair), compare_key_pairs
@@ -146,8 +146,11 @@ static void fill_basic_names(CB_GameName* newName, const char* filename, const c
     newName->system_slug = cb_strdup(slug);
 }
 
-static void process_one_game(
-    CB_GameScanningScene* scanScene, const char* filename, const char* games_dir
+// builds one CB_GameName for a GB rom; shared by boot scan and the live
+// bundled-games refresh.
+static CB_GameName* build_gb_game_name(
+    const char* filename, const char* games_dir, const json_value* crc_cache,
+    CB_GameScanningScene* scanScene
 )
 {
     CB_GameName* newName = allocz(CB_GameName);
@@ -165,12 +168,12 @@ static void process_one_game(
         playdate->system->logToConsole("Failed to stat file: %s", fullpath);
         free_game_names(newName);
         cb_free(newName);
-        return;
+        return NULL;
     }
 
     char* key = cache_key(GB_SYSTEM_SLUG, filename);
     CB_RomCacheEntry entry = {0};
-    bool ok = cache_lookup(scanScene, key, stat.size, m_time, &entry);
+    bool ok = crc_cache ? cache_lookup(crc_cache, key, stat.size, m_time, &entry) : false;
 
     if (!ok)
     {
@@ -209,7 +212,8 @@ static void process_one_game(
             entry.m_time = m_time;
             entry.sys = cgb;
             entry.battery = battery;
-            cache_store(scanScene, key, &entry);
+            if (scanScene)
+                cache_store(scanScene, key, &entry);
         }
     }
 
@@ -219,7 +223,7 @@ static void process_one_game(
     {
         free_game_names(newName);
         cb_free(newName);
-        return;
+        return NULL;
     }
 
     newName->name_header = cb_strdup(entry.name_header);
@@ -241,8 +245,52 @@ static void process_one_game(
     if (fetched.detailed_name)
         cb_free(fetched.detailed_name);
 
+    return newName;
+}
+
+static void process_one_game(
+    CB_GameScanningScene* scanScene, const char* filename, const char* games_dir
+)
+{
+    CB_GameName* newName =
+        build_gb_game_name(filename, games_dir, &scanScene->crc_cache, scanScene);
+    if (!newName)
+        return;
     array_push(CB_App->gameNameCache, newName);
 }
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+CB_GameName* cb_build_packed_game_name(const char* filename, const json_value* crc_cache)
+{
+    return build_gb_game_name(filename, "packed", crc_cache, NULL);
+}
+
+void cb_rescan_packed_filenames(void)
+{
+    if (CB_App->packed_filenames)
+    {
+        for (int i = 0; i < CB_App->packed_filenames->length; i++)
+            cb_free(CB_App->packed_filenames->items[i]);
+        array_clear(CB_App->packed_filenames);
+    }
+    else
+    {
+        CB_App->packed_filenames = array_new();
+    }
+
+    playdate->file->listfiles(
+        "packed", collect_game_filenames_callback, CB_App->packed_filenames, 0
+    );
+
+    if (CB_App->packed_filenames->length > 1)
+    {
+        qsort(
+            CB_App->packed_filenames->items, CB_App->packed_filenames->length, sizeof(char*),
+            cb_compare_strings
+        );
+    }
+}
+#endif
 
 static void process_one_emucore_game(
     CB_GameScanningScene* scanScene, const char* filename, const char* games_dir, const char* slug
@@ -260,7 +308,7 @@ static void process_one_emucore_game(
 
     char* key = cache_key(slug, filename);
     CB_RomCacheEntry entry = {0};
-    bool ok = cache_lookup(scanScene, key, stat.size, m_time, &entry);
+    bool ok = cache_lookup(&scanScene->crc_cache, key, stat.size, m_time, &entry);
 
     if (!ok)
     {

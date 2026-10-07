@@ -12,6 +12,7 @@
 #include "../app.h"
 #include "../http.h"
 #include "../http_safe.h"
+#include "../jparse.h"
 #include "../preferences.h"
 #include "../revcheck.h"  // IWYU pragma: keep
 #include "../scenes/modal.h"
@@ -22,6 +23,7 @@
 #include "../version.h"
 #include "categories_scene.h"
 #include "emucore_game_scene.h"
+#include "game_scanning_scene.h"
 #include "game_scene.h"
 #include "homebrew_hub_scene.h"
 #include "info_scene.h"
@@ -36,6 +38,49 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 static bool library_category_is_visible(const RomCategory* cat);
 static void library_push_extra_items(CB_LibraryScene* libraryScene);
 static bool library_active_is_all(const CB_LibraryScene* libraryScene);
+static void collect_cover_filenames_callback(const char* filename, void* userdata);
+
+// (re)populates the scene's available_covers from the covers dir (+ packed
+// covers on catalog builds): listfiles, qsort, dedupe
+static void library_list_available_covers(CB_LibraryScene* libraryScene)
+{
+    for (int i = 0; i < libraryScene->available_covers->length; i++)
+        cb_free(libraryScene->available_covers->items[i]);
+    array_clear(libraryScene->available_covers);
+
+    playdate->file->listfiles(
+        cb_gb_directory_path(CB_coversPath), collect_cover_filenames_callback,
+        libraryScene->available_covers, 0
+    );
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    playdate->file->listfiles(
+        "packed", collect_cover_filenames_callback, libraryScene->available_covers, 0
+    );
+#endif
+    if (libraryScene->available_covers->length > 0)
+    {
+        qsort(
+            libraryScene->available_covers->items, libraryScene->available_covers->length,
+            sizeof(char*), cb_compare_strings
+        );
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+        for (int i = libraryScene->available_covers->length - 1; i > 0; --i)
+        {
+            const char* a = libraryScene->available_covers->items[i];
+            const char* b = libraryScene->available_covers->items[i - 1];
+            if (cb_strcmp(a, b) == 0)
+            {
+                cb_free(libraryScene->available_covers->items[i]);
+                array_remove_at(libraryScene->available_covers, i);
+            }
+        }
+#endif
+    }
+}
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static void library_refresh_bundled_games_step(CB_LibraryScene* libraryScene);
+#endif
 
 static void collect_cover_filenames_callback(const char* filename, void* userdata)
 {
@@ -1825,6 +1870,10 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     library_update_filter_options(libraryScene);
     libraryScene->coverFlow = CB_CoverFlow_new();
     libraryScene->last_view_flow = false;
+    libraryScene->bundled_refresh_state = CB_BundledRefreshNone;
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    libraryScene->bundled_games_baseline = preferences_show_bundled_games;
+#endif
 
     libraryScene->listView->selectedItem = 0;
     libraryScene->tab = CB_LibrarySceneTabList;
@@ -1935,34 +1984,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         {
         case kLibraryStateInit:
         {
-            playdate->file->listfiles(
-                cb_gb_directory_path(CB_coversPath), collect_cover_filenames_callback,
-                libraryScene->available_covers, 0
-            );
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-            playdate->file->listfiles(
-                "packed", collect_cover_filenames_callback, libraryScene->available_covers, 0
-            );
-#endif
-            if (libraryScene->available_covers->length > 0)
-            {
-                qsort(
-                    libraryScene->available_covers->items, libraryScene->available_covers->length,
-                    sizeof(char*), cb_compare_strings
-                );
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-                for (int i = libraryScene->available_covers->length - 1; i > 0; --i)
-                {
-                    const char* a = libraryScene->available_covers->items[i];
-                    const char* b = libraryScene->available_covers->items[i - 1];
-                    if (cb_strcmp(a, b) == 0)
-                    {
-                        cb_free(libraryScene->available_covers->items[i]);
-                        array_remove_at(libraryScene->available_covers, i);
-                    }
-                }
-#endif
-            }
+            library_list_available_covers(libraryScene);
 
             libraryScene->build_game_index = 0;
             libraryScene->progress_max_width =
@@ -2273,6 +2295,11 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         if (libraryScene->listView->selectedItem > max_valid)
             libraryScene->listView->selectedItem = 0;
     }
+
+    // bundled-games setting changed (or refresh in progress): rebuild in place
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+    library_refresh_bundled_games_step(libraryScene);
+#endif
 
     float dt = UINT32_AS_FLOAT(u32enc_dt);
 
@@ -3161,6 +3188,14 @@ static void CB_LibraryScene_free(void* object)
         array_free(libraryScene->available_covers);
     }
 
+    if (libraryScene->bundled_refresh_crc_cache_valid)
+    {
+        free_json_data(libraryScene->bundled_refresh_crc_cache);
+        libraryScene->bundled_refresh_crc_cache_valid = false;
+    }
+    cb_free(libraryScene->bundled_refresh_selection);
+    libraryScene->bundled_refresh_selection = NULL;
+
     if (libraryScene->lz4_state)
     {
         cb_free(libraryScene->lz4_state);
@@ -3370,3 +3405,205 @@ bool CB_LibraryScene_removeGame(CB_Game* game)
     CB_Game_free(game);
     return true;
 }
+
+#ifdef CRANKBOY_OFFICIAL_CATALOG
+static void library_refresh_bundled_finish(CB_LibraryScene* libraryScene);
+
+static void library_refresh_bundled_cleanup(CB_LibraryScene* libraryScene)
+{
+    if (libraryScene->bundled_refresh_crc_cache_valid)
+    {
+        free_json_data(libraryScene->bundled_refresh_crc_cache);
+        libraryScene->bundled_refresh_crc_cache_valid = false;
+    }
+    cb_free(libraryScene->bundled_refresh_selection);
+    libraryScene->bundled_refresh_selection = NULL;
+    libraryScene->bundled_refresh_state = CB_BundledRefreshNone;
+    libraryScene->bundled_games_baseline = preferences_show_bundled_games;
+}
+
+static void library_refresh_bundled_invalidate_categories(void)
+{
+    romcategories_free_all(CB_App->romcategories);
+    CB_App->romcategories = NULL;
+}
+
+static void library_refresh_bundled_view(CB_LibraryScene* libraryScene)
+{
+    char* restore_path = libraryScene->bundled_refresh_selection;
+    libraryScene->bundled_refresh_selection = NULL;
+
+    library_apply_filter(libraryScene);
+    library_update_filter_options(libraryScene);
+    library_rebuild_list_items(libraryScene);
+
+    if (libraryScene->listView->items->length > 0)
+        libraryScene->tab = CB_LibrarySceneTabList;
+    else
+        libraryScene->tab = CB_LibrarySceneTabEmpty;
+
+    int new_sel = 0;
+    if (restore_path)
+    {
+        for (int i = 0; i < libraryScene->games->length; ++i)
+        {
+            CB_Game* game = libraryScene->games->items[i];
+            if (game->fullpath && strcmp(game->fullpath, restore_path) == 0)
+            {
+                new_sel = i;
+                break;
+            }
+        }
+        cb_free(restore_path);
+    }
+
+    libraryScene->listView->selectedItem = new_sel;
+    libraryScene->lastSelectedItem = -1;
+    last_selected_game_index = new_sel;
+
+    CB_ListView_reload(libraryScene->listView);
+    libraryScene->scene->forceFullRefresh = true;
+
+    cb_clear_global_cover_cache();
+    CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
+}
+
+static void library_refresh_bundled_hide(CB_LibraryScene* libraryScene)
+{
+    for (int i = CB_App->gameListCache->length - 1; i >= 0; --i)
+    {
+        CB_Game* game = CB_App->gameListCache->items[i];
+        if (game->names && game->names->packed)
+        {
+            array_remove_at(CB_App->gameListCache, i);
+            CB_Game_free(game);
+        }
+    }
+
+    for (int i = CB_App->gameNameCache->length - 1; i >= 0; --i)
+    {
+        CB_GameName* name = CB_App->gameNameCache->items[i];
+        if (name->packed)
+        {
+            array_remove_at(CB_App->gameNameCache, i);
+            free_game_names(name);
+        }
+    }
+
+    library_refresh_bundled_view(libraryScene);
+}
+
+static bool library_refresh_bundled_known(const char* filename)
+{
+    for (int i = 0; i < CB_App->gameNameCache->length; ++i)
+    {
+        const CB_GameName* name = CB_App->gameNameCache->items[i];
+        if (name->packed && name->filename && strcmp(name->filename, filename) == 0)
+            return true;
+    }
+    return false;
+}
+
+static void library_refresh_bundled_show(CB_LibraryScene* libraryScene)
+{
+    CB_Array* filenames = CB_App->packed_filenames;
+    if (!filenames)
+    {
+        cb_rescan_packed_filenames();
+        filenames = CB_App->packed_filenames;
+    }
+    if (!filenames || libraryScene->bundled_refresh_index >= filenames->length)
+    {
+        library_refresh_bundled_finish(libraryScene);
+        return;
+    }
+
+    int batch_end = libraryScene->bundled_refresh_index + BUNDLED_REFRESH_BATCH_SIZE;
+    if (batch_end > filenames->length)
+        batch_end = filenames->length;
+
+    const json_value* crc_cache = libraryScene->bundled_refresh_crc_cache_valid
+                                      ? &libraryScene->bundled_refresh_crc_cache
+                                      : NULL;
+
+    for (int i = libraryScene->bundled_refresh_index; i < batch_end; ++i)
+    {
+        const char* filename = filenames->items[i];
+        if (library_refresh_bundled_known(filename))
+            continue;
+
+        CB_GameName* name = cb_build_packed_game_name(filename, crc_cache);
+        if (!name)
+            continue;
+
+        array_push(CB_App->gameNameCache, name);
+        CB_Game_new(name, libraryScene->available_covers);
+    }
+
+    libraryScene->bundled_refresh_index = batch_end;
+    if (libraryScene->bundled_refresh_index >= filenames->length)
+        library_refresh_bundled_finish(libraryScene);
+}
+
+static void library_refresh_bundled_finish(CB_LibraryScene* libraryScene)
+{
+    library_refresh_bundled_invalidate_categories();
+    cb_sort_games_array(CB_App->gameListCache);
+    CB_App->gameListCacheIsSorted = true;
+
+    library_refresh_bundled_view(libraryScene);
+    library_refresh_bundled_cleanup(libraryScene);
+}
+
+static void library_refresh_bundled_games_step(CB_LibraryScene* libraryScene)
+{
+    if (libraryScene->state != kLibraryStateDone)
+        return;
+
+    if (libraryScene->bundled_refresh_state == CB_BundledRefreshNone)
+    {
+        if (libraryScene->bundled_games_baseline == preferences_show_bundled_games)
+            return;
+
+        int sel = libraryScene->listView->selectedItem;
+        if (sel >= 0 && sel < libraryScene->games->length)
+        {
+            CB_Game* game = libraryScene->games->items[sel];
+            if (game->fullpath)
+                libraryScene->bundled_refresh_selection = cb_strdup(game->fullpath);
+        }
+
+        char* path;
+        playdate->system->formatString(&path, "%s", CRC_CACHE_FILE);
+        if (path)
+        {
+            json_value j;
+            if (parse_json(path, &j, kFileReadData) && j.type == kJSONTable)
+            {
+                free_json_data(libraryScene->bundled_refresh_crc_cache);
+                libraryScene->bundled_refresh_crc_cache = j;
+                libraryScene->bundled_refresh_crc_cache_valid = true;
+            }
+            cb_free(path);
+        }
+
+        if (preferences_show_bundled_games)
+        {
+            library_list_available_covers(libraryScene);
+            libraryScene->bundled_refresh_index = 0;
+            libraryScene->bundled_refresh_state = CB_BundledRefreshShowBuild;
+        }
+        else
+        {
+            library_refresh_bundled_invalidate_categories();
+            libraryScene->bundled_refresh_state = CB_BundledRefreshHide;
+            library_refresh_bundled_hide(libraryScene);
+            library_refresh_bundled_cleanup(libraryScene);
+        }
+        return;
+    }
+
+    if (libraryScene->bundled_refresh_state == CB_BundledRefreshShowBuild)
+        library_refresh_bundled_show(libraryScene);
+}
+#endif
