@@ -36,7 +36,7 @@ static void rebuild_list(CB_CategoriesScene* self)
     add_button->ud.ptr = NULL;
     array_push(items, add_button);
 
-    // rule between the add row and the category list
+    // divider between the add row and the category list
     CB_ListItemButton* divider = CB_ListItemButton_new("");
     divider->is_header = true;
     divider->unselectable = true;
@@ -140,8 +140,7 @@ static void draw(CB_CategoriesScene* self)
     self->listView->needsDisplay = true;
     CB_ListView_draw(self->listView);
 
-    // chevron marks editable rows; drawn white on selected rows. List state
-    // only: edit rows carry ud.uint (a game index), not a category pointer.
+    // Chevron marks editable rows only.
     if (self->state == CATSCENE_LIST)
     {
         CB_ListView* listView = self->listView;
@@ -321,7 +320,7 @@ static bool category_name_make_unique(
             return true;
     }
 
-    snprintf(out, MAX_CATEGORY_NAME, "%s", base);  // unreachable safety
+    snprintf(out, MAX_CATEGORY_NAME, "%s", base);
     return true;
 }
 
