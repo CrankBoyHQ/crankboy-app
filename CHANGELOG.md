@@ -1,6 +1,6 @@
 # v3.0.0 - (2026-09-04)
 
-More performance and better Audio. Also: 日本語 is arriving.
+More performance, better Audio and Categories. Also: 日本語 is arriving.
 
 ## Japanese Language (WIP)
 
@@ -42,6 +42,13 @@ More performance and better Audio. Also: 日本語 is arriving.
 - TCM mode enabled by default on all Playdate revisions.
 - TCM mode changes apply live. No restart needed.
 - TCM relocation has been hardened. No crashes in CGB mode anymore!
+
+## Categories
+
+- Create your own categories and group ROMs by them.
+- ROMs are automatically sorted into genre categories from the ROM database.
+- Every genre is editable: add or remove games, or reset to the default.
+- Manage everything from the library menu: reorder, hide/show, and assign ROMs.
 
 ## Scripts
 
