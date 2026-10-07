@@ -3414,6 +3414,7 @@ static void library_refresh_bundled_cleanup(CB_LibraryScene* libraryScene)
     if (libraryScene->bundled_refresh_crc_cache_valid)
     {
         free_json_data(libraryScene->bundled_refresh_crc_cache);
+        memset(&libraryScene->bundled_refresh_crc_cache, 0, sizeof(json_value));
         libraryScene->bundled_refresh_crc_cache_valid = false;
     }
     cb_free(libraryScene->bundled_refresh_selection);
@@ -3537,7 +3538,8 @@ static void library_refresh_bundled_show(CB_LibraryScene* libraryScene)
             continue;
 
         array_push(CB_App->gameNameCache, name);
-        CB_Game_new(name, libraryScene->available_covers);
+        CB_Game* game = CB_Game_new(name, libraryScene->available_covers);
+        array_push(CB_App->gameListCache, game);
     }
 
     libraryScene->bundled_refresh_index = batch_end;
