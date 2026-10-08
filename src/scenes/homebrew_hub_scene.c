@@ -511,7 +511,6 @@ static void context_list_files_update(
     }
 }
 
-#ifdef CRANKBOY_PDKEYBOARD
 static void open_search_keyboard(
     CB_HomebrewHubScene* hbs, const char* platform, const char* initial_text
 )
@@ -616,7 +615,6 @@ static void update_search_keyboard(CB_HomebrewHubScene* hbs, float dt)
     if (pdkb_get_state(kb) == PDKBS_CLOSED)
         hbs->keyboard = NULL;
 }
-#endif
 
 static void context_top_level_update(
     CB_HomebrewHubScene* hbs, HomebrewHubContext* context, float dt
@@ -644,9 +642,7 @@ static void context_top_level_update(
         }
         else if (sel % 2 == 1)
         {
-#ifdef CRANKBOY_PDKEYBOARD
             open_search_keyboard(hbs, hb_platforms[sel / 2], NULL);
-#endif
         }
         else
         {
@@ -1501,11 +1497,7 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
     // stops some bugs relating to downloading for some reason.
     playdate->system->setAutoLockDisabled(true);
 
-#ifdef CRANKBOY_PDKEYBOARD
     bool kb_active = (hbs->keyboard != NULL);
-#else
-    bool kb_active = false;
-#endif
 
     if (hbs->is_dismissing)
     {
@@ -1744,10 +1736,8 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
         hbs->loading_anim_step = 0;
     }
 
-#ifdef CRANKBOY_PDKEYBOARD
     if (kb_active)
         update_search_keyboard(hbs, dt);
-#endif
 }
 
 void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
@@ -1794,14 +1784,12 @@ static void CB_HomebrewHubScene_didSelectSettings(void* userdata)
 static void CB_HomebrewHubScene_didSelectSearch(void* userdata)
 {
     CB_HomebrewHubScene* hbs = userdata;
-#ifdef CRANKBOY_PDKEYBOARD
     if (hbs->context_depth > 0)
     {
         HomebrewHubContext* ctx = &hbs->context[hbs->context_depth - 1];
         if (ctx->type == HBSCT_LIST_SEARCH)
             open_search_keyboard(hbs, ctx->str, hbs->search_query);
     }
-#endif
 }
 
 static void CB_HomebrewHubScene_menu(void* object)
@@ -1810,12 +1798,10 @@ static void CB_HomebrewHubScene_menu(void* object)
     playdate->system->removeAllMenuItems();
     playdate->system->addMenuItem(T(pdmenu_library), CB_HomebrewHubScene_didSelectSettings, hbs);
 
-#ifdef CRANKBOY_PDKEYBOARD
     if (hbs->context_depth > 0 && hbs->context[hbs->context_depth - 1].type == HBSCT_LIST_SEARCH)
     {
         playdate->system->addMenuItem(T(pdmenu_search), CB_HomebrewHubScene_didSelectSearch, hbs);
     }
-#endif
 }
 
 CB_HomebrewHubScene* CB_HomebrewHubScene_new(float initial_header_p, const char* header_name)

@@ -26,10 +26,8 @@ typedef struct CB_CategoriesScene
     // adjusted name shown in a modal once the keyboard closes
     char* pending_name_notice;
 
-#ifdef CRANKBOY_PDKEYBOARD
     PDKeyboard* keyboard;
     bool keyboard_result_handled : 1;
-#endif
 
     bool dirty : 1;
     bool needs_rebuild : 1;

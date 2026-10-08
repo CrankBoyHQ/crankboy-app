@@ -16,11 +16,9 @@ enum
 
 #define CB_CATEGORIES_HEADER_GAP 4
 
-#ifdef CRANKBOY_PDKEYBOARD
 static void draw_name_cursor(CB_CategoriesScene* self);
 static void open_name_keyboard(CB_CategoriesScene* self, bool play_sound);
 static void update_name_field(CB_CategoriesScene* self);
-#endif
 
 static const char* category_edit_title(const RomCategory* cat)
 {
@@ -191,9 +189,7 @@ static void draw(CB_CategoriesScene* self)
         playdate->graphics->setDrawMode(kDrawModeCopy);
     }
 
-#ifdef CRANKBOY_PDKEYBOARD
     draw_name_cursor(self);
-#endif
 
     playdate->graphics->fillRect(
         0, CB_HEADER_HEIGHT, LCD_COLUMNS, CB_CATEGORIES_HEADER_GAP, kColorWhite
@@ -230,13 +226,10 @@ static void create_category(CB_CategoriesScene* self)
     self->dirty = true;
     enter_edit(self, cat);
 
-#ifdef CRANKBOY_PDKEYBOARD
     open_name_keyboard(self, false);
     update_name_field(self);
-#endif
 }
 
-#ifdef CRANKBOY_PDKEYBOARD
 static void draw_name_cursor(CB_CategoriesScene* self)
 {
     if (!self->keyboard || self->state != CATSCENE_EDIT)
@@ -384,7 +377,6 @@ static void update_keyboard(CB_CategoriesScene* self, float dt)
     if (pdkb_get_state(self->keyboard) == PDKBS_CLOSED)
         self->keyboard = NULL;
 }
-#endif
 
 static void delete_confirmed(void* ud, int option)
 {
@@ -529,9 +521,7 @@ static void toggle_selected(CB_CategoriesScene* self)
     {
         if (sel == EDIT_ROW_NAME && self->editing->type == ROMCAT_STANDARD)
         {
-#ifdef CRANKBOY_PDKEYBOARD
             open_name_keyboard(self, true);
-#endif
             return;
         }
         if (sel == EDIT_ROW_DELETE)
@@ -618,14 +608,12 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-#ifdef CRANKBOY_PDKEYBOARD
     if (self->keyboard)
     {
         draw(self);
         update_keyboard(self, dt);
         return;
     }
-#endif
 
     // keyboard closed: show the auto-number notice modal, if any
     if (self->pending_name_notice)

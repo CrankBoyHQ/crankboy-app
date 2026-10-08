@@ -1185,7 +1185,6 @@ void CB_showHelp(bool first_time)
     cb_free(s);
 }
 
-#ifdef CRANKBOY_PDKEYBOARD
 static PDKeyboard* keyboard;
 PDKeyboard* CB_init_keyboard(
     PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys
@@ -1200,7 +1199,6 @@ PDKeyboard* CB_init_keyboard(
     keyboard = pdkb_new(playdate, flags, leftkeys, rightkeys);
     return keyboard;
 }
-#endif
 
 static void any_file_found(const char* p, bool* any_found)
 {
