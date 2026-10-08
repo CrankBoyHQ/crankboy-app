@@ -284,8 +284,6 @@ RomCategory** romcategories_load_all(size_t* o_count)
     if (!parse_json(CATEGORY_PATH, &j, kFileReadData | kFileRead))
         j.type = kJSONNull;
 
-    json_value jmisc = json_get_table_value(j, "misc");
-
 // fixed categories first: positions arbitrary - lookups are by type/name;
 // persistence uses tokens
 // TODO: set icon on the fixed categories
@@ -295,7 +293,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
         RomCategory* cat = romcategory_new(E, NAME);               \
         if (cat)                                                   \
         {                                                          \
-            cat->enabled = json_flag(jmisc, key, default);         \
+            cat->enabled = json_flag(j, key, default);             \
             cat->icon_slug = cb_strdup(icon);                      \
             romcategories_append(&cats, cat);                      \
             cat->requires_catalog = CATALOG;                       \
@@ -323,7 +321,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
     // genre. Edited genres keep stored bits; unedited re-seed from the cache;
     // new db genres merged in.
     {
-        json_value jgenres = json_get_table_value(jmisc, "genres");
+        json_value jgenres = json_get_table_value(j, "genres");
         if (jgenres.type == kJSONTable)
         {
             JsonObject* obj = jgenres.data.tableval;
@@ -411,7 +409,7 @@ RomCategory** romcategories_load_all(size_t* o_count)
         }
     }
 
-    s_show_genres = json_flag(jmisc, "show-genres", true);
+    s_show_genres = json_flag(j, "show-empty-genres", true);
 
     // fixed category for games with no genre and no enabled category membership
     if (!romcategories_has_type(cats, ROMCAT_UNCATEGORIZED))
@@ -427,12 +425,12 @@ RomCategory** romcategories_load_all(size_t* o_count)
     for (RomCategory** cat = cats; cat && *cat; ++cat)
     {
         if ((*cat)->type == ROMCAT_UNCATEGORIZED)
-            (*cat)->enabled = json_flag(jmisc, "uncategorized", true);
+            (*cat)->enabled = json_flag(j, "uncategorized", true);
     }
 
     // persisted display order: saved categories first, leftover categories appended
     {
-        json_value jorder = json_get_table_value(jmisc, "categories-order");
+        json_value jorder = json_get_table_value(j, "categories-order");
         if (jorder.type == kJSONArray)
         {
             JsonArray* arr = jorder.data.arrayval;
@@ -789,7 +787,9 @@ static void romcat_write_roms(RomCategory* cat, json_value* j)
     json_set_table_value(j, "roms", jroms);
 }
 
-static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jfixed, json_value* jgenres)
+// fixed categories write only their enabled flag (top level, see
+// romcategories_write_all); genres write into jgenres
+static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jgenres)
 {
     switch (cat->type)
     {
@@ -812,28 +812,23 @@ static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jfixed, 
     }
     break;
 
-    case ROMCAT_ALL:
-        json_set_table_value(jfixed, "all", json_new_bool(cat->enabled));
-        return false;
-    case ROMCAT_PACKED:
-        json_set_table_value(jfixed, "packed", json_new_bool(cat->enabled));
-        return false;
     case ROMCAT_GENRE:
     {
         *j = json_new_table();
         if (j->type != kJSONTable)
             return false;
         json_set_table_value(j, "enabled", json_new_bool(cat->enabled));
-        json_set_table_value(j, "edited", json_new_bool(cat->edited));
-        romcat_write_roms(cat, j);
+        // edited/roms only when the user touched the membership; unedited
+        // genres re-seed from the cache on load
+        if (cat->edited)
+        {
+            json_set_table_value(j, "edited", json_new_bool(true));
+            romcat_write_roms(cat, j);
+        }
         json_set_table_value(jgenres, cat->name, *j);
         return false;
     }
-    case ROMCAT_UNCATEGORIZED:
-        json_set_table_value(jfixed, "uncategorized", json_new_bool(cat->enabled));
-        return false;
     default:
-        // not serialized in this way.
         return false;
     }
 
@@ -857,20 +852,11 @@ int romcategories_write_all(RomCategory** cats)
         return -4;
     }
 
-    json_value jfixed = json_new_table();
-    if (jfixed.type != kJSONTable)
-    {
-        free_json_data(jcats);
-        free_json_data(j);
-        return -4;
-    }
-
     json_value jgenres = json_new_table();
     if (jgenres.type != kJSONTable)
     {
         free_json_data(jcats);
         free_json_data(j);
-        free_json_data(jfixed);
         return -4;
     }
 
@@ -878,7 +864,7 @@ int romcategories_write_all(RomCategory** cats)
     for (RomCategory** cat = cats; cat && *cat; ++cat)
     {
         json_value jcat;
-        if (romcat_to_json(*cat, &jcat, &jfixed, &jgenres))
+        if (romcat_to_json(*cat, &jcat, &jgenres))
         {
             arr->data[arr->n++] = jcat;
         }
@@ -890,7 +876,6 @@ int romcategories_write_all(RomCategory** cats)
     {
         free_json_data(jcats);
         free_json_data(j);
-        free_json_data(jfixed);
         free_json_data(jgenres);
         return -1;
     }
@@ -927,17 +912,25 @@ int romcategories_write_all(RomCategory** cats)
         }
     }
 
-    json_value jorder = {.type = kJSONArray};
-    jorder.data.arrayval = order_arr;
-    json_set_table_value(&jfixed, "categories-order", jorder);
+    // fixed categories, flags (top level)
+    for (RomCategory** cat = cats; cat && *cat; ++cat)
+    {
+        if ((*cat)->type == ROMCAT_ALL)
+            json_set_table_value(&j, "all", json_new_bool((*cat)->enabled));
+        else if ((*cat)->type == ROMCAT_PACKED)
+            json_set_table_value(&j, "packed", json_new_bool((*cat)->enabled));
+        else if ((*cat)->type == ROMCAT_UNCATEGORIZED)
+            json_set_table_value(&j, "uncategorized", json_new_bool((*cat)->enabled));
+    }
 
-    json_set_table_value(&jfixed, "show-genres", json_new_bool(s_show_genres));
-    json_set_table_value(&jfixed, "genres", jgenres);
+    json_set_table_value(&j, "show-empty-genres", json_new_bool(s_show_genres));
 
     json_set_table_value(&j, "categories", jcats);
+    json_set_table_value(&j, "genres", jgenres);
 
-    // built-in categories, flags
-    json_set_table_value(&j, "misc", jfixed);
+    json_value jorder = {.type = kJSONArray};
+    jorder.data.arrayval = order_arr;
+    json_set_table_value(&j, "categories-order", jorder);
 
     full_mkdir(MISC_PATH);
     int result = write_json_to_disk(CATEGORY_PATH, j);
