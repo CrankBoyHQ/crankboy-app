@@ -51,7 +51,7 @@ jobs:
 
             # Step 1.1: Initialize source submodules
             - name: Initialize Source Submodules
-              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot libs/pdkeyboard
 
             # Step 2: Download or fallback to submodule for toolchain
             - name: Download Toolchain or Fallback to Submodule
@@ -165,7 +165,7 @@ jobs:
 
             # Step 1.1: Initialize source submodules
             - name: Initialize Source Submodules
-              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot libs/pdkeyboard
 
             # Step 2: Download or fallback to submodule for toolchain
             - name: Download Toolchain or Fallback to Submodule
@@ -279,7 +279,7 @@ jobs:
 
             # Step 1.1: Initialize source submodules
             - name: Initialize Source Submodules
-              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot libs/pdkeyboard
 
             # Step 2: Download or fallback to submodule for SDK
             - name: Download SDK or Fallback to Submodule
@@ -434,7 +434,7 @@ jobs:
                       zip
 
             - name: Initialize Source Submodules
-              run: git submodule update --init --depth 1 libs/pdll libs/pdboot
+              run: git submodule update --init --depth 1 libs/pdll libs/pdboot libs/pdkeyboard
 
             - name: Download Toolchain or Fallback to Submodule
               run: |
