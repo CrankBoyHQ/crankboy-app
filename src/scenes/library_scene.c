@@ -2821,7 +2821,9 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                 const char* message_or = T(label_or_separator);
                                 const char* message_connect = T(cover_connect_computer);
                                 const char* message_copy = T(cover_copy_to);
-                                const char* message_path = cb_gb_directory_path(CB_coversPath);
+                                char* message_path = cb_system_directory_path_for_slug(
+                                    selectedGame->names->system_slug, CB_coversPath
+                                );
 
                                 LCDFont* titleFont = CB_App->bodyFont;
                                 LCDFont* bodyFont = CB_App->subheadFont;
@@ -2928,6 +2930,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                     message_path, strlen(message_path), kUTF8Encoding,
                                     message_path_X, currentY
                                 );
+                                cb_free(message_path);
                             }
                         }
                     }
@@ -3282,7 +3285,23 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     game->names = cachedName;
     set_display_and_sort_name(game);
 
-    char* basename_no_ext = cb_basename(cachedName->filename, true);
+    char* basename_no_ext = cb_rom_basename(cachedName->filename);
+
+    // available_covers lists gb's covers only
+    bool other_system = cachedName->system_slug && strcmp(cachedName->system_slug, GB_SYSTEM_SLUG);
+    if (other_system)
+    {
+        char* covers_dir =
+            cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
+        char* path = aprintf("%s/%s.pdi", covers_dir, basename_no_ext);
+        cb_free(covers_dir);
+        if (cb_file_exists(path, kFileReadData | kFileRead))
+            game->coverPath = path;
+        else
+            cb_free(path);
+        cb_free(basename_no_ext);
+        return game;
+    }
 
     char** found_cover_name_ptr = (char**)bsearch(
         &basename_no_ext, available_covers->items, available_covers->length, sizeof(char*),

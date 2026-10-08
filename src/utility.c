@@ -666,6 +666,26 @@ char* cb_basename(const char* filename, bool stripExtension)
     return result;
 }
 
+char* cb_rom_basename(const char* filename)
+{
+    static const char* const image_carts[] = {".p8.png"};
+
+    char* name = cb_basename(filename, true);
+    size_t len = name ? strlen(name) : 0;
+    size_t full = strlen(filename);
+    for (size_t i = 0; i < sizeof(image_carts) / sizeof(image_carts[0]); ++i)
+    {
+        size_t ext = strlen(image_carts[i]);
+        size_t inner = ext - strlen(strrchr(image_carts[i], '.'));
+        if (full > ext && len > inner && !strcasecmp(filename + full - ext, image_carts[i]))
+        {
+            name[len - inner] = '\0';
+            break;
+        }
+    }
+    return name;
+}
+
 char* cb_save_filename(const char* path, bool isRecovery)
 {
     char* filenameNoExt = cb_basename(path, true);
