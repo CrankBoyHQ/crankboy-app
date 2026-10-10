@@ -3758,14 +3758,15 @@ static void CB_SettingsScene_menu(void* object)
     }
     else
     {
+        playdate->system->addMenuItem(
+            T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene
+        );
+
         if (settingsScene->libraryScene)
         {
             playdate->system->addMenuItem(T(pdmenu_credits), CB_showCredits, settingsScene);
         }
         playdate->system->addMenuItem(T(pdmenu_changelog), display_changelog_menu, NULL);
-        playdate->system->addMenuItem(
-            T(pdmenu_library), CB_SettingsScene_didSelectBack, settingsScene
-        );
     }
 }
 
