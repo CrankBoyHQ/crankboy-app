@@ -446,6 +446,7 @@ static void context_list_files_update(
         {
             // this seems to prevent a crash that occurs when two downloads are happening
             // simultaneously
+            cb_play_ui_sound(CB_UISound_Denial);
             CB_presentModal(CB_Modal_new(T(hhub_please_wait), NULL, NULL, NULL)->scene);
         }
         else
@@ -493,6 +494,7 @@ static void context_list_files_update(
             cb_free(hbs->target_rom_slug);
             hbs->target_rom_slug = slug ? cb_strdup(slug) : NULL;
             hbs->pending_cover_save = false;
+            cb_play_ui_sound(CB_UISound_Confirm);
 
             // we check kFileRead too because even if the rom is pdx only for some reason,
             // the user should probably still be informed.
@@ -633,11 +635,13 @@ static void context_top_level_update(
             http_safe_cancel(hbs->active_http_connection);
             http_safe_cancel(hbs->active_http_connection_2);
             hbs->active_download_type = HB_DL_NONE;
+            cb_play_ui_sound(CB_UISound_Confirm);
             CB_ParentalLockScene* plScene = CB_ParentalLockScene_new();
             CB_presentModal(plScene->scene);
         }
         else if (CB_App->parentalLockEngaged)
         {
+            cb_play_ui_sound(CB_UISound_Denial);
             CB_presentModal(CB_Modal_new(T(hhub_engaged), NULL, NULL, NULL)->scene);
         }
         else if (sel % 2 == 1)
@@ -648,6 +652,7 @@ static void context_top_level_update(
         {
             cb_free(hbs->search_query);
             hbs->search_query = NULL;
+            cb_play_ui_sound(CB_UISound_Confirm);
             push_list_search(hbs, hb_platforms[sel / 2]);
         }
     }
@@ -789,6 +794,7 @@ static void context_list_search_update(
 
         if (prev_i != context->i)
         {
+            cb_play_ui_sound(context->i > prev_i ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
             clear_page(hbs, context);
 
             http_search(hbs, context->i, context->str);
@@ -885,9 +891,14 @@ static void context_list_search_update(
 
                 if (selected < array->n)
                 {
-                    if (!push_list_files(hbs, &array->data[selected]))
+                    if (push_list_files(hbs, &array->data[selected]))
+                    {
+                        cb_play_ui_sound(CB_UISound_Confirm);
+                    }
+                    else
                     {
                         CB_presentModal(CB_Modal_new(T(hhub_failed_list), NULL, NULL, NULL)->scene);
+                        cb_play_ui_sound(CB_UISound_Denial);
                     }
                 }
             }
