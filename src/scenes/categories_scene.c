@@ -83,7 +83,12 @@ static void rebuild_edit(CB_CategoriesScene* self)
     array_push(items, enabled_cb);
 
     if (self->editing->type == ROMCAT_GENRE)
-        array_push(items, CB_ListItemButton_new(T(cat_reset_roms)));
+    {
+        // reset is pointless without user edits: dimmed until touched
+        CB_ListItemButton* reset_btn = CB_ListItemButton_new(T(cat_reset_roms));
+        reset_btn->disabled = !self->editing->edited;
+        array_push(items, reset_btn);
+    }
     else
         array_push(items, CB_ListItemButton_new(T(cat_delete)));
 
@@ -528,7 +533,15 @@ static void toggle_selected(CB_CategoriesScene* self)
         if (sel == EDIT_ROW_DELETE)
         {
             if (self->editing->type == ROMCAT_GENRE)
+            {
+                // untouched genre: nothing to reset
+                if (!self->editing->edited)
+                {
+                    cb_play_ui_sound(CB_UISound_Denial);
+                    return;
+                }
                 confirm_reset(self);
+            }
             else
                 confirm_delete(self);
             return;
@@ -559,7 +572,15 @@ static void toggle_selected(CB_CategoriesScene* self)
 
         // genres: real edits freeze db auto-seeding until reset
         if (self->editing->type == ROMCAT_GENRE)
+        {
             self->editing->edited = true;
+
+            // first membership edit: enable the reset row
+            CB_ListItemButton* reset_btn =
+                (CB_ListItemButton*)self->listView->items->items[EDIT_ROW_DELETE];
+            if (reset_btn->item.type == CB_ListViewItemTypeButton)
+                reset_btn->disabled = false;
+        }
 
         self->dirty = true;
         listView->needsDisplay = true;
