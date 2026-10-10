@@ -89,6 +89,9 @@ void CB_Modal_update(CB_Modal* modal)
         // copy in what's on the screen
         uint8_t* src = playdate->graphics->getFrame();
         memcpy(modal->lcd, src, sizeof(modal->lcd));
+
+        if (modal->warning != CB_MODAL_WARNING_NONE)
+            cb_play_ui_sound(CB_UISound_Alert);
     }
 
     uint8_t* lcd = playdate->graphics->getFrame();
@@ -351,6 +354,10 @@ void CB_Modal_update(CB_Modal* modal)
             modal->exit = 1;
             modal->result = -1;
             cb_play_ui_sound(CB_UISound_NavigateUp);
+        }
+        else if (pushed & kButtonB)
+        {
+            cb_play_ui_sound(CB_UISound_Denial);
         }
     }
     else if (pushed & kButtonA)

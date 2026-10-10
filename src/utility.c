@@ -1248,6 +1248,8 @@ char* aprintf(const char* fmt, ...)
 static AudioSample* s_nav_fwd;
 static AudioSample* s_nav_rev;
 static AudioSample* s_confirm_sample;
+static AudioSample* s_denial_sample;
+static AudioSample* s_alert_sample;
 static SamplePlayer* s_sfx_player;
 
 static bool cb_os_sfx_init(void)
@@ -1258,8 +1260,10 @@ static bool cb_os_sfx_init(void)
     s_nav_fwd = playdate->sound->sample->load(CB_OS_SFX_PATH("01-selection-trimmed.pda"));
     s_nav_rev = playdate->sound->sample->load(CB_OS_SFX_PATH("02-selection-reverse-trimmed.pda"));
     s_confirm_sample = playdate->sound->sample->load(CB_OS_SFX_PATH("03-action-trimmed.pda"));
+    s_denial_sample = playdate->sound->sample->load(CB_OS_SFX_PATH("04-denial-trimmed.pda"));
+    s_alert_sample = playdate->sound->sample->load(CB_OS_SFX_PATH("05-alert-trimmed.pda"));
 
-    if (!s_nav_fwd && !s_nav_rev && !s_confirm_sample)
+    if (!s_nav_fwd && !s_nav_rev && !s_confirm_sample && !s_denial_sample && !s_alert_sample)
         return false;
 
     s_sfx_player = playdate->sound->sampleplayer->newPlayer();
@@ -1318,6 +1322,32 @@ void cb_play_ui_sound(CB_UISound sound)
         {
             playdate->sound->synth->playNote(
                 CB_App->clickSynth, 880.0f + (rand() % 32), 0.18f, 0.1f, 0
+            );
+        }
+        break;
+
+    case CB_UISound_Denial:
+        if (have_sfx && s_denial_sample)
+        {
+            cb_play_ui_sound_sample(s_denial_sample);
+        }
+        else
+        {
+            playdate->sound->synth->playNote(
+                CB_App->clickSynth, 720.0f - (rand() % 32), 0.18f, 0.1f, 0
+            );
+        }
+        break;
+
+    case CB_UISound_Alert:
+        if (have_sfx && s_alert_sample)
+        {
+            cb_play_ui_sound_sample(s_alert_sample);
+        }
+        else
+        {
+            playdate->sound->synth->playNote(
+                CB_App->clickSynth, 1040.0f + (rand() % 32), 0.22f, 0.1f, 0
             );
         }
         break;

@@ -103,6 +103,7 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
                         4 * sizeof(unsigned)
                     ) != 0)
                 {
+                    cb_play_ui_sound(CB_UISound_Denial);
                     CB_Modal* modal = CB_Modal_new(T(plock_incorrect_password), NULL, NULL, NULL);
                     CB_presentModal(modal->scene);
                 }

@@ -3251,6 +3251,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
+    // locked entries: attempt to activate or change one -> denial
+    if (cursor_entry->locked && !cursor_entry->header &&
+        ((pushed & (kButtonA | kButtonRight | kButtonLeft)) != 0))
+    {
+        cb_play_ui_sound(CB_UISound_Denial);
+    }
+
     // Left/Right on a section header switches section pages
     if (cursor_entry->header && direction != 0 && settingsScene->sections_count > 1)
     {

@@ -87,7 +87,9 @@ typedef enum
 {
     CB_UISound_NavigateDown,  // For down/next movement
     CB_UISound_NavigateUp,    // For up/previous/back movement
-    CB_UISound_Confirm        // For selection/changing a value
+    CB_UISound_Confirm,       // For selection/changing a value
+    CB_UISound_Denial,        // For blocked/invalid actions
+    CB_UISound_Alert          // For warning dialogs
 } CB_UISound;
 
 typedef enum
