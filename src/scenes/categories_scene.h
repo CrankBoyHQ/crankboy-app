@@ -36,6 +36,9 @@ typedef struct CB_CategoriesScene
 
     // hold-A drag reorder in list state
     CB_ListViewDragState drag;
+
+    // for up/down navigation sound
+    int lastSelectedItem;
 } CB_CategoriesScene;
 
 CB_CategoriesScene* CB_CategoriesScene_new(void);

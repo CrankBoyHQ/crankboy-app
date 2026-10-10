@@ -144,6 +144,7 @@ static void rebuild(CB_CategoriesScene* self)
     }
 
     self->listView->selectedItem = selected;
+    self->lastSelectedItem = selected;
     CB_ListView_reload(self->listView);
 }
 
@@ -676,7 +677,12 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
         }
     }
 
+    int prev_selected = listView->selectedItem;
+
     CB_ListView_update(self->listView);
+
+    if (prev_selected != listView->selectedItem && !self->drag.dragging)
+        cb_play_ui_sound(CB_UISound_Navigate);
 
     draw(self);
 }
