@@ -2516,7 +2516,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             }
             cb_clear_global_cover_cache();
 
-            if (libraryScene->initialLoadComplete)
+            if (libraryScene->initialLoadComplete && libraryScene->lastSelectedItem >= 0)
             {
                 cb_play_ui_sound(
                     selectedIndex > libraryScene->lastSelectedItem ? CB_UISound_NavigateDown
