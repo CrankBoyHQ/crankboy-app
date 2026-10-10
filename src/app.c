@@ -1187,6 +1187,33 @@ void CB_showHelp(bool first_time)
 }
 
 static PDKeyboard* keyboard;
+
+static void keyboard_sound_cb(int event, void* userdata)
+{
+    (void)userdata;
+    switch (event)
+    {
+    case kPDKBSoundKey:
+        cb_play_ui_sound(CB_UISound_NavigateUp);
+        break;
+    case kPDKBSoundMove:
+        cb_play_ui_sound(CB_UISound_NavigateDown);
+        break;
+    case kPDKBSoundPage:
+        cb_play_ui_sound(CB_UISound_NavigateDown);
+        break;
+    case kPDKBSoundMode:
+    case kPDKBSoundConfirm:
+        cb_play_ui_sound(CB_UISound_Confirm);
+        break;
+    case kPDKBSoundDenial:
+        cb_play_ui_sound(CB_UISound_Denial);
+        break;
+    default:
+        break;
+    }
+}
+
 PDKeyboard* CB_init_keyboard(
     PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys
 )
@@ -1198,6 +1225,7 @@ PDKeyboard* CB_init_keyboard(
     }
 
     keyboard = pdkb_new(playdate, flags, leftkeys, rightkeys);
+    pdkb_set_sound_cb(keyboard, keyboard_sound_cb, NULL);
     return keyboard;
 }
 
