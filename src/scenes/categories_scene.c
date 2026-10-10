@@ -71,9 +71,8 @@ static void rebuild_edit(CB_CategoriesScene* self)
     CB_Array* items = self->listView->items;
 
     CB_ListItemButton* name_button = CB_ListItemButton_new(romcategory_display_name(self->editing));
-    if (self->editing->type == ROMCAT_GENRE)
+    if (self->editing->type != ROMCAT_STANDARD)
     {
-        // genre names are db identities; renaming would break auto-seeding
         name_button->unselectable = true;
     }
     array_push(items, name_button);
@@ -89,8 +88,10 @@ static void rebuild_edit(CB_CategoriesScene* self)
         reset_btn->disabled = !self->editing->edited;
         array_push(items, reset_btn);
     }
-    else
+    else if (self->editing->type == ROMCAT_STANDARD)
+    {
         array_push(items, CB_ListItemButton_new(T(cat_delete)));
+    }
 
     CB_ListItemButton* separator = CB_ListItemButton_new(T(cat_roms));
     separator->is_header = true;
@@ -107,6 +108,18 @@ static void rebuild_edit(CB_CategoriesScene* self)
         if (index < 0)
             continue;
 
+        // uncategorized: only unassigned games, as open-buttons
+        if (self->editing->type == ROMCAT_UNCATEGORIZED)
+        {
+            if (!romcategory_contains(self->editing, index))
+                continue;
+
+            CB_ListItemButton* game_button = CB_ListItemButton_new(game->displayName);
+            game_button->ud.uint = (uintptr_t)index;
+            array_push(items, game_button);
+            continue;
+        }
+
         CB_ListItemCheckbox* checkbox = CB_ListItemCheckbox_new(game->displayName);
         checkbox->ud.uint = (uintptr_t)index;
         checkbox->checked = romcategory_contains(self->editing, index);
@@ -114,6 +127,45 @@ static void rebuild_edit(CB_CategoriesScene* self)
     }
 
     romcategory_name_index_free(name_index);
+}
+
+// checkbox list of enabled genres + user categories for the game currently
+// being organized out of the uncategorized view
+static void rebuild_assign(CB_CategoriesScene* self)
+{
+    CB_Array* items = self->listView->items;
+
+    // header shows the game being assigned (cache index -> list game)
+    CB_GameName* game_name = CB_App->gameNameCache->items[self->assigning_game_index];
+    CB_Game* assigned_game = NULL;
+    for (int i = 0; i < CB_App->gameListCache->length; ++i)
+    {
+        CB_Game* game = CB_App->gameListCache->items[i];
+        if (game->names == game_name)
+        {
+            assigned_game = game;
+            break;
+        }
+    }
+
+    // header shows the game being assigned
+    const char* header_title = assigned_game ? assigned_game->displayName : "";
+    CB_ListItemButton* header = CB_ListItemButton_new(header_title);
+    header->is_header = true;
+    header->unselectable = true;
+    array_push(items, header);
+
+    for (RomCategory** it = CB_App->romcategories; it && *it; ++it)
+    {
+        RomCategory* cat = *it;
+        if (!cat->enabled || (cat->type != ROMCAT_STANDARD && cat->type != ROMCAT_GENRE))
+            continue;
+
+        CB_ListItemCheckbox* checkbox = CB_ListItemCheckbox_new(romcategory_display_name(cat));
+        checkbox->ud.ptr = cat;
+        checkbox->checked = romcategory_contains(cat, self->assigning_game_index);
+        array_push(items, checkbox);
+    }
 }
 
 static void rebuild(CB_CategoriesScene* self)
@@ -124,8 +176,27 @@ static void rebuild(CB_CategoriesScene* self)
     if (self->state == CATSCENE_EDIT)
     {
         rebuild_edit(self);
-        // genre name row is unselectable: start on the enabled checkbox
-        selected = self->editing->type == ROMCAT_GENRE ? EDIT_ROW_ENABLED : EDIT_ROW_NAME;
+
+        int max_select = self->listView->items->length - 1;
+        if (self->assign_return_row >= 0)
+        {
+            // returning from the assign view: back on the edited row
+            selected = self->assign_return_row > max_select ? max_select : self->assign_return_row;
+            self->assign_return_row = -1;
+        }
+        else
+        {
+            // genre/uncat name row is unselectable: start on the enabled checkbox
+            selected = self->editing->type == ROMCAT_STANDARD ? EDIT_ROW_NAME : EDIT_ROW_ENABLED;
+            if (selected > max_select)
+                selected = max_select;
+        }
+    }
+    else if (self->state == CATSCENE_ASSIGN)
+    {
+        rebuild_assign(self);
+        // start on the first category row (header is unselectable)
+        selected = 1;
     }
     else
     {
@@ -147,6 +218,13 @@ static void rebuild(CB_CategoriesScene* self)
             self->select_on_rebuild = NULL;
         }
     }
+
+    // keep the cursor inside the (freshly built) list
+    int max_select = self->listView->items->length - 1;
+    if (max_select < 0)
+        max_select = 0;
+    if (selected > max_select)
+        selected = max_select;
 
     self->listView->selectedItem = selected;
     self->lastSelectedItem = selected;
@@ -175,7 +253,8 @@ static void draw(CB_CategoriesScene* self)
 
             CB_ListItemCheckbox* checkbox = (CB_ListItemCheckbox*)item;
             RomCategory* cat = checkbox->ud.ptr;
-            if (!cat || (cat->type != ROMCAT_STANDARD && cat->type != ROMCAT_GENRE))
+            if (!cat || (cat->type != ROMCAT_STANDARD && cat->type != ROMCAT_GENRE &&
+                         cat->type != ROMCAT_UNCATEGORIZED))
                 continue;
 
             int rowY = listView->frame.y + item->offsetY - listView->contentOffset;
@@ -211,6 +290,7 @@ static void enter_edit(CB_CategoriesScene* self, RomCategory* cat)
 {
     self->editing = cat;
     self->select_on_rebuild = NULL;
+    self->assign_return_row = -1;
     self->drag = (CB_ListViewDragState){0};
     self->listView->ignoreButtons = false;
     self->listView->checkboxDrag = false;
@@ -530,6 +610,20 @@ static void toggle_selected(CB_CategoriesScene* self)
             open_name_keyboard(self, true);
             return;
         }
+
+        // uncategorized view: button rows open the game assignment list
+        CB_ListItemButton* edit_button = (CB_ListItemButton*)item;
+        if (!edit_button->is_header && self->editing->type == ROMCAT_UNCATEGORIZED &&
+            sel != EDIT_ROW_NAME)
+        {
+            self->assigning_game_index = (int)edit_button->ud.uint;
+            self->assign_return_row = sel;
+            cb_play_ui_sound(CB_UISound_Confirm);
+            self->state = CATSCENE_ASSIGN;
+            rebuild(self);
+            return;
+        }
+
         if (sel == EDIT_ROW_DELETE)
         {
             if (self->editing->type == ROMCAT_GENRE)
@@ -588,18 +682,34 @@ static void toggle_selected(CB_CategoriesScene* self)
         return;
     }
 
+    if (self->state == CATSCENE_ASSIGN)
+    {
+        RomCategory* target = checkbox->ud.ptr;
+        bool contains = romcategory_contains(target, self->assigning_game_index);
+        romcategory_put(target, self->assigning_game_index, !contains);
+        checkbox->checked = !contains;
+
+        if (target->type == ROMCAT_GENRE)
+            target->edited = true;
+
+        self->dirty = true;
+        listView->needsDisplay = true;
+        cb_play_ui_sound(CB_UISound_Confirm);
+        return;
+    }
+
     RomCategory* cat = checkbox->ud.ptr;
     if (!cat)
         return;
 
-    if (cat->type == ROMCAT_STANDARD || cat->type == ROMCAT_GENRE)
+    if (cat->type == ROMCAT_STANDARD || cat->type == ROMCAT_GENRE ||
+        cat->type == ROMCAT_UNCATEGORIZED)
     {
         // the list checkbox is a status indicator; A opens the edit view
         enter_edit(self, cat);
         return;
     }
 
-    // All + Uncategorized rows: checkbox toggles visibility in the library cycle
     cat->enabled = !cat->enabled;
     checkbox->checked = cat->enabled;
     self->dirty = true;
@@ -682,6 +792,29 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
         if (CB_App->buttons_pressed & kButtonB)
             self->dismiss = true;
     }
+    else if (self->state == CATSCENE_ASSIGN)
+    {
+        if (CB_App->buttons_pressed & kButtonB)
+        {
+            // back to the uncategorized edit view and on the game's row; once
+            // empty, out to the list (the count gate hides the row)
+            if (romcategory_count(self->editing) == 0)
+            {
+                self->assign_return_row = -1;
+                self->select_on_rebuild = self->editing;
+                self->state = CATSCENE_LIST;
+                self->editing = NULL;
+            }
+            else
+                self->state = CATSCENE_EDIT;
+
+            rebuild(self);
+        }
+        else if (CB_App->buttons_pressed & kButtonA)
+        {
+            toggle_selected(self);
+        }
+    }
     else
     {
         if (CB_App->buttons_pressed & kButtonA)
@@ -693,6 +826,7 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
             self->select_on_rebuild = self->editing;
             self->drag = (CB_ListViewDragState){0};
             self->state = CATSCENE_LIST;
+            self->assign_return_row = -1;
             self->editing = NULL;
             rebuild(self);
         }
@@ -773,6 +907,7 @@ CB_CategoriesScene* CB_CategoriesScene_new(void)
 
     self->scene = scene;
     self->state = CATSCENE_LIST;
+    self->assign_return_row = -1;
 
     self->listView = CB_ListView_new();
     self->listView->font = CB_App->bodyFont;

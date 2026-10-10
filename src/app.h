@@ -253,7 +253,7 @@ void CB_dismiss(CB_Scene* scene);
 void CB_headphone_state_changed(int headphone, int mic);
 void CB_showHelp(bool first_time);
 
-#include "pdkeyboard.h"
+#include "../libs/pdkeyboard/pdkeyboard.h"
 PDKeyboard* CB_init_keyboard(
     PDKeyboardFlags flags, const uint32_t* leftkeys, const uint32_t* rightkeys
 );

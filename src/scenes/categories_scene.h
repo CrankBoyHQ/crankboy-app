@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../app.h"
+#include "../libs/pdkeyboard/pdkeyboard.h"
 #include "../listview.h"
 #include "../romcategory.h"
 #include "../scene.h"
@@ -8,7 +9,8 @@
 typedef enum
 {
     CATSCENE_LIST,
-    CATSCENE_EDIT
+    CATSCENE_EDIT,
+    CATSCENE_ASSIGN
 } CB_CategoriesSceneState;
 
 typedef struct CB_CategoriesScene
@@ -22,6 +24,11 @@ typedef struct CB_CategoriesScene
 
     // category row to restore after the next rebuild
     RomCategory* select_on_rebuild;
+
+    // cat-state: which uncategorized game is being organized, and which edit
+    // view row to reselect after returning from the assign list (-1 = none)
+    int assigning_game_index;
+    int assign_return_row;
 
     // adjusted name shown in a modal once the keyboard closes
     char* pending_name_notice;
