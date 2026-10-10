@@ -31,6 +31,7 @@
 #include "scenes/parental_lock_scene.h"
 #include "script.h"
 #include "serial.h"
+#include "uisfx.h"
 #include "userstack.h"
 #include "version.h"
 
@@ -1354,12 +1355,10 @@ void CB_init(void)
 
     preferences_init();
 
-    CB_App->clickSynth = playdate->sound->synth->newSynth();
-    playdate->sound->synth->setWaveform(CB_App->clickSynth, kWaveformSquare);
-    playdate->sound->synth->setAttackTime(CB_App->clickSynth, 0.0001f);
-    playdate->sound->synth->setDecayTime(CB_App->clickSynth, 0.05f);
-    playdate->sound->synth->setSustainLevel(CB_App->clickSynth, 0.0f);
-    playdate->sound->synth->setReleaseTime(CB_App->clickSynth, 0.0f);
+    if (!cb_uisfx_init())
+    {
+        playdate->system->logToConsole("cb uisfx: init failed");
+    }
 
     CB_App->selectorBitmapTable = playdate->graphics->loadBitmapTable(
         CB_get_forwarded_path("images/selector/selector"), NULL
@@ -1676,11 +1675,7 @@ void CB_quit(void)
         playdate->graphics->freeBitmap(CB_App->logoBitmap);
     }
 
-    if (CB_App->clickSynth)
-    {
-        playdate->sound->synth->freeSynth(CB_App->clickSynth);
-        CB_App->clickSynth = NULL;
-    }
+    cb_uisfx_free();
 
     if (CB_App->gameNameCache)
     {

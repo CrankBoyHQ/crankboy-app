@@ -157,7 +157,6 @@ typedef struct CB_Application
     CB_Array* gameListCache;
     bool gameListCacheIsSorted;
     bool rhdb_present;
-    struct PDSynth* clickSynth;
 
     unsigned simulate_button_presses[6];
 

@@ -68,6 +68,7 @@ SRC += src/tcm_relocate.c
 SRC += src/romcategory.c
 SRC += src/userstack.c
 SRC += src/utility.c
+SRC += src/uisfx.c
 SRC += src/version.c
 SRC += src/gbz.c
 
