@@ -127,6 +127,8 @@ typedef struct CB_LibraryScene
     char* coverDownloadMessage;
     HTTPSafe* activeCoverDownloadConnection;
 
+    int last_filter_bar_width;
+
     bool isReloading;
     int progress_max_width;
     bool update_modal_shown;

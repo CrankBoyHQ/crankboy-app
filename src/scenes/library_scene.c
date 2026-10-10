@@ -1852,6 +1852,8 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->state = kLibraryStateInit;
     libraryScene->build_index = 0;
 
+    libraryScene->last_filter_bar_width = -1;
+
     libraryScene->scene = scene;
     scene->managedObject = libraryScene;
 
@@ -3111,13 +3113,16 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
         playdate->graphics->fillRect(LCD_COLUMNS - sideBar, 0, sideBar, LCD_ROWS, kColorBlack);
     }
 
+    bool bar_width_changed = (filter_bar_width != libraryScene->last_filter_bar_width);
+
     if (filter_bar_width > 0 && libraryScene->tab == CB_LibrarySceneTabList && !forAnimation &&
-        needsDisplay && libraryScene->state == kLibraryStateDone &&
-        libraryScene->launchAnimShiftLeft == 0 && libraryScene->launchAnimShiftRight == 0 &&
-        libraryScene->launchAnimSideBarWidth == 0)
+        libraryScene->state == kLibraryStateDone && libraryScene->launchAnimShiftLeft == 0 &&
+        libraryScene->launchAnimShiftRight == 0 && libraryScene->launchAnimSideBarWidth == 0 &&
+        (needsDisplay || bar_width_changed))
     {
         library_draw_filter_bar(libraryScene, filter_bar_width);
     }
+    libraryScene->last_filter_bar_width = filter_bar_width;
 }
 
 static void CB_LibraryScene_showSettings(void* userdata)
