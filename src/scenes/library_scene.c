@@ -3133,7 +3133,6 @@ static void CB_LibraryScene_showCategories(void* userdata)
     CB_CategoriesScene* s = CB_CategoriesScene_new();
     if (s)
     {
-        cb_play_ui_sound(CB_UISound_Confirm);
         libraryScene->categories_editor_open = true;  // refresh on dismiss
         CB_presentModal(s->scene);
     }
