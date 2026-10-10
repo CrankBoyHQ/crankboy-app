@@ -3251,8 +3251,13 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
     int direction = !!(pushed & kButtonRight) - !!(pushed & kButtonLeft);
 
-    // locked entries: attempt to activate or change one -> denial
-    if (cursor_entry->locked && !cursor_entry->header &&
+    // disabled entries: attempt to activate or change one -> denial
+    bool disabled_entry = cursor_entry->locked || cursor_entry->dimmed ||
+                          (cursor_entry->pref_var && cursor_entry->max_value == 0) ||
+                          (cursor_entry->emucore_pref && cursor_entry->max_value == 0) ||
+                          (!cursor_entry->pref_var && !cursor_entry->emucore_pref &&
+                           !cursor_entry->on_press && !cursor_entry->on_hold);
+    if (disabled_entry && !cursor_entry->header &&
         ((pushed & (kButtonA | kButtonRight | kButtonLeft)) != 0))
     {
         cb_play_ui_sound(CB_UISound_Denial);
