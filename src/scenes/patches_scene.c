@@ -43,7 +43,7 @@ static void CB_PatchesScene_update(void* object, uint32_t u32enc_dt)
         CB_ListItemCheckbox_swap(a, b);
 
         CB_ListView_selectItem(listView, other, true);
-        cb_play_ui_sound(CB_UISound_Navigate);
+        cb_play_ui_sound(ydir > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
     }
     else if (short_tap)
     {

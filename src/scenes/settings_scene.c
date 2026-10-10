@@ -3213,7 +3213,10 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
 
     if (oldCursorIndex != settingsScene->cursorIndex)
     {
-        cb_play_ui_sound(CB_UISound_Navigate);
+        cb_play_ui_sound(
+            settingsScene->cursorIndex > oldCursorIndex ? CB_UISound_NavigateDown
+                                                        : CB_UISound_NavigateUp
+        );
     }
 
     if (pushed & kButtonB)
@@ -3251,7 +3254,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     // Left/Right on a section header switches section pages
     if (cursor_entry->header && direction != 0 && settingsScene->sections_count > 1)
     {
-        cb_play_ui_sound(CB_UISound_Navigate);
+        cb_play_ui_sound(direction > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
         int n = (int)settingsScene->sections_count;
         switchToSection(settingsScene, (settingsScene->currentSectionIndex + direction + n) % n);
         menuItemCount = settingsScene->totalMenuItemCount;

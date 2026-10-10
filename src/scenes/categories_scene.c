@@ -496,7 +496,7 @@ static void reorder_selected(CB_CategoriesScene* self, int ydir)
 
     CB_ListView_selectItem(listView, other, true);
     self->dirty = true;
-    cb_play_ui_sound(CB_UISound_Navigate);
+    cb_play_ui_sound(ydir > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
 }
 
 static void toggle_selected(CB_CategoriesScene* self)
@@ -682,7 +682,9 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
     CB_ListView_update(self->listView);
 
     if (prev_selected != listView->selectedItem && !self->drag.dragging)
-        cb_play_ui_sound(CB_UISound_Navigate);
+        cb_play_ui_sound(
+            listView->selectedItem > prev_selected ? CB_UISound_NavigateDown : CB_UISound_NavigateUp
+        );
 
     draw(self);
 }

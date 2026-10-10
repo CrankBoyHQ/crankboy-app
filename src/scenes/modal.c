@@ -350,7 +350,7 @@ void CB_Modal_update(CB_Modal* modal)
         {
             modal->exit = 1;
             modal->result = -1;
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateUp);
         }
     }
     else if (pushed & kButtonA)
@@ -373,7 +373,7 @@ void CB_Modal_update(CB_Modal* modal)
 
             if (modal->option_selected != old_selection)
             {
-                cb_play_ui_sound(CB_UISound_Navigate);
+                cb_play_ui_sound(d > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
             }
         }
     }

@@ -65,20 +65,20 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
         {
             parentalLockScene->lock_value[parentalLockScene->sel] += 1;
             parentalLockScene->lock_value[parentalLockScene->sel] %= 10;
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateUp);
         }
 
         if (CB_App->buttons_pressed & kButtonDown)
         {
             parentalLockScene->lock_value[parentalLockScene->sel] += 9;
             parentalLockScene->lock_value[parentalLockScene->sel] %= 10;
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateDown);
         }
 
         if (CB_App->buttons_pressed & (kButtonRight | kButtonA))
         {
             parentalLockScene->sel++;
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateDown);
             return;
         }
     }
@@ -88,7 +88,7 @@ static void CB_ParentalLockScene_update(CB_ParentalLockScene* parentalLockScene,
         if (CB_App->buttons_pressed & kButtonLeft)
         {
             parentalLockScene->sel--;
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateUp);
         }
     }
 

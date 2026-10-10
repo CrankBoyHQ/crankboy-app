@@ -560,7 +560,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
     PDButtons pushed = CB_App->buttons_pressed;
     if (pushed & kButtonB)
     {
-        cb_play_ui_sound(CB_UISound_Navigate);
+        cb_play_ui_sound(CB_UISound_NavigateUp);
         if (self->started_without_header)
             self->is_dismissing = true;
         else
@@ -579,7 +579,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             else
                 self->cursorIndex = maxIndex;
             clamp_cursor(self, -1);
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateUp);
         }
         if (pushed & kButtonDown && !self->info_only)
         {
@@ -591,7 +591,7 @@ static void CB_ManageRomScene_update(void* object, uint32_t u32enc_dt)
             else
                 self->cursorIndex = 0;
             clamp_cursor(self, 1);
-            cb_play_ui_sound(CB_UISound_Navigate);
+            cb_play_ui_sound(CB_UISound_NavigateDown);
         }
         if (pushed & kButtonA)
         {

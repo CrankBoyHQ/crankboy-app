@@ -1241,6 +1241,37 @@ char* aprintf(const char* fmt, ...)
     return out;
 }
 
+// OS launcher sfx, read from the device's own copy.
+// Falls back to clickSynth if the files can't be loaded.
+#define CB_OS_SFX_PATH(sfx) "/System/Launcher.pdx/systemsfx/" sfx
+
+static AudioSample* s_nav_fwd;
+static AudioSample* s_nav_rev;
+static AudioSample* s_confirm_sample;
+static SamplePlayer* s_sfx_player;
+
+static bool cb_os_sfx_init(void)
+{
+    if (s_sfx_player)
+        return true;
+
+    s_nav_fwd = playdate->sound->sample->load(CB_OS_SFX_PATH("01-selection-trimmed.pda"));
+    s_nav_rev = playdate->sound->sample->load(CB_OS_SFX_PATH("02-selection-reverse-trimmed.pda"));
+    s_confirm_sample = playdate->sound->sample->load(CB_OS_SFX_PATH("03-action-trimmed.pda"));
+
+    if (!s_nav_fwd && !s_nav_rev && !s_confirm_sample)
+        return false;
+
+    s_sfx_player = playdate->sound->sampleplayer->newPlayer();
+    return s_sfx_player != NULL;
+}
+
+static void cb_play_ui_sound_sample(AudioSample* sample)
+{
+    playdate->sound->sampleplayer->setSample(s_sfx_player, sample);
+    playdate->sound->sampleplayer->play(s_sfx_player, 1, 1.0f);
+}
+
 void cb_play_ui_sound(CB_UISound sound)
 {
     if (!preferences_ui_sounds || !CB_App->clickSynth)
@@ -1248,18 +1279,47 @@ void cb_play_ui_sound(CB_UISound sound)
         return;
     }
 
+    bool have_sfx = cb_os_sfx_init();
+
     switch (sound)
     {
-    case CB_UISound_Navigate:
-        playdate->sound->synth->playNote(
-            CB_App->clickSynth, 1480.0f - (rand() % 32), 0.13f, 0.07f, 0
-        );
+    case CB_UISound_NavigateDown:
+        if (have_sfx && s_nav_fwd)
+        {
+            cb_play_ui_sound_sample(s_nav_fwd);
+        }
+        else
+        {
+            playdate->sound->synth->playNote(
+                CB_App->clickSynth, 1480.0f - (rand() % 32), 0.13f, 0.07f, 0
+            );
+        }
+        break;
+
+    case CB_UISound_NavigateUp:
+        if (have_sfx && (s_nav_rev || s_nav_fwd))
+        {
+            cb_play_ui_sound_sample(s_nav_rev ? s_nav_rev : s_nav_fwd);
+        }
+        else
+        {
+            playdate->sound->synth->playNote(
+                CB_App->clickSynth, 1180.0f - (rand() % 32), 0.13f, 0.07f, 0
+            );
+        }
         break;
 
     case CB_UISound_Confirm:
-        playdate->sound->synth->playNote(
-            CB_App->clickSynth, 880.0f + (rand() % 32), 0.18f, 0.1f, 0
-        );
+        if (have_sfx && s_confirm_sample)
+        {
+            cb_play_ui_sound_sample(s_confirm_sample);
+        }
+        else
+        {
+            playdate->sound->synth->playNote(
+                CB_App->clickSynth, 880.0f + (rand() % 32), 0.18f, 0.1f, 0
+            );
+        }
         break;
     }
 }

@@ -1774,7 +1774,7 @@ static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
     library_rebuild_list_items(libraryScene);
     library_update_filter_options(libraryScene);
     libraryScene->scene->forceFullRefresh = true;
-    cb_play_ui_sound(CB_UISound_Navigate);
+    cb_play_ui_sound(dir > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
 }
 
 static void library_draw_filter_bar(CB_LibraryScene* libraryScene, int bar_width)
@@ -2518,7 +2518,10 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
             if (libraryScene->initialLoadComplete)
             {
-                cb_play_ui_sound(CB_UISound_Navigate);
+                cb_play_ui_sound(
+                    selectedIndex > libraryScene->lastSelectedItem ? CB_UISound_NavigateDown
+                                                                   : CB_UISound_NavigateUp
+                );
             }
 
             if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)

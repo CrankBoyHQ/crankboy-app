@@ -1592,7 +1592,10 @@ void CB_HomebrewHubScene_update(CB_HomebrewHubScene* hbs, uint32_t u32enc_dt)
             if (context->list && old_selection != -1 &&
                 old_selection != context->list->selectedItem)
             {
-                cb_play_ui_sound(CB_UISound_Navigate);
+                cb_play_ui_sound(
+                    context->list->selectedItem > old_selection ? CB_UISound_NavigateDown
+                                                                : CB_UISound_NavigateUp
+                );
             }
         }
         else if (isAnimating)
