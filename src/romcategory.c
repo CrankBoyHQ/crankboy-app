@@ -2,6 +2,7 @@
 
 #include "app.h"
 #include "jparse.h"
+#include "userstack.h"
 #include "utility.h"
 
 #include <stdlib.h>
@@ -835,7 +836,7 @@ static bool romcat_to_json(RomCategory* cat, json_value* j, json_value* jgenres)
     return true;
 }
 
-int romcategories_write_all(RomCategory** cats)
+int _romcategories_write_all(RomCategory** cats)
 {
     size_t n = len_nullterm((void const* const*)cats);
 
@@ -938,6 +939,11 @@ int romcategories_write_all(RomCategory** cats)
     free_json_data(j);
 
     return result;
+}
+
+int romcategories_write_all(RomCategory** cats)
+{
+    return (int)(intptr_t)call_with_main_stack_1(_romcategories_write_all, cats);
 }
 
 void romcategory_free(RomCategory* cat)
