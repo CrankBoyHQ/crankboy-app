@@ -1391,9 +1391,16 @@ static bool homebrew_hub_available(void)
     return CB_App->hbApiDomain && CB_App->hbApiPath;
 }
 
+static bool library_active_is_homebrew(const CB_LibraryScene* libraryScene)
+{
+    return libraryScene->active_category_type == ROMCAT_GENRE &&
+           strcmp(libraryScene->active_category_name, "Homebrew") == 0;
+}
+
 static bool library_get_roms_visible(const CB_LibraryScene* libraryScene)
 {
-    return library_active_is_all(libraryScene) && homebrew_hub_available();
+    return (library_active_is_all(libraryScene) || library_active_is_homebrew(libraryScene)) &&
+           homebrew_hub_available();
 }
 
 static int library_get_roms_index(const CB_LibraryScene* libraryScene)
@@ -1818,7 +1825,7 @@ static void library_draw_filter_bar(CB_LibraryScene* libraryScene, int bar_width
 
 static void library_push_extra_items(CB_LibraryScene* libraryScene)
 {
-    if (!library_active_is_all(libraryScene))
+    if (!library_active_is_all(libraryScene) && !library_active_is_homebrew(libraryScene))
         return;
 
     if (homebrew_hub_available())

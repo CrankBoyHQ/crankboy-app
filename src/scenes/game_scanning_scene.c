@@ -3,6 +3,7 @@
 
 #include "../../libs/pdll/pdll.h"
 #include "../app.h"
+#include "../hubdownloads.h"
 #include "../jparse.h"
 #include "../preferences.h"
 #include "../script.h"
@@ -240,6 +241,12 @@ static CB_GameName* build_gb_game_name(
     newName->name_short_leading_article = common_article_form(newName->name_short);
     newName->name_detailed_leading_article = common_article_form(newName->name_detailed);
     newName->genre = fetched.genre;
+    // hub download not in the db: tag as the Homebrew genre
+    if (!fetched.genre && scanScene &&
+        hub_downloads_entries_contains(scanScene->hub_entries, filename))
+    {
+        newName->genre = cb_strdup("Homebrew");
+    }
     if (fetched.short_name)
         cb_free(fetched.short_name);
     if (fetched.detailed_name)
@@ -660,6 +667,8 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
             }
         }
 
+        scanScene->hub_entries = hub_downloads_prune_and_save(scanScene->hub_entries);
+
         bool png_found = false;
         {
             const char* coversPath = cb_gb_directory_path(CB_coversPath);
@@ -722,6 +731,7 @@ void CB_GameScanningScene_free(void* object)
     }
 
     free_json_data(scanScene->crc_cache);
+    hub_downloads_free_all(scanScene->hub_entries);
     CB_Scene_free(scanScene->scene);
     cb_free(scanScene);
 }
@@ -751,6 +761,7 @@ CB_GameScanningScene* CB_GameScanningScene_new(void)
     scanScene->current_index = 0;
     scanScene->state = kScanningStateInit;
     scanScene->crc_cache_modified = false;
+    scanScene->hub_entries = hub_downloads_entries_load();
 
     char* path;
     playdate->system->formatString(&path, "%s", CRC_CACHE_FILE);

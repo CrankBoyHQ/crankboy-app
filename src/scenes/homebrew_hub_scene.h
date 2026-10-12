@@ -59,7 +59,9 @@ typedef struct CB_HomebrewHubScene
 
     char* target_rom_path;
     char* target_cover_art_path;
-    char* target_rom_slug;  // owned copy (cb_free); slug of the ROM being downloaded
+    char* target_rom_slug;       // owned copy (cb_free); slug of the ROM being downloaded
+    char* target_entry_typetag;  // owned copy (cb_free); raw hub typetag
+    char** target_entry_tags;    // owned copy (cb_free); raw hub tags, null-terminated
     bool pending_cover_save;
     char* urlpath;  // temporary; only for callbacks
 

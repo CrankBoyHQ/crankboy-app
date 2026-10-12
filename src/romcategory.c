@@ -1,6 +1,7 @@
 #include "romcategory.h"
 
 #include "app.h"
+#include "hubdownloads.h"
 #include "jparse.h"
 #include "userstack.h"
 #include "utility.h"
@@ -277,6 +278,59 @@ static bool ensure_genre_cat(RomCategory*** pcats, const char* name)
     return romcategories_append(pcats, cat);
 }
 
+// -1 if no such rom is present; matches a plain filename, not a path
+static ssize_t get_rom_index_for_filename(const char* filename)
+{
+    if (!filename)
+        return -1;
+
+    for (size_t i = 0; i < CB_App->gameNameCache->length; ++i)
+    {
+        const CB_GameName* name = CB_App->gameNameCache->items[i];
+        if (name->filename && !strcmp(name->filename, filename))
+            return (ssize_t)i;
+    }
+
+    return -1;
+}
+
+// puts a mapped genre unless the user edited the category
+static void romcategory_hub_put_genre(RomCategory** cats, const char* genre, ssize_t index)
+{
+    if (!genre)
+        return;
+    RomCategory* cat = find_genre_cat_capped(cats, genre);
+    if (cat && !cat->edited)
+        romcategory_put(cat, (size_t)index, true);
+}
+
+// hub downloads: Homebrew always, plus typetag/whitelisted tags from the
+// marker file; user-edited genre cats keep their persisted state
+static void romcategory_seed_from_hub_entries(RomCategory** cats)
+{
+    if (!CB_App->gameNameCache)
+        return;
+
+    HubDownload** entries = hub_downloads_entries_load();
+    if (!entries)
+        return;
+
+    for (HubDownload** eit = entries; *eit; ++eit)
+    {
+        const HubDownload* entry = *eit;
+        ssize_t index = get_rom_index_for_filename(entry->filename);
+        if (index < 0)
+            continue;
+
+        romcategory_hub_put_genre(cats, "Homebrew", index);
+        romcategory_hub_put_genre(cats, hub_downloads_map_typetag(entry->typetag), index);
+        for (char** tag = entry->tags; tag && *tag; ++tag)
+            romcategory_hub_put_genre(cats, hub_downloads_map_tag(*tag), index);
+    }
+
+    hub_downloads_free_all(entries);
+}
+
 RomCategory** romcategories_load_all(size_t* o_count)
 {
     json_value j;
@@ -409,6 +463,8 @@ RomCategory** romcategories_load_all(size_t* o_count)
             ensure_genre_cat(&cats, vocab[i]);
         }
     }
+
+    romcategory_seed_from_hub_entries(cats);
 
     s_show_genres = json_flag(j, "show-empty-genres", true);
 

@@ -2,6 +2,7 @@
 
 #include "../app.h"
 #include "../http.h"
+#include "../hubdownloads.h"
 #include "../jparse.h"
 #include "../userstack.h"
 #include "../utility.h"
@@ -51,6 +52,27 @@ static void user_quit(void* ud, int selected)
     }
 }
 
+static void hb_free_target_entry(CB_HomebrewHubScene* hbs)
+{
+    cb_free(hbs->target_entry_typetag);
+    cb_free(hbs->target_entry_tags);
+    hbs->target_entry_typetag = NULL;
+    hbs->target_entry_tags = NULL;
+}
+
+// appends to the scene-owned null-terminated tag list
+static void hb_target_entry_append_tag(CB_HomebrewHubScene* hbs, const char* tag)
+{
+    size_t n =
+        hbs->target_entry_tags ? len_nullterm((void const* const*)hbs->target_entry_tags) : 0;
+    char** grown = mallocz(sizeof(char*) * (n + 2));
+    for (size_t i = 0; i < n; ++i)
+        grown[i] = hbs->target_entry_tags[i];
+    grown[n] = cb_strdup(tag);
+    cb_free(hbs->target_entry_tags);  // shell only: strings were moved
+    hbs->target_entry_tags = grown;
+}
+
 // callback when rom is downloaded
 static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewHubScene* hbs)
 {
@@ -60,6 +82,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         return;
     else if (flags & ~(HTTP_ENABLE_ASKED))
     {
+        hb_free_target_entry(hbs);
         char* msg;
         if (flags & HTTP_WIFI_NOT_AVAILABLE)
         {
@@ -114,6 +137,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     if (!cb_write_entire_file(hbs->target_rom_path, data, data_len))
     {
         CB_presentModal(CB_Modal_new(T(hhub_rom_save_failed), NULL, NULL, NULL)->scene);
+        hb_free_target_entry(hbs);
     }
     else
     {
@@ -151,6 +175,15 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         cb_write_entire_file(
             LAST_SELECTED_FILE, hbs->target_rom_path, strlen(hbs->target_rom_path)
         );
+
+        // record the download for hub-downloads tracking
+        char* rom_basename = cb_basename(hbs->target_rom_path, false);
+        if (rom_basename)
+        {
+            hub_downloads_add(rom_basename, hbs->target_entry_typetag, hbs->target_entry_tags);
+            cb_free(rom_basename);
+        }
+        hb_free_target_entry(hbs);
 
         const char* options[] = {T(label_restart), T(label_do_not), NULL};
 
@@ -493,6 +526,23 @@ static void context_list_files_update(
 
             cb_free(hbs->target_rom_slug);
             hbs->target_rom_slug = slug ? cb_strdup(slug) : NULL;
+
+            // stash the entry's typetag and tags for the hub-downloads marker
+            hb_free_target_entry(hbs);
+            const char* typetag = json_as_string(json_get_table_value(je, "typetag"));
+            if (typetag && *typetag)
+                hbs->target_entry_typetag = cb_strdup(typetag);
+            {
+                json_value jtags = json_get_table_value(je, "tags");
+                JsonArray* tarr = (jtags.type == kJSONArray) ? jtags.data.arrayval : NULL;
+                for (size_t ti = 0; tarr && ti < tarr->n; ++ti)
+                {
+                    const char* tag = json_as_string(tarr->data[ti]);
+                    if (tag && *tag)
+                        hb_target_entry_append_tag(hbs, tag);
+                }
+            }
+
             hbs->pending_cover_save = false;
             cb_play_ui_sound(CB_UISound_Confirm);
 
@@ -1768,6 +1818,7 @@ void CB_HomebrewHubScene_free(CB_HomebrewHubScene* hbs)
     cb_free(hbs->target_rom_path);
     cb_free(hbs->target_cover_art_path);
     cb_free(hbs->target_rom_slug);
+    hb_free_target_entry(hbs);
     cb_free(hbs->urlpath);
     if (hbs->download_image)
         playdate->graphics->freeBitmap(hbs->download_image);

@@ -71,6 +71,7 @@ SRC += src/utility.c
 SRC += src/uisfx.c
 SRC += src/version.c
 SRC += src/gbz.c
+SRC += src/hubdownloads.c
 
 SRC += libs/minigb_apu/minigb_apu.c
 SRC += libs/pdnewlib/pdnewlib.c

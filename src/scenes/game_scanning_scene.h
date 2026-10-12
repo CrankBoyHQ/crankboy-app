@@ -2,6 +2,7 @@
 #pragma once
 
 #include "../array.h"
+#include "../hubdownloads.h"
 #include "../scene.h"
 
 #include <stddef.h>
@@ -37,6 +38,7 @@ typedef struct CB_GameScanningScene
     json_value crc_cache;
     bool crc_cache_modified;
     int progress_max_width;
+    HubDownload** hub_entries;
 
     CB_Array* sources;  // CB_ScanSource*
     int source_index;
