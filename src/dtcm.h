@@ -25,13 +25,8 @@ bool dtcm_verify(const char* context);
 __attribute__((long_call)) bool dtcm_verify(const char* context);
 #endif
 
-// dtcm_free: no-op for pointers into the DTCM main region or pockets
-// (bump-allocated, never individually freed); frees heap-fallback
-// allocations. Pockets are released only via dtcm_pocket_fill_and_reset().
-
 void* dtcm_alloc(size_t size);
 void* dtcm_alloc_aligned(size_t size, size_t offset);
-void dtcm_free(void* ptr);
 
 // Release main-pool space above ptr_end (lock/unlock cycle cleanup).
 void dtcm_pool_release_above(void* ptr_end);
@@ -53,7 +48,7 @@ void dtcm_probe_lower_bound(void);
 extern void* dtcm_probe_lowest;
 
 // clean DTCM pockets found by the probe, for data that doesn't need dtcm_store/restore.
-// use dtcm_pocket_alloc(pocket_idx, size) to allocate from one.
+// use dtcm_pocket_alloc_aligned(pocket_idx, size, alignment) to allocate from one.
 // probe verifies every word of each 256-byte block; pocket tops carry a one-step guard band.
 #define DTCM_MAX_POCKETS 5
 
@@ -68,7 +63,6 @@ struct dtcm_pocket_t
 extern struct dtcm_pocket_t dtcm_pockets[DTCM_MAX_POCKETS];
 extern int dtcm_num_pockets;
 
-void* dtcm_pocket_alloc(int pocket_idx, size_t size);
 void* dtcm_pocket_alloc_aligned(int pocket_idx, size_t size, size_t alignment);
 bool dtcm_pocket_enabled(int pocket_idx);
 void dtcm_pocket_fill_and_reset(void);

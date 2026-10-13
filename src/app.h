@@ -122,14 +122,14 @@ typedef struct
 
 typedef struct emucore_s
 {
-    unsigned ce_version;
     char* id;  // e.g. "stella_pd"
     char* path;
     char* core_version;
     char* human_name;  // e.g. "StellaPD"
     size_t n_system_slugs;
     char** system_slugs;
-    pdll_t* pdll; /* NULL if not currently open */
+    pdll_t* pdll;      /* NULL if not currently open */
+    bool dtcm_denied;  // caught writing outside allocations: no dtcm this session
 } emucore_t;
 
 typedef struct CB_Application
@@ -272,10 +272,6 @@ bool CB_emucore_dtcm_is_paused(void);
 void cb_emucore_set_frontend(pdll_t* pdll);
 
 emucore_t* CB_get_emucore_by_slug(const char* slug);
-
-// allocates in DTCM region (if enabled).
-// note, there is no associated free.
-void* dtcm_alloc(size_t size);
 
 // returns NULL if was not booted by pdboot.
 const char* get_pdboot_name_and_version(void);

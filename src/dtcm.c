@@ -8,9 +8,6 @@
 
 #ifdef DTCM_ALLOC
 static uint32_t* dtcm_low_canary_addr = NULL;
-// highest dtcm_mempool ever reached; used by dtcm_free to identify DTCM
-// pointers even after dtcm_deinit/dtcm_restore moved dtcm_mempool back.
-static void* dtcm_mempool_hwm = NULL;
 #define DTCM_CANARY 0xDE0DCA94
 #endif
 
@@ -31,27 +28,6 @@ static void dtcm_pocket_init(struct dtcm_pocket_t* p, void* start, size_t size)
     p->mempool = start;
     p->end = (void*)((uintptr_t)start + size);
     p->init = true;
-}
-
-void* dtcm_pocket_alloc(int pocket_idx, size_t size)
-{
-    if (pocket_idx < 0 || pocket_idx >= dtcm_num_pockets)
-        return NULL;
-
-    struct dtcm_pocket_t* p = &dtcm_pockets[pocket_idx];
-    if (!p->init)
-        return NULL;
-
-    void* result = p->mempool;
-    p->mempool = (void*)(size + (uintptr_t)p->mempool);
-
-    if (p->mempool > p->end)
-    {
-        p->mempool = result;
-        return NULL;
-    }
-
-    return result;
 }
 
 void* dtcm_pocket_alloc_aligned(int pocket_idx, size_t size, size_t alignment)
@@ -139,17 +115,15 @@ __dtcm_ctrl void* dtcm_alloc(size_t size)
         void* tmp = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = 0;  // remove canary
         dtcm_mempool = (void*)top;
-        if (dtcm_mempool > dtcm_mempool_hwm)
-            dtcm_mempool_hwm = dtcm_mempool;
         // high canary
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
         return tmp;
     }
 #endif
 
-    // 8-byte header slot preserves cb_malloc's 8-byte alignment guarantee.
-    // Original pointer stored in the slot adjacent to the returned pointer,
-    // so dtcm_free's ((void**)ptr)[-1] convention still works.
+    // 8-byte header slot preserves cb_malloc's 8-byte alignment guarantee:
+    // the raw base is stored in the slot before the returned pointer, so
+    // callers can still free heap fallbacks.
     if (size > SIZE_MAX - 2 * sizeof(void*))
         playdate->system->error("dtcm_alloc: size overflow");
     void* original_ptr = cb_malloc(size + 2 * sizeof(void*));
@@ -173,8 +147,6 @@ __dtcm_ctrl void* dtcm_alloc_aligned(size_t size, size_t alignment)
         dtcm_mempool = (void*)aligned_start;
         void* tmp = dtcm_mempool;
         dtcm_mempool = (void*)top;
-        if (dtcm_mempool > dtcm_mempool_hwm)
-            dtcm_mempool_hwm = dtcm_mempool;
         *(uint32_t*)dtcm_mempool = DTCM_CANARY;
         return tmp;
     }
@@ -248,7 +220,6 @@ __dtcm_ctrl void dtcm_set_mempool(void* addr)
     }
     dtcm_mempool_start = addr;
 #ifdef DTCM_ALLOC
-    dtcm_mempool_hwm = addr;
     playdate->system->logToConsole("DTCM mempool: %p\n", dtcm_mempool_start);
 #endif
 }
@@ -320,35 +291,6 @@ void dtcm_restore(struct dtcm_store_t* buff)
     cb_free(buff);
     playdate->system->logToConsole("Restore complete.");
 #endif
-}
-
-void dtcm_free(void* ptr)
-{
-    if (!ptr)
-    {
-        return;
-    }
-
-#ifdef DTCM_ALLOC
-    uintptr_t p = (uintptr_t)ptr;
-    // check against the high-water mark rather than dtcm_mempool: deinit and
-    // restore move dtcm_mempool back, which would misclassify still-live
-    // DTCM pointers as heap pointers. DTCM is a bump allocator; no free.
-    if (p >= (uintptr_t)dtcm_mempool_start && p < (uintptr_t)dtcm_mempool_hwm)
-    {
-        return;
-    }
-    // pockets live BELOW dtcm_mempool_start; bump-allocated, never freed
-    for (int i = 0; i < dtcm_num_pockets; i++)
-    {
-        if (p >= (uintptr_t)dtcm_pockets[i].start && p < (uintptr_t)dtcm_pockets[i].end)
-        {
-            return;
-        }
-    }
-#endif
-    void* original_ptr = ((void**)ptr)[-1];
-    cb_free(original_ptr);
 }
 
 #define DTCM_PROBE_CANARY 0xD704BEEF
