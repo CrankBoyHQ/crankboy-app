@@ -863,7 +863,6 @@ static void CB_load_core(const char* path)
     }
 
     emucore_t core = {0};
-    core.ce_version = ce_version;
     core.id = cb_strdup(core_id());
     core.path = cb_strdup(path);
     core.core_version = cb_strdup(core_version());

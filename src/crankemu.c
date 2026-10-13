@@ -20,47 +20,33 @@ static bool cb_emucore_dtcm_probed = false;
 // pause/lock period: handouts expired, region belongs to the system
 static bool cb_emucore_dtcm_paused = false;
 
-// session-only: overrunning cores lose DTCM
-static char* cb_emucore_dtcm_deny[16];
-static size_t cb_emucore_dtcm_deny_n = 0;
-#endif
-
-static const char* cb_emucore_active_id(void)
+static emucore_t* cb_emucore_active(void)
 {
     if (CB_App->active_emucore >= 0 && CB_App->active_emucore < CB_App->cores_n)
-        return CB_App->cores[CB_App->active_emucore].id;
+        return &CB_App->cores[CB_App->active_emucore];
     return NULL;
 }
 
 static bool cb_emucore_dtcm_denied(void)
 {
-#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
-    const char* id = cb_emucore_active_id();
-    if (!id)
-        return false;
-    for (size_t i = 0; i < cb_emucore_dtcm_deny_n; i++)
-    {
-        if (strcmp(cb_emucore_dtcm_deny[i], id) == 0)
-            return true;
-    }
-#endif
-    return false;
+    emucore_t* core = cb_emucore_active();
+    return core && core->dtcm_denied;
 }
 
+// the core wrote outside its allocations: revoke DTCM for this core for the
+// rest of the session
 static void cb_emucore_dtcm_revoke(const void* dirt)
 {
-#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
-    const char* id = cb_emucore_active_id();
+    emucore_t* core = cb_emucore_active();
     playdate->system->logToConsole(
         "emucore dtcm: write outside allocations by %s (at %p); DTCM access "
         "revoked for this core until app restart",
-        id ? id : "unknown core", dirt
+        core ? core->id : "unknown core", dirt
     );
-    if (id &&
-        cb_emucore_dtcm_deny_n < sizeof(cb_emucore_dtcm_deny) / sizeof(cb_emucore_dtcm_deny[0]))
-        cb_emucore_dtcm_deny[cb_emucore_dtcm_deny_n++] = cb_strdup(id);
-#endif
+    if (core)
+        core->dtcm_denied = true;
 }
+#endif
 
 // Pockets only, not the main pool: a core runs on the main stack, which may
 // grow into it.
