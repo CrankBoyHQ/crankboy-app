@@ -450,6 +450,39 @@ jobs:
               with:
                   path: artifacts
 
+            # Step 2.1: Extract the changelog entry for this version
+            - name: Extract Changelog Entry
+              run: |
+                  node -e '
+                    const fs = require("fs");
+                    const tag = process.env.TAG;
+                    const version = tag.replace(/^v/, "");
+                    const source = fs.readFileSync("CHANGELOG.md", "utf8");
+                    const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    const header = new RegExp(
+                      `^# v${escaped} - \\(\\d{4}-\\d{2}-\\d{2}\\)\\r?\\n`,
+                      "m",
+                    );
+                    const start = source.match(header);
+                    if (!start) {
+                      console.log(`No changelog entry found for version ${version}. Using Full Changelog link only.`);
+                      process.exit(0);
+                    }
+                    const rest = source.slice(start.index + start[0].length);
+                    const next = rest.search(/^# v\d\S* - \(/m);
+                    let section = next === -1 ? rest : rest.slice(0, next);
+                    section = section.replace(/(?:\r?\n)?-{3,}\s*$/, "");
+                    section = section.replace(/[\r\n\s]+$/, "").replace(/^[\r\n]+/, "");
+                    if (!section) {
+                      console.log(`Changelog entry for version ${version} is empty. Using Full Changelog link only.`);
+                      process.exit(0);
+                    }
+                    fs.writeFileSync("/tmp/changelog-entry.md", section + "\n");
+                    console.log(`Extracted changelog entry for version ${version}`);
+                  '
+              env:
+                  TAG: ${{ github.ref_name }}
+
             # Step 3: Generate release notes with a changelog link
             - name: Generate Release Notes
               id: generate_notes
@@ -470,7 +503,10 @@ jobs:
 
                   # Using a heredoc to save the multiline release notes to a GitHub Actions environment variable
                   # This makes it available to subsequent steps as `env.RELEASE_NOTES`
+                  # The changelog entry (if any) is prepended to the changelog link
                   echo 'RELEASE_NOTES<<EOF' >> $GITHUB_ENV
+                  cat /tmp/changelog-entry.md >> $GITHUB_ENV || true
+                  echo "" >> $GITHUB_ENV
                   echo "**Full Changelog**: ${COMPARE_URL}" >> $GITHUB_ENV
                   echo 'EOF' >> $GITHUB_ENV
 
@@ -479,8 +515,8 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
-                  gh release create ${{ github.ref_name }} \
+                  printf '%s' "$RELEASE_NOTES" | gh release create ${{ github.ref_name }} \
                     --draft \
                     --title "Release ${{ github.ref_name }}" \
-                    --notes "${{ env.RELEASE_NOTES }}" \
+                    --notes-file - \
                     artifacts/**/*.zip
