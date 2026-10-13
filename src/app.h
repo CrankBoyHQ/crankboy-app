@@ -262,7 +262,8 @@ PDKeyboard* CB_init_keyboard(
 void CB_load_emucore(emucore_t* core);
 
 // Emucore DTCM: handouts expire at pause/lock, re-probed on the next
-// alloc (core-side contract in libs/libcrankemu).
+// alloc (core-side contract in libs/libcrankemu). Update paths un-arm,
+// since a matching kEventResume is not guaranteed.
 void CB_emucore_dtcm_pause(void);
 void CB_emucore_dtcm_resume(void);
 void CB_emucore_dtcm_release_pockets(void);

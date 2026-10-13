@@ -101,7 +101,7 @@ static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
 }
 
 // paint used ranges back to 0xA5, forget the layout: the next probe
-// discovers what the OS left clean. Runs after the core's handler.
+// discovers what the OS left clean.
 void CB_emucore_dtcm_release_pockets(void)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
@@ -127,7 +127,6 @@ static void cb_emucore_dtcm_release(void)
 
 // -- emucore dtcm lifecycle --
 
-// pause/lock period begins; release comes after the core's handler
 void CB_emucore_dtcm_pause(void)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
@@ -135,7 +134,6 @@ void CB_emucore_dtcm_pause(void)
 #endif
 }
 
-// scene update paths gate the core on this
 bool CB_emucore_dtcm_is_paused(void)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
@@ -145,7 +143,7 @@ bool CB_emucore_dtcm_is_paused(void)
 #endif
 }
 
-// handouts allocatable again; first alloc re-probes
+// handouts allocatable again; the next alloc re-probes
 void CB_emucore_dtcm_resume(void)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
