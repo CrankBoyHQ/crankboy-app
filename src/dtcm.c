@@ -97,6 +97,21 @@ void dtcm_pocket_fill_and_reset(void)
     }
 }
 
+const void* dtcm_pockets_unused_dirt(void)
+{
+    for (int i = 0; i < dtcm_num_pockets; i++)
+    {
+        const uint8_t* p = (const uint8_t*)dtcm_pockets[i].mempool;
+        const uint8_t* end = (const uint8_t*)dtcm_pockets[i].end;
+        for (; p != end; p++)
+        {
+            if (*p != 0xA5)
+                return p;
+        }
+    }
+    return NULL;
+}
+
 #ifdef DTCM_ALLOC
 // Hard cap on main-pool size; over it the caller falls back to a pocket or flash.
 static bool dtcm_pool_budget(uintptr_t top)

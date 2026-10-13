@@ -169,7 +169,11 @@ static void CB_EmucoreGameScene_menu(void* object)
 
     // emucore can provide an entry too
     if (es->core && es->core->pdll && es->core->pdll->eventHandler)
+    {
+        // handler sees still-valid allocations; release follows
         es->core->pdll->eventHandler(es->core->pdll->playdate_ptr, kEventPause, 0);
+    }
+    CB_emucore_dtcm_release_pockets();
 }
 
 static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
@@ -186,7 +190,8 @@ static void CB_EmucoreGameScene_update(void* object, uint32_t u32enc_dt)
         return;
     }
 
-    if (es->rom_playing && es->update_rom)
+    // handouts are expired mid-pause
+    if (es->rom_playing && es->update_rom && !CB_emucore_dtcm_is_paused())
         es->update_rom();
 }
 
@@ -203,6 +208,10 @@ static void emucore_update_override(void* ud)
         CB_update(dt);
         return;
     }
+
+    // handouts are expired mid-pause
+    if (CB_emucore_dtcm_is_paused())
+        return;
 
     int frames = 1;
     if likely (es->rom_playing && es->update_rom)
@@ -235,20 +244,37 @@ static void CB_EmucoreGameScene_event(void* object, PDSystemEvent event, uint32_
     if (event == kEventPause || event == kEventLock || event == kEventTerminate)
         emucore_save_sram_if_dirty(es);
 
+    if (event == kEventUnlock || event == kEventResume)
+        CB_emucore_dtcm_resume();
+
+    if (event == kEventLock)
+    {
+        // handler sees still-valid allocations, then frontend releases
+        if (es->core && es->core->pdll && es->core->pdll->eventHandler)
+            es->core->pdll->eventHandler(es->core->pdll->playdate_ptr, kEventLock, arg);
+        CB_emucore_dtcm_pause();
+        CB_emucore_dtcm_release_pockets();
+    }
+
+    // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead.
+    // kEventPause driven by *_menu()
+    if (event == kEventInit || event == kEventTerminate || event == kEventPause)
+    {
+        if (event == kEventPause)
+            CB_emucore_dtcm_pause();
+        return;
+    }
+
+    if (es->core && es->core->pdll && es->core->pdll->eventHandler)
+        es->core->pdll->eventHandler(es->core->pdll->playdate_ptr, event, arg);
+
+    // redraw after the handler: the core rebuilds its handouts first
     if (event == kEventResume && es->core && es->core->pdll)
     {
         void (*full_redraw)(void) = pdll_symbol(es->core->pdll, "ce_full_redraw");
         if (full_redraw)
             full_redraw();
     }
-
-    // kEventInit/kEventTerminate are driven by pdll_open/pdll_close instead.
-    // kEventPause driven by *_menu()
-    if (event == kEventInit || event == kEventTerminate || event == kEventPause)
-        return;
-
-    if (es->core && es->core->pdll && es->core->pdll->eventHandler)
-        es->core->pdll->eventHandler(es->core->pdll->playdate_ptr, event, arg);
 }
 
 static void CB_EmucoreGameScene_free(void* object)
