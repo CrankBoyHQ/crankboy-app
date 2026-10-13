@@ -261,6 +261,13 @@ PDKeyboard* CB_init_keyboard(
 // Unload active core, then load the given core. (NULL: unload only.)
 void CB_load_emucore(emucore_t* core);
 
+// Emucore DTCM: handouts expire at pause/lock, re-probed on the next
+// alloc (core-side contract in libs/libcrankemu).
+void CB_emucore_dtcm_pause(void);
+void CB_emucore_dtcm_resume(void);
+void CB_emucore_dtcm_release_pockets(void);
+bool CB_emucore_dtcm_is_paused(void);
+
 void cb_emucore_set_frontend(pdll_t* pdll);
 
 emucore_t* CB_get_emucore_by_slug(const char* slug);

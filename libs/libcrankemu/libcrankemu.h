@@ -17,7 +17,7 @@
 #define CE_PREF_LOCKED 1 /* greyed-out; user should not be able to alter setting */
 /* reserved */
 #define CE_PREF_ALWAYS_GLOBAL 4 /* pref always shared between games */
-#define CE_PREF_ALWAYS_LOCAL 8 /* pref never shared between games */
+#define CE_PREF_ALWAYS_LOCAL 8  /* pref never shared between games */
 
 /* frontend may warn that the game must be restarted before this affects in earnest */
 #define CE_PREF_REQUIRES_RESTART 16
@@ -31,7 +31,7 @@ typedef struct
     // true if core can use itcm.
     // Requires alloc_dtcm to be provided.
     bool itcm_allowed;
-    
+
     // true if should not frame rate limit
     bool turbo;
 } ce_frontend_settings_t;
@@ -40,37 +40,47 @@ typedef struct ce_frontend
 {
     uint32_t version; /* = CRANKEMU_FRONTEND_VERSION (1 in older frontends) */
 
-    // Allocate to dtcm area.
+    // Allocate into the DTCM area (an unowned region below the app stack
+    // reserve; usable only while the game runs).
     // May be NULL, in which case dtcm allocation is not supported.
-    // Not freeable; released when the core is unloaded.
     // alignment may be 0. It is the address modulo 32 (0: 32-byte aligned).
-    // Falls back to the heap when DTCM is off (settings: itcm_allowed) or
-    // full: check the address (0x20000000-0x2001ffff is DTCM).
-    // The system may write into DTCM while the game is paused or locked
-    // (kEventPause, kEventLock): keep only what can be checked and restored
-    // (or re-copied, for code) before running again.
+    // May fall back to the heap (address 0x20000000-0x2001ffff is DTCM):
+    // when DTCM is off (itcm_allowed), while paused/locked, or if this core
+    // was denied access.
+    //
+    // Handouts expire at every kEventPause/kEventLock; after
+    // kEventResume/kEventUnlock re-allocate here and re-copy from your own
+    // source: old pointers are invalid, the layout can shrink after a lock.
+    // Re-copied code must clearICache(). Anything not re-copyable does not
+    // belong here.
+    //
+    // Monitored: writes stay within pointer + size; anything outside revokes
+    // DTCM for this core until app restart.
     void* (*alloc_dtcm)(size_t size, size_t alignment);
 
     // inform frontend of non-fatal errors
     void (*set_error)(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
-    
+
     // frontend may manipulate button presses
     void (*get_buttons)(PDButtons* o_down, PDButtons* o_pressed, PDButtons* o_released);
-    
+
     // (OPTIONAL) invoke modal callback from frontend.
     //   msg: message to display in modal
     //   options: NULL-terminated list of options (or NULL for no options)
     //   flags: e.g. CE_MODAL_NO_CANCEL
     //   arg: index of selected option, or -1 if cancelled
-    void (*blockingModal)(const char* msg, const char* const* options, unsigned flags, void* ud, void (*cb)(void* ud, int arg));
-    
+    void (*blockingModal)(
+        const char* msg, const char* const* options, unsigned flags, void* ud,
+        void (*cb)(void* ud, int arg)
+    );
+
     // -2 -> unknown
     // -1 -> simulator
     // 0 -> rev A
     // 1 -> rev B
     // 2... -> rev C and beyond
     int (*get_hardware_revision)(void);
-    
+
     const ce_frontend_settings_t* (*settings)(void);
 
     // (since 2) leave the game for the library, e.g. when the game quits or
@@ -89,32 +99,44 @@ typedef struct ce_preference
 {
     void* ud;
     enum ce_preference_type type;
-    char* id; // lower-case machine-readable [a-z_][a-z0-9_]*
-    
-    const char* (*name)(struct ce_preference* self); // always required
+    char* id;  // lower-case machine-readable [a-z_][a-z0-9_]*
+
+    const char* (*name)(struct ce_preference* self);  // always required
     const char* (*description)(struct ce_preference* self);
 
     /* required if not is_category */
-    const char* const* values; // NULL-terminated
-    unsigned (*get)(struct ce_preference* self); /* returns index of current value (i.e. default value unless previously set) */
-    bool (*set)(struct ce_preference* self, unsigned value); /* argument will be index of one of the values. Return false on failure (i.e. value out of range). */
-    
+    const char* const* values;  // NULL-terminated
+
+    /* returns index of current value (i.e. default value unless previously set) */
+    unsigned (*get)(struct ce_preference* self);
+
+    /* argument will be index of one of the values. Return false on failure
+      (i.e. value out of range). */
+    bool (*set)(struct ce_preference* self, unsigned value);
+
     // optional
     uint32_t (*flags)(struct ce_preference* self);
 } ce_preference_t;
 
 // == symbols for library export ==
 
-static inline uint32_t ce_get_version(void) { return CRANKEMU_VERSION; }
-/* Optional */ bool ce_is_backward_compatible(uint32_t version); /* Return true if emu core backward-compatible with the given version. */
+static inline uint32_t ce_get_version(void)
+{
+    return CRANKEMU_VERSION;
+}
+
+/* Optional */
+/* Return true if emu core backward-compatible with the given version. */
+bool ce_is_backward_compatible(uint32_t version);
+
 void ce_set_frontend(const ce_frontend_t*);
 
 const char* ce_core_id(void);       // machine-readable id, [a-z_][a-z0-9_]*
 const char* ce_core_name(void);     // human-readable name for core
 const char* ce_core_version(void);  // e.g. "v1.0.4"
 
-// return a ;-separated list of system slugs this core can handle e.g. "pm;gb". Optional final semicolon.
-// Used for path i.e. /Shared/Emulation/<system>/
+// return a ;-separated list of system slugs this core can handle e.g. "pm;gb". Optional final
+// semicolon. Used for path i.e. /Shared/Emulation/<system>/
 const char* ce_get_system_slugs(void);
 
 // maps e.g. "a26" -> "Atari 2600"
@@ -146,16 +168,16 @@ const char* get_rom_info(const uint8_t* rom, size_t size);
 size_t ce_get_rom_save_size(const uint8_t* rom, size_t size);
 
 // -- logic (gameplay) --
-bool ce_play(void); // begin playing rom
-void ce_stop(void); // end playing rom (cannot be resumed)
-int ce_update(void); // returns number of frames advanced (at least 1).
+bool ce_play(void);   // begin playing rom
+void ce_stop(void);   // end playing rom (cannot be resumed)
+int ce_update(void);  // returns number of frames advanced (at least 1).
 
 // frontend informs core that playdate frame buffer has been modified and needs a refresh.
 void ce_full_redraw(void);
 
 // -- save data (all optional) --
-size_t ce_get_save_size(void); // size of save data for the loaded rom, 0 if none
-bool ce_is_save_dirty(void); // return true if saving would be warranted
+size_t ce_get_save_size(void);  // size of save data for the loaded rom, 0 if none
+bool ce_is_save_dirty(void);    // return true if saving would be warranted
 void ce_save(uint8_t* buffer, size_t size);
 bool ce_load(const uint8_t* buffer, size_t size);  // return false on error
 

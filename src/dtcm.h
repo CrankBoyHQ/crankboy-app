@@ -73,6 +73,9 @@ void* dtcm_pocket_alloc_aligned(int pocket_idx, size_t size, size_t alignment);
 bool dtcm_pocket_enabled(int pocket_idx);
 void dtcm_pocket_fill_and_reset(void);
 
+// first non-0xA5 byte in a pocket's unused tail, NULL if clean.
+const void* dtcm_pockets_unused_dirt(void);
+
 #define DTCM_VERIFY__(f, l) dtcm_verify(f ":" #l)
 #define DTCM_VERIFY_(f, l) DTCM_VERIFY__(f, l)
 #define DTCM_VERIFY() DTCM_VERIFY_(__FILE__, __LINE__)

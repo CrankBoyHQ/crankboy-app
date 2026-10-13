@@ -16,14 +16,58 @@
 
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
 static bool cb_emucore_dtcm_probed = false;
+
+// pause/lock period: handouts expired, region belongs to the system
+static bool cb_emucore_dtcm_paused = false;
+
+// session-only: overrunning cores lose DTCM
+static char* cb_emucore_dtcm_deny[16];
+static size_t cb_emucore_dtcm_deny_n = 0;
 #endif
+
+static const char* cb_emucore_active_id(void)
+{
+    if (CB_App->active_emucore >= 0 && CB_App->active_emucore < CB_App->cores_n)
+        return CB_App->cores[CB_App->active_emucore].id;
+    return NULL;
+}
+
+static bool cb_emucore_dtcm_denied(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    const char* id = cb_emucore_active_id();
+    if (!id)
+        return false;
+    for (size_t i = 0; i < cb_emucore_dtcm_deny_n; i++)
+    {
+        if (strcmp(cb_emucore_dtcm_deny[i], id) == 0)
+            return true;
+    }
+#endif
+    return false;
+}
+
+static void cb_emucore_dtcm_revoke(const void* dirt)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    const char* id = cb_emucore_active_id();
+    playdate->system->logToConsole(
+        "emucore dtcm: write outside allocations by %s (at %p); DTCM access "
+        "revoked for this core until app restart",
+        id ? id : "unknown core", dirt
+    );
+    if (id &&
+        cb_emucore_dtcm_deny_n < sizeof(cb_emucore_dtcm_deny) / sizeof(cb_emucore_dtcm_deny[0]))
+        cb_emucore_dtcm_deny[cb_emucore_dtcm_deny_n++] = cb_strdup(id);
+#endif
+}
 
 // Pockets only, not the main pool: a core runs on the main stack, which may
 // grow into it.
 static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
-    if (preferences_tcm_mode != 0)
+    if (preferences_tcm_mode != 0 && !cb_emucore_dtcm_paused && !cb_emucore_dtcm_denied())
     {
         if (!cb_emucore_dtcm_probed)
         {
@@ -36,8 +80,7 @@ static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
             if (!dtcm_pocket_enabled(i))
                 continue;
             size_t room = (uintptr_t)dtcm_pockets[i].end - (uintptr_t)dtcm_pockets[i].mempool;
-            if (room >= size + 31 &&
-                (best < 0 || dtcm_pockets[i].start < dtcm_pockets[best].start))
+            if (room >= size + 31 && (best < 0 || dtcm_pockets[i].start < dtcm_pockets[best].start))
                 best = i;
         }
         void* p = (best >= 0) ? dtcm_pocket_alloc_aligned(best, size, alignment) : NULL;
@@ -57,16 +100,56 @@ static void* ce_fe_alloc_dtcm(size_t size, size_t alignment)
     return raw;
 }
 
-// repaint, so the next probe finds the pockets clean
+// paint used ranges back to 0xA5, forget the layout: the next probe
+// discovers what the OS left clean. Runs after the core's handler.
+void CB_emucore_dtcm_release_pockets(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    if (!cb_emucore_dtcm_probed)
+        return;
+    const void* dirt = dtcm_pockets_unused_dirt();
+    if (dirt)
+        cb_emucore_dtcm_revoke(dirt);
+    dtcm_pocket_fill_and_reset();
+    dtcm_num_pockets = 0;
+    cb_emucore_dtcm_probed = false;
+#endif
+}
+
+// unload: also reset the pause period
 static void cb_emucore_dtcm_release(void)
 {
 #if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
-    if (cb_emucore_dtcm_probed)
-    {
-        dtcm_pocket_fill_and_reset();
-        dtcm_num_pockets = 0;
-        cb_emucore_dtcm_probed = false;
-    }
+    CB_emucore_dtcm_release_pockets();
+    cb_emucore_dtcm_paused = false;
+#endif
+}
+
+// -- emucore dtcm lifecycle --
+
+// pause/lock period begins; release comes after the core's handler
+void CB_emucore_dtcm_pause(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    cb_emucore_dtcm_paused = true;
+#endif
+}
+
+// scene update paths gate the core on this
+bool CB_emucore_dtcm_is_paused(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    return cb_emucore_dtcm_paused;
+#else
+    return false;
+#endif
+}
+
+// handouts allocatable again; first alloc re-probes
+void CB_emucore_dtcm_resume(void)
+{
+#if defined(DTCM_ALLOC) && defined(TARGET_PLAYDATE)
+    cb_emucore_dtcm_paused = false;
 #endif
 }
 
