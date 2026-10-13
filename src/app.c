@@ -960,7 +960,7 @@ static void CB_cores_scan_cb(const char* filename, void* ud)
     char* basepath = aprintf("%s/%.*s", scan->dir, (int)(len - extlen), filename);
     for (size_t i = 0; i < scan->n; ++i)
     {
-        if (strcmp(scan->items[i].basepath, basepath) == 0)
+        if (strcasecmp(scan->items[i].basepath, basepath) == 0)
         {
             cb_free(basepath);
             return;
