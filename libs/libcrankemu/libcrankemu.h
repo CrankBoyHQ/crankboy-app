@@ -48,9 +48,10 @@ typedef struct ce_frontend
     // when DTCM is off (itcm_allowed), while paused/locked, or if this core
     // was denied access.
     //
-    // Handouts expire at every kEventPause/kEventLock; after
-    // kEventResume/kEventUnlock re-allocate here and re-copy from your own
-    // source: old pointers are invalid, the layout can shrink after a lock.
+    // Handouts expire at every kEventPause/kEventLock; once ce_update runs
+    // again, re-allocate here and re-copy from your own source before using
+    // them (do not wait for kEventResume, as it is not guaranteed).
+    // Old pointers are invalid, and the layout can shrink after a lock.
     // Re-copied code must clearICache(). Anything not re-copyable does not
     // belong here.
     //
