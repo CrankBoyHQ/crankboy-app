@@ -202,5 +202,6 @@ ce_preference_t** ce_get_preferences(void);
 // frontend's own items: add at most 1 menu item each time, as the others may
 // be used by the frontend (e.g. settings, return to library). A matching
 // kEventResume is not guaranteed.
+// alloc_dtcm handouts expire at kEventPause and kEventLock (see above).
 
 #endif /* LIBCRANKEMU_H_ */
