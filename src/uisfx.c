@@ -114,10 +114,6 @@ bool cb_uisfx_init(void)
         if (!s_filters[i])
             CB_UISFX_FAIL("newFilter");
 
-        // returns 0 if the attach calls below registered it implicitly
-        if (!playdate->sound->addChannel(s_channels[i]))
-            playdate->system->logToConsole("cb uisfx: addChannel returned 0 (ignored)");
-
         playdate->sound->synth->setWaveform(s_voices[4 + i], kWaveformNoise);
         playdate->sound->synth->setVolume(s_voices[4 + i], 1.0f, 1.0f);
 
