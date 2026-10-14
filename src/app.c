@@ -10,8 +10,9 @@
 
 #include "../libs/libcrankemu/libcrankemu.h"
 #include "../libs/pdll/pdll.h"
-#include "pd_api/pd_api_sys.h"
 #include "utility.h"
+
+#include <pd_api/pd_api_sys.h>
 
 #ifdef TARGET_PLAYDATE
 #include "../libs/pdnewlib/pdnewlib.h"

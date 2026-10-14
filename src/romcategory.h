@@ -1,12 +1,10 @@
 #pragma once
 
-#include "pd_api.h"
-
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_CATEGORY_NAME 21  // 20 chars + NUL — fits the library filter bar
+#define MAX_CATEGORY_NAME 21  // 20 chars + NUL - thisfits the library category bar in list view
 
 // stable tokens for the persisted display order
 #define CATEGORY_ORDER_ALL_TOKEN "all"

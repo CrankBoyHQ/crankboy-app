@@ -111,7 +111,6 @@ typedef struct
     int textInset;
 
     float textScrollTime;
-    float textScrollPause;
 
     bool hideScrollIndicator;
     bool ignoreButtons;

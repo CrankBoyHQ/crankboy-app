@@ -7,6 +7,8 @@
 #ifndef _PGB_COMMON_H
 #define _PGB_COMMON_H
 
+#include "../../src/utility.h"
+
 #define PGB_VERSIONED__(X, Y) X##_v##Y
 #define PGB_VERSIONED_(X, Y) PGB_VERSIONED__(X, Y)
 #define PGB_VERSIONED(X) PGB_VERSIONED_(X, PGB_VERSION)

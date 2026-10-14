@@ -13,7 +13,6 @@
 #include "app.h"
 #include "jparse.h"
 #include "preferences.h"
-#include "scenes/library_scene.h"
 #include "uisfx.h"
 
 #include <ctype.h>
@@ -733,6 +732,49 @@ float cb_easeInOutQuad(float x)
     return (x < 0.5f) ? 2 * x * x : 1 - powf(-2 * x + 2, 2) * 0.5f;
 }
 
+float cb_marquee_offset(
+    float* clock, LCDFont* font, const char* text, int availWidth, bool* scrolling
+)
+{
+    int textW = playdate->graphics->getTextWidth(font, text, strlen(text), kUTF8Encoding, 0);
+    float maxOffset = (float)textW - (float)availWidth;
+    if (maxOffset <= 0.0f)
+    {
+        *scrolling = false;
+        return 0.0f;
+    }
+    *scrolling = true;
+
+    const float SCROLL_SPEED_PPS = 50.0f;
+    const float MIN_SCROLL_DURATION = 0.75f;
+    const float SCROLL_BACK_FACTOR = 2.0f / 3.0f;
+    const float pauseStart = 0.7f;
+    const float pauseEnd = 1.5f;
+
+    float scrollToEnd = maxOffset / SCROLL_SPEED_PPS;
+    if (scrollToEnd < MIN_SCROLL_DURATION)
+        scrollToEnd = MIN_SCROLL_DURATION;
+    float scrollToStart = scrollToEnd * SCROLL_BACK_FACTOR;
+    if (scrollToStart < MIN_SCROLL_DURATION)
+        scrollToStart = MIN_SCROLL_DURATION;
+
+    float cycle = pauseStart + scrollToEnd + pauseEnd + scrollToStart;
+    *clock += CB_App->dt;
+    float time = fmodf(*clock, cycle);
+
+    if (time < pauseStart)
+        return 0.0f;
+    if (time < pauseStart + scrollToEnd)
+    {
+        float p = (time - pauseStart) / scrollToEnd;
+        return cb_easeInOutQuad(p) * maxOffset;
+    }
+    if (time < pauseStart + scrollToEnd + pauseEnd)
+        return maxOffset;
+    float p = (time - pauseStart - scrollToEnd - pauseEnd) / scrollToStart;
+    return (1.0f - cb_easeInOutQuad(p)) * maxOffset;
+}
+
 #include <ctype.h>
 
 char* strstr_i(const char* haystack, const char* needle)
@@ -802,174 +844,6 @@ void cb_sort_games_array(CB_Array* games_array)
             games_array->items, games_array->length, sizeof(CB_Game*), cb_compare_games_by_sort_name
         );
     }
-}
-
-char* cb_find_cover_art_path_from_list(
-    const CB_Array* available_covers, const char* rom_basename_no_ext,
-    const char* rom_clean_basename_no_ext
-)
-{
-    for (int i = 0; i < available_covers->length; ++i)
-    {
-        const char* cover_basename = available_covers->items[i];
-
-        if (strcmp(cover_basename, rom_clean_basename_no_ext) == 0 ||
-            strcmp(cover_basename, rom_basename_no_ext) == 0)
-        {
-            char* found_path = NULL;
-            playdate->system->formatString(
-                &found_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_basename
-            );
-            return found_path;
-        }
-    }
-
-    return NULL;
-}
-
-CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
-    const char* cover_path, int max_target_width, int max_target_height
-)
-{
-    CB_LoadedCoverArt result = {
-        .bitmap = NULL,
-        .original_width = 0,
-        .original_height = 0,
-        .scaled_width = 0,
-        .scaled_height = 0,
-        .status = CB_COVER_ART_FILE_NOT_FOUND
-    };
-
-    if (!cover_path)
-    {
-        result.status = CB_COVER_ART_FILE_NOT_FOUND;
-        return result;
-    }
-
-    FileStat fileStatCheck;
-    if (playdate->file->stat(cover_path, &fileStatCheck) != 0)
-    {
-        result.status = CB_COVER_ART_FILE_NOT_FOUND;
-        return result;
-    }
-
-    const char* error_str = NULL;
-    LCDBitmap* original_image =
-        playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_path), &error_str);
-
-    if (error_str)
-    {
-        playdate->system->logToConsole(
-            "Error string from loadBitmap for %s: %s", cover_path, error_str
-        );
-    }
-
-    if (original_image == NULL)
-    {
-        result.status = CB_COVER_ART_ERROR_LOADING;
-        playdate->system->logToConsole("Failed to load bitmap: %s", cover_path);
-        return result;
-    }
-
-    playdate->graphics->getBitmapData(
-        original_image, &result.original_width, &result.original_height, NULL, NULL, NULL
-    );
-
-    if (result.original_width <= 0 || result.original_height <= 0)
-    {
-        playdate->graphics->freeBitmap(original_image);
-        result.status = CB_COVER_ART_INVALID_IMAGE;
-        playdate->system->logToConsole(
-            "Invalid image dimensions (%dx%d) for: %s", result.original_width,
-            result.original_height, cover_path
-        );
-        return result;
-    }
-
-    float scale;
-    float scaleX = (float)max_target_width / result.original_width;
-    float scaleY = (float)max_target_height / result.original_height;
-    scale = (scaleX < scaleY) ? scaleX : scaleY;
-
-    result.scaled_width = (int)roundf(result.original_width * scale);
-    result.scaled_height = (int)roundf(result.original_height * scale);
-
-    if (result.scaled_width < 1 && result.original_width > 0)
-        result.scaled_width = 1;
-    if (result.scaled_height < 1 && result.original_height > 0)
-        result.scaled_height = 1;
-
-    bool perform_scaling_operation = false;
-    if (result.scaled_width != result.original_width ||
-        result.scaled_height != result.original_height)
-    {
-        perform_scaling_operation = true;
-    }
-
-    if (perform_scaling_operation)
-    {
-        if (result.scaled_width <= 0 || result.scaled_height <= 0)
-        {
-            playdate->system->logToConsole(
-                "Error: Calculated scaled dimensions are zero or negative "
-                "(%dx%d) for %s. Original: %dx%d, Scale: %f",
-                result.scaled_width, result.scaled_height, cover_path, result.original_width,
-                result.original_height, (double)scale
-            );
-            playdate->graphics->freeBitmap(original_image);
-            result.status = CB_COVER_ART_INVALID_IMAGE;
-            return result;
-        }
-
-        LCDBitmap* scaled_bitmap =
-            playdate->graphics->newBitmap(result.scaled_width, result.scaled_height, kColorClear);
-        if (scaled_bitmap == NULL)
-        {
-            playdate->graphics->freeBitmap(original_image);
-            result.status = CB_COVER_ART_ERROR_LOADING;
-            playdate->system->logToConsole(
-                "Failed to create new scaled bitmap (%dx%d) for: %s", result.scaled_width,
-                result.scaled_height, cover_path
-            );
-            return result;
-        }
-
-        playdate->graphics->pushContext(scaled_bitmap);
-        playdate->graphics->setDrawMode(kDrawModeCopy);
-        playdate->graphics->drawScaledBitmap(original_image, 0, 0, scale, scale);
-        playdate->graphics->popContext();
-
-        playdate->graphics->freeBitmap(original_image);
-        result.bitmap = scaled_bitmap;
-    }
-    else
-    {
-        result.bitmap = original_image;
-    }
-
-    result.status = CB_COVER_ART_SUCCESS;
-    return result;
-}
-
-void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result)
-{
-    if (art_result && art_result->bitmap)
-    {
-        playdate->graphics->freeBitmap(art_result->bitmap);
-        art_result->bitmap = NULL;
-    }
-}
-
-void cb_clear_global_cover_cache(void)
-{
-    if (CB_App->coverArtCache.rom_path)
-    {
-        cb_free(CB_App->coverArtCache.rom_path);
-        CB_App->coverArtCache.rom_path = NULL;
-    }
-    cb_free_loaded_cover_art_bitmap(&CB_App->coverArtCache.art);
-
-    CB_App->coverArtCache.art.status = CB_COVER_ART_FILE_NOT_FOUND;
 }
 
 void cb_fillRoundRect(PDRect rect, int radius, LCDColor color)

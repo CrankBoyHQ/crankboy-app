@@ -1,7 +1,7 @@
 #include "categories_scene.h"
 
 #include "../app.h"
-#include "library_scene.h"
+#include "../utility.h"
 #include "modal.h"
 
 enum

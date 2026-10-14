@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../app.h"
-#include "../libs/pdkeyboard/pdkeyboard.h"
 #include "../listview.h"
 #include "../romcategory.h"
 #include "../scene.h"

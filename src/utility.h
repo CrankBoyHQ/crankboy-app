@@ -94,24 +94,6 @@ typedef enum
 
 typedef enum
 {
-    CB_COVER_ART_SUCCESS,
-    CB_COVER_ART_ERROR_LOADING,
-    CB_COVER_ART_INVALID_IMAGE,
-    CB_COVER_ART_FILE_NOT_FOUND
-} CB_CoverArtStatus;
-
-typedef struct
-{
-    LCDBitmap* bitmap;
-    int original_width;
-    int original_height;
-    int scaled_width;
-    int scaled_height;
-    CB_CoverArtStatus status;
-} CB_LoadedCoverArt;
-
-typedef enum
-{
     PROGRESS_STYLE_PERCENT,
     PROGRESS_STYLE_FRACTION
 } CB_ProgressStyle;
@@ -141,6 +123,12 @@ char* cb_strip_extension(const char* path);
 bool cb_valid_basename(const char* fname);
 
 float cb_easeInOutQuad(float x);
+
+// looping marquee offset for text wider than its strip (0 when it fits):
+// pause, pan, pause, pan back. Draw text at x - (int)offset
+float cb_marquee_offset(
+    float* clock, LCDFont* font, const char* text, int availWidth, bool* scrolling
+);
 
 // like playdate->file->listfiles, but can filter by file type (pdx/data)
 int cb_listfiles(
@@ -230,11 +218,6 @@ char* url_encode(const char* in);
 // Serial response helper (shared by serial.c and ft.c)
 void serial_send_response(const char* format, ...);
 
-char* cb_find_cover_art_path_from_list(
-    const CB_Array* available_covers, const char* rom_basename_no_ext,
-    const char* rom_clean_basename_no_ext
-);
-
 // force inline so that core can call this.
 static FORCE_INLINE uint8_t reverse_bits_u8(uint8_t b)
 {
@@ -317,13 +300,6 @@ char* en_human_time(unsigned seconds);
 char* en_human_bytes(unsigned bytes);
 
 bool string_has_descenders(const char* str);
-
-CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
-    const char* cover_path, int max_target_width, int max_target_height
-);
-
-void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result);
-void cb_clear_global_cover_cache(void);
 
 void cb_play_ui_sound(CB_UISound sound);
 

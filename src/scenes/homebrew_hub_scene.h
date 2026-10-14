@@ -1,8 +1,10 @@
 #pragma once
 
+#include "../game.h"
 #include "../http_safe.h"
+#include "../libs/pdkeyboard/pdkeyboard.h"
 #include "../listview.h"
-#include "library_scene.h"
+#include "../scene.h"
 
 #include <stdlib.h>
 

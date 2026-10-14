@@ -1,8 +1,9 @@
 #pragma once
 
+#include "../game.h"
 #include "../http.h"
 #include "../listview.h"
-#include "library_scene.h"
+#include "../scene.h"
 
 #define CB_PATCHDOWNLOAD_STACK_MAX_DEPTH 10
 

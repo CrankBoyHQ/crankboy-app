@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../libs/peanut_gb.h"
 #include "app.h"
 #include "preferences.h"
 
@@ -28,9 +29,6 @@ launch. toggleable scripts must keep on_begin/on_end re-runnable:
 */
 
 struct CB_GameScene;
-#ifndef PEANUT_GB_H
-typedef void gb_s;
-#endif
 
 #define SCRIPT_MENU_SUPPRESS_BUTTON 1
 #define SCRIPT_MENU_SUPPRESS_IMAGE 2

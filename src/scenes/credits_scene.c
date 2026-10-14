@@ -4,6 +4,7 @@
 #include "../jparse.h"
 #include "../pgmusic.h"
 #include "../preferences.h"
+#include "../utility.h"
 #include "../version.h"
 
 #include <pd_api/pd_api_json.h>

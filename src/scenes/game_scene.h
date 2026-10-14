@@ -11,6 +11,7 @@
 
 #include "../../libs/peanut_gb.h"
 #include "../scene.h"
+#include "../utility.h"
 
 #include <stdio.h>
 

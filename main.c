@@ -12,6 +12,7 @@
 #include "src/global.h"
 #include "src/revcheck.h"
 #include "src/userstack.h"
+#include "src/utility.h"
 
 #include <pd_api.h>
 

@@ -10,7 +10,6 @@
 
 #include "../../libs/lz4/lz4.h"
 #include "../app.h"
-#include "../http.h"
 #include "../http_safe.h"
 #include "../jparse.h"
 #include "../preferences.h"
@@ -95,161 +94,6 @@ static void collect_cover_filenames_callback(const char* filename, void* userdat
     }
 }
 
-static void CB_cover_compress_impl(
-    CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
-)
-{
-    if (!game->coverPath || game->cover_compressed_data)
-        return;
-
-    const char* error = NULL;
-    LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
-
-    if (!coverBitmap)
-        return;
-
-    int width, height, rowbytes;
-    uint8_t *mask_data, *pixel_data;
-    playdate->graphics->getBitmapData(
-        coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
-    );
-
-    bool has_mask = (mask_data != NULL);
-    size_t original_size = rowbytes * height;
-    if (has_mask)
-        original_size *= 2;
-
-    int max_dst_size = LZ4_compressBound(original_size);
-    char* temp_compressed_buffer = cb_malloc(max_dst_size);
-
-    uint8_t* uncompressed_buffer = cb_malloc(original_size);
-    memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
-    if (has_mask)
-    {
-        memcpy(uncompressed_buffer + (rowbytes * height), mask_data, rowbytes * height);
-    }
-
-    int compressed_size = LZ4_compress_fast_extState(
-        lz4_state, (const char*)uncompressed_buffer, temp_compressed_buffer, original_size,
-        max_dst_size, 1
-    );
-
-    cb_free(uncompressed_buffer);
-
-    if (compressed_size > 0)
-    {
-        char* final_buffer = cb_malloc(compressed_size);
-        memcpy(final_buffer, temp_compressed_buffer, compressed_size);
-
-        game->cover_compressed_data = final_buffer;
-        game->cover_compressed_size = compressed_size;
-        game->cover_width = width;
-        game->cover_height = height;
-        game->cover_rowbytes = rowbytes;
-        game->cover_has_mask = has_mask;
-
-        if (io_cache_bytes)
-            *io_cache_bytes += compressed_size;
-        if (io_cached_count)
-            *io_cached_count += 1;
-    }
-    cb_free(temp_compressed_buffer);
-
-    playdate->graphics->freeBitmap(coverBitmap);
-}
-
-void CB_cover_compress(CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count)
-{
-    CB_cover_compress_impl(game, lz4_state, io_cache_bytes, io_cached_count);
-}
-
-void CB_cover_free_compressed(CB_Game* game)
-{
-    if (game->cover_compressed_data)
-    {
-        cb_free(game->cover_compressed_data);
-        game->cover_compressed_data = NULL;
-    }
-}
-
-LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size)
-{
-    if (!game->cover_compressed_data || !io_buffer || !io_buffer_size)
-        return NULL;
-
-    int original_size = game->cover_rowbytes * game->cover_height;
-    if (game->cover_has_mask)
-        original_size *= 2;
-
-    if (*io_buffer_size < (size_t)original_size)
-    {
-        char* new_buffer = cb_realloc(*io_buffer, original_size);
-        if (!new_buffer)
-            return NULL;
-        *io_buffer = new_buffer;
-        *io_buffer_size = original_size;
-    }
-
-    char* decompressed_buffer = *io_buffer;
-    if (!decompressed_buffer)
-        return NULL;
-
-    int decompressed_size = LZ4_decompress_safe(
-        game->cover_compressed_data, decompressed_buffer, game->cover_compressed_size, original_size
-    );
-    if (decompressed_size != original_size)
-    {
-        playdate->system->logToConsole("LZ4 decompression failed for %s", game->fullpath);
-        return NULL;
-    }
-
-    LCDBitmap* new_bitmap = NULL;
-    if (game->cover_has_mask)
-    {
-        new_bitmap =
-            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorClear);
-    }
-    else
-    {
-        new_bitmap =
-            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorWhite);
-    }
-    if (!new_bitmap)
-        return NULL;
-
-    int new_rowbytes;
-    uint8_t *new_pixel_data, *new_mask_data;
-    playdate->graphics->getBitmapData(
-        new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data, &new_pixel_data
-    );
-    size_t copy_bytes = ((size_t)game->cover_rowbytes < (size_t)new_rowbytes)
-                            ? game->cover_rowbytes
-                            : (size_t)new_rowbytes;
-
-    uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
-    uint8_t* dst_ptr = new_pixel_data;
-
-    for (int y = 0; y < game->cover_height; ++y)
-    {
-        memcpy(dst_ptr, src_ptr, copy_bytes);
-        src_ptr += game->cover_rowbytes;
-        dst_ptr += new_rowbytes;
-    }
-
-    if (game->cover_has_mask && new_mask_data)
-    {
-        dst_ptr = new_mask_data;
-        for (int y = 0; y < game->cover_height; ++y)
-        {
-            memcpy(dst_ptr, src_ptr, copy_bytes);
-            src_ptr += game->cover_rowbytes;
-            dst_ptr += new_rowbytes;
-        }
-    }
-
-    return new_bitmap;
-}
-
 static bool cover_evict_lru(CB_LibraryScene* lib)
 {
     uint32_t smallest = UINT32_MAX;
@@ -318,9 +162,7 @@ static void cover_background_fill(CB_LibraryScene* lib)
         CB_Game* g = lib->games->items[idx];
         if (g->coverPath && !g->cover_compressed_data)
         {
-            CB_cover_compress_impl(
-                g, lib->lz4_state, &lib->cover_cache_bytes, &lib->cover_cached_count
-            );
+            CB_cover_compress(g, lib->lz4_state, &lib->cover_cache_bytes, &lib->cover_cached_count);
             found++;
         }
     }
@@ -329,21 +171,6 @@ static int last_selected_game_index = 0;
 static bool library_was_initialized_once = false;
 static int last_panel_seam = LCD_COLUMNS / 2;
 static CB_LibraryScene* s_active_library_scene = NULL;
-
-// Animation state for the "Downloading cover..." text
-static float coverDownloadAnimationTimer = 0.0f;
-static int coverDownloadAnimationStep = 0;
-
-typedef struct
-{
-    CB_LibraryScene* libraryScene;
-    CB_Game* game;
-    int retries;
-} CoverDownloadUserdata;
-
-#define COVER_DOWNLOAD_MAX_RETRIES 3
-
-static void cb_cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retries);
 
 static void save_last_selected_index(const char* rompath)
 {
@@ -390,303 +217,6 @@ static unsigned combined_display_mode(void)
 {
     return preferences_display_name_mode | (preferences_display_article << 3) |
            (preferences_display_sort << 6);
-}
-
-static void set_download_status(
-    CB_LibraryScene* self, CoverDownloadState state, const char* message
-)
-{
-    self->coverDownloadState = state;
-    if (self->coverDownloadMessage)
-    {
-        cb_free(self->coverDownloadMessage);
-    }
-    self->coverDownloadMessage = message ? cb_strdup(message) : NULL;
-    self->scene->forceFullRefresh = true;
-}
-
-static void on_cover_download_finished(unsigned flags, char* data, size_t data_len, void* ud)
-{
-    CoverDownloadUserdata* userdata = ud;
-    CB_LibraryScene* libraryScene = userdata->libraryScene;
-    CB_Game* game = userdata->game;
-
-    int currentSelectedIndex = libraryScene->listView->selectedItem;
-    CB_Game* currentlySelectedGame = NULL;
-    if (currentSelectedIndex >= 0 && currentSelectedIndex < libraryScene->games->length)
-    {
-        currentlySelectedGame = libraryScene->games->items[currentSelectedIndex];
-    }
-
-    bool stillOnSameGame = (currentlySelectedGame == game);
-    char* rom_basename_no_ext = NULL;
-    char* cover_dest_path = NULL;
-
-    // The game may have been deleted while the download was in flight
-    // (CB_LibraryScene_removeGame / CB_Game_free). Bail before ever
-    // dereferencing it.
-    bool game_still_exists = false;
-    for (int i = 0; i < libraryScene->games->length; ++i)
-    {
-        if (libraryScene->games->items[i] == game)
-        {
-            game_still_exists = true;
-            break;
-        }
-    }
-    if (!game_still_exists)
-        goto cleanup;
-
-    if (flags & HTTP_WIFI_NOT_AVAILABLE)
-    {
-        if (stillOnSameGame)
-        {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(net_wifi_unavailable));
-        }
-        goto cleanup;
-    }
-
-    if (flags & HTTP_NOT_FOUND)
-    {
-        if (stillOnSameGame)
-        {
-            set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, T(cover_no_cover));
-        }
-        goto cleanup;
-    }
-    else if ((flags & ~HTTP_ENABLE_ASKED) != 0 || data == NULL || data_len == 0)
-    {
-        if (stillOnSameGame)
-        {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_download_failed));
-        }
-        goto cleanup;
-    }
-
-    // Verify valid PDI header
-    const char* pdi_header = "Playdate IMG";
-    char* actual_data_start = strstr(data, pdi_header);
-
-    if (actual_data_start == NULL)
-    {
-        if (stillOnSameGame)
-        {
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_invalid_file));
-        }
-        goto cleanup;
-    }
-
-    // Calculate length from the found header to the end of the buffer
-    size_t new_data_len = data_len - (actual_data_start - data);
-
-    rom_basename_no_ext = cb_basename(game->names->filename, true);
-    if (!rom_basename_no_ext)
-    {
-        if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
-        goto cleanup;
-    }
-
-    playdate->system->formatString(
-        &cover_dest_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), rom_basename_no_ext
-    );
-
-    if (!cover_dest_path)
-    {
-        if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
-        goto cleanup;
-    }
-
-    // Safety: Ensure previous file is gone before writing
-    playdate->file->unlink(cover_dest_path, 0);
-
-    if (cb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
-    {
-        // Validate the downloaded PDI before committing it.
-        const char* verify_error = NULL;
-        LCDBitmap* verify_bitmap =
-            playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_dest_path), &verify_error);
-
-        if (!verify_bitmap)
-        {
-            if (verify_error)
-            {
-                playdate->system->logToConsole(
-                    "Downloaded cover failed to load, unlinking %s: %s", cover_dest_path,
-                    verify_error
-                );
-            }
-
-            playdate->file->unlink(cover_dest_path, 0);
-
-            if (userdata->retries < COVER_DOWNLOAD_MAX_RETRIES && stillOnSameGame)
-            {
-                cb_cover_download_issue(libraryScene, game, userdata->retries + 1);
-            }
-            else if (stillOnSameGame)
-            {
-                set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_invalid_file));
-            }
-            goto cleanup;
-        }
-        playdate->graphics->freeBitmap(verify_bitmap);
-
-        if (game->coverPath)
-        {
-            cb_free(game->coverPath);
-        }
-        game->coverPath = cb_strdup(cover_dest_path);
-
-        if (game->cover_compressed_data)
-        {
-            if (libraryScene->cover_cache_bytes >= (size_t)game->cover_compressed_size)
-                libraryScene->cover_cache_bytes -= game->cover_compressed_size;
-            libraryScene->cover_cached_count--;
-        }
-        CB_cover_free_compressed(game);
-        CB_cover_compress(
-            game, libraryScene->lz4_state, &libraryScene->cover_cache_bytes,
-            &libraryScene->cover_cached_count
-        );
-
-        if (stillOnSameGame)
-        {
-            cb_clear_global_cover_cache();
-
-            CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
-                game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
-            );
-            CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
-
-            CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
-
-            set_download_status(libraryScene, COVER_DOWNLOAD_IDLE, NULL);
-            CB_ListView_reload(libraryScene->listView);
-        }
-    }
-    else
-    {
-        if (stillOnSameGame)
-            set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_failed_save));
-    }
-
-cleanup:
-    if (cover_dest_path)
-    {
-        cb_free(cover_dest_path);
-    }
-    if (rom_basename_no_ext)
-    {
-        cb_free(rom_basename_no_ext);
-    }
-
-    if (data)
-    {
-        cb_free(data);
-    }
-
-    cb_free(userdata);
-}
-
-static void cb_cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retries)
-{
-    set_download_status(libraryScene, COVER_DOWNLOAD_SEARCHING, T(cover_searching));
-
-    if (game->names->name_database == NULL)
-    {
-        set_download_status(libraryScene, COVER_DOWNLOAD_NO_GAME_IN_DB, T(cover_no_cover_found));
-        return;
-    }
-
-    char* encoded_name = cb_url_encode_for_github_raw(game->names->name_database);
-    if (!encoded_name)
-    {
-        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
-        return;
-    }
-
-    char* p = encoded_name;
-    char* q = encoded_name;
-
-    while (*p)
-    {
-        if (*p == '&' || *p == ':')
-        {
-            *q++ = '_';
-            p++;
-        }
-        else if ((unsigned char)*p == 0xC3 && (unsigned char)*(p + 1) == 0xA9)
-        {
-            *q++ = 'e';
-            p += 2;
-        }
-        else
-        {
-            if (p != q)
-            {
-                *q = *p;
-            }
-            q++;
-            p++;
-        }
-    }
-    *q = '\0';
-
-    char* url_path;
-    playdate->system->formatString(
-        &url_path, "/CrankBoyHQ/crankboy-covers/raw/refs/heads/main/Combined_Boxarts/%s.pdi",
-        encoded_name
-    );
-
-    cb_free(encoded_name);
-
-    if (!url_path)
-    {
-        set_download_status(libraryScene, COVER_DOWNLOAD_FAILED, T(cover_internal_error));
-        return;
-    }
-
-    set_download_status(libraryScene, COVER_DOWNLOAD_DOWNLOADING, T(cover_downloading_long));
-
-    coverDownloadAnimationTimer = 0.0f;
-    coverDownloadAnimationStep = 0;
-    libraryScene->scene->forceFullRefresh = true;
-
-    CoverDownloadUserdata* userdata = cb_malloc(sizeof(CoverDownloadUserdata));
-    userdata->libraryScene = libraryScene;
-    userdata->game = game;
-    userdata->retries = retries;
-
-    if (libraryScene->activeCoverDownloadConnection)
-    {
-        // reclaim userdata of any in-flight download; the tombstoned
-        // connection will never invoke the callback.
-        cb_free(http_safe_ud(libraryScene->activeCoverDownloadConnection));
-        http_safe_free(libraryScene->activeCoverDownloadConnection);
-    }
-
-    libraryScene->activeCoverDownloadConnection = http_safe_new();
-
-    http_safe_replace_get(
-        libraryScene->activeCoverDownloadConnection, "github.com", url_path,
-        T(net_cover_art_reason), on_cover_download_finished, 15000, userdata
-    );
-
-    cb_free(url_path);
-}
-
-static void CB_LibraryScene_startCoverDownload(CB_LibraryScene* libraryScene)
-{
-    int selectedIndex = libraryScene->listView->selectedItem;
-    if (selectedIndex < 0 || selectedIndex >= libraryScene->games->length)
-    {
-        return;
-    }
-
-    CB_Game* game = libraryScene->games->items[selectedIndex];
-
-    cb_cover_download_issue(libraryScene, game, 0);
 }
 
 static void load_game_prefs(const char* game_path, bool onlyIfPerGameEnabled)
@@ -1358,36 +888,6 @@ static void on_update_modal_dismiss(void* ud, int option)
 }
 #endif
 
-static int page_advance = 0;
-
-__section__(".rare") static void CB_LibraryScene_event(
-    void* object, PDSystemEvent event, uint32_t arg
-)
-{
-    CB_LibraryScene* libraryScene = object;
-
-    switch (event)
-    {
-    case kEventKeyPressed:
-        playdate->system->logToConsole("Key pressed: %x\n", (unsigned)arg);
-
-        switch (arg)
-        {
-        case 0x64:
-            // [d] page up
-            page_advance = -8;
-            break;
-        case 0x66:
-            // [f] page down
-            page_advance = 8;
-            break;
-        }
-        break;
-    default:
-        break;
-    }
-}
-
 static bool homebrew_hub_available(void)
 {
     return CB_App->hbApiDomain && CB_App->hbApiPath;
@@ -1691,6 +1191,10 @@ static void library_rebuild_list_items(CB_LibraryScene* libraryScene)
     CB_ListView_reload(libraryScene->listView);
 }
 
+static void library_cycle_category(CB_LibraryScene* libraryScene, int dir);
+
+static bool library_is_flow_mode(const CB_LibraryScene* libraryScene);
+
 static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
 {
     if (libraryScene->state != kLibraryStateDone || libraryScene->tab != CB_LibrarySceneTabList)
@@ -1754,6 +1258,10 @@ static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
     }
 
     RomCategory* next = cats[idx];
+    // snapshot the current screen before swapping the model (flow mode only:
+    // the widget owns its own push animation)
+    if (library_is_flow_mode(libraryScene))
+        CB_CoverFlow_startSwitch(libraryScene->coverFlow, dir);
     library_set_active_category(libraryScene, next);
     library_apply_filter(libraryScene);
 
@@ -1782,6 +1290,7 @@ static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
 
     library_rebuild_list_items(libraryScene);
     library_update_filter_options(libraryScene);
+    CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
     libraryScene->scene->forceFullRefresh = true;
     cb_play_ui_sound(dir > 0 ? CB_UISound_NavigateDown : CB_UISound_NavigateUp);
 }
@@ -1869,7 +1378,6 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     scene->update = CB_LibraryScene_update;
     scene->free = CB_LibraryScene_free;
     scene->menu = CB_LibraryScene_menu;
-    scene->event = CB_LibraryScene_event;
 
     libraryScene->model = (CB_LibrarySceneModel){.empty = true, .tab = CB_LibrarySceneTabList};
 
@@ -1934,7 +1442,6 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     return libraryScene;
 }
 
-static void set_display_and_sort_name(CB_Game* game);
 static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
 {
     char* selectedFilename = NULL;
@@ -1950,7 +1457,7 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
     for (int i = 0; i < base_list->length; i++)
     {
         CB_Game* game = base_list->items[i];
-        set_display_and_sort_name(game);
+        CB_Game_set_display_and_sort_name(game);
     }
 
     cb_sort_games_array(base_list);
@@ -1977,6 +1484,12 @@ static void CB_LibraryScene_updateDisplayNames(CB_LibraryScene* libraryScene)
     libraryScene->listView->selectedItem = newSelectedIndex;
 
     library_rebuild_list_items(libraryScene);
+    CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
+}
+
+static bool library_is_flow_mode(const CB_LibraryScene* libraryScene)
+{
+    return preferences_library_view_mode != 0 && libraryScene->coverFlow != NULL;
 }
 
 static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
@@ -2108,7 +1621,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
                     CB_Game* g = libraryScene->games->items[i];
                     if (g->coverPath && !g->cover_compressed_data)
                     {
-                        CB_cover_compress_impl(
+                        CB_cover_compress(
                             g, libraryScene->lz4_state, &libraryScene->cover_cache_bytes,
                             &libraryScene->cover_cached_count
                         );
@@ -2307,6 +1820,7 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         library_apply_filter(libraryScene);
         library_update_filter_options(libraryScene);
         library_rebuild_list_items(libraryScene);
+        CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
         int max_valid =
             libraryScene->games->length + (library_get_roms_visible(libraryScene) ? 1 : 0) - 1;
         if (libraryScene->listView->selectedItem > max_valid)
@@ -2322,11 +1836,11 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
     if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
     {
-        coverDownloadAnimationTimer += dt;
-        if (coverDownloadAnimationTimer >= 0.5f)  // 500 ms
+        cover_download_anim_timer += dt;
+        if (cover_download_anim_timer >= 0.5f)  // 500 ms
         {
-            coverDownloadAnimationTimer -= 0.5f;
-            coverDownloadAnimationStep = (coverDownloadAnimationStep + 1) % 4;
+            cover_download_anim_timer -= 0.5f;
+            cover_download_anim_step = (cover_download_anim_step + 1) % 4;
             libraryScene->scene->forceFullRefresh = true;
         }
     }
@@ -2398,8 +1912,20 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
             if (!hasCover && hasDBMatch && libraryScene->coverDownloadState == COVER_DOWNLOAD_IDLE)
             {
                 cb_play_ui_sound(CB_UISound_Confirm);
-                CB_LibraryScene_startCoverDownload(libraryScene);
+                cover_download_start_selected(libraryScene);
             }
+        }
+    }
+    else if (library_is_flow_mode(libraryScene))
+    {
+        // Cover Flow owns left/right for stepping; categories ride up/down
+        if (pressed & kButtonUp)
+        {
+            library_cycle_category(libraryScene, -1);
+        }
+        else if (pressed & kButtonDown)
+        {
+            library_cycle_category(libraryScene, 1);
         }
     }
     else if (pressed & kButtonLeft)
@@ -2450,6 +1976,101 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     libraryScene->initialLoadComplete = true;
 }
 
+// state common to the two cover status panels (list right panel + cover flow
+// placeholder): one mapping from scene state to content, drawn differently per view
+typedef enum
+{
+    CB_CoverPanelHomebrew,
+    CB_CoverPanelInvalidImage,  // corrupt/unloadable cover file
+    CB_CoverPanelError,
+    CB_CoverPanelDownloading,
+    CB_CoverPanelMessage,
+    CB_CoverPanelMissingDB,  // cover downloadable (title DB match)
+    CB_CoverPanelMissingNoDB
+} CB_CoverPanelKind;
+
+typedef struct
+{
+    CB_CoverPanelKind kind;
+    // single-string kinds: the whole message (Homebrew/Invalid/Image/Message)
+    const char* message;
+    // Missing kinds: the manual-copy instruction stack (caller frees coversPath)
+    CB_Game* game;
+    char* coversPath;
+    // Downloading: base string + dot count for the composed status text
+    const char* downloadingBase;
+    int dots;
+} CB_CoverPanelState;
+
+static CB_CoverPanelState library_cover_panel_state(
+    CB_LibraryScene* libraryScene, int selectedIndex
+)
+{
+    CB_CoverPanelState state = {0};
+
+    if (selectedIndex == libraryScene->games->length)
+    {
+        state.kind = CB_CoverPanelHomebrew;
+        state.message = T(lib_homebrew_banner);
+        return state;
+    }
+
+    if (selectedIndex >= 0 && selectedIndex < libraryScene->games->length)
+    {
+        state.game = libraryScene->games->items[selectedIndex];
+    }
+
+    CB_CoverArtStatus artStatus = CB_App->coverArtCache.art.status;
+    if (artStatus != CB_COVER_ART_FILE_NOT_FOUND && artStatus != CB_COVER_ART_SUCCESS)
+    {
+        state.kind = (artStatus == CB_COVER_ART_INVALID_IMAGE) ? CB_CoverPanelInvalidImage
+                                                               : CB_CoverPanelError;
+        state.message =
+            (artStatus == CB_COVER_ART_INVALID_IMAGE) ? T(lib_invalid_image) : T(lib_error);
+        return state;
+    }
+
+    if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
+        libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
+    {
+        if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+        {
+            static const int dot_counts[] = {0, 1, 2, 3};
+            state.kind = CB_CoverPanelDownloading;
+            state.downloadingBase = T(cover_downloading);
+            state.dots = dot_counts[cover_download_anim_step];
+        }
+        else
+        {
+            state.kind = CB_CoverPanelMessage;
+            state.message = libraryScene->coverDownloadMessage ? libraryScene->coverDownloadMessage
+                                                               : T(lib_please_wait);
+        }
+        return state;
+    }
+
+    state.kind = (state.game && state.game->names->name_database) ? CB_CoverPanelMissingDB
+                                                                  : CB_CoverPanelMissingNoDB;
+    state.message =
+        state.kind == CB_CoverPanelMissingDB ? T(lib_press_download) : T(cover_no_db_match);
+    if (state.game)
+    {
+        state.coversPath =
+            cb_system_directory_path_for_slug(state.game->names->system_slug, CB_coversPath);
+    }
+    return state;
+}
+
+// compose the animated "Downloading…" dots text (shared by both panels)
+static void library_cover_panel_dots_text(char* buf, size_t size, const char* base, int dots)
+{
+    snprintf(buf, size, "%s", base);
+    for (int i = 0; i < dots; i++)
+    {
+        strncat(buf, ".", size - strlen(buf) - 1);
+    }
+}
+
 static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimation)
 {
     bool needsDisplay = forAnimation;
@@ -2477,8 +2098,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
     if (libraryScene->tab == CB_LibrarySceneTabList)
     {
-        bool flowMode = (preferences_library_view_mode != 0) && libraryScene->coverFlow;
-        flowMode = false;  // Cover Flow disabled (WIP)
+        bool flowMode = library_is_flow_mode(libraryScene);
 
         if (flowMode != libraryScene->last_view_flow)
         {
@@ -2488,20 +2108,25 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
         }
 
+        bool show_flow_bar = library_has_filter_options(libraryScene);
+        RomCategory* flow_cat = show_flow_bar ? library_active_category(libraryScene) : NULL;
+        const char* flow_cat_name =
+            show_flow_bar ? (flow_cat ? romcategory_display_name(flow_cat) : T(cat_all)) : NULL;
+
         CB_CoverFlowContext flowCtx = {
             .games = libraryScene->games,
             .itemCount = libraryScene->listView->items->length,
             .selection = &libraryScene->listView->selectedItem,
             .forceRedraw = needsDisplay && !forAnimation,
-            .statusText = NULL
+            .categoryName = flow_cat_name,
+            .trailingTitle = T(Library_GetRoms),
+            .xShift = libraryScene->launchAnimShiftRight - libraryScene->launchAnimShiftLeft
         };
 
-        if (!forAnimation)
+        if (flowMode)
         {
-            if (flowMode)
+            if (!forAnimation)
                 CB_CoverFlow_update(libraryScene->coverFlow, &flowCtx);
-            else
-                CB_ListView_update(libraryScene->listView);
         }
 
         int selectedIndex = libraryScene->listView->selectedItem;
@@ -2599,32 +2224,67 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 
         if (flowMode)
         {
-            char statusBuf[64];
-            if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
-                libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
+            // flow draws its own top row (category + counter); no shared bar
+            filter_bar_width = 0;
+
+            char* coversPath = NULL;
+            if (selectedIndex >= 0 && selectedIndex <= libraryScene->games->length)
             {
-                if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+                CB_CoverPanelState panel = library_cover_panel_state(libraryScene, selectedIndex);
+                char statusBuf[64];
+
+                switch (panel.kind)
                 {
-                    const int dot_counts[] = {0, 1, 2, 3};
-                    int num_dots = dot_counts[coverDownloadAnimationStep];
-                    snprintf(statusBuf, sizeof(statusBuf), "%s", T(cover_downloading));
-                    for (int i = 0; i < num_dots; i++)
+                case CB_CoverPanelHomebrew:
+                case CB_CoverPanelInvalidImage:
+                case CB_CoverPanelError:
+                    flowCtx.placeholder[0].text = panel.message;
+                    break;
+                case CB_CoverPanelDownloading:
+                    // valid through the CB_CoverFlow_draw call below
                     {
-                        strncat(statusBuf, ".", sizeof(statusBuf) - strlen(statusBuf) - 1);
+                        char fullDots[64];
+                        library_cover_panel_dots_text(
+                            statusBuf, sizeof(statusBuf), panel.downloadingBase, panel.dots
+                        );
+                        flowCtx.placeholder[1].text = statusBuf;
+
+                        // lay the line out at the fully-dotted width
+                        // so the growing dots never shift the text
+                        snprintf(fullDots, sizeof(fullDots), "%s...", panel.downloadingBase);
+                        flowCtx.placeholder[1].hintWidth = playdate->graphics->getTextWidth(
+                            CB_App->subheadFont, fullDots, strlen(fullDots), kUTF8Encoding, 0
+                        );
                     }
+                    break;
+                case CB_CoverPanelMessage:
+                    flowCtx.placeholder[1].text = panel.message;
+                    break;
+                case CB_CoverPanelMissingDB:
+                case CB_CoverPanelMissingNoDB:
+                    flowCtx.placeholder[0].text = T(cover_missing_title);
+                    flowCtx.placeholder[1].text = panel.message;
+                    flowCtx.placeholder[2].text = T(label_or_separator);
+                    flowCtx.placeholder[3].text = T(cover_connect_computer);
+                    flowCtx.placeholder[4].text = T(cover_copy_to);
+                    flowCtx.placeholder[5].text = panel.coversPath;
+                    coversPath = panel.coversPath;
+                    break;
                 }
-                else
-                {
-                    snprintf(
-                        statusBuf, sizeof(statusBuf), "%s",
-                        libraryScene->coverDownloadMessage ? libraryScene->coverDownloadMessage
-                                                           : T(lib_please_wait)
-                    );
-                }
-                flowCtx.statusText = statusBuf;
+
+                // anti-jitter: double gap before the path line
+                flowCtx.placeholder[5].font =
+                    CB_App->labelFont ? CB_App->labelFont : CB_App->bodyFont;
+                flowCtx.placeholder[5].gapBefore = 4;
+
+                flowCtx.placeholderAnimated = (panel.kind == CB_CoverPanelDownloading);
             }
 
             CB_CoverFlow_draw(libraryScene->coverFlow, &flowCtx);
+            if (coversPath)
+            {
+                cb_free(coversPath);
+            }
         }
         else
         {
@@ -2659,20 +2319,8 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             last_panel_seam = leftPanelWidth;
             filter_bar_width = show_filter_bar ? leftPanelWidth : 0;
 
-#ifdef TARGET_SIMULATOR
-            while (page_advance > 0)
-            {
-                --page_advance;
-                CB_App->buttons_pressed = kButtonDown;
+            if (!forAnimation)
                 CB_ListView_update(libraryScene->listView);
-            }
-            while (page_advance < 0)
-            {
-                ++page_advance;
-                CB_App->buttons_pressed = kButtonUp;
-                CB_ListView_update(libraryScene->listView);
-            }
-#endif
 
             CB_ListView_draw(libraryScene->listView);
 
@@ -2756,41 +2404,33 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                         }
                         else
                         {
-                            if (libraryScene->coverDownloadState != COVER_DOWNLOAD_IDLE &&
-                                libraryScene->coverDownloadState != COVER_DOWNLOAD_COMPLETE)
+                            CB_CoverPanelState panel =
+                                library_cover_panel_state(libraryScene, selectedIndex);
+
+                            if (panel.kind == CB_CoverPanelDownloading ||
+                                panel.kind == CB_CoverPanelMessage)
                             {
                                 char message[64];
                                 char width_ref[64];
                                 const char* width_calc_string = NULL;
 
-                                if (libraryScene->coverDownloadState == COVER_DOWNLOAD_DOWNLOADING)
+                                if (panel.kind == CB_CoverPanelDownloading)
                                 {
-                                    const char* base_text = T(cover_downloading);
-                                    // Animation sequence: 0 dots, 1 dots, 2 dot, 3 dots
-                                    const int dot_counts[] = {0, 1, 2, 3};
-                                    int num_dots = dot_counts[coverDownloadAnimationStep];
-
                                     // Use the fully-dotted form of the same string for width
                                     // calculation to prevent jitter. Must derive from the same
                                     // key so translations can't skew the centering.
-                                    snprintf(width_ref, sizeof(width_ref), "%s...", base_text);
+                                    snprintf(
+                                        width_ref, sizeof(width_ref), "%s...", panel.downloadingBase
+                                    );
                                     width_calc_string = width_ref;
 
-                                    snprintf(message, sizeof(message), "%s", base_text);
-                                    for (int i = 0; i < num_dots; i++)
-                                    {
-                                        strncat(
-                                            message, ".", sizeof(message) - strlen(message) - 1
-                                        );
-                                    }
+                                    library_cover_panel_dots_text(
+                                        message, sizeof(message), panel.downloadingBase, panel.dots
+                                    );
                                 }
                                 else
                                 {
-                                    const char* defaultMessage =
-                                        libraryScene->coverDownloadMessage
-                                            ? libraryScene->coverDownloadMessage
-                                            : T(lib_please_wait);
-                                    snprintf(message, sizeof(message), "%s", defaultMessage);
+                                    snprintf(message, sizeof(message), "%s", panel.message);
                                 }
 
                                 if (width_calc_string == NULL)
@@ -2814,36 +2454,21 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                                     message, strlen(message), kUTF8Encoding, textX, textY
                                 );
                             }
-                            else
+                            else if (
+                                panel.kind == CB_CoverPanelMissingDB ||
+                                panel.kind == CB_CoverPanelMissingNoDB
+                            )
                             {
-                                CB_Game* selectedGame = libraryScene->games->items[selectedIndex];
-                                bool hasDBMatch = (selectedGame->names->name_database != NULL);
+                                bool hasDBMatch = (panel.kind == CB_CoverPanelMissingDB);
 
                                 const char* title = T(cover_missing_title);
-                                char middle_message[32];
-
-                                if (hasDBMatch)
-                                {
-                                    snprintf(
-                                        middle_message, sizeof(middle_message), "%s",
-                                        T(lib_press_download)
-                                    );
-                                }
-                                else
-                                {
-                                    snprintf(
-                                        middle_message, sizeof(middle_message), "%s",
-                                        T(cover_no_db_match)
-                                    );
-                                }
+                                const char* middle_message = panel.message;
 
                                 // Common messages for the footer
                                 const char* message_or = T(label_or_separator);
                                 const char* message_connect = T(cover_connect_computer);
                                 const char* message_copy = T(cover_copy_to);
-                                char* message_path = cb_system_directory_path_for_slug(
-                                    selectedGame->names->system_slug, CB_coversPath
-                                );
+                                char* message_path = panel.coversPath;
 
                                 LCDFont* titleFont = CB_App->bodyFont;
                                 LCDFont* bodyFont = CB_App->subheadFont;
@@ -3229,154 +2854,11 @@ static void CB_LibraryScene_free(void* object)
     cb_free(libraryScene);
 }
 
-static void set_display_and_sort_name(CB_Game* game)
+// drop the cover-flow slot cache so deleted covers disappear immediately
+void CB_LibraryScene_invalidateFlow(void)
 {
-    // set display name
-    switch (preferences_display_name_mode)
-    {
-    case DISPLAY_NAME_MODE_SHORT:
-        game->displayName = (preferences_display_article) ? game->names->name_short
-                                                          : game->names->name_short_leading_article;
-        break;
-    case DISPLAY_NAME_MODE_DETAILED:
-        game->displayName = (preferences_display_article)
-                                ? game->names->name_detailed
-                                : game->names->name_detailed_leading_article;
-        break;
-    case DISPLAY_NAME_MODE_FILENAME:
-    default:
-        game->displayName = (preferences_display_article)
-                                ? game->names->name_filename
-                                : game->names->name_filename_leading_article;
-        break;
-    }
-
-    // set sort name
-    switch (preferences_display_sort)
-    {
-    default:
-    case 0:
-        game->sortName = game->names->name_filename;
-        break;
-    case 1:
-        game->sortName = game->names->name_detailed;
-        break;
-    case 2:
-        game->sortName = game->names->name_detailed_leading_article;
-        break;
-    case 3:
-        game->sortName = game->names->name_filename_leading_article;
-        break;
-    }
-}
-
-CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
-{
-    CB_Game* game = cb_malloc(sizeof(CB_Game));
-    memset(game, 0, sizeof(CB_Game));
-
-    char* fullpath_str = NULL;
-
-    if (cachedName->fullpath)
-    {
-        fullpath_str = cb_strdup(cachedName->fullpath);
-    }
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-    else if (CB_App->packed_filenames && CB_App->packed_filenames->length > 0)
-    {
-        char** found = (char**)bsearch(
-            &cachedName->filename, CB_App->packed_filenames->items,
-            CB_App->packed_filenames->length, sizeof(char*), cb_compare_strings
-        );
-        if (found)
-        {
-            fullpath_str = aprintf("packed/%s", cachedName->filename);
-        }
-    }
-#endif
-
-    if (!fullpath_str)
-    {
-        char* games_dir = cb_system_directory_path_for_slug(cachedName->system_slug, CB_gamesPath);
-        playdate->system->formatString(&fullpath_str, "%s/%s", games_dir, cachedName->filename);
-        cb_free(games_dir);
-    }
-
-    game->fullpath = fullpath_str;
-
-    game->names = cachedName;
-    set_display_and_sort_name(game);
-
-    char* basename_no_ext = cb_rom_basename(cachedName->filename);
-
-    // available_covers lists gb's covers only
-    bool other_system = cachedName->system_slug && strcmp(cachedName->system_slug, GB_SYSTEM_SLUG);
-    if (other_system)
-    {
-        char* covers_dir =
-            cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
-        char* path = aprintf("%s/%s.pdi", covers_dir, basename_no_ext);
-        cb_free(covers_dir);
-        if (cb_file_exists(path, kFileReadData | kFileRead))
-            game->coverPath = path;
-        else
-            cb_free(path);
-        cb_free(basename_no_ext);
-        return game;
-    }
-
-    char** found_cover_name_ptr = (char**)bsearch(
-        &basename_no_ext, available_covers->items, available_covers->length, sizeof(char*),
-        cb_compare_strings
-    );
-
-    if (found_cover_name_ptr == NULL)
-    {
-        char* cleanName_no_ext = cb_strdup(basename_no_ext);
-        cb_sanitize_string_for_filename(cleanName_no_ext);
-        found_cover_name_ptr = (char**)bsearch(
-            &cleanName_no_ext, available_covers->items, available_covers->length, sizeof(char*),
-            cb_compare_strings
-        );
-        cb_free(cleanName_no_ext);
-    }
-
-    if (found_cover_name_ptr)
-    {
-        const char* found_cover_name = *found_cover_name_ptr;
-
-#ifdef CRANKBOY_OFFICIAL_CATALOG
-        if (strncmp(game->fullpath, "packed/", 7) == 0)
-        {
-            game->coverPath = aprintf("packed/%s.pdi", found_cover_name);
-        }
-        else
-#endif
-        {
-            char* covers_dir =
-                cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
-            playdate->system->formatString(
-                &game->coverPath, "%s/%s.pdi", covers_dir, found_cover_name
-            );
-            cb_free(covers_dir);
-        }
-    }
-    else
-    {
-        game->coverPath = NULL;
-    }
-
-    cb_free(basename_no_ext);
-
-    return game;
-}
-
-void CB_Game_free(CB_Game* game)
-{
-    cb_free(game->fullpath);
-    cb_free(game->coverPath);
-    CB_cover_free_compressed(game);
-    cb_free(game);
+    if (s_active_library_scene && s_active_library_scene->coverFlow)
+        CB_CoverFlow_invalidateAll(s_active_library_scene->coverFlow);
 }
 
 bool CB_LibraryScene_removeGame(CB_Game* game)

@@ -8,14 +8,13 @@
 
 #pragma once
 
-#include "../app.h"
 #include "../array.h"
 #include "../coverflow.h"
 #include "../http_safe.h"
 #include "../listview.h"
 #include "../romcategory.h"
 #include "../scene.h"
-#include "game_scene.h"
+#include "cover_download.h"
 
 #include <stdio.h>
 
@@ -42,16 +41,6 @@ typedef struct
 
 typedef enum
 {
-    COVER_DOWNLOAD_IDLE,
-    COVER_DOWNLOAD_SEARCHING,
-    COVER_DOWNLOAD_DOWNLOADING,
-    COVER_DOWNLOAD_FAILED,
-    COVER_DOWNLOAD_NO_GAME_IN_DB,
-    COVER_DOWNLOAD_COMPLETE
-} CoverDownloadState;
-
-typedef enum
-{
     kLibraryStateInit,
     kLibraryStateBuildGameList,
     kLibraryStatePreloadCovers,
@@ -66,25 +55,6 @@ typedef enum
     CB_BundledRefreshHide,
     CB_BundledRefreshShowBuild
 } CB_BundledRefreshState;
-
-typedef struct CB_Game
-{
-    char* fullpath;
-    char* coverPath;
-
-    const CB_GameName* names;
-
-    char* displayName;
-    char* sortName;
-
-    void* cover_compressed_data;
-    int cover_compressed_size;
-    int cover_width;
-    int cover_height;
-    int cover_rowbytes;
-    bool cover_has_mask;
-    uint32_t cover_access_counter;
-} CB_Game;
 
 typedef struct CB_LibraryScene
 {
@@ -160,16 +130,8 @@ typedef struct CB_LibraryScene
 
 CB_LibraryScene* CB_LibraryScene_new(void);
 
-CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers);
-void CB_Game_free(CB_Game* game);
-
-void CB_cover_compress(
-    CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
-);
-void CB_cover_free_compressed(CB_Game* game);
-
-LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size);
-
 // returns true if removal succeeded
 // does not delete game on disk
 bool CB_LibraryScene_removeGame(CB_Game* game);
+// drop the cover-flow slot cache so deleted covers disappear immediately
+void CB_LibraryScene_invalidateFlow(void);

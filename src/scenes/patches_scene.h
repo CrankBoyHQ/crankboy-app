@@ -1,8 +1,9 @@
 #pragma once
 
+#include "../game.h"
 #include "../listview.h"
+#include "../scene.h"
 #include "../softpatch.h"
-#include "library_scene.h"
 
 typedef struct CB_PatchesScene
 {

@@ -126,7 +126,6 @@ CB_ListView* CB_ListView_new(void)
     };
 
     listView->textScrollTime = 0;
-    listView->textScrollPause = 0;
 
     listView->paddingTop = 0;
     listView->paddingBottom = 0;
@@ -432,91 +431,11 @@ void CB_ListView_update(CB_ListView* listView)
 
             if (button->needsTextScroll)
             {
-                listView->textScrollTime += CB_App->dt;
-
-                // Pixels per second for scroll-to-end
-                const float TEXT_SCROLL_BASE_SPEED_PPS = 50.0f;
-
-                // Prevents super-fast scrolls for tiny overflows.
-                const float MIN_SCROLL_DURATION = 0.75f;
-
-                // Makes scroll-back duration 2/3 of scroll-to-end duration
-                const float SCROLL_BACK_DURATION_FACTOR = 2.0f / 3.0f;
-
-                float pauseAtStartDuration = 0.7f;
-                float pauseAtEndDuration = 1.5f;
-
-                float maxOffset = textWidth - availableWidth;
-
-                if (maxOffset <= 0)
-                {
-                    button->textScrollOffset = 0.0f;
-                }
-                else
-                {
-                    float dynamicScrollToEndDuration = maxOffset / TEXT_SCROLL_BASE_SPEED_PPS;
-                    float dynamicScrollToStartDuration =
-                        dynamicScrollToEndDuration * SCROLL_BACK_DURATION_FACTOR;
-                    ;
-
-                    if (dynamicScrollToEndDuration < MIN_SCROLL_DURATION)
-                    {
-                        dynamicScrollToEndDuration = MIN_SCROLL_DURATION;
-                    }
-                    if (dynamicScrollToStartDuration < MIN_SCROLL_DURATION)
-                    {
-                        dynamicScrollToStartDuration = MIN_SCROLL_DURATION;
-                    }
-
-                    float totalCycleDuration = pauseAtStartDuration + dynamicScrollToEndDuration +
-                                               pauseAtEndDuration + dynamicScrollToStartDuration;
-
-                    listView->textScrollTime = fmodf(listView->textScrollTime, totalCycleDuration);
-
-                    float currentTimeInCycle = listView->textScrollTime;
-
-                    if (currentTimeInCycle < pauseAtStartDuration)
-                    {
-                        button->textScrollOffset = 0.0f;
-                    }
-                    else if (
-                        currentTimeInCycle < (pauseAtStartDuration + dynamicScrollToEndDuration)
-                    )
-                    {
-                        float timeIntoScrollToEnd = currentTimeInCycle - pauseAtStartDuration;
-                        float normalizedScrollProgress = 0.0f;
-                        if (dynamicScrollToEndDuration > 0)
-                        {
-                            normalizedScrollProgress =
-                                timeIntoScrollToEnd / dynamicScrollToEndDuration;
-                        }
-
-                        button->textScrollOffset =
-                            cb_easeInOutQuad(normalizedScrollProgress) * maxOffset;
-                    }
-                    else if (
-                        currentTimeInCycle <
-                        (pauseAtStartDuration + dynamicScrollToEndDuration + pauseAtEndDuration)
-                    )
-                    {
-                        button->textScrollOffset = maxOffset;
-                    }
-                    else  // Scrolling to start
-                    {
-                        float timeIntoScrollToStart =
-                            currentTimeInCycle - (pauseAtStartDuration +
-                                                  dynamicScrollToEndDuration + pauseAtEndDuration);
-                        float normalizedScrollProgress = 0.0f;
-                        if (dynamicScrollToStartDuration > 0)
-                        {
-                            normalizedScrollProgress =
-                                timeIntoScrollToStart / dynamicScrollToStartDuration;
-                        }
-
-                        button->textScrollOffset =
-                            (1.0f - cb_easeInOutQuad(normalizedScrollProgress)) * maxOffset;
-                    }
-                }
+                bool scrolling = false;
+                button->textScrollOffset = cb_marquee_offset(
+                    &listView->textScrollTime, listView->font, button->title, availableWidth,
+                    &scrolling
+                );
                 listView->needsDisplay = true;
             }
             else
@@ -806,7 +725,6 @@ void CB_ListView_selectItem(CB_ListView* listView, int index, bool animated)
     }
 
     listView->textScrollTime = 0;
-    listView->textScrollPause = 0;
 
     if (listView->selectedItem >= 0 && listView->selectedItem < listView->items->length)
     {

@@ -1,7 +1,7 @@
 #pragma once
 
+#include "../game.h"
 #include "../scene.h"
-#include "library_scene.h"
 
 typedef struct CB_ManageRomScene
 {

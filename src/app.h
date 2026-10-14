@@ -9,9 +9,9 @@
 #ifndef app_h
 #define app_h
 
+#include "covers.h"
 #include "romcategory.h"
 #include "scene.h"
-#include "utility.h"
 
 #include <pd_api.h>
 #include <stdatomic.h>
@@ -113,12 +113,6 @@ typedef struct CB_GameName
 
 // Note: does not free CB_GameName struct, only its members.
 void free_game_names(const CB_GameName* gameNames);
-
-typedef struct
-{
-    CB_LoadedCoverArt art;
-    char* rom_path;
-} CB_GlobalCoverCache;
 
 typedef struct emucore_s
 {
@@ -295,13 +289,12 @@ const char* CB_get_forwarded_path(const char* path);
 #define __shell
 #else
 #ifdef ITCM_CORE
-#define __shell                                                     \
-    __attribute__((long_call)) __attribute((noinline)) __section__( \
-        ".text."                                                    \
-        "cb"                                                        \
-    ) __attribute__((optimize("Os")))
+#define __shell                                                                               \
+    __attribute__((long_call)) __attribute__((noinline)) __attribute__((section(".text.cb"))) \
+    __attribute__((optimize("Os")))
 #else
-#define __shell __attribute((noinline)) __section__(".text.cb") __attribute__((optimize("Os")))
+#define __shell \
+    __attribute__((noinline)) __attribute__((section(".text.cb"))) __attribute__((optimize("Os")))
 #endif
 #endif
 

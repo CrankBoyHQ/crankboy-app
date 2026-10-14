@@ -13,6 +13,7 @@
 #include "../emucore_prefs.h"
 #include "../preferences.h"
 #include "../revcheck.h"  // IWYU pragma: keep
+#include "../scenes/library_scene.h"
 #include "../scenes/modal.h"
 #include "../script.h"
 #include "../utility.h"
@@ -987,9 +988,7 @@ const char** display_name_mode_labels;
 const char** sort_labels;
 const char** article_labels;
 const char** show_hide_labels;
-#if 0
 const char** view_mode_labels;
-#endif
 const char** next_scene;
 
 static int settings_labels_initialized = 0;
@@ -1238,12 +1237,10 @@ static void CB_init_settings_labels(void)
     show_hide_labels[1] = T(setval_show);
     show_hide_labels[2] = NULL;
 
-#if 0
     view_mode_labels = cb_malloc(3 * sizeof(const char*));
     view_mode_labels[0] = T(setval_list);
     view_mode_labels[1] = T(setval_cover_flow);
     view_mode_labels[2] = NULL;
-#endif
 
     next_scene = cb_malloc(2 * sizeof(const char*));
     next_scene[0] = T(setval_arrow);
@@ -2765,7 +2762,6 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .on_press = NULL
     };
 
-#if 0
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_view),
         .values = view_mode_labels,
@@ -2774,7 +2770,6 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .max_value = 2,
         .on_press = NULL
     };
-#endif
 
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_remember_last),

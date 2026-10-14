@@ -1,6 +1,9 @@
 #include "patches_scene.h"
 
+#include "../app.h"
+#include "../game.h"
 #include "../userstack.h"
+#include "../utility.h"
 
 #define HEADER_HEIGHT 18
 #define kDividerX 240

@@ -1,6 +1,7 @@
 #include "info_scene.h"
 
 #include "../app.h"
+#include "../utility.h"
 
 #include <ctype.h>
 #include <math.h>

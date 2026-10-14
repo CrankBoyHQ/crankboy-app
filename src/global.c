@@ -3,6 +3,7 @@
 #include "app.h"
 #include "jparse.h"
 #include "userstack.h"
+#include "utility.h"
 
 struct global_t global;
 

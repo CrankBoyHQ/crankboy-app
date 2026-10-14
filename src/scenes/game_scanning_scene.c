@@ -5,7 +5,6 @@
 #include "../app.h"
 #include "../hubdownloads.h"
 #include "../jparse.h"
-#include "../preferences.h"
 #include "../script.h"
 #include "../utility.h"
 #include "image_conversion_scene.h"

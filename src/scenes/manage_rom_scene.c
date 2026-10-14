@@ -357,6 +357,7 @@ static void delete_cover_confirmed(void* ud, int option)
         CB_cover_free_compressed(game);
     }
     cb_clear_global_cover_cache();
+    CB_LibraryScene_invalidateFlow();
     self->cursorIndex = 1;
     clamp_cursor(self, 1);
 }

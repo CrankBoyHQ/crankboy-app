@@ -1,6 +1,6 @@
-#include "pd_api.h"
-#include "pd_api/pd_api_file.h"
-#include "pd_api/pd_api_sys.h"
+#include <pd_api.h>
+#include <pd_api/pd_api_file.h>
+#include <pd_api/pd_api_sys.h>
 #include "utility.h"
 
 #include <ctype.h>
@@ -261,7 +261,7 @@ static bool is_gyoto_cp(unsigned int cp)
 
 // Auxiliaries that may start a line: a break BEFORE them is safe
 // (おすすめ|します, して|ください). Only unambiguous auxiliaries of >=3 kana
-// may be added here — never ます/です alone: they match at wrong offsets
+// may be added here, but never ます/です alone: they match at wrong offsets
 // inside します etc. and appear inside compounds.
 static const char* const break_before_aux[] = {"します", "ください"};
 

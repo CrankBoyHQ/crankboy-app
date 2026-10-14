@@ -3,7 +3,7 @@
 #include "../libs/libcrankemu/libcrankemu.h"
 #include "../libs/pdll/pdll.h"
 #include "app.h"
-#include "dtcm.h"
+#include "dtcm.h"  // IWYU pragma: keep
 #include "emucore_prefs.h"
 #include "preferences.h"
 #include "scenes/emucore_game_scene.h"

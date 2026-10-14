@@ -4,7 +4,6 @@
 #include "ft.h"
 #include "revcheck.h"
 #include "scenes/game_scene.h"
-#include "scenes/library_scene.h"
 #include "scenes/sft_modal.h"
 #include "utility.h"
 #include "version.h"
