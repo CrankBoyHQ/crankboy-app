@@ -930,7 +930,8 @@ static void CB_SettingsScene_attemptDismiss(CB_SettingsScene* settingsScene, boo
             preferences_per_game, game_settings_path ? game_settings_path : "(null)",
             CB_globalPrefsPath
         );
-        CB_presentModal(CB_Modal_new(T(modal_save_prefs_error), NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(T(modal_save_prefs_error), ok_options, NULL, NULL)->scene);
     }
     else
     {
@@ -1381,7 +1382,8 @@ static void confirm_save_state(CB_SettingsScene* settingsScene, int option)
     {
         char* msg;
         playdate->system->formatString(&msg, T(modal_save_state_error), playdate->file->geterr());
-        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(msg, ok_options, NULL, NULL)->scene);
         cb_free(msg);
     }
     else
@@ -1423,7 +1425,8 @@ static void settings_post_action_lock_button(
     {
         has_warned = true;
 
-        CB_Modal* modal = CB_Modal_new(T(modal_lock_button_info), NULL, NULL, NULL);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_Modal* modal = CB_Modal_new(T(modal_lock_button_info), ok_options, NULL, NULL);
 
         modal->warning = CB_MODAL_WARNING_TOP;
 
@@ -1493,7 +1496,8 @@ static void settings_post_action_script(
         ScriptInfo* info = script_get_info_by_rom_path(gameScene->rom_filename);
         if (info->experimental)
         {
-            CB_Modal* modal = CB_Modal_new(T(modal_script_experimental), NULL, NULL, NULL);
+            const char* ok_options[] = {T(label_ok), NULL};
+            CB_Modal* modal = CB_Modal_new(T(modal_script_experimental), ok_options, NULL, NULL);
 
             CB_presentModal(modal->scene);
         }

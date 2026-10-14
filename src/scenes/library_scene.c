@@ -1252,7 +1252,7 @@ static void launch_game_after_later_info(void* ud, int option)
 
 static void launch_game_recommended_cb(void* ud, int option)
 {
-    // 0 = Apply, 1 = Later. B-dismiss (don't launch)
+    // 0 = Apply; 1 = Ignore -> shows info modal. B dismisses without launching
     CB_Game* game = ud;
     if (option == 0)
     {
@@ -1284,8 +1284,10 @@ static void launch_game_recommended_cb(void* ud, int option)
         preferences_restore_subset(stored);
         cb_free(stored);
 
-        CB_Modal* info_modal =
-            CB_Modal_new(T(setdsc_apply_recommended), NULL, launch_game_after_later_info, game);
+        const char* launch_options[] = {T(label_launch), NULL};
+        CB_Modal* info_modal = CB_Modal_new(
+            T(setdsc_apply_recommended), launch_options, launch_game_after_later_info, game
+        );
         CB_presentModal(info_modal->scene);
     }
 }
@@ -2228,12 +2230,15 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
             if (modal_result)
             {
+                const char* ok_options[] = {T(label_ok), NULL};
                 CB_Modal* modal =
-                    CB_Modal_new(modal_result, NULL, on_update_modal_dismiss, update_info);
+                    CB_Modal_new(modal_result, ok_options, on_update_modal_dismiss, update_info);
                 cb_free(modal_result);
 
                 if (modal)
                 {
+                    int auto_h = modal->height;
+
                     if (update_info->w > 0)
                     {
                         modal->width = update_info->w;
@@ -2241,7 +2246,9 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
                     if (update_info->h > 0)
                     {
-                        modal->height = update_info->h;
+                        // remote config was sized for button-less modals; keep at
+                        // least the auto-size height so the OK button stays clear
+                        modal->height = CB_MAX(CB_MIN(update_info->h, MODAL_MAX_HEIGHT), auto_h);
                     }
 
                     if (update_info->margin > 0)
@@ -2274,7 +2281,8 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
         char* modal_text = aprintf(T(lib_folder_moved), CB_App->directory);
         if (modal_text)
         {
-            CB_Modal* modal = CB_Modal_new(modal_text, NULL, NULL, NULL);
+            const char* ok_options[] = {T(label_ok), NULL};
+            CB_Modal* modal = CB_Modal_new(modal_text, ok_options, NULL, NULL);
             cb_free(modal_text);
 
             if (modal)

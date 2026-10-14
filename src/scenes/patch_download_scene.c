@@ -253,7 +253,8 @@ static void on_permission_granted_for_download(unsigned flags, void* ud)
             msg = aprintf(T(net_error), flags);
         }
 
-        CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_Modal* modal = CB_Modal_new(msg, ok_options, NULL, NULL);
         cb_free(msg);
         CB_presentModal(modal->scene);
         cb_free(eud);
@@ -408,7 +409,8 @@ static void context_patch_files_browse_update(
 
             if (unknown_file_size)
             {
-                CB_Modal* modal = CB_Modal_new(T(patch_unknown_size), NULL, NULL, NULL);
+                const char* ok_options[] = {T(label_ok), NULL};
+                CB_Modal* modal = CB_Modal_new(T(patch_unknown_size), ok_options, NULL, NULL);
                 CB_presentModal(modal->scene);
                 return;
             }
@@ -470,7 +472,8 @@ static void context_patch_list_update(
         if (pds->hack_fs.type != kJSONTable || pds->selected_hack.type != kJSONTable)
         {
             // failed to find info on hack
-            CB_Modal* modal = CB_Modal_new(T(patch_missing_entry), NULL, NULL, NULL);
+            const char* ok_options[] = {T(label_ok), NULL};
+            CB_Modal* modal = CB_Modal_new(T(patch_missing_entry), ok_options, NULL, NULL);
             CB_presentModal(modal->scene);
         }
         else
@@ -676,14 +679,16 @@ static void context_patch_choose_interaction_update(
         case 0:  // Download Files
             if (!push_file_browser(pds, pds->hack_fs))
             {
-                CB_Modal* modal = CB_Modal_new(T(patch_dir_failed), NULL, NULL, NULL);
+                const char* ok_options[] = {T(label_ok), NULL};
+                CB_Modal* modal = CB_Modal_new(T(patch_dir_failed), ok_options, NULL, NULL);
                 CB_presentModal(modal->scene);
             }
             else
             {
                 if (!hash_match(pds->selected_hack, pds->game))
                 {
-                    CB_Modal* modal = CB_Modal_new(T(patch_rom_not_listed), NULL, NULL, NULL);
+                    const char* ok_options[] = {T(label_ok), NULL};
+                    CB_Modal* modal = CB_Modal_new(T(patch_rom_not_listed), ok_options, NULL, NULL);
                     CB_presentModal(modal->scene);
                 }
             }
@@ -871,11 +876,13 @@ static void context_top_level_update(
             cb_play_ui_sound(CB_UISound_Confirm);
             if (CB_App->parentalLockEngaged)
             {
-                CB_presentModal(CB_Modal_new(T(patch_engaged), NULL, NULL, NULL)->scene);
+                const char* ok_options[] = {T(label_ok), NULL};
+                CB_presentModal(CB_Modal_new(T(patch_engaged), ok_options, NULL, NULL)->scene);
             }
             else if (!CB_App->rhdb_present)
             {
-                CB_presentModal(CB_Modal_new(T(patch_rhdb_missing), NULL, NULL, NULL)->scene);
+                const char* ok_options[] = {T(label_ok), NULL};
+                CB_presentModal(CB_Modal_new(T(patch_rhdb_missing), ok_options, NULL, NULL)->scene);
             }
             else
             {
@@ -915,7 +922,8 @@ static void context_top_level_update(
                 }
                 else
                 {
-                    CB_Modal* modal = CB_Modal_new(T(patch_no_host), NULL, NULL, NULL);
+                    const char* ok_options[] = {T(label_ok), NULL};
+                    CB_Modal* modal = CB_Modal_new(T(patch_no_host), ok_options, NULL, NULL);
                     CB_presentModal(modal->scene);
                 }
             }
@@ -1653,6 +1661,7 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
     {
         char* msg = NULL;
         CB_Modal* modal = NULL;
+        const char* ok_options[] = {T(label_ok), NULL};
 
         switch (pds->post_download_command)
         {
@@ -1665,19 +1674,19 @@ void CB_PatchDownloadScene_update(CB_PatchDownloadScene* pds, uint32_t u32enc_dt
         }
         case PDC_DOWNLOAD_FAILED_NOT_FOUND:
             msg = cb_strdup(T(patch_not_found));
-            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            modal = CB_Modal_new(msg, ok_options, NULL, NULL);
             break;
         case PDC_DOWNLOAD_FAILED_WIFI:
             msg = cb_strdup(T(net_wifi_unavailable));
-            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            modal = CB_Modal_new(msg, ok_options, NULL, NULL);
             break;
         case PDC_DOWNLOAD_FAILED_OTHER:
             msg = aprintf(T(patch_download_failed), pds->post_download_flags);
-            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            modal = CB_Modal_new(msg, ok_options, NULL, NULL);
             break;
         case PDC_SAVE_FAILED:
             msg = cb_strdup(T(patch_failed_save));
-            modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            modal = CB_Modal_new(msg, ok_options, NULL, NULL);
             break;
         case PDC_TEXTFILE_SUCCESS:
         {
@@ -1709,7 +1718,8 @@ static bool push_patch_list(CB_PatchDownloadScene* pds)
 {
     if (!pds->header_name[0])
     {
-        CB_Modal* modal = CB_Modal_new(T(patch_no_title), NULL, NULL, NULL);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_Modal* modal = CB_Modal_new(T(patch_no_title), ok_options, NULL, NULL);
         CB_presentModal(modal->scene);
         return false;
     }

@@ -756,7 +756,8 @@ static void CB_CategoriesScene_update(void* object, uint32_t u32enc_dt)
 
         if (msg)
         {
-            CB_Modal* modal = CB_Modal_new(msg, NULL, NULL, NULL);
+            const char* ok_options[] = {T(label_ok), NULL};
+            CB_Modal* modal = CB_Modal_new(msg, ok_options, NULL, NULL);
             cb_free(msg);
             if (modal)
             {

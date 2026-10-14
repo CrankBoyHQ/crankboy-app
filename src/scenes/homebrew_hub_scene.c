@@ -96,12 +96,14 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         {
             msg = aprintf(T(net_error), flags);
         }
-        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(msg, ok_options, NULL, NULL)->scene);
         cb_free(msg);
     }
     else if (!data || !data_len)
     {
-        CB_presentModal(CB_Modal_new(T(hhub_rom_empty), NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(T(hhub_rom_empty), ok_options, NULL, NULL)->scene);
         return;
     }
 
@@ -136,7 +138,8 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
     // save rom
     if (!cb_write_entire_file(hbs->target_rom_path, data, data_len))
     {
-        CB_presentModal(CB_Modal_new(T(hhub_rom_save_failed), NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(T(hhub_rom_save_failed), ok_options, NULL, NULL)->scene);
         hb_free_target_entry(hbs);
     }
     else
@@ -692,7 +695,8 @@ static void context_top_level_update(
         else if (CB_App->parentalLockEngaged)
         {
             cb_play_ui_sound(CB_UISound_Denial);
-            CB_presentModal(CB_Modal_new(T(hhub_engaged), NULL, NULL, NULL)->scene);
+            const char* ok_options[] = {T(label_ok), NULL};
+            CB_presentModal(CB_Modal_new(T(hhub_engaged), ok_options, NULL, NULL)->scene);
         }
         else if (sel % 2 == 1)
         {
@@ -947,7 +951,10 @@ static void context_list_search_update(
                     }
                     else
                     {
-                        CB_presentModal(CB_Modal_new(T(hhub_failed_list), NULL, NULL, NULL)->scene);
+                        const char* ok_options[] = {T(label_ok), NULL};
+                        CB_presentModal(
+                            CB_Modal_new(T(hhub_failed_list), ok_options, NULL, NULL)->scene
+                        );
                         cb_play_ui_sound(CB_UISound_Denial);
                     }
                 }
@@ -1109,7 +1116,8 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
         {
             msg = aprintf(T(net_error), flags);
         }
-        CB_presentModal(CB_Modal_new(msg, NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(msg, ok_options, NULL, NULL)->scene);
         cb_free(msg);
     }
     else
@@ -1121,9 +1129,12 @@ static void http_search_cb(unsigned flags, char* data, size_t data_len, CB_Homeb
         if (json_begin == NULL)
         {
         err_invalid_json:
-            CB_presentModal(CB_Modal_new(T(hhub_invalid_json), NULL, NULL, NULL)->scene);
-            cb_free(data);
-            return;
+            {
+                const char* ok_options[] = {T(label_ok), NULL};
+                CB_presentModal(CB_Modal_new(T(hhub_invalid_json), ok_options, NULL, NULL)->scene);
+                cb_free(data);
+                return;
+            }
         }
 
         HomebrewHubContext* context = getFirstMatchingContext(hbs, HBSCT_LIST_SEARCH);

@@ -3478,7 +3478,8 @@ __section__(".rare") static void CB_LoadStateErrorModalCallback(void* userdata, 
     char* details = (char*)userdata;
     if (option == 1 && details)
     {
-        CB_presentModal(CB_Modal_new(details, NULL, NULL, NULL)->scene);
+        const char* ok_options[] = {T(label_ok), NULL};
+        CB_presentModal(CB_Modal_new(details, ok_options, NULL, NULL)->scene);
     }
     if (details)
         cb_free(details);
@@ -4301,9 +4302,10 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
 
                     if (header->script_save_data_size > file_size)
                     {
+                        const char* ok_options[] = {T(label_ok), NULL};
                         success = false;
                         CB_presentModal(
-                            CB_Modal_new(T(game_invalid_script_data), NULL, NULL, NULL)->scene
+                            CB_Modal_new(T(game_invalid_script_data), ok_options, NULL, NULL)->scene
                         );
                     }
                     else
@@ -4350,8 +4352,10 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                             else
                             {
                                 // Fallback: 1-button modal
+                                const char* ok_options[] = {T(label_ok), NULL};
                                 CB_presentModal(
-                                    CB_Modal_new(T(game_failed_load_state), NULL, NULL, NULL)->scene
+                                    CB_Modal_new(T(game_failed_load_state), ok_options, NULL, NULL)
+                                        ->scene
                                 );
                             }
                         }
@@ -4374,9 +4378,10 @@ __section__(".rare") bool load_state(CB_GameScene* gameScene, unsigned slot)
                                 {
                                     success = false;
 
+                                    const char* ok_options[] = {T(label_ok), NULL};
                                     CB_presentModal(CB_Modal_new(
                                                         "Failed to load script's custom state.",
-                                                        NULL, NULL, NULL
+                                                        ok_options, NULL, NULL
                                     )
                                                         ->scene);
                                 }
