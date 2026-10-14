@@ -28,7 +28,6 @@ typedef struct CB_Modal
     CB_Scene* scene;
     void* ud;
 
-    int cursorIndex;
     uint8_t lcd[LCD_ROWS * LCD_ROWSIZE];
 
     char* text;
