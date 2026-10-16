@@ -36,6 +36,22 @@ typedef struct
     int xShift;                  // launch slide
 } CB_CoverFlowContext;
 
+// Cover Flow background styles (values of preferences_library_background)
+enum
+{
+    CB_LIB_BG_LIGHT = 0,
+    CB_LIB_BG_LIGHT_GRAY,
+    CB_LIB_BG_STRIPE,
+    CB_LIB_BG_DARK_GRAY,
+    CB_LIB_BG_DARK,
+    CB_LIB_BG_COUNT
+};
+
+#define CB_LIB_BG_IS_LIGHT(bg) ((bg) <= CB_LIB_BG_LIGHT_GRAY)
+
+// 8x8 LCDPattern for a background style; bad values clamp to Stripe
+const uint8_t* cb_library_bg_pattern(int style);
+
 CB_CoverFlow* CB_CoverFlow_new(void);
 void CB_CoverFlow_free(CB_CoverFlow* cf);
 void CB_CoverFlow_update(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx);

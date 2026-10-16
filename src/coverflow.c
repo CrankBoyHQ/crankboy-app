@@ -9,6 +9,7 @@
 
 #include "app.h"
 #include "covers.h"
+#include "preferences.h"
 #include "utility.h"
 
 #include <string.h>
@@ -45,6 +46,42 @@
 #define FLOW_REPEAT_FAST_AFTER 1.2f
 
 #define FLOW_DISK_LOADS_PER_FRAME 2  // disk loads per frame while filling slots (hitch budget)
+
+// rationale: except for the two solid styles these are fine 1-px textures on
+// black or white; dark styles keep dark cover art separable, the light gray
+// checker is the exact bit-inverse of the dark gray one
+static const uint8_t kFlowPatterns[CB_LIB_BG_COUNT][16] = {
+    [CB_LIB_BG_LIGHT] =
+        {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+         0xFF},
+    [CB_LIB_BG_LIGHT_GRAY] =
+        {0x77, 0xDD, 0x77, 0xDD, 0x77, 0xDD, 0x77, 0xDD, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+         0xFF},
+    [CB_LIB_BG_STRIPE] =
+        {0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+         0xFF},
+    [CB_LIB_BG_DARK_GRAY] =
+        {0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0x88, 0x22, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+         0xFF},
+    [CB_LIB_BG_DARK] = {
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF
+    },
+};
+
+const uint8_t* cb_library_bg_pattern(int style)
+{
+    if (style < 0 || style >= CB_LIB_BG_COUNT)
+        style = CB_LIB_BG_STRIPE;
+    return kFlowPatterns[style];
+}
+
+static void flow_fill_bg(int x, int y, int w, int h, const uint8_t* pattern)
+{
+    if (w <= 0 || h <= 0)
+        return;
+    playdate->graphics->fillRect(x, y, w, h, (LCDColor)(uintptr_t)pattern);
+}
 
 typedef struct
 {
@@ -97,6 +134,8 @@ struct CB_CoverFlow
     int fadeDir;     // wrap travel direction (sign of the step delta)
 
     bool needsDisplay;
+
+    int bgStyle;  // CB_LIB_BG_*, stashed by CB_CoverFlow_draw before first use
 };
 
 CB_CoverFlow* CB_CoverFlow_new(void)
@@ -478,9 +517,10 @@ static void flow_draw_fade_stack(CB_CoverFlow* cf, float progress)
         int x = card->dx + shift;
         int y = card->dy;
 
+        LCDColor coverBorder = CB_LIB_BG_IS_LIGHT(cf->bgStyle) ? kColorBlack : kColorWhite;
         if (card->bitmap)
         {
-            playdate->graphics->drawRect(x - 1, y - 1, card->dw + 2, card->dh + 2, kColorBlack);
+            playdate->graphics->drawRect(x - 1, y - 1, card->dw + 2, card->dh + 2, coverBorder);
             playdate->graphics->drawScaledBitmap(card->bitmap, x, y, card->scaleX, card->scaleY);
         }
         else
@@ -617,6 +657,22 @@ static LCDBitmap* flow_slot_bitmap(CB_CoverFlow* cf, int index)
     return slot ? slot->bitmap : NULL;
 }
 
+// outlined text: on light backgrounds a white halo under a black core, on
+// dark ones a black halo under a white core; the halo covers the bg pattern
+// around the glyphs so the core reads solid
+static void flow_draw_text_outlined(const char* text, int len, int x, int y, bool light)
+{
+    static const int offs[8][2] = {{-1, -1}, {0, -1}, {1, -1}, {-1, 0},
+                                   {1, 0},   {-1, 1}, {0, 1},  {1, 1}};
+    playdate->graphics->setDrawMode(light ? kDrawModeFillWhite : kDrawModeFillBlack);
+    for (int i = 0; i < 8; i++)
+    {
+        playdate->graphics->drawText(text, len, kUTF8Encoding, x + offs[i][0], y + offs[i][1]);
+    }
+    playdate->graphics->setDrawMode(light ? kDrawModeFillBlack : kDrawModeFillWhite);
+    playdate->graphics->drawText(text, len, kUTF8Encoding, x, y);
+}
+
 // top-left: category name; static with margin when it fits, otherwise a
 // marquee: the head's 8px screen margin is consumed by the pan (letters
 // exit through the display edge) and the name slides until its tail has
@@ -632,7 +688,7 @@ static bool flow_draw_category_label(
 
     LCDFont* catFont = CB_App->labelFont ? CB_App->labelFont : CB_App->bodyFont;
     playdate->graphics->setFont(catFont);
-    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
     int labelW = playdate->graphics->getTextWidth(
         catFont, ctx->categoryName, strlen(ctx->categoryName), kUTF8Encoding, 0
@@ -653,8 +709,9 @@ static bool flow_draw_category_label(
         if (p1Bot > p1Top)
         {
             playdate->graphics->setClipRect(0, p1Top, cardLeft, p1Bot - p1Top);
-            playdate->graphics->drawText(
-                ctx->categoryName, strlen(ctx->categoryName), kUTF8Encoding, drawX, drawY
+            flow_draw_text_outlined(
+                ctx->categoryName, strlen(ctx->categoryName), drawX, drawY,
+                CB_LIB_BG_IS_LIGHT(cf->bgStyle)
             );
         }
 
@@ -665,8 +722,9 @@ static bool flow_draw_category_label(
         if (p2Bot > p2Top)
         {
             playdate->graphics->setClipRect(0, p2Top, cardRight + 8, p2Bot - p2Top);
-            playdate->graphics->drawText(
-                ctx->categoryName, strlen(ctx->categoryName), kUTF8Encoding, drawX, drawY
+            flow_draw_text_outlined(
+                ctx->categoryName, strlen(ctx->categoryName), drawX, drawY,
+                CB_LIB_BG_IS_LIGHT(cf->bgStyle)
             );
         }
 
@@ -675,8 +733,9 @@ static bool flow_draw_category_label(
     }
     else
     {
-        playdate->graphics->drawText(
-            ctx->categoryName, strlen(ctx->categoryName), kUTF8Encoding, 8, 4 + (int)offY
+        flow_draw_text_outlined(
+            ctx->categoryName, strlen(ctx->categoryName), 8, 4 + (int)offY,
+            CB_LIB_BG_IS_LIGHT(cf->bgStyle)
         );
     }
     playdate->graphics->setDrawMode(kDrawModeCopy);
@@ -690,7 +749,7 @@ static void flow_draw_cards(
     int screenWidth, float offY, float dw0
 )
 {
-    // text layers may leave kDrawModeFillBlack behind: pin the deck's mode
+    // text layers may leave kDrawModeFillWhite behind: pin the deck's mode
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
     // cards centered in the zone between top margin and title band
@@ -742,7 +801,10 @@ static void flow_draw_cards(
 
         if (bitmap)
         {
-            playdate->graphics->drawRect(dx - 1, dy - 1, (int)dw + 2, (int)dh + 2, kColorBlack);
+            playdate->graphics->drawRect(
+                dx - 1, dy - 1, (int)dw + 2, (int)dh + 2,
+                CB_LIB_BG_IS_LIGHT(cf->bgStyle) ? kColorBlack : kColorWhite
+            );
             playdate->graphics->drawScaledBitmap(bitmap, dx, dy, scaleX, scaleY);
         }
         else
@@ -758,9 +820,11 @@ static bool flow_draw_title(
     int screenHeight, float offY, bool hasClip, int clipTop, int clipBot
 )
 {
-    playdate->graphics->fillRect(
-        0, FLOW_TITLE_TOP + (int)offY, screenWidth, screenHeight, kColorWhite
-    );
+    // snap to an even top row so the band fill shares the bg pattern's phase
+    int bandY = FLOW_TITLE_TOP + (int)offY;
+    if (bandY & 1)
+        bandY -= 1;
+    flow_fill_bg(0, bandY, screenWidth, screenHeight - bandY, kFlowPatterns[cf->bgStyle]);
 
     const char* title = NULL;
     if (sel >= 0 && sel < games_n)
@@ -779,7 +843,7 @@ static bool flow_draw_title(
     bool scrolling = false;
     LCDFont* font = CB_App->subheadFont;
     playdate->graphics->setFont(font);
-    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
     int margin = 8;
     int textWidth = playdate->graphics->getTextWidth(font, title, strlen(title), kUTF8Encoding, 0);
@@ -806,13 +870,17 @@ static bool flow_draw_title(
         if (bandBot > bandTop)
         {
             playdate->graphics->setClipRect(0, bandTop, screenWidth, bandBot - bandTop);
-            playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, textY);
+            flow_draw_text_outlined(
+                title, strlen(title), titleX, textY, CB_LIB_BG_IS_LIGHT(cf->bgStyle)
+            );
             playdate->graphics->clearClipRect();
         }
     }
     else
     {
-        playdate->graphics->drawText(title, strlen(title), kUTF8Encoding, titleX, textY);
+        flow_draw_text_outlined(
+            title, strlen(title), titleX, textY, CB_LIB_BG_IS_LIGHT(cf->bgStyle)
+        );
     }
     playdate->graphics->setDrawMode(kDrawModeCopy);
     flow_restore_push_clip(hasClip, clipTop, clipBot, screenWidth);
@@ -834,7 +902,7 @@ static bool flow_draw_counter(
     snprintf(counter, sizeof(counter), "%d / %d", sel + 1, games_n);
     LCDFont* counterFont = CB_App->labelFont ? CB_App->labelFont : CB_App->bodyFont;
     playdate->graphics->setFont(counterFont);
-    playdate->graphics->setDrawMode(kDrawModeFillBlack);
+    playdate->graphics->setDrawMode(kDrawModeFillWhite);
 
     int stripLeft = cardRight + 10;
     int stripW = screenWidth - 8 - stripLeft;
@@ -846,9 +914,9 @@ static bool flow_draw_counter(
             counterFont, counter, strlen(counter), kUTF8Encoding, 0
         );
         playdate->graphics->setClipRect(stripLeft, 0, stripW, FLOW_TITLE_TOP);
-        playdate->graphics->drawText(
-            counter, strlen(counter), kUTF8Encoding, stripLeft + (stripW - cw) + (int)off,
-            4 + (int)offY
+        flow_draw_text_outlined(
+            counter, strlen(counter), stripLeft + (stripW - cw) + (int)off, 4 + (int)offY,
+            CB_LIB_BG_IS_LIGHT(cf->bgStyle)
         );
         playdate->graphics->clearClipRect();
     }
@@ -1104,12 +1172,22 @@ void CB_CoverFlow_draw(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx)
     int screenWidth = playdate->display->getWidth();
     int screenHeight = playdate->display->getHeight();
 
+    cf->bgStyle = preferences_library_background;
+    if (cf->bgStyle < 0 || cf->bgStyle >= CB_LIB_BG_COUNT)
+        cf->bgStyle = CB_LIB_BG_STRIPE;  // scripts may write any value
+    const uint8_t* bgPattern = kFlowPatterns[cf->bgStyle];
+
     if (cf->switchActive)
     {
         // category switch: old frame scrolls out, new category scrolls in over it
         float p = CB_MIN(1.0f, cf->switchTime / FLOW_SWITCH_TIME);
         float eased = cb_easeInOutQuad(p);
         int shift = (int)(screenHeight * eased);  // rows the old frame has already moved
+
+        // incoming band shares the normal path's background phase: fill the
+        // whole LCD with the pattern first, then restore the outgoing snapshot
+        // over it
+        flow_fill_bg(0, 0, screenWidth, screenHeight, bgPattern);
 
         uint8_t* fb = playdate->graphics->getFrame();
         if (fb && cf->switchSnap && shift < screenHeight)
@@ -1142,7 +1220,6 @@ void CB_CoverFlow_draw(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx)
             offY = -(float)(screenHeight - shift);
         }
 
-        playdate->graphics->fillRect(0, bandTop, screenWidth, bandBot - bandTop, kColorWhite);
         playdate->graphics->setDrawMode(kDrawModeCopy);
         playdate->graphics->setClipRect(0, bandTop, screenWidth, bandBot - bandTop);
 
@@ -1160,7 +1237,7 @@ void CB_CoverFlow_draw(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx)
         return;
     }
 
-    playdate->graphics->clear(kColorWhite);
+    flow_fill_bg(0, 0, screenWidth, screenHeight, bgPattern);
     playdate->graphics->setDrawMode(kDrawModeCopy);
 
     float dw0 = flow_anchor_width(cf, sel, games_n);

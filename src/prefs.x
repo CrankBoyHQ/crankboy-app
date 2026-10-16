@@ -97,11 +97,13 @@ PREF(rewind_enabled, 0)
  * library_launch_animation:   0=Off, 1=On
  * show_bundled_games:         0=Hide, 1=Show (catalog only)
  * library_view_mode:          0=List, 1=Cover Flow
+ * library_background:         0=Light, 1=Light Gray, 2=Stripe, 3=Dark Gray, 4=Dark
  */
 PREF(display_name_mode, 0)
 PREF(display_article, 0)
 PREF(display_sort, 1)
 PREF(library_view_mode, 0)
+PREF(library_background, 2)
 PREF(library_remember_selection, 1)
 PREF(prompt_if_cgb_optional, 0)
 PREF(library_launch_animation, 1)

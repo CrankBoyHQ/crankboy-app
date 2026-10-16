@@ -92,15 +92,23 @@ typedef struct OptionsMenuEntry
     bool show_value_only_on_hover : 1;
     bool suppress_nondefault_indicator : 1;
     bool thumbnail : 1;
-    bool graphics_test : 1;
     bool header : 1;
     bool rebuild_when_changed : 1;
 
+    // SETTINGS_TEST_*: which live graphic renders in the right pane
+    uint8_t graphics_test;
     void (*on_press)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
     void (*on_hold)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene);
     void (*on_change)(struct OptionsMenuEntry*, CB_SettingsScene* settingsScene, int prev_val);
     void* ud;
 } OptionsMenuEntry;
+
+enum
+{
+    SETTINGS_TEST_NONE = 0,
+    SETTINGS_TEST_DITHER = 1,
+    SETTINGS_TEST_BACKGROUND = 2
+};
 
 // Per-section building
 #define MAX_SECTION_ENTRIES 20
@@ -989,6 +997,7 @@ const char** sort_labels;
 const char** article_labels;
 const char** show_hide_labels;
 const char** view_mode_labels;
+const char** background_labels;
 const char** next_scene;
 
 static int settings_labels_initialized = 0;
@@ -1241,6 +1250,14 @@ static void CB_init_settings_labels(void)
     view_mode_labels[0] = T(setval_list);
     view_mode_labels[1] = T(setval_cover_flow);
     view_mode_labels[2] = NULL;
+
+    background_labels = cb_malloc(6 * sizeof(const char*));
+    background_labels[0] = T(setval_light);
+    background_labels[1] = T(setval_light_gray);
+    background_labels[2] = T(setval_stripe);
+    background_labels[3] = T(setval_dark_gray);
+    background_labels[4] = T(setval_dark);
+    background_labels[5] = NULL;
 
     next_scene = cb_malloc(2 * sizeof(const char*));
     next_scene[0] = T(setval_arrow);
@@ -2301,7 +2318,7 @@ static OptionsMenuEntry* build_display(SectionDef* def, CB_SettingsScene* scene,
         .description = T(setdsc_dither),
         .pref_var = &preferences_dither_pattern,
         .max_value = 6,
-        .graphics_test = 1,
+        .graphics_test = SETTINGS_TEST_DITHER,
         .on_press = NULL
     };
 
@@ -2768,8 +2785,23 @@ static OptionsMenuEntry* build_library(SectionDef* def, CB_SettingsScene* scene,
         .description = T(setdsc_view),
         .pref_var = &preferences_library_view_mode,
         .max_value = 2,
-        .on_press = NULL
+        .on_press = NULL,
+        .rebuild_when_changed = 1
     };
+
+    // the background only applies to Cover Flow
+    if (preferences_library_view_mode != 0)
+    {
+        section[++i] = (OptionsMenuEntry){
+            .name = T(setopt_background),
+            .values = background_labels,
+            .description = T(setdsc_background),
+            .pref_var = &preferences_library_background,
+            .max_value = 5,
+            .graphics_test = SETTINGS_TEST_BACKGROUND,
+            .on_press = NULL
+        };
+    }
 
     section[++i] = (OptionsMenuEntry){
         .name = T(setopt_remember_last),
@@ -3685,7 +3717,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
         }
 
         // graphics test
-        if (cursor_entry->graphics_test)
+        if (cursor_entry->graphics_test == SETTINGS_TEST_DITHER)
         {
             uint16_t d0 = CB_dither_lut_c0[preferences_dither_pattern];
             uint16_t d1 = CB_dither_lut_c1[preferences_dither_pattern];
@@ -3744,6 +3776,24 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                     }
                 }
             }
+
+            playdate->graphics->markUpdatedRows(100, 250);
+        }
+
+        // background preview: the actual pattern in a small framed box
+        else if (cursor_entry->graphics_test == SETTINGS_TEST_BACKGROUND)
+        {
+            const uint8_t* bgPattern = cb_library_bg_pattern(preferences_library_background);
+
+            const int boxW = 64;
+            const int boxH = 32;
+            int boxX = kDividerX + (LCD_COLUMNS - kDividerX) / 2 - boxW / 2;
+            int boxY = LCD_ROWS - 24 - boxH;
+
+            playdate->graphics->setClipRect(boxX, boxY, boxW, boxH);
+            playdate->graphics->fillRect(boxX, boxY, boxW, boxH, (LCDColor)(uintptr_t)bgPattern);
+            playdate->graphics->clearClipRect();
+            playdate->graphics->drawRect(boxX, boxY, boxW, boxH, kColorBlack);
 
             playdate->graphics->markUpdatedRows(100, 250);
         }

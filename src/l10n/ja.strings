@@ -241,6 +241,7 @@
 "setopt_ui_sounds" = "UI音";
 "setopt_undock" = "展開";
 "setopt_view" = "表示方法";
+"setopt_background" = "背景";
 "setval_accurate" = "普通";
 "setval_all" = "すべて";
 "setval_always" = "常時";
@@ -253,6 +254,10 @@
 "setval_core" = "コア";
 "setval_cover_flow" = "ｶﾊﾞｰﾌﾛｰ";
 "setval_dark" = "暗";
+"setval_dark_gray" = "濃灰";
+"setval_light" = "明";
+"setval_light_gray" = "淡灰";
+"setval_stripe" = "縞";
 "setval_darker" = "最暗";
 "setval_database" = "ﾃﾞｰﾀﾍﾞｰｽ";
 "setval_db_article" = "DB (冠詞)";
