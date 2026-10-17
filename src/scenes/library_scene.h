@@ -20,9 +20,9 @@
 
 #define BUILD_BATCH_SIZE 10
 #define BUNDLED_REFRESH_BATCH_SIZE 2
-#define PRELOAD_HALF 15
-#define PRELOAD_BATCH_SIZE 5
-#define BG_FILL_BATCH_SIZE 2
+#define PRELOAD_HALF 31
+#define PRELOAD_BATCH_SIZE 32
+#define BG_FILL_BATCH_SIZE 16
 #define MAX_COVER_COUNT 200
 #define IDLE_THRESHOLD_MS 2000
 #define CB_LIBRARY_FILTER_BAR_H 20
@@ -115,7 +115,6 @@ typedef struct CB_LibraryScene
     CB_Array* available_covers;
     int build_game_index;
 
-    void* lz4_state;
     int preload_cover_index;
     int preload_cover_total;
     size_t cover_cache_bytes;

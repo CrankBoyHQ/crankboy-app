@@ -114,7 +114,7 @@ char* common_article_form(const char* input);
 // extracts final '.' and what follows it
 const char* get_extension(const char* filename);
 
-// dotfile-safe extension check (".gb", ".pdi", ...)
+// dotfile-safe extension check (".gb", ".cvi", ...)
 bool cb_file_has_extension(const char* filename, const char* ext);
 
 // caller-freed

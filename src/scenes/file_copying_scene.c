@@ -65,7 +65,7 @@ static bool copy_one_file(const char* full_path, const char* filename)
 
     if (cb_file_has_extension(filename, ".png") || cb_file_has_extension(filename, ".jpg") ||
         cb_file_has_extension(filename, ".jpeg") || cb_file_has_extension(filename, ".bmp") ||
-        cb_file_has_extension(filename, ".pdi"))
+        cb_file_has_extension(filename, ".cvi"))
     {
         dst_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), filename);
     }
@@ -142,7 +142,7 @@ static void collect_files_callback(const char* filename, void* userdata)
     }
 #ifndef CRANKBOY_OFFICIAL_CATALOG
     else if (
-        cb_file_has_extension(name_for_ext, ".pdi") || cb_file_has_extension(name_for_ext, ".gb") ||
+        cb_file_has_extension(name_for_ext, ".cvi") || cb_file_has_extension(name_for_ext, ".gb") ||
         cb_file_has_extension(name_for_ext, ".gbc") ||
         cb_file_has_extension(name_for_ext, ".gbz") ||
         cb_file_has_extension(name_for_ext, ".sav") || cb_file_has_extension(name_for_ext, ".state")

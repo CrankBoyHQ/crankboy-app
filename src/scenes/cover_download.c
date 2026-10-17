@@ -11,6 +11,7 @@
 #include "cover_download.h"
 
 #include "../app.h"
+#include "../covers.h"
 #include "../http_safe.h"
 #include "../utility.h"
 #include "library_scene.h"
@@ -20,7 +21,7 @@
 float cover_download_anim_timer = 0.0f;
 int cover_download_anim_step = 0;
 
-#define COVER_DOWNLOAD_MAX_RETRIES 3
+#define COVER_DOWNLOAD_MAX_RETRIES 6
 
 typedef struct
 {
@@ -100,8 +101,8 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         goto cleanup;
     }
 
-    const char* pdi_header = "Playdate IMG";
-    char* actual_data_start = strstr(data, pdi_header);
+    const char* cvi_header = "CrankBoy CVI";
+    char* actual_data_start = strstr(data, cvi_header);
 
     if (actual_data_start == NULL)
     {
@@ -123,7 +124,7 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
     }
 
     playdate->system->formatString(
-        &cover_dest_path, "%s/%s.pdi", cb_gb_directory_path(CB_coversPath), rom_basename_no_ext
+        &cover_dest_path, "%s/%s.cvi", cb_gb_directory_path(CB_coversPath), rom_basename_no_ext
     );
 
     if (!cover_dest_path)
@@ -138,21 +139,37 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
 
     if (cb_write_entire_file(cover_dest_path, actual_data_start, new_data_len))
     {
-        // Validate the downloaded PDI before committing it.
-        const char* verify_error = NULL;
-        LCDBitmap* verify_bitmap =
-            playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_dest_path), &verify_error);
-
-        if (!verify_bitmap)
+        // Validate the downloaded container before committing it. The parse
+        // alone accepts corrupted payloads (transferred bytes can mangle
+        // mid-file while keeping sizes intact), so every variant also has
+        // to decompress byte-exact before we accept the file
+        CB_CVI verify_cvi;
+        bool validated = CB_cvi_load(&verify_cvi, CB_get_forwarded_path(cover_dest_path));
+        if (validated)
         {
-            if (verify_error)
+            void* verify_scratch = NULL;
+            size_t verify_scratch_size = 0;
+            for (uint16_t i = 0; i < verify_cvi.num_variants; ++i)
             {
-                playdate->system->logToConsole(
-                    "Downloaded cover failed to load, unlinking %s: %s", cover_dest_path,
-                    verify_error
+                LCDBitmap* probe = CVI_decode_variant(
+                    &verify_cvi.variants[i], &verify_scratch, &verify_scratch_size
                 );
+                if (!probe)
+                {
+                    validated = false;
+                    break;
+                }
+                playdate->graphics->freeBitmap(probe);
             }
+            cb_free(verify_scratch);
+            CB_cvi_free(&verify_cvi);
+        }
 
+        if (!validated)
+        {
+            playdate->system->logToConsole(
+                "cover download: validation failed, removing %s", cover_dest_path
+            );
             playdate->file->unlink(cover_dest_path, 0);
 
             if (userdata->retries < COVER_DOWNLOAD_MAX_RETRIES && stillOnSameGame)
@@ -165,7 +182,6 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
             }
             goto cleanup;
         }
-        playdate->graphics->freeBitmap(verify_bitmap);
 
         if (game->coverPath)
         {
@@ -173,26 +189,24 @@ static void on_cover_download_finished(unsigned flags, char* data, size_t data_l
         }
         game->coverPath = cb_strdup(cover_dest_path);
 
-        if (game->cover_compressed_data)
+        size_t old_bytes = CB_cover_free(game);
+        if (old_bytes)
         {
-            if (libraryScene->cover_cache_bytes >= (size_t)game->cover_compressed_size)
-                libraryScene->cover_cache_bytes -= game->cover_compressed_size;
+            libraryScene->cover_cache_bytes -= old_bytes;
             libraryScene->cover_cached_count--;
         }
-        CB_cover_free_compressed(game);
-        CB_cover_compress(
-            game, libraryScene->lz4_state, &libraryScene->cover_cache_bytes,
-            &libraryScene->cover_cached_count
-        );
+        // un-gate CB_cover_load: this cover file was just replaced on disk
+        CB_cover_mark_changed(game);
+        size_t added = CB_cover_load(game);
+        libraryScene->cover_cache_bytes += added;
+        if (added)
+            libraryScene->cover_cached_count++;
 
         if (stillOnSameGame)
         {
-            cb_clear_global_cover_cache();
-
-            CB_App->coverArtCache.art = cb_load_and_scale_cover_art_from_path(
-                game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
+            CB_cover_fill_art_cache(
+                game, &libraryScene->decompression_buffer, &libraryScene->decompression_buffer_size
             );
-            CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
 
             CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
 
@@ -270,7 +284,7 @@ void cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retr
 
     char* url_path;
     playdate->system->formatString(
-        &url_path, "/CrankBoyHQ/crankboy-covers/raw/refs/heads/main/Combined_Boxarts/%s.pdi",
+        &url_path, "/CrankBoyHQ/crankboy-covers/refs/heads/main/Combined_Boxarts_LZ/%s.cvi",
         encoded_name
     );
 
@@ -304,7 +318,7 @@ void cover_download_issue(CB_LibraryScene* libraryScene, CB_Game* game, int retr
     libraryScene->activeCoverDownloadConnection = http_safe_new();
 
     http_safe_replace_get(
-        libraryScene->activeCoverDownloadConnection, "github.com", url_path,
+        libraryScene->activeCoverDownloadConnection, "raw.githubusercontent.com", url_path,
         T(net_cover_art_reason), on_cover_download_finished, 15000, userdata
     );
 

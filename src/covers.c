@@ -7,135 +7,109 @@
 
 #include "covers.h"
 
-#include "../../libs/lz4/lz4.h"
 #include "app.h"
+#include "cvi.h"
 #include "utility.h"
 
-#include <math.h>
 #include <string.h>
 
-CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
-    const char* cover_path, int max_target_width, int max_target_height
+bool CB_cover_is_loaded(const CB_Game* game)
+{
+    return game->cvi != NULL;
+}
+
+size_t CB_cover_load(CB_Game* game)
+{
+    // failed-before files stay skipped until CB_cover_mark_changed says the file changed
+    if (game->cvi || !game->coverPath || game->cover_load_failed)
+        return 0;
+    CB_CVI cvi;
+    // bundled-catalog covers live under packed/ and need the forwarded path
+    if (!CB_cvi_load(&cvi, CB_get_forwarded_path(game->coverPath)))
+    {
+        game->cover_load_failed = true;
+        return 0;
+    }
+    game->cvi = (CB_CVI*)cb_malloc(sizeof(CB_CVI));
+    if (!game->cvi)
+    {
+        CB_cvi_free(&cvi);
+        return 0;
+    }
+    *game->cvi = cvi;
+    return game->cvi->data_size;
+}
+
+void CB_cover_mark_changed(CB_Game* game)
+{
+    game->cover_load_failed = false;
+}
+
+size_t CB_cover_free(CB_Game* game)
+{
+    if (!game->cvi)
+        return 0;
+    size_t bytes = game->cvi->data_size;
+    CB_cvi_free(game->cvi);
+    cb_free(game->cvi);
+    game->cvi = NULL;
+    return bytes;
+}
+
+size_t CB_cover_bytes(const CB_Game* game)
+{
+    return game->cvi ? game->cvi->data_size : 0;
+}
+
+LCDBitmap* CB_cover_decode(
+    const CB_Game* game, int max_w, int max_h, void** io_buffer, size_t* io_buffer_size
 )
 {
-    CB_LoadedCoverArt result = {
-        .bitmap = NULL,
-        .original_width = 0,
-        .original_height = 0,
-        .scaled_width = 0,
-        .scaled_height = 0,
-        .status = CB_COVER_ART_FILE_NOT_FOUND
-    };
+    if (!game->cvi)
+        return NULL;
+    const CB_CVIVariant* variant = CVI_pick_variant(game->cvi, max_w, max_h);
+    if (!variant)
+        return NULL;
+    return CVI_decode_variant(variant, io_buffer, io_buffer_size);
+}
 
-    if (!cover_path)
+bool CB_cover_fill_art_cache(CB_Game* game, void** io_buffer, size_t* io_buffer_size)
+{
+    cb_clear_global_cover_cache();
+
+    LCDBitmap* new_bitmap =
+        CB_cover_decode(game, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT, io_buffer, io_buffer_size);
+    if (new_bitmap)
     {
-        result.status = CB_COVER_ART_FILE_NOT_FOUND;
-        return result;
-    }
-
-    FileStat fileStatCheck;
-    if (playdate->file->stat(cover_path, &fileStatCheck) != 0)
-    {
-        result.status = CB_COVER_ART_FILE_NOT_FOUND;
-        return result;
-    }
-
-    const char* error_str = NULL;
-    LCDBitmap* original_image =
-        playdate->graphics->loadBitmap(CB_get_forwarded_path(cover_path), &error_str);
-
-    if (error_str)
-    {
-        playdate->system->logToConsole(
-            "Error string from loadBitmap for %s: %s", cover_path, error_str
-        );
-    }
-
-    if (original_image == NULL)
-    {
-        result.status = CB_COVER_ART_ERROR_LOADING;
-        playdate->system->logToConsole("Failed to load bitmap: %s", cover_path);
-        return result;
-    }
-
-    playdate->graphics->getBitmapData(
-        original_image, &result.original_width, &result.original_height, NULL, NULL, NULL
-    );
-
-    if (result.original_width <= 0 || result.original_height <= 0)
-    {
-        playdate->graphics->freeBitmap(original_image);
-        result.status = CB_COVER_ART_INVALID_IMAGE;
-        playdate->system->logToConsole(
-            "Invalid image dimensions (%dx%d) for: %s", result.original_width,
-            result.original_height, cover_path
-        );
-        return result;
-    }
-
-    float scale;
-    float scaleX = (float)max_target_width / result.original_width;
-    float scaleY = (float)max_target_height / result.original_height;
-    scale = (scaleX < scaleY) ? scaleX : scaleY;
-
-    result.scaled_width = (int)roundf(result.original_width * scale);
-    result.scaled_height = (int)roundf(result.original_height * scale);
-
-    if (result.scaled_width < 1 && result.original_width > 0)
-        result.scaled_width = 1;
-    if (result.scaled_height < 1 && result.original_height > 0)
-        result.scaled_height = 1;
-
-    bool perform_scaling_operation = false;
-    if (result.scaled_width != result.original_width ||
-        result.scaled_height != result.original_height)
-    {
-        perform_scaling_operation = true;
-    }
-
-    if (perform_scaling_operation)
-    {
-        if (result.scaled_width <= 0 || result.scaled_height <= 0)
-        {
-            playdate->system->logToConsole(
-                "Error: Calculated scaled dimensions are zero or negative "
-                "(%dx%d) for %s. Original: %dx%d, Scale: %f",
-                result.scaled_width, result.scaled_height, cover_path, result.original_width,
-                result.original_height, (double)scale
-            );
-            playdate->graphics->freeBitmap(original_image);
-            result.status = CB_COVER_ART_INVALID_IMAGE;
-            return result;
-        }
-
-        LCDBitmap* scaled_bitmap =
-            playdate->graphics->newBitmap(result.scaled_width, result.scaled_height, kColorClear);
-        if (scaled_bitmap == NULL)
-        {
-            playdate->graphics->freeBitmap(original_image);
-            result.status = CB_COVER_ART_ERROR_LOADING;
-            playdate->system->logToConsole(
-                "Failed to create new scaled bitmap (%dx%d) for: %s", result.scaled_width,
-                result.scaled_height, cover_path
-            );
-            return result;
-        }
-
-        playdate->graphics->pushContext(scaled_bitmap);
-        playdate->graphics->setDrawMode(kDrawModeCopy);
-        playdate->graphics->drawScaledBitmap(original_image, 0, 0, scale, scale);
-        playdate->graphics->popContext();
-
-        playdate->graphics->freeBitmap(original_image);
-        result.bitmap = scaled_bitmap;
+        int w, h;
+        playdate->graphics->getBitmapData(new_bitmap, &w, &h, NULL, NULL, NULL);
+        CB_App->coverArtCache.art.bitmap = new_bitmap;
+        CB_App->coverArtCache.art.original_width = w;
+        CB_App->coverArtCache.art.original_height = h;
+        CB_App->coverArtCache.art.scaled_width = w;
+        CB_App->coverArtCache.art.scaled_height = h;
+        CB_App->coverArtCache.art.status = CB_COVER_ART_SUCCESS;
     }
     else
     {
-        result.bitmap = original_image;
+        CB_App->coverArtCache.art.status = CB_COVER_ART_ERROR_LOADING;
     }
+    CB_App->coverArtCache.rom_path = cb_strdup(game->fullpath);
+    return new_bitmap != NULL;
+}
 
-    result.status = CB_COVER_ART_SUCCESS;
-    return result;
+CB_Game* CB_cover_game_by_rom_filename(const char* rom_filename)
+{
+    CB_Array* games = CB_App->gameListCache;
+    if (!games || !rom_filename)
+        return NULL;
+    for (int i = 0; i < games->length; ++i)
+    {
+        CB_Game* game = games->items[i];
+        if (game && strcmp(game->fullpath, rom_filename) == 0)
+            return game;
+    }
+    return NULL;
 }
 
 void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result)
@@ -157,156 +131,4 @@ void cb_clear_global_cover_cache(void)
     cb_free_loaded_cover_art_bitmap(&CB_App->coverArtCache.art);
 
     CB_App->coverArtCache.art.status = CB_COVER_ART_FILE_NOT_FOUND;
-}
-
-// compress a game's disk cover into an LZ4 snapshot (pixel + optional mask
-// plane, row-wise) so views decode from RAM instead of disk
-void CB_cover_compress(CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count)
-{
-    if (!game->coverPath || game->cover_compressed_data)
-        return;
-
-    const char* error = NULL;
-    LCDBitmap* coverBitmap = playdate->graphics->loadBitmap(game->coverPath, &error);
-
-    if (!coverBitmap)
-        return;
-
-    int width, height, rowbytes;
-    uint8_t *mask_data, *pixel_data;
-    playdate->graphics->getBitmapData(
-        coverBitmap, &width, &height, &rowbytes, &mask_data, &pixel_data
-    );
-
-    bool has_mask = (mask_data != NULL);
-    size_t original_size = rowbytes * height;
-    if (has_mask)
-        original_size *= 2;
-
-    int max_dst_size = LZ4_compressBound(original_size);
-    char* temp_compressed_buffer = cb_malloc(max_dst_size);
-
-    uint8_t* uncompressed_buffer = cb_malloc(original_size);
-    memcpy(uncompressed_buffer, pixel_data, rowbytes * height);
-    if (has_mask)
-    {
-        memcpy(uncompressed_buffer + (rowbytes * height), mask_data, rowbytes * height);
-    }
-
-    int compressed_size = LZ4_compress_fast_extState(
-        lz4_state, (const char*)uncompressed_buffer, temp_compressed_buffer, original_size,
-        max_dst_size, 1
-    );
-
-    cb_free(uncompressed_buffer);
-
-    if (compressed_size > 0)
-    {
-        char* final_buffer = cb_malloc(compressed_size);
-        memcpy(final_buffer, temp_compressed_buffer, compressed_size);
-
-        game->cover_compressed_data = final_buffer;
-        game->cover_compressed_size = compressed_size;
-        game->cover_width = width;
-        game->cover_height = height;
-        game->cover_rowbytes = rowbytes;
-        game->cover_has_mask = has_mask;
-
-        if (io_cache_bytes)
-            *io_cache_bytes += compressed_size;
-        if (io_cached_count)
-            *io_cached_count += 1;
-    }
-    cb_free(temp_compressed_buffer);
-
-    playdate->graphics->freeBitmap(coverBitmap);
-}
-
-void CB_cover_free_compressed(CB_Game* game)
-{
-    if (game->cover_compressed_data)
-    {
-        cb_free(game->cover_compressed_data);
-        game->cover_compressed_data = NULL;
-    }
-}
-
-// decompress a game's cached cover bitmap; io_buffer is a caller-owned
-// scratch buffer reused across calls (grown on demand)
-LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size)
-{
-    if (!game->cover_compressed_data || !io_buffer || !io_buffer_size)
-        return NULL;
-
-    int original_size = game->cover_rowbytes * game->cover_height;
-    if (game->cover_has_mask)
-        original_size *= 2;
-
-    if (*io_buffer_size < (size_t)original_size)
-    {
-        char* new_buffer = cb_realloc(*io_buffer, original_size);
-        if (!new_buffer)
-            return NULL;
-        *io_buffer = new_buffer;
-        *io_buffer_size = original_size;
-    }
-
-    char* decompressed_buffer = *io_buffer;
-    if (!decompressed_buffer)
-        return NULL;
-
-    int decompressed_size = LZ4_decompress_safe(
-        game->cover_compressed_data, decompressed_buffer, game->cover_compressed_size, original_size
-    );
-    if (decompressed_size != original_size)
-    {
-        playdate->system->logToConsole("LZ4 decompression failed for %s", game->fullpath);
-        return NULL;
-    }
-
-    LCDBitmap* new_bitmap = NULL;
-    if (game->cover_has_mask)
-    {
-        new_bitmap =
-            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorClear);
-    }
-    else
-    {
-        new_bitmap =
-            playdate->graphics->newBitmap(game->cover_width, game->cover_height, kColorWhite);
-    }
-    if (!new_bitmap)
-        return NULL;
-
-    int new_rowbytes;
-    uint8_t *new_pixel_data, *new_mask_data;
-    playdate->graphics->getBitmapData(
-        new_bitmap, NULL, NULL, &new_rowbytes, &new_mask_data, &new_pixel_data
-    );
-    size_t copy_bytes = ((size_t)game->cover_rowbytes < (size_t)new_rowbytes)
-                            ? game->cover_rowbytes
-                            : (size_t)new_rowbytes;
-
-    uint8_t* src_ptr = (uint8_t*)decompressed_buffer;
-    uint8_t* dst_ptr = new_pixel_data;
-
-    for (int y = 0; y < game->cover_height; ++y)
-    {
-        memcpy(dst_ptr, src_ptr, copy_bytes);
-        src_ptr += game->cover_rowbytes;
-        dst_ptr += new_rowbytes;
-    }
-
-    if (game->cover_has_mask && new_mask_data)
-    {
-        dst_ptr = new_mask_data;
-        for (int y = 0; y < game->cover_height; ++y)
-        {
-            memcpy(dst_ptr, src_ptr, copy_bytes);
-            src_ptr += game->cover_rowbytes;
-            dst_ptr += new_rowbytes;
-        }
-    }
-
-    return new_bitmap;
 }

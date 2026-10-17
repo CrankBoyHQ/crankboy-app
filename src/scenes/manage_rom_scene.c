@@ -352,10 +352,8 @@ static void delete_cover_confirmed(void* ud, int option)
     cb_free(game->coverPath);
     game->coverPath = NULL;
 
-    if (game->cover_compressed_data)
-    {
-        CB_cover_free_compressed(game);
-    }
+    CB_cover_free(game);
+    CB_cover_mark_changed(game);
     cb_clear_global_cover_cache();
     CB_LibraryScene_invalidateFlow();
     self->cursorIndex = 1;

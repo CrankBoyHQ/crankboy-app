@@ -102,7 +102,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     {
         char* covers_dir =
             cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
-        char* path = aprintf("%s/%s.pdi", covers_dir, basename_no_ext);
+        char* path = aprintf("%s/%s.cvi", covers_dir, basename_no_ext);
         cb_free(covers_dir);
         if (cb_file_exists(path, kFileReadData | kFileRead))
             game->coverPath = path;
@@ -135,7 +135,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
 #ifdef CRANKBOY_OFFICIAL_CATALOG
         if (strncmp(game->fullpath, "packed/", 7) == 0)
         {
-            game->coverPath = aprintf("packed/%s.pdi", found_cover_name);
+            game->coverPath = aprintf("packed/%s.cvi", found_cover_name);
         }
         else
 #endif
@@ -143,7 +143,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
             char* covers_dir =
                 cb_system_directory_path_for_slug(cachedName->system_slug, CB_coversPath);
             playdate->system->formatString(
-                &game->coverPath, "%s/%s.pdi", covers_dir, found_cover_name
+                &game->coverPath, "%s/%s.cvi", covers_dir, found_cover_name
             );
             cb_free(covers_dir);
         }
@@ -162,6 +162,6 @@ void CB_Game_free(CB_Game* game)
 {
     cb_free(game->fullpath);
     cb_free(game->coverPath);
-    CB_cover_free_compressed(game);
+    CB_cover_free(game);
     cb_free(game);
 }

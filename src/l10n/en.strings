@@ -251,7 +251,6 @@
 "lib_no_core_msg" = "No emulator core is installed for this game's system.";
 "lib_critical_oom" = "A critical error occurred:\n\nOut of Memory\n\nPlease restart CrankBoy.";
 "lib_error" = "Error";
-"lib_invalid_image" = "Invalid image";
 "lib_homebrew_banner" = "Download \"homebrew\" games for free from Homebrew Hub.\n\nThis feature is still experimental.\n\nParental lock is available.";
 "lib_manager_title" = "Use CrankBoy Manager";
 "lib_manager_usb" = "Connect to a computer via USB";

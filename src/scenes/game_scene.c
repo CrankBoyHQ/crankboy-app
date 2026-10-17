@@ -40,6 +40,7 @@ static void CB_GameScene_reset_screen_defaults(void);
 #include "../tcm_relocate.h"
 #include "../userstack.h"
 #include "../utility.h"
+#include "covers.h"
 #include "credits_scene.h"
 #include "info_scene.h"
 #include "modal.h"
@@ -3627,19 +3628,51 @@ static void CB_GameScene_menu(void* object)
     {
         if (gameScene->menuImage == NULL)
         {
-            CB_LoadedCoverArt cover_art = {.bitmap = NULL};
-            char* actual_cover_path = NULL;
-
             // --- Get Cover Art ---
 
-            bool has_cover_art = false;
-            if (CB_App->coverArtCache.rom_path &&
+            // decode the 200-high variant fresh instead of re-using the
+            // 240 detail decode
+            LCDBitmap* pause_bitmap = NULL;
+            bool pause_bitmap_owned = false;  // only fresh decodes are ours
+            int pause_width = 0;
+            int pause_height = 0;
+
+            CB_Game* cover_game = CB_cover_game_by_rom_filename(gameScene->rom_filename);
+            if (cover_game && cover_game->coverPath)
+            {
+                CB_CVI cvi;
+                if (CB_cvi_load(&cvi, CB_get_forwarded_path(cover_game->coverPath)))
+                {
+                    const CB_CVIVariant* variant = CVI_pick_variant(&cvi, 400, 200);
+                    if (variant)
+                    {
+                        void* cover_scratch = NULL;
+                        size_t cover_scratch_size = 0;
+                        pause_bitmap =
+                            CVI_decode_variant(variant, &cover_scratch, &cover_scratch_size);
+                        cb_free(cover_scratch);
+                        if (pause_bitmap)
+                        {
+                            pause_bitmap_owned = true;
+                            pause_width = variant->width;
+                            pause_height = variant->height;
+                        }
+                    }
+                    CB_cvi_free(&cvi);
+                }
+            }
+
+            if (!pause_bitmap && CB_App->coverArtCache.rom_path &&
                 strcmp(CB_App->coverArtCache.rom_path, gameScene->rom_filename) == 0 &&
                 CB_App->coverArtCache.art.status == CB_COVER_ART_SUCCESS &&
                 CB_App->coverArtCache.art.bitmap != NULL)
             {
-                has_cover_art = true;
+                pause_bitmap = CB_App->coverArtCache.art.bitmap;
+                pause_width = CB_App->coverArtCache.art.scaled_width;
+                pause_height = CB_App->coverArtCache.art.scaled_height;
             }
+
+            bool has_cover_art = (pause_bitmap != NULL);
 
             // --- Get Save Times ---
 
@@ -3677,6 +3710,12 @@ static void CB_GameScene_menu(void* object)
             if (has_cover_art || show_time_info)
             {
                 gameScene->menuImage = playdate->graphics->newBitmap(400, 240, kColorClear);
+                if (gameScene->menuImage == NULL && pause_bitmap_owned)
+                {
+                    // OOM: nothing got drawn, don't leak our fresh decode
+                    playdate->graphics->freeBitmap(pause_bitmap);
+                    pause_bitmap = NULL;
+                }
                 if (gameScene->menuImage != NULL)
                 {
                     playdate->graphics->pushContext(gameScene->menuImage);
@@ -3692,17 +3731,15 @@ static void CB_GameScene_menu(void* object)
                     {
                         playdate->graphics->fillRect(0, 0, 400, 240, kColorBlack);
 
-                        CB_LoadedCoverArt* cached_art = &CB_App->coverArtCache.art;
-
                         const int max_width = 200;
                         const int max_height = 200;
 
-                        float scale_x = (float)max_width / cached_art->scaled_width;
-                        float scale_y = (float)max_height / cached_art->scaled_height;
+                        float scale_x = (float)max_width / pause_width;
+                        float scale_y = (float)max_height / pause_height;
                         float scale = fminf(scale_x, scale_y);
 
-                        int final_width = (int)(cached_art->scaled_width * scale);
-                        int final_height = (int)(cached_art->scaled_height * scale);
+                        int final_width = (int)(pause_width * scale);
+                        int final_height = (int)(pause_height * scale);
 
                         int art_x = (200 - final_width) / 2;
                         if (!show_time_info)
@@ -3711,8 +3748,13 @@ static void CB_GameScene_menu(void* object)
                         }
 
                         playdate->graphics->drawScaledBitmap(
-                            cached_art->bitmap, art_x, cover_art_y, scale, scale
+                            pause_bitmap, art_x, cover_art_y, scale, scale
                         );
+
+                        // only our own fresh decode is freed here; the
+                        // borrowed coverArtCache bitmap stays cache-owned
+                        if (pause_bitmap_owned)
+                            playdate->graphics->freeBitmap(pause_bitmap);
 
                         cover_art_height = final_height;
                     }

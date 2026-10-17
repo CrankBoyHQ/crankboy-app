@@ -282,21 +282,22 @@ static void flow_step(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx, int delt
 
 static LCDBitmap* flow_load_cover(CB_CoverFlow* cf, CB_Game* game)
 {
-    if (game->cover_compressed_data)
+    if (!game->cvi)
     {
-        return CB_decompress_game_cover(game, &cf->decomp_buffer, &cf->decomp_buffer_size);
+        if (!game->coverPath)
+            return NULL;
+        CB_cover_load(game);
     }
-    if (game->coverPath)
-    {
-        CB_LoadedCoverArt art = cb_load_and_scale_cover_art_from_path(
-            game->coverPath, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT
+    // center-card shape: the 200-high variant always fits, the 240 box
+    // only when the cover itself is short enough
+    LCDBitmap* bitmap =
+        CB_cover_decode(game, 400, FLOW_CENTER_H, &cf->decomp_buffer, &cf->decomp_buffer_size);
+    if (!bitmap)
+        playdate->system->logToConsole(
+            "coverflow: decode failed %s (%u variants)", game->coverPath ? game->coverPath : "-",
+            game->cvi ? game->cvi->num_variants : 0
         );
-        if (art.status == CB_COVER_ART_SUCCESS)
-        {
-            return art.bitmap;
-        }
-    }
-    return NULL;
+    return bitmap;
 }
 
 static CB_FlowSlot* flow_find_slot(CB_CoverFlow* cf, int index)
@@ -406,15 +407,17 @@ static void flow_update_slots(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx)
             break;
 
         CB_Game* game = ctx->games->items[idx];
-        bool fromDisk = !game->cover_compressed_data && game->coverPath;
-        if (fromDisk && diskLoads >= FLOW_DISK_LOADS_PER_FRAME)
+        bool needsDiskLoad = !game->cvi && game->coverPath;
+        if (needsDiskLoad && diskLoads >= FLOW_DISK_LOADS_PER_FRAME)
             continue;
 
         LCDBitmap* bitmap = flow_load_cover(cf, game);
-        if (fromDisk)
+        if (needsDiskLoad)
             diskLoads++;
 
-        // occupy the slot even on failure so we don't retry every frame
+        // occupy the slot even on failure so we don't retry every frame;
+        // failing slots refresh on the next invalidateAll (category
+        // switch, cover download/delete)
         free_slot->index = idx;
         free_slot->bitmap = bitmap;
     }

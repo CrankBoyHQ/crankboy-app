@@ -19,7 +19,7 @@
  *
  * Protocol Specification:
  *
- * Host Commands (→ Device):
+ * Host Commands (-> Device):
  *   ft:b:<filename>:<size>:<crc32>[:<orig_name>:<orig_crc>]  - Begin transfer
  *   ft:c:<seq>:<crc16>:<base64>                              - Send chunk
  *   ft:e:<crc32>                                             - End transfer
@@ -57,12 +57,12 @@
  *   - .gb  - Game Boy ROMs (saved to games/)
  *   - .gbc - Game Boy Color ROMs (saved to games/)
  *   - .gbz - Compressed GB/GBC files (saved to games/, decompressed on device)
- *   - .pdi - Playdate cover images (saved to covers/ automatically)
+ *   - .cvi - CrankBoy cover containers (saved to covers/ automatically)
  *
  * Target Directory Selection:
  *   The device automatically selects the target directory based on file extension:
- *   - .pdi files → covers/ directory
- *   - All other valid types (.gb, .gbc, .gbz) → games/ directory
+ *   - .cvi files -> covers/ directory
+ *   - All other valid types (.gb, .gbc, .gbz) -> games/ directory
  *   If <filename> begins with '/', it is treated as an absolute path and used
  *   verbatim; directory auto-selection, the extension whitelist, and the
  *   ".." traversal check are all skipped. The host is trusted to supply a
@@ -321,11 +321,10 @@ static void ft_send_cumulative_ack(bool force, bool is_error)
     }
 }
 
-// Check if extension is valid (.gb, .gbc, .gbz, .pdi)
 static bool is_valid_extension(const char* filename)
 {
     return cb_file_has_extension(filename, ".gb") || cb_file_has_extension(filename, ".gbc") ||
-           cb_file_has_extension(filename, ".gbz") || cb_file_has_extension(filename, ".pdi");
+           cb_file_has_extension(filename, ".gbz") || cb_file_has_extension(filename, ".cvi");
 }
 
 // Handle ft:b command - Begin transfer
@@ -444,7 +443,7 @@ bool ft_handle_begin(
     }
     else
     {
-        bool is_cover = cb_file_has_extension(basename_ptr, ".pdi");
+        bool is_cover = cb_file_has_extension(basename_ptr, ".cvi");
         const char* target_dir =
             is_cover ? cb_gb_directory_path(CB_coversPath) : cb_gb_directory_path(CB_gamesPath);
 

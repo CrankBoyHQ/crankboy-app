@@ -1,6 +1,7 @@
 #include "image_conversion_scene.h"
 
 #include "../app.h"
+#include "../cvienc.h"
 #include "../pdi.h"
 #include "../utility.h"
 #include "library_scene.h"
@@ -258,7 +259,6 @@ void* rgba_to_pdi(
     if (max_width >= 0 && max_width < width)
     {
         wscale = (float)width / (float)max_width;
-        playdate->system->logToConsole("image width: %d; desired: %d\n", width, max_width);
     }
     else
     {
@@ -267,7 +267,6 @@ void* rgba_to_pdi(
     if (max_height >= 0 && max_height < height)
     {
         hscale = (float)height / (float)max_height;
-        playdate->system->logToConsole("image height: %d; desired: %d\n", height, max_height);
     }
     else
     {
@@ -294,30 +293,13 @@ void* rgba_to_pdi(
         return NULL;
     }
 
-    // Determine if we have transparency
-    int has_transparency = false;
-#if 0
-    if (channels == 4) {
-        // Check if any pixel has alpha < 255
-        for (int i = 0; i < width * height * 4; i += 4) {
-            if (img_data[i + 3] < 255) {
-                has_transparency = 1;
-                break;
-            }
-        }
-    }
-#endif
-
     size_t stride = ((max_width + 31) / 32) * 4;
-
-    playdate->system->logToConsole("stride: %x\n", (int)stride);
 
     struct PDIHeader header;
     memcpy(header.magic, PDI_MAGIC, sizeof(header.magic));
-    header.flags = 0;  // TODO: compression
+    header.flags = 0;
 
     struct PDICell cell;
-    // TODO: clip rect
     cell.clip_width = max_width;
     cell.clip_height = max_height;
     cell.stride = stride;
@@ -325,11 +307,10 @@ void* rgba_to_pdi(
     cell.clip_right = 0;
     cell.clip_top = 0;
     cell.clip_bottom = 0;
-    cell.flags = has_transparency ? PDI_CELL_FLAG_TRANSPARENCY : 0;
+    cell.flags = 0;
 
     size_t white_size = stride * max_height;
-    size_t opaque_size = has_transparency ? stride * max_height : 0;
-    size_t total_size = sizeof(header) + sizeof(cell) + white_size + opaque_size;
+    size_t total_size = sizeof(header) + sizeof(cell) + white_size;
 
     void* pdi_data = cb_malloc(total_size);
     if (!pdi_data)
@@ -350,71 +331,8 @@ void* rgba_to_pdi(
     memcpy(ptr, &cell, sizeof(cell));
     ptr += sizeof(cell);
 
-    uint32_t lfsr = 0x8389E83A;
-
-    // Write white data (convert RGBA to grayscale)
-#ifdef LFSR_DITHER
-    for (int y = 0; y < max_height; y++)
-    {
-        for (int x = 0; x < max_width; x++)
-        {
-            lfsr <<= 1;
-            lfsr |= 1 & ((lfsr >> 1) ^ (lfsr >> 5) ^ (lfsr >> 8) ^ (lfsr >> 21) ^ (lfsr >> 31) ^ 1);
-
-            unsigned xb = x / 8;
-            unsigned x8 = x % 8;
-
-            int ix = MIN(x * scale, width - 1);
-            int iy = MIN(y * scale, height - 1);
-
-            int src_idx = (iy * width + ix) * 4;
-            unsigned r = img_data[src_idx];
-            unsigned g = img_data[src_idx + 1];
-            unsigned b = img_data[src_idx + 2];
-
-            // apparently these are standard weights.
-            // range is (0, 256*1024 + margin]
-            unsigned gray = r * WEIGHT_R + g * WEIGHT_G + b * WEIGHT_B;
-
-            // TODO: use bayer filtering or something
-            unsigned white = gray > lfsr % (WEIGHT_DIVISOR);
-
-            if (white)
-            {
-                ptr[y * stride + xb] |= (1 << (7 - x8));
-            }
-        }
-    }
-#else
     errdiff_dither(img_data, width, height, ptr, max_width, max_height, stride, scale, 0.95f);
-#endif
-    ptr += white_size;
 
-    if (has_transparency)
-    {
-        for (int y = 0; y < max_height; y++)
-        {
-            for (int x = 0; x < max_width; x++)
-            {
-                unsigned xb = x / 8;
-                unsigned x8 = x % 8;
-
-                int ix = MIN(x * scale, width - 1);
-                int iy = MIN(y * scale, height - 1);
-
-                int src_idx = (iy * width + ix) * 4;
-
-                int a = img_data[src_idx + 3];
-
-                if (a > 32)
-                {
-                    ptr[y * stride + xb] |= (1 << (7 - x8));  // Alpha channel
-                }
-            }
-        }
-    }
-
-    // Clean up
     if (out_size)
     {
         *out_size = total_size;
@@ -422,21 +340,27 @@ void* rgba_to_pdi(
     return pdi_data;
 }
 
-void* png_to_pdi(
-    const char* context_filename, const void* png_data, int png_size, size_t* out_size,
-    int max_width, int max_height
-)
+void* png_to_cvi(const char* context_filename, const void* png_data, int png_size, size_t* out_size)
 {
     int width, height;
     unsigned char* img_data = cb_decode_png(context_filename, png_data, png_size, &width, &height);
     if (!img_data)
         return NULL;
 
-    void* pdi_data =
-        rgba_to_pdi(context_filename, img_data, width, height, out_size, max_width, max_height);
+    // same variant set the downloaded repo covers carry: a 240-fit box
+    // for the library detail panel + a height-exact 200 for coverflow
+    // and the pause menu
+    static const CVIEncRequest reqs[2] = {
+        {240, CVI_ENC_FIT_BOX},
+        {200, CVI_ENC_HEIGHT_EXACT},
+    };
+    CVIEncSource src = {
+        .rgba = img_data, .width = width, .height = height, .requests = reqs, .num_requests = 2
+    };
+    void* cvi_data = CVIEnc_write(&src, out_size);
 
     cb_free_decoded_image(img_data);
-    return pdi_data;
+    return cvi_data;
 }
 
 // returns 1 on success
@@ -451,30 +375,30 @@ static int process_png(const char* fname)
 
     bool success = false;
 
-    size_t pdi_len = 0;
-    void* pdi = png_to_pdi(fname, data, len, &pdi_len, THUMBNAIL_WIDTH, THUMBNAIL_HEIGHT);
+    size_t cvi_len = 0;
+    void* cvi = png_to_cvi(fname, data, len, &cvi_len);
     cb_free(data);
 
-    if (pdi && pdi_len > 0)
+    if (cvi && cvi_len > 0)
     {
         char* basename = cb_basename(fname, true);
-        char* pdi_name = aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), basename);
+        char* cvi_name = aprintf("%s/%s.cvi", cb_gb_directory_path(CB_coversPath), basename);
         if (basename)
             cb_free(basename);
 
-        if (pdi_name)
+        if (cvi_name)
         {
-            if (cb_write_entire_file(pdi_name, pdi, pdi_len))
+            if (cb_write_entire_file(cvi_name, cvi, cvi_len))
             {
                 success = true;
             }
-            cb_free(pdi_name);
+            cb_free(cvi_name);
         }
     }
 
-    if (pdi)
+    if (cvi)
     {
-        cb_free(pdi);
+        cb_free(cvi);
     }
 
     if (success)

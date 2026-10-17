@@ -4,12 +4,7 @@
 
 #include <stdio.h>
 
-// converts png to pdi. Returns NULL on failure.
-// if either max_width or max_height non-zero, scales down image if it exceeds that size
-void* png_to_pdi(
-    const char* context_fname, const void* png_data, int png_size, size_t* out_size, int max_width,
-    int max_height
-);
+void* png_to_cvi(const char* context_fname, const void* png_data, int png_size, size_t* out_size);
 
 unsigned char* cb_decode_png(
     const char* context_fname, const void* png_data, int png_size, int* out_width, int* out_height
@@ -20,7 +15,7 @@ void* rgba_to_pdi(
     int max_width, int max_height
 );
 
-/* Converts PNG cover art into PDI, then launches LibraryScene */
+/* Converts PNG cover art into cvi containers, then launches LibraryScene */
 
 typedef enum
 {

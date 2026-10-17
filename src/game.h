@@ -9,6 +9,7 @@
 #define game_h
 
 #include "array.h"
+#include "cvi.h"
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -25,12 +26,8 @@ typedef struct CB_Game
     char* displayName;
     char* sortName;
 
-    void* cover_compressed_data;
-    int cover_compressed_size;
-    int cover_width;
-    int cover_height;
-    int cover_rowbytes;
-    bool cover_has_mask;
+    CB_CVI* cvi;             // container loaded on demand, NULL otherwise
+    bool cover_load_failed;  // a load attempt failed; skip until file changes
     uint32_t cover_access_counter;
 } CB_Game;
 

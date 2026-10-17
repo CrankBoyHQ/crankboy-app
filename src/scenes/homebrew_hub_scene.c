@@ -1,6 +1,7 @@
 #include "homebrew_hub_scene.h"
 
 #include "../app.h"
+#include "../cvienc.h"
 #include "../http.h"
 #include "../hubdownloads.h"
 #include "../jparse.h"
@@ -147,7 +148,7 @@ static void rom_get_cb(unsigned flags, char* data, size_t data_len, CB_HomebrewH
         // try saving the cover art from the slug-keyed disk cache.
         if (hbs->target_cover_art_path && hbs->target_rom_slug)
         {
-            char* cover_path = aprintf("%s/%s_cover.pdi", CB_hbCachePath, hbs->target_rom_slug);
+            char* cover_path = aprintf("%s/%s_cover.cvi", CB_hbCachePath, hbs->target_rom_slug);
             size_t cover_len = 0;
             char* cover = cb_read_entire_file(cover_path, &cover_len, kFileReadData | kFileRead);
 
@@ -523,7 +524,7 @@ static void context_list_files_update(
             char* cover_art_name = cb_basename(name, true);
             cb_free(hbs->target_cover_art_path);
             hbs->target_cover_art_path =
-                aprintf("%s/%s.pdi", cb_gb_directory_path(CB_coversPath), cover_art_name);
+                aprintf("%s/%s.cvi", cb_gb_directory_path(CB_coversPath), cover_art_name);
             cb_free(cover_art_name);
             cb_free(name);
 
@@ -762,9 +763,21 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
                 hbs->download_image_name, img, img_width, img_height, &pdi_size,
                 LCD_COLUMNS - kDividerX, 160
             );
-            cover_data = rgba_to_pdi(
-                hbs->download_image_name, img, img_width, img_height, &cover_size, 240, 240
-            );
+
+            // game covers are cvi; the hub preview keeps its own pdi
+            // cache artifact
+            static const CVIEncRequest hub_reqs[2] = {
+                {240, CVI_ENC_FIT_BOX},
+                {200, CVI_ENC_HEIGHT_EXACT},
+            };
+            CVIEncSource hub_src = {
+                .rgba = img,
+                .width = img_width,
+                .height = img_height,
+                .requests = hub_reqs,
+                .num_requests = 2
+            };
+            cover_data = CVIEnc_write(&hub_src, &cover_size);
 
             cb_free_decoded_image(img);
         }
@@ -797,7 +810,7 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
             if (cover_data && cover_size)
             {
                 char* cover_path =
-                    aprintf("%s/%s_cover.pdi", CB_hbCachePath, hbs->download_image_slug);
+                    aprintf("%s/%s_cover.cvi", CB_hbCachePath, hbs->download_image_slug);
                 cb_write_entire_file(cover_path, cover_data, cover_size);
                 cb_free(cover_path);
             }
@@ -882,7 +895,7 @@ static void context_list_search_update(
                     if (slug)
                     {
                         char* preview_path = aprintf("%s/%s_preview.pdi", CB_hbCachePath, slug);
-                        char* cover_path = aprintf("%s/%s_cover.pdi", CB_hbCachePath, slug);
+                        char* cover_path = aprintf("%s/%s_cover.cvi", CB_hbCachePath, slug);
 
                         hbs->download_image = call_with_main_stack_2(
                             playdate->graphics->loadBitmap, preview_path, NULL

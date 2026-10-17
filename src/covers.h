@@ -16,7 +16,6 @@ typedef enum
 {
     CB_COVER_ART_SUCCESS,
     CB_COVER_ART_ERROR_LOADING,
-    CB_COVER_ART_INVALID_IMAGE,
     CB_COVER_ART_FILE_NOT_FOUND
 } CB_CoverArtStatus;
 
@@ -30,23 +29,39 @@ typedef struct
     CB_CoverArtStatus status;
 } CB_LoadedCoverArt;
 
-// cache for the currently selected game's cover
 typedef struct
 {
     CB_LoadedCoverArt art;
     char* rom_path;
 } CB_GlobalCoverCache;
 
-void CB_cover_compress(
-    CB_Game* game, void* lz4_state, size_t* io_cache_bytes, int* io_cached_count
-);
-void CB_cover_free_compressed(CB_Game* game);
+// loads the game's cover container from disk into memory (no-op if it is
+// already loaded); returns byte size contributed to the cover cache
+size_t CB_cover_load(CB_Game* game);
 
-LCDBitmap* CB_decompress_game_cover(CB_Game* game, void** io_buffer, size_t* io_buffer_size);
+// drops any loaded container, returns its byte size (0 when not loaded)
+size_t CB_cover_free(CB_Game* game);
+size_t CB_cover_bytes(const CB_Game* game);
+bool CB_cover_is_loaded(const CB_Game* game);
 
-CB_LoadedCoverArt cb_load_and_scale_cover_art_from_path(
-    const char* cover_path, int max_target_width, int max_target_height
+// decompresses the variant of choice into an LCDBitmap; io_buffer/size is
+// a caller-owned scratch buffer reused across calls (grown on demand);
+// returns NULL when nothing is loaded or decoding fails
+LCDBitmap* CB_cover_decode(
+    const CB_Game* game, int max_w, int max_h, void** io_buffer, size_t* io_buffer_size
 );
+
+// decodes the art at thumbnail size into the global art cache (clears the
+// cache first, sets status + rom_path); returns decode success
+bool CB_cover_fill_art_cache(CB_Game* game, void** io_buffer, size_t* io_buffer_size);
+
+// finds <rom_filename>'s game (by full path) in the global game list;
+// NULL when absent
+CB_Game* CB_cover_game_by_rom_filename(const char* rom_filename);
+
+// clears the failed-load marker after the cover file changed (download
+// replace, cover delete, new game entry)
+void CB_cover_mark_changed(CB_Game* game);
 
 void cb_free_loaded_cover_art_bitmap(CB_LoadedCoverArt* art_result);
 void cb_clear_global_cover_cache(void);
