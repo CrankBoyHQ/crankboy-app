@@ -4,6 +4,7 @@
 #include "ft.h"
 #include "revcheck.h"
 #include "scenes/game_scene.h"
+#include "scenes/library_scene.h"
 #include "scenes/sft_modal.h"
 #include "utility.h"
 #include "version.h"
@@ -681,13 +682,21 @@ static bool serial_cb_fwdinstall(const char* const* tokens)
     return true;
 }
 
-// emit a per-game string field, dropping with :omit if the line would overflow
+// emit a per-game urlencoded string field, dropping with :omit if the
+// line would overflow.
 static void emit_games_str(unsigned int i, const char* label, const char* value)
 {
     if (!value || !*value)
         return;
-    char buf[256];
-    int n = snprintf(buf, sizeof(buf), "cb:games:%u:%s:%s", i, label, value);
+    char* enc = url_encode(value);
+    if (!enc)
+    {
+        serial_send_response("cb:games:%u:omit:%s", i, label);
+        return;
+    }
+    char buf[512];
+    int n = snprintf(buf, sizeof(buf), "cb:games:%u:%s:%s", i, label, enc);
+    cb_free(enc);
     if (n < 0 || (size_t)n >= sizeof(buf))
     {
         serial_send_response("cb:games:%u:omit:%s", i, label);
@@ -715,6 +724,10 @@ static bool serial_cb_games(const char* const* tokens)
                 serial_send_response("cb:games:%u:crc32:%08X", i, nm->crc32);
             }
             emit_games_str(i, "path", g->fullpath);
+            if (g->coverPath)
+                emit_games_str(i, "cover", g->coverPath);
+            else
+                emit_games_str(i, "cover", "-");
             if (nm)
             {
                 emit_games_str(i, "short_title", nm->name_short);
@@ -747,6 +760,20 @@ static gb_s* serial_find_gb(void)
 }
 
 bool load_state(CB_GameScene* gameScene, unsigned slot);
+
+// Handle cb:covers:refresh command - Rescan the cover folders and reload
+// the running library scene after cover transfers.
+// Responds cb:covers:refresh:ok, or :error:nolibrary when no library
+// scene is open
+static bool serial_cb_covers_refresh(const char* const* tokens)
+{
+    (void)tokens;
+    if (CB_LibraryScene_covers_updated())
+        serial_send_response("cb:covers:refresh:ok");
+    else
+        serial_send_response("cb:covers:refresh:error:nolibrary");
+    return true;
+}
 
 // Handle cb:gbload command - Load a savestate slot (debugging)
 // Format: cb:gbload:<slot>
@@ -911,6 +938,14 @@ static bool serial_cb_handler(const char* const* tokens)
     else if (strcmp(subcmd, "games") == 0)
     {
         return serial_cb_games(tokens);
+    }
+    else if (strcmp(subcmd, "covers") == 0)
+    {
+        if (tokens[2] && strcmp(tokens[2], "refresh") == 0)
+        {
+            return serial_cb_covers_refresh(tokens);
+        }
+        return false;
     }
     else if (strcmp(subcmd, "pdxpath") == 0)
     {

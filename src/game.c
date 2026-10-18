@@ -94,6 +94,17 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
     game->names = cachedName;
     CB_Game_set_display_and_sort_name(game);
 
+    CB_Game_assign_cover_path(game, cachedName, available_covers);
+
+    return game;
+}
+
+// resolves game->coverPath from the game's names and the available covers
+// listing (must be sorted). Expects game->coverPath to be NULL.
+void CB_Game_assign_cover_path(
+    CB_Game* game, const CB_GameName* cachedName, CB_Array* available_covers
+)
+{
     char* basename_no_ext = cb_rom_basename(cachedName->filename);
 
     // available_covers lists gb's covers only
@@ -109,7 +120,7 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
         else
             cb_free(path);
         cb_free(basename_no_ext);
-        return game;
+        return;
     }
 
     char** found_cover_name_ptr = (char**)bsearch(
@@ -148,14 +159,8 @@ CB_Game* CB_Game_new(CB_GameName* cachedName, CB_Array* available_covers)
             cb_free(covers_dir);
         }
     }
-    else
-    {
-        game->coverPath = NULL;
-    }
 
     cb_free(basename_no_ext);
-
-    return game;
 }
 
 void CB_Game_free(CB_Game* game)

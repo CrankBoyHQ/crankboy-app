@@ -21,6 +21,9 @@
 // Cleanup (called internally and on error)
 void ft_cleanup(void);
 
+// true while a file transfer is being received
+bool ft_transfer_active(void);
+
 // Protocol command handlers (called by serial.c)
 bool ft_handle_begin(
     const char* filename, const char* size_str, const char* crc_str, const char* original_filename,

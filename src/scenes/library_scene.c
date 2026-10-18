@@ -9,6 +9,7 @@
 #include "library_scene.h"
 
 #include "../app.h"
+#include "../ft.h"
 #include "../http_safe.h"
 #include "../jparse.h"
 #include "../preferences.h"
@@ -37,6 +38,7 @@ static bool library_category_is_visible(const RomCategory* cat);
 static void library_push_extra_items(CB_LibraryScene* libraryScene);
 static bool library_active_is_all(const CB_LibraryScene* libraryScene);
 static void collect_cover_filenames_callback(const char* filename, void* userdata);
+static void library_rebuild_list_items(CB_LibraryScene* libraryScene);
 
 // (re)populates the scene's available_covers from the covers dir (+ packed
 // covers on catalog builds): listfiles, qsort, dedupe
@@ -198,6 +200,66 @@ static int last_selected_game_index = 0;
 static bool library_was_initialized_once = false;
 static int last_panel_seam = LCD_COLUMNS / 2;
 static CB_LibraryScene* s_active_library_scene = NULL;
+
+bool CB_LibraryScene_covers_updated(void)
+{
+    cb_clear_global_cover_cache();
+
+    CB_LibraryScene* libraryScene = s_active_library_scene;
+    if (!libraryScene || libraryScene->state != kLibraryStateDone)
+        return false;
+
+    // fresh folder scan; CB_Game_assign_cover_path consumes this listing
+    library_list_available_covers(libraryScene);
+
+    // reassign paths and drop stale containers
+    CB_Array* games = CB_App->gameListCache;
+    for (int i = 0; i < games->length; ++i)
+    {
+        CB_Game* g = games->items[i];
+        if (!g)
+            continue;
+        size_t freed = CB_cover_free(g);
+        if (freed)
+        {
+            libraryScene->cover_cache_bytes -= freed;
+            libraryScene->cover_cached_count--;
+        }
+        if (g->coverPath)
+        {
+            cb_free(g->coverPath);
+            g->coverPath = NULL;
+        }
+        CB_cover_mark_changed(g);
+        CB_Game_assign_cover_path(g, g->names, libraryScene->available_covers);
+    }
+
+    libraryScene->preload_cover_index = 0;
+    libraryScene->preload_cover_total = 0;
+    library_rebuild_list_items(libraryScene);
+    CB_CoverFlow_invalidateAll(libraryScene->coverFlow);
+
+    // keep the selected game's cover art showing after the reload
+    int sel = libraryScene->listView->selectedItem;
+    if (sel >= 0 && sel < libraryScene->games->length)
+    {
+        CB_Game* sel_game = libraryScene->games->items[sel];
+        if (sel_game->coverPath)
+        {
+            size_t bytes = CB_cover_load(sel_game);
+            if (bytes)
+            {
+                libraryScene->cover_cache_bytes += bytes;
+                libraryScene->cover_cached_count++;
+            }
+            CB_cover_fill_art_cache(
+                sel_game, &libraryScene->decompression_buffer,
+                &libraryScene->decompression_buffer_size
+            );
+        }
+    }
+    return true;
+}
 
 static void save_last_selected_index(const char* rompath)
 {
@@ -1603,6 +1665,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
 
         case kLibraryStatePreloadCovers:
         {
+            // a running file transfer writes the same directories: stay out
+            if (ft_transfer_active())
+                return;
+
             if (libraryScene->preload_cover_total == 0)
             {
                 int center = libraryScene->listView->selectedItem;
@@ -1749,6 +1815,10 @@ static void CB_LibraryScene_update(void* object, uint32_t u32enc_dt)
     // idle background fill
     if (libraryScene->state == kLibraryStateDone && libraryScene->initialLoadComplete)
     {
+        // a running file transfer writes the same directories: stay out
+        if (ft_transfer_active())
+            return;
+
         unsigned int now = playdate->system->getCurrentTimeMilliseconds();
         if (now - libraryScene->last_user_input_time_ms > IDLE_THRESHOLD_MS)
         {

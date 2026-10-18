@@ -134,3 +134,7 @@ CB_LibraryScene* CB_LibraryScene_new(void);
 bool CB_LibraryScene_removeGame(CB_Game* game);
 // drop the cover-flow slot cache so deleted covers disappear immediately
 void CB_LibraryScene_invalidateFlow(void);
+
+// handles out-of-band cover changes (manager transfers): rescan, reload
+// containers, rebuild; returns true when the active library scene handled it
+bool CB_LibraryScene_covers_updated(void);

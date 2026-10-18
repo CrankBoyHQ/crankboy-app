@@ -152,6 +152,11 @@ static bool sanitize_filename(const char* input, char* output, size_t output_siz
     return true;
 }
 
+bool ft_transfer_active(void)
+{
+    return ft_ctx.state != FT_STATE_IDLE;
+}
+
 // Clean up transfer context
 void ft_cleanup(void)
 {
