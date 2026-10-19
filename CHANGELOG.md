@@ -1,6 +1,8 @@
-# v3.0.0 - (2026-09-04)
+# v3.0.0 - (2026-10-26)
 
-More performance, better Audio and Categories. Also: 日本語 is arriving.
+More performance, better Audio, Cover Flow and Categories. Also: 日本語 is arriving.
+
+**Note:** First launch after updating converts your cover images to a new format -- this takes a moment, but only happens once.
 
 ## Japanese Language (WIP)
 
@@ -49,6 +51,11 @@ More performance, better Audio and Categories. Also: 日本語 is arriving.
 - ROMs are automatically sorted into genre categories from the ROM database.
 - Every genre is editable: add or remove games, or reset to the default.
 - Manage everything from the library menu: reorder, hide/show, and assign ROMs.
+
+## Cover Flow
+
+- New library view: browse your games as a flip-through row of covers.
+- Switch views in Settings -> Library -> View: List or Cover Flow.
 
 ## Scripts
 
