@@ -35,6 +35,10 @@ extern const uint8_t lcdp_87s[16];  // bright 7/8 (staggered)
 
 extern const uint8_t lcdp_t_50[16];  // transparent white 50%
 
+// transparent dissolve ramps, sparse -> dense: mask carries density, image is solid
+extern const uint8_t* const lcdp_dither_black[7];
+extern const uint8_t* const lcdp_dither_white[7];
+
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
 #define CB_DEBUG false

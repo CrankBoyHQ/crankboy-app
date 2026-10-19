@@ -37,6 +37,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
 static bool library_category_is_visible(const RomCategory* cat);
 static void library_push_extra_items(CB_LibraryScene* libraryScene);
 static bool library_active_is_all(const CB_LibraryScene* libraryScene);
+static bool library_is_flow_mode(const CB_LibraryScene* libraryScene);
 static void collect_cover_filenames_callback(const char* filename, void* userdata);
 static void library_rebuild_list_items(CB_LibraryScene* libraryScene);
 
@@ -409,6 +410,7 @@ static void play_launch_animation(CB_Game* game)
     const int frames = 12;
     const int sideBarMax = 40;
     bool fadeOff = (boot_fade == PREF_FADE_NONE);
+    const bool flow = library_is_flow_mode(libraryScene);
     int seam = last_panel_seam;
     if (seam < 0)
         seam = 0;
@@ -417,6 +419,8 @@ static void play_launch_animation(CB_Game* game)
 
     int leftWidth = seam;
     int rightWidth = LCD_COLUMNS - seam;
+
+    libraryScene->launchAnimDitherIdx = -1;
 
     for (int i = 1; i <= frames; ++i)
     {
@@ -433,18 +437,31 @@ static void play_launch_animation(CB_Game* game)
         {
             float t = (float)i / (float)frames;
             float p = 0.5f * t + 0.5f * t * t;
-            int L = (int)(leftWidth * p + 0.5f);
-            int R = (int)(rightWidth * p + 0.5f);
-            if (L > leftWidth)
-                L = leftWidth;
-            if (R > rightWidth)
-                R = rightWidth;
 
-            libraryScene->launchAnimShiftLeft = L;
-            libraryScene->launchAnimShiftRight = R;
-            libraryScene->launchAnimWhiteGap = white_gap;
-            libraryScene->launchAnimSideBarWidth =
-                fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
+            if (flow)
+            {
+                // flow has no panels to part: dissolve to the gap color instead
+                libraryScene->launchAnimWhiteGap = white_gap;
+                libraryScene->launchAnimSideBarWidth =
+                    fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
+                if (!fadeOff)
+                    libraryScene->launchAnimDitherIdx = (int)(p * 6.99f);
+            }
+            else
+            {
+                int L = (int)(leftWidth * p + 0.5f);
+                int R = (int)(rightWidth * p + 0.5f);
+                if (L > leftWidth)
+                    L = leftWidth;
+                if (R > rightWidth)
+                    R = rightWidth;
+
+                libraryScene->launchAnimShiftLeft = L;
+                libraryScene->launchAnimShiftRight = R;
+                libraryScene->launchAnimWhiteGap = white_gap;
+                libraryScene->launchAnimSideBarWidth =
+                    fadeOff ? (sideBarMax * i + frames / 2) / frames : 0;
+            }
             libraryScene->scene->forceFullRefresh = true;
 
             CB_LibraryScene_draw(libraryScene, true);
@@ -462,6 +479,7 @@ static void play_launch_animation(CB_Game* game)
     libraryScene->launchAnimShiftLeft = 0;
     libraryScene->launchAnimShiftRight = 0;
     libraryScene->launchAnimSideBarWidth = 0;
+    libraryScene->launchAnimDitherIdx = -1;
     libraryScene->launchAnimWhiteGap = false;
 }
 
@@ -1313,10 +1331,6 @@ static void library_rebuild_list_items(CB_LibraryScene* libraryScene)
     CB_ListView_reload(libraryScene->listView);
 }
 
-static void library_cycle_category(CB_LibraryScene* libraryScene, int dir);
-
-static bool library_is_flow_mode(const CB_LibraryScene* libraryScene);
-
 static void library_cycle_category(CB_LibraryScene* libraryScene, int dir)
 {
     if (libraryScene->state != kLibraryStateDone || libraryScene->tab != CB_LibrarySceneTabList)
@@ -1545,6 +1559,7 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     libraryScene->bg_fill_center = -1;
     libraryScene->bg_fill_dist = 0;
     libraryScene->bg_fill_dir = 0;
+    libraryScene->launchAnimDitherIdx = -1;
 
     if (libraryScene->isReloading)
     {
@@ -2253,7 +2268,6 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
             .forceRedraw = needsDisplay && !forAnimation,
             .categoryName = flow_cat_name,
             .trailingTitle = T(Library_GetRoms),
-            .xShift = libraryScene->launchAnimShiftRight - libraryScene->launchAnimShiftLeft
         };
 
         if (flowMode)
@@ -2852,6 +2866,14 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                 message5_text, strlen(message5_text), kUTF8Encoding, textColX, message5_Y
             );
         }
+    }
+
+    int ditherIdx = libraryScene->launchAnimDitherIdx;
+    if (ditherIdx >= 0)
+    {
+        const uint8_t* pattern = libraryScene->launchAnimWhiteGap ? lcdp_dither_white[ditherIdx]
+                                                                  : lcdp_dither_black[ditherIdx];
+        playdate->graphics->fillRect(0, 0, LCD_COLUMNS, LCD_ROWS, (LCDColor)pattern);
     }
 
     int sideBar = libraryScene->launchAnimSideBarWidth;

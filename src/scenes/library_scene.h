@@ -110,6 +110,7 @@ typedef struct CB_LibraryScene
     int launchAnimShiftLeft;
     int launchAnimShiftRight;
     int launchAnimSideBarWidth;
+    int launchAnimDitherIdx;  // -1 = inactive; flow-mode dissolve step 0..6
     bool launchAnimWhiteGap;
 
     CB_Array* available_covers;

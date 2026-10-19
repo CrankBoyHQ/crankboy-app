@@ -37,7 +37,6 @@ typedef struct
     bool placeholderAnimated;    // download dots animate -> redraw every frame
     const char* categoryName;    // NULL = hide
     const char* trailingTitle;   // trailing "Get ROMs..." card
-    int xShift;                  // launch slide
 } CB_CoverFlowContext;
 
 // Cover Flow background styles (values of preferences_library_background)

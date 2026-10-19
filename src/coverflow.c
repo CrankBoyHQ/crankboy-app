@@ -338,11 +338,11 @@ static float flow_anchor_width(CB_CoverFlow* cf, int sel, int games_n)
 }
 
 // per-card geometry for the LP-crate packing. rel includes the slide offset
-// (signed); cx includes xShift. Bitmap dims ≤ 0 (or a NULL bitmap) fall back
-// to the square placeholder sheet
+// (signed). Bitmap dims ≤ 0 (or a NULL bitmap) fall back to the square
+// placeholder sheet
 static void flow_card_metrics(
-    float rel, float anchorW, float screenMid, int xShift, float bmW, float bmH, float* dw,
-    float* dh, float* scaleX, float* scaleY, float* cx
+    float rel, float anchorW, float screenMid, float bmW, float bmH, float* dw, float* dh,
+    float* scaleX, float* scaleY, float* cx
 )
 {
     float absRel = fabsf(rel);
@@ -373,7 +373,7 @@ static void flow_card_metrics(
     }
 
     float sideSign = rel > 0.0f ? 1.0f : -1.0f;
-    *cx = screenMid + xShift + sideSign * (anchorW / 2.0f + FLOW_SLIVER * absRel - (*dw) / 2.0f);
+    *cx = screenMid + sideSign * (anchorW / 2.0f + FLOW_SLIVER * absRel - (*dw) / 2.0f);
 }
 
 // ensure covers around the selection are decompressed; evict out-of-window slots
@@ -480,8 +480,8 @@ static void flow_capture_fade_stack(
 
         float dw, dh, scaleX, scaleY, cx;
         flow_card_metrics(
-            (float)(idx - sel) - cf->offset, dw0, screenWidth / 2.0f, ctx->xShift, bmW, bmH, &dw,
-            &dh, &scaleX, &scaleY, &cx
+            (float)(idx - sel) - cf->offset, dw0, screenWidth / 2.0f, bmW, bmH, &dw, &dh, &scaleX,
+            &scaleY, &cx
         );
 
         if (count >= FLOW_SLOT_COUNT)
@@ -806,9 +806,7 @@ static void flow_draw_cards(
             continue;
 
         float dw, dh, scaleX, scaleY, cx;
-        flow_card_metrics(
-            rel, dw0, screenWidth / 2.0f, ctx->xShift, bmW, bmH, &dw, &dh, &scaleX, &scaleY, &cx
-        );
+        flow_card_metrics(rel, dw0, screenWidth / 2.0f, bmW, bmH, &dw, &dh, &scaleX, &scaleY, &cx);
         // placeholder text only on front cards
         float front = absRel > 1.0f ? 1.0f : absRel;
 
@@ -947,7 +945,7 @@ static void flow_draw_chrome(
     int screenHeight, float offY, bool hasClip, int clipTop, int clipBot, float dw0
 )
 {
-    float centerCardMid = screenWidth / 2.0f + ctx->xShift;
+    float centerCardMid = screenWidth / 2.0f;
     int cardLeft = (int)(centerCardMid - dw0 / 2.0f);
     int cardRight = (int)(centerCardMid + dw0 / 2.0f);
 
@@ -1179,7 +1177,7 @@ void CB_CoverFlow_draw(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx)
     int games_n = ctx->games ? ctx->games->length : 0;
 
     bool redraw = cf->needsDisplay || ctx->forceRedraw || cf->offset != 0.0f ||
-                  cf->needsTextScroll || ctx->placeholderAnimated || ctx->xShift != 0;
+                  cf->needsTextScroll || ctx->placeholderAnimated;
     if (!redraw)
         return;
 
