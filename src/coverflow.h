@@ -9,11 +9,15 @@
 #define coverflow_h
 
 #include "array.h"
+#include "game.h"
 
 #include <pd_api.h>
 #include <stdbool.h>
 
 typedef struct CB_CoverFlow CB_CoverFlow;
+
+// reports flow-side cover loads to the owning scene for cache accounting
+typedef void (*CB_CoverFlowAccountFn)(void* ud, CB_Game* game, size_t bytes);
 
 typedef struct
 {
@@ -54,6 +58,9 @@ const uint8_t* cb_library_bg_pattern(int style);
 
 CB_CoverFlow* CB_CoverFlow_new(void);
 void CB_CoverFlow_free(CB_CoverFlow* cf);
+void CB_CoverFlow_set_cover_accounting(
+    CB_CoverFlow* cf, void* ud, CB_CoverFlowAccountFn account_loaded
+);
 void CB_CoverFlow_update(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx);
 void CB_CoverFlow_draw(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx);
 void CB_CoverFlow_invalidateAll(CB_CoverFlow* cf);

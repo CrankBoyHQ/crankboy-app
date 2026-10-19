@@ -301,15 +301,24 @@ static OptionsMenuEntry make_emucore_entry(ce_preference_t* p)
     return e;
 }
 
+static CB_Game* settings_library_selected_game(CB_SettingsScene* s)
+{
+    if (!s->libraryScene)
+        return NULL;
+    CB_LibraryScene* lib = s->libraryScene;
+    int sel = lib->listView->selectedItem;
+    if (sel < 0 || sel >= lib->games->length)
+        return NULL;
+    return lib->games->items[sel];
+}
+
 static const char* settings_emu_slug(CB_SettingsScene* s)
 {
     if (s->emucoreGameScene && s->emucoreGameScene->slug)
         return s->emucoreGameScene->slug;
     if (s->libraryScene)
     {
-        CB_Game* g = (s->libraryScene->listView->selectedItem < s->libraryScene->games->length)
-                         ? s->libraryScene->games->items[s->libraryScene->listView->selectedItem]
-                         : NULL;
+        CB_Game* g = settings_library_selected_game(s);
         if (g && g->names)
             return g->names->system_slug;
     }
@@ -454,10 +463,7 @@ CB_SettingsScene* CB_SettingsScene_new(
 
     if (libraryScene)
     {
-        CB_Game* selectedGame =
-            (libraryScene->listView->selectedItem < libraryScene->games->length)
-                ? libraryScene->games->items[libraryScene->listView->selectedItem]
-                : NULL;
+        CB_Game* selectedGame = settings_library_selected_game(settingsScene);
         if (selectedGame)
         {
             settingsScene->selected_game_settings_path =
@@ -510,10 +516,7 @@ CB_SettingsScene* CB_SettingsScene_new(
     }
     else if (libraryScene)
     {
-        CB_Game* selectedGame =
-            (libraryScene->listView->selectedItem < libraryScene->games->length)
-                ? libraryScene->games->items[libraryScene->listView->selectedItem]
-                : NULL;
+        CB_Game* selectedGame = settings_library_selected_game(settingsScene);
         const char* slug =
             (selectedGame && selectedGame->names) ? selectedGame->names->system_slug : NULL;
         if (slug && strcmp(slug, GB_SYSTEM_SLUG))
@@ -1786,13 +1789,8 @@ static const char* get_settings_game_name(CB_SettingsScene* settingsScene)
 {
     if (settingsScene->libraryScene)
     {
-        CB_Game* selectedGame =
-            (settingsScene->libraryScene->listView->selectedItem <
-             settingsScene->libraryScene->games->length)
-                ? settingsScene->libraryScene->games
-                      ->items[settingsScene->libraryScene->listView->selectedItem]
-                : NULL;
-        if (selectedGame)
+        CB_Game* selectedGame = settings_library_selected_game(settingsScene);
+        if (selectedGame && selectedGame->names)
             return selectedGame->names->name_header;
     }
     else if (settingsScene->gameScene)
@@ -1903,10 +1901,7 @@ static OptionsMenuEntry* build_general(SectionDef* def, CB_SettingsScene* scene,
     CB_init_settings_labels();
     CB_GameScene* gameScene = scene->gameScene;
     CB_LibraryScene* libraryScene = scene->libraryScene;
-    CB_Game* selectedGame =
-        (libraryScene && libraryScene->listView->selectedItem < libraryScene->games->length)
-            ? libraryScene->games->items[libraryScene->listView->selectedItem]
-            : NULL;
+    CB_Game* selectedGame = settings_library_selected_game(scene);
 
     scene->rec_entry_index = -1;
 
@@ -3042,6 +3037,10 @@ static void CB_SettingsScene_rebuildEntries(CB_SettingsScene* settingsScene)
     {
         settingsScene->cursorIndex = 0;
     }
+    if (settingsScene->topVisibleIndex > settingsScene->cursorIndex)
+    {
+        settingsScene->topVisibleIndex = MAX(0, settingsScene->cursorIndex - 1);
+    }
 
     update_state_descriptions(settingsScene);
 }
@@ -3371,6 +3370,7 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
                 if (cursor_entry->rebuild_when_changed)
                 {
                     CB_SettingsScene_rebuildEntries(settingsScene);
+                    menuItemCount = settingsScene->totalMenuItemCount;
                     cursor_entry = (settingsScene->totalMenuItemCount > 0)
                                        ? &settingsScene->entries[settingsScene->cursorIndex]
                                        : &dummy_entry;
@@ -3430,13 +3430,8 @@ static void CB_SettingsScene_update(void* object, uint32_t u32enc_dt)
     }
     else if (settingsScene->libraryScene)
     {
-        CB_Game* selectedGame =
-            (settingsScene->libraryScene->listView->selectedItem <
-             settingsScene->libraryScene->games->length)
-                ? settingsScene->libraryScene->games
-                      ->items[settingsScene->libraryScene->listView->selectedItem]
-                : NULL;
-        if (selectedGame)
+        CB_Game* selectedGame = settings_library_selected_game(settingsScene);
+        if (selectedGame && selectedGame->names)
         {
             game_name_for_header = selectedGame->names->name_short_leading_article;
         }

@@ -49,7 +49,7 @@ static void CB_Scene_event(void* object, PDSystemEvent event, uint32_t arg)
 void CB_Scene_refreshMenu(CB_Scene* scene)
 {
     playdate->system->removeAllMenuItems();
-    scene->menu(CB_App->scene->managedObject);
+    scene->menu(scene->managedObject);
 }
 
 void CB_Scene_free(void* object)

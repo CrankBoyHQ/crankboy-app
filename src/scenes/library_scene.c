@@ -95,21 +95,48 @@ static void collect_cover_filenames_callback(const char* filename, void* userdat
     }
 }
 
-static bool cover_evict_lru(CB_LibraryScene* lib)
+static void library_cover_account(
+    CB_LibraryScene* libraryScene, CB_Game* game, size_t bytes, bool bump_access
+)
+{
+    if (!bytes)
+        return;
+    libraryScene->cover_cache_bytes += bytes;
+    libraryScene->cover_cached_count++;
+    if (bump_access)
+        game->cover_access_counter = ++libraryScene->cover_global_access_counter;
+}
+
+// protect: a cover the caller just loaded and still needs this frame
+static bool cover_evict_lru(CB_LibraryScene* lib, const CB_Game* protect)
 {
     uint32_t smallest = UINT32_MAX;
     CB_Game* to_evict = NULL;
+    CB_Game* fallback = NULL;
 
-    for (int i = 0; i < lib->games->length; i++)
+    // scan the base list: the filtered view would hide loaded covers from other categories
+    CB_Array* base = CB_App->gameListCache;
+    for (int i = 0; base && i < base->length; i++)
     {
-        CB_Game* g = lib->games->items[i];
-        if (CB_cover_is_loaded(g) && g->cover_access_counter > 0 &&
-            g->cover_access_counter < smallest)
+        CB_Game* g = base->items[i];
+        if (g == protect || !CB_cover_is_loaded(g))
+            continue;
+        if (g->cover_access_counter > 0)
         {
-            smallest = g->cover_access_counter;
-            to_evict = g;
+            if (g->cover_access_counter < smallest)
+            {
+                smallest = g->cover_access_counter;
+                to_evict = g;
+            }
+        }
+        else if (!fallback)
+        {
+            fallback = g;  // never-selected pin: keep it evictable anyway
         }
     }
+
+    if (!to_evict)
+        to_evict = fallback;
 
     if (to_evict)
     {
@@ -127,7 +154,7 @@ static void cover_background_fill(CB_LibraryScene* lib)
     {
         while (lib->cover_cached_count >= MAX_COVER_COUNT)
         {
-            if (!cover_evict_lru(lib))
+            if (!cover_evict_lru(lib, NULL))
                 break;
         }
     }
@@ -137,9 +164,7 @@ static void cover_background_fill(CB_LibraryScene* lib)
 
     if (lib->bg_fill_center < 0)
     {
-        // center on the selected game's position in the GLOBAL base list:
-        // a lean category should still warm the library around the game
-        // the user is on, not just its own couple of entries
+        // anchor to the base list: even a lean category warms around the user's actual position
         CB_Game* selected = NULL;
         int sel = lib->listView->selectedItem;
         if (sel >= 0 && sel < lib->games->length)
@@ -189,13 +214,25 @@ static void cover_background_fill(CB_LibraryScene* lib)
             size_t added = CB_cover_load(g);
             if (added)
             {
-                lib->cover_cache_bytes += added;
-                lib->cover_cached_count++;
+                library_cover_account(lib, g, added, false);
                 found++;
             }
         }
     }
 }
+static void library_cover_flow_accounting(void* ud, CB_Game* game, size_t bytes)
+{
+    CB_LibraryScene* libraryScene = ud;
+    // no access bump: window neighbors stay fallback-evictable
+    library_cover_account(libraryScene, game, bytes, false);
+    // trim inline: flow loads can overshoot the cap mid-frame
+    while (libraryScene->cover_cached_count > MAX_COVER_COUNT)
+    {
+        if (!cover_evict_lru(libraryScene, game))
+            break;
+    }
+}
+
 static int last_selected_game_index = 0;
 static bool library_was_initialized_once = false;
 static int last_panel_seam = LCD_COLUMNS / 2;
@@ -247,11 +284,7 @@ bool CB_LibraryScene_covers_updated(void)
         if (sel_game->coverPath)
         {
             size_t bytes = CB_cover_load(sel_game);
-            if (bytes)
-            {
-                libraryScene->cover_cache_bytes += bytes;
-                libraryScene->cover_cached_count++;
-            }
+            library_cover_account(libraryScene, sel_game, bytes, false);
             CB_cover_fill_art_cache(
                 sel_game, &libraryScene->decompression_buffer,
                 &libraryScene->decompression_buffer_size
@@ -1477,6 +1510,9 @@ CB_LibraryScene* CB_LibraryScene_new(void)
     library_apply_filter(libraryScene);
     library_update_filter_options(libraryScene);
     libraryScene->coverFlow = CB_CoverFlow_new();
+    CB_CoverFlow_set_cover_accounting(
+        libraryScene->coverFlow, libraryScene, library_cover_flow_accounting
+    );
     libraryScene->last_view_flow = false;
     libraryScene->bundled_refresh_state = CB_BundledRefreshNone;
 #ifdef CRANKBOY_OFFICIAL_CATALOG
@@ -2284,13 +2320,7 @@ static void CB_LibraryScene_draw(CB_LibraryScene* libraryScene, bool forAnimatio
                 if (!foundInCache && selectedGame->coverPath != NULL)
                 {
                     size_t loaded_bytes = CB_cover_load(selectedGame);
-                    if (loaded_bytes)
-                    {
-                        libraryScene->cover_cache_bytes += loaded_bytes;
-                        libraryScene->cover_cached_count++;
-                        selectedGame->cover_access_counter =
-                            ++libraryScene->cover_global_access_counter;
-                    }
+                    library_cover_account(libraryScene, selectedGame, loaded_bytes, true);
 
                     CB_cover_fill_art_cache(
                         selectedGame, &libraryScene->decompression_buffer,

@@ -136,6 +136,9 @@ struct CB_CoverFlow
     bool needsDisplay;
 
     int bgStyle;  // CB_LIB_BG_*, stashed by CB_CoverFlow_draw before first use
+
+    void* accounting_ud;
+    CB_CoverFlowAccountFn account_loaded;
 };
 
 CB_CoverFlow* CB_CoverFlow_new(void)
@@ -238,6 +241,14 @@ void CB_CoverFlow_free(CB_CoverFlow* cf)
     cb_free(cf);
 }
 
+void CB_CoverFlow_set_cover_accounting(
+    CB_CoverFlow* cf, void* ud, CB_CoverFlowAccountFn account_loaded
+)
+{
+    cf->accounting_ud = ud;
+    cf->account_loaded = account_loaded;
+}
+
 static void flow_step(CB_CoverFlow* cf, const CB_CoverFlowContext* ctx, int delta)
 {
     int n = ctx->itemCount;
@@ -286,7 +297,9 @@ static LCDBitmap* flow_load_cover(CB_CoverFlow* cf, CB_Game* game)
     {
         if (!game->coverPath)
             return NULL;
-        CB_cover_load(game);
+        size_t added = CB_cover_load(game);
+        if (added && cf->account_loaded)
+            cf->account_loaded(cf->accounting_ud, game, added);
     }
     // center-card shape: the 200-high variant always fits, the 240 box
     // only when the cover itself is short enough

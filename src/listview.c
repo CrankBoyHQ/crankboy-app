@@ -696,6 +696,8 @@ void CB_ListView_draw(CB_ListView* listView)
 
 void CB_ListView_selectItem(CB_ListView* listView, int index, bool animated)
 {
+    if (index < 0 || index >= listView->items->length)
+        return;
 
     CB_ListItemButton* button = listView->items->items[index];
     CB_ListItem* item = &button->item;
