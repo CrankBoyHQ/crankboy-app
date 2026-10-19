@@ -1421,7 +1421,7 @@ static uint8_t* read_rom_to_ram(
 
         if (fileError)
         {
-            char* fsErrorCode = cb_extract_fs_error_code(fileError);
+            const char* fsErrorCode = cb_extract_fs_error_code(fileError);
             if (fsErrorCode)
             {
                 if (strcmp(fsErrorCode, "0709") == 0)

@@ -901,7 +901,7 @@ static bool flow_draw_counter(
     if (sel < 0 || sel >= games_n)
         return scrolling;
 
-    char counter[16];
+    char counter[32];
     snprintf(counter, sizeof(counter), "%d / %d", sel + 1, games_n);
     LCDFont* counterFont = CB_App->labelFont ? CB_App->labelFont : CB_App->bodyFont;
     playdate->graphics->setFont(counterFont);

@@ -141,7 +141,7 @@ size_t cb_strlen(const char* s)
     return strlen(s);
 }
 
-char* cb_strrchr(const char* s, int c)
+const char* cb_strrchr(const char* s, int c)
 {
     return strrchr(s, c);
 }
@@ -716,10 +716,10 @@ char* cb_save_filename(const char* path, bool isRecovery)
     return buffer;
 }
 
-char* cb_extract_fs_error_code(const char* fileError)
+const char* cb_extract_fs_error_code(const char* fileError)
 {
-    char* findStr = "uC-FS error: ";
-    char* fsErrorPtr = strstr(fileError, findStr);
+    const char* findStr = "uC-FS error: ";
+    const char* fsErrorPtr = strstr(fileError, findStr);
     if (fsErrorPtr)
     {
         return fsErrorPtr + strlen(findStr);

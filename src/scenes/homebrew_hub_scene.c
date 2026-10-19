@@ -244,7 +244,7 @@ static char* context_list_search_hint(CB_HomebrewHubScene* hbs, HomebrewHubConte
                     // strip 'T' and onward
                     if (date)
                     {
-                        char* date_tchar = strchr(date, 'T');
+                        char* date_tchar = (char*)strchr(date, 'T');
                         if (date_tchar)
                             date_tchar[0] = 0;
                     }

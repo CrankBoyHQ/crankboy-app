@@ -108,7 +108,7 @@ char* cb_basename(const char* filename, bool stripExtension);
 // stored as an image ("celeste.p8.png" -> "celeste")
 char* cb_rom_basename(const char* filename);
 char* cb_save_filename(const char* filename, bool isRecovery);
-char* cb_extract_fs_error_code(const char* filename);
+const char* cb_extract_fs_error_code(const char* filename);
 char* common_article_form(const char* input);
 
 // extracts final '.' and what follows it
@@ -198,7 +198,7 @@ void* cb_calloc(size_t count, size_t size);
 void cb_free(void* ptr);
 
 size_t cb_strlen(const char* s);
-char* cb_strrchr(const char* s, int c);
+const char* cb_strrchr(const char* s, int c);
 int cb_strcmp(const char* s1, const char* s2);
 
 // returns false on failure
