@@ -750,7 +750,7 @@ static void cover_art_cb(unsigned flags, char* data, size_t data_len, CB_Homebre
     {
         int img_width = 0, img_height = 0;
         unsigned char* img =
-            cb_decode_png(hbs->download_image_name, data, data_len, &img_width, &img_height);
+            cb_decode_image(hbs->download_image_name, data, data_len, &img_width, &img_height);
 
         size_t pdi_size = 0;
         void* pdi_data = NULL;

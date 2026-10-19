@@ -222,14 +222,14 @@ __space bool errdiff_dither(
     return true;
 }
 
-unsigned char* cb_decode_png(
-    const char* context_filename, const void* png_data, int png_size, int* out_width,
+unsigned char* cb_decode_image(
+    const char* context_filename, const void* image_data, int image_size, int* out_width,
     int* out_height
 )
 {
     int channels;
     unsigned char* img_data = stbi_load_from_memory(
-        (const stbi_uc*)png_data, png_size, out_width, out_height, &channels, 4
+        (const stbi_uc*)image_data, image_size, out_width, out_height, &channels, 4
     );
 
     if (!img_data)
@@ -323,11 +323,9 @@ void* rgba_to_pdi(
 
     uint8_t* ptr = (uint8_t*)pdi_data;
 
-    // Write header
     memcpy(ptr, &header, sizeof(header));
     ptr += sizeof(header);
 
-    // Write cell
     memcpy(ptr, &cell, sizeof(cell));
     ptr += sizeof(cell);
 
@@ -340,22 +338,22 @@ void* rgba_to_pdi(
     return pdi_data;
 }
 
-void* png_to_cvi(const char* context_filename, const void* png_data, int png_size, size_t* out_size)
+void* image_to_cvi(
+    const char* context_filename, const void* image_data, int image_size, size_t* out_size
+)
 {
     int width, height;
-    unsigned char* img_data = cb_decode_png(context_filename, png_data, png_size, &width, &height);
+    unsigned char* img_data =
+        cb_decode_image(context_filename, image_data, image_size, &width, &height);
     if (!img_data)
         return NULL;
 
-    // same variant set the downloaded repo covers carry: a 240-fit box
-    // for the library detail panel + a height-exact 200 for coverflow
-    // and the pause menu
-    static const CVIEncRequest reqs[2] = {
-        {240, CVI_ENC_FIT_BOX},
-        {200, CVI_ENC_HEIGHT_EXACT},
-    };
     CVIEncSource src = {
-        .rgba = img_data, .width = width, .height = height, .requests = reqs, .num_requests = 2
+        .rgba = img_data,
+        .width = width,
+        .height = height,
+        .requests = CVIENC_COVER_REQUESTS,
+        .num_requests = CVIENC_COVER_REQUEST_COUNT,
     };
     void* cvi_data = CVIEnc_write(&src, out_size);
 
@@ -363,29 +361,42 @@ void* png_to_cvi(const char* context_filename, const void* png_data, int png_siz
     return cvi_data;
 }
 
-// returns 1 on success
-// returns 0 on failure
-// returns -1 if file not found (i.e. not in PDX directory)
-static int process_png(const char* fname)
+static char* cover_cvi_path_for(const char* fname)
+{
+    char* basename = cb_basename(fname, true);
+    char* path =
+        basename ? aprintf("%s/%s.cvi", cb_gb_directory_path(CB_coversPath), basename) : NULL;
+    cb_free(basename);
+    return path;
+}
+
+// moves the source aside (.conv/.fail) so the startup scan won't re-process it
+static void cover_rename_processed(const char* fname, bool success)
+{
+    char* new_fname = aprintf("%s.%s", fname, success ? "conv" : "fail");
+    if (new_fname)
+    {
+        playdate->file->rename(fname, new_fname);
+        cb_free(new_fname);
+    }
+}
+
+static bool process_image(const char* fname)
 {
     size_t len;
     void* data = cb_read_entire_file(fname, &len, kFileReadData);
     if (!data)
-        return -1;
+        return false;
 
     bool success = false;
 
     size_t cvi_len = 0;
-    void* cvi = png_to_cvi(fname, data, len, &cvi_len);
+    void* cvi = image_to_cvi(fname, data, len, &cvi_len);
     cb_free(data);
 
     if (cvi && cvi_len > 0)
     {
-        char* basename = cb_basename(fname, true);
-        char* cvi_name = aprintf("%s/%s.cvi", cb_gb_directory_path(CB_coversPath), basename);
-        if (basename)
-            cb_free(basename);
-
+        char* cvi_name = cover_cvi_path_for(fname);
         if (cvi_name)
         {
             if (cb_write_entire_file(cvi_name, cvi, cvi_len))
@@ -401,24 +412,65 @@ static int process_png(const char* fname)
         cb_free(cvi);
     }
 
-    if (success)
+    cover_rename_processed(fname, success);
+
+    return success;
+}
+
+// true on success (converted or superseded by an existing cvi),
+// false on failure.
+static bool process_pdi(const char* fname)
+{
+    size_t len;
+    void* data = cb_read_entire_file(fname, &len, kFileReadData);
+    if (!data)
+        return false;
+
+    char* cvi_name = cover_cvi_path_for(fname);
+    if (!cvi_name)
     {
-        char* new_fname = aprintf("%s.conv", fname);
-        if (new_fname)
+        cb_free(data);
+        return false;
+    }
+
+    bool success = false;
+
+    // existing cvi for the same game wins; the pdi is parked either way so
+    // the scan doesn't re-trigger every boot
+    if (!cb_file_exists(cvi_name, kFileReadData))
+    {
+        PDIImage img;
+        if (PDI_decode(data, len, &img))
         {
-            playdate->file->rename(fname, new_fname);
-            cb_free(new_fname);
+            CVIEncSource src = {
+                .gray8 = img.gray8,
+                .width = (int)img.width,
+                .height = (int)img.height,
+                .passthrough_plane = img.plane,
+                .requests = CVIENC_COVER_REQUESTS,
+                .num_requests = CVIENC_COVER_REQUEST_COUNT,
+            };
+            size_t cvi_len = 0;
+            void* cvi_data = CVIEnc_write(&src, &cvi_len);
+
+            PDI_decode_free(&img);
+
+            if (cvi_data && cvi_len > 0)
+                success = cb_write_entire_file(cvi_name, cvi_data, cvi_len);
+
+            if (cvi_data)
+                cb_free(cvi_data);
         }
     }
     else
     {
-        char* new_fname = aprintf("%s.fail", fname);
-        if (new_fname)
-        {
-            playdate->file->rename(fname, new_fname);
-            cb_free(new_fname);
-        }
+        success = true;
     }
+
+    cb_free(data);
+    cb_free(cvi_name);
+
+    cover_rename_processed(fname, success);
 
     return success;
 }
@@ -487,12 +539,10 @@ void CB_ImageConversionScene_update(void* object, uint32_t u32enc_dt)
                 fname[len - 1] = '\0';
             }
 
-            int result = process_png(fname);
-
-            if (result >= 0)
-            {
-                playdate->system->logToConsole("  result: %d\n", (int)result);
-            }
+            if (filename_has_pdi_extension(fname))
+                process_pdi(fname);
+            else
+                process_image(fname);
 
             convScene->idx++;
         }
@@ -532,11 +582,17 @@ bool filename_has_stbi_extension(const char* fname)
     );
 }
 
+// legacy pre-cvi covers
+bool filename_has_pdi_extension(const char* fname)
+{
+    return cb_file_has_extension(fname, ".pdi");
+}
+
 static void on_list_file(const char* fname, void* ud)
 {
     CB_ImageConversionScene* convScene = ud;
 
-    if (filename_has_stbi_extension(fname))
+    if (filename_has_stbi_extension(fname) || filename_has_pdi_extension(fname))
     {
         char* full_path = aprintf("%s/%s", cb_gb_directory_path(CB_coversPath), fname);
         char** new_files =

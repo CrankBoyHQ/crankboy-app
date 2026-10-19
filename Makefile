@@ -47,6 +47,7 @@ SRC += src/coverflow.c
 SRC += src/covers.c
 SRC += src/cvi.c
 SRC += src/cvienc.c
+SRC += src/pdi.c
 SRC += src/pgmusic.c
 SRC += src/preferences.c
 SRC += src/emucore_prefs.c

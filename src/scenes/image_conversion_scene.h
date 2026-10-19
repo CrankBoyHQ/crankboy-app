@@ -4,10 +4,13 @@
 
 #include <stdio.h>
 
-void* png_to_cvi(const char* context_fname, const void* png_data, int png_size, size_t* out_size);
+void* image_to_cvi(
+    const char* context_fname, const void* image_data, int image_size, size_t* out_size
+);
 
-unsigned char* cb_decode_png(
-    const char* context_fname, const void* png_data, int png_size, int* out_width, int* out_height
+unsigned char* cb_decode_image(
+    const char* context_fname, const void* image_data, int image_size, int* out_width,
+    int* out_height
 );
 void cb_free_decoded_image(unsigned char* img_data);
 void* rgba_to_pdi(
@@ -15,8 +18,7 @@ void* rgba_to_pdi(
     int max_width, int max_height
 );
 
-/* Converts PNG cover art into cvi containers, then launches LibraryScene */
-
+/* Converts cover art (PNG/JPG/BMP and legacy pdi) into cvi containers */
 typedef enum
 {
     kStateListingFiles,
@@ -38,3 +40,6 @@ CB_ImageConversionScene* CB_ImageConversionScene_new(void);
 
 // returns true for .png, .jpg, .jpeg, .bmp
 bool filename_has_stbi_extension(const char* fname);
+
+// returns true for legacy pre-cvi .pdi covers
+bool filename_has_pdi_extension(const char* fname);

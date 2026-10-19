@@ -5,10 +5,10 @@
 //  Maintained and developed by the CrankBoy dev team.
 //
 //  On-device "CrankBoy CVI" encoder: builds cover containers straight from
-//  an RGBA buffer so the hub and the PNG converter scene emit the same
+//  an RGBA/gray buffer so the hub and the image conversion scene emit the same
 //  format the downloader serves. Dither = Bayer 4x4 ordered at target size
 //  (matches the repo pipeline's magick o4x4 pattern); compression = lz4
-//  (default level, raw blocks — device never needs lz4hc).
+//  (default level, raw blocks - lz4hc would be too heavy on device).
 //
 
 #ifndef cvienc_h
@@ -29,11 +29,17 @@ typedef struct CVIEncRequest
     CVIEncFit fit;
 } CVIEncRequest;
 
+#define CVIENC_COVER_REQUEST_COUNT 2
+
+extern const CVIEncRequest CVIENC_COVER_REQUESTS[CVIENC_COVER_REQUEST_COUNT];
+
 typedef struct CVIEncSource
 {
-    const uint8_t* rgba;  // rgba8888
+    const uint8_t* rgba;   // rgba8888; must be set unless gray8 is
+    const uint8_t* gray8;  // width * height grayscale; used when rgba is NULL
     int width;
     int height;
+    const uint8_t* passthrough_plane;
     const CVIEncRequest* requests;  // larger variant first
     int num_requests;
 } CVIEncSource;

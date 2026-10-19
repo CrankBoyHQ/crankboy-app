@@ -19,14 +19,19 @@
 #include "cvi.h"
 #include "utility.h"
 
-#include <stdlib.h>
 #include <string.h>
 
 // order-4x4 (Bayer) threshold map, matches magick's o4x4 pattern
 static const uint8_t cvienc_bayer4[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
 
+const CVIEncRequest CVIENC_COVER_REQUESTS[CVIENC_COVER_REQUEST_COUNT] = {
+    {240, CVI_ENC_FIT_BOX},
+    {200, CVI_ENC_HEIGHT_EXACT},
+};
 // grayscale sample of the source with alpha flattened onto white
-static uint8_t cvienc_gray_at(const uint8_t* rgba, int src_w, int src_h, int sx, int sy)
+static uint8_t cvienc_gray_at(
+    const uint8_t* rgba, const uint8_t* gray8, int src_w, int src_h, int sx, int sy
+)
 {
     if (sx < 0)
         sx = 0;
@@ -36,6 +41,9 @@ static uint8_t cvienc_gray_at(const uint8_t* rgba, int src_w, int src_h, int sx,
         sx = src_w - 1;
     if (sy >= src_h)
         sy = src_h - 1;
+
+    if (gray8)
+        return gray8[sy * src_w + sx];
 
     const uint8_t* p = rgba + (sy * src_w + sx) * 4;
     if (p[3] < 32)
@@ -47,7 +55,9 @@ static uint8_t cvienc_gray_at(const uint8_t* rgba, int src_w, int src_h, int sx,
 
 // dithers one variant into the white plane (1bpp, sdk stride); returns
 // cb_malloc'd plane bytes, len = stride * height
-static uint8_t* cvienc_plane(const uint8_t* rgba, int src_w, int src_h, int dst_w, int dst_h)
+static uint8_t* cvienc_plane(
+    const uint8_t* rgba, const uint8_t* gray8, int src_w, int src_h, int dst_w, int dst_h
+)
 {
     uint32_t stride = cvi_sdk_stride(dst_w);
     uint8_t* plane = cb_malloc(stride * dst_h);
@@ -59,9 +69,11 @@ static uint8_t* cvienc_plane(const uint8_t* rgba, int src_w, int src_h, int dst_
     {
         for (int tx = 0; tx < dst_w; tx++)
         {
+            // gray8 sources are already-dithered 1bpp patterns (legacy
+            // .pdi); interpolation smears their strokes, so nearest only
             int sx = tx * src_w / dst_w;
             int sy = ty * src_h / dst_h;
-            uint8_t gray = cvienc_gray_at(rgba, src_w, src_h, sx, sy);
+            uint8_t gray = cvienc_gray_at(rgba, gray8, src_w, src_h, sx, sy);
             uint8_t threshold =
                 (uint8_t)(((int)cvienc_bayer4[(ty % 4) * 4 + (tx % 4)] + 1) * 255 / 16);
 
@@ -74,8 +86,7 @@ static uint8_t* cvienc_plane(const uint8_t* rgba, int src_w, int src_h, int dst_
     return plane;
 }
 
-// packs one compressed block; returns cb_malloc'd bytes, len = compressed
-// length (caller frees when done)
+// packs one compressed block; returns cb_malloc'd bytes, len = compressed length
 static uint8_t* cvienc_lz4(const uint8_t* src, uint32_t size, uint32_t* out_compressed)
 {
     int bound = LZ4_compressBound((int)size);
@@ -105,8 +116,8 @@ static uint8_t* cvienc_lz4(const uint8_t* src, uint32_t size, uint32_t* out_comp
 
 void* CVIEnc_write(const CVIEncSource* src, size_t* out_size)
 {
-    if (!src || !src->rgba || src->width <= 0 || src->height <= 0 || !src->requests ||
-        src->num_requests <= 0)
+    if (!src || (!src->rgba && !src->gray8) || src->width <= 0 || src->height <= 0 ||
+        !src->requests || src->num_requests <= 0)
         return NULL;
 
     // variant dims, deduped in emit order
@@ -183,11 +194,20 @@ void* CVIEnc_write(const CVIEncSource* src, size_t* out_size)
 
     for (int i = 0; i < n_dims; ++i)
     {
-        planes[i] = cvienc_plane(src->rgba, src->width, src->height, dims[i][0], dims[i][1]);
-        if (!planes[i])
-            goto fail;
         uint32_t plane_len = cvi_sdk_stride(dims[i][0]) * dims[i][1];
-        comp[i] = cvienc_lz4(planes[i], plane_len, &comp_len[i]);
+        if (src->passthrough_plane && dims[i][0] == src->width && dims[i][1] == src->height)
+        {
+            comp[i] = cvienc_lz4(src->passthrough_plane, plane_len, &comp_len[i]);
+        }
+        else
+        {
+            planes[i] = cvienc_plane(
+                src->rgba, src->gray8, src->width, src->height, dims[i][0], dims[i][1]
+            );
+            if (!planes[i])
+                goto fail;
+            comp[i] = cvienc_lz4(planes[i], plane_len, &comp_len[i]);
+        }
         if (!comp[i])
             goto fail;
     }

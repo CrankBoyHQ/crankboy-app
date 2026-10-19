@@ -475,9 +475,9 @@ static void close_emucore_for_source(CB_GameScanningScene* scanScene)
     scanScene->progress_title = NULL;
 }
 
-static void checkForPngCallback(const char* filename, void* userdata)
+static void checkForConvertibleCoversCallback(const char* filename, void* userdata)
 {
-    if (filename_has_stbi_extension(filename))
+    if (filename_has_stbi_extension(filename) || filename_has_pdi_extension(filename))
     {
         *(bool*)userdata = true;
     }
@@ -668,16 +668,18 @@ void CB_GameScanningScene_update(void* object, uint32_t u32enc_dt)
 
         scanScene->hub_entries = hub_downloads_prune_and_save(scanScene->hub_entries);
 
-        bool png_found = false;
+        bool covers_found = false;
         {
             const char* coversPath = cb_gb_directory_path(CB_coversPath);
             if (coversPath)
             {
-                playdate->file->listfiles(coversPath, checkForPngCallback, &png_found, false);
+                playdate->file->listfiles(
+                    coversPath, checkForConvertibleCoversCallback, &covers_found, false
+                );
             }
         }
 
-        if (png_found)
+        if (covers_found)
         {
             CB_ImageConversionScene* imageConversionScene = CB_ImageConversionScene_new();
             CB_present(imageConversionScene->scene);
