@@ -161,7 +161,7 @@ static int _hub_downloads_write(HubDownload** list)
         return -1;
     }
     arr->n = 0;
-    for (HubDownload** it = list; *it; ++it)
+    for (HubDownload** it = list; it && *it; ++it)
     {
         HubDownload* entry = *it;
         json_value e = json_new_table();
