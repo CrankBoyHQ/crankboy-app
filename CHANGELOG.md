@@ -2,7 +2,7 @@
 
 More performance, better Audio, Cover Flow and Categories. Also: 日本語 is arriving.
 
-**Note:** First launch after updating converts your cover images to a new format -- this takes a moment, but only happens once.
+**Note:** First launch after updating converts your cover images to a new format -- this takes a moment, but only happens once. For Cover Flow we recommend redownloading all covers with CrankBoy Manager again.
 
 ## Japanese Language (WIP)
 
