@@ -157,7 +157,7 @@ def generate_markdown(scripts, version_tag):
     for script in sorted(stable, key=lambda x: x['rom_name']):
         desc = format_description(script['description'])
         filename = script['filename']
-        source_link = f"[{filename}](https://github.com/CrankBoyHQ/crankboy-app/blob/master/src/cscripts/{filename})"
+        source_link = f"[{filename}](https://github.com/CrankBoyHQ/crankboy-app/blob/{version_tag}/src/cscripts/{filename})"
         lines.append(f"| {script['rom_name']} | {desc} | {source_link} |")
 
     if not stable:
@@ -174,7 +174,7 @@ def generate_markdown(scripts, version_tag):
     for script in sorted(experimental, key=lambda x: x['rom_name']):
         desc = format_description(script['description'])
         filename = script['filename']
-        source_link = f"[{filename}](https://github.com/CrankBoyHQ/crankboy-app/blob/master/src/cscripts/{filename})"
+        source_link = f"[{filename}](https://github.com/CrankBoyHQ/crankboy-app/blob/{version_tag}/src/cscripts/{filename})"
         lines.append(f"| {script['rom_name']} | {desc} | {source_link} |")
 
     if not experimental:
