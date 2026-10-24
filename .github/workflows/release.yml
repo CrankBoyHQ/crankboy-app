@@ -405,7 +405,7 @@ jobs:
 
                   # Build simulator extension DLL
                   echo "Building simulator DLL..."
-                  gcc -static -shared -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 $COMMON_FLAGS \
+                  gcc -static -shared -Wl,-u,___mingw_fe_dfl_env -DTARGET_SIMULATOR=1 -DTARGET_EXTENSION=1 $COMMON_FLAGS \
                       -I . -I "$PLAYDATE_SDK_PATH/C_API" -I src -I libs \
                       -I libs/minigb_apu -I libs/lz4 -I libs/pdnewlib -I libs/pdkeyboard \
                       -o build/pdex.dll \
