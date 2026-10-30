@@ -1,3 +1,9 @@
+# v3.0.1 - (2026-10-30)
+
+## Bug Fixes
+
+- Fixed leftover cover pixels in the library list when cover art width changed.
+
 # v3.0.0 - (2026-10-26)
 
 More performance, better Audio, Cover Flow and Categories. Also: 日本語 is arriving.
