@@ -152,11 +152,6 @@ PYTHON ?= $(shell \
         command -v python3 2>/dev/null || echo python3; \
     fi)
 
-# Update pdxinfo from version.json (unless bundle.json present)
-ifneq ("$(wildcard Source/bundle.json)","")
-    $(shell $(PYTHON) scripts/update_version.py Source/pdxinfo Source/version.json Source/pdxinfo)
-endif
-
 # Fail early if Python deps missing (blocks parallel C compilation)
 .PHONY: check_python_deps
 check_python_deps:

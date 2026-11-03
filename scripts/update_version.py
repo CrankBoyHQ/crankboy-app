@@ -108,33 +108,38 @@ def main():
     print(f"Version in version.json:   {version_from_json}")
 
     if current_pdx_version == version_from_json:
-        print("\nVersions are the same.")
-        user_input_version = ""
-        while not user_input_version:
-            user_input_version = input("Please enter the new version number: ").strip().lstrip('v')
-            if not user_input_version:
-                print("Version number cannot be empty. Please try again.")
+        if not sys.stdin.isatty():
+            new_version = current_pdx_version
+            print("Versions are the same. Running non-interactively, keeping current version.")
+        else:
+            print("\nVersions are the same.")
+            user_input_version = ""
+            while not user_input_version:
+                user_input_version = input("Please enter the new version number: ").strip().lstrip('v')
+                if not user_input_version:
+                    print("Version number cannot be empty. Please try again.")
 
-        new_version = user_input_version
+            new_version = user_input_version
 
-        print(f"Updating version.json with new version 'v{new_version}'...")
-        version_json['name'] = f'v{new_version}'
-        write_version_json(version_json, version_json_path)
+            print(f"Updating version.json with new version 'v{new_version}'...")
+            version_json['name'] = f'v{new_version}'
+            write_version_json(version_json, version_json_path)
     else:
         new_version = version_from_json
         print(f"\nVersion mismatch. Updating pdxinfo to match version.json: {new_version}")
 
     # --- Set Build Number based on Date ---
-    new_build = datetime.now().strftime('%Y%m%d')
+    new_build = str(datetime.now().strftime('%Y%m%d'))
     current_build_number = pdxinfo.get('buildNumber', 'not set')
-    print(f"Setting build number from {current_build_number} to {new_build}.")
 
-    # --- Update pdxinfo Dictionary ---
-    pdxinfo['version'] = new_version
-    pdxinfo['buildNumber'] = str(new_build)
-
-    # --- Write pdxinfo Output ---
-    write_pdxinfo(pdxinfo, pdxinfo_keys, output_path)
+    # --- Update pdxinfo only when version or buildNumber changed ---
+    if current_pdx_version != new_version or current_build_number != new_build:
+        print(f"Setting build number from {current_build_number} to {new_build}.")
+        pdxinfo['version'] = new_version
+        pdxinfo['buildNumber'] = new_build
+        write_pdxinfo(pdxinfo, pdxinfo_keys, output_path)
+    else:
+        print(f"{output_path} is already up to date (version {new_version}, buildNumber {new_build}).")
 
 if __name__ == "__main__":
     main()
