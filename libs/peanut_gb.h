@@ -1548,16 +1548,17 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x69:  // BCPD (CGB BG Palette Data)
             if (gb->is_cgb_mode)
             {
+                uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
+
                 if (__gb_ppu_mode_for_lock(gb) != LCD_TRANSFER)
                 {
-                    uint8_t idx = gb->cgb_bg_palette_index & 0x3F;
                     gb->cgb_bg_palette[idx] = val;
                     pgb_cgb_bg_pal_dirty |= 1 << (idx >> 3);
                     pgb_cgb_lut_dirty = true;
-                    if (gb->cgb_bg_palette_index & 0x80)
-                        gb->cgb_bg_palette_index =
-                            (gb->cgb_bg_palette_index & 0x80) | ((idx + 1) & 0x3F);
                 }
+                if (gb->cgb_bg_palette_index & 0x80)
+                    gb->cgb_bg_palette_index =
+                        (gb->cgb_bg_palette_index & 0x80) | ((idx + 1) & 0x3F);
             }
             return;
         case 0x6A:  // OCPS (CGB OBJ Palette Spec)
@@ -1569,16 +1570,17 @@ __shell static void __gb_rare_write(gb_s* gb, const uint16_t addr, const uint8_t
         case 0x6B:  // OCPD (CGB OBJ Palette Data)
             if (gb->is_cgb_mode)
             {
+                uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
+
                 if (__gb_ppu_mode_for_lock(gb) != LCD_TRANSFER)
                 {
-                    uint8_t idx = gb->cgb_obj_palette_index & 0x3F;
                     gb->cgb_obj_palette[idx] = val;
                     pgb_cgb_obj_pal_dirty |= 1 << (idx >> 3);
                     pgb_cgb_lut_dirty = true;
-                    if (gb->cgb_obj_palette_index & 0x80)
-                        gb->cgb_obj_palette_index =
-                            (gb->cgb_obj_palette_index & 0x80) | ((idx + 1) & 0x3F);
                 }
+                if (gb->cgb_obj_palette_index & 0x80)
+                    gb->cgb_obj_palette_index =
+                        (gb->cgb_obj_palette_index & 0x80) | ((idx + 1) & 0x3F);
             }
             return;
         case 0x76:  // PCM12 (CGB Audio)
