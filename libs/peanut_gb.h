@@ -521,6 +521,7 @@ static uint8_t __gb_read__cgb(gb_s* gb, const uint16_t addr);
 static uint8_t __gb_read__dmg(gb_s* gb, const uint16_t addr);
 
 void __gb_on_breakpoint(gb_s* gb, int breakpoint_number);
+static int __gb_try_breakpoint(gb_s* gb);
 void __gb_dump_vram(gb_s* gb);
 
 enum cgb_support_e gb_get_models_supported(uint8_t* gb_rom)
@@ -6322,9 +6323,22 @@ _0xFF:
 
 _invalid:
     {
-        (gb->gb_error)(gb, GB_INVALID_OPCODE, opcode);
-        // Early exit
-        gb->gb_frame = 1;
+        // script/hw breakpoints patch ROM bytes with CB_HW_BREAKPOINT_OPCODE;
+        // __gb_run_instruction_micro honors them (via __gb_invalid_instruction),
+        // so this path must too, otherwise reference diverges.
+        int rv = 0;
+        if (opcode == CB_HW_BREAKPOINT_OPCODE)
+            rv = __gb_try_breakpoint(gb);
+        if (rv > 0)
+        {
+            inst_cycles = (uint8_t)rv;
+        }
+        else
+        {
+            (gb->gb_error)(gb, GB_INVALID_OPCODE, opcode);
+            // Early exit
+            gb->gb_frame = 1;
+        }
     }
 
 exit:
