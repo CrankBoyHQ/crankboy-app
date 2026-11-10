@@ -2603,7 +2603,8 @@ done_instr_timing:
 #if PGB_IS_CGB
             tima_threshold >>= cgb_fast;
 #endif
-            gb->counter.tima_count += inst_cycles;
+            gb->counter.tima_count += inst_cycles - pgb_div_write_offset;
+            pgb_div_write_offset = 0;
             while (gb->counter.tima_count >= tima_threshold)
             {
                 gb->counter.tima_count -= tima_threshold;
@@ -2633,7 +2634,8 @@ done_instr_timing:
 #if PGB_IS_CGB
         div_threshold >>= cgb_fast;
 #endif
-        gb->counter.div_count += inst_cycles;
+        gb->counter.div_count += inst_cycles - pgb_div_write_offset;
+        pgb_div_write_offset = 0;
 
         if (gb->counter.div_count >= div_threshold)
         {

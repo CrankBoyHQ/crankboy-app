@@ -2666,7 +2666,8 @@ static uint16_t pgb_write_cycle;
 static uint16_t pgb_bgp_evt_t[PGB_BGP_EVT_MAX]; /* T within the line */
 static uint8_t pgb_bgp_evt_v[PGB_BGP_EVT_MAX];
 static uint8_t pgb_bgp_evt_count;
-static uint8_t pgb_bgp_line_init; /* BGP at mode-2 entry */
+static uint8_t pgb_bgp_line_init;     /* BGP at mode-2 entry */
+static uint16_t pgb_div_write_offset; /* DIV write cycle within the batch */
 #if defined(TARGET_SIMULATOR)
 static bool pgb_in_reference; /* CPU_VALIDATE reference pass: suppress capture */
 #endif
@@ -3822,6 +3823,8 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             }
             gb->gb_reg.DIV = 0x00;
             gb->counter.div_count = 0;
+            gb->counter.tima_count = 0;
+            pgb_div_write_offset = pgb_write_cycle;
             if (old_input)
             {
                 __gb_timer_edge_tick(gb);
