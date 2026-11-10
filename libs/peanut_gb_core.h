@@ -2558,6 +2558,8 @@ done_instr_timing:
                 if ((gb->gb_reg.SC & SERIAL_SC_TX_START) && (gb->gb_reg.SC & SERIAL_SC_CLOCK_SRC))
                 {
                     // Simulate disconnected cable input
+                    if (gb->gb_serial_tx)
+                        gb->gb_serial_tx(gb, gb->gb_reg.SB);
                     gb->gb_reg.SB = 0xFF;
                     // Request Serial interrupt
                     gb->gb_reg.IF |= SERIAL_INTR;

@@ -3789,6 +3789,10 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
                     gb->printer_last_cmd = 0;
                 }
             }
+            else if (gb->gb_serial_tx != NULL)
+            {
+                gb->counter.serial_count = SERIAL_CYCLES;
+            }
             else if (!(val & SERIAL_SC_TX_START))
             {
                 // The game manually stopped a transfer.
