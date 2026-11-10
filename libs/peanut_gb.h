@@ -3848,7 +3848,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             bool old_tac_enable = gb->gb_reg.tac_enable;
             bool old_input = old_tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
 
-            gb->gb_reg.TAC = val;
+            gb->gb_reg.TAC = val | 0xF8;
             __gb_update_tac(gb);
 
             bool new_tac_enable = gb->gb_reg.tac_enable;
