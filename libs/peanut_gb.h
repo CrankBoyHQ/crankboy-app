@@ -3810,7 +3810,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             /* Advance the counter to the write bus cycle. */
             uint16_t counter_at_write =
                 ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
-            counter_at_write += pgb_write_cycle - pgb_div_write_offset;
+            counter_at_write += (pgb_write_cycle - 4) - pgb_div_write_offset;
             bool old_input =
                 gb->gb_reg.tac_enable && ((counter_at_write >> gb->gb_reg.tac_input_bit) & 0x01);
             if (preferences_sound_mode == 1)
@@ -6134,6 +6134,7 @@ _0xDF:
 
 _0xE0:
     { /* LD (0xFF00+imm), A */
+        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + inst_cycles - 4);
         __gb_write_full(gb, 0xFF00 | __gb_read_full(gb, gb->cpu_reg.pc++), gb->cpu_reg.a);
         goto exit;
     }
@@ -6147,6 +6148,7 @@ _0xE1:
 
 _0xE2:
     { /* LD (C), A */
+        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + inst_cycles - 4);
         __gb_write_full(gb, 0xFF00 | gb->cpu_reg.c, gb->cpu_reg.a);
         goto exit;
     }
