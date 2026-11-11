@@ -1481,9 +1481,9 @@ __core_section("short") static uint32_t $(__gb_timer_distance)(gb_s* gb)
         return 0xFFFFFFFF;
 
 #if PGB_IS_CGB
-    uint16_t tima_threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
+    uint16_t tima_threshold = (gb->gb_reg.tac_cycles + 1) >> gb->cgb_fast_mode_active;
 #else
-    uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+    uint16_t tima_threshold = gb->gb_reg.tac_cycles + 1;
 #endif
     if (tima_threshold == 0)
         tima_threshold = 1;
@@ -2083,6 +2083,8 @@ h_ldh_c:
 hram_op:
     {
         u16 addr = 0xFF00 | srcidx;
+        /* Bus access latches 4T before instruction end. */
+        pgb_write_cycle = (uint16_t)(batch_cycles + cycles - 4);
         if (opcode & 0x10)
         {
             u8 v = $(__gb_read)(gb, addr);
@@ -2090,7 +2092,6 @@ hram_op:
         }
         else
         {
-            pgb_write_cycle = (uint16_t)(batch_cycles + cycles);
             $(__gb_write)(gb, addr, gb->cpu_reg.a);
         }
     }
@@ -2321,6 +2322,8 @@ static unsigned $(__gb_run_instruction_reference_batch)(gb_s* gb)
         opcode = $(__gb_fetch8)(gb);
     }
 
+    /* Offset must not leak across batches. */
+    pgb_div_write_offset = 0;
     pgb_batch_elapsed = 0;
     pgb_write_cycle = 0;
     return batch_cycles;
@@ -2599,7 +2602,8 @@ done_instr_timing:
         /* TIMA register timing */
         if (gb->gb_reg.tac_enable)
         {
-            uint16_t tima_threshold = gb->gb_reg.tac_cycles;
+            /* tac_cycles is a modulo mask (period - 1); +1 gives the period. */
+            uint16_t tima_threshold = gb->gb_reg.tac_cycles + 1;
 #if PGB_IS_CGB
             tima_threshold >>= cgb_fast;
 #endif

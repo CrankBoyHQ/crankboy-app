@@ -2833,14 +2833,14 @@ static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint
 
     /* Same shifts the step tail applies to inst_cycles (VBlank overclock,
      * then CGB fast mode). */
-    uint16_t elapsed = pgb_batch_elapsed;
+    uint16_t elapsed = pgb_write_cycle;
     if (gb->lcd_mode == LCD_VBLANK)
         elapsed >>= gb->overclock;
     elapsed >>= gb->cgb_fast_mode_active;
     if (elapsed == 0)
         return false;
 
-    uint16_t threshold = gb->gb_reg.tac_cycles >> gb->cgb_fast_mode_active;
+    uint16_t threshold = (gb->gb_reg.tac_cycles + 1) >> gb->cgb_fast_mode_active;
     if (threshold == 0)
         threshold = 1;
 
@@ -2866,7 +2866,7 @@ static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint
  */
 static inline __attribute__((always_inline)) uint8_t __gb_div_peek(gb_s* gb)
 {
-    uint16_t elapsed = pgb_batch_elapsed;
+    uint16_t elapsed = pgb_write_cycle;
     if (gb->lcd_mode == LCD_VBLANK)
         elapsed >>= gb->overclock;
     elapsed >>= gb->cgb_fast_mode_active;
@@ -3807,9 +3807,12 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         /* Timer Registers */
         case 0x04:
         {
-            uint16_t divider = ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
+            /* Advance the counter to the write bus cycle. */
+            uint16_t counter_at_write =
+                ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
+            counter_at_write += pgb_write_cycle - pgb_div_write_offset;
             bool old_input =
-                gb->gb_reg.tac_enable && ((divider >> gb->gb_reg.tac_input_bit) & 0x01);
+                gb->gb_reg.tac_enable && ((counter_at_write >> gb->gb_reg.tac_input_bit) & 0x01);
             if (preferences_sound_mode == 1)
             {
                 uint8_t div_apu_mask = gb->cgb_fast_mode_active ? 0x20 : 0x10;
@@ -6221,6 +6224,7 @@ _0xEF:
 
 _0xF0:
     { /* LD A, (0xFF00+imm) */
+        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + inst_cycles - 4);
         gb->cpu_reg.a = __gb_read_full(gb, 0xFF00 | __gb_read_full(gb, gb->cpu_reg.pc++));
         goto exit;
     }
@@ -6238,6 +6242,7 @@ _0xF1:
 
 _0xF2:
     { /* LD A, (C) */
+        pgb_write_cycle = (uint16_t)(pgb_batch_elapsed + inst_cycles - 4);
         gb->cpu_reg.a = __gb_read_full(gb, 0xFF00 | gb->cpu_reg.c);
         goto exit;
     }
