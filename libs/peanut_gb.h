@@ -325,8 +325,8 @@ typedef struct StateHeader
 #endif
 
 // ---------------------
-// Struct version bump: see header comment in pgb/pgb_v6.h
-#include "pgb/pgb_v6.h"
+// Struct version bump: see header comment in pgb/pgb_v7.h
+#include "pgb/pgb_v7.h"
 #include "pgb/pgb_version.h"
 // ---------------------
 
@@ -2666,8 +2666,9 @@ static uint16_t pgb_write_cycle;
 static uint16_t pgb_bgp_evt_t[PGB_BGP_EVT_MAX]; /* T within the line */
 static uint8_t pgb_bgp_evt_v[PGB_BGP_EVT_MAX];
 static uint8_t pgb_bgp_evt_count;
-static uint8_t pgb_bgp_line_init;     /* BGP at mode-2 entry */
-static uint16_t pgb_div_write_offset; /* DIV write cycle within the batch */
+static uint8_t pgb_bgp_line_init;      /* BGP at mode-2 entry */
+static uint16_t pgb_div_write_offset;  /* DIV write cycle within the batch */
+static uint16_t pgb_tima_write_offset; /* TIMA/TMA write cycle within the batch */
 #if defined(TARGET_SIMULATOR)
 static bool pgb_in_reference; /* CPU_VALIDATE reference pass: suppress capture */
 #endif
@@ -2825,11 +2826,21 @@ static inline __attribute__((always_inline)) uint8_t __gb_read_ly_synced(gb_s* g
  */
 static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint8_t* tima_out)
 {
-    bool ofl = gb->gb_reg.tima_overflow_delay;
-    *tima_out = gb->gb_reg.TIMA;
+    bool overflow = gb->gb_reg.tima_overflow_delay;
+    uint8_t tima = gb->gb_reg.TIMA;
 
-    if (ofl || !gb->gb_reg.tac_enable)
-        return ofl;
+    /* Overflow reload window: TIMA reads 00 until the TMA reload lands. */
+    if (overflow && pgb_write_cycle < gb->gb_reg.tima_reload_end)
+    {
+        *tima_out = 0x00;
+        return true;
+    }
+
+    if (!gb->gb_reg.tac_enable)
+    {
+        *tima_out = tima;
+        return overflow;
+    }
 
     /* Same shifts the step tail applies to inst_cycles (VBlank overclock,
      * then CGB fast mode). */
@@ -2838,25 +2849,37 @@ static inline __attribute__((always_inline)) bool __gb_timer_peek(gb_s* gb, uint
         elapsed >>= gb->overclock;
     elapsed >>= gb->cgb_fast_mode_active;
     if (elapsed == 0)
-        return false;
+    {
+        *tima_out = tima;
+        return overflow;
+    }
 
     uint16_t threshold = (gb->gb_reg.tac_cycles + 1) >> gb->cgb_fast_mode_active;
     if (threshold == 0)
         threshold = 1;
 
     uint32_t count = gb->counter.tima_count + elapsed;
-    uint8_t tima = *tima_out;
+    /* Mid-batch DIV/TIMA reset: measure elapsed from the reset point. */
+    unsigned base = pgb_tima_write_offset;
+    if (base < pgb_div_write_offset)
+        base = pgb_div_write_offset;
+    count -= base;
+    bool last_overflow = overflow;
     while (count >= threshold)
     {
         count -= threshold;
         if (++tima == 0x00)
         {
             tima = gb->gb_reg.TMA;
-            ofl = true;
+            overflow = true;
+            last_overflow = true;
         }
+        else
+            last_overflow = false;
     }
-    *tima_out = tima;
-    return ofl;
+    /* Overflow within the reload window: reads 00. */
+    *tima_out = (last_overflow && count < 4) ? 0x00 : tima;
+    return overflow;
 }
 
 /**
@@ -2872,6 +2895,9 @@ static inline __attribute__((always_inline)) uint8_t __gb_div_peek(gb_s* gb)
     elapsed >>= gb->cgb_fast_mode_active;
 
     uint32_t count = gb->counter.div_count + elapsed;
+    /* Same mid-batch DIV-reset correction as __gb_timer_peek. */
+    if (pgb_div_write_offset)
+        count -= pgb_div_write_offset;
     uint8_t ticks = (uint8_t)(count >> (8 - gb->cgb_fast_mode_active));
     return gb->gb_reg.DIV + ticks;
 }
@@ -3296,6 +3322,46 @@ __section__(".text.cb") static void __gb_mbc7_eeprom_clock(gb_s* gb)
         }
         break;
     }
+}
+
+/* Commit pending TIMA ticks up to the write bus cycle; returns the
+ * remainder. Overflow state is left for the caller to handle. */
+__shell static uint16_t pgb_tima_commit_upto(gb_s* gb)
+{
+    unsigned base = pgb_tima_write_offset;
+    if (base < pgb_div_write_offset)
+        base = pgb_div_write_offset;
+    pgb_tima_write_offset = pgb_write_cycle;
+
+    uint16_t delta = pgb_write_cycle - base;
+    if (!gb->gb_reg.tac_enable || delta == 0)
+        return gb->counter.tima_count;
+    if (gb->lcd_mode == LCD_VBLANK)
+        delta >>= gb->overclock;
+#if PGB_IS_CGB
+    delta >>= gb->cgb_fast_mode_active;
+#endif
+
+    uint16_t threshold = gb->gb_reg.tac_cycles + 1;
+#if PGB_IS_CGB
+    threshold >>= gb->cgb_fast_mode_active;
+#endif
+
+    uint32_t count = gb->counter.tima_count + delta;
+    while (count >= threshold)
+    {
+        count -= threshold;
+        gb->gb_reg.TIMA++;
+        if (gb->gb_reg.TIMA == 0x00)
+        {
+            gb->gb_reg.TIMA = gb->gb_reg.TMA;
+            gb->gb_reg.tima_overflow_delay = 1;
+            gb->gb_reg.IF |= TIMER_INTR;
+            gb->direct.intr_pending = 1;
+        }
+    }
+    gb->counter.tima_count = (uint16_t)count;
+    return count;
 }
 
 /**
@@ -3810,7 +3876,13 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             /* Advance the counter to the write bus cycle. */
             uint16_t counter_at_write =
                 ((uint16_t)gb->gb_reg.DIV << 8) | (gb->counter.div_count & 0xFF);
-            counter_at_write += (pgb_write_cycle - 4) - pgb_div_write_offset;
+            /* The DIV-write edge check reads the trigger bit at the write bus
+             * cycle. The fastest rate (tac_rate 1) empirically reads it 4T
+             * earlier. */
+            unsigned sample_cycle = pgb_write_cycle;
+            if (gb->gb_reg.tac_rate == 1)
+                sample_cycle -= 4;
+            counter_at_write += sample_cycle - pgb_div_write_offset;
             bool old_input =
                 gb->gb_reg.tac_enable && ((counter_at_write >> gb->gb_reg.tac_input_bit) & 0x01);
             if (preferences_sound_mode == 1)
@@ -3827,6 +3899,7 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
             gb->gb_reg.DIV = 0x00;
             gb->counter.div_count = 0;
             gb->counter.tima_count = 0;
+            gb->gb_reg.tima_overflow_delay = 0;
             pgb_div_write_offset = pgb_write_cycle;
             if (old_input)
             {
@@ -3836,14 +3909,47 @@ __shell void __gb_write_full(gb_s* gb, const uint_fast16_t addr, const uint8_t v
         }
 
         case 0x05:
+        {
+            uint16_t remainder = pgb_tima_commit_upto(gb);
+            bool overflow = gb->gb_reg.tima_overflow_delay;
+            if (overflow)
+            {
+                if (remainder < 4)
+                {
+                    /* The write lands in the reload window: it takes
+                     * precedence over the pending TMA reload. */
+                    gb->gb_reg.TIMA = val;
+                    gb->gb_reg.tima_overflow_delay = 0;
+                }
+                else
+                {
+                    gb->gb_reg.tima_overflow_delay = 0;
+                    if (remainder == 4)
+                        return;
+                    gb->gb_reg.TIMA = val;
+                }
+                return;
+            }
             gb->gb_reg.TIMA = val;
             return;
+        }
 
         case 0x06:
+        {
+            uint16_t remainder = pgb_tima_commit_upto(gb);
+            bool overflow = gb->gb_reg.tima_overflow_delay;
+            if (overflow)
+            {
+                if (remainder < 4)
+                    gb->gb_reg.tima_reload_end = 4 - remainder;
+                else
+                    gb->gb_reg.tima_overflow_delay = 0;
+            }
             gb->gb_reg.TMA = val;
-            if (gb->gb_reg.tima_overflow_delay)
+            if (overflow && remainder <= 4)
                 gb->gb_reg.TIMA = val;
             return;
+        }
 
         case 0x07:
         {

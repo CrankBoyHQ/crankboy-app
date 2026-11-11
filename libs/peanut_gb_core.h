@@ -2324,6 +2324,7 @@ static unsigned $(__gb_run_instruction_reference_batch)(gb_s* gb)
 
     /* Offset must not leak across batches. */
     pgb_div_write_offset = 0;
+    pgb_tima_write_offset = 0;
     pgb_batch_elapsed = 0;
     pgb_write_cycle = 0;
     return batch_cycles;
@@ -2592,8 +2593,8 @@ done_instr_timing:
 
         /* Handle delayed TIMA reload from the previous cycle. The IF bit was
          * already set when the overflow was detected (same tail); only the
-         * read-side reload window (TIMA reads as TMA, TMA-write quirk) is
-         * tracked by this flag, so just clear it here. */
+         * read-side reload window (TIMA reads 00 then TMA, TMA-write quirk)
+         * is tracked by this flag, so just clear it here. */
         if (gb->gb_reg.tima_overflow_delay)
         {
             gb->gb_reg.tima_overflow_delay = 0;
@@ -2607,8 +2608,12 @@ done_instr_timing:
 #if PGB_IS_CGB
             tima_threshold >>= cgb_fast;
 #endif
-            gb->counter.tima_count += inst_cycles - pgb_div_write_offset;
-            pgb_div_write_offset = 0;
+            /* The later of the two write points starts the TIMA count segment. */
+            unsigned tima_base = pgb_tima_write_offset;
+            if (tima_base < pgb_div_write_offset)
+                tima_base = pgb_div_write_offset;
+            gb->counter.tima_count += inst_cycles - tima_base;
+            pgb_tima_write_offset = 0;
             while (gb->counter.tima_count >= tima_threshold)
             {
                 gb->counter.tima_count -= tima_threshold;
@@ -2629,6 +2634,15 @@ done_instr_timing:
                      * now matches what reads reported. */
                     gb->gb_reg.IF |= TIMER_INTR;
                 }
+            }
+
+            /* Reload window: TIMA reads 00 for 4T, then TMA. */
+            if (gb->gb_reg.tima_overflow_delay)
+            {
+                if (gb->counter.tima_count < 4)
+                    gb->gb_reg.tima_reload_end = 4 - gb->counter.tima_count;
+                else
+                    gb->gb_reg.tima_overflow_delay = 0;
             }
         }
 
