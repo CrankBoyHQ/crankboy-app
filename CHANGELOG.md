@@ -1,3 +1,13 @@
+# v3.0.2 - (2026-11-17)
+
+## Catalog
+
+- New bundled game: Life's Too Short GB: A Christmas Spirit by PixelGhost
+
+## Bug Fixes
+
+- Fixed an issue where games (e.g. Mr. Do!) would hang on a white screen.
+
 # v3.0.1 - (2026-10-30)
 
 ## Bug Fixes
