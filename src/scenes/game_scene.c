@@ -33,6 +33,7 @@ static void CB_GameScene_reset_screen_defaults(void);
 
 #include "../../libs/peanut_gb.h"
 #include "../app.h"
+#include "../covers.h"
 #include "../dtcm.h"
 #include "../preferences.h"
 #include "../script.h"
@@ -40,7 +41,6 @@ static void CB_GameScene_reset_screen_defaults(void);
 #include "../tcm_relocate.h"
 #include "../userstack.h"
 #include "../utility.h"
-#include "covers.h"
 #include "credits_scene.h"
 #include "info_scene.h"
 #include "modal.h"
